@@ -159,6 +159,7 @@ export const TaskTabNew = ({
     postFeed,
     updateTask,
     setActiveTask,
+    fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
     isPostsLoading,
@@ -481,28 +482,26 @@ export const TaskTabNew = ({
         newValue: data.newValue,
         payload: data.payload,
       });
+      const taskRemainsOpen = isTaskPendingFurtherApproval(updatedTask);
       showSuccessToast(
-        isTaskPendingFurtherApproval(updatedTask)
-          ? 'Vote recorded.'
-          : t('server.task-resolved-successfully')
+        taskRemainsOpen ? 'Vote recorded.' : t('server.task-resolved-successfully')
       );
 
-      // Update the task in the feed list and detail panel so the UI
-      // reflects the new status, resolution, and available transitions
-      // without requiring a full page refresh.
       setActiveTask(updatedTask);
       updateTask(updatedTask);
 
-      // Refresh TCRS so the header and timeline reflect the new stage.
-      // The IncidentTcrsSyncHandler writes a new TCRS record on every task
-      // transition; fetching by stateId (= task.id) picks it up.
       const refreshed = await getListTestCaseIncidentByStateId(task.id);
       const latest = refreshed?.data?.[0];
       if (latest) {
         updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
       }
 
-      rest.onAfterClose?.();
+      if (taskRemainsOpen) {
+        await fetchUpdatedThread(task.id, true);
+      } else {
+        rest.onAfterClose?.();
+      }
+
       rest.onUpdateEntityDetails?.();
     } catch (err) {
       showErrorToast(
@@ -1063,7 +1062,9 @@ export const TaskTabNew = ({
               onClick: handleGlossaryTaskMenuClick,
             }}
             overlayClassName="task-action-dropdown"
-            onClick={onTaskDropdownClick}>
+            onClick={() =>
+              handleGlossaryTaskMenuClick({ key: taskAction.key } as MenuInfo)
+            }>
             {taskAction.label}
           </Dropdown.Button>
         </Tooltip>

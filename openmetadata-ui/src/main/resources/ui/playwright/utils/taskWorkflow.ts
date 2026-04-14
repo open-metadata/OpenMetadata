@@ -737,6 +737,7 @@ export const closeTaskFromDetails = async (page: Page) => {
 export const approveTaskFromDetails = async (page: Page) => {
   logTaskDebug('approveTaskFromDetails:start');
   const taskPanel = page.locator(TASK_PANEL_SELECTOR);
+  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
   const approveButton = taskPanel.getByTestId('approve-button').first();
   const workflowPrimaryButton = taskPanel
     .getByTestId('workflow-task-action-primary')
@@ -752,6 +753,25 @@ export const approveTaskFromDetails = async (page: Page) => {
     const taskActionResponse = waitForTaskActionResponse(page);
     await button.scrollIntoViewIfNeeded().catch(() => undefined);
     await button.click({ force: true });
+
+     await visibleTaskModal
+      .waitFor({ state: 'visible', timeout: 3000 })
+      .catch(() => undefined);
+
+    if (await visibleTaskModal.isVisible().catch(() => false)) {
+      const commentInput = visibleTaskModal.locator('textarea').last();
+      if (await commentInput.isVisible().catch(() => false)) {
+        await commentInput.fill('Approved by Playwright');
+      }
+
+      const confirmButton = visibleTaskModal
+        .getByRole('button', { name: /approve|accept|ok|save/i })
+        .last();
+
+      await expect(confirmButton).toBeVisible();
+      await confirmButton.click();
+    }
+
     await taskActionResponse;
     await waitForPageLoaded(page);
   };

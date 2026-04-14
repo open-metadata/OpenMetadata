@@ -16,7 +16,6 @@ import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { waitForAllLoadersToDisappear } from './entity';
-import { makeRetryRequest } from './serviceIngestion';
 import { sidebarClick } from './sidebar';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
@@ -72,6 +71,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
   testCaseName?: string;
 }) => {
   const { page, user, testCaseName } = data;
+  const taskTabEditAssigneesButton = page.getByTestId('edit-assignees').last();
 
   if (testCaseName) {
     const incidentRow = page
@@ -84,6 +84,45 @@ export const addAssigneeFromPopoverWidget = async (data: {
     } else {
       await incidentRow.locator('td').last().getByRole('button').click();
     }
+  } else if (await taskTabEditAssigneesButton.isVisible().catch(() => false)) {
+    await taskTabEditAssigneesButton.click();
+    await waitForAllLoadersToDisappear(page);
+
+    const assigneeModal = page.locator('.ant-modal-content').last();
+    const assigneeSelect = assigneeModal.getByTestId('select-assignee');
+    const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
+    const assigneeInput = assigneeSelect.locator('input').last();
+    const assigneeOption = page.getByTestId(user.name).first();
+    const normalizedAssigneeOption = page
+      .getByTestId(user.name.toLowerCase())
+      .first();
+
+    await expect(assigneeModal).toBeVisible();
+    await expect(assigneeSelector).toBeVisible();
+
+    await assigneeSelector.click();
+    await assigneeInput.fill(user.displayName);
+
+    if (await assigneeOption.isVisible().catch(() => false)) {
+      await assigneeOption.click();
+    } else {
+      await expect(normalizedAssigneeOption).toBeVisible({ timeout: 30_000 });
+      await normalizedAssigneeOption.click();
+    }
+
+    const updateIncident = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
+    );
+    await assigneeModal.getByRole('button', { name: 'Save' }).click();
+    await updateIncident;
+
+    await waitForAllLoadersToDisappear(page);
+    await expect(assigneeModal).not.toBeVisible();
+    await expect(page.getByTestId('assignee')).toContainText(user.displayName, {
+      timeout: 30_000,
+    });
+
+    return;
   } else {
     // direct assignment from edit assignee icon
     await page.getByTestId('assignee').getByTestId('edit-owner').click();
@@ -189,6 +228,34 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
+  const executePipelineRequest = async (
+    label: string,
+    request: () => Promise<Awaited<ReturnType<APIRequestContext['post']>>>
+  ) => {
+    let lastStatus: number | undefined;
+    let lastBody = '';
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const response = await request();
+
+      if (response.ok()) {
+        return response;
+      }
+
+      lastStatus = response.status();
+      lastBody = await response.text();
+
+      if (attempt < 3) {
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- bounded retry for transient pipeline readiness
+        await page.waitForTimeout(1000 * attempt);
+      }
+    }
+
+    throw new Error(
+      `${label} failed for ingestion pipeline ${pipeline?.['id']} (${pipeline?.['fullyQualifiedName']}): HTTP ${lastStatus} ${lastBody}`
+    );
+  };
+
   // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
   await page.waitForTimeout(5000);
   const response = await apiContext.post(
@@ -197,24 +264,20 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
 
   if (response.status() !== 200) {
     // re-deploy the pipeline then trigger it
-    await makeRetryRequest({
-      page,
-      fn: () =>
-        apiContext.post(
-          `/api/v1/services/ingestionPipelines/deploy/${pipeline?.['id']}`
-        ),
-    });
+    await executePipelineRequest('Pipeline deploy', () =>
+      apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${pipeline?.['id']}`
+      )
+    );
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(5000);
 
-    await makeRetryRequest({
-      page,
-      fn: () =>
-        apiContext.post(
-          `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
-        ),
-    });
+    await executePipelineRequest('Pipeline trigger', () =>
+      apiContext.post(
+        `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
+      )
+    );
   }
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to complete
@@ -223,16 +286,34 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   await expect
     .poll(
       async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/services/ingestionPipelines/${encodeURIComponent(
-              pipeline?.['fullyQualifiedName']
-            )}/pipelineStatus?limit=1`
-          )
-          .then((res) => res.json());
-        const statuses = Array.isArray(response?.data) ? response.data : [];
+        const pipelineStatusResponse = await apiContext.get(
+          `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+            pipeline?.['fullyQualifiedName']
+          )}/pipelineStatus?limit=1`
+        );
 
-        return statuses[0]?.pipelineState ?? 'running';
+        if (pipelineStatusResponse.ok()) {
+          const body = await pipelineStatusResponse.json();
+          const statuses = Array.isArray(body?.data) ? body.data : [];
+
+          if (statuses[0]?.pipelineState) {
+            return statuses[0].pipelineState;
+          }
+        }
+
+        const ingestionPipelineResponse = await apiContext.get(
+          `/api/v1/services/ingestionPipelines/name/${encodeURIComponent(
+            pipeline?.['fullyQualifiedName']
+          )}?fields=pipelineStatuses`
+        );
+
+        if (!ingestionPipelineResponse.ok()) {
+          return 'running';
+        }
+
+        const ingestionPipeline = await ingestionPipelineResponse.json();
+
+        return ingestionPipeline?.pipelineStatuses?.pipelineState ?? 'running';
       },
       {
         // Custom expect message for reporting, optional.
