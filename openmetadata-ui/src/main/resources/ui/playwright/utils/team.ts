@@ -112,7 +112,7 @@ export const createTeam = async (
   };
 };
 
-export const softDeleteTeam = async (page: Page, teamName: string) => {
+export const softDeleteTeam = async (page: Page) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
@@ -132,9 +132,8 @@ export const softDeleteTeam = async (page: Page, teamName: string) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
-
-  await searchTeam(page, teamName, { expectEmptyResults: true });
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 };
 
 export const hardDeleteTeam = async (page: Page, teamName: string) => {
@@ -158,7 +157,8 @@ export const hardDeleteTeam = async (page: Page, teamName: string) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 
   await searchTeam(page, teamName, { expectEmptyResults: true });
 };

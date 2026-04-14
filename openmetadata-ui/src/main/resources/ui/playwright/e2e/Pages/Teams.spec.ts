@@ -355,7 +355,7 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Soft Delete Team', async () => {
-      await softDeleteTeam(page, teamDetails?.displayName ?? '');
+      await softDeleteTeam(page);
 
       await page.goto('/settings/members/teams', {
         waitUntil: 'domcontentloaded',
@@ -387,7 +387,7 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page, teamDetails?.updatedName ?? '');
+      await hardDeleteTeam(page, teamDetails?.updatedName ?? teamDetails.name);
     });
   });
 
@@ -501,7 +501,10 @@ test.describe('Teams Page', () => {
       team.responseData?.['displayName']
     );
 
-    await hardDeleteTeam(page, team.responseData?.['displayName'] ?? '');
+    await hardDeleteTeam(
+      page,
+      team.responseData?.['displayName'] ?? team.data.name
+    );
     await afterAction();
   });
 
@@ -765,7 +768,7 @@ test.describe('Teams Page', () => {
       page.getByTestId('team-hierarchy-table').getByRole('link')
     ).toContainText(team2Details.displayName);
 
-    await hardDeleteTeam(page, team1Details.displayName);
+    await hardDeleteTeam(page, team1Details.name);
   });
 
   test('Total User Count should be rendered', async ({ page }) => {
