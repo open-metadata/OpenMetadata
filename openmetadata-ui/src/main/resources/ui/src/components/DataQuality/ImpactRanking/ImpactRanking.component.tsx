@@ -27,11 +27,11 @@ import {
 } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
-import { getTestCaseDetailPath } from '../../utils/RouterUtils';
+import { getTestCaseDetailPagePath } from '../../../utils/RouterUtils';
 import {
   DataQualityCheckImpact,
   getDataQualityCheckImpact,
-} from '../../rest/testAPI';
+} from '../../../rest/testAPI';
 
 interface ImpactRankingProps {
   limit?: number;
@@ -99,8 +99,8 @@ const ImpactRanking = ({ limit = 10 }: ImpactRankingProps) => {
     },
     {
       title: t('label.entity'),
-      dataIndex: 'entityFQN',
-      key: 'entityFQN',
+      dataIndex: 'entityFullyQualifiedName',
+      key: 'entityFullyQualifiedName',
       ellipsis: true,
     },
     {

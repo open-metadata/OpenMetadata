@@ -501,11 +501,12 @@ export type DataQualityCheckImpactParams = {
 export interface DataQualityCheckImpact {
   testCaseId: string;
   testCaseFullyQualifiedName: string;
-  entityFQN: string;
+  entityFullyQualifiedName: string;
   testCaseStatus: TestCaseStatus;
   timestamp: number;
   downstreamUsage: number;
   consumerCount: number;
+  recentIncidents: number;
   impactScore: number;
 }
 

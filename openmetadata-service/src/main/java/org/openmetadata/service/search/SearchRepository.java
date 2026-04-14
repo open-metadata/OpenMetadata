@@ -2817,23 +2817,52 @@ public Response searchDataQualityLineage(
         return results;
       }
 
+      Map<String, Map<String, Object>> groupedTestCases = new LinkedHashMap<>();
+
       for (Iterator<JsonNode> it = hitsNode.elements(); it.hasNext(); ) {
         JsonNode jsonNode = it.next();
         JsonNode sourceNode = JsonUtils.extractValue(jsonNode.toString(), SEARCH_SOURCE);
         if (sourceNode != null) {
-          Map<String, Object> doc = new HashMap<>();
-          doc.put("testCaseId", JsonUtils.extractValue(sourceNode.toString(), ID));
-          doc.put(
-              "testCaseFullyQualifiedName",
-              JsonUtils.extractValue(sourceNode.toString(), FULLY_QUALIFIED_NAME));
-          doc.put("entityFQN", JsonUtils.extractValue(sourceNode.toString(), "entityFQN"));
-          doc.put("testCaseStatus", JsonUtils.extractValue(sourceNode.toString(), "testCaseStatus"));
-          doc.put("timestamp", JsonUtils.extractValue(sourceNode.toString(), "timestamp"));
-          doc.put("downstreamUsage", 0);
-          doc.put("consumerCount", 0);
-          results.add(doc);
+          String testCaseFQN =
+              JsonUtils.extractValue(sourceNode.toString(), FULLY_QUALIFIED_NAME);
+          String testCaseId = JsonUtils.extractValue(sourceNode.toString(), ID);
+          String entityFQN = JsonUtils.extractValue(sourceNode.toString(), "entityFQN");
+          String testCaseStatus = JsonUtils.extractValue(sourceNode.toString(), "testCaseStatus");
+          String timestamp = JsonUtils.extractValue(sourceNode.toString(), "timestamp");
+
+          if (testCaseFQN == null || testCaseFQN.isEmpty()) {
+            continue;
+          }
+
+          Map<String, Object> doc;
+          if (groupedTestCases.containsKey(testCaseFQN)) {
+            doc = groupedTestCases.get(testCaseFQN);
+            int runCount = ((Number) doc.getOrDefault("runCount", 0)).intValue();
+            doc.put("runCount", runCount + 1);
+
+            int failedCount = ((Number) doc.getOrDefault("recentIncidents", 0)).intValue();
+            if ("failed".equalsIgnoreCase(testCaseStatus)) {
+              doc.put("recentIncidents", failedCount + 1);
+            }
+          } else {
+            doc = new HashMap<>();
+            doc.put("testCaseId", testCaseId);
+            doc.put("testCaseFullyQualifiedName", testCaseFQN);
+            doc.put("entityFullyQualifiedName", entityFQN);
+            doc.put("testCaseStatus", testCaseStatus);
+            doc.put("timestamp", timestamp);
+            doc.put("runCount", 1);
+            doc.put(
+                "recentIncidents",
+                "failed".equalsIgnoreCase(testCaseStatus) ? 1 : 0);
+            doc.put("downstreamUsage", 0);
+            doc.put("consumerCount", 0);
+            groupedTestCases.put(testCaseFQN, doc);
+          }
         }
       }
+
+      results = new ArrayList<>(groupedTestCases.values());
     } catch (Exception e) {
       LOG.error("Error parsing search test cases for impact", e);
     }

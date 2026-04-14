@@ -428,7 +428,7 @@ public DataQualityReport getDataQualityReport(
 
     query.append(
         String.format(
-            "{\"range\": {\"timestamp\": {\"gte\": %d}}}}}", thirtyDaysAgo / 1000));
+            "{\"range\": {\"timestamp\": {\"gte\": %d}}}]}}", thirtyDaysAgo / 1000));
     return query.toString();
   }
 
