@@ -48,11 +48,13 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Team entity operations.
@@ -1458,4 +1460,134 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
           "Team policies count should match");
     }
   }
+
+  // ===================================================================
+  // SEARCH ENDPOINT TESTS
+  // ===================================================================
+
+  @Test
+  void test_searchTeamsByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String uniqueToken = ns.prefix("searchable");
+
+    for (int i = 0; i < 3; i++) {
+      CreateTeam create =
+          new CreateTeam()
+              .withName(uniqueToken + "Team" + i)
+              .withTeamType(TeamType.GROUP)
+              .withDescription("Team for search test");
+      createEntity(create);
+    }
+
+    ResultList<Team> results = searchTeams(client, uniqueToken, 50, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertEquals(3, results.getData().size());
+
+    for (Team team : results.getData()) {
+      assertTrue(
+          team.getName().toLowerCase().contains(uniqueToken.toLowerCase()),
+          "Team name should contain search term: " + team.getName());
+    }
+  }
+
+  @Test
+  void test_searchTeamsByDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String uniqueDisplay = ns.prefix("UniqueDisplay");
+
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("displaySearchTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDisplayName(uniqueDisplay + " Team")
+            .withDescription("Team with display name for search");
+    createEntity(create);
+
+    ResultList<Team> results = searchTeams(client, uniqueDisplay, 50, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertTrue(results.getData().size() >= 1);
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(
+                t -> t.getDisplayName() != null && t.getDisplayName().contains(uniqueDisplay)),
+        "Should find team by display name");
+  }
+
+  @Test
+  void test_searchTeamsNoResults(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ResultList<Team> results = searchTeams(client, "nonExistentTeamXyz" + System.nanoTime(), 50, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertEquals(0, results.getData().size());
+  }
+
+  @Test
+  void test_searchTeamsWithPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String uniqueToken = ns.prefix("paged");
+
+    for (int i = 0; i < 5; i++) {
+      CreateTeam create =
+          new CreateTeam()
+              .withName(uniqueToken + "Team" + i)
+              .withTeamType(TeamType.GROUP)
+              .withDescription("Team for pagination test");
+      createEntity(create);
+    }
+
+    ResultList<Team> page1 = searchTeams(client, uniqueToken, 2, 0);
+    assertNotNull(page1);
+    assertEquals(2, page1.getData().size());
+    assertNotNull(page1.getPaging().getAfter(), "Should have next page cursor");
+
+    ResultList<Team> page2 = searchTeams(client, uniqueToken, 2, 2);
+    assertNotNull(page2);
+    assertEquals(2, page2.getData().size());
+
+    ResultList<Team> page3 = searchTeams(client, uniqueToken, 2, 4);
+    assertNotNull(page3);
+    assertEquals(1, page3.getData().size());
+  }
+
+  @Test
+  void test_searchTeamsEmptyQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ResultList<Team> results = searchTeams(client, null, 10, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertTrue(results.getData().size() > 0, "Empty query should return teams");
+  }
+
+  private ResultList<Team> searchTeams(
+      OpenMetadataClient client, String query, Integer limit, Integer offset) {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (query != null) {
+      optionsBuilder.queryParam("q", query);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (offset != null) {
+      optionsBuilder.queryParam("offset", offset.toString());
+    }
+
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET, "/v1/teams/search", null, TeamResultList.class, optionsBuilder.build());
+  }
+
+  private static class TeamResultList extends ResultList<Team> {}
 }

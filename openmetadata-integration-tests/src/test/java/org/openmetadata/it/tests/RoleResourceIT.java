@@ -30,9 +30,12 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Role entity operations.
@@ -369,6 +372,151 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
       }
     }
   }
+
+  // ===================================================================
+  // SEARCH ENDPOINT TESTS
+  // ===================================================================
+
+  @Test
+  void test_searchRolesByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    List<String> policyFqns =
+        dataStewardRole().getPolicies().stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .toList();
+
+    String uniqueToken = ns.prefix("searchable");
+
+    for (int i = 0; i < 3; i++) {
+      CreateRole create =
+          new CreateRole()
+              .withName(uniqueToken + "Role" + i)
+              .withPolicies(policyFqns)
+              .withDescription("Role for search test");
+      createEntity(create);
+    }
+
+    ResultList<Role> results = searchRoles(client, uniqueToken, 50, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertEquals(3, results.getData().size());
+
+    for (Role role : results.getData()) {
+      assertTrue(
+          role.getName().toLowerCase().contains(uniqueToken.toLowerCase()),
+          "Role name should contain search term: " + role.getName());
+    }
+  }
+
+  @Test
+  void test_searchRolesByDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    List<String> policyFqns =
+        dataStewardRole().getPolicies().stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .toList();
+
+    String uniqueDisplay = ns.prefix("UniqueDisplay");
+
+    CreateRole create =
+        new CreateRole()
+            .withName(ns.prefix("displaySearchRole"))
+            .withPolicies(policyFqns)
+            .withDisplayName(uniqueDisplay + " Role")
+            .withDescription("Role with display name for search");
+    createEntity(create);
+
+    ResultList<Role> results = searchRoles(client, uniqueDisplay, 50, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertTrue(results.getData().size() >= 1);
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(
+                r -> r.getDisplayName() != null && r.getDisplayName().contains(uniqueDisplay)),
+        "Should find role by display name");
+  }
+
+  @Test
+  void test_searchRolesNoResults(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ResultList<Role> results = searchRoles(client, "nonExistentRoleXyz" + System.nanoTime(), 50, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertEquals(0, results.getData().size());
+  }
+
+  @Test
+  void test_searchRolesWithPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    List<String> policyFqns =
+        dataStewardRole().getPolicies().stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .toList();
+
+    String uniqueToken = ns.prefix("paged");
+
+    for (int i = 0; i < 5; i++) {
+      CreateRole create =
+          new CreateRole()
+              .withName(uniqueToken + "Role" + i)
+              .withPolicies(policyFqns)
+              .withDescription("Role for pagination test");
+      createEntity(create);
+    }
+
+    ResultList<Role> page1 = searchRoles(client, uniqueToken, 2, 0);
+    assertNotNull(page1);
+    assertEquals(2, page1.getData().size());
+    assertNotNull(page1.getPaging().getAfter(), "Should have next page cursor");
+
+    ResultList<Role> page2 = searchRoles(client, uniqueToken, 2, 2);
+    assertNotNull(page2);
+    assertEquals(2, page2.getData().size());
+
+    ResultList<Role> page3 = searchRoles(client, uniqueToken, 2, 4);
+    assertNotNull(page3);
+    assertEquals(1, page3.getData().size());
+  }
+
+  @Test
+  void test_searchRolesEmptyQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ResultList<Role> results = searchRoles(client, null, 10, 0);
+
+    assertNotNull(results);
+    assertNotNull(results.getData());
+    assertTrue(results.getData().size() > 0, "Empty query should return roles");
+  }
+
+  private ResultList<Role> searchRoles(
+      OpenMetadataClient client, String query, Integer limit, Integer offset) {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (query != null) {
+      optionsBuilder.queryParam("q", query);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (offset != null) {
+      optionsBuilder.queryParam("offset", offset.toString());
+    }
+
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET, "/v1/roles/search", null, RoleResultList.class, optionsBuilder.build());
+  }
+
+  private static class RoleResultList extends ResultList<Role> {}
 
   // ===================================================================
   // VERSION HISTORY SUPPORT
