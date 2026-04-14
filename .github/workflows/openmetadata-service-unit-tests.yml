@@ -74,11 +74,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Fetch PR base branch
-        if: ${{ github.event_name == 'pull_request' }}
-        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4

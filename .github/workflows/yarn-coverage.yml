@@ -48,8 +48,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          # Disabling shallow clone is recommended for improving relevancy of reporting
+          # Disabling shallow clone is recommended for improving relevancy of reporting.
+          # Use partial clone (blob:none) to avoid downloading every blob in history —
+          # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
           fetch-depth: 0
+          filter: blob:none
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
