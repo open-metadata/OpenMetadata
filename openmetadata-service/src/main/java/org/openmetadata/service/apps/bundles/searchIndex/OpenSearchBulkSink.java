@@ -381,6 +381,10 @@ public class OpenSearchBulkSink implements BulkSink {
             docId,
             entityType,
             rawDocSize);
+        totalSubmitted.incrementAndGet();
+        if (tracker != null) {
+          tracker.incrementPendingSink();
+        }
         indexDocumentDirectly(indexName, docId, finalJson, entityType, tracker);
         processSuccess.incrementAndGet();
         if (tracker != null) {

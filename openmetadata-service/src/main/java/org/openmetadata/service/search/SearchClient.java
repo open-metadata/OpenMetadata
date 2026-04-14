@@ -237,7 +237,28 @@ public interface SearchClient
                   """;
 
   String REMOVE_LINEAGE_SCRIPT =
-      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
+      """
+      def removedKeys = new HashSet();
+      for (def lineage : ctx._source.upstreamLineage) {
+        if (lineage.docUniqueId == params.docUniqueId && lineage.containsKey('sqlQueryKey')) {
+          removedKeys.add(lineage.sqlQueryKey);
+        }
+      }
+      ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId);
+      if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+        def sqlMap = ctx._source.lineageSqlQueries;
+        def usedKeys = new HashSet();
+        for (def lineage : ctx._source.upstreamLineage) {
+          if (lineage.containsKey('sqlQueryKey')) {
+            usedKeys.add(lineage.sqlQueryKey);
+          }
+        }
+        removedKeys.removeAll(usedKeys);
+        for (def key : removedKeys) {
+          sqlMap.remove(key);
+        }
+      }
+      """;
 
   String REMOVE_ENTITY_RELATIONSHIP =
       "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
@@ -262,7 +283,12 @@ public interface SearchClient
           }
         }
         if (sqlKey == null) {
-          sqlKey = String.valueOf(sqlMap.size() + 1);
+          def maxKey = 0;
+          for (def k : sqlMap.keySet()) {
+            def kInt = Integer.parseInt(k);
+            if (kInt > maxKey) maxKey = kInt;
+          }
+          sqlKey = String.valueOf(maxKey + 1);
           sqlMap.put(sqlKey, rawSql);
         }
         edgeData = new HashMap();

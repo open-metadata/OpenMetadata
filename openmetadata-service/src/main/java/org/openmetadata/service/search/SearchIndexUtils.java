@@ -96,13 +96,15 @@ public final class SearchIndexUtils {
     TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
     Map<String, Object> doc = JsonUtils.readValue(json, mapType);
     if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
       json = JsonUtils.pojoToJson(doc);
+      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Document {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
           docId,
           entityType,
-          json.getBytes(StandardCharsets.UTF_8).length);
-      if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+          strippedSize);
+      if (strippedSize <= maxBytes) {
         return json;
       }
     }
@@ -123,25 +125,38 @@ public final class SearchIndexUtils {
       return doc;
     }
     if (doc.remove("lineageSqlQueries") != null) {
+      stripSqlQueryKeysFromEdges(doc);
       json = JsonUtils.pojoToJson(doc);
+      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
           docId,
           entityType,
-          json.getBytes(StandardCharsets.UTF_8).length);
-      if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+          strippedSize);
+      if (strippedSize <= maxBytes) {
         return doc;
       }
     }
     if (doc.remove("upstreamLineage") != null) {
-      json = JsonUtils.pojoToJson(doc);
       LOG.warn(
           "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
           docId,
           entityType,
-          json.getBytes(StandardCharsets.UTF_8).length);
+          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
     }
     return doc;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripSqlQueryKeysFromEdges(Map<String, Object> doc) {
+    Object lineage = doc.get("upstreamLineage");
+    if (lineage instanceof List<?> edges) {
+      for (Object edge : edges) {
+        if (edge instanceof Map<?, ?> edgeMap) {
+          ((Map<String, Object>) edgeMap).remove("sqlQueryKey");
+        }
+      }
+    }
   }
 
   public static List<String> parseFollowers(List<EntityReference> followersRef) {

@@ -1082,7 +1082,8 @@ public class SearchRepository {
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
         doc =
-            SearchIndexUtils.stripDocMapIfOversized(doc, 9L * 1024L * 1024L, entityId, entityType);
+            SearchIndexUtils.stripDocMapIfOversized(
+                doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
       }
 
       searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
@@ -1242,7 +1243,7 @@ public class SearchRepository {
 
     int batchSize = 100;
     int maxConcurrentRequests = 5;
-    long maxPayloadSizeBytes = 9 * 1024 * 1024; // 9 MB — 10% below AWS OpenSearch hard limit
+    long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
 
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {

@@ -330,6 +330,10 @@ public class ElasticSearchBulkSink implements BulkSink {
             docId,
             entityType,
             rawDocSize);
+        totalSubmitted.incrementAndGet();
+        if (tracker != null) {
+          tracker.incrementPendingSink();
+        }
         indexDocumentDirectly(indexName, docId, json, entityType, tracker);
         processSuccess.incrementAndGet();
         if (tracker != null) {
