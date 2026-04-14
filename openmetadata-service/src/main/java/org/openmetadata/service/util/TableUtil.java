@@ -38,8 +38,7 @@ public class TableUtil {
       return true;
     }
     if (column.getChildren() != null) {
-      return column.getChildren().stream()
-          .anyMatch(child -> columnMatchesAnyTag(child, tagFQNs));
+      return column.getChildren().stream().anyMatch(child -> columnMatchesAnyTag(child, tagFQNs));
     }
     return false;
   }

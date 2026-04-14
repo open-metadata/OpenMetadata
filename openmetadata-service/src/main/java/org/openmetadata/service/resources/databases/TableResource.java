@@ -1704,8 +1704,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("asc")
           String sortOrder,
       @Parameter(
-              description =
-                  "Comma-separated list of tag FQNs to filter columns by",
+              description = "Comma-separated list of tag FQNs to filter columns by",
               schema = @Schema(type = "string"))
           @QueryParam("tag")
           String tag) {
@@ -1799,8 +1798,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("asc")
           String sortOrder,
       @Parameter(
-              description =
-                  "Comma-separated list of tag FQNs to filter columns by",
+              description = "Comma-separated list of tag FQNs to filter columns by",
               schema = @Schema(type = "string"))
           @QueryParam("tag")
           String tag) {
@@ -2022,8 +2020,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("asc")
           String sortOrder,
       @Parameter(
-              description =
-                  "Comma-separated list of tag FQNs to filter columns by",
+              description = "Comma-separated list of tag FQNs to filter columns by",
               schema = @Schema(type = "string"))
           @QueryParam("tag")
           String tag) {
@@ -2118,8 +2115,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("asc")
           String sortOrder,
       @Parameter(
-              description =
-                  "Comma-separated list of tag FQNs to filter columns by",
+              description = "Comma-separated list of tag FQNs to filter columns by",
               schema = @Schema(type = "string"))
           @QueryParam("tag")
           String tag) {

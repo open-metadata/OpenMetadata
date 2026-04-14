@@ -94,10 +94,7 @@ class TableUtilTest {
             .withTags(new ArrayList<>())
             .withChildren(List.of(grandchild));
     Column parent =
-        new Column()
-            .withName("customer")
-            .withTags(new ArrayList<>())
-            .withChildren(List.of(child));
+        new Column().withName("customer").withTags(new ArrayList<>()).withChildren(List.of(child));
 
     // Matches 3 levels deep
     assertTrue(TableUtil.columnMatchesAnyTag(parent, Set.of("PII.Address")));

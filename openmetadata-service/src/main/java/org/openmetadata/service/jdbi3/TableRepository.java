@@ -40,8 +40,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
-import org.openmetadata.service.util.TableUtil;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -134,6 +132,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TableUtil;
 import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
@@ -2788,8 +2787,17 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     return getTableColumns(
-        tableId, limit, offset, fieldsParam, include, sortBy, sortOrder, null, piiOwners,
-        authorizer, securityContext);
+        tableId,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        sortBy,
+        sortOrder,
+        null,
+        piiOwners,
+        authorizer,
+        securityContext);
   }
 
   public ResultList<Column> getTableColumns(
@@ -2806,7 +2814,16 @@ public class TableRepository extends EntityRepository<Table> {
       SecurityContext securityContext) {
     Table table = find(tableId, include);
     return getTableColumnsInternal(
-        table, limit, offset, fieldsParam, include, sortBy, sortOrder, tag, piiOwners, authorizer,
+        table,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        sortBy,
+        sortOrder,
+        tag,
+        piiOwners,
+        authorizer,
         securityContext);
   }
 
@@ -2870,7 +2887,16 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     return getTableColumnsByFQN(
-        fqn, limit, offset, fieldsParam, include, sortBy, sortOrder, null, piiOwners, authorizer,
+        fqn,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        sortBy,
+        sortOrder,
+        null,
+        piiOwners,
+        authorizer,
         securityContext);
   }
 
@@ -2888,7 +2914,16 @@ public class TableRepository extends EntityRepository<Table> {
       SecurityContext securityContext) {
     Table table = findByName(fqn, include);
     return getTableColumnsInternal(
-        table, limit, offset, fieldsParam, include, sortBy, sortOrder, tag, piiOwners, authorizer,
+        table,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        sortBy,
+        sortOrder,
+        tag,
+        piiOwners,
+        authorizer,
         securityContext);
   }
 
@@ -2976,8 +3011,7 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
       if (!hasTagFilter) {
-        populateEntityFieldTags(
-            entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+        populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
       }
       paginatedColumns =
           piiOwners != null
@@ -3193,7 +3227,16 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     return searchTableColumnsById(
-        id, query, limit, offset, fieldsParam, include, sortBy, sortOrder, null, authorizer,
+        id,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        sortBy,
+        sortOrder,
+        null,
+        authorizer,
         securityContext);
   }
 
@@ -3211,7 +3254,15 @@ public class TableRepository extends EntityRepository<Table> {
       SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, tag, authorizer,
+        table,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        sortBy,
+        sortOrder,
+        tag,
+        authorizer,
         securityContext);
   }
 
@@ -3249,7 +3300,16 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     return searchTableColumnsByFQN(
-        fqn, query, limit, offset, fieldsParam, include, sortBy, sortOrder, null, authorizer,
+        fqn,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        sortBy,
+        sortOrder,
+        null,
+        authorizer,
         securityContext);
   }
 
@@ -3267,7 +3327,15 @@ public class TableRepository extends EntityRepository<Table> {
       SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, tag, authorizer,
+        table,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        sortBy,
+        sortOrder,
+        tag,
+        authorizer,
         securityContext);
   }
 
@@ -3368,8 +3436,7 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(matchingColumns);
       if (!hasTagFilter) {
-        populateEntityFieldTags(
-            entityType, matchingColumns, table.getFullyQualifiedName(), true);
+        populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
       }
       matchingColumns =
           PIIMasker.getTableProfile(
