@@ -27,9 +27,6 @@ import {
   msalLoginRequest,
   parseMSALResponse,
 } from '../../../utils/AuthProvider.util';
-import { getPopupSettingLink } from '../../../utils/BrowserUtils';
-import { Transi18next } from '../../../utils/CommonUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
@@ -83,8 +80,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       shouldFallbackToPopup = false
     ): Promise<OidcUser> => {
       const tokenRequest = {
-        account: account || accounts[0], // This is an example - Select account based on your app's requirements
+        account: account || accounts[0],
         scopes: msalLoginRequest.scopes,
+        forceRefresh: shouldFallbackToPopup,
       };
       try {
         const response = await instance.acquireTokenSilent(tokenRequest);
@@ -96,30 +94,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
           error instanceof InteractionRequiredAuthError &&
           shouldFallbackToPopup
         ) {
-          const response = await instance
-            .loginPopup(tokenRequest)
-            .catch((e) => {
-              // eslint-disable-next-line no-console
-              console.error(e);
-              if (e?.message?.includes('popup_window_error')) {
-                showErrorToast(
-                  <Transi18next
-                    i18nKey="message.popup-block-message"
-                    renderElement={
-                      <a
-                        aria-label="Open popup settings"
-                        href={getPopupSettingLink()}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      />
-                    }
-                  />
-                );
-              }
-
-              throw e;
-            });
-
+          const response = await instance.acquireTokenPopup(tokenRequest);
           const msalResponse = await parseMSALResponse(response);
 
           return msalResponse;

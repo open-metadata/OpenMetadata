@@ -10,5 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export { default } from './MUISwitch';
-export type { MUISwitchProps } from './MUISwitch.interface';
+
+export interface DeleteModalProps {
+  /** Whether the modal is open */
+  open: boolean;
+  /** Title of the entity being deleted */
+  entityTitle: string;
+  /** Confirmation message to display */
+  message: string;
+  /** Whether the delete action is in progress */
+  isDeleting?: boolean;
+  /** Callback when cancel is clicked */
+  onCancel: () => void;
+  /** Callback when delete is confirmed */
+  onDelete: () => void;
+}

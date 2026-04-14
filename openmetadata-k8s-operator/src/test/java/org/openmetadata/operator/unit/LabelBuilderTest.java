@@ -64,7 +64,7 @@ class LabelBuilderTest {
 
     Map<String, String> podSelector = LabelBuilder.buildPodSelector(omJob);
     assertEquals("test-omjob", podSelector.get("omjob.pipelines.openmetadata.org/name"));
-    assertEquals("omjob-operator", podSelector.get("app.kubernetes.io/managed-by"));
+    assertEquals(1, podSelector.size());
 
     Map<String, String> mainSelector = LabelBuilder.buildMainPodSelector(omJob);
     assertTrue(mainSelector.entrySet().containsAll(podSelector.entrySet()));

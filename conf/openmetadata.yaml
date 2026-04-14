@@ -78,7 +78,7 @@ server:
   # Virtual Threads (Project Loom) - Recommended for Java 21+
   # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
   # while keeping non-blocking I/O on platform threads for optimal cache locality
-  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
   # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
@@ -612,6 +612,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
 
