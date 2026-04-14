@@ -42,8 +42,7 @@ const mockGetDataQualityPagePath = jest.fn(
 jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
   __esModule: true,
   default: {
-    getDataQualityPagePath: (...args: unknown[]) =>
-      mockGetDataQualityPagePath(...args),
+    getDataQualityPagePath: mockGetDataQualityPagePath,
   },
 }));
 
