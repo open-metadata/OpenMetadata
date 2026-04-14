@@ -524,8 +524,6 @@ class PowerbiSource(DashboardServiceSource):
             if isinstance(dashboard_details, PowerBIDashboard):
                 self.dashboard_charts[dashboard_details.id] = []
                 charts = dashboard_details.tiles
-                if dashboard_details.displayName == "Human Resources Sample":
-                    pass
                 for chart in charts or []:
                     try:
                         chart_title = chart.title
