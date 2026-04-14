@@ -132,6 +132,56 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @GET
+  @Path("/search")
+  @Valid
+  @Operation(
+      operationId = "searchTeams",
+      summary = "Search teams",
+      description =
+          "Search teams by name or display name. "
+              + "Use `q` parameter to provide the search query.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching teams",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TeamList.class)))
+      })
+  public ResultList<Team> search(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query for team names or display names") @QueryParam("q")
+          String query,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number of teams returned. (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    return searchInternal(
+        uriInfo, securityContext, fieldsParam, filter, query, limitParam, offsetParam);
+  }
+
+  @GET
   @Path("/hierarchy")
   @Valid
   @Operation(

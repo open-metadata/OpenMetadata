@@ -242,6 +242,28 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return addHref(uriInfo, resultList);
   }
 
+  protected ResultList<T> searchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      String query,
+      int limit,
+      int offset) {
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface resourceContext = new ResourceContext<>(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    if (query == null || query.isBlank()) {
+      ResultList<T> resultList = repository.listAfter(uriInfo, fields, filter, limit, null);
+      return addHref(uriInfo, resultList);
+    }
+
+    ResultList<T> resultList = repository.search(fields, filter, query, limit, offset);
+    return addHref(uriInfo, resultList);
+  }
+
   public ResultList<T> listInternalFromSearch(
       UriInfo uriInfo,
       SecurityContext securityContext,

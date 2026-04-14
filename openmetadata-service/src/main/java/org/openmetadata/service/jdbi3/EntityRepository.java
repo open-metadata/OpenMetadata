@@ -1960,6 +1960,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public ResultList<T> search(
+      Fields fields, ListFilter filter, String query, int limit, int offset) {
+    List<String> jsons = dao.searchByNameAndDisplayName(filter, query, limit + 1, offset);
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      T entity = JsonUtils.readValue(json, entityClass);
+      entities.add(entity);
+    }
+
+    boolean hasMore = entities.size() > limit;
+    if (hasMore) {
+      entities.remove(limit);
+    }
+
+    setFieldsInBulk(fields, entities);
+
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = hasMore ? String.valueOf(offset + limit) : null;
+    int knownTotal = offset + entities.size() + (hasMore ? 1 : 0);
+
+    return new ResultList<>(entities, before, after, knownTotal);
+  }
+
   public ResultList<T> listAfterKeyset(
       ListFilter filter,
       int limitParam,
