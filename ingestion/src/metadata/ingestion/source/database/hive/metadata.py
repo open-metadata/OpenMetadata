@@ -178,9 +178,15 @@ class HiveSource(CommonDbSourceService):
         inspector: Inspector,
     ) -> Tuple[bool, Optional[TablePartition]]:
         """
-        Extract partition key columns from DESCRIBE FORMATTED output.
-        Returns (is_partitioned, TablePartition) where TablePartition lists all
-        partition key columns with COLUMN_VALUE interval type.
+        Extract partition key columns for a table.
+
+        For ``hive+mysql`` and ``hive+postgres`` connections, this reads the
+        partition key metadata directly from the Hive metastore tables.
+        For other Hive drivers, it falls back to parsing
+        ``DESCRIBE FORMATTED`` output.
+
+        Returns ``(is_partitioned, TablePartition)`` where ``TablePartition``
+        lists all partition key columns with ``COLUMN_VALUE`` interval type.
         """
         partition_keys: List[str] = []
         in_partition_section = False
