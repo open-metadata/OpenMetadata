@@ -175,12 +175,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             session_query = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self.sample_config.randomizedSample is True
                 else None,
             )
             query = (
                 session_query.order_by(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self.sample_config.randomizedSample is True
                 else session_query
             )
             return query.limit(static.profileSample if static else None).cte(
@@ -223,7 +223,6 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._fetch_sample_data_from_user_query()
 
-        # Add new RandomNumFn column
         ds = self.get_dataset()
         if not columns:
             sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
