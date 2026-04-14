@@ -108,14 +108,11 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from S3 without loading entire file into memory."""
-        import io
-
         schema_response = self.client.get_object(Bucket=bucket_name, Key=key)
         try:
-            schema_buffer = io.BytesIO(schema_response["Body"].read())
+            columns = self._get_avro_columns(schema_response["Body"])
         finally:
             schema_response["Body"].close()
-        columns = self._get_avro_columns(schema_buffer)
 
         def chunk_generator():
             response = self.client.get_object(Bucket=bucket_name, Key=key)

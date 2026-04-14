@@ -115,9 +115,10 @@ class DSVDataFrameReader(DataFrameReader):
         config_source: ConfigSource,
         client: Optional[Any],
         separator: str = CSV_SEPARATOR,
+        session: Optional[Any] = None,
     ):
         self.separator = separator
-        super().__init__(config_source, client)
+        super().__init__(config_source, client, session=session)
 
     def read_from_pandas(
         self,
@@ -188,10 +189,11 @@ class DSVDataFrameReader(DataFrameReader):
                     escapechar="\\",
                 ) as reader:
                     for chunks in reader:
-                        chunks = self._fix_malformed_quoted_chunk(
+                        fixed = self._fix_malformed_quoted_chunk(
                             chunk_list=[chunks], separator=self.separator
-                        )[0]
-                        yield chunks
+                        )
+                        if fixed:
+                            yield fixed[0]
             finally:
                 response["Body"].close()
 

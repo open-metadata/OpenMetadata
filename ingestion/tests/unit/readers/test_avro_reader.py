@@ -83,12 +83,7 @@ class TestAvroReader(unittest.TestCase):
 
         # get_object is called twice: once for schema, once for data streaming
         mock_client.get_object.side_effect = [
-            {
-                "Body": Mock(
-                    read=Mock(return_value=self._create_mock_avro_file().read()),
-                    close=Mock(),
-                )
-            },
+            {"Body": self._create_mock_avro_file(), "close": Mock()},
             {"Body": self._create_mock_avro_file(), "close": Mock()},
         ]
 

@@ -200,16 +200,12 @@ class TestDSVReader(unittest.TestCase):
 
     def test_s3_csv_reading(self):
         """Test S3 CSV reading uses boto3 client.get_object."""
+        import io
         from unittest.mock import Mock
 
         csv_content = b"id,name\n1,Test\n2,Hello\n"
 
         mock_client = Mock()
-        mock_body = Mock()
-        mock_body.read.return_value = csv_content
-        # StreamingBody is iterable and supports read — use BytesIO to simulate
-        import io
-
         mock_client.get_object.return_value = {
             "Body": io.BytesIO(csv_content),
         }

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -201,16 +201,22 @@ class ParquetDataFrameReader(DataFrameReader):
             )
 
     def _build_s3fs_filesystem(self):
-        """Build an s3fs filesystem using credentials from the boto3 client.
+        """Build an s3fs filesystem using credentials from the boto3 session.
 
-        Extracts the already-resolved credentials (including AssumeRole,
-        instance profile, ECS task role, etc.) so s3fs uses the same auth
-        as the rest of the connector.
+        Uses the session created by AWSClient which already handles
+        AssumeRole, instance profiles, ECS task roles, etc.
+        Falls back to default credential chain if no session is available
+        (e.g., when called from profiler).
         """
         # pylint: disable=import-outside-toplevel
         from s3fs import S3FileSystem
 
-        creds = self.client._request_signer._credentials.get_frozen_credentials()
+        kwargs = {}
+        if self.session:
+            creds = self.session.get_credentials().get_frozen_credentials()
+            kwargs["key"] = creds.access_key
+            kwargs["secret"] = creds.secret_key
+            kwargs["token"] = creds.token
 
         client_kwargs = {}
         if self.config_source.securityConfig.endPointURL:
@@ -220,12 +226,10 @@ class ParquetDataFrameReader(DataFrameReader):
         if self.config_source.securityConfig.awsRegion:
             client_kwargs["region_name"] = self.config_source.securityConfig.awsRegion
 
-        return S3FileSystem(
-            key=creds.access_key,
-            secret=creds.secret_key,
-            token=creds.token,
-            client_kwargs=client_kwargs if client_kwargs else None,
-        )
+        if client_kwargs:
+            kwargs["client_kwargs"] = client_kwargs
+
+        return S3FileSystem(**kwargs)
 
     @_read_parquet_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -234,24 +238,32 @@ class ParquetDataFrameReader(DataFrameReader):
 
         s3_fs = self._build_s3fs_filesystem()
         file_path = f"{bucket_name}/{key}"
+        file_size = getattr(self, "_file_size", None)
 
-        try:
-            file_size = s3_fs.info(file_path)["size"]
-        except Exception as exc:
-            logger.warning(
-                f"Could not determine file size for {file_path}: {exc}. "
-                f"Assuming large file."
-            )
-            file_size = 0
+        if file_size is None:
+            try:
+                file_size = s3_fs.info(file_path)["size"]
+            except Exception as exc:
+                logger.warning(
+                    f"Could not determine file size for {file_path}: {exc}. "
+                    f"Assuming large file."
+                )
+                file_size = 0
 
         if self._should_use_chunking(file_size):
 
             def chunk_generator():
-                logger.info(
-                    f"Large parquet file detected ({file_size} bytes > "
-                    f"{MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
-                    f"Using batched reading for file: {file_path}"
-                )
+                if file_size:
+                    logger.info(
+                        f"Large parquet file detected ({file_size} bytes > "
+                        f"{MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
+                        f"Using batched reading for file: {file_path}"
+                    )
+                else:
+                    logger.info(
+                        f"Unknown file size. "
+                        f"Using batched reading for file: {file_path}"
+                    )
                 with s3_fs.open(file_path) as f:
                     parquet_file = ParquetFile(f)
                     yield from self._read_parquet_in_batches(parquet_file)
@@ -389,7 +401,10 @@ class ParquetDataFrameReader(DataFrameReader):
                 dataframes=chunk_generator, raw_data=None, columns=None
             )
 
-    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
+    def _read(
+        self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__
+    ) -> DatalakeColumnWrapper:
+        self._file_size = file_size
         return self._read_parquet_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

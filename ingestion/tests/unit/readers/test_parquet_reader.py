@@ -88,7 +88,7 @@ class TestParquetReader(unittest.TestCase):
         self.assertTrue(len(chunks) > 0)
 
     def _create_s3_reader(self):
-        """Helper to create an S3 ParquetDataFrameReader with a mocked boto3 client."""
+        """Helper to create an S3 ParquetDataFrameReader with a mocked session."""
         from collections import namedtuple
 
         config = S3Config(
@@ -97,13 +97,14 @@ class TestParquetReader(unittest.TestCase):
             )
         )
         mock_client = Mock()
+        mock_session = Mock()
 
         FrozenCreds = namedtuple("FrozenCreds", ["access_key", "secret_key", "token"])
-        mock_client._request_signer._credentials.get_frozen_credentials.return_value = (
-            FrozenCreds(access_key="test", secret_key="test", token=None)
+        mock_session.get_credentials.return_value.get_frozen_credentials.return_value = FrozenCreds(
+            access_key="test", secret_key="test", token=None
         )
 
-        reader = ParquetDataFrameReader(config, mock_client)
+        reader = ParquetDataFrameReader(config, mock_client, session=mock_session)
         return reader, mock_client
 
     @patch("s3fs.S3FileSystem")
