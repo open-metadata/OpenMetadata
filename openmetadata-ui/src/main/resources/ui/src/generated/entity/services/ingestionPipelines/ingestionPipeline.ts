@@ -764,6 +764,7 @@ export enum PipelineState {
     PartialSuccess = "partialSuccess",
     Queued = "queued",
     Running = "running",
+    Stopped = "stopped",
     Success = "success",
 }
 
