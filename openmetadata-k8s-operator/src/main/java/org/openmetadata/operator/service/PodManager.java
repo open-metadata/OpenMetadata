@@ -30,7 +30,6 @@ import io.fabric8.kubernetes.api.model.SecurityContext;
 import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -192,27 +191,12 @@ public class PodManager {
    * Find main pod for an OMJob
    */
   public Optional<Pod> findMainPod(OMJobResource omJob) {
-    // First try with operator-created pod selector
     Optional<Pod> pod = findPod(omJob, LabelBuilder.buildMainPodSelector(omJob));
-
     if (pod.isPresent()) {
       return pod;
     }
 
-    // If not found, try with server-created pod selector (fallback for compatibility)
-    Map<String, String> serverSelector = new HashMap<>();
-    serverSelector.put(LabelBuilder.LABEL_OMJOB_NAME, omJob.getMetadata().getName());
-    serverSelector.put(LabelBuilder.LABEL_POD_TYPE, LabelBuilder.POD_TYPE_MAIN);
-    // Note: server-created pods have app.kubernetes.io/managed-by = openmetadata
-
-    Optional<Pod> serverPod = findPod(omJob, serverSelector);
-
-    if (serverPod.isPresent()) {
-      LOG.info("Found server-created main pod for OMJob: {}", omJob.getMetadata().getName());
-      return serverPod;
-    }
-
-    // Last resort: try to find by pod name if it was recorded in status
+    // Fallback: try to find by pod name if it was recorded in status
     String recordedPodName = omJob.getStatus() != null ? omJob.getStatus().getMainPodName() : null;
     if (recordedPodName != null && !recordedPodName.isEmpty()) {
       try {
@@ -238,7 +222,32 @@ public class PodManager {
    * Find exit handler pod for an OMJob
    */
   public Optional<Pod> findExitHandlerPod(OMJobResource omJob) {
-    return findPod(omJob, LabelBuilder.buildExitHandlerSelector(omJob));
+    Optional<Pod> pod = findPod(omJob, LabelBuilder.buildExitHandlerSelector(omJob));
+    if (pod.isPresent()) {
+      return pod;
+    }
+
+    // Fallback: try to find by pod name if it was recorded in status
+    String recordedPodName =
+        omJob.getStatus() != null ? omJob.getStatus().getExitHandlerPodName() : null;
+    if (recordedPodName != null && !recordedPodName.isEmpty()) {
+      try {
+        Pod namedPod =
+            client
+                .pods()
+                .inNamespace(omJob.getMetadata().getNamespace())
+                .withName(recordedPodName)
+                .get();
+        if (namedPod != null) {
+          LOG.info("Found exit handler pod by name for OMJob: {}", omJob.getMetadata().getName());
+          return Optional.of(namedPod);
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not find pod by name {}: {}", recordedPodName, e.getMessage());
+      }
+    }
+
+    return Optional.empty();
   }
 
   /**
@@ -284,12 +293,19 @@ public class PodManager {
    */
   public void deletePods(OMJobResource omJob) {
     LOG.info("Deleting pods for OMJob: {}", omJob.getMetadata().getName());
+    String namespace = omJob.getMetadata().getNamespace();
     Map<String, String> selector = LabelBuilder.buildPodSelector(omJob);
 
     try {
-      client.pods().inNamespace(omJob.getMetadata().getNamespace()).withLabels(selector).delete();
-      LOG.info("Deleted pods for OMJob: {}", omJob.getMetadata().getName());
-
+      List<Pod> pods = client.pods().inNamespace(namespace).withLabels(selector).list().getItems();
+      if (pods == null) {
+        pods = List.of();
+      }
+      for (Pod pod : pods) {
+        String podName = pod.getMetadata().getName();
+        client.pods().inNamespace(namespace).withName(podName).delete();
+        LOG.info("Deleted pod: {}", podName);
+      }
     } catch (Exception e) {
       LOG.warn("Failed to delete pods for OMJob: {}", omJob.getMetadata().getName(), e);
     }
@@ -318,6 +334,7 @@ public class PodManager {
                 .withServiceAccountName(podSpec.getServiceAccountName())
                 .withImagePullSecrets(podSpec.getImagePullSecrets())
                 .withNodeSelector(podSpec.getNodeSelector())
+                .withTolerations(podSpec.getTolerations())
                 .withSecurityContext(podSpec.getSecurityContext())
                 .withContainers(buildContainer(omJob, podSpec, envOverride))
                 .build())
