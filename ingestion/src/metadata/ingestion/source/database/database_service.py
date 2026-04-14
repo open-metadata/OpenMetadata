@@ -65,6 +65,7 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     TopologyNode,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -344,6 +345,31 @@ class DatabaseServiceSource(
         """
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
+
+    @staticmethod
+    def normalize_table_constraints(
+        table_constraints: List[TableConstraint],
+        columns: List[Column],
+    ) -> List[TableConstraint]:
+        """
+        Normalize constraint column names to match actual column definitions.
+        Some data sources (e.g., BigQuery) may return constraint column names
+        with different casing than the column definitions, causing validation
+        failures on the backend.
+        """
+        if not table_constraints or not columns:
+            return table_constraints or []
+        column_name_map = {}
+        for col in columns:
+            col_name = model_str(col.name)
+            if col_name:
+                column_name_map[col_name.lower()] = col_name
+        for constraint in table_constraints:
+            if constraint.columns:
+                constraint.columns = [
+                    column_name_map.get(c.lower(), c) for c in constraint.columns
+                ]
+        return table_constraints
 
     def update_table_constraints(
         self,
