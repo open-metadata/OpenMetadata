@@ -775,7 +775,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               org.openmetadata.sdk.models.ListParams params =
                   new org.openmetadata.sdk.models.ListParams()
                       .withLimit(10)
-                      .addFilter("testCaseFQN", fqn);
+                      .addFilter("testCaseId", id);
               org.openmetadata.sdk.models.ListResponse<?> response =
                   client.testCaseResolutionStatuses().list(params);
               assertFalse(
@@ -797,7 +797,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               org.openmetadata.sdk.models.ListParams params =
                   new org.openmetadata.sdk.models.ListParams()
                       .withLimit(10)
-                      .addFilter("testCaseFQN", fqn);
+                      .addFilter("testCaseId", id);
               org.openmetadata.sdk.models.ListResponse<?> response =
                   client.testCaseResolutionStatuses().list(params);
               assertTrue(
