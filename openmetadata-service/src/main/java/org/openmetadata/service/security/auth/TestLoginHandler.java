@@ -20,10 +20,16 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
 import com.nimbusds.oauth2.sdk.TokenRequest;
+import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.Secret;
+import com.nimbusds.oauth2.sdk.http.HTTPRequest;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
+import com.nimbusds.oauth2.sdk.id.ClientID;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -37,15 +43,16 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
 
 @Slf4j
 public class TestLoginHandler {
 
   private static final String TEST_LOGIN_STATE = "testLoginState";
-  private static final String TEST_LOGIN_NONCE = "testLoginNonce";
+  private static final String TEST_LOGIN_CLIENT_ID = "testLoginClientId";
+  private static final String TEST_LOGIN_CLIENT_SECRET = "testLoginClientSecret";
+  private static final String TEST_LOGIN_DISCOVERY_URI = "testLoginDiscoveryUri";
+  private static final String TEST_LOGIN_CALLBACK_URL = "testLoginCallbackUrl";
   private static final String TEST_LOGIN_CALLBACK_PATH =
       "/api/v1/system/config/auth/test-login/callback";
 
@@ -53,49 +60,67 @@ public class TestLoginHandler {
 
   public static Response handleInitiate(HttpServletRequest req) {
     try {
-      AuthenticationCodeFlowHandler codeFlowHandler = AuthenticationCodeFlowHandler.getInstance();
-      OidcClient client = codeFlowHandler.getClient();
+      String discoveryUri = req.getParameter("discoveryUri");
+      String clientId = req.getParameter("clientId");
+      String clientSecret = req.getParameter("clientSecret");
+      String scope = req.getParameter("scope");
 
-      if (client == null || client.getConfiguration() == null) {
+      if (nullOrEmpty(discoveryUri)) {
+        return buildHtmlErrorResponse("Discovery URI is required for Test Login.");
+      }
+      if (nullOrEmpty(clientId)) {
+        return buildHtmlErrorResponse("Client ID is required for Test Login.");
+      }
+
+      if (nullOrEmpty(scope)) {
+        scope = "openid email profile";
+      }
+
+      OidcConfiguration oidcConfig = new OidcConfiguration();
+      oidcConfig.setClientId(clientId);
+      if (!nullOrEmpty(clientSecret)) {
+        oidcConfig.setSecret(clientSecret);
+      }
+      oidcConfig.setDiscoveryURI(discoveryUri);
+      oidcConfig.setScope(scope);
+      oidcConfig.setResponseType("code");
+
+      OIDCProviderMetadata providerMetadata = OIDCProviderMetadata.resolve(new URI(discoveryUri));
+      if (providerMetadata == null || providerMetadata.getAuthorizationEndpointURI() == null) {
         return buildHtmlErrorResponse(
-            "OIDC client is not configured. Save your SSO configuration first.");
+            "Could not fetch OIDC discovery document from: " + discoveryUri);
       }
 
       HttpSession session = req.getSession(true);
 
       String serverUrl =
-          client
-              .getConfiguration()
-              .getCustomParams()
-              .getOrDefault(
-                  "serverUrl",
-                  req.getScheme()
-                      + "://"
-                      + req.getServerName()
-                      + (req.getServerPort() != 80 && req.getServerPort() != 443
-                          ? ":" + req.getServerPort()
-                          : ""));
-
+          req.getScheme()
+              + "://"
+              + req.getServerName()
+              + (req.getServerPort() != 80 && req.getServerPort() != 443
+                  ? ":" + req.getServerPort()
+                  : "");
       String testCallbackUrl = serverUrl + TEST_LOGIN_CALLBACK_PATH;
 
+      session.setAttribute(TEST_LOGIN_CLIENT_ID, clientId);
+      session.setAttribute(TEST_LOGIN_CLIENT_SECRET, clientSecret != null ? clientSecret : "");
+      session.setAttribute(TEST_LOGIN_DISCOVERY_URI, discoveryUri);
+      session.setAttribute(TEST_LOGIN_CALLBACK_URL, testCallbackUrl);
+
       Map<String, String> params = new HashMap<>();
-      params.put(OidcConfiguration.SCOPE, "openid email profile");
+      params.put(OidcConfiguration.SCOPE, scope);
       params.put(OidcConfiguration.RESPONSE_TYPE, "code");
       params.put(OidcConfiguration.RESPONSE_MODE, "query");
-      params.put(OidcConfiguration.CLIENT_ID, client.getConfiguration().getClientId());
+      params.put(OidcConfiguration.CLIENT_ID, clientId);
       params.put(OidcConfiguration.REDIRECT_URI, testCallbackUrl);
       params.put("access_type", "offline");
 
       String state = java.util.UUID.randomUUID().toString();
       params.put("state", state);
       session.setAttribute(TEST_LOGIN_STATE, state);
-      session.setAttribute("testLoginCallbackUrl", testCallbackUrl);
 
-      if (client.getConfiguration().isUseNonce()) {
-        String nonce = java.util.UUID.randomUUID().toString();
-        params.put("nonce", nonce);
-        session.setAttribute(TEST_LOGIN_NONCE, nonce);
-      }
+      String nonce = java.util.UUID.randomUUID().toString();
+      params.put("nonce", nonce);
 
       String queryString =
           AuthenticationRequest.parse(
@@ -105,11 +130,10 @@ public class TestLoginHandler {
                               Map.Entry::getKey, e -> Collections.singletonList(e.getValue()))))
               .toQueryString();
 
-      String authorizationEndpoint =
-          client.getConfiguration().findProviderMetadata().getAuthorizationEndpointURI().toString();
-
-      String authUrl = authorizationEndpoint + "?" + queryString;
-      LOG.info("[Test Login] Redirecting to IdP: {}", authorizationEndpoint);
+      String authUrl =
+          providerMetadata.getAuthorizationEndpointURI().toString() + "?" + queryString;
+      LOG.info(
+          "[Test Login] Redirecting to IdP: {}", providerMetadata.getAuthorizationEndpointURI());
 
       return Response.temporaryRedirect(new URI(authUrl)).build();
     } catch (Exception e) {
@@ -146,18 +170,33 @@ public class TestLoginHandler {
         return buildPostMessageResponse(false, "No authorization code received from IdP.", null);
       }
 
-      AuthenticationCodeFlowHandler codeFlowHandler = AuthenticationCodeFlowHandler.getInstance();
+      String clientId = (String) session.getAttribute(TEST_LOGIN_CLIENT_ID);
+      String clientSecret = (String) session.getAttribute(TEST_LOGIN_CLIENT_SECRET);
+      String discoveryUri = (String) session.getAttribute(TEST_LOGIN_DISCOVERY_URI);
+      String callbackUrl = (String) session.getAttribute(TEST_LOGIN_CALLBACK_URL);
 
-      String callbackUrl = (String) session.getAttribute("testLoginCallbackUrl");
-      if (nullOrEmpty(callbackUrl)) {
-        callbackUrl = req.getRequestURL().toString();
+      if (nullOrEmpty(clientId) || nullOrEmpty(discoveryUri)) {
+        return buildPostMessageResponse(
+            false, "Session data missing. Please try Test Login again.", null);
       }
+
+      OIDCProviderMetadata providerMetadata = OIDCProviderMetadata.resolve(new URI(discoveryUri));
+      URI tokenEndpoint = providerMetadata.getTokenEndpointURI();
 
       AuthorizationCodeGrant grant =
           new AuthorizationCodeGrant(new AuthorizationCode(code), new URI(callbackUrl));
 
-      TokenRequest tokenRequest = codeFlowHandler.createTokenRequest(grant);
-      HTTPResponse httpResponse = codeFlowHandler.executeTokenHttpRequest(tokenRequest);
+      TokenRequest tokenRequest;
+      if (!nullOrEmpty(clientSecret)) {
+        ClientAuthentication clientAuth =
+            new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
+        tokenRequest = new TokenRequest(tokenEndpoint, clientAuth, grant);
+      } else {
+        tokenRequest = new TokenRequest(tokenEndpoint, new ClientID(clientId), grant);
+      }
+
+      HTTPRequest httpRequest = tokenRequest.toHTTPRequest();
+      HTTPResponse httpResponse = httpRequest.send();
 
       if (httpResponse.getStatusCode() != 200) {
         return buildPostMessageResponse(
@@ -185,8 +224,10 @@ public class TestLoginHandler {
       Map<String, Object> result = buildTestLoginResult(claims, tokens.getRefreshToken() != null);
 
       session.removeAttribute(TEST_LOGIN_STATE);
-      session.removeAttribute(TEST_LOGIN_NONCE);
-      session.removeAttribute("testLoginCallbackUrl");
+      session.removeAttribute(TEST_LOGIN_CLIENT_ID);
+      session.removeAttribute(TEST_LOGIN_CLIENT_SECRET);
+      session.removeAttribute(TEST_LOGIN_DISCOVERY_URI);
+      session.removeAttribute(TEST_LOGIN_CALLBACK_URL);
       LOG.info("[Test Login] Callback successful, {} claims extracted", claims.size());
 
       return buildPostMessageResponse(true, null, result);

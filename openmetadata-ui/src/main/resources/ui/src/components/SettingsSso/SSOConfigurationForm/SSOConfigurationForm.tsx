@@ -1290,6 +1290,7 @@ const SSOConfigurationFormRJSF = ({
                 <div className="m-t-md m-b-md">
                   <TestLoginButton
                     disabled={!showForm}
+                    formData={internalData?.authenticationConfiguration}
                     onSuccess={handleTestLoginSuccess}
                   />
                 </div>
