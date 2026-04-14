@@ -50,6 +50,7 @@ class K8sPipelineClientConfigTest {
     assertTrue(config.getNodeSelector().isEmpty());
     assertTrue(config.getExtraEnvVars().isEmpty());
     assertTrue(config.getPodAnnotations().isEmpty());
+    assertTrue(config.getTolerations().isEmpty());
 
     // Test default resources
     assertEquals("500m", config.getResources().requests().cpu());
@@ -318,6 +319,56 @@ class K8sPipelineClientConfigTest {
   }
 
   @Test
+  void testTolerationsParser() {
+    Map<String, Object> params = new HashMap<>();
+    List<Map<String, Object>> tolerations = new ArrayList<>();
+    Map<String, Object> toleration1 = new HashMap<>();
+    toleration1.put("key", "dedicated");
+    toleration1.put("operator", "Equal");
+    toleration1.put("value", "ingestion");
+    toleration1.put("effect", "NoSchedule");
+    tolerations.add(toleration1);
+
+    Map<String, Object> toleration2 = new HashMap<>();
+    toleration2.put("key", "gpu");
+    toleration2.put("operator", "Exists");
+    toleration2.put("effect", "NoExecute");
+    toleration2.put("tolerationSeconds", "3600");
+    tolerations.add(toleration2);
+
+    params.put("tolerations", tolerations);
+
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+
+    assertEquals(2, config.getTolerations().size());
+    assertEquals("dedicated", config.getTolerations().get(0).getKey());
+    assertEquals("Equal", config.getTolerations().get(0).getOperator());
+    assertEquals("ingestion", config.getTolerations().get(0).getValue());
+    assertEquals("NoSchedule", config.getTolerations().get(0).getEffect());
+    assertEquals("gpu", config.getTolerations().get(1).getKey());
+    assertEquals("Exists", config.getTolerations().get(1).getOperator());
+    assertEquals("NoExecute", config.getTolerations().get(1).getEffect());
+    assertEquals(3600L, config.getTolerations().get(1).getTolerationSeconds());
+  }
+
+  @Test
+  void testEmptyTolerations() {
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(null);
+    assertNotNull(config.getTolerations());
+    assertTrue(config.getTolerations().isEmpty());
+  }
+
+  @Test
+  void testTolerationsWithInvalidValue() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("tolerations", "not-a-list");
+
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+    assertNotNull(config.getTolerations());
+    assertTrue(config.getTolerations().isEmpty());
+  }
+
+  @Test
   void testConfigurationGetters() {
     Map<String, Object> params = new HashMap<>();
     params.put("namespace", "test-namespace");
@@ -334,6 +385,7 @@ class K8sPipelineClientConfigTest {
     assertNotNull(config.getResourceLimits());
     assertNotNull(config.getResources());
     assertNotNull(config.getNodeSelector());
+    assertNotNull(config.getTolerations());
     assertNotNull(config.getExtraEnvVars());
     assertNotNull(config.getPodAnnotations());
   }

@@ -6,7 +6,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
-public class GlossaryTermIndex implements SearchIndex {
+public class GlossaryTermIndex implements TaggableIndex {
   final GlossaryTerm glossaryTerm;
 
   public GlossaryTermIndex(GlossaryTerm glossaryTerm) {
@@ -18,11 +18,12 @@ public class GlossaryTermIndex implements SearchIndex {
     return glossaryTerm;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(glossaryTerm, Entity.GLOSSARY_TERM);
-    doc.putAll(commonAttributes);
+  @Override
+  public String getEntityTypeName() {
+    return Entity.GLOSSARY_TERM;
+  }
 
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (doc.containsKey("glossary") && glossaryTerm.getGlossary() != null) {
       @SuppressWarnings("unchecked")
       Map<String, Object> glossaryMap = (Map<String, Object>) doc.get("glossary");
