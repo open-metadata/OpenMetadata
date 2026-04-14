@@ -39,3 +39,8 @@ export interface TestLoginFormData {
     callbackUrl?: string;
   };
 }
+
+export interface SecurityConfigForValidation {
+  authenticationConfiguration?: Record<string, unknown>;
+  authorizerConfiguration?: Record<string, unknown>;
+}

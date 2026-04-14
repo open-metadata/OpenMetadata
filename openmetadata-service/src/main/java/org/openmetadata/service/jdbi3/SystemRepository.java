@@ -1040,6 +1040,14 @@ public class SystemRepository {
       SecurityConfiguration securityConfig,
       OpenMetadataApplicationConfig applicationConfig,
       String currentUsername) {
+    return validateSecurityConfiguration(securityConfig, applicationConfig, currentUsername, false);
+  }
+
+  public SecurityValidationResponse validateSecurityConfiguration(
+      SecurityConfiguration securityConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername,
+      boolean skipTestLoginFields) {
     List<FieldError> errors = new ArrayList<>();
 
     try {
@@ -1848,14 +1856,16 @@ public class SystemRepository {
             "authorizerConfiguration.className", "Class name is required");
       }
 
-      // Validate admin principals
-      if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
+      // Validate admin principals (skip in test login context — set via Claim Selector)
+      if (!skipTestLoginFields
+          && (authzConfig.getAdminPrincipals() == null
+              || authzConfig.getAdminPrincipals().isEmpty())) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTHZ_ADMIN_PRINCIPALS, "At least one admin principal is required");
       }
 
-      // Validate principal domain (required field)
-      if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
+      // Validate principal domain (skip in test login context — derived from email claim)
+      if (!skipTestLoginFields && nullOrEmpty(authzConfig.getPrincipalDomain())) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
       }

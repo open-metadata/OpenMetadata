@@ -817,7 +817,9 @@ public class SystemResource {
                     schema = @Schema(implementation = SecurityValidationResponse.class)))
       })
   public SecurityValidationResponse validateSecurityConfig(
-      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+      @Context SecurityContext securityContext,
+      @QueryParam("context") String context,
+      @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     // Auto-derive fields from discoveryUri before validation
@@ -829,9 +831,10 @@ public class SystemResource {
     }
 
     String currentUsername = SecurityUtil.getUserName(securityContext);
+    boolean isTestLoginContext = "testLogin".equals(context);
 
     return systemRepository.validateSecurityConfiguration(
-        securityConfig, applicationConfig, currentUsername);
+        securityConfig, applicationConfig, currentUsername, isTestLoginContext);
   }
 
   @GET
