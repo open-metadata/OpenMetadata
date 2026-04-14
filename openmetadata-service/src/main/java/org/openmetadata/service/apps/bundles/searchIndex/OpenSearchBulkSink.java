@@ -962,13 +962,13 @@ public class OpenSearchBulkSink implements BulkSink {
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
 
-        totalSubmitted.incrementAndGet();
-        buffer.add(operation);
-        currentBufferSize += operationSize;
-
-        if (buffer.size() >= bulkActions || currentBufferSize >= maxPayloadSizeBytes) {
+        if (!buffer.isEmpty()
+            && (buffer.size() >= bulkActions
+                || currentBufferSize + operationSize >= maxPayloadSizeBytes)) {
           flushInternal();
         }
+        buffer.add(operation);
+        currentBufferSize += operationSize;
       } finally {
         lock.unlock();
       }
@@ -1054,6 +1054,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
       long executionId = executionIdCounter.incrementAndGet();
       int numberOfActions = toFlush.size();
+      totalSubmitted.addAndGet(numberOfActions);
 
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
