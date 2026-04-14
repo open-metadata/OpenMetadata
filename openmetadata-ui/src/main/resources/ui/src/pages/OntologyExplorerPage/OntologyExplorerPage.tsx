@@ -39,7 +39,7 @@ const OntologyExplorerPage: React.FC = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.ontology-explorer')}>
-      <div className="tw:flex tw:flex-col tw:gap-3 tw:p-5">
+      <div className="tw:flex tw:flex-col tw:gap-3">
         <TitleBreadcrumb
           useCustomArrow
           titleLinks={[
@@ -69,12 +69,7 @@ const OntologyExplorerPage: React.FC = () => {
             data-testid="ontology-explorer-stats">
             {isStatsLoading
               ? [1, 2, 3].map((i) => (
-                  <Skeleton
-                    height={20}
-                    key={i}
-                    variant="rounded"
-                    width={80}
-                  />
+                  <Skeleton height={20} key={i} variant="rounded" width={80} />
                 ))
               : stats.map((item, index) => (
                   <React.Fragment key={item}>

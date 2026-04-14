@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Divider,
   Select,
   Toggle,
   Typography,
@@ -147,7 +146,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:w-full tw:items-center tw:gap-3">
+    <div className="tw:flex tw:w-full tw:items-center tw:gap-5">
       {/* View Mode dropdown — disabled in data mode */}
       <div
         className={
@@ -183,7 +182,6 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       </div>
 
       {/* Glossary filter */}
-      <Divider orientation="vertical" />
       <div
         className="tw:flex tw:shrink-0 tw:items-center"
         data-testid="glossary-filter-section">
@@ -200,8 +198,6 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         />
       </div>
 
-      {/* Relation type filter */}
-      <Divider orientation="vertical" />
       <div
         className="tw:flex tw:shrink-0 tw:items-center"
         data-testid="relation-type-filter-section">
@@ -217,8 +213,6 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           onSearch={handleRelationTypeSearch}
         />
       </div>
-
-      <div className="tw:h-5 tw:w-px tw:shrink-0 tw:bg-gray-200" />
 
       {/* Isolated toggle */}
       <Toggle
