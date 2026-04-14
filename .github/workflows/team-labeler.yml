@@ -1,5 +1,4 @@
 on:
-  merge_group:
   pull_request_target:
 
 permissions:
