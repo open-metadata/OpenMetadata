@@ -252,8 +252,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       int offset) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    ResourceContextInterface resourceContext = new ResourceContext<>(entityType);
+    ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
     ResultList<T> resultList = repository.search(fields, filter, query, limit, offset);
     return addHref(uriInfo, resultList);

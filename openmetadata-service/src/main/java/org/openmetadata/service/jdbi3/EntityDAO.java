@@ -433,14 +433,14 @@ public interface EntityDAO<T extends EntityInterface> {
           "SELECT json FROM <table> <cond> "
               + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
               + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:searchTerm)) "
-              + "ORDER BY name LIMIT :limit OFFSET :offset",
+              + "ORDER BY name, id LIMIT :limit OFFSET :offset",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
           "SELECT json FROM <table> <cond> "
               + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
               + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:searchTerm)) "
-              + "ORDER BY name LIMIT :limit OFFSET :offset",
+              + "ORDER BY name, id LIMIT :limit OFFSET :offset",
       connectionType = POSTGRES)
   List<String> searchByNameAndDisplayName(
       @Define("table") String table,
