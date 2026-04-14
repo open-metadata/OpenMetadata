@@ -260,7 +260,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (!nullOrEmpty(query)) {
       filter.addQueryParam("nameFilter", query);
     }
-    ResultList<T> resultList = repository.listWithOffset(uriInfo, fields, filter, limit, offset);
+
+    ResultList<T> resultList =
+        repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
     return addHref(uriInfo, resultList);
   }
 

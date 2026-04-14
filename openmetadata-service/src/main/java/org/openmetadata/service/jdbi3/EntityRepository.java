@@ -1934,16 +1934,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
-      try (var ignored = phase("jsonDeserialize")) {
-        for (String json : jsons) {
-          T entity = JsonUtils.readValue(json, entityClass);
-          entities.add(entity);
-        }
-      }
-      try (var ignored = phase("setFieldsBulk")) {
-        setFieldsInBulk(fields, entities);
-      }
-      entities.forEach(entity -> withHref(uriInfo, entity));
+      entities = listInternal(jsons, fields, uriInfo);
 
       String beforeCursor;
       String afterCursor = null;
@@ -1960,27 +1951,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public ResultList<T> listWithOffset(
+  public ResultList<T> listAfterWithOffset(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset) {
+    int total = dao.listCount(filter);
     List<String> jsons = dao.listAfter(filter, limit + 1, offset);
 
-    List<T> entities = new ArrayList<>();
-    for (String json : jsons) {
-      entities.add(JsonUtils.readValue(json, entityClass));
-    }
+    List<T> entities = listInternal(jsons, fields, uriInfo);
 
     boolean hasMore = entities.size() > limit;
     if (hasMore) {
       entities.remove(limit);
     }
 
-    setFieldsInBulk(fields, entities);
-
-    int total = dao.listCount(filter);
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = hasMore ? String.valueOf(offset + limit) : null;
-
     return new ResultList<>(entities, before, after, total);
+  }
+
+  private List<T> listInternal(List<String> jsons, Fields fields, UriInfo uriInfo) {
+    List<T> entities;
+    try (var ignored = phase("jsonDeserialize")) {
+      entities = JsonUtils.readObjects(jsons, entityClass);
+    }
+    try (var ignored = phase("setFieldsBulk")) {
+      setFieldsInBulk(fields, entities);
+    }
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
   }
 
   public ResultList<T> listAfterKeyset(
