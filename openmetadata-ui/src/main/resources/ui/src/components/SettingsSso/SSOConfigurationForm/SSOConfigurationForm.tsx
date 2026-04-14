@@ -22,7 +22,7 @@ import {
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
-import { Button, Card, Typography, Upload } from 'antd';
+import { Button, Card, Select, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,6 +70,7 @@ import {
   handleClientTypeChange,
   hasFieldValidationErrors,
   isValidNonBasicProvider,
+  OIDC_PROVIDER_OPTIONS,
   parseSamlMetadataXml,
   parseValidationErrors,
   removeRequiredFields,
@@ -246,6 +247,39 @@ const SSOConfigurationFormRJSF = ({
     currentProvider === AuthProvider.Auth0 ||
     currentProvider === AuthProvider.AwsCognito ||
     currentProvider === AuthProvider.CustomOidc;
+
+  const handleOidcProviderChange = useCallback(
+    (providerKey: string) => {
+      const selectedOption = OIDC_PROVIDER_OPTIONS.find(
+        (opt) => opt.key === providerKey
+      );
+      if (!selectedOption) {
+        return;
+      }
+
+      setCurrentProvider(selectedOption.key);
+      setInternalData((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          authenticationConfiguration: {
+            ...prev.authenticationConfiguration,
+            provider: selectedOption.key,
+            providerName: selectedOption.label,
+            oidcConfiguration: {
+              ...prev.authenticationConfiguration?.oidcConfiguration,
+              discoveryUri: selectedOption.discoveryUriTemplate || '',
+              type: selectedOption.key,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -1053,8 +1087,38 @@ const SSOConfigurationFormRJSF = ({
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
 
+  const selectedOidcOption = OIDC_PROVIDER_OPTIONS.find(
+    (opt) => opt.key === currentProvider
+  );
+
   const formContent = (
     <>
+      {isEditMode && showForm && isOidcProvider && (
+        <div className="m-b-md p-x-md">
+          <Typography.Text strong className="m-b-xs d-block">
+            {t('label.identity-provider')}
+          </Typography.Text>
+          <Select
+            className="w-full"
+            data-testid="oidc-provider-select"
+            value={currentProvider}
+            onChange={handleOidcProviderChange}>
+            {OIDC_PROVIDER_OPTIONS.map((opt) => (
+              <Select.Option key={opt.key} value={opt.key}>
+                <div className="d-flex items-center gap-2">
+                  <img alt={opt.label} height={16} src={opt.icon} width={16} />
+                  <span>{opt.label}</span>
+                </div>
+              </Select.Option>
+            ))}
+          </Select>
+          {selectedOidcOption?.helpText && (
+            <Typography.Text className="text-grey-muted text-xs m-t-xs d-block">
+              {selectedOidcOption.helpText}
+            </Typography.Text>
+          )}
+        </div>
+      )}
       {isEditMode && showForm && isSamlProvider && (
         <div className="m-b-md">
           {metadataUploadStatus === null && (
