@@ -51,6 +51,7 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -135,10 +136,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
   const [isExporting, setIsExporting] = useState(false);
   const [allAssetsCount, setAllAssetsCount] = useState<number>();
+  const [tabAssetsCount, setTabAssetsCount] = useState<number>();
   const [exportError, setExportError] = useState<string | undefined>();
   const [isCountLoading, setIsCountLoading] = useState(false);
 
-  const visibleResultCount = searchResults?.hits?.hits?.length ?? 0;
+  const visibleResultCount = tabAssetsCount ?? 0;
+  const activeTabLabel =
+    tabsInfo[searchIndex as ExploreSearchIndex]?.label ??
+    t('label.visible-result-plural');
   const isAllAssetsLimitExceeded =
     exportScope === 'all' &&
     allAssetsCount !== undefined &&
@@ -152,6 +157,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const handleOpenExportScopeModal = useCallback(async () => {
     setExportScope('all');
     setAllAssetsCount(undefined);
+    setTabAssetsCount(undefined);
     setExportError(undefined);
     setShowExportScopeModal(true);
     setIsCountLoading(true);
@@ -161,7 +167,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         quickFilters,
         queryFilter as QueryFilterInterface | undefined
       );
-      const response = await searchQuery({
+      const allResponse = await searchQuery({
         query: searchQueryParam || '*',
         searchIndex: SearchIndex.DATA_ASSET,
         pageSize: 0,
@@ -169,13 +175,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
         includeDeleted: showDeleted,
         queryFilter: combinedQueryFilter ?? undefined,
       });
-      setAllAssetsCount(response.hits.total.value);
+      setAllAssetsCount(allResponse.hits.total.value);
+
+      const entityTypeSearchIndexMapping =
+        searchClassBase.getEntityTypeSearchIndexMapping();
+      const tabBucket = (
+        allResponse.aggregations?.['entityType']?.buckets ?? []
+      ).find(
+        (b: { key: string; doc_count: number }) =>
+          entityTypeSearchIndexMapping[b.key as EntityType] === searchIndex
+      );
+      setTabAssetsCount(tabBucket?.doc_count ?? 0);
     } catch {
       // Count fetch failed — modal still usable without count
     } finally {
       setIsCountLoading(false);
     }
-  }, [searchQueryParam, showDeleted, quickFilters, queryFilter]);
+  }, [searchQueryParam, showDeleted, quickFilters, queryFilter, searchIndex]);
 
   const handleExportScopeConfirm = useCallback(async () => {
     if (isAllAssetsLimitExceeded) {
@@ -204,15 +220,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
 
     if (isVisibleScope) {
-      const currentPage = isString(parsedSearch.page)
-        ? Number.parseInt(parsedSearch.page, 10) || 1
-        : 1;
-      const pageSize = isString(parsedSearch.size)
-        ? Number.parseInt(parsedSearch.size, 10) || visibleResultCount
-        : visibleResultCount;
-
       params.size = visibleResultCount;
-      params.from = (currentPage - 1) * pageSize;
     }
 
     setExportError(undefined);
@@ -240,7 +248,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     exportScope,
     searchIndex,
     visibleResultCount,
-    parsedSearch,
     searchQueryParam,
     sortValue,
     sortOrder,
@@ -634,7 +641,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         okText={t('label.export')}
         open={showExportScopeModal}
         title={exportModalTitle()}
-        width={610}
+        width={650}
         onCancel={() => {
           setShowExportScopeModal(false);
           setExportError(undefined);
@@ -667,9 +674,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
           <CoreCard
             isClickable
             className="export-scope-option-card tw:flex-1 tw:p-4"
+            data-testid="export-scope-visible-card"
             isSelected={exportScope === 'visible'}
             onClick={() => handleExportScopeChange('visible')}>
-            <div className="d-flex items-start gap-2">
+            <div className="d-flex items-start gap-1">
               <Radio value="visible" />
               <div>
                 <div className="d-flex items-center gap-2">
@@ -677,7 +685,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     className="tw:text-primary d-flex items-center tw:gap-0.5"
                     size="text-sm"
                     weight="semibold">
-                    {`${t('label.visible-result-plural')} `}
+                    {t('label.selected-data-asset')}
                     <CoreTypography
                       className="tw:text-tertiary"
                       size="text-sm"
@@ -690,7 +698,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   className="tw:text-tertiary"
                   size="text-sm"
                   weight="regular">
-                  {t('message.export-visible-results-description')}
+                  {t('message.export-visible-results-description', {
+                    dataAssetType: activeTabLabel,
+                  })}
                 </CoreTypography>
               </div>
             </div>
@@ -704,10 +714,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Radio value="all" />
               <div>
                 <CoreTypography
-                  className="tw:text-primary d-flex items-center tw:gap-0.5"
+                  className="tw:text-primary d-flex items-center tw:gap-1"
                   size="text-sm"
                   weight="semibold">
-                  {`${t('label.all-matching-asset-plural')} `}
+                  {`${t('label.all-asset-plural')} `}
                   {isCountLoading ? (
                     <Spin className="m-l-xs" size="small" />
                   ) : (

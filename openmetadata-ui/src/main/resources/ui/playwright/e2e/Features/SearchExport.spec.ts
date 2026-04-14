@@ -57,10 +57,12 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       await expect(modalContent.getByText('Export Scope')).toBeVisible();
     });
 
-    await test.step('Modal shows Visible results and All matching assets options', async () => {
+    await test.step('Modal shows tab-specific scope and All matching assets options', async () => {
       const modalContent = getExportModalContent(page);
 
-      await expect(modalContent.getByText('Visible results')).toBeVisible();
+      await expect(
+        modalContent.getByTestId('export-scope-visible-card')
+      ).toBeVisible();
       await expect(modalContent.getByText('All matching assets')).toBeVisible();
     });
 
@@ -70,10 +72,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       ).toBeChecked();
     });
 
-    await test.step('Selecting Visible results checks the visible radio', async () => {
+    await test.step('Selecting the tab-scope card checks the visible radio', async () => {
       const modalContent = getExportModalContent(page);
 
-      await modalContent.getByText('Visible results').click();
+      await modalContent.locator('input[value="visible"]').click();
       await expect(
         modalContent.locator('input[value="visible"]')
       ).toBeChecked();
@@ -118,10 +120,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test('Visible results export calls API with size param', async ({ page }) => {
     await openExportScopeModal(page);
 
-    await test.step('Select Visible results scope', async () => {
+    await test.step('Select tab-specific scope', async () => {
       const modalContent = getExportModalContent(page);
 
-      await modalContent.getByText('Visible results').click();
+      await modalContent.locator('input[value="visible"]').click();
       await expect(
         modalContent.locator('input[value="visible"]')
       ).toBeChecked();
@@ -145,19 +147,13 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Visible results export on page 2 sends correct from offset', async ({
+  test('Visible results export uses tab-specific index without pagination offset', async ({
     page,
   }) => {
-    test.slow();
-
-    // Navigate to page 2 via URL so parsedSearch.page = 2
-    await page.goto(`${page.url().replace(/\?.*/, '')}?page=2&size=15`);
-    await expect(page.getByTestId('explore-page')).toBeVisible();
-
     await openExportScopeModal(page);
-    await getExportModalContent(page).getByText('Visible results').click();
+    await getExportModalContent(page).locator('input[value="visible"]').click();
 
-    await test.step('Export request includes from= offset matching page 2', async () => {
+    await test.step('Export request uses tab index, sends size, and omits from offset', async () => {
       const exportApiPromise = page.waitForRequest(
         (req) =>
           req.url().includes('/api/v1/search/export') && req.method() === 'GET'
@@ -170,9 +166,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       const request = await exportApiPromise;
       const url = request.url();
 
-      // page=2, size=15 → from=15
-      expect(url).toContain('from=15');
       expect(url).toContain('size=');
+      expect(url).toContain('index=');
+      expect(url).not.toContain('index=dataAsset');
+      expect(url).not.toContain('from=');
     });
   });
 
