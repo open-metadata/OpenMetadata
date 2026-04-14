@@ -42,55 +42,64 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
   const popupRef = useRef<Window | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
+  const processTestLoginResult = useCallback(
+    (resultJson: string) => {
+      try {
+        const data = JSON.parse(resultJson);
 
-      const data = event.data;
+        if (data?.type !== 'sso-test-login') {
+          return;
+        }
 
-      if (data?.type !== 'sso-test-login') {
-        return;
-      }
+        setIsLoading(false);
 
-      setIsLoading(false);
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
 
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-
-      if (data.success) {
-        setStatus('success');
-        setErrorMessage('');
-        onSuccess({
-          claims: data.claims ?? {},
-          suggestedEmailClaim: data.suggestedEmailClaim ?? null,
-          derivedPrincipalDomain: data.derivedPrincipalDomain ?? null,
-          suggestedAdminPrincipal: data.suggestedAdminPrincipal ?? null,
-          hasRefreshToken: data.hasRefreshToken ?? false,
-        });
-      } else {
+        if (data.success) {
+          setStatus('success');
+          setErrorMessage('');
+          onSuccess({
+            claims: data.claims ?? {},
+            suggestedEmailClaim: data.suggestedEmailClaim ?? null,
+            derivedPrincipalDomain: data.derivedPrincipalDomain ?? null,
+            suggestedAdminPrincipal: data.suggestedAdminPrincipal ?? null,
+            hasRefreshToken: data.hasRefreshToken ?? false,
+          });
+        } else {
+          setStatus('error');
+          setErrorMessage(data.error ?? t('message.test-login-failed'));
+          showErrorToast(data.error ?? t('message.test-login-failed'));
+        }
+      } catch {
         setStatus('error');
-        setErrorMessage(data.error ?? t('message.test-login-failed'));
-        showErrorToast(data.error ?? t('message.test-login-failed'));
+        setErrorMessage(t('message.test-login-failed'));
       }
+
+      localStorage.removeItem('sso-test-login-result');
     },
     [onSuccess, t]
   );
 
   useEffect(() => {
-    window.addEventListener('message', handleMessage);
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'sso-test-login-result' && event.newValue) {
+        processTestLoginResult(event.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
 
     return () => {
-      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
 
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
     };
-  }, [handleMessage]);
+  }, [processTestLoginResult]);
 
   const handleTestLogin = useCallback(async () => {
     setIsLoading(true);
@@ -210,8 +219,12 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       if (popupRef.current?.closed) {
         clearInterval(checkClosed);
 
+        // Check localStorage for result (popup may have stored it before closing)
         setTimeout(() => {
-          if (isLoading) {
+          const stored = localStorage.getItem('sso-test-login-result');
+          if (stored) {
+            processTestLoginResult(stored);
+          } else if (isLoading) {
             setIsLoading(false);
 
             if (status === 'idle') {
@@ -219,7 +232,7 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
               setErrorMessage(t('message.test-login-not-completed'));
             }
           }
-        }, 1000);
+        }, 500);
       }
     }, 500);
   }, [formData, securityConfig, isLoading, status, t]);

@@ -338,14 +338,12 @@ public class TestLoginHandler {
             + (success ? "Authentication successful. This window will close." : "Error: " + error)
             + "</p>"
             + "<script>"
-            + "if (window.opener) {"
-            + "  window.opener.postMessage("
+            + "try {"
+            + "  localStorage.setItem('sso-test-login-result', JSON.stringify("
             + json
-            + ", window.location.origin);"
-            + "}"
-            + "if ("
-            + success
-            + ") { setTimeout(function() { window.close(); }, 1000); }"
+            + "));"
+            + "} catch(e) { console.error('Failed to store test login result', e); }"
+            + "setTimeout(function() { window.close(); }, 1000);"
             + "</script>"
             + "</body></html>";
 
@@ -359,11 +357,13 @@ public class TestLoginHandler {
             + message
             + "</p>"
             + "<script>"
-            + "if (window.opener) {"
-            + "  window.opener.postMessage({type: 'sso-test-login', success: false, error: '"
-            + message.replace("'", "\\'")
-            + "'}, window.location.origin);"
-            + "}"
+            + "try {"
+            + "  localStorage.setItem('sso-test-login-result', JSON.stringify("
+            + "{type: 'sso-test-login', success: false, error: '"
+            + message.replace("'", "\\'").replace("\n", " ")
+            + "'}));"
+            + "} catch(e) { console.error('Failed to store test login error', e); }"
+            + "setTimeout(function() { window.close(); }, 2000);"
             + "</script>"
             + "</body></html>";
 
