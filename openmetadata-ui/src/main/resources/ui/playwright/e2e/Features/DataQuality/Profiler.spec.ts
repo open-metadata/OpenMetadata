@@ -398,7 +398,9 @@ test.describe(
         await expect(
           page.locator('[data-testid="profile-sample"]')
         ).toBeVisible();
-        await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+        await expect(
+          page.locator('[data-testid="slider-input"]')
+        ).not.toBeVisible();
         await expect(
           page.getByTestId('profile-sample').locator('div')
         ).toBeVisible();
