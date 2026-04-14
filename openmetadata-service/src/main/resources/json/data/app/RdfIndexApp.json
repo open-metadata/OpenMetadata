@@ -1,7 +1,6 @@
 {
   "name": "RdfIndexApp",
   "displayName": "RDF Knowledge Graph Indexing",
-  "allowConfiguration": true,
   "appConfiguration": {
     "entities": [],
     "recreateIndex": false,
