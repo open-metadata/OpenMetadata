@@ -203,104 +203,33 @@ class ParquetDataFrameReader(DataFrameReader):
     @_read_parquet_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         # pylint: disable=import-outside-toplevel
-        from pyarrow.fs import S3FileSystem
-        from pyarrow.parquet import ParquetDataset, ParquetFile
+        import io
 
-        client_kwargs = {
-            "endpoint_override": (
-                str(self.config_source.securityConfig.endPointURL)
-                if self.config_source.securityConfig.endPointURL
-                else None
-            ),
-            "region": (
-                self.config_source.securityConfig.awsRegion
-                if self.config_source.securityConfig.awsRegion
-                else None
-            ),
-        }
+        from pyarrow.parquet import ParquetFile
 
-        # In order to use S3FileSystem Refreshing mechanism when appropriate we are doing the following:
-        # If both assumeRoleArn and awsAccessKeyId are present, we are setting the credentials as environment variables in order for S3FileSystem to use them as source credentials when assuming the role.
-        if self.config_source.securityConfig.assumeRoleArn:
-            client_kwargs.update(
-                {
-                    "role_arn": self.config_source.securityConfig.assumeRoleArn,
-                    "session_name": self.config_source.securityConfig.assumeRoleSessionName,
-                }
-            )
+        def chunk_generator():
+            response = self.client.get_object(Bucket=bucket_name, Key=key)
+            try:
+                buffer = io.BytesIO(response["Body"].read())
+            finally:
+                response["Body"].close()
 
-            if self.config_source.securityConfig.awsAccessKeyId:
-                os.environ[
-                    "AWS_ACCESS_KEY_ID"
-                ] = self.config_source.securityConfig.awsAccessKeyId
-                os.environ[
-                    "AWS_SECRET_ACCESS_KEY"
-                ] = (
-                    self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
-                )
-
-                if self.config_source.securityConfig.awsSessionToken:
-                    os.environ[
-                        "AWS_SESSION_TOKEN"
-                    ] = self.config_source.securityConfig.awsSessionToken
-
-        elif self.config_source.securityConfig.awsAccessKeyId:
-            client_kwargs.update(
-                {
-                    "access_key": self.config_source.securityConfig.awsAccessKeyId,
-                    "secret_key": self.config_source.securityConfig.awsSecretAccessKey.get_secret_value(),
-                    "session_token": self.config_source.securityConfig.awsSessionToken,
-                }
-            )
-
-        s3_fs = S3FileSystem(**client_kwargs)
-
-        bucket_uri = f"{bucket_name}/{key}"
-
-        # Check file size to determine reading strategy
-        try:
-            file_info = s3_fs.get_file_info(bucket_uri)
-            file_size = file_info.size if hasattr(file_info, "size") else 0
+            file_size = buffer.getbuffer().nbytes
+            parquet_file = ParquetFile(buffer)
 
             if self._should_use_chunking(file_size):
-                # Use ParquetFile for batched reading of large files
-                def chunk_generator():
-                    logger.info(
-                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
-                        f"Using batched reading for file: {bucket_uri}"
-                    )
-                    parquet_file = ParquetFile(bucket_uri, filesystem=s3_fs)
-                    yield from self._read_parquet_in_batches(parquet_file)
-
-                return DatalakeColumnWrapper(
-                    dataframes=chunk_generator, raw_data=None, columns=None
+                logger.info(
+                    f"Large parquet file detected ({file_size} bytes > "
+                    f"{MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
+                    f"Using batched reading for file: {bucket_name}/{key}"
                 )
+                yield from self._read_parquet_in_batches(parquet_file)
             else:
-                # Use ParquetDataset for regular reading of smaller files
-                def chunk_generator():
-                    logger.debug(
-                        f"Reading small parquet file ({file_size} bytes): {bucket_uri}"
-                    )
-                    dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
-                    yield from dataframe_to_chunks(dataset.read_pandas().to_pandas())
+                yield from dataframe_to_chunks(parquet_file.read().to_pandas())
 
-                return DatalakeColumnWrapper(
-                    dataframes=chunk_generator, raw_data=None, columns=None
-                )
-
-        except Exception as exc:
-            # Fallback to regular reading if size check fails
-            logger.warning(
-                f"Could not determine file size for {bucket_uri}: {exc}. Using regular reading"
-            )
-
-            def chunk_generator():
-                dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
-                yield from dataframe_to_chunks(dataset.read_pandas().to_pandas())
-
-            return DatalakeColumnWrapper(
-                dataframes=chunk_generator, raw_data=None, columns=None
-            )
+        return DatalakeColumnWrapper(
+            dataframes=chunk_generator, raw_data=None, columns=None
+        )
 
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
