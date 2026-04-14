@@ -17,7 +17,8 @@
 .service-doc-panel {
   .service-doc-content {
     font-size: 14px;
-    padding: 4px 24px;
+    word-break: break-word;
+    overflow-wrap: break-word;
 
     h1,
     h2,
@@ -129,10 +130,24 @@
       font-weight: 500;
     }
 
+    & > * {
+      padding: 4px 24px;
+    }
+
+    section {
+      padding: 0;
+
+      & > * {
+        padding: 4px 24px;
+      }
+    }
+
     section[data-highlighted='true'] {
       background-color: @primary-50;
-      border-left: 4px solid @primary-color;
-      padding-left: 12px;
+      border-left: 3px solid @primary-6;
+      padding-bottom: 12px;
+      margin-top: 12px;
+      transition: ease-in-out;
     }
   }
 
