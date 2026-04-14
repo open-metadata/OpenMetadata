@@ -819,7 +819,17 @@ public class SystemResource {
   public SecurityValidationResponse validateSecurityConfig(
       @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
+
+    // Auto-derive fields from discoveryUri before validation
+    // so authority, publicKeyUrls etc. are populated
+    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    if (authConfig != null) {
+      systemRepository.syncFieldsFromDiscoveryUri(authConfig);
+      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+    }
+
     String currentUsername = SecurityUtil.getUserName(securityContext);
+
     return systemRepository.validateSecurityConfiguration(
         securityConfig, applicationConfig, currentUsername);
   }
