@@ -26,7 +26,7 @@
     "license-header-check": "license-check-and-add check -f .licenseheaderrc.json",
     "license-header-fix": "license-check-and-add add -f .licenseheaderrc.json -r $(date +%Y)",
     "parse-schema": "node parseSchemas",
-    "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr \"$PWD\"/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4",
+    "js-antlr": "if command -v antlr4 >/dev/null 2>&1; then PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr \"$PWD\"/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4; else echo 'antlr4 CLI not found, using checked-in generated parser files'; fi",
     "i18n": "sync-i18n --files '**/locale/languages/*.json' --primary en-us --space 2 --fn",
     "check-i18n": "npm run i18n -- --check",
     "lint:base": "NODE_OPTIONS='--max-old-space-size=8192' eslint --no-error-on-unmatched-pattern",
