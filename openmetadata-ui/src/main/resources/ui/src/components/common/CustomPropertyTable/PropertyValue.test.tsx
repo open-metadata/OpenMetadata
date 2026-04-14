@@ -520,7 +520,9 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entityReference-value')
     ).toBeInTheDocument();
-    expect(screen.getByText('service.schema.entityReferenceName')).toBeInTheDocument();
+    expect(
+      screen.getByText('service.schema.entityReferenceName')
+    ).toBeInTheDocument();
   });
 
   it('should show FQN subtitle for entityReferenceList type', async () => {
@@ -556,12 +558,16 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entityReferenceName1')
     ).toBeInTheDocument();
-    expect(screen.getByText('service.schema.entityReferenceName1')).toBeInTheDocument();
+    expect(
+      screen.getByText('service.schema.entityReferenceName1')
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByTestId('entityReferenceName2')
     ).toBeInTheDocument();
-    expect(screen.getByText('service.schema.entityReferenceName2')).toBeInTheDocument();
+    expect(
+      screen.getByText('service.schema.entityReferenceName2')
+    ).toBeInTheDocument();
   });
 
   it('should not show FQN subtitle when fullyQualifiedName is absent', async () => {
@@ -589,7 +595,7 @@ describe('Test PropertyValue Component', () => {
       await screen.findByTestId('entityReference-value')
     ).toBeInTheDocument();
     expect(screen.getByText('entityReferenceName')).toBeInTheDocument();
-    
+
     // Asserting that the subtitle did not mistakenly render 'undefined' or an empty variable text
     expect(screen.queryByText('undefined')).not.toBeInTheDocument();
   });
