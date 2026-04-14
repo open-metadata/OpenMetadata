@@ -832,6 +832,54 @@ test.describe(
         await page.keyboard.press('Escape');
       });
     });
+
+    test('should preserve cursor position while typing description with spaces', async ({
+      page,
+    }) => {
+      const descriptionWithSpaces = 'hello world test';
+
+      await test.step('Search and select a single column', async () => {
+        await searchColumn(page, sharedColumnName);
+        const checkbox = page.getByTestId(
+          `column-checkbox-${sharedColumnName}`
+        );
+        await expect(checkbox).toBeVisible();
+        await checkbox.click();
+      });
+
+      await test.step('Open the edit drawer', async () => {
+        const editButton = page.getByTestId('edit-button');
+        await expect(editButton).toBeEnabled();
+        await editButton.click();
+
+        await expect(
+          page.getByTestId('column-bulk-operations-form-drawer')
+        ).toBeVisible();
+      });
+
+      await test.step(
+        'Type a description with spaces and verify text is correct',
+        async () => {
+          const drawer = page.getByTestId(
+            'column-bulk-operations-form-drawer'
+          );
+          const descriptionField = drawer.getByTestId('description-field');
+          const editor = descriptionField.locator(
+            '.om-block-editor[contenteditable="true"]'
+          );
+
+          await editor.click();
+
+          await editor.press('Control+a');
+          await editor.fill(descriptionWithSpaces);
+          await expect(editor).toContainText(descriptionWithSpaces);
+        }
+      );
+
+      await test.step('Close drawer', async () => {
+        await page.keyboard.press('Escape');
+      });
+    });
   }
 );
 
