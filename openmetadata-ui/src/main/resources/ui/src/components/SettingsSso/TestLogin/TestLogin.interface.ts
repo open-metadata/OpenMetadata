@@ -29,11 +29,13 @@ export interface TestLoginFormData {
   discoveryUri?: string;
   clientId?: string;
   clientSecret?: string;
+  callbackUrl?: string;
   scope?: string;
   oidcConfiguration?: {
     discoveryUri?: string;
     id?: string;
     secret?: string;
     scope?: string;
+    callbackUrl?: string;
   };
 }
