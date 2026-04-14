@@ -6,6 +6,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
+from cachetools import LRUCache
+
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -16,6 +18,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
     ConsumerOffsets,
     ConsumerOffsets1,
     SecurityProtocol,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
@@ -36,6 +41,7 @@ from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageS
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     OpenLineageEvent,
+    TableDetails,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
@@ -385,7 +391,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_build_ol_name_to_fqn_map_with_valid_data(self, mock_get_table_fqn):
         # Mock _get_table_fqn to return a constructed FQN based on the provided table details
         mock_get_table_fqn.side_effect = (
-            lambda table_details: f"database.schema.{table_details.name}"
+            lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         )
 
         tables = [
@@ -445,7 +451,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         """Test with valid input and output lists."""
         # Setup
         mock_get_table_fqn.side_effect = (
-            lambda table_details: f"database.schema.{table_details.name}"
+            lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         )
         mock_build_map.return_value = {
             "s3a:/project-db/src_test1": "database.schema.input_table_1",
@@ -516,7 +522,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     ):
         """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
         mock_get_table_fqn.side_effect = (
-            lambda table_details: f"database.schema.{table_details.name}"
+            lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         )
         mock_build_map.return_value = {
             "sqlserver:/host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
@@ -653,9 +659,10 @@ class OpenLineageUnitTest(unittest.TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
-    def test_yield_pipeline_lineage_details(self, mock_get_entity):
+    def test_yield_pipeline_lineage_details(self, mock_get_table_from_om):
         def t_fqn_build_side_effect(
             table_details,
+            services=None,
         ):
             return f"testService.shopify.{table_details.name}"
 
@@ -687,7 +694,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             return table_lineage, col_lineage
 
         # Set up the side effect for the mock entity FQN builder
-        mock_get_entity.side_effect = t_fqn_build_side_effect
+        mock_get_table_from_om.side_effect = t_fqn_build_side_effect
 
         ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
 
@@ -861,7 +868,9 @@ class OpenLineageUnitTest(unittest.TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
-    def test_lineage_merge_start_with_data_running_without(self, mock_get_table_fqn):
+    def test_lineage_merge_start_with_data_running_without(
+        self, mock_get_table_from_om
+    ):
         """
         Test that START event with lineage data followed by RUNNING event without
         lineage data does not overwrite existing lineage in the database.
@@ -886,10 +895,10 @@ class OpenLineageUnitTest(unittest.TestCase):
         running_event["outputs"] = []
 
         # Mock table FQN lookup
-        def mock_fqn_side_effect(table_details):
+        def mock_fqn_side_effect(table_details, services=None):
             return f"testService.shopify.{table_details.name}"
 
-        mock_get_table_fqn.side_effect = mock_fqn_side_effect
+        mock_get_table_from_om.side_effect = mock_fqn_side_effect
 
         # Mock metadata.get_by_name for table lookups
         from_table_id = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
@@ -1111,10 +1120,10 @@ class OpenLineageUnitTest(unittest.TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
-    def test_yield_pipeline_lineage_details_kinesis(self, mock_get_entity):
+    def test_yield_pipeline_lineage_details_kinesis(self, mock_get_table_from_om):
         """Test lineage extraction from a Kinesis-sourced event."""
 
-        def t_fqn_build_side_effect(table_details):
+        def t_fqn_build_side_effect(table_details, services=None):
             return f"testService.shopify.{table_details.name}"
 
         def mock_get_uuid_by_name(entity, fqn):
@@ -1125,7 +1134,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             else:
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
 
-        mock_get_entity.side_effect = t_fqn_build_side_effect
+        mock_get_table_from_om.side_effect = t_fqn_build_side_effect
 
         self._build_mock_kinesis_client([FULL_OL_KAFKA_EVENT])
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
@@ -1392,6 +1401,252 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(edge.toEntity.id.root, table_id)
         self.assertEqual(edge.toEntity.type, "table")
 
+    def test_namespace_resolution_skips_when_service_not_in_configured_names(self):
+        """Edge case 1: When the namespace maps to a service that is NOT in get_db_service_names(),
+        resolution should fall through and the table should not be found.
+
+        Setup: Two DB services exist (mysql_prod, redshift_prod) but only redshift_prod
+        is in dbServiceNames. The event namespace is mysql://... which would map to mysql_prod,
+        but since mysql_prod is not in dbServiceNames, resolution must skip it.
+        The table exists only in mysql_prod, so the result should be None.
+        """
+        source = self.open_lineage_source
+
+        source._namespace_to_service_cache = {}
+        # Only redshift_prod is configured — mysql_prod is NOT in dbServiceNames
+        source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["redshift_prod"]
+        )
+        # _build_db_service_type_map only includes configured services
+        source._db_service_type_map = {"redshift_prod": DatabaseServiceType.Redshift}
+
+        # namespaceToServiceMapping maps namespace to mysql_prod which is NOT configured
+        object.__setattr__(
+            source.service_connection,
+            "namespaceToServiceMapping",
+            {"mysql://mysql-host:3306": "mysql_prod"},
+        )
+
+        table = TableDetails(name="user_stat", schema="analytics")
+
+        # fqn.build returns None for redshift_prod (table doesn't exist there)
+        with patch("metadata.utils.fqn.build", return_value=None):
+            result = source._get_table_fqn(
+                table, namespace="mysql://mysql-host:3306/mydb"
+            )
+
+        # mysql_prod is not in dbServiceNames so mapping is ignored.
+        # Fallback scheme-based: redshift:// != mysql://, no match.
+        # Falls through to all dbServiceNames (redshift_prod) where table doesn't exist.
+        assert result is None
+
+    def test_namespace_scheme_resolves_correct_service_among_different_types(self):
+        """Edge case 2: Same table name exists in both a MySQL and a Redshift service.
+        The namespace scheme (mysql:// vs redshift://) disambiguates which service to search.
+
+        Setup: Two services configured — mysql_prod (Mysql) and redshift_prod (Redshift).
+        Both have a table analytics.user_stat. A mysql:// namespace should find only the
+        MySQL table FQN, and a redshift:// namespace should find only the Redshift one.
+        """
+        source = self.open_lineage_source
+
+        source._namespace_to_service_cache = {}
+        source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["mysql_prod", "redshift_prod"]
+        )
+        source._db_service_type_map = {
+            "mysql_prod": DatabaseServiceType.Mysql,
+            "redshift_prod": DatabaseServiceType.Redshift,
+        }
+
+        table = TableDetails(name="user_stat", schema="analytics")
+
+        def mock_fqn_build(
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **kwargs,
+        ):
+            if service_name == "mysql_prod":
+                return "mysql_prod.db.analytics.user_stat"
+            elif service_name == "redshift_prod":
+                return "redshift_prod.warehouse.analytics.user_stat"
+            return None
+
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+            # MySQL namespace -> scheme resolves to mysql_prod only
+            mysql_result = source._get_table_fqn(
+                table, namespace="mysql://mysql-host:3306/db"
+            )
+            assert mysql_result == "mysql_prod.db.analytics.user_stat"
+
+            # Clear cache for next lookup
+            source._namespace_to_service_cache = {}
+
+            # Redshift namespace -> scheme resolves to redshift_prod only
+            redshift_result = source._get_table_fqn(
+                table, namespace="redshift://cluster:5439/warehouse"
+            )
+            assert redshift_result == "redshift_prod.warehouse.analytics.user_stat"
+
+    def test_namespace_mapping_config_disambiguates_same_type_services(self):
+        """Edge case 3: Two MySQL services (mysql_cluster_a, mysql_cluster_b) both have
+        a table analytics.user_stat. Scheme-based resolution returns both (ambiguous).
+        The namespaceToServiceMapping config disambiguates to the correct cluster.
+        """
+        source = self.open_lineage_source
+
+        source._namespace_to_service_cache = {}
+        source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["mysql_cluster_a", "mysql_cluster_b"]
+        )
+        source._db_service_type_map = {
+            "mysql_cluster_a": DatabaseServiceType.Mysql,
+            "mysql_cluster_b": DatabaseServiceType.Mysql,
+        }
+
+        # Config maps specific namespace prefixes to the correct cluster
+        object.__setattr__(
+            source.service_connection,
+            "namespaceToServiceMapping",
+            {
+                "mysql://cluster-a:3306": "mysql_cluster_a",
+                "mysql://cluster-b:3306": "mysql_cluster_b",
+            },
+        )
+
+        table = TableDetails(name="user_stat", schema="analytics")
+
+        def mock_fqn_build(
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **kwargs,
+        ):
+            if service_name == "mysql_cluster_a":
+                return "mysql_cluster_a.db.analytics.user_stat"
+            elif service_name == "mysql_cluster_b":
+                return "mysql_cluster_b.db.analytics.user_stat"
+            return None
+
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+            # cluster-a namespace -> mapping resolves to mysql_cluster_a
+            result_a = source._get_table_fqn(
+                table, namespace="mysql://cluster-a:3306/db"
+            )
+            assert result_a == "mysql_cluster_a.db.analytics.user_stat"
+
+            source._namespace_to_service_cache = {}
+
+            # cluster-b namespace -> mapping resolves to mysql_cluster_b
+            result_b = source._get_table_fqn(
+                table, namespace="mysql://cluster-b:3306/db"
+            )
+            assert result_b == "mysql_cluster_b.db.analytics.user_stat"
+
+    def test_namespace_scheme_resolves_known_vs_custom_db_type(self):
+        """Edge case 4: A MySQL service and a custom/unknown DB service both have the
+        same table analytics.user_stat. A mysql:// namespace should resolve to the MySQL
+        service only, while a custom://... namespace (unknown scheme) should resolve to
+        the custom service.
+
+        find_services_by_scheme returns services with non-standard types for unknown schemes.
+        """
+        source = self.open_lineage_source
+
+        source._namespace_to_service_cache = {}
+        source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["mysql_prod", "custom_lakehouse"]
+        )
+        source._db_service_type_map = {
+            "mysql_prod": DatabaseServiceType.Mysql,
+            "custom_lakehouse": "CustomDatabase",
+        }
+
+        table = TableDetails(name="user_stat", schema="analytics")
+
+        def mock_fqn_build(
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **kwargs,
+        ):
+            if service_name == "mysql_prod":
+                return "mysql_prod.db.analytics.user_stat"
+            elif service_name == "custom_lakehouse":
+                return "custom_lakehouse.lake.analytics.user_stat"
+            return None
+
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+            # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
+            mysql_result = source._get_table_fqn(
+                table, namespace="mysql://mysql-host:3306/db"
+            )
+            assert mysql_result == "mysql_prod.db.analytics.user_stat"
+
+            source._namespace_to_service_cache = {}
+
+            # custom:// namespace (unknown scheme) -> find_services_by_scheme returns
+            # services whose type is NOT in the known scheme map, i.e. custom_lakehouse
+            custom_result = source._get_table_fqn(
+                table, namespace="custom://lakehouse-host:8080/lake"
+            )
+            assert custom_result == "custom_lakehouse.lake.analytics.user_stat"
+
+    def test_table_found_in_multiple_services_raises_ambiguous(self):
+        """When the same table exists in multiple DB services,
+        AmbiguousServiceException is raised, caught in _get_table_fqn,
+        logged as a warning, and None is returned (lineage skipped for this entity).
+        """
+        source = self.open_lineage_source
+
+        source._namespace_to_service_cache = LRUCache(maxsize=10000)
+        source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["mysql_a", "mysql_b"]
+        )
+        source._db_service_type_map = {
+            "mysql_a": DatabaseServiceType.Mysql,
+            "mysql_b": DatabaseServiceType.Mysql,
+        }
+
+        table = TableDetails(name="user_stat", schema="analytics")
+
+        def mock_fqn_build(
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **kwargs,
+        ):
+            if service_name == "mysql_a":
+                return "mysql_a.db.analytics.user_stat"
+            elif service_name == "mysql_b":
+                return "mysql_b.db.analytics.user_stat"
+            return None
+
+        import logging
+
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+            with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
+                result = source._get_table_fqn(
+                    table, namespace="mysql://some-host:3306/db"
+                )
+
+        assert result is None
+        assert any("Failed to get FQN for table" in msg for msg in cm.output)
+        assert any("AmbiguousServiceException" in msg for msg in cm.output)
+
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
         no lineage edge should be produced for that topic, even though the table output
@@ -1479,6 +1734,364 @@ class OpenLineageUnitTest(unittest.TestCase):
             0,
             "No lineage edges should be produced when input topic cannot be resolved",
         )
+
+    def test_yield_pipeline_lineage_producer_only_no_inputs(self):
+        """When an event has only outputs (producer), the pipeline itself becomes the
+        fromEntity and each output becomes the toEntity."""
+        output_topic_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_output_topic = Mock()
+        mock_output_topic.id.root = output_topic_id
+        mock_output_topic.fullyQualifiedName.root = "kafka-service.output-topic"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "producer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "producer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[
+                {
+                    "name": "output-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.topic import Topic
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Topic:
+                return mock_output_topic
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, output_topic_id)
+        self.assertEqual(edge.toEntity.type, "topic")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_consumer_only_no_outputs(self):
+        """When an event has only inputs (consumer), each input becomes the
+        fromEntity and the pipeline itself becomes the toEntity."""
+        input_topic_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_input_topic = Mock()
+        mock_input_topic.id.root = input_topic_id
+        mock_input_topic.fullyQualifiedName.root = "kafka-service.input-topic"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "consumer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "consumer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "input-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[],
+        )
+
+        from metadata.generated.schema.entity.data.topic import Topic
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Topic:
+                return mock_input_topic
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, input_topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_consumer_only_table_input(self):
+        """When an event has only a table input (consumer/batch job), the table
+        becomes the fromEntity and the pipeline becomes the toEntity."""
+        table_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "batch-consumer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "batch-consumer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "public.source_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+            outputs=[],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table:
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.source_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(
+            ol_event, get_by_name, extra_patches
+        )
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, table_id)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_producer_only_table_output(self):
+        """When an event has only a table output (producer/batch job), the pipeline
+        becomes the fromEntity and the table becomes the toEntity."""
+        table_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "batch-producer-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "batch-producer-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[
+                {
+                    "name": "public.target_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table:
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.target_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(
+            ol_event, get_by_name, extra_patches
+        )
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_cleanup_only_deletes_edges_matching_current_event_datasets(self):
+        """When a both-sided event arrives, cleanup should only remove
+        pipeline-as-node edges for the datasets in that event, not unrelated ones."""
+        pipeline_id = "cccc3333-3333-3333-3333-333333333333"
+        topic_a_id = "aaaa1111-1111-1111-1111-111111111111"
+        topic_b_id = "bbbb2222-2222-2222-2222-222222222222"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+        mock_pipeline.fullyQualifiedName.root = "ol-service.test-pipeline"
+
+        lineage_data = {
+            "upstreamEdges": [
+                {
+                    "fromEntity": topic_a_id,
+                    "toEntity": pipeline_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+                {
+                    "fromEntity": topic_b_id,
+                    "toEntity": pipeline_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+            ],
+            "downstreamEdges": [],
+        }
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_lineage_by_id.return_value = lineage_data
+
+            self.open_lineage_source._cleanup_pipeline_as_node_edges(
+                mock_pipeline, event_entity_map={topic_a_id: "topic"}
+            )
+
+            mock_metadata.delete_lineage_edge.assert_called_once()
+            deleted_edge = mock_metadata.delete_lineage_edge.call_args[0][0]
+            self.assertEqual(str(deleted_edge.fromEntity.id.root), topic_a_id)
+            self.assertEqual(deleted_edge.fromEntity.type, "topic")
+            self.assertEqual(str(deleted_edge.toEntity.id.root), pipeline_id)
+
+    def test_cleanup_preserves_non_openlineage_edges(self):
+        """Cleanup should not touch edges that were not sourced from OpenLineage,
+        even if the entity ID matches the current event."""
+        pipeline_id = "cccc3333-3333-3333-3333-333333333333"
+        table_id = "aaaa1111-1111-1111-1111-111111111111"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+        mock_pipeline.fullyQualifiedName.root = "ol-service.test-pipeline"
+
+        lineage_data = {
+            "upstreamEdges": [
+                {
+                    "fromEntity": table_id,
+                    "toEntity": pipeline_id,
+                    "lineageDetails": {"source": "Manual"},
+                },
+            ],
+            "downstreamEdges": [],
+        }
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_lineage_by_id.return_value = lineage_data
+
+            self.open_lineage_source._cleanup_pipeline_as_node_edges(
+                mock_pipeline, event_entity_map={table_id: "table"}
+            )
+
+            mock_metadata.delete_lineage_edge.assert_not_called()
+
+    def test_cleanup_handles_downstream_edges_scoped_to_event(self):
+        """Cleanup of downstream edges (pipeline → dataset) should also be
+        scoped to only the current event's datasets."""
+        pipeline_id = "cccc3333-3333-3333-3333-333333333333"
+        table_a_id = "aaaa1111-1111-1111-1111-111111111111"
+        table_b_id = "bbbb2222-2222-2222-2222-222222222222"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+        mock_pipeline.fullyQualifiedName.root = "ol-service.test-pipeline"
+
+        lineage_data = {
+            "upstreamEdges": [],
+            "downstreamEdges": [
+                {
+                    "fromEntity": pipeline_id,
+                    "toEntity": table_a_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+                {
+                    "fromEntity": pipeline_id,
+                    "toEntity": table_b_id,
+                    "lineageDetails": {"source": "OpenLineage"},
+                },
+            ],
+        }
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_lineage_by_id.return_value = lineage_data
+
+            self.open_lineage_source._cleanup_pipeline_as_node_edges(
+                mock_pipeline, event_entity_map={table_b_id: "table"}
+            )
+
+            mock_metadata.delete_lineage_edge.assert_called_once()
+            deleted_edge = mock_metadata.delete_lineage_edge.call_args[0][0]
+            self.assertEqual(str(deleted_edge.fromEntity.id.root), pipeline_id)
+            self.assertEqual(str(deleted_edge.toEntity.id.root), table_b_id)
+            self.assertEqual(deleted_edge.toEntity.type, "table")
 
 
 if __name__ == "__main__":
