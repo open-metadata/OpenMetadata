@@ -759,11 +759,14 @@ export const testPaginationNavigation = async (
     page1FirstItem?.displayName || page1FirstItem?.name;
 
   await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.locator('[data-testid="next"]');
-  const page2ResponsePromise = page.waitForResponse(responseMatcher);
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+  await nextButton.scrollIntoViewIfNeeded();
 
-  await nextButton.click();
-  const page2Response = await page2ResponsePromise;
+  const [page2Response] = await Promise.all([
+    page.waitForResponse(responseMatcher),
+    nextButton.click(),
+  ]);
   expect(page2Response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
