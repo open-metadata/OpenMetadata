@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -5722,5 +5723,127 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       requests.add(request);
     }
     return requests;
+  }
+
+  // ===================================================================
+  // PERFORMANCE TESTS - Bulk listing with column tags (N+1 regression)
+  // ===================================================================
+
+  @Test
+  @Execution(ExecutionMode.SAME_THREAD)
+  void test_listTablesWithColumnTags_performance(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Setup: create a shared schema, classification, and tag
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("perf_classification"))
+            .withDescription("Classification for perf test");
+    Classification classification = client.classifications().create(createClassification);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName(ns.prefix("perf_tag"))
+            .withDescription("Tag for perf test")
+            .withClassification(classification.getName());
+    Tag tag = client.tags().create(createTag);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Create 100 tables with tagged columns via bulk API (kept small for CI stability)
+    int tableCount = 100;
+    int batchSize = 50;
+    for (int batch = 0; batch < tableCount / batchSize; batch++) {
+      List<CreateTable> requests = new ArrayList<>();
+      for (int i = 0; i < batchSize; i++) {
+        int idx = batch * batchSize + i;
+        CreateTable request = new CreateTable();
+        request.setName(ns.prefix("perf_table_" + idx));
+        request.setDatabaseSchema(schema.getFullyQualifiedName());
+        Column idCol = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+        idCol.setTags(List.of(tagLabel));
+        Column emailCol = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+        emailCol.setTags(List.of(tagLabel));
+        request.setColumns(
+            List.of(idCol, ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(), emailCol));
+        request.setTags(List.of(tagLabel));
+        requests.add(request);
+      }
+      BulkOperationResult result = client.tables().bulkCreateOrUpdate(requests);
+      assertEquals(batchSize, result.getNumberOfRowsPassed());
+    }
+
+    // Test 1: List with fields=columns,tags — verify correctness within timeout
+    ListParams paramsColumnsTags =
+        new ListParams()
+            .setLimit(tableCount)
+            .setFields("columns,tags")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListResponse<Table> responseColumnsTags =
+        assertTimeout(
+            java.time.Duration.ofSeconds(60),
+            () -> client.tables().list(paramsColumnsTags),
+            "Listing with columns+tags should complete within 60s for " + tableCount + " tables");
+
+    assertEquals(tableCount, responseColumnsTags.getData().size());
+
+    for (Table table : responseColumnsTags.getData()) {
+      assertNotNull(table.getTags(), "Table should have tags");
+      assertFalse(table.getTags().isEmpty(), "Table tags should not be empty");
+      assertNotNull(table.getColumns(), "Table should have columns");
+      assertEquals(3, table.getColumns().size());
+
+      // Verify tagged columns have the expected tag, untagged column does not
+      Column idCol = table.getColumns().get(0);
+      Column nameCol = table.getColumns().get(1);
+      Column emailCol = table.getColumns().get(2);
+
+      assertNotNull(idCol.getTags(), "id column tags should not be null");
+      assertTrue(
+          idCol.getTags().stream().anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
+          "id column should have the expected tag");
+      assertNotNull(emailCol.getTags(), "email column tags should not be null");
+      assertTrue(
+          emailCol.getTags().stream()
+              .anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
+          "email column should have the expected tag");
+      assertTrue(
+          nameCol.getTags() == null || nameCol.getTags().isEmpty(),
+          "name column should have no tags");
+    }
+
+    // Test 2: List with fields=columns only — columns populated, no tags
+    ListParams paramsColumnsOnly =
+        new ListParams()
+            .setLimit(tableCount)
+            .setFields("columns")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListResponse<Table> responseColumnsOnly = client.tables().list(paramsColumnsOnly);
+
+    assertEquals(tableCount, responseColumnsOnly.getData().size());
+    for (Table table : responseColumnsOnly.getData()) {
+      assertNotNull(table.getColumns(), "Columns should be populated");
+      assertEquals(3, table.getColumns().size());
+    }
+
+    // Test 3: List with fields=tags only — table tags populated
+    ListParams paramsTagsOnly =
+        new ListParams()
+            .setLimit(tableCount)
+            .setFields("tags")
+            .setDatabaseSchema(schema.getFullyQualifiedName());
+    ListResponse<Table> responseTagsOnly = client.tables().list(paramsTagsOnly);
+
+    assertEquals(tableCount, responseTagsOnly.getData().size());
+    for (Table table : responseTagsOnly.getData()) {
+      assertNotNull(table.getTags(), "Table tags should be populated");
+      assertFalse(table.getTags().isEmpty(), "Table tags should not be empty");
+    }
   }
 }

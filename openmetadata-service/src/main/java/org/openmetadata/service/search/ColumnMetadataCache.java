@@ -18,9 +18,11 @@ import lombok.extern.slf4j.Slf4j;
 public class ColumnMetadataCache {
 
   private final Map<String, ColumnMetadata> cache;
+  private final Set<String> loadedParentFqns;
 
   public ColumnMetadataCache() {
     this.cache = new HashMap<>();
+    this.loadedParentFqns = new HashSet<>();
   }
 
   /**
@@ -30,6 +32,49 @@ public class ColumnMetadataCache {
    * @param entityFetcher Function to fetch entity documents by FQN
    */
   public void loadColumnMetadata(Set<String> columnFqns, EntityDocumentFetcher entityFetcher) {
+    Map<String, Set<String>> entityToColumns = groupColumnsByParent(columnFqns);
+    loadColumnMetadata(entityToColumns, entityFetcher);
+  }
+
+  /**
+   * Loads column metadata using a batched parent-entity fetcher with per-entity fallback.
+   *
+   * @param columnFqns Set of column FQNs to load metadata for
+   * @param batchEntityFetcher Function to fetch multiple entity documents in one request
+   * @param fallbackFetcher Single-entity fallback used when batch loading fails
+   */
+  public void loadColumnMetadata(
+      Set<String> columnFqns,
+      BatchEntityDocumentFetcher batchEntityFetcher,
+      EntityDocumentFetcher fallbackFetcher) {
+    Map<String, Set<String>> entityToColumns = groupColumnsByParent(columnFqns);
+    entityToColumns.entrySet().removeIf(entry -> loadedParentFqns.contains(entry.getKey()));
+
+    if (entityToColumns.isEmpty()) {
+      return;
+    }
+
+    try {
+      Map<String, Map<String, Object>> entityDocs =
+          batchEntityFetcher.fetchEntities(entityToColumns.keySet());
+      for (Map.Entry<String, Set<String>> entry : entityToColumns.entrySet()) {
+        String parentFqn = entry.getKey();
+        Map<String, Object> entityDoc = entityDocs.get(parentFqn);
+        if (entityDoc == null) {
+          LOG.debug("No column metadata document returned for parent entity: {}", parentFqn);
+          continue;
+        }
+
+        extractColumnMetadata(parentFqn, entityDoc, entry.getValue());
+        loadedParentFqns.add(parentFqn);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to batch fetch column metadata, falling back to per-entity fetches", e);
+      loadColumnMetadata(entityToColumns, fallbackFetcher);
+    }
+  }
+
+  private Map<String, Set<String>> groupColumnsByParent(Set<String> columnFqns) {
     // Group column FQNs by parent entity FQN
     Map<String, Set<String>> entityToColumns = new HashMap<>();
 
@@ -40,12 +85,21 @@ public class ColumnMetadataCache {
       }
     }
 
+    return entityToColumns;
+  }
+
+  private void loadColumnMetadata(
+      Map<String, Set<String>> entityToColumns, EntityDocumentFetcher entityFetcher) {
     // Fetch parent entities and extract column metadata
     for (Map.Entry<String, Set<String>> entry : entityToColumns.entrySet()) {
       String parentFqn = entry.getKey();
+      if (loadedParentFqns.contains(parentFqn)) {
+        continue;
+      }
       try {
         Map<String, Object> entityDoc = entityFetcher.fetchEntity(parentFqn);
         extractColumnMetadata(parentFqn, entityDoc, entry.getValue());
+        loadedParentFqns.add(parentFqn);
       } catch (Exception e) {
         LOG.warn("Failed to fetch metadata for parent entity: {}", parentFqn, e);
       }
@@ -122,7 +176,6 @@ public class ColumnMetadataCache {
             : parentFqn;
 
     for (Map<String, Object> column : columns) {
-      String columnName = (String) column.get("name");
       String columnFqn = getColumnFqn(entityFqn, column);
       if (columnFqn != null && columnFqns.contains(columnFqn)) {
         ColumnMetadata metadata = new ColumnMetadata();
@@ -131,13 +184,21 @@ public class ColumnMetadataCache {
         if (column.containsKey("tags") && column.get("tags") instanceof List) {
           @SuppressWarnings("unchecked")
           List<Map<String, Object>> tags = (List<Map<String, Object>>) column.get("tags");
-          Set<String> tagFqns = new HashSet<>();
+          Set<String> classificationTags = new HashSet<>();
+          Set<String> glossaryTerms = new HashSet<>();
           for (Map<String, Object> tag : tags) {
             if (tag.containsKey("tagFQN")) {
-              tagFqns.add((String) tag.get("tagFQN"));
+              String tagFqn = (String) tag.get("tagFQN");
+              Object source = tag.get("source");
+              if (source != null && "Glossary".equalsIgnoreCase(source.toString())) {
+                glossaryTerms.add(tagFqn);
+              } else {
+                classificationTags.add(tagFqn);
+              }
             }
           }
-          metadata.setTags(tagFqns);
+          metadata.setTags(classificationTags);
+          metadata.setGlossaryTerms(glossaryTerms);
         }
 
         cache.put(columnFqn, metadata);
@@ -182,9 +243,19 @@ public class ColumnMetadataCache {
    * Checks if column has a matching glossary term.
    */
   private boolean hasMatchingGlossaryTerm(ColumnMetadata metadata, String glossaryFilter) {
-    // For now, glossary terms are stored as tags with type GLOSSARY
-    // This can be enhanced to check tag source/type
-    return hasMatchingTag(metadata, glossaryFilter);
+    if (metadata.getGlossaryTerms() == null || metadata.getGlossaryTerms().isEmpty()) {
+      return false;
+    }
+
+    String filterLower = glossaryFilter.toLowerCase();
+    for (String glossaryTerm : metadata.getGlossaryTerms()) {
+      if (glossaryTerm.toLowerCase().contains(filterLower)
+          || glossaryTerm.toLowerCase().endsWith("." + filterLower)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -219,6 +290,7 @@ public class ColumnMetadataCache {
    */
   public static class ColumnMetadata {
     private Set<String> tags;
+    private Set<String> glossaryTerms;
 
     public Set<String> getTags() {
       return tags;
@@ -226,6 +298,14 @@ public class ColumnMetadataCache {
 
     public void setTags(Set<String> tags) {
       this.tags = tags;
+    }
+
+    public Set<String> getGlossaryTerms() {
+      return glossaryTerms;
+    }
+
+    public void setGlossaryTerms(Set<String> glossaryTerms) {
+      this.glossaryTerms = glossaryTerms;
     }
   }
 
@@ -262,5 +342,10 @@ public class ColumnMetadataCache {
   @FunctionalInterface
   public interface EntityDocumentFetcher {
     Map<String, Object> fetchEntity(String fqn) throws IOException;
+  }
+
+  @FunctionalInterface
+  public interface BatchEntityDocumentFetcher {
+    Map<String, Map<String, Object>> fetchEntities(Set<String> fqns) throws IOException;
   }
 }

@@ -124,9 +124,8 @@ class MWAAClient:
         """Paginate through API results"""
         result: List[Dict] = []
         offset = 0
-        total = limit
 
-        while offset < total:
+        while True:
             query = {"limit": str(limit), "offset": str(offset)}
             response = self._invoke_rest_api(path, query=query)
 
@@ -138,8 +137,14 @@ class MWAAClient:
                 break
 
             result.extend(page)
-            total = response.get("total_entries", len(result))
             offset += limit
+
+            total_entries = response.get("total_entries")
+            if total_entries is not None:
+                if offset >= total_entries:
+                    break
+            elif len(page) < limit:
+                break
 
         return result
 

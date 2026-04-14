@@ -104,6 +104,7 @@ entities.forEach((EntityClass) => {
       await redirectToHomePage(page);
 
       await entity.visitEntityPage(page);
+
       await assignDataProduct(page, domain.responseData, [
         dataProduct.responseData,
       ]);

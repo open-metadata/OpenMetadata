@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
@@ -28,6 +29,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   hasPermission = false,
   entityFqn,
   entityType,
+  changeSummaryEntry,
 }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -133,13 +135,31 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
   const canShowEditButton =
     showEditButton && hasPermission && onDescriptionUpdate;
+  const shouldShowMetadata = changeSummaryEntry?.changeSource != null;
+
+  const headerBadge = (
+    <DescriptionSourceBadge
+      changeSummaryEntry={changeSummaryEntry}
+      showAcceptedBy={false}
+      showTimestamp={false}
+    />
+  );
+
+  const metadataRow = (
+    <DescriptionSourceBadge changeSummaryEntry={changeSummaryEntry} />
+  );
 
   if (!description?.trim()) {
     return (
       <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
         <div className="description-section">
           <div className="description-header">
-            <span className="description-title">{t('label.description')}</span>
+            <div className="description-title-row">
+              <span className="description-title">
+                {t('label.description')}
+              </span>
+              {headerBadge}
+            </div>
             {canShowEditButton && (
               <EditIconButton
                 newLook
@@ -160,6 +180,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
                 entity: t('label.description-lowercase'),
               })}
             </span>
+            {shouldShowMetadata ? (
+              <div className="description-metadata">{metadataRow}</div>
+            ) : null}
             <ModalWithMarkdownEditor
               header={t('label.edit-entity', {
                 entity: t('label.description'),
@@ -182,7 +205,10 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
       <div className="description-section">
         <div className="description-header">
-          <span className="description-title">{t('label.description')}</span>
+          <div className="description-title-row">
+            <span className="description-title">{t('label.description')}</span>
+            {headerBadge}
+          </div>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -218,6 +244,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
                 {isExpanded ? t('label.show-less') : t('label.show-more')}
               </button>
             )}
+            {shouldShowMetadata ? (
+              <div className="description-metadata">{metadataRow}</div>
+            ) : null}
             <ModalWithMarkdownEditor
               header={t('label.edit-entity', {
                 entity: t('label.description'),

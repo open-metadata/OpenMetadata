@@ -14,8 +14,11 @@
 import { useDomainListing } from '../../../components/common/atoms/domain/compositions/useDomainListing';
 import { ListingData } from '../../../components/common/atoms/shared/types';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 
 export const useDomainListingData = (): ListingData<Domain> => {
+  const { domainBasePath } = useMarketplaceStore();
+
   const baseFilter = {
     query: {
       bool: {
@@ -34,5 +37,6 @@ export const useDomainListingData = (): ListingData<Domain> => {
   return useDomainListing({
     baseFilter: JSON.stringify(baseFilter),
     nameLabelKey: 'label.domain',
+    basePath: domainBasePath,
   });
 };

@@ -116,6 +116,24 @@ export const createNewPage = async (browser: Browser) => {
   return { page, apiContext, afterAction };
 };
 
+export const getDefaultAdminAPIContext = async (browser: Browser) => {
+  const context = await browser.newContext({
+    storageState: 'playwright/.auth/admin.json',
+  });
+
+  const page = await context.newPage();
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+    await context.close();
+  };
+
+  return { apiContext, afterAction };
+};
+
 /**
  * Retrieves the API context for the given page.
  * @param page The Playwright page object.
@@ -142,6 +160,11 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'searchIndex',
     ApiEndpoint: 'apiEndpoint',
     Metric: 'metric',
+    ['Store Procedure']: 'storedProcedure',
+    Directory: 'directory',
+    File: 'file',
+    Spreadsheet: 'spreadsheet',
+    Worksheet: 'worksheet',
     [DASHBOARD_DATA_MODEL]: 'dashboardDataModel',
   };
 
@@ -399,6 +422,9 @@ export const assignDataProduct = async (
   action: 'Add' | 'Edit' = 'Add',
   parentId = 'KnowledgePanel.DataProducts'
 ) => {
+  await expect(page.getByTestId('domain-link')).toContainText(
+    domain.displayName
+  );
   await page
     .getByTestId(parentId)
     .getByTestId('data-products-container')
@@ -736,11 +762,14 @@ export const testPaginationNavigation = async (
     page1FirstItem?.displayName || page1FirstItem?.name;
 
   await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.locator('[data-testid="next"]');
-  const page2ResponsePromise = page.waitForResponse(responseMatcher);
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+  await nextButton.scrollIntoViewIfNeeded();
 
-  await nextButton.click();
-  const page2Response = await page2ResponsePromise;
+  const [page2Response] = await Promise.all([
+    page.waitForResponse(responseMatcher),
+    nextButton.click(),
+  ]);
   expect(page2Response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);

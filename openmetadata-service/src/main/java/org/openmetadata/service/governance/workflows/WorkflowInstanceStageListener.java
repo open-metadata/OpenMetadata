@@ -135,18 +135,13 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String processInstanceId = execution.getProcessInstanceId();
-
-    // Check business key first - critical for stage tracking
     String businessKey = execution.getProcessInstanceBusinessKey();
     if (businessKey == null || businessKey.isEmpty()) {
-      LOG.error(
-          "[STAGE_MISSING_KEY] Workflow: {}, ProcessInstance: {} - Business key is missing for stage creation",
-          workflowDefinitionName,
-          processInstanceId);
-      throw new IllegalStateException(
-          String.format(
-              "Business key is missing for stage creation in workflow: %s",
-              workflowDefinitionName));
+      LOG.warn(
+          "[STAGE_SKIP] ProcessInstance: {} (workflow: {}) - no business key, not an OM-managed process instance",
+          processInstanceId,
+          workflowDefinitionName);
+      return;
     }
     UUID workflowInstanceId = UUID.fromString(businessKey);
 

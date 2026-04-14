@@ -6240,4 +6240,168 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       }
     }
   }
+
+  // ===================================================================
+  // CHANGE SUMMARY TESTS
+  // ===================================================================
+
+  /**
+   * Test: Retrieve changeSummary by entity ID after updating the entity.
+   * The changeSummary API returns metadata about who changed each field,
+   * the source of the change, and when it was changed.
+   */
+  @Test
+  void get_changeSummaryById_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated description for changeSummary test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/" + getEntityType() + "/" + updated.getId(),
+                null);
+    assertNotNull(response, "ChangeSummary response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(
+        result.get("totalEntries").asInt() > 0,
+        "totalEntries should be > 0 after patching description");
+    JsonNode changeSummaryNode = result.get("changeSummary");
+    assertTrue(
+        changeSummaryNode.isObject() && changeSummaryNode.size() > 0,
+        "changeSummary should contain at least one entry after patching description");
+  }
+
+  /**
+   * Test: Retrieve changeSummary by entity FQN after updating the entity.
+   */
+  @Test
+  void get_changeSummaryByFqn_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated description for changeSummary FQN test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String fqn = updated.getFullyQualifiedName();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/changeSummary/" + getEntityType() + "/name/" + fqn, null);
+    assertNotNull(response, "ChangeSummary response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(
+        result.get("totalEntries").asInt() > 0,
+        "totalEntries should be > 0 after patching description");
+    JsonNode changeSummaryNode = result.get("changeSummary");
+    assertTrue(
+        changeSummaryNode.isObject() && changeSummaryNode.size() > 0,
+        "changeSummary should contain at least one entry after patching description");
+  }
+
+  /**
+   * Test: Retrieve changeSummary with fieldPrefix filter.
+   * Verifies that the filtering parameter works correctly.
+   */
+  @Test
+  void get_changeSummaryWithFieldPrefix_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated for fieldPrefix test");
+    T updated = patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/"
+                    + getEntityType()
+                    + "/"
+                    + updated.getId()
+                    + "?fieldPrefix=description",
+                null);
+    assertNotNull(response, "ChangeSummary filtered response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+
+    JsonNode changeSummary = result.get("changeSummary");
+    assertTrue(
+        changeSummary.isObject() && changeSummary.size() > 0,
+        "Filtered changeSummary should contain at least one entry matching 'description' prefix");
+    changeSummary
+        .fieldNames()
+        .forEachRemaining(
+            key ->
+                assertTrue(
+                    key.startsWith("description"),
+                    "All keys should start with 'description', but found: " + key));
+  }
+
+  /**
+   * Test: Retrieve changeSummary with pagination parameters.
+   */
+  @Test
+  void get_changeSummaryWithPagination_200(TestNamespace ns) throws Exception {
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Updated for pagination test");
+    patchEntity(created.getId().toString(), created);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeSummary/"
+                    + getEntityType()
+                    + "/"
+                    + created.getId()
+                    + "?limit=1&offset=0",
+                null);
+    assertNotNull(response, "ChangeSummary paginated response should not be null");
+    JsonNode result = MAPPER.readTree(response);
+    assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
+    assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
+    assertTrue(result.has("offset"), "Paginated response must contain offset field");
+    assertTrue(result.has("limit"), "Paginated response must contain limit field");
+  }
+
+  /**
+   * Test: changeSummary returns 404 for non-existent entity.
+   */
+  @Test
+  void get_changeSummaryNotFound_404(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID randomId = UUID.randomUUID();
+    Exception thrown =
+        assertThrows(
+            Exception.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        "/v1/changeSummary/" + getEntityType() + "/" + randomId,
+                        null));
+    assertTrue(
+        thrown.getMessage().contains("404") || thrown.getMessage().contains("not found"),
+        "Should get 404 for non-existent entity, got: " + thrown.getMessage());
+  }
 }
