@@ -1094,7 +1094,7 @@ public class SystemRepository {
       if (securityConfig.getAuthorizerConfiguration() != null) {
         FieldError authzError =
             validateAuthorizerConfiguration(
-                securityConfig.getAuthorizerConfiguration(), currentUsername);
+                securityConfig.getAuthorizerConfiguration(), currentUsername, skipTestLoginFields);
         if (authzError != null) {
           errors.add(authzError);
         }
@@ -1842,7 +1842,7 @@ public class SystemRepository {
   }
 
   private FieldError validateAuthorizerConfiguration(
-      AuthorizerConfiguration authzConfig, String currentUsername) {
+      AuthorizerConfiguration authzConfig, String currentUsername, boolean skipTestLoginFields) {
     try {
       // Validate required fields
       if (nullOrEmpty(authzConfig.getClassName())) {
