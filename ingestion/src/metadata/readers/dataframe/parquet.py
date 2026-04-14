@@ -200,32 +200,68 @@ class ParquetDataFrameReader(DataFrameReader):
                 dataframes=chunk_generator, raw_data=None, columns=None
             )
 
+    def _build_s3fs_filesystem(self):
+        """Build an s3fs filesystem using credentials from the boto3 client.
+
+        Extracts the already-resolved credentials (including AssumeRole,
+        instance profile, ECS task role, etc.) so s3fs uses the same auth
+        as the rest of the connector.
+        """
+        # pylint: disable=import-outside-toplevel
+        from s3fs import S3FileSystem
+
+        creds = self.client._request_signer._credentials.get_frozen_credentials()
+
+        client_kwargs = {}
+        if self.config_source.securityConfig.endPointURL:
+            client_kwargs["endpoint_url"] = str(
+                self.config_source.securityConfig.endPointURL
+            )
+        if self.config_source.securityConfig.awsRegion:
+            client_kwargs["region_name"] = self.config_source.securityConfig.awsRegion
+
+        return S3FileSystem(
+            key=creds.access_key,
+            secret=creds.secret_key,
+            token=creds.token,
+            client_kwargs=client_kwargs if client_kwargs else None,
+        )
+
     @_read_parquet_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         # pylint: disable=import-outside-toplevel
-        import io
-
         from pyarrow.parquet import ParquetFile
 
-        def chunk_generator():
-            response = self.client.get_object(Bucket=bucket_name, Key=key)
-            try:
-                buffer = io.BytesIO(response["Body"].read())
-            finally:
-                response["Body"].close()
+        s3_fs = self._build_s3fs_filesystem()
+        file_path = f"{bucket_name}/{key}"
 
-            file_size = buffer.getbuffer().nbytes
-            parquet_file = ParquetFile(buffer)
+        try:
+            file_size = s3_fs.info(file_path)["size"]
+        except Exception as exc:
+            logger.warning(
+                f"Could not determine file size for {file_path}: {exc}. "
+                f"Assuming large file."
+            )
+            file_size = 0
 
-            if self._should_use_chunking(file_size):
+        if self._should_use_chunking(file_size):
+
+            def chunk_generator():
                 logger.info(
                     f"Large parquet file detected ({file_size} bytes > "
                     f"{MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
-                    f"Using batched reading for file: {bucket_name}/{key}"
+                    f"Using batched reading for file: {file_path}"
                 )
-                yield from self._read_parquet_in_batches(parquet_file)
-            else:
-                yield from dataframe_to_chunks(parquet_file.read().to_pandas())
+                with s3_fs.open(file_path) as f:
+                    parquet_file = ParquetFile(f)
+                    yield from self._read_parquet_in_batches(parquet_file)
+
+        else:
+
+            def chunk_generator():
+                with s3_fs.open(file_path) as f:
+                    parquet_file = ParquetFile(f)
+                    yield from dataframe_to_chunks(parquet_file.read().to_pandas())
 
         return DatalakeColumnWrapper(
             dataframes=chunk_generator, raw_data=None, columns=None
