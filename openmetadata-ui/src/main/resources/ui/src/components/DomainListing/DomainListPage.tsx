@@ -106,7 +106,7 @@ const DomainListPage = () => {
         setIsLoading(false);
       }
     },
-     
+
     [form, enqueueSnackbar, closeSnackbar, t]
   );
 
