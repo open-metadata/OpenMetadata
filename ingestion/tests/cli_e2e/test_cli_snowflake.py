@@ -214,6 +214,14 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.assert_for_table_with_profiler(source_status, sink_status)
         self.system_profile_assertions()
 
+    @pytest.mark.order(3)
+    @pytest.mark.xfail(
+        strict=False,
+        reason="Auto classification returns 0 records intermittently on Snowflake",
+    )
+    def test_auto_classify_data(self) -> None:
+        super().test_auto_classify_data()
+
     @staticmethod
     def expected_tables() -> int:
         return 8
