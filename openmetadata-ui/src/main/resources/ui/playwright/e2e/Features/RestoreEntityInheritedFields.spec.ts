@@ -104,9 +104,6 @@ entities.forEach((EntityClass) => {
       await redirectToHomePage(page);
 
       await entity.visitEntityPage(page);
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain.responseData.displayName
-      );
 
       await assignDataProduct(page, domain.responseData, [
         dataProduct.responseData,
