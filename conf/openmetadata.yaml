@@ -612,6 +612,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
 
