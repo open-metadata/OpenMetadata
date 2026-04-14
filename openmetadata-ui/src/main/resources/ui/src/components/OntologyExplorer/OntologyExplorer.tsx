@@ -13,7 +13,6 @@
 
 import {
   Card,
-  Divider,
   Input,
   SlideoutMenu,
   Tabs,
@@ -2291,7 +2290,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
               : 'tw:rounded-lg'
           )}>
-
           {/* Bottom center: Mode tabs + Search in Graph + Settings */}
           <Card
             className={classNames(
