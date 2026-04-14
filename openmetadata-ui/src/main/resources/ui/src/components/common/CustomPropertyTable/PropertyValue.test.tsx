@@ -433,9 +433,7 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entityReference-value')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('entityReference-value')
-    ).toHaveTextContent('entityReferenceName');
+    expect(screen.getByText('entityReferenceName')).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(iconElement);
@@ -495,5 +493,104 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entity-reference-select')
     ).toBeInTheDocument();
+  });
+
+  it('should show FQN subtitle for entityReference type', async () => {
+    const extension = {
+      yNumber: {
+        id: 'entityReferenceId',
+        name: 'entityReferenceName',
+        fullyQualifiedName: 'service.schema.entityReferenceName',
+        type: 'entityReference',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReference',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(
+      await screen.findByTestId('entityReference-value')
+    ).toBeInTheDocument();
+    expect(screen.getByText('service.schema.entityReferenceName')).toBeInTheDocument();
+  });
+
+  it('should show FQN subtitle for entityReferenceList type', async () => {
+    const extension = {
+      yNumber: [
+        {
+          id: 'entityReferenceId1',
+          name: 'entityReferenceName1',
+          fullyQualifiedName: 'service.schema.entityReferenceName1',
+          type: 'entityReference',
+        },
+        {
+          id: 'entityReferenceId2',
+          name: 'entityReferenceName2',
+          fullyQualifiedName: 'service.schema.entityReferenceName2',
+          type: 'entityReference',
+        },
+      ],
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReferenceList',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(
+      await screen.findByTestId('entityReferenceName1')
+    ).toBeInTheDocument();
+    expect(screen.getByText('service.schema.entityReferenceName1')).toBeInTheDocument();
+
+    expect(
+      await screen.findByTestId('entityReferenceName2')
+    ).toBeInTheDocument();
+    expect(screen.getByText('service.schema.entityReferenceName2')).toBeInTheDocument();
+  });
+
+  it('should not show FQN subtitle when fullyQualifiedName is absent', async () => {
+    const extension = {
+      yNumber: {
+        id: 'entityReferenceId',
+        name: 'entityReferenceName',
+        type: 'entityReference',
+      },
+    };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'entityReference',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(
+      await screen.findByTestId('entityReference-value')
+    ).toBeInTheDocument();
+    expect(screen.getByText('entityReferenceName')).toBeInTheDocument();
+    
+    // Asserting that the subtitle did not mistakenly render 'undefined' or an empty variable text
+    expect(screen.queryByText('undefined')).not.toBeInTheDocument();
   });
 });
