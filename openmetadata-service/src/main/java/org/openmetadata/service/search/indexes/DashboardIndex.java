@@ -4,9 +4,8 @@ import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class DashboardIndex implements SearchIndex {
+public class DashboardIndex implements DataAssetIndex {
   final Dashboard dashboard;
 
   public DashboardIndex(Dashboard dashboard) {
@@ -19,21 +18,21 @@ public class DashboardIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.DASHBOARD;
+  }
+
+  @Override
+  public Object getIndexServiceType() {
+    return dashboard.getServiceType();
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
-    return Set.of("dataModels");
+    return Set.of("dataModels", "charts");
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD, dashboard));
-    Map<String, Object> commonAttributes = getCommonAttributesMap(dashboard, Entity.DASHBOARD);
-    doc.putAll(commonAttributes);
-    doc.put("tags", parseTags.getTags());
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", dashboard.getServiceType());
-    SearchIndex.populateLineageData(doc, dashboard.getEntityReference());
-    doc.put("service", getEntityWithDisplayName(dashboard.getService()));
     return doc;
   }
 

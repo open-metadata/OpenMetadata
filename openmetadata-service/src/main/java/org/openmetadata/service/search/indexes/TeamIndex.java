@@ -19,13 +19,16 @@ public class TeamIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TEAM;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(team, Entity.TEAM);
-    doc.putAll(commonAttributes);
     doc.put("isBot", false);
     return doc;
   }

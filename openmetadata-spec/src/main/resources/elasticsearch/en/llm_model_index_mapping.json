@@ -560,6 +560,14 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "entityType": {
         "type": "keyword",
         "fields": {

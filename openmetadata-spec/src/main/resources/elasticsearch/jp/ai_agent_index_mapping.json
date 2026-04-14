@@ -1,20 +1,6 @@
 {
   "settings": {
-    "index": {
-      "max_ngram_diff": 17
-    },
     "analysis": {
-      "tokenizer": {
-        "n_gram_tokenizer": {
-          "type": "ngram",
-          "min_gram": 3,
-          "max_gram": 20,
-          "token_chars": [
-            "letter",
-            "digit"
-          ]
-        }
-      },
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
@@ -26,11 +12,20 @@
       },
       "analyzer": {
         "om_analyzer": {
-          "tokenizer": "standard",
+          "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "word_delimiter_filter",
             "om_stemmer"
+          ]
+        },
+        "om_analyzer_jp": {
+          "tokenizer": "kuromoji_tokenizer",
+          "type": "custom",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
           ]
         },
         "om_ngram": {
@@ -52,11 +47,7 @@
       "filter": {
         "om_stemmer": {
           "type": "stemmer",
-          "name": "kstem"
-        },
-        "word_delimiter_filter": {
-          "type": "word_delimiter",
-          "preserve_original": true
+          "name": "english"
         },
         "compound_word_delimiter_graph": {
           "type": "word_delimiter_graph",
@@ -70,7 +61,21 @@
           "preserve_original": true,
           "stem_english_possessive": true
         }
+      },
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
       }
+    },
+    "index": {
+      "max_ngram_diff": 1
     }
   },
   "mappings": {
@@ -92,7 +97,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -115,7 +120,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -138,7 +143,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "similarity": "boolean",
         "term_vector": "with_positions_offsets"
       },

@@ -5,10 +5,16 @@ import java.util.Set;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.service.Entity;
 
-public record DatabaseIndex(Database database) implements SearchIndex {
+public record DatabaseIndex(Database database) implements TaggableIndex {
+
   @Override
   public Object getEntity() {
     return database;
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.DATABASE;
   }
 
   @Override
@@ -17,8 +23,6 @@ public record DatabaseIndex(Database database) implements SearchIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(database, Entity.DATABASE);
-    doc.putAll(commonAttributes);
     return doc;
   }
 }
