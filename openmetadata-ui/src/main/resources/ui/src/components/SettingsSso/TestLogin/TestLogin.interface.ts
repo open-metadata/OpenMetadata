@@ -37,6 +37,10 @@ export interface TestLoginFormData {
     secret?: string;
     scope?: string;
     callbackUrl?: string;
+    prompt?: string;
+    disablePkce?: boolean;
+    clientAuthenticationMethod?: string;
+    maxAge?: string;
   };
 }
 

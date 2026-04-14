@@ -22,7 +22,7 @@
     "scope": {
       "description": "Oidc Request Scopes.",
       "type": "string",
-      "default": "openid email profile offline_access"
+      "default": "openid email profile"
     },
     "discoveryUri": {
       "description": "Discovery Uri for the Client.",

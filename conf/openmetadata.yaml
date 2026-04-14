@@ -378,7 +378,7 @@ authenticationConfiguration:
     type: ${OIDC_TYPE:-""}
     # REQUIRED for SSO: OAuth client secret from your identity provider (NEVER commit this!)
     secret: ${OIDC_CLIENT_SECRET:-""}
-    scope: ${OIDC_SCOPE:-"openid email profile offline_access"}
+    scope: ${OIDC_SCOPE:-"openid email profile"}
     # OIDC discovery endpoint URL (e.g., "https://accounts.google.com/.well-known/openid-configuration")
     discoveryUri: ${OIDC_DISCOVERY_URI:-""}
     useNonce: ${OIDC_USE_NONCE:-true}
