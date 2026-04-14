@@ -158,6 +158,7 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
+              --project=SearchRBAC \
 
           else
             # Shards 2-6 run common chromium tests equally distributed (5-way sharding)

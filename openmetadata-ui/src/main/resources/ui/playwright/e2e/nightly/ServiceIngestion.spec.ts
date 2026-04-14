@@ -523,14 +523,23 @@ test.describe.serial(
       await pipelineRow.getByTestId('more-actions').click();
       await expect(page.getByTestId('run-button')).toBeVisible();
 
-      // Trigger a pipeline run via the run button
+      // Trigger a pipeline run via the run button.
+      // Also register a waiter for the pipelineStatus refresh that follows the trigger
+      // (the route mock adds 8s latency, so we must await the response before asserting).
+      // Both waiters are registered before the click to avoid race conditions.
       const triggerResponse = page.waitForResponse(
         (res) =>
           res.url().includes('/services/ingestionPipelines/trigger/') &&
           res.request().method() === 'POST'
       );
+      const statusRefreshResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes('/pipelineStatus') &&
+          res.request().method() === 'GET'
+      );
       await page.getByTestId('run-button').click();
       await triggerResponse;
+      await statusRefreshResponse;
 
       // Verify the run was triggered by checking the pipeline row shows a running state
       await expect(
