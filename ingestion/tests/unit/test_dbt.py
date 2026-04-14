@@ -2874,7 +2874,9 @@ class DbtUnitTest(TestCase):
         }
         result = generate_entity_link(dbt_test=dbt_test)
         # Should return only one entity link (for the primary table)
-        self.assertEqual(len(result), 1, "Should only create one entity link for primary table")
+        self.assertEqual(
+            len(result), 1, "Should only create one entity link for primary table"
+        )
         # Link should be to the primary table, not the referenced table
         self.assertIn("un_rueckerstattungen_medis_base", result[0])
         self.assertIn("::columns::PersonNr>", result[0])
@@ -2882,7 +2884,9 @@ class DbtUnitTest(TestCase):
 
         # Test case 2: Unique test with underscore-prefixed mixed-case column
         # unique_un_abrechnungsposition_cur_dp_AbrechnungspositionHK
-        manifest_node.column_name = "dp_AbrechnungspositionHK"  # Underscore + mixed case
+        manifest_node.column_name = (
+            "dp_AbrechnungspositionHK"  # Underscore + mixed case
+        )
         dbt_test = {
             "manifest_node": manifest_node,
             "upstream": ["unity.catalog.schema.un_abrechnungsposition_cur"],
