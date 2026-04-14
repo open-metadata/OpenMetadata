@@ -331,8 +331,13 @@ test.describe(
           JSON.stringify({
             excludeColumns: [table.entity?.columns[0].name],
             profileQuery: 'select * from table',
-            profileSample: 60,
-            profileSampleType: 'PERCENTAGE',
+            profileSampleConfig: {
+              sampleConfigType: 'STATIC',
+              config: {
+                profileSample: 60,
+                profileSampleType: 'PERCENTAGE',
+              },
+            },
             includeColumns: [{ columnName: table.entity?.columns[1].name }],
             partitioning: {
               partitionColumnName: table.entity?.columns[2].name,
@@ -371,8 +376,6 @@ test.describe(
           JSON.stringify({
             excludeColumns: [table.entity?.columns[0].name],
             profileQuery: 'select * from table',
-            profileSample: null,
-            profileSampleType: 'PERCENTAGE',
             includeColumns: [{ columnName: table.entity?.columns[1].name }],
             partitioning: {
               partitionColumnName: table.entity?.columns[2].name,
