@@ -60,6 +60,24 @@ export interface ProviderOption {
   key: AuthProvider;
   label: string;
   icon: string;
+  description?: string;
+}
+
+export type SsoProtocol = 'oidc' | 'saml' | 'ldap';
+
+export interface ProtocolOption {
+  key: SsoProtocol;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+export interface OidcProviderOption {
+  key: AuthProvider;
+  label: string;
+  icon: string;
+  discoveryUriTemplate: string;
+  helpText: string;
 }
 
 /**
@@ -163,6 +181,128 @@ export const PROVIDER_OPTIONS: ProviderOption[] = [
     icon: Auth0Icon,
   },
 ];
+
+/**
+ * Protocol options for the top-level SSO protocol selection (3 cards).
+ */
+export const PROTOCOL_OPTIONS: ProtocolOption[] = [
+  {
+    key: 'oidc',
+    label: 'OIDC',
+    icon: CustomOIDCIcon,
+    description:
+      'Works with Google, Azure AD, Okta, Auth0, AWS Cognito, and any OIDC-compatible Identity Provider',
+  },
+  {
+    key: 'saml',
+    label: 'SAML',
+    icon: SamlIcon,
+    description: 'Works with any SAML 2.0 Identity Provider',
+  },
+  {
+    key: 'ldap',
+    label: 'LDAP',
+    icon: LdapIcon,
+    description: 'Direct LDAP / Active Directory authentication',
+  },
+];
+
+/**
+ * OIDC provider options shown as a dropdown after selecting the OIDC protocol.
+ * Each option pre-fills the Discovery URI and shows IdP-specific help text.
+ */
+export const OIDC_PROVIDER_OPTIONS: OidcProviderOption[] = [
+  {
+    key: AuthProvider.Google,
+    label: 'Google',
+    icon: GoogleIcon,
+    discoveryUriTemplate:
+      'https://accounts.google.com/.well-known/openid-configuration',
+    helpText:
+      'Get credentials from Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs',
+  },
+  {
+    key: AuthProvider.Azure,
+    label: 'Azure AD',
+    icon: AzureIcon,
+    discoveryUriTemplate:
+      'https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration',
+    helpText:
+      'Get credentials from Azure Portal → App registrations → Your app → Certificates & secrets',
+  },
+  {
+    key: AuthProvider.Okta,
+    label: 'Okta',
+    icon: OktaIcon,
+    discoveryUriTemplate:
+      'https://{your-domain}.okta.com/.well-known/openid-configuration',
+    helpText:
+      'Get credentials from Okta Admin Console → Applications → Your app → Client Credentials',
+  },
+  {
+    key: AuthProvider.Auth0,
+    label: 'Auth0',
+    icon: Auth0Icon,
+    discoveryUriTemplate:
+      'https://{your-domain}.auth0.com/.well-known/openid-configuration',
+    helpText:
+      'Get credentials from Auth0 Dashboard → Applications → Your app → Settings',
+  },
+  {
+    key: AuthProvider.AwsCognito,
+    label: 'AWS Cognito',
+    icon: CognitoIcon,
+    discoveryUriTemplate:
+      'https://cognito-idp.{region}.amazonaws.com/{pool-id}/.well-known/openid-configuration',
+    helpText:
+      'Get credentials from AWS Console → Cognito → User Pools → Your pool → App integration',
+  },
+  {
+    key: AuthProvider.CustomOidc,
+    label: 'Other (Custom OIDC)',
+    icon: CustomOIDCIcon,
+    discoveryUriTemplate: '',
+    helpText:
+      'Check your Identity Provider documentation for OIDC client credentials',
+  },
+];
+
+/**
+ * Maps a provider to its protocol.
+ */
+export const getProtocolForProvider = (provider: string): SsoProtocol => {
+  switch (provider) {
+    case AuthProvider.Google:
+    case AuthProvider.Azure:
+    case AuthProvider.Okta:
+    case AuthProvider.Auth0:
+    case AuthProvider.AwsCognito:
+    case AuthProvider.CustomOidc:
+      return 'oidc';
+    case AuthProvider.Saml:
+      return 'saml';
+    case AuthProvider.LDAP:
+      return 'ldap';
+    default:
+      return 'oidc';
+  }
+};
+
+/**
+ * Gets the default provider for a protocol.
+ */
+export const getDefaultProviderForProtocol = (
+  protocol: SsoProtocol
+): AuthProvider => {
+  switch (protocol) {
+    case 'oidc':
+      return AuthProvider.Google;
+    case 'saml':
+      return AuthProvider.Saml;
+    case 'ldap':
+      return AuthProvider.LDAP;
+  }
+};
 
 /**
  * Parses validation errors into nested ErrorSchema structure

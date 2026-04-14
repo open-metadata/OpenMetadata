@@ -124,6 +124,16 @@
       "description": "Enable automatic redirect from the sign-in page to the configured SSO provider.",
       "type": "boolean",
       "default": false
+    },
+    "discoveryUri": {
+      "title": "Discovery URI",
+      "description": "OIDC Discovery endpoint URL. Primary input for both public and confidential flows. Authority, publicKeyUrls, and other endpoints are auto-derived from this.",
+      "type": "string"
+    },
+    "emailClaim": {
+      "title": "Email Claim",
+      "description": "JWT claim name containing the user's email address. Set via Test Login. Takes priority over jwtPrincipalClaims fallback but not over jwtPrincipalClaimsMapping.",
+      "type": "string"
     }
   },
   "required": ["provider", "providerName", "jwtPrincipalClaims"],

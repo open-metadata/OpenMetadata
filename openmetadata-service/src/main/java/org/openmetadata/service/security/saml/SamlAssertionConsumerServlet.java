@@ -78,13 +78,25 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
       }
     } else {
       String username;
-      String nameId = auth.getNameId();
-      String email = nameId;
-      if (nameId.contains("@")) {
-        username = nameId.split("@")[0];
+      String email;
+
+      // Priority 1: SAML attribute "email" (case-insensitive)
+      String emailFromAttribute = extractEmailAttribute(auth);
+      if (!nullOrEmpty(emailFromAttribute) && emailFromAttribute.contains("@")) {
+        email = emailFromAttribute;
+        username = email.split("@")[0];
+        LOG.debug("[SAML ACS] Email from 'email' attribute: {}", email);
       } else {
-        username = nameId;
-        email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
+        // Priority 2: NameID (fallback for existing customers)
+        String nameId = auth.getNameId();
+        email = nameId;
+        if (nameId.contains("@")) {
+          username = nameId.split("@")[0];
+        } else {
+          username = nameId;
+          email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
+        }
+        LOG.debug("[SAML ACS] Email from NameID (fallback): {}", email);
       }
 
       // Extract team/department attributes from SAML response (supports multi-valued attributes)
@@ -163,7 +175,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
               "%s?id_token=%s&email=%s&name=%s",
               (nullOrEmpty(redirectUri) ? buildBaseRequestUrl(req) : redirectUri),
               jwtAuthMechanism.getJWTToken(),
-              nameId,
+              email,
               username);
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       resp.sendRedirect(url);
@@ -194,5 +206,19 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     AuthorizerConfiguration authorizerConfiguration =
         SecurityConfigurationManager.getCurrentAuthzConfig();
     return authorizerConfiguration.getAdminPrincipals();
+  }
+
+  private static String extractEmailAttribute(Auth auth) {
+    for (String attrName : List.of("email", "Email", "EMAIL")) {
+      try {
+        Collection<String> values = auth.getAttribute(attrName);
+        if (values != null && !values.isEmpty()) {
+          return values.iterator().next();
+        }
+      } catch (Exception e) {
+        LOG.trace("[SAML ACS] Attribute '{}' not found: {}", attrName, e.getMessage());
+      }
+    }
+    return null;
   }
 }

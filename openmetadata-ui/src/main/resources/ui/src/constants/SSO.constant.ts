@@ -566,44 +566,26 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
 
 // Common field titles
 export const COMMON_FIELD_TITLES = {
-  provider: {
-    'ui:title': 'Provider',
-    'ui:options': { 'data-testid': 'sso-provider-field' },
-  },
-  providerName: {
-    'ui:title': 'Provider Name',
-    'ui:placeholder': 'e.g. My Company SSO',
-  },
-  authority: {
-    'ui:title': 'Authority',
-    'ui:placeholder': 'e.g. https://accounts.google.com',
-  },
+  provider: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  providerName: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
   clientId: COMMON_UI_FIELDS.clientId,
-  callbackUrl: COMMON_UI_FIELDS.callbackUrl,
-  publicKeyUrls: COMMON_UI_FIELDS.publicKeyUrls,
-  tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
-  jwtPrincipalClaims: {
-    'ui:title': 'JWT Principal Claims',
-    'ui:placeholder': 'Enter value (e.g. email, sub, name) and press ENTER',
+  callbackUrl: {
+    'ui:title': 'Callback URL',
+    'ui:readonly': true,
     'ui:help':
-      '⚠️ CRITICAL: Incorrect claims will lock out ALL users including admins! ' +
-      'Order matters - first matching claim is used. ' +
-      'These claims must exist in JWT tokens from your provider. ' +
-      'Default values work for most configurations.',
+      'Copy this URL and register it as a Redirect URI in your Identity Provider.',
   },
-  jwtPrincipalClaimsMapping: {
-    'ui:title': 'JWT Principal Claims Mapping',
-    'ui:placeholder':
-      'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
-  },
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
-    'ui:title': 'Client Type',
-    'ui:widget': 'radio',
-    'ui:options': {
-      inline: true,
-    },
+    'ui:title': 'Authentication Mode',
+    'ui:widget': 'AuthModeWidget',
   },
   secret: COMMON_UI_FIELDS.clientSecret,
 };
