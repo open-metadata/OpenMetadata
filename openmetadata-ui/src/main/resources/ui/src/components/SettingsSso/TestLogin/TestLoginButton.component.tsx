@@ -111,7 +111,7 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     const clientId =
       formData?.clientId ?? formData?.oidcConfiguration?.id ?? '';
     const clientSecret = formData?.oidcConfiguration?.secret ?? '';
-    const scope = formData?.oidcConfiguration?.scope ?? 'openid email profile offline_access';
+    const scope = formData?.oidcConfiguration?.scope ?? 'openid email profile';
 
     if (!discoveryUri || !clientId) {
       setIsLoading(false);
@@ -181,6 +181,10 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       clientSecret,
       scope,
       callbackUrl,
+      prompt: formData?.oidcConfiguration?.prompt ?? '',
+      maxAge: formData?.oidcConfiguration?.maxAge ?? '',
+      clientAuthenticationMethod:
+        formData?.oidcConfiguration?.clientAuthenticationMethod ?? '',
     });
     const initiateUrl = `${window.location.origin}/api/v1/system/config/auth/test-login/initiate?${params.toString()}`;
 

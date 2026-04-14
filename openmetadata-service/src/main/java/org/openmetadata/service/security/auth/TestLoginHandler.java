@@ -22,6 +22,7 @@ import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.http.HTTPRequest;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
@@ -64,6 +65,9 @@ public class TestLoginHandler {
       String clientId = req.getParameter("clientId");
       String clientSecret = req.getParameter("clientSecret");
       String scope = req.getParameter("scope");
+      String prompt = req.getParameter("prompt");
+      String maxAge = req.getParameter("maxAge");
+      String clientAuthMethod = req.getParameter("clientAuthenticationMethod");
 
       if (nullOrEmpty(discoveryUri)) {
         return buildHtmlErrorResponse("Discovery URI is required for Test Login.");
@@ -115,6 +119,8 @@ public class TestLoginHandler {
       session.setAttribute(TEST_LOGIN_CLIENT_SECRET, clientSecret != null ? clientSecret : "");
       session.setAttribute(TEST_LOGIN_DISCOVERY_URI, discoveryUri);
       session.setAttribute(TEST_LOGIN_CALLBACK_URL, callbackUrl);
+      session.setAttribute(
+          "testLoginClientAuthMethod", clientAuthMethod != null ? clientAuthMethod : "");
 
       Map<String, String> params = new HashMap<>();
       params.put(OidcConfiguration.SCOPE, scope);
@@ -123,6 +129,13 @@ public class TestLoginHandler {
       params.put(OidcConfiguration.CLIENT_ID, clientId);
       params.put(OidcConfiguration.REDIRECT_URI, callbackUrl);
       params.put("access_type", "offline");
+
+      if (!nullOrEmpty(prompt)) {
+        params.put(OidcConfiguration.PROMPT, prompt);
+      }
+      if (!nullOrEmpty(maxAge)) {
+        params.put(OidcConfiguration.MAX_AGE, maxAge);
+      }
 
       // Prefix state with "test-login:" so AuthCallbackServlet routes to us
       String state = TEST_LOGIN_STATE_PREFIX + java.util.UUID.randomUUID().toString();
@@ -184,6 +197,7 @@ public class TestLoginHandler {
       String clientSecret = (String) session.getAttribute(TEST_LOGIN_CLIENT_SECRET);
       String discoveryUri = (String) session.getAttribute(TEST_LOGIN_DISCOVERY_URI);
       String callbackUrl = (String) session.getAttribute(TEST_LOGIN_CALLBACK_URL);
+      String clientAuthMethod = (String) session.getAttribute("testLoginClientAuthMethod");
 
       if (nullOrEmpty(clientId) || nullOrEmpty(discoveryUri)) {
         return buildPostMessageResponse(
@@ -203,7 +217,7 @@ public class TestLoginHandler {
       TokenRequest tokenRequest;
       if (!nullOrEmpty(clientSecret)) {
         ClientAuthentication clientAuth =
-            new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
+            buildClientAuthentication(clientId, clientSecret, clientAuthMethod);
         tokenRequest = new TokenRequest(tokenEndpoint, clientAuth, grant);
       } else {
         tokenRequest = new TokenRequest(tokenEndpoint, new ClientID(clientId), grant);
@@ -242,6 +256,7 @@ public class TestLoginHandler {
       session.removeAttribute(TEST_LOGIN_CLIENT_SECRET);
       session.removeAttribute(TEST_LOGIN_DISCOVERY_URI);
       session.removeAttribute(TEST_LOGIN_CALLBACK_URL);
+      session.removeAttribute("testLoginClientAuthMethod");
       LOG.info("[Test Login] Callback successful, {} claims extracted", claims.size());
 
       return buildPostMessageResponse(true, null, result);
@@ -278,6 +293,15 @@ public class TestLoginHandler {
 
       return Map.of("success", false, "error", "LDAP authentication failed: " + e.getMessage());
     }
+  }
+
+  private static ClientAuthentication buildClientAuthentication(
+      String clientId, String clientSecret, String method) {
+    if ("client_secret_post".equals(method)) {
+      return new ClientSecretPost(new ClientID(clientId), new Secret(clientSecret));
+    }
+
+    return new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
   }
 
   private static Map<String, Object> buildTestLoginResult(
