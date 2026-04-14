@@ -296,7 +296,7 @@ export const getDefaultProviderForProtocol = (
 ): AuthProvider => {
   switch (protocol) {
     case 'oidc':
-      return AuthProvider.Google;
+      return AuthProvider.CustomOidc;
     case 'saml':
       return AuthProvider.Saml;
     case 'ldap':
