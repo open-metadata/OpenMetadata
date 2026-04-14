@@ -129,6 +129,7 @@ NOT_COMPUTE = {
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
+    # GEOMETRY has no safe SQA mapping; kept in NOT_COMPUTE
     DataType.GEOMETRY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,

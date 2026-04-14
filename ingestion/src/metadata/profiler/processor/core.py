@@ -463,10 +463,19 @@ class Profiler(Generic[TMetric]):
                 column,
                 self.profiler_interface.table_entity.serviceType,
             )
-            if Metrics.nullCount.value in allowed_metrics:
+            complex_supported_metrics = [
+                Metrics.nullCount.value,
+                Metrics.valuesCount.value,
+                Metrics.distinctCount.value,
+            ]
+            
+            # Keep the MetricFilter chain intact by checking allowed_metrics
+            metrics_to_run = [m for m in complex_supported_metrics if m in allowed_metrics]
+            
+            if metrics_to_run:
                 column_metrics_for_thread_pool.append(
                     ThreadPoolMetrics(
-                        metrics=[Metrics.nullCount.value],
+                        metrics=metrics_to_run,
                         metric_type=MetricTypes.Static,
                         column=column,
                         table=self.table,
