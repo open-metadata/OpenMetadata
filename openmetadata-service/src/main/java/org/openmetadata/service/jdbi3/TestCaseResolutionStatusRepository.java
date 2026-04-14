@@ -279,25 +279,15 @@ public class TestCaseResolutionStatusRepository
   protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
-    // Idempotency: if there's already an open incident task, return its ID
     Task existing =
-        taskRepository.findOpenTaskByEntityAndType(
-            testCase.getFullyQualifiedName(), TaskEntityType.TestCaseResolution);
-    if (existing != null) {
-      return existing.getId();
-    }
-
-    // Also check InProgress tasks (Ack/Assigned stages)
-    existing =
-        taskRepository.findTaskByEntityTypeAndStatus(
+        taskRepository.findTaskByEntityTypeAndStatuses(
             testCase.getFullyQualifiedName(),
             TaskEntityType.TestCaseResolution,
-            TaskEntityStatus.InProgress);
+            TaskRepository.OPEN_TASK_STATUSES);
     if (existing != null) {
       return existing.getId();
     }
 
-    // Create Task immediately — workflow starts via postCreate → triggerWorkflowManagedTask
     return createIncidentTask(testCase, updatedBy);
   }
 

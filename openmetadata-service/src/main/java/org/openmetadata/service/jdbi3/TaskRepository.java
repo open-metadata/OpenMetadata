@@ -92,6 +92,9 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String FIELD_CREATED_BY = "createdBy";
   public static final String FIELD_PAYLOAD = "payload";
 
+  public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
+      List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
+
   public TaskRepository() {
     super(
         COLLECTION_PATH,
@@ -983,28 +986,26 @@ public class TaskRepository extends EntityRepository<Task> {
    * @param taskType The type of task to find
    * @return The task if found, or null
    */
-  public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
+  public Task findTaskByEntityTypeAndStatuses(
+      String entityFqn, TaskEntityType taskType, List<TaskEntityStatus> statuses) {
+    List<String> statusValues = statuses.stream().map(TaskEntityStatus::value).toList();
     String json =
         daoCollection
             .taskDAO()
-            .findByAboutAndTypeAndStatus(
-                entityFqn, taskType.value(), TaskEntityStatus.Open.value());
+            .findByAboutAndTypeAndStatuses(entityFqn, taskType.value(), statusValues);
     if (json == null) {
       return null;
     }
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
   }
 
+  public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
+    return findTaskByEntityTypeAndStatuses(entityFqn, taskType, OPEN_TASK_STATUSES);
+  }
+
   public Task findTaskByEntityTypeAndStatus(
       String entityFqn, TaskEntityType taskType, TaskEntityStatus status) {
-    String json =
-        daoCollection
-            .taskDAO()
-            .findByAboutAndTypeAndStatus(entityFqn, taskType.value(), status.value());
-    if (json == null) {
-      return null;
-    }
-    return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+    return findTaskByEntityTypeAndStatuses(entityFqn, taskType, List.of(status));
   }
 
   /**
