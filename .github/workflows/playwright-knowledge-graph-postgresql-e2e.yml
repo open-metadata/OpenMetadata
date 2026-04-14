@@ -131,6 +131,21 @@ jobs:
           startup-script: "./docker/run_local_docker_rdf.sh"
           ingestion_dependency: "all"
 
+      - name: Wait for Fuseki to be healthy
+        run: |
+          echo "Verifying Fuseki is healthy before running tests..."
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:3030/\$/ping" > /dev/null 2>&1; then
+              echo "Fuseki is healthy"
+              exit 0
+            fi
+            echo "Waiting for Fuseki ($i/30)..."
+            sleep 10
+          done
+          echo "Fuseki failed health check. Container logs:"
+          docker logs openmetadata-fuseki --tail 100
+          exit 1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

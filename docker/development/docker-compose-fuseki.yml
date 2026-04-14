@@ -43,21 +43,23 @@ services:
       - local_app_net
     environment:
       - ADMIN_PASSWORD=admin
-      - JVM_ARGS=-Xmx4g -Xms2g
+      - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xmx1500m -Xms256m}
       - FUSEKI_BASE=/fuseki
     volumes:
       - fuseki-data:/fuseki
     deploy:
       resources:
         limits:
-          memory: 4G
-        reservations:
           memory: 2G
+        reservations:
+          memory: 256m
+    restart: "on-failure:3"
     healthcheck:
       test: "curl -s -f http://localhost:3030/\\$/ping > /dev/null || exit 1"
       interval: 15s
       timeout: 10s
       retries: 20
+      start_period: 60s
     # Create the database directory before starting Fuseki
     entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
 
