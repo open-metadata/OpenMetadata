@@ -7364,7 +7364,6 @@ export interface Threshold {
      */
     rowCountThreshold:   number;
     samplingMethodType?: SamplingMethodType;
-    [property: string]: any;
 }
 
 /**
