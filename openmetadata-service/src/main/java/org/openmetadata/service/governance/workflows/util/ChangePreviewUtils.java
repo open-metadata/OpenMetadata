@@ -46,39 +46,78 @@ public final class ChangePreviewUtils {
 
   public static List<String> extractIdentifiers(Object fieldValue) {
     if (nullOrEmpty(fieldValue)) return List.of();
-    try {
-      JsonValue json = JsonUtils.readJson(fieldValue.toString());
-      if (json.getValueType() == JsonValue.ValueType.ARRAY) {
-        return extractFromArray(json.asJsonArray());
+    if (fieldValue instanceof List<?> list) {
+      List<String> result = new ArrayList<>();
+      for (Object item : list) {
+        result.addAll(extractIdentifiers(item));
       }
-      if (json.getValueType() == JsonValue.ValueType.OBJECT) {
-        return extractFromObject(json.asJsonObject());
-      }
-    } catch (Exception e) {
-      // not JSON — treat as a plain string
+      return result;
     }
-    return List.of(fieldValue.toString().strip());
+    if (fieldValue instanceof Map<?, ?> map) {
+      return extractFromMap(map);
+    }
+    if (fieldValue instanceof String str) {
+      String stripped = str.strip();
+      if (stripped.isEmpty()) return List.of();
+      try {
+        JsonValue json = JsonUtils.readJson(stripped);
+        return extractFromJsonValue(json);
+      } catch (Exception e) {
+        return List.of(stripped);
+      }
+    }
+    String str = fieldValue.toString().strip();
+    return str.isEmpty() ? List.of() : List.of(str);
+  }
+
+  private static List<String> extractFromJsonValue(JsonValue json) {
+    return switch (json.getValueType()) {
+      case ARRAY -> extractFromArray(json.asJsonArray());
+      case OBJECT -> extractFromObject(json.asJsonObject());
+      case STRING -> List.of(((JsonString) json).getString().strip());
+      default -> List.of(json.toString());
+    };
   }
 
   private static List<String> extractFromArray(JsonArray array) {
     List<String> result = new ArrayList<>();
     for (JsonValue item : array) {
-      if (item.getValueType() == JsonValue.ValueType.OBJECT) {
-        result.addAll(extractFromObject(item.asJsonObject()));
-      } else if (item.getValueType() == JsonValue.ValueType.STRING) {
-        result.add(((JsonString) item).getString().strip());
-      }
+      result.addAll(extractFromJsonValue(item));
     }
     return result;
   }
 
   private static List<String> extractFromObject(JsonObject obj) {
     Set<String> keys = obj.keySet();
-    if (keys.contains("tagFQN")) return List.of(obj.getString("tagFQN"));
-    if (keys.contains("fullyQualifiedName")) return List.of(obj.getString("fullyQualifiedName"));
-    if (keys.contains("displayName")) return List.of(obj.getString("displayName"));
-    if (keys.contains("name")) return List.of(obj.getString("name"));
-    return List.of();
+    if (keys.contains("tagFQN")) return List.of(obj.getString("tagFQN").strip());
+    if (keys.contains("fullyQualifiedName"))
+      return List.of(obj.getString("fullyQualifiedName").strip());
+    if (keys.contains("displayName")) return List.of(obj.getString("displayName").strip());
+    if (keys.contains("name")) return List.of(obj.getString("name").strip());
+    List<String> result = new ArrayList<>();
+    for (JsonValue value : obj.values()) {
+      if (value.getValueType() == JsonValue.ValueType.OBJECT) {
+        result.addAll(extractFromObject(value.asJsonObject()));
+      }
+    }
+    return result.isEmpty() ? List.of(obj.toString()) : result;
+  }
+
+  private static List<String> extractFromMap(Map<?, ?> map) {
+    for (String key : List.of("tagFQN", "fullyQualifiedName", "displayName", "name")) {
+      Object val = map.get(key);
+      if (val != null) {
+        String identifier = val.toString().strip();
+        if (!identifier.isEmpty()) return List.of(identifier);
+      }
+    }
+    List<String> result = new ArrayList<>();
+    for (Object val : map.values()) {
+      if (val instanceof Map<?, ?> nested) {
+        result.addAll(extractFromMap(nested));
+      }
+    }
+    return result.isEmpty() ? List.of(JsonUtils.pojoToJson(map)) : result;
   }
 
   private static Map<String, List<String>> fieldEntry(List<String> added, List<String> removed) {

@@ -78,6 +78,50 @@ class ChangePreviewUtilsTest {
     assertEquals(List.of("one", "two"), ChangePreviewUtils.extractIdentifiers(json));
   }
 
+  @Test
+  void extractIdentifiers_listOfTagMaps_returnsAllTagFqns() {
+    List<Map<String, Object>> tags =
+        List.of(
+            Map.of("tagFQN", "PII.Sensitive", "name", "Sensitive"),
+            Map.of("tagFQN", "PersonalData.Personal", "name", "Personal"));
+
+    assertEquals(
+        List.of("PII.Sensitive", "PersonalData.Personal"),
+        ChangePreviewUtils.extractIdentifiers(tags));
+  }
+
+  @Test
+  void extractIdentifiers_listOfOwnerMaps_returnsDisplayNames() {
+    List<Map<String, Object>> owners =
+        List.of(
+            Map.of("displayName", "Aaron Johnson", "name", "aaron.johnson"),
+            Map.of("displayName", "Jane Doe", "name", "jane.doe"));
+
+    assertEquals(
+        List.of("Aaron Johnson", "Jane Doe"), ChangePreviewUtils.extractIdentifiers(owners));
+  }
+
+  @Test
+  void extractIdentifiers_singleReferenceMap_returnsFullyQualifiedName() {
+    Map<String, Object> reference =
+        Map.of("fullyQualifiedName", "Marketing.Glossary1", "displayName", "Glossary 1");
+
+    assertEquals(List.of("Marketing.Glossary1"), ChangePreviewUtils.extractIdentifiers(reference));
+  }
+
+  @Test
+  void extractIdentifiers_singleNameOnlyMap_returnsName() {
+    Map<String, Object> reference = Map.of("name", "myEntity");
+
+    assertEquals(List.of("myEntity"), ChangePreviewUtils.extractIdentifiers(reference));
+  }
+
+  @Test
+  void extractIdentifiers_listOfStrings_returnsAll() {
+    assertEquals(
+        List.of("one", "two"), ChangePreviewUtils.extractIdentifiers(List.of("one", "two")));
+  }
+
   // ---------------------------------------------------------------------------
   // buildChangeMap
   // ---------------------------------------------------------------------------

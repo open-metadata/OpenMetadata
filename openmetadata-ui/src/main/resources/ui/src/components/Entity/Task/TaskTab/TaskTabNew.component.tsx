@@ -159,7 +159,7 @@ const parseProposedChanges = (message: string): ProposedChanges | null => {
     ) {
       return null;
     }
-    const normalized: ProposedChanges = {};
+    const normalized: ProposedChanges = Object.create(null) as ProposedChanges;
     for (const [field, value] of Object.entries(parsed)) {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) {
         continue;
@@ -1169,7 +1169,9 @@ export const TaskTabNew = ({
     setHasAddedComment(false);
   }, [taskThread.id]);
 
-  const proposedChanges = parseProposedChanges(taskThread.message ?? '');
+  const proposedChanges = isTaskGlossaryApproval
+    ? parseProposedChanges(taskThread.message ?? '')
+    : null;
 
   return (
     <Row
