@@ -391,8 +391,9 @@ class QuickSightUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        dashboard_details = DashboardDetail(**MOCK_DASHBOARD_DETAILS)
-        dashboard_details.Version.Charts = mock_data["Version"]["Sheets"]
+        dashboard_details = DashboardDetail(
+            **{**MOCK_DASHBOARD_DETAILS, "Version": mock_data["Version"]}
+        )
         self.quicksight.chart_source_state = set()
         list(self.quicksight.yield_dashboard_chart(dashboard_details))
         assert len(self.quicksight.chart_source_state) == len(
