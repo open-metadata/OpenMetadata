@@ -811,8 +811,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .untilAsserted(
             () -> {
               org.openmetadata.sdk.models.ListParams params =
-                  new org.openmetadata.sdk.models.ListParams()
-                      .withLimit(10);
+                  new org.openmetadata.sdk.models.ListParams().withLimit(10);
               org.openmetadata.sdk.models.ListResponse<?> response =
                   client.testCaseResults().get(fqn, params);
               assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
