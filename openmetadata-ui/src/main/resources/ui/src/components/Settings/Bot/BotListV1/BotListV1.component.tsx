@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, lowerCase } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -38,6 +38,7 @@ import {
   getEntityName,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
+import { filterBotsBySearchTerm } from '../../../../utils/BotsUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
@@ -223,14 +224,7 @@ const BotListV1 = ({
   const handleSearch = (text: string) => {
     setSearchTerm(text);
     if (text) {
-      const normalizeText = lowerCase(text);
-      const matchedData = botUsers.filter(
-        (bot) =>
-          bot.name.includes(normalizeText) ||
-          bot.displayName?.includes(normalizeText) ||
-          bot.description?.includes(normalizeText)
-      );
-      setSearchedData(matchedData);
+      setSearchedData(filterBotsBySearchTerm(botUsers, text));
     } else {
       setSearchedData(botUsers);
     }
