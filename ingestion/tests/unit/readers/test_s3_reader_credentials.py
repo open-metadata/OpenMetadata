@@ -25,7 +25,9 @@ import io
 import boto3
 import fastavro
 import pytest
-from moto import mock_aws
+
+moto = pytest.importorskip("moto", reason="moto not installed")
+mock_aws = moto.mock_aws
 
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
