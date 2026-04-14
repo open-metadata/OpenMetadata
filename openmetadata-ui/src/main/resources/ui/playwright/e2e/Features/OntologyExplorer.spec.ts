@@ -534,9 +534,13 @@ test.describe('Ontology Explorer', () => {
 
       const canvas = page.locator('.ontology-g6-container canvas').first();
       const box = await canvas.boundingBox();
-      if (box) {
-        await clickCanvasAndWaitForPanel(page, box.width / 2, box.height / 2);
-      }
+
+      expect(box).not.toBeNull();
+      await clickCanvasAndWaitForPanel(
+        page,
+        box!.width / 2,
+        box!.height / 2
+      );
 
       await expect(
         page.getByTestId('entity-summary-panel-container')
