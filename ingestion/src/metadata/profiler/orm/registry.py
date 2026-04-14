@@ -270,5 +270,5 @@ def is_blob(_type) -> bool:
 
 def is_complex_supported(_type) -> bool:
     """Return True if column is a complex type that supports
-    limited profiling (nullCount only). Issue #15627."""
+    limited profiling (nullCount and valuesCount). Issue #15627."""
     return _type.__class__.__name__ in COMPLEX_SUPPORTED_TYPES

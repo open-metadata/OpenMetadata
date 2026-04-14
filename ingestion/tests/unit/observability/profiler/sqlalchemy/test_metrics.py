@@ -1303,29 +1303,24 @@ class TestComplexTypeNullCount(TestCase):
             "DataType.SUPER must map to sqlalchemy.JSON",
         )
 
-    def test_geometry_type_maps_to_geography_in_converter(self):
+    def test_geometry_type_does_not_map_in_common_converter(self):
         """
-        Verify DataType.GEOMETRY now maps to SQASGeography in converter.
+        Verify DataType.GEOMETRY does NOT map to any type in CommonMapTypes
+        as it has no safe SQA mapping.
         """
         from metadata.generated.schema.entity.data.table import DataType
-        from metadata.ingestion.source import sqa_types
         from metadata.profiler.orm.converter.common import CommonMapTypes
 
         mapped = CommonMapTypes._TYPE_MAP.get(DataType.GEOMETRY)
-        self.assertIsNotNone(
+        self.assertIsNone(
             mapped,
-            "DataType.GEOMETRY must be mapped — should not fall to UndeterminedType",
-        )
-        self.assertEqual(
-            mapped,
-            sqa_types.SQASGeography,
-            "DataType.GEOMETRY must map to SQASGeography",
+            "DataType.GEOMETRY must NOT be mapped in CommonMapTypes",
         )
 
-    def test_complex_columns_get_null_count_in_thread_pool(self):
+    def test_complex_columns_get_supported_metrics_in_thread_pool(self):
         """
         Verify _prepare_column_metrics() produces ThreadPoolMetrics
-        entries with nullCount for complex columns.
+        entries with nullCount and valuesCount for complex columns.
         Uses mocking — does not require a live database.
         """
         from unittest.mock import MagicMock, PropertyMock
@@ -1354,7 +1349,8 @@ class TestComplexTypeNullCount(TestCase):
         mock_profiler.table = MagicMock()
         mock_profiler.metric_filter = MagicMock()
         mock_profiler.metric_filter.get_column_metrics.return_value = [
-            Metrics.nullCount.value
+            Metrics.nullCount.value,
+            Metrics.valuesCount.value,
         ]
         mock_profiler.profiler_interface = MagicMock()
         mock_profiler.get_custom_metrics.return_value = None
@@ -1376,14 +1372,16 @@ class TestComplexTypeNullCount(TestCase):
             len(complex_entries) > 0,
             "JSON column must have at least one ThreadPoolMetrics entry",
         )
-        # Verify nullCount is in the metrics list
-        null_count_entries = [
+        # Verify nullCount and valuesCount are in the metrics list
+        supported_metrics_entries = [
             r
             for r in complex_entries
-            if isinstance(r.metrics, list) and Metrics.nullCount.value in r.metrics
+            if isinstance(r.metrics, list)
+            and Metrics.nullCount.value in r.metrics
+            and Metrics.valuesCount.value in r.metrics
         ]
         self.assertTrue(
-            len(null_count_entries) > 0,
-            "JSON column must have nullCount in its ThreadPoolMetrics",
+            len(supported_metrics_entries) > 0,
+            "JSON column must have nullCount and valuesCount in its ThreadPoolMetrics",
         )
 
