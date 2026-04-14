@@ -443,9 +443,19 @@ export const checkDomainDisplayName = async (
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
-  await expect(page.getByTestId('assets').getByTestId('count')).toContainText(
-    count.toString()
-  );
+  await expect
+    .poll(
+      async () => {
+        const text = await page
+          .getByTestId('assets')
+          .getByTestId('count')
+          .textContent();
+
+        return text?.trim();
+      },
+      { timeout: 30_000, intervals: [500, 1_000, 2_000] }
+    )
+    .toBe(count.toString());
 };
 
 export const verifyDomainOnAssetPages = async (
