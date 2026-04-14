@@ -133,7 +133,13 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getTransitionMetadata()))
             .build();
 
-    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
+    // Force sync execution on the approval subprocess so the entry path
+    // (SetApprovalAssigneesImpl → user task creation → CreateTaskImpl listener)
+    // runs on the caller's thread inside the current transaction. Without this
+    // the async job executor picks up the continuation after POST /resolve
+    // returns, which races with client reads and subsequent writes.
+    SubProcess subProcess =
+        new SubProcessBuilder().id(subProcessId).setAsync(false).exclusive(true).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
@@ -142,10 +148,16 @@ public class UserApprovalTask implements NodeInterface {
         getSetAssigneesVariableServiceTask(
             subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
 
+    // ExclusiveGatewayBuilder defaults to async=true, which pushes the rest of
+    // the user task subprocess (including the CreateTaskImpl task listener)
+    // onto Flowable's async executor. For the incident workflow we want the
+    // whole entry path to run on the caller's thread so the POST /resolve
+    // response reflects the new stage and assignees. Explicitly turn async off.
     ExclusiveGateway hasAssigneesGateway =
         new ExclusiveGatewayBuilder()
             .id(getFlowableElementId(subProcessId, "hasAssigneesGateway"))
             .name("Check if has assignees")
+            .setAsync(false)
             .build();
 
     UserTask userTask =
@@ -249,6 +261,7 @@ public class UserApprovalTask implements NodeInterface {
         .addFieldExtension(assigneesExpr)
         .addFieldExtension(assigneesVarNameExpr)
         .addFieldExtension(inputNamespaceMapExpr)
+        .setAsync(false)
         .build();
   }
 

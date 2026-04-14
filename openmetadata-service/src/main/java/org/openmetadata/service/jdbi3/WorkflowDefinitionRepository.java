@@ -293,13 +293,33 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
 
+    // Build the set of conditional back-edge targets. Conditional edges (those with a condition
+    // field) are allowed to form cycles — they only fire when the RESULT_VARIABLE matches,
+    // and the node always has other outgoing edges that lead toward an end node.
+    // Self-loops and back-edges without conditions are unconditional cycles and still rejected.
+    Set<String> conditionalBackEdgeTargets = new java.util.HashSet<>();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      if (edge.getCondition() != null && !edge.getCondition().isEmpty()) {
+        conditionalBackEdgeTargets.add(edge.getFrom() + "->" + edge.getTo());
+      }
+    }
+
+    // Build an acyclic projection of the graph by excluding conditional back-edges.
+    // A conditional edge is a "back-edge" if removing it would break the cycle.
+    // We detect this by running DFS on the full graph but skipping edges that are conditional
+    // when they would close a cycle (i.e., target is in the recursion stack).
+    Map<String, List<String>> acyclicOutgoing = new java.util.HashMap<>();
+    for (String nodeId : allNodeIds) {
+      acyclicOutgoing.put(nodeId, new ArrayList<>(outgoingEdges.get(nodeId)));
+    }
+
     // Validation 2 & 3: Cycle detection and orphaned nodes check using DFS
     String startNode = startNodes.iterator().next();
     Set<String> visited = new java.util.HashSet<>();
     Set<String> recursionStack = new java.util.HashSet<>();
 
-    // Check for cycles and collect reachable nodes
-    if (hasCycleDFS(startNode, outgoingEdges, visited, recursionStack)) {
+    if (hasCycleDFS(
+        startNode, outgoingEdges, conditionalBackEdgeTargets, visited, recursionStack)) {
       throw BadRequestException.of(
           String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
     }
@@ -317,17 +337,20 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
-   * Depth-First Search to detect cycles in directed graph.
-   * Returns true if a cycle is detected.
+   * Depth-First Search to detect cycles in directed graph. Conditional edges (those with a
+   * condition in the workflow definition) are allowed to form back-edges — they only fire when the
+   * result variable matches the condition, so they cannot create unconditional infinite loops.
    *
    * @param node Current node being visited
    * @param adjacencyList Graph representation
+   * @param conditionalEdges Set of "from->to" strings for edges that have conditions
    * @param visited Set of completely processed nodes (black nodes)
    * @param recursionStack Set of nodes currently in the DFS path (gray nodes)
    */
   private boolean hasCycleDFS(
       String node,
       Map<String, List<String>> adjacencyList,
+      Set<String> conditionalEdges,
       Set<String> visited,
       Set<String> recursionStack) {
 
@@ -349,7 +372,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     List<String> neighbors = adjacencyList.get(node);
     if (neighbors != null) {
       for (String neighbor : neighbors) {
-        if (hasCycleDFS(neighbor, adjacencyList, visited, recursionStack)) {
+        // Skip conditional edges that would close a cycle — these are guarded by
+        // edge conditions and cannot create unconditional infinite loops
+        if (recursionStack.contains(neighbor)
+            && conditionalEdges.contains(node + "->" + neighbor)) {
+          continue;
+        }
+        if (hasCycleDFS(neighbor, adjacencyList, conditionalEdges, visited, recursionStack)) {
           return true;
         }
       }

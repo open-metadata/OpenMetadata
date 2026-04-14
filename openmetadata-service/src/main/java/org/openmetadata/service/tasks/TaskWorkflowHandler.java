@@ -91,8 +91,11 @@ public class TaskWorkflowHandler {
    * 5. If threshold not met, task stays Open waiting for more approvals
    *
    * @param task The task to resolve
-   * @param approved Whether the task is approved (true) or rejected (false)
+   * @param transitionId ID of the transition to follow (from availableTransitions)
+   * @param requestedResolutionType The requested resolution type (Approved, Rejected, etc.)
    * @param newValue Optional new value to apply (for update tasks)
+   * @param resolvedPayload Optional structured payload for the resolution
+   * @param comment Optional comment from the resolver
    * @param user The user resolving the task
    * @return The updated task. Workflow-managed tasks may remain open while waiting for more
    *     approvals.
@@ -103,6 +106,7 @@ public class TaskWorkflowHandler {
       TaskResolutionType requestedResolutionType,
       String newValue,
       Object resolvedPayload,
+      String comment,
       String user) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
@@ -128,10 +132,17 @@ public class TaskWorkflowHandler {
           selectedTransition,
           newValue,
           resolvedPayload,
+          comment,
           user);
     } else {
       return resolveStandaloneTask(
-          task, effectiveResolutionType, selectedTransition, newValue, resolvedPayload, user);
+          task,
+          effectiveResolutionType,
+          selectedTransition,
+          newValue,
+          resolvedPayload,
+          comment,
+          user);
     }
   }
 
@@ -145,11 +156,11 @@ public class TaskWorkflowHandler {
       TaskAvailableTransition selectedTransition,
       String newValue,
       Object resolvedPayload,
+      String comment,
       String user) {
     UUID taskId = task.getId();
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
 
-    // Build workflow variables
     Map<String, Object> variables = new HashMap<>();
     variables.put(RESULT_VARIABLE, resolveWorkflowResult(task, transitionId, resolutionType));
     variables.put(UPDATED_BY_VARIABLE, user);
@@ -163,6 +174,22 @@ public class TaskWorkflowHandler {
       variables.put("payload", serializeWorkflowVariable(resolvedPayload));
     }
 
+    // If the caller supplied explicit assignees via the resolve payload, set
+    // taskAssignees at process instance scope with its raw name — matching how
+    // TaskWorkflowLifecycleResolver.buildWorkflowStartVariables stores it at
+    // workflow start. This is read by SetApprovalAssigneesImpl via
+    // execution.getVariable("taskAssignees"). We must NOT push this through
+    // transformToNodeVariables: that prefixes every key with the source stage
+    // name, producing e.g. "AckStage_taskAssignees" which nobody reads.
+    //
+    // Known limitation: a single global variable works for the current
+    // sequential incident workflow but would collide with parallel tasks.
+    List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+    if (payloadAssignees != null) {
+      workflowHandler.setProcessVariable(
+          taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
+    }
+
     // Resolve in Flowable workflow
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
@@ -170,6 +197,12 @@ public class TaskWorkflowHandler {
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
+        if (resolutionType == null) {
+          throw new IllegalStateException(
+              String.format(
+                  "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
+                  transitionId, taskId));
+        }
         if (task.getStatus() != TaskEntityStatus.Open
             && task.getStatus() != TaskEntityStatus.InProgress) {
           throw new IllegalStateException(
@@ -179,12 +212,22 @@ public class TaskWorkflowHandler {
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
             taskId);
         return applyTaskResolution(
-            task, resolutionType, selectedTransition, newValue, resolvedPayload, user);
+            task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
       }
       throw new IllegalStateException(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+    }
+
+    // Non-terminal transition: the next stage's CreateTaskImpl already updated the Task
+    // entity with the correct stageId, status, and availableTransitions. No resolution needed.
+    if (resolutionType == null) {
+      LOG.info(
+          "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
+          transitionId,
+          taskId);
+      return refreshTask(taskId);
     }
 
     // Check if multi-approval task is still waiting for more votes
@@ -197,7 +240,7 @@ public class TaskWorkflowHandler {
 
     // Task threshold met, apply resolution
     return applyTaskResolution(
-        task, resolutionType, selectedTransition, newValue, resolvedPayload, user);
+        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
   }
 
   /**
@@ -209,9 +252,10 @@ public class TaskWorkflowHandler {
       TaskAvailableTransition selectedTransition,
       String newValue,
       Object resolvedPayload,
+      String comment,
       String user) {
     return applyTaskResolution(
-        task, resolutionType, selectedTransition, newValue, resolvedPayload, user);
+        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
   }
 
   /**
@@ -223,6 +267,7 @@ public class TaskWorkflowHandler {
       TaskAvailableTransition selectedTransition,
       String newValue,
       Object resolvedPayload,
+      String comment,
       String user) {
     UUID taskId = task.getId();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
@@ -252,7 +297,6 @@ public class TaskWorkflowHandler {
           task.getAbout() != null);
     }
 
-    // Build resolution
     EntityReference resolvedByRef =
         Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED);
 
@@ -261,7 +305,9 @@ public class TaskWorkflowHandler {
             .withType(resolutionType)
             .withResolvedBy(resolvedByRef)
             .withResolvedAt(System.currentTimeMillis())
-            .withNewValue(newValue);
+            .withNewValue(newValue)
+            .withComment(comment)
+            .withPayload(resolvedPayload);
 
     if (selectedTransition != null) {
       task.setWorkflowStageId(selectedTransition.getTargetStageId());
@@ -269,7 +315,6 @@ public class TaskWorkflowHandler {
       task.setAvailableTransitions(List.of());
     }
 
-    // Update task status
     task = taskRepository.resolveTask(task, resolution, user);
 
     LOG.info(
@@ -1118,7 +1163,7 @@ public class TaskWorkflowHandler {
         case Completed -> TaskResolutionType.Completed;
         case Cancelled -> TaskResolutionType.Cancelled;
         case Failed -> TaskResolutionType.TimedOut;
-        default -> TaskResolutionType.Completed;
+        case Open, InProgress, Pending -> null;
       };
     }
 
@@ -1181,5 +1226,26 @@ public class TaskWorkflowHandler {
       return value;
     }
     return JsonUtils.pojoToJson(value);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<EntityReference> extractAssigneesFromPayload(Object payload) {
+    if (payload == null) {
+      return null;
+    }
+    try {
+      Map<String, Object> payloadMap = JsonUtils.convertValue(payload, Map.class);
+      if (payloadMap == null) {
+        return null;
+      }
+      Object assigneesObj = payloadMap.get("assignees");
+      if (assigneesObj == null) {
+        return null;
+      }
+      return JsonUtils.convertValue(assigneesObj, new TypeReference<List<EntityReference>>() {});
+    } catch (Exception e) {
+      LOG.warn("Failed to extract assignees from resolve payload: {}", e.getMessage());
+      return null;
+    }
   }
 }

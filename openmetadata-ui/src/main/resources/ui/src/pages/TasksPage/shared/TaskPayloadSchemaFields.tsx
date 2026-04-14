@@ -85,6 +85,11 @@ const TaskPayloadSchemaFields = ({
     return [...ordered, ...remaining];
   }, [properties, uiSchema]);
 
+  const requiredFields = useMemo(
+    () => new Set(Array.isArray(schema?.required) ? schema.required : []),
+    [schema]
+  );
+
   const hiddenFields = useMemo(
     () =>
       new Set(
@@ -327,7 +332,15 @@ const TaskPayloadSchemaFields = ({
           }
 
           return (
-            <Form.Item key={fieldName} label={`${label}:`}>
+            <Form.Item
+              key={fieldName}
+              label={`${label}:`}
+              required={requiredFields.has(fieldName)}
+              rules={
+                requiredFields.has(fieldName)
+                  ? [{ required: true, message: `${label} is required` }]
+                  : undefined
+              }>
               <Select
                 options={fieldSchema.enum.map((value) => ({
                   label: value,
@@ -395,7 +408,15 @@ const TaskPayloadSchemaFields = ({
           }
 
           return (
-            <Form.Item key={fieldName} label={`${label}:`}>
+            <Form.Item
+              key={fieldName}
+              label={`${label}:`}
+              required={requiredFields.has(fieldName)}
+              rules={
+                requiredFields.has(fieldName)
+                  ? [{ required: true, message: `${label} is required` }]
+                  : undefined
+              }>
               <Input.TextArea
                 autoSize={{ minRows: 4, maxRows: 10 }}
                 value={String(getFieldValue(fieldName, '') ?? '')}

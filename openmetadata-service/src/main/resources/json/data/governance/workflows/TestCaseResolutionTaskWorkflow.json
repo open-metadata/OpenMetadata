@@ -2,7 +2,7 @@
   "name": "TestCaseResolutionTaskWorkflow",
   "fullyQualifiedName": "TestCaseResolutionTaskWorkflow",
   "displayName": "Test Case Resolution Task Workflow",
-  "description": "Default workflow-driven lifecycle for test case resolution tasks.",
+  "description": "Default workflow-driven lifecycle for test case resolution tasks. Stages mirror the incident manager flow: New, Acknowledged, Assigned.",
   "config": {
     "storeStageStatus": true
   },
@@ -21,8 +21,8 @@
     {
       "type": "userTask",
       "subType": "userApprovalTask",
-      "name": "OpenStage",
-      "displayName": "Open",
+      "name": "NewStage",
+      "displayName": "New",
       "config": {
         "assignees": {
           "addReviewers": true,
@@ -31,104 +31,30 @@
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1,
-        "stageId": "open",
-        "stageDisplayName": "Open",
+        "stageId": "new",
+        "stageDisplayName": "New",
         "taskStatus": "Open",
         "assigneeStrategy": "owners-and-assignees",
         "transitionMetadata": [
           {
-            "id": "pending",
-            "label": "Move to Pending",
-            "targetStageId": "pending",
-            "targetTaskStatus": "Pending",
-            "formRef": "pending"
+            "id": "ack",
+            "label": "Acknowledge",
+            "targetStageId": "ack",
+            "targetTaskStatus": "InProgress"
           },
           {
-            "id": "startProgress",
-            "label": "Start Progress",
-            "targetStageId": "inProgress",
-            "targetTaskStatus": "InProgress",
-            "formRef": "startProgress"
-          }
-        ]
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "userTask",
-      "subType": "userApprovalTask",
-      "name": "PendingStage",
-      "displayName": "Pending",
-      "config": {
-        "assignees": {
-          "addReviewers": true,
-          "addOwners": true,
-          "candidates": []
-        },
-        "approvalThreshold": 1,
-        "rejectionThreshold": 1,
-        "stageId": "pending",
-        "stageDisplayName": "Pending",
-        "taskStatus": "Pending",
-        "assigneeStrategy": "owners-and-assignees",
-        "transitionMetadata": [
-          {
-            "id": "startProgress",
-            "label": "Start Progress",
-            "targetStageId": "inProgress",
-            "targetTaskStatus": "InProgress",
-            "formRef": "startProgress"
+            "id": "assign",
+            "label": "Assign",
+            "targetStageId": "assigned",
+            "targetTaskStatus": "InProgress"
           },
-          {
-            "id": "close",
-            "label": "Close",
-            "targetStageId": "closed",
-            "targetTaskStatus": "Completed",
-            "resolutionType": "Completed",
-            "formRef": "close",
-            "requiresComment": true
-          }
-        ]
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "userTask",
-      "subType": "userApprovalTask",
-      "name": "InProgressStage",
-      "displayName": "In Progress",
-      "config": {
-        "assignees": {
-          "addReviewers": true,
-          "addOwners": true,
-          "candidates": []
-        },
-        "approvalThreshold": 1,
-        "rejectionThreshold": 1,
-        "stageId": "inProgress",
-        "stageDisplayName": "In Progress",
-        "taskStatus": "InProgress",
-        "assigneeStrategy": "owners-and-assignees",
-        "transitionMetadata": [
           {
             "id": "resolve",
             "label": "Resolve",
             "targetStageId": "resolved",
             "targetTaskStatus": "Completed",
             "resolutionType": "Completed",
-            "formRef": "resolve"
-          },
-          {
-            "id": "close",
-            "label": "Close",
-            "targetStageId": "closed",
-            "targetTaskStatus": "Completed",
-            "resolutionType": "Completed",
-            "formRef": "close",
+            "formRef": "resolve",
             "requiresComment": true
           }
         ]
@@ -140,8 +66,8 @@
     {
       "type": "userTask",
       "subType": "userApprovalTask",
-      "name": "ResolvedStage",
-      "displayName": "Resolved",
+      "name": "AckStage",
+      "displayName": "Acknowledged",
       "config": {
         "assignees": {
           "addReviewers": true,
@@ -150,18 +76,69 @@
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1,
-        "stageId": "resolved",
-        "stageDisplayName": "Resolved",
-        "taskStatus": "Completed",
+        "stageId": "ack",
+        "stageDisplayName": "Acknowledged",
+        "taskStatus": "InProgress",
         "assigneeStrategy": "owners-and-assignees",
         "transitionMetadata": [
           {
-            "id": "close",
-            "label": "Close",
-            "targetStageId": "closed",
+            "id": "new",
+            "label": "New",
+            "targetStageId": "new",
+            "targetTaskStatus": "Open"
+          },
+          {
+            "id": "assign",
+            "label": "Assign",
+            "targetStageId": "assigned",
+            "targetTaskStatus": "InProgress"
+          },
+          {
+            "id": "resolve",
+            "label": "Resolve",
+            "targetStageId": "resolved",
             "targetTaskStatus": "Completed",
             "resolutionType": "Completed",
-            "formRef": "close",
+            "formRef": "resolve",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "AssignedStage",
+      "displayName": "Assigned",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "assigned",
+        "stageDisplayName": "Assigned",
+        "taskStatus": "InProgress",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "reassign",
+            "label": "Reassign",
+            "targetStageId": "assigned",
+            "targetTaskStatus": "InProgress"
+          },
+          {
+            "id": "resolve",
+            "label": "Resolve",
+            "targetStageId": "resolved",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "resolve",
             "requiresComment": true
           }
         ]
@@ -173,49 +150,54 @@
     {
       "type": "endEvent",
       "subType": "endEvent",
-      "name": "ClosedEnd",
-      "displayName": "Closed"
+      "name": "ResolvedEnd",
+      "displayName": "Resolved"
     }
   ],
   "edges": [
     {
       "from": "IncidentStart",
-      "to": "OpenStage"
+      "to": "NewStage"
     },
     {
-      "from": "OpenStage",
-      "to": "PendingStage",
-      "condition": "pending"
+      "from": "NewStage",
+      "to": "AckStage",
+      "condition": "ack"
     },
     {
-      "from": "OpenStage",
-      "to": "InProgressStage",
-      "condition": "startProgress"
+      "from": "NewStage",
+      "to": "AssignedStage",
+      "condition": "assign"
     },
     {
-      "from": "PendingStage",
-      "to": "InProgressStage",
-      "condition": "startProgress"
-    },
-    {
-      "from": "PendingStage",
-      "to": "ClosedEnd",
-      "condition": "close"
-    },
-    {
-      "from": "InProgressStage",
-      "to": "ResolvedStage",
+      "from": "NewStage",
+      "to": "ResolvedEnd",
       "condition": "resolve"
     },
     {
-      "from": "InProgressStage",
-      "to": "ClosedEnd",
-      "condition": "close"
+      "from": "AckStage",
+      "to": "NewStage",
+      "condition": "new"
     },
     {
-      "from": "ResolvedStage",
-      "to": "ClosedEnd",
-      "condition": "close"
+      "from": "AckStage",
+      "to": "AssignedStage",
+      "condition": "assign"
+    },
+    {
+      "from": "AckStage",
+      "to": "ResolvedEnd",
+      "condition": "resolve"
+    },
+    {
+      "from": "AssignedStage",
+      "to": "AssignedStage",
+      "condition": "reassign"
+    },
+    {
+      "from": "AssignedStage",
+      "to": "ResolvedEnd",
+      "condition": "resolve"
     }
   ]
 }

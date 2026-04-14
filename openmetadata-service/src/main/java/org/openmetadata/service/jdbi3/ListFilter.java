@@ -950,7 +950,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (statusGroup != null) {
       String column = tableName == null ? "status" : tableName + ".status";
       if ("open".equalsIgnoreCase(statusGroup)) {
-        return String.format("%s IN ('Open', 'InProgress')", column);
+        return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
       } else if ("closed".equalsIgnoreCase(statusGroup)) {
         return String.format(
             "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed')", column);

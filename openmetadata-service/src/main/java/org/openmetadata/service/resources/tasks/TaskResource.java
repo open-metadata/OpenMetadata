@@ -788,6 +788,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                 task, resolveTask.getResolutionType());
     String newValue = resolveTask.getNewValue();
     Object resolvedPayload = resolveTask.getPayload();
+    String comment = resolveTask.getComment();
 
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -796,6 +797,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             resolveTask.getResolutionType(),
             newValue,
             resolvedPayload,
+            comment,
             userName);
     return Response.ok(resolvedTask).build();
   }
@@ -1044,6 +1046,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             TaskResolutionType.Approved,
             null,
             null,
+            null,
             userName);
     return Response.ok(resolvedTask).build();
   }
@@ -1144,6 +1147,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             TaskResolutionType.Approved,
             null,
             null,
+            comment,
             userName);
       }
       case Reject -> {
@@ -1154,6 +1158,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             TaskResolutionType.Rejected,
             null,
             null,
+            comment,
             userName);
       }
       case Assign -> {

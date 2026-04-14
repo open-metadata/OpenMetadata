@@ -577,6 +577,16 @@ const ensureTransitionCommentFields = (
   };
 };
 
+const getTransitionRequiresComment = (
+  transitionConfig: JsonSchemaObject | undefined,
+  transition?: Pick<TaskAvailableTransition, 'requiresComment'>
+): boolean =>
+  Boolean(
+    transition?.requiresComment ||
+      (transitionConfig as Record<string, unknown> | undefined)
+        ?.requiresComment
+  );
+
 export const getTaskTransitionFormSchema = (
   taskFormSchema?: TaskFormSchema,
   transition?: Pick<
@@ -585,14 +595,18 @@ export const getTaskTransitionFormSchema = (
   >
 ) => {
   const transitionConfig = getTransitionFormConfig(taskFormSchema, transition);
+  // Only fall back to the global task form when the transition explicitly
+  // declares a formRef. Transitions without formRef (e.g. ack, assign) don't
+  // need a form — falling back to the global resolve form would wrongly show
+  // root-cause/resolution fields for every action.
   const transitionSchema =
     (transitionConfig?.formSchema as JsonSchemaObject | undefined) ??
-    taskFormSchema?.formSchema;
+    (transition?.formRef ? taskFormSchema?.formSchema : undefined);
 
   return ensureTransitionCommentFields(
     transitionSchema,
     undefined,
-    transition?.requiresComment
+    getTransitionRequiresComment(transitionConfig, transition)
   ).formSchema;
 };
 
@@ -606,12 +620,12 @@ export const getTaskTransitionUiSchema = (
   const transitionConfig = getTransitionFormConfig(taskFormSchema, transition);
   const transitionUiSchema =
     (transitionConfig?.uiSchema as JsonSchemaObject | undefined) ??
-    taskFormSchema?.uiSchema;
+    (transition?.formRef ? taskFormSchema?.uiSchema : undefined);
 
   return ensureTransitionCommentFields(
     undefined,
     transitionUiSchema,
-    transition?.requiresComment
+    getTransitionRequiresComment(transitionConfig, transition)
   ).uiSchema;
 };
 

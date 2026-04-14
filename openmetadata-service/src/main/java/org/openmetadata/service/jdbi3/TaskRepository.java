@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -92,6 +93,9 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String FIELD_RESOLUTION = "resolution";
   public static final String FIELD_CREATED_BY = "createdBy";
   public static final String FIELD_PAYLOAD = "payload";
+
+  public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
+      List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
   public TaskRepository() {
     super(
@@ -728,8 +732,11 @@ public class TaskRepository extends EntityRepository<Task> {
    * For workflow-managed tasks, it coordinates with WorkflowHandler for multi-approval.
    *
    * @param task The task to resolve
-   * @param approved Whether the task is approved (true) or rejected (false)
+   * @param transitionId ID of the transition to follow (from availableTransitions)
+   * @param resolutionType The resolution type (Approved, Rejected, etc.)
    * @param newValue Optional new value to apply (for update tasks)
+   * @param resolvedPayload Optional structured payload for the resolution
+   * @param comment Optional comment from the resolver
    * @param user The user resolving the task
    * @return The updated task, or null if still waiting for more approvals
    */
@@ -739,10 +746,11 @@ public class TaskRepository extends EntityRepository<Task> {
       TaskResolutionType resolutionType,
       String newValue,
       Object resolvedPayload,
+      String comment,
       String user) {
     validateResolutionPayloadAgainstFormSchema(task, transitionId, resolvedPayload, newValue);
     return TaskWorkflowHandler.getInstance()
-        .resolveTask(task, transitionId, resolutionType, newValue, resolvedPayload, user);
+        .resolveTask(task, transitionId, resolutionType, newValue, resolvedPayload, comment, user);
   }
 
   private void validateResolutionPayloadAgainstFormSchema(
@@ -971,6 +979,12 @@ public class TaskRepository extends EntityRepository<Task> {
       throw new IllegalArgumentException("Resolution cannot be null");
     }
 
+    // Read the committed state BEFORE mutating the task so postUpdate gets a
+    // meaningful (original, updated) pair. The `task` argument is the caller's
+    // in-memory copy which may already have staged fields (e.g., workflowStageId)
+    // set by applyTaskResolution, so we can't use it as the pre-image.
+    Task original = get(null, task.getId(), getFields("*"));
+
     TaskEntityStatus newStatus = mapResolutionToStatus(resolution.getType());
     task.setStatus(newStatus);
     task.setResolution(resolution);
@@ -978,6 +992,14 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setUpdatedAt(System.currentTimeMillis());
 
     storeEntity(task, true);
+
+    // storeEntity is the raw persistence path and deliberately skips the full
+    // update pipeline. Invoke postUpdate explicitly so lifecycle hooks fire
+    // consistently with every other task-update path (PATCH, workflow-driven
+    // CreateTaskImpl updates, etc.). This is what allows IncidentTcrsSyncHandler
+    // — and any future postUpdate handler — to see terminal resolutions.
+    postUpdate(original, task);
+
     return task;
   }
 
@@ -1004,16 +1026,26 @@ public class TaskRepository extends EntityRepository<Task> {
    * @param taskType The type of task to find
    * @return The task if found, or null
    */
-  public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
+  public Task findTaskByEntityTypeAndStatuses(
+      String entityFqn, TaskEntityType taskType, List<TaskEntityStatus> statuses) {
+    List<String> statusValues = statuses.stream().map(TaskEntityStatus::value).toList();
     String json =
         daoCollection
             .taskDAO()
-            .findByAboutAndTypeAndStatus(
-                entityFqn, taskType.value(), TaskEntityStatus.Open.value());
+            .findByAboutAndTypeAndStatuses(entityFqn, taskType.value(), statusValues);
     if (json == null) {
       return null;
     }
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+  }
+
+  public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
+    return findTaskByEntityTypeAndStatuses(entityFqn, taskType, OPEN_TASK_STATUSES);
+  }
+
+  public Task findTaskByEntityTypeAndStatus(
+      String entityFqn, TaskEntityType taskType, TaskEntityStatus status) {
+    return findTaskByEntityTypeAndStatuses(entityFqn, taskType, List.of(status));
   }
 
   /**
@@ -1124,11 +1156,13 @@ public class TaskRepository extends EntityRepository<Task> {
   protected void postCreate(Task entity) {
     super.postCreate(entity);
     triggerWorkflowManagedTask(entity);
+    IncidentTcrsSyncHandler.handleTaskCreate(entity);
   }
 
   @Override
   protected void postUpdate(Task original, Task updated) {
     super.postUpdate(original, updated);
+    IncidentTcrsSyncHandler.handleTaskUpdate(original, updated);
   }
 
   private void initializeWorkflowManagedTask(Task task, boolean update) {
@@ -1330,6 +1364,7 @@ public class TaskRepository extends EntityRepository<Task> {
       updatePriority();
       updatePayload();
       updateResolution();
+      updateWorkflowFields();
     }
 
     private void updateAssignees() {
@@ -1479,6 +1514,20 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateResolution() {
       recordChange(FIELD_RESOLUTION, original.getResolution(), updated.getResolution());
+    }
+
+    private void updateWorkflowFields() {
+      recordChange("workflowStageId", original.getWorkflowStageId(), updated.getWorkflowStageId());
+      recordChange(
+          "workflowStageDisplayName",
+          original.getWorkflowStageDisplayName(),
+          updated.getWorkflowStageDisplayName());
+      recordChange(
+          "workflowInstanceId", original.getWorkflowInstanceId(), updated.getWorkflowInstanceId());
+      recordChange(
+          "availableTransitions",
+          original.getAvailableTransitions(),
+          updated.getAvailableTransitions());
     }
   }
 }

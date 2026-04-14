@@ -22,7 +22,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { Task, TaskEntityStatus } from '../../../../rest/tasksAPI';
+import { getTaskCounts, Task, TaskEntityStatus } from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -51,19 +51,43 @@ const TestCaseIncidentTab = () => {
     rootMargin: '0px 0px 2px 0px',
   });
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
+  const [openTasksCount, setOpenTasksCount] = useState(0);
+  const [closedTasksCount, setClosedTasksCount] = useState(0);
+
+  const statusGroup = taskFilter === 'open' ? 'open' : 'closed';
+
+  const fetchCounts = useCallback(async () => {
+    if (!decodedFqn) {
+      return;
+    }
+    try {
+      const counts = await getTaskCounts({ aboutEntity: decodedFqn });
+      setOpenTasksCount(counts.open ?? 0);
+      setClosedTasksCount(counts.completed ?? 0);
+    } catch {
+      // Badge counts are a UI affordance; don't block on failure.
+    }
+  }, [decodedFqn]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
-      getTaskData(undefined, after, EntityType.TEST_CASE, decodedFqn);
+      getTaskData(
+        undefined,
+        after,
+        EntityType.TEST_CASE,
+        decodedFqn,
+        statusGroup as 'open' | 'closed'
+      );
     },
-    [decodedFqn, getTaskData]
+    [decodedFqn, getTaskData, statusGroup]
   );
 
   useEffect(() => {
     if (decodedFqn) {
       handleFeedFetchFromFeedList();
+      fetchCounts();
     }
-  }, [decodedFqn, handleFeedFetchFromFeedList]);
+  }, [decodedFqn, handleFeedFetchFromFeedList, fetchCounts]);
 
   useEffect(() => {
     if (decodedFqn && isInView && entityPaging.after && !loading) {
@@ -82,38 +106,12 @@ const TestCaseIncidentTab = () => {
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) =>
-      taskFilter === 'open'
-        ? task.status === TaskEntityStatus.Open
-        : [
-            TaskEntityStatus.Completed,
-            TaskEntityStatus.Cancelled,
-            TaskEntityStatus.Rejected,
-          ].includes(task.status)
-    );
-  }, [tasks, taskFilter]);
-
-  const [openTasksCount, closedTasksCount] = useMemo(() => {
-    return tasks.reduce(
-      (acc, curr) => {
-        if (curr.status === TaskEntityStatus.Open) {
-          acc[0] = acc[0] + 1;
-        } else {
-          acc[1] = acc[1] + 1;
-        }
-
-        return acc;
-      },
-      [0, 0]
-    );
-  }, [tasks]);
-
   const handleUpdateTaskFilter = (filter: TaskFilter) => {
     setTaskFilter(filter);
   };
 
   const handleAfterTaskClose = () => {
+    fetchCounts();
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter('close');
   };
@@ -163,7 +161,7 @@ const TestCaseIncidentTab = () => {
           emptyPlaceholderText={t('message.no-tasks-assigned')}
           isLoading={false}
           selectedTask={selectedTask}
-          taskList={filteredTasks}
+          taskList={tasks}
           onTaskClick={handleTaskClick}
         />
         {loader}

@@ -4088,6 +4088,17 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM task_entity "
+            + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type "
+            + "AND status IN (<statuses>) "
+            + "AND (deleted = false OR deleted IS NULL) "
+            + "ORDER BY createdAt DESC LIMIT 1")
+    String findByAboutAndTypeAndStatuses(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("type") String type,
+        @BindList("statuses") List<String> statuses);
+
+    @SqlQuery(
+        "SELECT json FROM task_entity "
             + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type AND status = :status "
             + "AND (deleted = false OR deleted IS NULL) "
             + "LIMIT 1")

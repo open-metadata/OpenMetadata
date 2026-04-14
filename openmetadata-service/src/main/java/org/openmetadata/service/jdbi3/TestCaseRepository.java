@@ -960,17 +960,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    * incident
    */
   private UUID getIncidentId(TestCase test) {
-    UUID ongoingIncident = null;
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
 
-    String json =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecord(test.getFullyQualifiedName());
-    TestCaseResult latestTestCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-
-    if (!nullOrEmpty(latestTestCaseResult)) {
-      ongoingIncident = latestTestCaseResult.getIncidentId();
+    if (latest != null && latest.getStateId() != null) {
+      return latest.getStateId();
     }
 
-    return ongoingIncident;
+    return null;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {

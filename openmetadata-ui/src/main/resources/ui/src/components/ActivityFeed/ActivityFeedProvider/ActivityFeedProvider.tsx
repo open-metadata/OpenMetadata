@@ -162,17 +162,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const setActiveTask = useCallback((active?: Task) => {
     setSelectedTask(active);
 
-    // Fetch test case resolution if applicable
-    if (
-      active &&
-      active.type === TaskEntityType.TestCaseResolution &&
-      active.payload &&
-      typeof active.payload === 'object' &&
-      'testCaseResolutionStatusId' in active.payload
-    ) {
-      fetchTestCaseResolution(
-        active.payload.testCaseResolutionStatusId as string
-      );
+    // Fetch TCRS records for this incident task to populate the timeline.
+    // In task-first mode the task UUID equals the TCRS stateId (see
+    // IncidentTcrsSyncHandler). The pre-task-first code read from
+    // payload.testCaseResolutionStatusId, but that field doesn't exist in the
+    // new task system, so we fall back to active.id.
+    if (active && active.type === TaskEntityType.TestCaseResolution) {
+      const stateId =
+        active.payload &&
+        typeof active.payload === 'object' &&
+        'testCaseResolutionStatusId' in active.payload
+          ? (active.payload.testCaseResolutionStatusId as string)
+          : active.id;
+      if (stateId) {
+        fetchTestCaseResolution(stateId);
+      }
     }
   }, []);
 
@@ -729,8 +733,23 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const updateTestCaseIncidentStatus = useCallback(
     (status: TestCaseResolutionStatus[]) => {
       setTestCaseResolutionStatus(status);
+
+      // After a header-driven transition the selected task's status/stage is
+      // stale. Re-fetch it so the left-panel task card reflects the new state
+      // without a full page reload.
+      if (selectedTask?.id) {
+        getTaskById(selectedTask.id, { fields: 'assignees,about' })
+          .then((res) => {
+            const fresh = res.data;
+            setSelectedTask(fresh);
+            setTasks((prev) =>
+              prev.map((t) => (t.id === fresh.id ? fresh : t))
+            );
+          })
+          .catch(() => {});
+      }
     },
-    [setTestCaseResolutionStatus]
+    [setTestCaseResolutionStatus, selectedTask?.id]
   );
 
   // Activity Events fetch methods

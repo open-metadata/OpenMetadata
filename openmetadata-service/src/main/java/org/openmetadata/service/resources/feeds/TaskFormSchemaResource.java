@@ -40,6 +40,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 import org.openmetadata.service.limits.Limits;
@@ -69,6 +71,11 @@ public class TaskFormSchemaResource
 
   public TaskFormSchemaResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK_FORM_SCHEMA, authorizer, limits);
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    repository.initSeedDataFromResources();
   }
 
   public static class TaskFormSchemaList extends ResultList<TaskFormSchema> {
