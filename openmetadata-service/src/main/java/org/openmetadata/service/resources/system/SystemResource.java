@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -83,7 +82,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
-import org.openmetadata.service.security.auth.TestLoginHandler;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -712,46 +710,6 @@ public class SystemResource {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
     }
-  }
-
-  @GET
-  @Path("/config/auth/test-login/initiate")
-  @Operation(
-      operationId = "testLoginInitiate",
-      summary = "Initiate Test Login",
-      description =
-          "Initiates a Test Login flow by redirecting to the IdP. "
-              + "Opens in a popup window. After authentication, redirects to the callback endpoint.")
-  public Response testLoginInitiate(@Context HttpServletRequest request) {
-    return TestLoginHandler.handleInitiate(request);
-  }
-
-  @GET
-  @Path("/config/auth/test-login/callback")
-  @Operation(
-      operationId = "testLoginCallback",
-      summary = "Test Login Callback",
-      description =
-          "Handles the IdP redirect after Test Login authentication. "
-              + "Extracts claims from the token and posts them to the parent window.")
-  public Response testLoginCallback(@Context HttpServletRequest request) {
-    return TestLoginHandler.handleCallback(request);
-  }
-
-  @POST
-  @Path("/config/auth/test-login")
-  @Operation(
-      operationId = "testLoginLdap",
-      summary = "Test Login (LDAP)",
-      description = "Tests LDAP authentication with provided credentials and returns user email.")
-  public Response testLoginLdap(
-      @Context SecurityContext securityContext,
-      @RequestBody(description = "LDAP login credentials") Map<String, String> credentials) {
-    authorizer.authorizeAdmin(securityContext);
-    String email = credentials.get("email");
-    String password = credentials.get("password");
-    Map<String, Object> result = TestLoginHandler.handleLdapTestLogin(email, password);
-    return Response.ok(result).build();
   }
 
   @PATCH
