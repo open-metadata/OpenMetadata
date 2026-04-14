@@ -17,12 +17,12 @@ import { Button, Card, Col, InputNumber, Row, Select, Typography } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ICSamplingConfig,
-    ProfileSampleConfig,
-    ProfileSampleType,
-    SampleConfigType,
-    SamplingMethodType,
-    Threshold
+  ICSamplingConfig,
+  ProfileSampleConfig,
+  ProfileSampleType,
+  SampleConfigType,
+  SamplingMethodType,
+  Threshold,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 
 const { Text } = Typography;

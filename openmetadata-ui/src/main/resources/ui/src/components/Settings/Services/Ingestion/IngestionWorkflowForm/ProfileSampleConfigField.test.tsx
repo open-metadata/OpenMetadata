@@ -14,10 +14,10 @@
 import { FieldProps, IdSchema, Registry } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import {
-    ProfileSampleConfig,
-    ProfileSampleType,
-    SampleConfigType,
-    SamplingMethodType
+  ProfileSampleConfig,
+  ProfileSampleType,
+  SampleConfigType,
+  SamplingMethodType,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
@@ -90,9 +90,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(
-        screen.getByTestId('profile-sample-input')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
       expect(
         screen.getByTestId('profile-sample-type-select')
       ).toBeInTheDocument();
@@ -104,9 +102,7 @@ describe('ProfileSampleConfigField', () => {
     it('shows static config fields by default when no formData is provided', () => {
       render(<ProfileSampleConfigField {...baseFieldProps} />);
 
-      expect(
-        screen.getByTestId('profile-sample-input')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
       expect(
         screen.getByTestId('profile-sample-type-select')
       ).toBeInTheDocument();
@@ -123,9 +119,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(
-        screen.queryByTestId('add-threshold-btn')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-threshold-btn')).not.toBeInTheDocument();
       expect(
         screen.queryByText('label.threshold-plural')
       ).not.toBeInTheDocument();
@@ -152,12 +146,8 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(
-        screen.getByText('label.threshold-plural')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('add-threshold-btn')
-      ).toBeInTheDocument();
+      expect(screen.getByText('label.threshold-plural')).toBeInTheDocument();
+      expect(screen.getByTestId('add-threshold-btn')).toBeInTheDocument();
     });
 
     it('does not show static config fields in DYNAMIC mode', () => {
@@ -188,16 +178,10 @@ describe('ProfileSampleConfigField', () => {
       );
 
       expect(screen.getByText('label.threshold 1')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('row-count-threshold-0')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('row-count-threshold-0')).toBeInTheDocument();
       expect(screen.getByTestId('profile-sample-0')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('profile-sample-type-0')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('sampling-method-type-0')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('profile-sample-type-0')).toBeInTheDocument();
+      expect(screen.getByTestId('sampling-method-type-0')).toBeInTheDocument();
     });
 
     it('renders multiple threshold cards when multiple thresholds exist', () => {
@@ -242,10 +226,7 @@ describe('ProfileSampleConfigField', () => {
       };
 
       render(
-        <ProfileSampleConfigField
-          {...baseFieldProps}
-          formData={emptyDynamic}
-        />
+        <ProfileSampleConfigField {...baseFieldProps} formData={emptyDynamic} />
       );
 
       expect(
@@ -263,10 +244,7 @@ describe('ProfileSampleConfigField', () => {
       };
 
       render(
-        <ProfileSampleConfigField
-          {...baseFieldProps}
-          formData={emptyDynamic}
-        />
+        <ProfileSampleConfigField {...baseFieldProps} formData={emptyDynamic} />
       );
 
       fireEvent.click(screen.getByTestId('add-threshold-btn'));
@@ -390,9 +368,7 @@ describe('ProfileSampleConfigField', () => {
       );
 
       expect(screen.getByText('label.profile-sample')).toBeInTheDocument();
-      expect(
-        screen.getByText('label.profile-sample-type')
-      ).toBeInTheDocument();
+      expect(screen.getByText('label.profile-sample-type')).toBeInTheDocument();
       expect(
         screen.getByText('label.sampling-method-type')
       ).toBeInTheDocument();
@@ -408,9 +384,7 @@ describe('ProfileSampleConfigField', () => {
 
       expect(screen.getByText('label.row-count-threshold')).toBeInTheDocument();
       expect(screen.getByText('label.profile-sample')).toBeInTheDocument();
-      expect(
-        screen.getByText('label.profile-sample-type')
-      ).toBeInTheDocument();
+      expect(screen.getByText('label.profile-sample-type')).toBeInTheDocument();
       expect(
         screen.getByText('label.sampling-method-type')
       ).toBeInTheDocument();

@@ -19,17 +19,17 @@ import { isUndefined, omit, omitBy } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
-    INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
-    INGESTION_WORKFLOW_UI_SCHEMA
+  EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
+  INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+  INGESTION_WORKFLOW_UI_SCHEMA,
 } from '../../../../../constants/Services.constant';
 import {
-    DbtConfigType,
-    PipelineType
+  DbtConfigType,
+  PipelineType,
 } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
-    IngestionWorkflowData,
-    IngestionWorkflowFormProps
+  IngestionWorkflowData,
+  IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formUtils';
