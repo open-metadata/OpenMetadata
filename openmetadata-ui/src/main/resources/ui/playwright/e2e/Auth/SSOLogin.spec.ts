@@ -60,10 +60,12 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
         }
 
         originalSecurityConfig = await fetchSecurityConfig(apiContext);
+        const providerConfig = await helper.buildConfigPayload();
+
         await applyProviderConfig(
           apiContext,
           originalSecurityConfig,
-          helper.buildConfigPayload()
+          providerConfig
         );
       } finally {
         await afterAction();

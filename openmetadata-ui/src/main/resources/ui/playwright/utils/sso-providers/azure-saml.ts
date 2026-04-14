@@ -120,8 +120,12 @@ const performProviderLogin = async (
   }
 };
 
+// OM's sign-in page uses a single "SAML SSO" label for every SAML provider —
+// `authenticationConfiguration.providerName` isn't propagated into the store
+// for the SAML branch in getAuthConfig, so even with providerName="Azure AD"
+// the button renders as "Sign in with SAML SSO".
 export const azureSamlProviderHelper: ProviderHelper = {
-  expectedButtonText: 'Sign in with Azure AD',
+  expectedButtonText: 'Sign in with SAML SSO',
   loginUrlPattern: /login\.microsoftonline\.com/,
   buildConfigPayload,
   performProviderLogin,

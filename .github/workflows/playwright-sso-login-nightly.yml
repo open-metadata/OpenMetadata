@@ -24,6 +24,8 @@ on:
         options:
           - okta
           - azure-saml
+          - keycloak-azure-saml
+          - keycloak-google-saml
           - all
 
 permissions:
@@ -38,7 +40,7 @@ jobs:
   #   1. Add its lowercase name to the matrix array below AND to the
   #      dispatch `options:` list above.
   #   2. Add <PROVIDER>_SSO_USERNAME (variable) and <PROVIDER>_SSO_PASSWORD
-  #      (secret) to the `test` environment.
+  #      (secret) to the `test` environment, unless the provider uses a local fixture.
   #   3. Register the helper in playwright/utils/sso-providers/index.ts.
   sso-login:
     runs-on: ubuntu-latest
@@ -49,8 +51,8 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-              && fromJSON('["okta","azure-saml"]')
-              || fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) }}
+          && fromJSON('["okta","keycloak-azure-saml","keycloak-google-saml"]')
+          || fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -77,9 +79,9 @@ jobs:
       - name: Setup OpenMetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
-          args: "-d postgresql -i false"
-          ingestion_dependency: "all"
+          python-version: '3.10'
+          args: '-d postgresql -i false'
+          ingestion_dependency: 'all'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -93,12 +95,19 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright@1.57.0 install chromium --with-deps
 
+      - name: Start Keycloak SAML IdP
+        if: startsWith(matrix.provider, 'keycloak-')
+        run: |
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
+          timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null && curl -fsS http://localhost:8080/realms/om-google-saml >/dev/null; do sleep 2; done'
+
       - name: Run SSO Login Spec
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider }}
-          SSO_USERNAME: ${{ vars[format('{0}_SSO_USERNAME', matrix.provider)] }}
-          SSO_PASSWORD: ${{ secrets[format('{0}_SSO_PASSWORD', matrix.provider)] }}
+          SSO_USERNAME: ${{ matrix.provider == 'keycloak-azure-saml' && 'azure.saml@openmetadata.local' || matrix.provider == 'keycloak-google-saml' && 'google.saml@openmetadata.local' || vars[format('{0}_SSO_USERNAME', matrix.provider)] }}
+          SSO_PASSWORD: ${{ startsWith(matrix.provider, 'keycloak-') && 'OpenMetadata@123' || secrets[format('{0}_SSO_PASSWORD', matrix.provider)] }}
+          KEYCLOAK_SAML_BASE_URL: http://localhost:8080
           PLAYWRIGHT_IS_OSS: true
         run: |
           npx playwright test playwright/e2e/Auth/SSOLogin.spec.ts \
@@ -116,6 +125,7 @@ jobs:
       - name: Clean Up
         if: always()
         run: |
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans || true
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
