@@ -74,7 +74,7 @@ const AppRouter = () => {
     }))
   );
 
-  const { plugins = [] } = useApplicationsProvider();
+  const { plugins = [] } = useApplicationsProvider() ?? {};
 
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider

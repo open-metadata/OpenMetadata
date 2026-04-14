@@ -91,14 +91,18 @@ jest.mock('../../../utils/EntityUtils', () => {
     getEntityName: jest.fn().mockImplementation(() => 'displayName'),
     hasLineageTab: jest.fn((entityType) => LINEAGE_TABS_SET.has(entityType)),
     hasSchemaTab: jest.fn((entityType) => SCHEMA_TABS_SET.has(entityType)),
+    getEntityOverview: jest.fn().mockImplementation(() => []),
     hasCustomPropertiesTab: jest.fn((entityType) =>
       CUSTOM_PROPERTIES_TABS_SET.has(entityType)
     ),
+    DRAWER_NAVIGATION_OPTIONS: [],
   };
 });
 jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
+  bytesToSize: jest.fn(),
+  ordinalize: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({

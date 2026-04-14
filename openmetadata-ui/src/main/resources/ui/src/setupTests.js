@@ -100,17 +100,6 @@ jest.mock('i18next', () => ({
   t: jest.fn().mockImplementation((key) => key),
 }));
 
-jest.mock('utils/i18next/LocalUtil', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key) => key,
-  }),
-  detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
-  t: (key) => key,
-  translateWithNestedKeys: jest.fn((key, params) => {
-    return params ? `${key}_${JSON.stringify(params)}` : key;
-  }),
-  dir: jest.fn().mockReturnValue('ltr'),
-}));
 /**
  * mock react-i18next
  */
@@ -238,7 +227,7 @@ jest.mock('./utils/i18next/LocalUtil', () => {
       .mockImplementation(({ i18nKey, renderElement, values }) => {
         const valueArr = Object.values(values ?? {});
 
-        return React.createElement('div', i18nKey, [
+        return React.createElement('div', { dataTestid: i18nKey }, [
           i18nKey,
           renderElement,
           valueArr,
