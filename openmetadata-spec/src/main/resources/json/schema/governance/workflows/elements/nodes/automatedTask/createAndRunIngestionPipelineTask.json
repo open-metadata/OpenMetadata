@@ -70,7 +70,7 @@
     "input": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["relatedEntity"],
+      "default": ["entityList"],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
@@ -78,13 +78,13 @@
     "inputNamespaceMap": {
       "type": "object",
       "properties": {
-        "relatedEntity": {
+        "entityList": {
           "type": "string",
           "default": "global"
         }
       },
-      "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "additionalProperties": true,
+      "required": ["entityList"]
     },
     "branches": {
       "type": "array",

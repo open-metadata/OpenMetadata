@@ -122,5 +122,6 @@ export interface EntityReference {
 }
 
 export interface InputNamespaceMap {
-    relatedEntity: string;
+    entityList: string;
+    [property: string]: any;
 }

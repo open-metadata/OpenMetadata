@@ -3,9 +3,8 @@ package org.openmetadata.service.search.indexes;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class DashboardIndex implements SearchIndex {
+public class DashboardIndex implements DataAssetIndex {
   final Dashboard dashboard;
 
   public DashboardIndex(Dashboard dashboard) {
@@ -17,17 +16,17 @@ public class DashboardIndex implements SearchIndex {
     return dashboard;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.DASHBOARD;
+  }
+
+  @Override
+  public Object getIndexServiceType() {
+    return dashboard.getServiceType();
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD, dashboard));
-    Map<String, Object> commonAttributes = getCommonAttributesMap(dashboard, Entity.DASHBOARD);
-    doc.putAll(commonAttributes);
-    doc.put("tags", parseTags.getTags());
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", dashboard.getServiceType());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboard.getEntityReference()));
-    doc.put("service", getEntityWithDisplayName(dashboard.getService()));
     return doc;
   }
 

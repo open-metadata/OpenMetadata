@@ -1,7 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -52,9 +51,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
       List<EntityReference> assignees = getAssignees(delegateTask);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+              WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler).getFirst());
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set

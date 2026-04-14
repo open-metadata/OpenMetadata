@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -43,14 +44,14 @@ class MigrationUtilTest {
           "id": "00000000-0000-0000-0000-000000000001",
           "fullyQualifiedName": "workflow1",
           "trigger": {
-            "output": ["entityList", "relatedEntity", "updatedBy"]
+            "output": ["entityList", "updatedBy"]
           },
           "nodes": []
         }
         """;
     JsonNode root = MAPPER.readTree(json);
     JsonNode result = MigrationUtil.migrateWorkflowJson(root);
-    assertSame(root, result, "Should return the same instance when no changes needed");
+    assertSame(root, result, "Should return the same instance when output is already canonical");
   }
 
   @Test
@@ -72,9 +73,8 @@ class MigrationUtilTest {
     assertFalse(result == root, "Should return a new instance when changes are needed");
     JsonNode output = result.get("trigger").get("output");
     assertEquals("entityList", output.get(0).asText());
-    assertEquals("relatedEntity", output.get(1).asText());
-    assertEquals("updatedBy", output.get(2).asText());
-    assertEquals(3, output.size());
+    assertEquals("updatedBy", output.get(1).asText());
+    assertEquals(2, output.size());
   }
 
   @Test
@@ -189,7 +189,7 @@ class MigrationUtilTest {
           "id": "00000000-0000-0000-0000-000000000001",
           "fullyQualifiedName": "workflow1",
           "trigger": {
-            "output": ["entityList"]
+            "output": ["entityList", "updatedBy"]
           },
           "nodes": [
             {
@@ -352,6 +352,145 @@ class MigrationUtilTest {
     assertTrue(nsMap.has("false_entityList"), "Should have false_entityList key");
     assertEquals("CheckOwner", nsMap.get("false_entityList").asText());
     assertFalse(nsMap.has("relatedEntity"));
+  }
+
+  @Test
+  void migrateWorkflowJson_halfMigratedTriggerOutputGetsCleaned() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "output": ["entityList", "relatedEntity"]
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root, "Half-migrated row should be repaired");
+    JsonNode output = result.get("trigger").get("output");
+    assertEquals(2, output.size());
+    assertEquals("entityList", output.get(0).asText());
+    assertEquals("updatedBy", output.get(1).asText());
+  }
+
+  @Test
+  void migrateWorkflowJson_customEntriesPreservedWhileLegacyStripped() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "output": ["entityList", "customField", "relatedEntity"]
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root);
+    JsonNode output = result.get("trigger").get("output");
+    assertEquals(3, output.size());
+    assertEquals("entityList", output.get(0).asText());
+    assertEquals("customField", output.get(1).asText());
+    assertEquals("updatedBy", output.get(2).asText());
+  }
+
+  @Test
+  void migrateWorkflowJson_setsStoreStageStatusForPeriodicBatchEntity() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "type": "periodicBatchEntity",
+            "output": ["entityList", "updatedBy"]
+          },
+          "config": {
+            "storeStageStatus": false
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root, "Should update storeStageStatus");
+    assertTrue(result.get("config").get("storeStageStatus").asBoolean());
+  }
+
+  @Test
+  void migrateWorkflowJson_setsStoreStageStatusWhenConfigMissing() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "type": "periodicBatchEntity",
+            "output": ["entityList", "updatedBy"]
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertFalse(result == root, "Should create config with storeStageStatus");
+    assertTrue(result.get("config").get("storeStageStatus").asBoolean());
+  }
+
+  @Test
+  void migrateWorkflowJson_doesNotSetStoreStageStatusForEventBasedEntity() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "output": ["entityList", "updatedBy"]
+          },
+          "config": {
+            "storeStageStatus": false
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertSame(root, result, "eventBasedEntity trigger should not be touched");
+    assertFalse(result.get("config").get("storeStageStatus").asBoolean());
+  }
+
+  @Test
+  void migrateWorkflowJson_storeStageStatusAlreadyTrueIsIdempotent() throws Exception {
+    String json =
+        """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "fullyQualifiedName": "workflow1",
+          "trigger": {
+            "type": "periodicBatchEntity",
+            "output": ["entityList", "updatedBy"]
+          },
+          "config": {
+            "storeStageStatus": true
+          },
+          "nodes": []
+        }
+        """;
+    JsonNode root = MAPPER.readTree(json);
+    JsonNode result = MigrationUtil.migrateWorkflowJson(root);
+
+    assertSame(root, result, "Already-correct periodicBatchEntity row should not be re-written");
   }
 
   // ─── addEntityListToNamespaceMap ──────────────────────────────────────
@@ -783,9 +922,11 @@ class MigrationUtilTest {
           .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
           .thenReturn(repository);
 
-      MigrationUtil.migrateWorkflowInputNamespaceMap();
+      assertThrows(
+          RuntimeException.class,
+          () -> MigrationUtil.migrateWorkflowInputNamespaceMap(),
+          "Should throw RuntimeException when redeploy fails");
     }
-    // Exception during redeploy should be caught and logged, not propagated
   }
 
   @Test
@@ -799,7 +940,7 @@ class MigrationUtilTest {
         {
           "id": "00000000-0000-0000-0000-000000000001",
           "fullyQualifiedName": "wf1",
-          "trigger": {"output": ["entityList", "relatedEntity"]},
+          "trigger": {"output": ["entityList", "updatedBy"]},
           "nodes": []
         }
         """;

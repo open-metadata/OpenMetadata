@@ -364,7 +364,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#1890ff",
+                  "#1570ef",
                   null,
                   null),
               createRelationType(
@@ -377,7 +377,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.EQUIVALENCE,
                   true,
-                  "#722ed1",
+                  "#b42318",
                   null,
                   null),
               createRelationType(
@@ -390,7 +390,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#f5222d",
+                  "#b54708",
                   null,
                   null),
               createRelationType(
@@ -403,7 +403,7 @@ public class SettingsCache {
                   true,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#597ef7",
+                  "#067647",
                   null,
                   null),
               createRelationType(
@@ -416,7 +416,7 @@ public class SettingsCache {
                   true,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#85a5ff",
+                  "#4e5ba6",
                   null,
                   null),
               createRelationType(
@@ -429,7 +429,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#13c2c2",
+                  "#026aa2",
                   null,
                   null),
               createRelationType(
@@ -442,7 +442,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#36cfc9",
+                  "#155eef",
                   null,
                   null),
               createRelationType(
@@ -455,7 +455,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#faad14",
+                  "#6938ef",
                   null,
                   null),
               createRelationType(
@@ -468,7 +468,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#ffc53d",
+                  "#ba24d5",
                   null,
                   null),
               createRelationType(
@@ -481,7 +481,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#eb2f96",
+                  "#c11574",
                   null,
                   null));
 

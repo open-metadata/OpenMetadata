@@ -26,6 +26,11 @@ import { deleteTestCase, submitTestCaseForm } from '../../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+let table: TableClass;
+let table1: TableClass;
+let table2: TableClass;
+
 const service = {
   serviceType: 'BigQuery',
   connection: {
@@ -68,10 +73,9 @@ test.describe(
   'Table Level Data Quality Test Cases',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
   () => {
-    let table: TableClass;
     test.beforeAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
       table = new TableClass();
+      const { apiContext, afterAction } = await createNewPage(browser);
       await table.create(apiContext);
       await afterAction();
     });
@@ -650,8 +654,8 @@ test.describe(
     test('Table Difference', async ({ page }) => {
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
-      const table1 = new TableClass(undefined, undefined, service);
-      const table2 = new TableClass(undefined, undefined, service);
+      table1 = new TableClass(undefined, undefined, service);
+      table2 = new TableClass(undefined, undefined, service);
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = {
