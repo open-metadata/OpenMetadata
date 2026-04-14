@@ -433,6 +433,27 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
     List<String> sorted = names.stream().sorted().toList();
     assertEquals(sorted, names, "Search results should be ordered by name");
 
+    // -- Case-insensitive search: uppercase, lowercase, mixed case all return same results --
+    ResultList<Role> upperCase = searchRoles(client, uniqueToken.toUpperCase(), 50, 0);
+    assertEquals(
+        allMatches.getData().size(),
+        upperCase.getData().size(),
+        "UPPERCASE query should return same results as original");
+
+    ResultList<Role> lowerCase = searchRoles(client, uniqueToken.toLowerCase(), 50, 0);
+    assertEquals(
+        allMatches.getData().size(),
+        lowerCase.getData().size(),
+        "lowercase query should return same results as original");
+
+    String mixedCase =
+        uniqueToken.substring(0, 1).toUpperCase() + uniqueToken.substring(1).toLowerCase();
+    ResultList<Role> mixedCaseResults = searchRoles(client, mixedCase, 50, 0);
+    assertEquals(
+        allMatches.getData().size(),
+        mixedCaseResults.getData().size(),
+        "MiXeD case query should return same results as original");
+
     // -- Search with no matches returns empty, not an error --
     ResultList<Role> noMatches =
         searchRoles(client, "nonExistentRoleXyz" + System.nanoTime(), 50, 0);
