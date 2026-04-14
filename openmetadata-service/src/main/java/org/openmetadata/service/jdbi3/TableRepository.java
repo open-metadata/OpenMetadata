@@ -1378,13 +1378,13 @@ public class TableRepository extends EntityRepository<Table> {
    * Removes stale dbt-applied AUTOMATED tags that are no longer present in the
    * incoming data model. Only runs for DBT model type to avoid affecting other
    * ingestion sources (e.g. DDL). Only removes tags where labelType is AUTOMATED
-   * and appliedBy is "ingestion-bot" 
+   * and appliedBy is "ingestion-bot".
    *
    * @param existingTags tags currently on the entity
    * @param incomingTags tags from the incoming dbt data model (may be null or empty)
    * @return filtered list with stale dbt AUTOMATED tags removed
    */
-  private List<TagLabel> removeStaleDbtAutomatedTags(
+  List<TagLabel> removeStaleDbtAutomatedTags(
       List<TagLabel> existingTags, List<TagLabel> incomingTags) {
     Set<String> incomingFQNs =
         listOrEmpty(incomingTags).stream()

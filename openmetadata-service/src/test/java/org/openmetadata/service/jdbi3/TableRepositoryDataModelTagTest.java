@@ -2,13 +2,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -23,23 +20,15 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
  */
 class TableRepositoryDataModelTagTest {
 
-  /**
-   * Direct copy of the removeStaleDbtAutomatedTags logic from TableRepository for focused
-   * verification.
-   */
-  private List<TagLabel> removeStaleDbtAutomatedTagsLogic(
-      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
-    Set<String> incomingFQNs =
-        listOrEmpty(incomingTags).stream()
-            .map(TagLabel::getTagFQN)
-            .collect(Collectors.toCollection(HashSet::new));
-    return listOrEmpty(existingTags).stream()
-        .filter(
-            tag ->
-                !(TagLabel.LabelType.AUTOMATED.equals(tag.getLabelType())
-                    && Entity.INGESTION_BOT_NAME.equals(tag.getAppliedBy())
-                    && !incomingFQNs.contains(tag.getTagFQN())))
-        .collect(Collectors.toList());
+  private static final TableRepository tableRepository;
+
+  static {
+    tableRepository = Mockito.mock(TableRepository.class);
+    Mockito
+        .when(
+            tableRepository.removeStaleDbtAutomatedTags(
+                Mockito.anyList(), Mockito.anyList()))
+        .thenCallRealMethod();
   }
 
   private List<TagLabel> applyDbtTableTagUpdate(
@@ -47,7 +36,8 @@ class TableRepositoryDataModelTagTest {
     List<TagLabel> mergedTableTags =
         TagLabelUtil.mergeTagsWithIncomingPrecedence(existingTableTags, dataModel.getTags());
     if (DataModel.ModelType.DBT.equals(dataModel.getModelType())) {
-      mergedTableTags = removeStaleDbtAutomatedTagsLogic(mergedTableTags, dataModel.getTags());
+      mergedTableTags =
+          tableRepository.removeStaleDbtAutomatedTags(mergedTableTags, dataModel.getTags());
     }
     return mergedTableTags;
   }
@@ -57,7 +47,8 @@ class TableRepositoryDataModelTagTest {
     List<TagLabel> mergedColumnTags =
         TagLabelUtil.mergeTagsWithIncomingPrecedence(storedColumnTags, modelColumnTags);
     if (DataModel.ModelType.DBT.equals(dataModel.getModelType())) {
-      mergedColumnTags = removeStaleDbtAutomatedTagsLogic(mergedColumnTags, modelColumnTags);
+      mergedColumnTags =
+          tableRepository.removeStaleDbtAutomatedTags(mergedColumnTags, modelColumnTags);
     }
     return mergedColumnTags;
   }
@@ -152,18 +143,23 @@ class TableRepositoryDataModelTagTest {
   }
 
   @Test
-  void removeStaleDbtAutomatedTagsLogic_removesAllDbtAutomatedWhenIncomingNullOrEmpty() {
+  void removeStaleDbtAutomatedTags_removesAllDbtAutomatedWhenIncomingNullOrEmpty() {
     TagLabel staleAutomated1 = automatedDbtTag("Classification.Stale1");
     TagLabel staleAutomated2 = automatedDbtTag("Classification.Stale2");
     TagLabel manual = manualTag("Classification.Manual");
 
     List<TagLabel> existing = List.of(staleAutomated1, staleAutomated2, manual);
 
-    List<TagLabel> resultNull = removeStaleDbtAutomatedTagsLogic(existing, null);
+    DataModel dataModel = new DataModel().withModelType(DataModel.ModelType.DBT);
+
+    List<TagLabel> resultNull =
+        tableRepository.removeStaleDbtAutomatedTags(existing, dataModel.getTags());
     assertEquals(1, resultNull.size());
     assertTrue(containsTagFqn(resultNull, "Classification.Manual"));
 
-    List<TagLabel> resultEmpty = removeStaleDbtAutomatedTagsLogic(existing, List.of());
+    dataModel.setTags(List.of());
+    List<TagLabel> resultEmpty =
+        tableRepository.removeStaleDbtAutomatedTags(existing, dataModel.getTags());
     assertEquals(1, resultEmpty.size());
     assertTrue(containsTagFqn(resultEmpty, "Classification.Manual"));
   }
