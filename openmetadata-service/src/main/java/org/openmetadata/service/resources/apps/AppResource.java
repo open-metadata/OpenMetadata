@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -94,6 +96,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
@@ -374,8 +377,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
               case SUCCESS -> AppRunRecord.Status.SUCCESS;
               case FAILED, PARTIAL_SUCCESS -> AppRunRecord.Status.FAILED;
               case RUNNING -> AppRunRecord.Status.RUNNING;
+              case STOPPED -> AppRunRecord.Status.STOPPED;
             })
-        .withConfig(pipelineStatus.getConfig());
+        .withConfig(pipelineStatus.getConfig())
+        .withProperties(
+            pipelineStatus.getRunId() != null
+                ? Map.of("pipelineRunId", pipelineStatus.getRunId())
+                : null);
   }
 
   private ResultList<AppRunRecord> sortRunsByStartTime(ResultList<AppRunRecord> runs) {
@@ -527,7 +535,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           @DefaultValue("")
-          String after) {
+          String after,
+      @Parameter(
+              description =
+                  "Pipeline run ID to fetch logs for a specific run. "
+                      + "If not provided, returns logs for the latest run.",
+              schema = @Schema(type = "string"))
+          @QueryParam("runId")
+          String runId) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
@@ -544,7 +559,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         return Response.ok(
-                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after),
+                pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId),
                 MediaType.APPLICATION_JSON_TYPE)
             .build();
       }
@@ -1227,7 +1242,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      @Parameter(
+              description = "Pipeline run ID to stop a specific run",
+              schema = @Schema(type = "string"))
+          @QueryParam("runId")
+          String runId) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
@@ -1241,15 +1261,146 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .entity("Application stop in progress. Please check status via.")
             .build();
       } else {
-        if (!app.getPipelines().isEmpty()) {
-          IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
-          PipelineServiceClientResponse response =
-              pipelineServiceClient.killIngestion(ingestionPipeline);
-          return Response.status(response.getCode()).entity(response).build();
+        if (nullOrEmpty(app.getPipelines())) {
+          throw new BadRequestException(
+              String.format(
+                  "Application [%s] supports interrupts but has no associated pipeline configured.",
+                  name));
+        }
+        IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
+        if (runId != null && !runId.isBlank()) {
+          return stopSpecificRun(uriInfo, ingestionPipeline, runId);
+        } else {
+          return stopAllRuns(app, ingestionPipeline);
         }
       }
     }
     throw new BadRequestException("Application does not support Interrupts.");
+  }
+
+  private Response stopSpecificRun(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, String runId) {
+    markPipelineStatusAsStopped(ingestionPipeline, runId);
+    PipelineServiceClientResponse killResponse;
+    try {
+      killResponse = pipelineServiceClient.killIngestionRun(ingestionPipeline, runId);
+    } catch (Exception e) {
+      LOG.error(
+          "Kill request for run [{}] on pipeline [{}] failed after DB update. Workflow may still be running.",
+          runId,
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return Response.status(Response.Status.BAD_GATEWAY)
+          .entity(
+              new PipelineServiceClientResponse()
+                  .withCode(Response.Status.BAD_GATEWAY.getStatusCode())
+                  .withReason(e.getMessage())
+                  .withPlatform(pipelineServiceClient.getPlatform()))
+          .build();
+    }
+    return toStopResponse(killResponse);
+  }
+
+  private Response stopAllRuns(App app, IngestionPipeline ingestionPipeline) {
+    Long runStartTime =
+        repository
+            .getLatestAppRunsOptional(app, ingestionPipeline.getService().getId())
+            .map(AppRunRecord::getStartTime)
+            .orElse(null);
+    markLatestPipelineStatusAsStopped(ingestionPipeline, runStartTime);
+    PipelineServiceClientResponse killResponse;
+    try {
+      killResponse = pipelineServiceClient.killIngestion(ingestionPipeline);
+    } catch (Exception e) {
+      LOG.error(
+          "Kill request for pipeline [{}] failed after DB update. Workflows may still be running.",
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return Response.status(Response.Status.BAD_GATEWAY)
+          .entity(
+              new PipelineServiceClientResponse()
+                  .withCode(Response.Status.BAD_GATEWAY.getStatusCode())
+                  .withReason(e.getMessage())
+                  .withPlatform(pipelineServiceClient.getPlatform()))
+          .build();
+    }
+    return toStopResponse(killResponse);
+  }
+
+  private void markPipelineStatusAsStopped(IngestionPipeline ingestionPipeline, String runId) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    try {
+      PipelineStatus status =
+          ingestionPipelineRepository.getPipelineStatus(
+              ingestionPipeline.getFullyQualifiedName(), runId);
+      if (status == null) {
+        LOG.warn(
+            "Pipeline status not found in DB for run [{}] on pipeline [{}]. Proceeding with kill but DB state will remain inconsistent.",
+            runId,
+            ingestionPipeline.getFullyQualifiedName());
+        return;
+      }
+      if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
+        status.setPipelineState(PipelineStatusType.STOPPED);
+        status.setEndDate(System.currentTimeMillis());
+        // Use updatePipelineStatusByRunId instead of addPipelineStatus to avoid overwriting
+        // the pipeline-level current status. When stopping a specific run, other runs may still
+        // be active and their status should not be affected.
+        ingestionPipelineRepository.updatePipelineStatusByRunId(
+            ingestionPipeline.getFullyQualifiedName(), status);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to mark run [{}] as STOPPED in DB for pipeline [{}]. Kill will proceed but DB status may remain inconsistent.",
+          runId,
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+    }
+  }
+
+  private void markLatestPipelineStatusAsStopped(
+      IngestionPipeline ingestionPipeline, Long runStartTime) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    long now = System.currentTimeMillis();
+    long startTs = runStartTime != null ? runStartTime : now - TimeUnit.HOURS.toMillis(1);
+    ResultList<PipelineStatus> statuses;
+    try {
+      statuses =
+          ingestionPipelineRepository.listPipelineStatus(
+              ingestionPipeline.getFullyQualifiedName(), startTs, now);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to list pipeline statuses for [{}]. Kill will proceed but DB statuses may remain inconsistent.",
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return;
+    }
+    for (PipelineStatus status : statuses.getData()) {
+      if (status.getRunId() == null || status.getRunId().isBlank()) {
+        continue;
+      }
+      if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
+        markPipelineStatusAsStopped(ingestionPipeline, status.getRunId());
+      }
+    }
+  }
+
+  private Response toStopResponse(PipelineServiceClientResponse killResponse) {
+    int code = killResponse.getCode();
+    if (code >= 200 && code < 300) {
+      return Response.status(code).entity(killResponse).build();
+    }
+    if (code == 404) {
+      LOG.warn(
+          "Kill request returned 404 — workflow already completed. DB status already marked STOPPED.");
+      return Response.ok(killResponse).build();
+    }
+    LOG.error(
+        "Kill request returned unexpected code [{}]. DB status already marked STOPPED but workflow may still be running.",
+        code);
+    return Response.status(Response.Status.BAD_GATEWAY).entity(killResponse).build();
   }
 
   @POST

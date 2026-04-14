@@ -3,7 +3,6 @@ package org.openmetadata.service.governance.workflows.elements.triggers;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -177,16 +176,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     entityListParam.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
     inputParameters.add(entityListParam);
 
-    IOParameter relatedEntityParam = new IOParameter();
-    relatedEntityParam.setSource(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
-    relatedEntityParam.setTarget(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
-    inputParameters.add(relatedEntityParam);
-
     for (String triggerOutput : triggerOutputs) {
-      if (!RELATED_ENTITY_VARIABLE.equals(triggerOutput)
-          && !ENTITY_LIST_VARIABLE.equals(triggerOutput)) {
+      if (!ENTITY_LIST_VARIABLE.equals(triggerOutput)) {
         IOParameter inputParameter = new IOParameter();
         inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
         inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));

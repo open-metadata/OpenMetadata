@@ -122,8 +122,9 @@ export interface EntityReference {
 }
 
 export interface InputNamespaceMap {
+    entityList:         string;
     recognizerFeedback: string;
-    relatedEntity:      string;
     triggeringObjectId: string;
     updatedBy:          string;
+    [property: string]: any;
 }

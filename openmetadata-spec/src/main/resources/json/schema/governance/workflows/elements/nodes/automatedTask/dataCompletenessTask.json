@@ -111,6 +111,11 @@
       "items": { "type": "string" },
       "default": ["completenessScore", "qualityBand", "filledFieldsCount", "totalFieldsCount", "missingFields", "filledFields", "result"],
       "additionalItems": false
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
     }
   },
   "required": ["name", "config"],

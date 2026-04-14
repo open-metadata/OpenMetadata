@@ -112,7 +112,7 @@
       },
       "default": [
         "entityList",
-        "relatedEntity"
+        "updatedBy"
       ],
       "additionalItems": false,
       "minItems": 1,

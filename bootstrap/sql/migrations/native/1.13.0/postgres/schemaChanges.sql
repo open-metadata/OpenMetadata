@@ -158,3 +158,85 @@ CREATE INDEX IF NOT EXISTS idx_change_event_entity_type_offset ON change_event (
 -- Widen change_event_consumers.id from VARCHAR(36) to VARCHAR(500) to support workflow consumer IDs
 -- which follow the pattern {workflowFQN}Trigger-{entityType} and can exceed 36 characters.
 ALTER TABLE change_event_consumers ALTER COLUMN id TYPE VARCHAR(500);
+
+-- RDF distributed indexing state tables
+CREATE TABLE IF NOT EXISTS rdf_index_job (
+    id VARCHAR(36) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    jobConfiguration JSONB NOT NULL,
+    totalRecords BIGINT NOT NULL DEFAULT 0,
+    processedRecords BIGINT NOT NULL DEFAULT 0,
+    successRecords BIGINT NOT NULL DEFAULT 0,
+    failedRecords BIGINT NOT NULL DEFAULT 0,
+    stats JSONB,
+    createdBy VARCHAR(256) NOT NULL,
+    createdAt BIGINT NOT NULL,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    updatedAt BIGINT NOT NULL,
+    errorMessage TEXT,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rdf_index_job_status ON rdf_index_job(status);
+CREATE INDEX IF NOT EXISTS idx_rdf_index_job_created ON rdf_index_job(createdAt DESC);
+
+CREATE TABLE IF NOT EXISTS rdf_index_partition (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    partitionIndex INT NOT NULL,
+    rangeStart BIGINT NOT NULL,
+    rangeEnd BIGINT NOT NULL,
+    estimatedCount BIGINT NOT NULL,
+    workUnits BIGINT NOT NULL,
+    priority INT NOT NULL DEFAULT 50,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    processingCursor BIGINT NOT NULL DEFAULT 0,
+    processedCount BIGINT NOT NULL DEFAULT 0,
+    successCount BIGINT NOT NULL DEFAULT 0,
+    failedCount BIGINT NOT NULL DEFAULT 0,
+    assignedServer VARCHAR(255),
+    claimedAt BIGINT,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    lastUpdateAt BIGINT,
+    lastError TEXT,
+    retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, entityType, partitionIndex),
+    CONSTRAINT fk_rdf_partition_job FOREIGN KEY (jobId) REFERENCES rdf_index_job(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_job ON rdf_index_partition(jobId);
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_status_priority ON rdf_index_partition(status, priority DESC);
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_claimable ON rdf_index_partition(jobId, status, claimableAt);
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_assigned_server ON rdf_index_partition(jobId, assignedServer);
+
+CREATE TABLE IF NOT EXISTS rdf_reindex_lock (
+    lockKey VARCHAR(64) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(255) NOT NULL,
+    acquiredAt BIGINT NOT NULL,
+    lastHeartbeat BIGINT NOT NULL,
+    expiresAt BIGINT NOT NULL,
+    PRIMARY KEY (lockKey)
+);
+
+CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    processedRecords BIGINT DEFAULT 0,
+    successRecords BIGINT DEFAULT 0,
+    failedRecords BIGINT DEFAULT 0,
+    partitionsCompleted INT DEFAULT 0,
+    partitionsFailed INT DEFAULT 0,
+    lastUpdatedAt BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, serverId, entityType)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server_stats(jobId);

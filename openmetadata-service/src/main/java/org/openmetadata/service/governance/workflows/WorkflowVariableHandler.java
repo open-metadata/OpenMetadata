@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
 import java.util.List;
@@ -139,6 +140,15 @@ public class WorkflowVariableHandler {
         return (List<String>) obj;
       }
     }
+    // Fallback for pre-migration instances that still carry relatedEntity (a plain String)
+    String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+    if (relatedEntityNamespace != null) {
+      Object obj =
+          varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
+      if (obj instanceof String entityLink) {
+        return List.of(entityLink);
+      }
+    }
     LOG.debug(
         "[WorkflowVariable] getEntityList: no entityList found in inputNamespaceMap keys={}",
         inputNamespaceMap.keySet());
@@ -164,6 +174,14 @@ public class WorkflowVariableHandler {
           variables.get(getNamespacedVariableName(entityListNamespace, ENTITY_LIST_VARIABLE));
       if (obj instanceof List) {
         return (List<String>) obj;
+      }
+    }
+    String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+    if (relatedEntityNamespace != null) {
+      Object obj =
+          variables.get(getNamespacedVariableName(relatedEntityNamespace, RELATED_ENTITY_VARIABLE));
+      if (obj instanceof String entityLink) {
+        return List.of(entityLink);
       }
     }
     return List.of();

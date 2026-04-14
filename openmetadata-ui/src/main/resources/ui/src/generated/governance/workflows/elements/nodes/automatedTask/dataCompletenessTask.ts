@@ -14,7 +14,8 @@
  * Evaluates entity data completeness based on field presence and outputs quality bands.
  */
 export interface DataCompletenessTask {
-    config: CompletenessConfiguration;
+    branches?: string[];
+    config:    CompletenessConfiguration;
     /**
      * Description of what this completeness check does
      */
