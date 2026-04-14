@@ -118,7 +118,7 @@ jobs:
           -Dsonar.pullrequest.base=main \
           -Dsonar.pullrequest.github.repository=OpenMetadata \
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-          -Dsonar.pullrequest.provider=github
+          -Dsonar.pullrequest.provider=github \
           -Dsonar.scm.disabled=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
