@@ -14,17 +14,23 @@
 import { Button, Typography } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  SecurityConfiguration,
+  validateSecurityConfiguration,
+} from '../../../rest/securityConfigAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TestLoginResult } from './TestLogin.interface';
 
 interface TestLoginButtonProps {
   onSuccess: (result: TestLoginResult) => void;
   disabled?: boolean;
+  securityConfig?: SecurityConfiguration;
 }
 
 const TestLoginButton: React.FC<TestLoginButtonProps> = ({
   onSuccess,
   disabled = false,
+  securityConfig,
 }) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -83,11 +89,39 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     };
   }, [handleMessage]);
 
-  const handleTestLogin = useCallback(() => {
+  const handleTestLogin = useCallback(async () => {
     setIsLoading(true);
     setStatus('idle');
     setErrorMessage('');
 
+    // Step 1: Validate configuration before opening popup
+    if (securityConfig) {
+      try {
+        const validationResponse =
+          await validateSecurityConfiguration(securityConfig);
+
+        if (validationResponse.status === 'FAILED') {
+          const firstError = validationResponse.errors?.[0];
+          const errorMsg = firstError
+            ? `${firstError.field}: ${firstError.error}`
+            : t('message.test-login-failed');
+          setIsLoading(false);
+          setStatus('error');
+          setErrorMessage(errorMsg);
+          showErrorToast(errorMsg);
+
+          return;
+        }
+      } catch {
+        setIsLoading(false);
+        setStatus('error');
+        setErrorMessage(t('message.test-login-failed'));
+
+        return;
+      }
+    }
+
+    // Step 2: Open popup for IdP authentication
     const initiateUrl = `${window.location.origin}/api/v1/system/config/auth/test-login/initiate`;
 
     const width = 500;
