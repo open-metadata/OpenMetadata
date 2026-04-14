@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
@@ -36,9 +35,8 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import {
   getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
-  postTestCaseIncidentStatus,
   Task,
-  TestCaseResolutionPayload,
+  transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
@@ -124,47 +122,54 @@ const IncidentManagerPageHeader = ({
     }
   };
 
-  const updateAssignee = async (data: CreateTestCaseResolutionStatus) => {
-    try {
-      await postTestCaseIncidentStatus(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
     setTestCaseStatusData(data);
     updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
   };
 
-  const handleAssigneeUpdate = (assignee?: EntityReference[]) => {
+  const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
     if (isUndefined(testCaseStatusData)) {
       return;
     }
 
+    const taskId = testCaseStatusData.stateId;
+    if (!taskId) {
+      return;
+    }
+
     const assigneeData = assignee?.[0];
+    const transitionId =
+      testCaseStatusData.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Assigned
+        ? 'reassign'
+        : 'assign';
 
-    const updatedData: TestCaseResolutionStatus = {
-      ...testCaseStatusData,
-      testCaseResolutionStatusDetails: {
-        ...testCaseStatusData?.testCaseResolutionStatusDetails,
-        assignee: assigneeData,
-      },
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-    };
-
-    const createTestCaseResolutionStatus: CreateTestCaseResolutionStatus = {
-      severity: testCaseStatusData.severity,
-      testCaseReference:
-        testCaseStatusData.testCaseReference?.fullyQualifiedName ?? '',
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-      testCaseResolutionStatusDetails: {
-        assignee: assigneeData,
-      },
-    };
-
-    updateAssignee(createTestCaseResolutionStatus);
-    onIncidentStatusUpdate(updatedData);
+    try {
+      await transitionIncident(taskId, {
+        transitionId,
+        payload: assigneeData
+          ? {
+              assignees: [
+                {
+                  id: assigneeData.id,
+                  type: assigneeData.type ?? 'user',
+                  name: assigneeData.name,
+                  fullyQualifiedName:
+                    assigneeData.fullyQualifiedName ?? assigneeData.name,
+                  displayName: assigneeData.displayName,
+                },
+              ],
+            }
+          : undefined,
+      });
+      const refreshed = await getListTestCaseIncidentByStateId(taskId);
+      const latest = refreshed?.data?.[0];
+      if (latest) {
+        onIncidentStatusUpdate(latest);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestCaseResolution = async (id: string) => {
@@ -186,26 +191,25 @@ const IncidentManagerPageHeader = ({
     }
   };
 
-  const incidentStateId = useMemo(() => {
-    const payload = incidentTask?.payload as
-      | TestCaseResolutionPayload
-      | undefined;
-
-    return payload?.testCaseResolutionStatusId;
-  }, [incidentTask]);
+  // In task-first mode, stateId equals the task UUID (see
+  // IncidentTcrsSyncHandler). The pre-task-first code read from
+  // payload.testCaseResolutionStatusId, but that field doesn't exist
+  // in the new task system.
+  const incidentStateId = useMemo(
+    () => incidentTask?.id,
+    [incidentTask]
+  );
 
   useEffect(() => {
     const status = last(testCaseResolutionStatus);
 
     if (status?.stateId === incidentStateId) {
+      setTestCaseStatusData(status);
       if (
         status?.testCaseResolutionStatusType ===
         TestCaseResolutionStatusTypes.Resolved
       ) {
-        setTestCaseStatusData(undefined);
         fetchTaskCount();
-      } else {
-        setTestCaseStatusData(status);
       }
     }
   }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);

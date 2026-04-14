@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TASK_FORM_SCHEMA;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -63,6 +64,11 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
         "");
     supportsSearch = false;
     quoteFqn = false;
+  }
+
+  @Override
+  public List<TaskFormSchema> getEntitiesFromSeedData() throws IOException {
+    return getEntitiesFromSeedData(".*json/data/taskFormSchemas/.*\\.json$");
   }
 
   @Override
@@ -270,6 +276,14 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
       if (updatingExistingVariant) {
         return;
       }
+    }
+
+    // Suggestion schemas (DescriptionSuggestion, TagSuggestion) share the same
+    // taskType+taskCategory but are disambiguated by payload at resolve time via
+    // resolveSuggestionSchema/disambiguateMatch. Allow multiple schemas for that
+    // type. For all other types, enforce uniqueness per type+category.
+    if ("Suggestion".equals(schema.getTaskType())) {
+      return;
     }
 
     Optional<TaskFormSchema> existing =

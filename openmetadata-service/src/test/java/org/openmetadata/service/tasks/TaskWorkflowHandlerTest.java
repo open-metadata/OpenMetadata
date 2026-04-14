@@ -124,7 +124,7 @@ class TaskWorkflowHandlerTest {
 
       Task result =
           TaskWorkflowHandler.getInstance()
-              .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, "alice");
+              .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
 
       assertSame(refreshedTask, result);
       verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
@@ -161,7 +161,7 @@ class TaskWorkflowHandlerTest {
               () ->
                   TaskWorkflowHandler.getInstance()
                       .resolveTask(
-                          task, "approve", TaskResolutionType.Approved, null, null, "alice"));
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains(taskId.toString()));
       verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
@@ -197,7 +197,7 @@ class TaskWorkflowHandlerTest {
               () ->
                   TaskWorkflowHandler.getInstance()
                       .resolveTask(
-                          task, "approve", TaskResolutionType.Approved, null, null, "alice"));
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains("already in status"));
       verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
@@ -237,7 +237,8 @@ class TaskWorkflowHandlerTest {
 
       Task result =
           TaskWorkflowHandler.getInstance()
-              .resolveTask(task, "complete", TaskResolutionType.Completed, null, null, "alice");
+              .resolveTask(
+                  task, "complete", TaskResolutionType.Completed, null, null, null, "alice");
 
       assertSame(refreshedTask, result);
       verify(taskRepository).resolveTask(eq(task), any(TaskResolution.class), eq("alice"));
@@ -276,7 +277,7 @@ class TaskWorkflowHandlerTest {
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(storedTask);
 
       TaskWorkflowHandler.getInstance()
-          .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, "alice");
+          .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
 
       verify(taskRepository)
           .resolveTask(

@@ -48,7 +48,6 @@ import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colore
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TestCaseFailureReasonType,
@@ -64,7 +63,10 @@ import {
   TaskAction,
   TaskActionMode,
 } from '../../../../pages/TasksPage/TasksPage.interface';
-import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import {
+  getListTestCaseIncidentByStateId,
+  transitionIncident,
+} from '../../../../rest/incidentManagerAPI';
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import {
   closeTask as closeTaskAPI,
@@ -156,7 +158,7 @@ export const TaskTabNew = ({
   const {
     postFeed,
     updateTask,
-    fetchUpdatedThread,
+    setActiveTask,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
     isPostsLoading,
@@ -465,7 +467,7 @@ export const TaskTabNew = ({
 
   const updateTaskData = async (
     data: { newValue?: string; payload?: TaskPayload; comment?: string },
-    resolutionType: TaskResolutionType = TaskResolutionType.Approved,
+    resolutionType?: TaskResolutionType,
     transitionId?: string
   ) => {
     if (!task?.id) {
@@ -484,6 +486,22 @@ export const TaskTabNew = ({
           ? 'Vote recorded.'
           : t('server.task-resolved-successfully')
       );
+
+      // Update the task in the feed list and detail panel so the UI
+      // reflects the new status, resolution, and available transitions
+      // without requiring a full page refresh.
+      setActiveTask(updatedTask);
+      updateTask(updatedTask);
+
+      // Refresh TCRS so the header and timeline reflect the new stage.
+      // The IncidentTcrsSyncHandler writes a new TCRS record on every task
+      // transition; fetching by stateId (= task.id) picks it up.
+      const refreshed = await getListTestCaseIncidentByStateId(task.id);
+      const latest = refreshed?.data?.[0];
+      if (latest) {
+        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
+      }
+
       rest.onAfterClose?.();
       rest.onUpdateEntityDetails?.();
     } catch (err) {
@@ -493,10 +511,14 @@ export const TaskTabNew = ({
     }
   };
 
+  // Return the transition's declared resolutionType, or undefined if it
+  // doesn't have one. Non-terminal transitions (ack, assign, reassign) must
+  // NOT default to Approved — the server treats a non-null resolutionType as
+  // a terminal resolution and would immediately close the task.
   const getTransitionResolutionType = (
     transition?: TaskAvailableTransition
-  ): TaskResolutionType =>
-    transition?.resolutionType ?? TaskResolutionType.Approved;
+  ): TaskResolutionType | undefined =>
+    transition?.resolutionType;
 
   const getTransitionForResolution = useCallback(
     (resolutionType: TaskResolutionType) =>
@@ -572,6 +594,15 @@ export const TaskTabNew = ({
 
   const onTaskResolve = () => {
     if (isWorkflowDrivenTask && selectedTransition) {
+      // Assignment transitions (assign/reassign) need the inline assignee
+      // picker, not the form modal. The assignee picker is the same UI used
+      // by the INCIDENT_TASK_ACTION_LIST "Re-assign" action.
+      if (selectedTransition.targetStageId === 'assigned') {
+        setIsEditAssignee(true);
+
+        return;
+      }
+
       if (shouldOpenWorkflowTransitionModal(selectedTransition)) {
         setShowEditTaskModel(true);
 
@@ -605,27 +636,46 @@ export const TaskTabNew = ({
       return;
     }
 
-    updateTaskData({
-      newValue: isApprovalWorkflowTask ? taskHandler.approvedValue : newValue,
-      payload: initialTaskPayload,
-    });
+    updateTaskData(
+      {
+        newValue: isApprovalWorkflowTask
+          ? taskHandler.approvedValue
+          : newValue,
+        payload: initialTaskPayload,
+      },
+      TaskResolutionType.Approved
+    );
   };
 
   const onEditAndSuggest = ({ payload }: { payload: TaskPayload }) => {
     if (isWorkflowDrivenTask && selectedTransition) {
+      const requiredFields = activeTaskFormSchema?.formSchema?.required;
+      if (
+        Array.isArray(requiredFields) &&
+        requiredFields.some((field) => !payload?.[field])
+      ) {
+        showErrorToast(t('message.field-text-is-required', {
+          fieldText: t('label.required-field-plural'),
+        }));
+
+        return;
+      }
       runWorkflowTransition(selectedTransition, payload);
 
       return;
     }
 
-    updateTaskData({
-      newValue: getTaskResolutionNewValue(
-        task,
+    updateTaskData(
+      {
+        newValue: getTaskResolutionNewValue(
+          task,
+          payload,
+          taskFormSchema?.uiSchema
+        ),
         payload,
-        taskFormSchema?.uiSchema
-      ),
-      payload,
-    });
+      },
+      TaskResolutionType.Approved
+    );
   };
 
   /**
@@ -717,25 +767,39 @@ export const TaskTabNew = ({
   };
 
   const onTestCaseIncidentAssigneeUpdate = async () => {
+    const taskId = task.id;
+    if (!taskId || !updatedAssignees?.length) {
+      return;
+    }
     setIsActionLoading(true);
-    const testCaseIncident: CreateTestCaseResolutionStatus = {
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-      testCaseReference: entityFQN,
-      testCaseResolutionStatusDetails: {
-        assignee: {
-          id: updatedAssignees[0].value,
-          name: updatedAssignees[0].name,
-          displayName: updatedAssignees[0].displayName,
-          type: updatedAssignees[0].type,
-        },
-      },
-    };
+    const resolutionStatus = last(testCaseResolutionStatus);
+    const transitionId =
+      resolutionStatus?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Assigned
+        ? 'reassign'
+        : 'assign';
+    const assignee = updatedAssignees[0];
     try {
-      const response = await postTestCaseIncidentStatus(testCaseIncident);
-      updateTestCaseIncidentStatus([...testCaseResolutionStatus, response]);
-      fetchUpdatedThread(task.id, true).finally(() => {
-        setIsEditAssignee(false);
+      await transitionIncident(taskId, {
+        transitionId,
+        payload: {
+          assignees: [
+            {
+              id: assignee.value ?? assignee.id,
+              type: assignee.type ?? 'user',
+              name: assignee.name,
+              fullyQualifiedName: assignee.name,
+              displayName: assignee.displayName,
+            },
+          ],
+        },
       });
+      const refreshed = await getListTestCaseIncidentByStateId(taskId);
+      const latest = refreshed?.data?.[0];
+      if (latest) {
+        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
+      }
+      setIsEditAssignee(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -748,27 +812,29 @@ export const TaskTabNew = ({
   }: {
     payload?: TaskPayload;
   }) => {
+    const taskId = task.id;
+    if (!taskId) {
+      return;
+    }
     setIsActionLoading(true);
     const testCaseFailureReason = resolutionPayload?.rootCause as
       | TestCaseFailureReasonType
       | undefined;
     const testCaseFailureComment = String(resolutionPayload?.resolution ?? '');
-    const testCaseIncident: CreateTestCaseResolutionStatus = {
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
-      testCaseReference: entityFQN,
-      testCaseResolutionStatusDetails: {
-        resolvedBy: {
-          id: currentUser?.id ?? '',
-          name: currentUser?.name ?? '',
-          type: 'user',
-        },
-        testCaseFailureReason,
-        testCaseFailureComment,
-      },
-    };
     try {
-      const response = await postTestCaseIncidentStatus(testCaseIncident);
-      updateTestCaseIncidentStatus([...testCaseResolutionStatus, response]);
+      await transitionIncident(taskId, {
+        transitionId: 'resolve',
+        resolutionType: TaskResolutionType.Completed,
+        comment: testCaseFailureComment || undefined,
+        payload: testCaseFailureReason
+          ? { testCaseFailureReason }
+          : undefined,
+      });
+      const refreshed = await getListTestCaseIncidentByStateId(taskId);
+      const latest = refreshed?.data?.[0];
+      if (latest) {
+        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
+      }
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
@@ -888,6 +954,13 @@ export const TaskTabNew = ({
       }
 
       setSelectedTransitionId(transition.id);
+
+      // Assignment transitions need the inline assignee picker
+      if (transition.targetStageId === 'assigned') {
+        setIsEditAssignee(true);
+
+        return;
+      }
 
       if (shouldOpenWorkflowTransitionModal(transition)) {
         setShowEditTaskModel(true);

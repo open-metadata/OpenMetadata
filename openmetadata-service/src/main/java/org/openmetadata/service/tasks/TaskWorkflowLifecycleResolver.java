@@ -363,9 +363,7 @@ public final class TaskWorkflowLifecycleResolver {
   public static Map<String, Object> buildWorkflowStartVariables(Task draftTask) {
     Map<String, Object> variables = new LinkedHashMap<>();
     List<?> fallbackAssignees =
-        !nullOrEmpty(draftTask.getAssignees())
-            ? draftTask.getAssignees()
-            : draftTask.getCreatedBy() != null ? List.of(draftTask.getCreatedBy()) : null;
+        !nullOrEmpty(draftTask.getAssignees()) ? draftTask.getAssignees() : null;
     variables.put("taskEntityId", draftTask.getId().toString());
     variables.put("taskWorkflowManaged", true);
     variables.put("taskName", draftTask.getName());

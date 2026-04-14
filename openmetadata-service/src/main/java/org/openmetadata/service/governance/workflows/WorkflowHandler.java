@@ -522,6 +522,33 @@ public class WorkflowHandler {
     taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
   }
 
+  /**
+   * Set a workflow variable at process instance scope with its raw (non-namespaced)
+   * name, matching the convention used by {@link
+   * org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver#buildWorkflowStartVariables}.
+   *
+   * <p>Used for cross-stage inputs like {@code taskAssignees} and {@code taskReviewers}
+   * that {@code SetApprovalAssigneesImpl} reads via {@code execution.getVariable(name)}.
+   * Variables passed through {@link #transformToNodeVariables(UUID, Map)} are prefixed
+   * with the current stage name and become invisible to that reader, so this method
+   * provides a separate path for setting them during a mid-workflow transition.
+   */
+  public void setProcessVariable(UUID customTaskId, String name, Object value) {
+    Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
+    if (oTask.isPresent()) {
+      processEngine.getTaskService().setVariable(oTask.get().getId(), name, value);
+      LOG.debug(
+          "[WorkflowHandler] setProcessVariable: customTaskId='{}', name='{}', value='{}'",
+          customTaskId,
+          name,
+          value);
+    } else {
+      LOG.warn(
+          "[WorkflowHandler] setProcessVariable: no Flowable task for customTaskId='{}'",
+          customTaskId);
+    }
+  }
+
   public String getParentActivityId(String executionId) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     String activityId = null;

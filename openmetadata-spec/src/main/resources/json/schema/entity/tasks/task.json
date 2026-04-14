@@ -150,6 +150,12 @@
         "newValue": {
           "description": "The new value that was applied when task was resolved (for update tasks).",
           "type": "string"
+        },
+        "payload": {
+          "description": "Structured resolution data submitted via the transition form at resolution time.",
+          "existingJavaType": "java.lang.Object",
+          "type": "object",
+          "additionalProperties": true
         }
       },
       "additionalProperties": false
