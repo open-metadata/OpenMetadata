@@ -428,34 +428,6 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("offset") int offset);
 
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> <cond> "
-              + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
-              + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:searchTerm)) "
-              + "ORDER BY name, id LIMIT :limit OFFSET :offset",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> <cond> "
-              + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
-              + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:searchTerm)) "
-              + "ORDER BY name, id LIMIT :limit OFFSET :offset",
-      connectionType = POSTGRES)
-  List<String> searchByNameAndDisplayName(
-      @Define("table") String table,
-      @Define("cond") String cond,
-      @Bind("searchTerm") String searchTerm,
-      @Bind("limit") int limit,
-      @Bind("offset") int offset);
-
-  default List<String> searchByNameAndDisplayName(
-      ListFilter filter, String searchTerm, int limit, int offset) {
-    String term = searchTerm == null ? "" : searchTerm.trim();
-    return searchByNameAndDisplayName(
-        getTableName(), filter.getCondition(), "%" + escape(term) + "%", limit, offset);
-  }
-
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
 

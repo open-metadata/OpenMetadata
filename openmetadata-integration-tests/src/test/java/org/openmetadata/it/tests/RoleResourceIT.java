@@ -460,7 +460,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
     assertNotNull(noMatches.getData());
     assertEquals(0, noMatches.getData().size());
 
-    // -- Pagination: walk through all 6 results in pages of 2 --
+    // -- Offset-based pagination: walk through all 6 results in pages of 2 --
     ResultList<Role> page1 = searchRoles(client, uniqueToken, 2, 0);
     assertEquals(2, page1.getData().size());
     assertNotNull(page1.getPaging().getAfter(), "Page 1 should indicate more results exist");

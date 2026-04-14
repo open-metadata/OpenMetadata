@@ -72,6 +72,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getProviderCondition(tableName));
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
+    conditions.add(getNameFilterCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -750,6 +751,27 @@ public class ListFilter extends Filter<ListFilter> {
       }
     }
     return condition.toString();
+  }
+
+  private String getNameFilterCondition(String tableName) {
+    String nameFilter = queryParams.get("nameFilter");
+    if (nullOrEmpty(nameFilter)) {
+      return "";
+    }
+    String escaped = "%" + escape(nameFilter.trim()) + "%";
+    queryParams.put("nameFilterParam", escaped);
+    String nameCol = tableName == null ? "name" : tableName + ".name";
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "(LOWER(%s) LIKE LOWER(:nameFilterParam) "
+              + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:nameFilterParam))",
+          nameCol);
+    } else {
+      return String.format(
+          "(LOWER(%s) LIKE LOWER(:nameFilterParam) "
+              + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:nameFilterParam))",
+          nameCol);
+    }
   }
 
   public static String escapeApostrophe(String name) {
