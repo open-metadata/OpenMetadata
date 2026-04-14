@@ -89,7 +89,9 @@ class LogsClassBase {
       return [
         {
           name: startCase(serviceType),
-          url: observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES
+          ),
         },
         {
           name: getEntityName(ingestionDetails),

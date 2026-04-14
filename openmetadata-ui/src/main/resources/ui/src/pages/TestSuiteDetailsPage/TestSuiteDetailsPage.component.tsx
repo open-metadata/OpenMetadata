@@ -82,11 +82,11 @@ import {
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -103,7 +103,11 @@ const TestSuiteDetailsPage = () => {
   const { showModal } = useEntityExportModalProvider();
 
   const afterDeleteAction = () => {
-    navigate(observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(
+      observabilityRouterClassBase.getDataQualityPagePath(
+        DataQualityPageTabs.TEST_SUITES
+      )
+    );
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 

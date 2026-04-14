@@ -2185,7 +2185,9 @@ export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
     : [
         {
           name: t('label.test-suite-plural'),
-          url: observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES
+          ),
         },
         {
           name: getEntityName(entity),

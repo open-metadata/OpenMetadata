@@ -711,7 +711,9 @@ export function getColumnNameFromColumnFilterKey(
 
 /** Returns path and search for navigating to the Test Cases tab with a status filter. */
 export const getTestCaseTabPath = (testCaseStatus: TestCaseStatus) => ({
-  pathname: observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+  pathname: observabilityRouterClassBase.getDataQualityPagePath(
+    DataQualityPageTabs.TEST_CASES
+  ),
   search: QueryString.stringify({ testCaseStatus }),
 });
 

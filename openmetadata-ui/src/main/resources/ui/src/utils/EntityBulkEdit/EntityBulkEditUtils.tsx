@@ -88,7 +88,9 @@ export const getBulkEntityNavigationPath = (
 ): string => {
   if (entityType === EntityType.TEST_CASE) {
     if (fqn === WILD_CARD_CHAR) {
-      return observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);
+      return observabilityRouterClassBase.getDataQualityPagePath(
+        DataQualityPageTabs.TEST_CASES
+      );
     } else if (sourceEntityType === EntityType.TABLE) {
       return entityUtilClassBase.getEntityLink(
         EntityType.TABLE,
@@ -99,7 +101,9 @@ export const getBulkEntityNavigationPath = (
     } else if (sourceEntityType === EntityType.TEST_SUITE) {
       return entityUtilClassBase.getEntityLink(EntityType.TEST_SUITE, fqn);
     } else {
-      return observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);
+      return observabilityRouterClassBase.getDataQualityPagePath(
+        DataQualityPageTabs.TEST_CASES
+      );
     }
   }
 
