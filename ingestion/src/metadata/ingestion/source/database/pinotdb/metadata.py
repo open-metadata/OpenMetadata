@@ -13,6 +13,7 @@ from typing import Iterable, Optional
 
 from pinotdb import sqlalchemy as pinot_sqlalchemy
 from sqlalchemy import types
+from sqlalchemy.sql import sqltypes
 
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -26,11 +27,16 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 
 
 def get_type_custom(data_type, field_size):
+    # SQLAlchemy 1.4 does not expose DOUBLE in sqlalchemy.types, but
+    # pinotdb returns "double". Prefer DOUBLE when available, then fall back
+    # to sqltypes.DOUBLE, and finally Float to avoid runtime crashes.
+    double_type = getattr(types, "DOUBLE", getattr(sqltypes, "DOUBLE", types.Float))
+
     type_map = {
         "int": types.BigInteger,
         "long": types.BigInteger,
         "float": types.Float,
-        "double": types.DOUBLE,
+        "double": double_type,
         # BOOLEAN, is added after release 0.7.1.
         # In release 0.7.1 and older releases, BOOLEAN is equivalent to STRING.
         "boolean": types.Boolean,
