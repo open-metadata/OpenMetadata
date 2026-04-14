@@ -2841,6 +2841,69 @@ class DbtUnitTest(TestCase):
             expected_fqn
         ], f"Expected lineage to resolve via target_schema 'snapshots', got: {result}"
 
+    def test_dbt_entity_link_with_mixed_case_columns_issue_24636(self):
+        """
+        Test for issue #24636: dbt test case ingestion fails with relationship tests.
+
+        Root cause: dbt relationship tests have multiple upstream dependencies, but the
+        order varies by database engine (Snowflake first, Unity Catalog last). Previously,
+        code iterated over ALL upstream tables, causing column validation errors when
+        the referenced table didn't have the same column names.
+
+        Fix: Extract primary table from test_metadata.kwargs['model'] explicitly,
+        which is order-independent and works across all database engines.
+        """
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+
+        # Test case 1: Relationship test (like from issue #24636)
+        # relationships_un_rueckerstattungen_medis_base_PersonNr__PartnerNr__ref_un_person_base_
+        # For relationship tests, dbt includes both tables in upstream list
+        manifest_node.column_name = "PersonNr"  # Mixed case column
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table
+                "unity.catalog.schema.un_person_base",  # Referenced table
+            ],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        # Should return only one entity link (for the primary table)
+        self.assertEqual(len(result), 1, "Should only create one entity link for primary table")
+        # Link should be to the primary table, not the referenced table
+        self.assertIn("un_rueckerstattungen_medis_base", result[0])
+        self.assertIn("::columns::PersonNr>", result[0])
+        self.assertNotIn("un_person_base", result[0])
+
+        # Test case 2: Unique test with underscore-prefixed mixed-case column
+        # unique_un_abrechnungsposition_cur_dp_AbrechnungspositionHK
+        manifest_node.column_name = "dp_AbrechnungspositionHK"  # Underscore + mixed case
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["unity.catalog.schema.un_abrechnungsposition_cur"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertEqual(len(result), 1)
+        self.assertIn("::columns::dp_AbrechnungspositionHK>", result[0])
+
+        # Test case 3: Ensure case sensitivity is preserved
+        manifest_node.column_name = "PartnerNr"
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["unity.catalog.schema.un_person_base"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertEqual(len(result), 1)
+        # Entity link should preserve the exact column name casing
+        self.assertIn("::columns::PartnerNr>", result[0])
+
 
 class TestDownloadDbtFiles(TestCase):
     """
