@@ -63,7 +63,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
   Transi18next: ({ children }: { children: ReactNode }) => children,
-  detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
   t: jest.fn().mockImplementation((key: string) => key),
 }));
 

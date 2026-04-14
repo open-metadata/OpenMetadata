@@ -12,6 +12,9 @@
  */
 
 import i18next from 'i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import { initReactI18next } from 'react-i18next';
+import { getInitOptions } from './i18nextUtil';
 
 class LocalUtilClassBase {
   private static _instance: LocalUtilClassBase;
@@ -45,6 +48,22 @@ class LocalUtilClassBase {
       'tr-TR': () => import('../../locale/languages/tr-tr.json'),
       'ar-SA': () => import('../../locale/languages/ar-sa.json'),
     };
+
+    i18next.on('languageChanged', async (lng) => {
+      await this.loadLocales(lng);
+    });
+
+    setTimeout(() => {
+      i18next
+        .use(LanguageDetector)
+        .use(initReactI18next)
+        .init(getInitOptions())
+        .then(async () => {
+          if (i18next.language !== i18next.resolvedLanguage) {
+            await i18next.changeLanguage(i18next.language);
+          }
+        });
+    }, 0);
   }
 
   async loadLocales(locale: string): Promise<void> {
@@ -67,6 +86,10 @@ class LocalUtilClassBase {
     this.loadedLocales.add(locale);
   }
 
+  getI18nInstance() {
+    return i18next;
+  }
+
   static getInstance(): LocalUtilClassBase {
     if (!LocalUtilClassBase._instance) {
       LocalUtilClassBase._instance = new LocalUtilClassBase();
@@ -76,4 +99,8 @@ class LocalUtilClassBase {
   }
 }
 
-export default LocalUtilClassBase;
+const localUtilClassBase = LocalUtilClassBase.getInstance();
+
+export { LocalUtilClassBase };
+
+export default localUtilClassBase;

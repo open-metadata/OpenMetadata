@@ -73,8 +73,7 @@ import {
   prepareFeedLink,
 } from '../../utils/FeedUtils';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
-import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
-import LocalUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
+import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -112,7 +111,7 @@ const NavBar = () => {
   const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed, language },
+    preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
 
@@ -440,11 +439,14 @@ const NavBar = () => {
   );
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
-    await LocalUtilClassBase.getInstance().loadLocales(key);
+    await localUtilClassBase.loadLocales(key);
     i18next.changeLanguage(key);
-    setPreference({ language: key as SupportedLocales });
     navigate(0);
   }, []);
+
+  const currentLanguage = i18next.language
+    ? upperCase(i18next.language.split('-')[0])
+    : '';
 
   return (
     <>
@@ -539,7 +541,7 @@ const NavBar = () => {
                 className="flex-center gap-2 p-x-xs font-medium"
                 data-testid="language-selector-button"
                 type="text">
-                {language ? upperCase(language.split('-')[0]) : ''}{' '}
+                {currentLanguage}
                 <DropDownIcon width={12} />
               </Button>
             </Dropdown>

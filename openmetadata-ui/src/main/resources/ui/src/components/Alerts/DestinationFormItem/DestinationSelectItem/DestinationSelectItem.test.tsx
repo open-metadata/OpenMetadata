@@ -68,7 +68,6 @@ jest.mock('../../../../utils/i18next/LocalUtil', () => ({
     t: jest.fn().mockImplementation((key) => key),
   },
   t: jest.fn().mockImplementation((key) => key),
-  detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
 }));
 
 describe('DestinationSelectItem component', () => {

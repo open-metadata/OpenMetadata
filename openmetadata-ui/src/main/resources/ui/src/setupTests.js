@@ -90,17 +90,6 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 }));
 
 /**
- * mock i18next
- */
-
-jest.mock('i18next', () => ({
-  ...jest.requireActual('i18next'),
-  use: jest.fn(),
-  init: jest.fn(),
-  t: jest.fn().mockImplementation((key) => key),
-}));
-
-/**
  * mock react-i18next
  */
 jest.mock('react-i18next', () => ({
@@ -236,9 +225,9 @@ jest.mock('./utils/i18next/LocalUtil', () => {
     __esModule: true,
     default: {
       t: jest.fn().mockImplementation((key) => key),
+      on: jest.fn(),
     },
     t: jest.fn().mockImplementation((key) => key),
-    detectBrowserLanguage: jest.fn().mockImplementation(() => 'en'),
     translateWithNestedKeys: jest.fn().mockImplementation((key, params) => {
       return params ? `${key}_${JSON.stringify(params)}` : key;
     }),

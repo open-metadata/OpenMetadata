@@ -34,12 +34,12 @@ export const getInitOptions = (): InitOptions => {
       caches: ['cookie'], // cache user language on
     },
     interpolation: {
-      escapeValue: false, // XSS safety provided by React
+      escapeValue: false,
     },
     missingKeyHandler: (_lngs, _ns, key) =>
       // eslint-disable-next-line no-console
       console.error(`i18next: key not found "${key}"`),
-    saveMissing: true, // Required for missing key handler
+    saveMissing: true,
   };
 };
 
