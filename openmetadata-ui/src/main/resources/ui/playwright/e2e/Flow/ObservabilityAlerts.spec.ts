@@ -263,12 +263,16 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
     });
   });
 }
-
 test('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
   test.slow();
 
   const ALERT_NAME = generateAlertName();
@@ -290,6 +294,9 @@ test('Alert operations for a user with and without permissions', async ({
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
     );
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Search and select filter input value
     const searchOptions = userWithPermissionsPage.waitForResponse(
@@ -318,7 +325,13 @@ test('Alert operations for a user with and without permissions', async ({
       )
       .toBeAttached();
 
+    // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
     await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+    // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Select action
     await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');

@@ -13,6 +13,16 @@ SQL Queries used during ingestion
 """
 
 
+import textwrap
+
 PRESTO_SHOW_CATALOGS = "SHOW CATALOGS"
 
 PRESTO_SHOW_CREATE_TABLE = "SHOW CREATE TABLE {schema_table_name}"
+
+PRESTO_GET_CATALOG_CONNECTOR = textwrap.dedent(
+    """
+    SELECT "connector_name"
+    FROM "system"."metadata"."catalogs"
+    WHERE "catalog_name" = :catalog_name
+    """
+)

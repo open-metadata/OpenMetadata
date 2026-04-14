@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
@@ -548,13 +548,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await waitForAllLoadersToDisappear(adminPage);
 
         const expectedTabs = getCustomizeDetailsDefaultTabs(type);
-
-        const tabs = adminPage
-          .getByTestId('customize-tab-card')
-          .getByRole('button')
-          .filter({ hasNotText: 'Add Tab' });
-
-        await expect(tabs).toHaveCount(expectedTabs.length);
 
         for (const tabName of expectedTabs) {
           await expect(

@@ -114,10 +114,7 @@ public final class SearchIndexRetryQueue {
     if (status == 429 || status >= 500) {
       return true;
     }
-    if (status >= 400) {
-      return false;
-    }
-    return true;
+    return status < 400;
   }
 
   public static void updateSuspension(Set<String> entityTypes, boolean suspendAll) {

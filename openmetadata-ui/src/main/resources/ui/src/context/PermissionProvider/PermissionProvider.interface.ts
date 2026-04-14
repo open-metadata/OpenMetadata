@@ -78,7 +78,7 @@ export enum ResourceEntity {
   DOMAIN = 'domain',
   DATA_PRODUCT = 'dataProduct',
   STORED_PROCEDURE = 'storedProcedure',
-  APPLICATION = 'application',
+  APPLICATION = 'app',
   PERSONA = 'persona',
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',

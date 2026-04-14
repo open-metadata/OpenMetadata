@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.capitalizeFirst;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
@@ -11,28 +12,22 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
-import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.REMOVE_FOLLOWERS_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
@@ -78,15 +73,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
@@ -99,13 +95,13 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -175,14 +171,6 @@ public class SearchRepository {
           Entity.API_SERVICE,
           Entity.DRIVE_SERVICE);
 
-  private final List<String> inheritableFields =
-      List.of(
-          FIELD_OWNERS,
-          FIELD_DOMAINS,
-          FIELD_FOLLOWERS,
-          Entity.FIELD_DISABLED,
-          Entity.FIELD_TEST_SUITES,
-          FIELD_DISPLAY_NAME);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   /**
@@ -223,6 +211,7 @@ public class SearchRepository {
   @Getter private EmbeddingClient embeddingClient;
   @Getter private VectorIndexService vectorIndexService;
   @Getter private VectorEmbeddingHandler vectorEmbeddingHandler;
+  @Getter private volatile String vectorServiceInitError;
   private volatile boolean vectorServiceInitialized = false;
 
   public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
@@ -424,7 +413,7 @@ public class SearchRepository {
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
             ((OpenSearchClient) getSearchClient()).getNewClient();
-        OpenSearchVectorService.init(osClient, embeddingClient, language);
+        OpenSearchVectorService.init(osClient, embeddingClient);
         this.vectorIndexService = OpenSearchVectorService.getInstance();
       } else {
         LOG.warn(
@@ -435,6 +424,7 @@ public class SearchRepository {
       this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
 
       vectorServiceInitialized = true;
+      this.vectorServiceInitError = null;
 
       ensureHybridSearchPipeline();
 
@@ -443,6 +433,7 @@ public class SearchRepository {
           cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
           embeddingClient.getDimension());
     } catch (Exception e) {
+      this.vectorServiceInitError = e.toString();
       LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
     }
   }
@@ -454,9 +445,9 @@ public class SearchRepository {
 
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
-    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
+    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.4;
     double semanticWeight =
-        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.6;
 
     try {
       SearchSettings ss =
@@ -482,6 +473,13 @@ public class SearchRepository {
     } else {
       LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
     }
+  }
+
+  public Optional<String> checkHybridSearchPipeline() {
+    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
+      return openSearchVectorService.checkHybridSearchPipeline();
+    }
+    return Optional.empty();
   }
 
   public IndexMapping getIndexMapping(String entityType) {
@@ -583,9 +581,8 @@ public class SearchRepository {
       }
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to Delete Index for entity %s due to ",
-              indexMapping.getIndexName(clusterAlias)),
+          "Failed to Delete Index for entity {} due to ",
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }
@@ -649,12 +646,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("createEntityIndex", ie));
       LOG.error(
-          "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue creating new search document for entity [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -876,13 +871,23 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
-          SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
-          String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-          docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+          try {
+            SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+            String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+            docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+          } catch (Exception ie) {
+            LOG.error(
+                "Issue in building search document for entity [{}] and entityType [{}]",
+                entity.getId(),
+                entityType,
+                ie);
+          }
         }
 
-        // createEntities is async fire-and-forget — errors are handled in its
-        // callback via the retry queue, so no try-catch is needed here.
+        if (docs.isEmpty()) {
+          return;
+        }
+
         searchClient.createEntities(indexMapping.getIndexName(clusterAlias), docs);
 
         if (Entity.TABLE.equals(entityType)) {
@@ -977,12 +982,10 @@ public class SearchRepository {
             entityType,
             SearchIndexRetryQueue.failureReason("createTimeSeriesEntity", ie));
         LOG.error(
-            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue creating new search document for entity [{}] and entityType [{}]",
             entityId,
             entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -1010,12 +1013,10 @@ public class SearchRepository {
             entityType,
             SearchIndexRetryQueue.failureReason("updateTimeSeriesEntity", e));
         LOG.error(
-            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue updating the search document for entity [{}] and entityType [{}]",
             entityId,
             entityType,
-            e.getMessage(),
-            e.getCause(),
-            ExceptionUtils.getStackTrace(e));
+            e);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -1144,12 +1145,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("updateEntityIndex", ie));
       LOG.error(
-          "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue updating the search document for entity [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       // End search timing
       if (searchSample != null) {
@@ -1480,90 +1479,20 @@ public class SearchRepository {
    */
   private boolean requiresPropagation(
       ChangeDescription changeDescription, String entityType, EntityInterface entity) {
-    if (changeDescription == null) {
-      return false;
-    }
+    if (changeDescription == null) return false;
 
-    // Check if any inheritable fields have changed (owners, domains, etc.)
-    boolean hasInheritableChanges =
-        changeDescription.getFieldsAdded().stream()
-                .anyMatch(field -> inheritableFields.contains(field.getName()))
-            || changeDescription.getFieldsUpdated().stream()
-                .anyMatch(field -> inheritableFields.contains(field.getName()))
-            || changeDescription.getFieldsDeleted().stream()
-                .anyMatch(field -> inheritableFields.contains(field.getName()));
+    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    Set<String> propagatedFields =
+        repository.getSearchPropagationDescriptors().stream()
+            .map(PropagationDescriptor::fieldName)
+            .collect(Collectors.toSet());
 
-    // Tags need special handling - they only propagate in specific scenarios:
-    // 1. From glossary terms to entities
-    // 2. When a tag entity itself is updated (to all entities using it)
-    // 3. NOT from table to columns
-    boolean hasTagChanges = false;
-    boolean nameChanged =
-        changeDescription.getFieldsUpdated().stream()
-            .anyMatch(field -> field.getName().equals(FIELD_NAME));
-    if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
-        || entityType.equalsIgnoreCase(Entity.TAG)) {
-      hasTagChanges =
-          changeDescription.getFieldsAdded().stream()
-                  .anyMatch(field -> propagateFields.contains(field.getName()))
-              || changeDescription.getFieldsUpdated().stream()
-                  .anyMatch(field -> propagateFields.contains(field.getName()))
-              || changeDescription.getFieldsDeleted().stream()
-                  .anyMatch(field -> propagateFields.contains(field.getName()));
-    }
-
-    // Check for glossary term specific changes
-    if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-      hasInheritableChanges =
-          hasInheritableChanges
-              || hasTagChanges
-              || nameChanged
-              || changeDescription.getFieldsAdded().stream()
-                  .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS))
-              || changeDescription.getFieldsDeleted().stream()
-                  .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS));
-    }
-
-    // Check for certification tag changes + tag specific changes
-    if (entityType.equalsIgnoreCase(Entity.TAG)) {
-      Tag tag = (Tag) entity;
-      hasInheritableChanges = hasInheritableChanges || nameChanged;
-      if (tag != null && tag.getCertification() != null) {
-        hasInheritableChanges =
-            hasInheritableChanges
-                || changeDescription.getFieldsUpdated().stream()
-                    .anyMatch(field -> field.getName().equals("certification"));
-      }
-    }
-
-    // Check for relationship changes that need propagation
-    if (changeDescription.getFieldsAdded().stream()
-            .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))
-        || changeDescription.getFieldsUpdated().stream()
-            .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))) {
-      hasInheritableChanges = true;
-    }
-
-    // Page entities have special FQN propagation when parent changes
-    if (entityType.equalsIgnoreCase(Entity.PAGE)) {
-      boolean parentChanged =
-          changeDescription.getFieldsAdded().stream()
-                  .anyMatch(field -> field.getName().contains("parent"))
-              || changeDescription.getFieldsUpdated().stream()
-                  .anyMatch(field -> field.getName().contains("parent"));
-      hasInheritableChanges = hasInheritableChanges || parentChanged;
-    }
-
-    boolean propagationRequired = hasInheritableChanges || hasTagChanges;
-
-    if (propagationRequired) {
-      LOG.debug(
-          "Propagation required for entity {} of type {} - changes detected in inheritable fields or special propagation needed",
-          entity.getId(),
-          entityType);
-    }
-
-    return propagationRequired;
+    return Stream.of(
+            changeDescription.getFieldsAdded(),
+            changeDescription.getFieldsUpdated(),
+            changeDescription.getFieldsDeleted())
+        .flatMap(List::stream)
+        .anyMatch(field -> propagatedFields.contains(field.getName()));
   }
 
   public void propagateInheritedFieldsToChildren(
@@ -1577,7 +1506,8 @@ public class SearchRepository {
       return;
     }
 
-    Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription, entity);
+    Pair<String, Map<String, Object>> updates =
+        getInheritedFieldChanges(changeDescription, entity, entityType);
     if (updates.getKey() == null || updates.getKey().isEmpty()) {
       return;
     }
@@ -1652,7 +1582,6 @@ public class SearchRepository {
     }
   }
 
-  private static final String CERTIFICATION = "Certification";
   private static final String CERTIFICATION_FIELD = "certification";
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
 
@@ -1663,19 +1592,34 @@ public class SearchRepository {
     }
 
     if (Entity.TAG.equalsIgnoreCase(entityType)) {
-      handleTagEntityUpdate((Tag) entity);
+      handleTagEntityUpdate((Tag) entity, changeDescription);
     } else {
       handleEntityCertificationUpdate(entity, changeDescription);
     }
   }
 
-  private void handleTagEntityUpdate(Tag tagEntity) {
-    if (CERTIFICATION.equals(tagEntity.getClassification().getFullyQualifiedName())) {
-      updateCertificationInSearch(tagEntity);
+  private void handleTagEntityUpdate(Tag tagEntity, ChangeDescription changeDescription) {
+    String allowedClassification = getCertificationClassificationFromSettings();
+    if (allowedClassification == null) return;
+    if (!allowedClassification.equals(tagEntity.getClassification().getFullyQualifiedName()))
+      return;
+
+    String oldFQN = tagEntity.getFullyQualifiedName();
+    for (FieldChange field : changeDescription.getFieldsUpdated()) {
+      if (FIELD_NAME.equals(field.getName()) && field.getOldValue() != null) {
+        String parentFQN = FullyQualifiedName.getParentFQN(tagEntity.getFullyQualifiedName());
+        if (!nullOrEmpty(parentFQN)) {
+          oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
+        } else {
+          oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
+        }
+        break;
+      }
     }
+    updateCertificationInSearch(tagEntity, oldFQN);
   }
 
-  private void updateCertificationInSearch(Tag tagEntity) {
+  private void updateCertificationInSearch(Tag tagEntity, String oldFQN) {
     Map<String, Object> paramMap = new HashMap<>();
     paramMap.put("name", tagEntity.getName());
     paramMap.put("description", tagEntity.getDescription());
@@ -1683,8 +1627,18 @@ public class SearchRepository {
     paramMap.put("style", tagEntity.getStyle());
     searchClient.updateChildren(
         DATA_ASSET_SEARCH_ALIAS,
-        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, tagEntity.getFullyQualifiedName()),
+        new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, oldFQN),
         new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+  }
+
+  private String getCertificationClassificationFromSettings() {
+    return SettingsCache.getSettingOrDefault(
+            SettingsType.ASSET_CERTIFICATION_SETTINGS,
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"),
+            AssetCertificationSettings.class)
+        .getAllowedClassification();
   }
 
   private void handleEntityCertificationUpdate(EntityInterface entity, ChangeDescription change) {
@@ -1736,7 +1690,7 @@ public class SearchRepository {
       EntityInterface entity) {
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
-      String indexName = indexMapping.getIndexName();
+      String indexName = indexMapping.getIndexName(clusterAlias);
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (field.getName().contains(PARENT)) {
           String oldParentFQN = entity.getName();
@@ -1801,18 +1755,18 @@ public class SearchRepository {
           newFQN = FullyQualifiedName.quoteName(field.getNewValue().toString());
         }
 
-        if (field.getName().contains(FIELD_NAME)) {
+        if (FIELD_NAME.equals(field.getName())) {
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 
         if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
           Map<String, Object> updates = new HashMap<>();
           updates.put("displayName", field.getNewValue().toString());
-          paramMap.put("tagFQN", oldFQN);
+          paramMap.put("tagFQN", entity.getFullyQualifiedName());
           paramMap.put("updates", updates);
           searchClient.updateChildren(
               GLOBAL_SEARCH_ALIAS,
-              new ImmutablePair<>(TAGS_FQN, oldFQN),
+              new ImmutablePair<>(TAGS_FQN, entity.getFullyQualifiedName()),
               new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
         }
       }
@@ -1820,162 +1774,313 @@ public class SearchRepository {
   }
 
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
-      ChangeDescription changeDescription, EntityInterface entity) {
+      ChangeDescription changeDescription, EntityInterface entity, String entityType) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      Map<String, PropagationDescriptor> descriptorMap =
+          repo.getSearchPropagationDescriptors().stream()
+              .collect(Collectors.toMap(PropagationDescriptor::fieldName, Function.identity()));
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
-        if (inheritableFields.contains(field.getName())) {
-          try {
-            if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners =
-                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
-              for (EntityReference inheritedOwner : inheritedOwners) {
-                inheritedOwner.setInherited(true);
-              }
-              fieldData.put("deletedOwners", inheritedOwners);
-              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
-              scriptTxt.append(" ");
-            } else if (field.getName().equals(FIELD_DOMAINS)) {
-              List<EntityReference> inheritedDomains =
-                  JsonUtils.deepCopyList(entity.getDomains(), EntityReference.class);
-              for (EntityReference inheritedDomain : inheritedDomains) {
-                inheritedDomain.setInherited(true);
-              }
-              fieldData.put("deletedDomains", inheritedDomains);
-              scriptTxt.append(REMOVE_DOMAINS_SCRIPT);
-              scriptTxt.append(" ");
-            } else if (field.getName().equals(FIELD_FOLLOWERS)) {
-              List<EntityReference> inheritedFollowers =
-                  copyWithInheritedFlag(entity.getFollowers());
-              fieldData.put("deletedFollowers", inheritedFollowers);
-              scriptTxt.append(REMOVE_FOLLOWERS_SCRIPT);
-              scriptTxt.append(" ");
-            } else {
-              EntityReference entityReference =
-                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-              scriptTxt.append(
-                  String.format(
-                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
-                      field.getName()));
-              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
-              scriptTxt.append(" ");
-            }
-          } catch (JsonParsingException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
-          }
-        }
+        PropagationDescriptor desc = descriptorMap.get(field.getName());
+        if (desc != null) appendDeleteScript(scriptTxt, fieldData, field, desc, entity);
       }
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
-        if (inheritableFields.contains(field.getName())) {
-          try {
-            EntityReference newEntityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-            fieldData.put(
-                "entityBeforeUpdate",
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
-            scriptTxt.append(
-                String.format(
-                    UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                    field.getName(),
-                    field.getName(),
-                    field.getName(),
-                    field.getName(),
-                    field.getName()));
-            fieldData.put(field.getName(), newEntityReference);
-          } catch (JsonParsingException e) {
-            if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
-              scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
-              fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
-            } else if (field.getName().equals(FIELD_DISPLAY_NAME)) {
-              String fieldPath =
-                  getFieldPath(entity.getEntityReference().getType(), field.getName());
-              fieldData.put(field.getName(), field.getNewValue().toString());
-              scriptTxt.append(
-                  String.format(PROPAGATE_NESTED_FIELD_SCRIPT, fieldPath, field.getName()));
-            } else {
-              scriptTxt.append(
-                  String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
-            }
-          }
-          scriptTxt.append(" ");
-        }
+        PropagationDescriptor desc = descriptorMap.get(field.getName());
+        if (desc != null) appendUpdateScript(scriptTxt, fieldData, field, desc, entity);
       }
       for (FieldChange field : changeDescription.getFieldsAdded()) {
-        if (inheritableFields.contains(field.getName())) {
-          try {
-            if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners =
-                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
-              for (EntityReference inheritedOwner : inheritedOwners) {
-                inheritedOwner.setInherited(true);
-              }
-              fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_OWNERS_SCRIPT);
-            } else if (field.getName().equals(FIELD_DOMAINS)) {
-              List<EntityReference> inheritedDomains =
-                  JsonUtils.deepCopyList(entity.getDomains(), EntityReference.class);
-              for (EntityReference inheritedDomain : inheritedDomains) {
-                inheritedDomain.setInherited(true);
-              }
-              fieldData.put("updatedDomains", inheritedDomains);
-              scriptTxt.append(ADD_DOMAINS_SCRIPT);
-            } else if (field.getName().equals(FIELD_FOLLOWERS)) {
-              List<EntityReference> inheritedFollowers =
-                  copyWithInheritedFlag(entity.getFollowers());
-              fieldData.put("updatedFollowers", inheritedFollowers);
-              scriptTxt.append(ADD_FOLLOWERS_SCRIPT);
-            } else {
-              EntityReference entityReference =
-                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-              scriptTxt.append(
-                  String.format(
-                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
-                      field.getName(),
-                      field.getName(),
-                      field.getName()));
-              fieldData.put(field.getName(), entityReference);
-            }
-            scriptTxt.append(" ");
-          } catch (JsonParsingException e) {
-            if (field.getName().equals(FIELD_DISPLAY_NAME)) {
-              String fieldPath =
-                  getFieldPath(entity.getEntityReference().getType(), field.getName());
-              fieldData.put(field.getName(), field.getNewValue().toString());
-              scriptTxt.append(
-                  String.format(PROPAGATE_NESTED_FIELD_SCRIPT, fieldPath, field.getName()));
-            } else {
-              scriptTxt.append(
-                  String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
-              scriptTxt.append(" ");
-            }
-          }
-        }
+        PropagationDescriptor desc = descriptorMap.get(field.getName());
+        if (desc != null) appendAddScript(scriptTxt, fieldData, field, desc, entity);
       }
     }
     return new ImmutablePair<>(scriptTxt.toString(), fieldData);
   }
 
-  private String getFieldPath(String entityType, String fieldName) {
-    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.API_SERVICE)
-        || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
-      return "service." + fieldName;
-    } else {
-      return entityType + "." + fieldName;
+  private void appendAddScript(
+      StringBuilder script,
+      Map<String, Object> data,
+      FieldChange field,
+      PropagationDescriptor desc,
+      EntityInterface entity) {
+    switch (desc.propagationType()) {
+      case ENTITY_REFERENCE_LIST -> {
+        if (field.getName().equals(FIELD_FOLLOWERS)) {
+          List<EntityReference> refs = copyWithInheritedFlag(entity.getFollowers());
+          data.put("updatedFollowers", refs);
+          script.append(ADD_FOLLOWERS_SCRIPT);
+        } else {
+          List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
+          refs.forEach(r -> r.setInherited(true));
+          data.put("updated" + capitalizeFirst(field.getName()), refs);
+          script.append(generateAddListScript(field.getName()));
+        }
+      }
+      case TAG_LABEL_LIST -> {
+        List<TagLabel> tagLabels =
+            JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        data.put("tagAdded", tagLabels);
+        script.append(generateAddTagLabelListScript());
+      }
+      case ENTITY_REFERENCE -> {
+        EntityReference ref =
+            JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+        script.append(
+            String.format(
+                PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName()));
+        data.put(field.getName(), ref);
+      }
+      case NESTED_FIELD -> {
+        data.put(field.getName(), field.getNewValue().toString());
+        script.append(
+            String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
+      }
+      case SIMPLE_VALUE -> {
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+      }
+      case RAW_REPLACE -> {
+        data.put(field.getName(), field.getNewValue());
+        script.append(
+            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
     }
+    script.append(" ");
+  }
+
+  private void appendDeleteScript(
+      StringBuilder script,
+      Map<String, Object> data,
+      FieldChange field,
+      PropagationDescriptor desc,
+      EntityInterface entity) {
+    switch (desc.propagationType()) {
+      case ENTITY_REFERENCE_LIST -> {
+        if (field.getName().equals(FIELD_FOLLOWERS)) {
+          List<EntityReference> refs = copyWithInheritedFlag(entity.getFollowers());
+          data.put("removedFollowers", refs);
+          script.append(REMOVE_FOLLOWERS_SCRIPT);
+        } else {
+          List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
+          refs.forEach(r -> r.setInherited(true));
+          data.put("removed" + capitalizeFirst(field.getName()), refs);
+          script.append(generateRemoveListScript(field.getName()));
+        }
+      }
+      case TAG_LABEL_LIST -> {
+        List<TagLabel> tagLabels =
+            JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        data.put("tagDeleted", tagLabels);
+        script.append(generateDeleteTagLabelListScript());
+      }
+      case ENTITY_REFERENCE -> {
+        Object oldValue = field.getOldValue();
+        if (!nullOrEmpty(oldValue)) {
+          EntityReference ref = JsonUtils.readValue(oldValue.toString(), EntityReference.class);
+          script.append(
+              String.format(
+                  REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                  field.getName(),
+                  field.getName(),
+                  field.getName()));
+          data.put(field.getName(), ref);
+        }
+      }
+      case SIMPLE_VALUE -> {
+        script.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+      }
+      case RAW_REPLACE -> {
+        data.put(field.getName(), field.getOldValue());
+        script.append(
+            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
+    }
+    script.append(" ");
+  }
+
+  private void appendUpdateScript(
+      StringBuilder script,
+      Map<String, Object> data,
+      FieldChange field,
+      PropagationDescriptor desc,
+      EntityInterface entity) {
+    switch (desc.propagationType()) {
+      case ENTITY_REFERENCE_LIST -> {
+        if (field.getName().equals(FIELD_FOLLOWERS)) {
+          List<EntityReference> refs = copyWithInheritedFlag(entity.getFollowers());
+          data.put("updatedFollowers", refs);
+          script.append(ADD_FOLLOWERS_SCRIPT);
+        } else {
+          List<EntityReference> refs = resolveEntityReferenceList(field.getName(), entity);
+          refs.forEach(r -> r.setInherited(true));
+          data.put("updated" + capitalizeFirst(field.getName()), refs);
+          script.append(generateAddListScript(field.getName()));
+        }
+      }
+      case TAG_LABEL_LIST -> {
+        List<TagLabel> addedTags =
+            JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
+        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        List<TagLabel> deletedTags =
+            JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
+        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        data.put("tagAdded", addedTags);
+        data.put("tagDeleted", deletedTags);
+        script.append(generateUpdateTagLabelListScript());
+      }
+      case ENTITY_REFERENCE -> {
+        EntityReference ref =
+            JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+        script.append(
+            String.format(
+                UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName(),
+                field.getName()));
+        data.put(
+            "entityBeforeUpdate",
+            JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
+        data.put(field.getName(), ref);
+      }
+      case SIMPLE_VALUE -> {
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+      }
+      case NESTED_FIELD -> {
+        data.put(field.getName(), field.getNewValue().toString());
+        script.append(
+            String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
+      }
+      case RAW_REPLACE -> {
+        data.put(field.getName(), field.getNewValue());
+        script.append(
+            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+      }
+    }
+    script.append(" ");
+  }
+
+  private List<EntityReference> resolveEntityReferenceList(
+      String fieldName, EntityInterface entity) {
+    return switch (fieldName) {
+      case "owners" -> entity.getOwners() != null
+          ? JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class)
+          : List.of();
+      case "domains" -> entity.getDomains() != null
+          ? JsonUtils.deepCopyList(entity.getDomains(), EntityReference.class)
+          : List.of();
+      case "dataProducts" -> entity.getDataProducts() != null
+          ? JsonUtils.deepCopyList(entity.getDataProducts(), EntityReference.class)
+          : List.of();
+      case "followers" -> entity.getFollowers() != null
+          ? JsonUtils.deepCopyList(entity.getFollowers(), EntityReference.class)
+          : List.of();
+      default -> List.of();
+    };
+  }
+
+  private String generateAddListScript(String fieldName) {
+    String cap = capitalizeFirst(fieldName);
+    return String.format(
+        """
+        if (ctx._source.%s == null || ctx._source.%s.isEmpty() ||
+            (ctx._source.%s.size() > 0 && ctx._source.%s[0] != null && ctx._source.%s[0].inherited == true)) {
+          ctx._source.%s = params.updated%s;
+        }
+        """,
+        fieldName, fieldName, fieldName, fieldName, fieldName, fieldName, cap);
+  }
+
+  private String generateRemoveListScript(String fieldName) {
+    String cap = capitalizeFirst(fieldName);
+    return String.format(
+        """
+        if (ctx._source.%s != null) {
+          ctx._source.%s.removeIf(item -> item.inherited == true);
+          ctx._source.%s.addAll(params.removed%s);
+        }
+        """,
+        fieldName, fieldName, fieldName, cap);
+  }
+
+  private String generateAddTagLabelListScript() {
+    return """
+        if (ctx._source.tags == null) {
+          ctx._source.tags = [];
+        }
+        if (params.tagAdded != null) {
+          for (def newTag : params.tagAdded) {
+            boolean exists = false;
+            for (def existing : ctx._source.tags) {
+              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) {
+              ctx._source.tags.add(newTag);
+            }
+          }
+        }
+        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+        """;
+  }
+
+  private String generateDeleteTagLabelListScript() {
+    return """
+        if (ctx._source.tags != null && params.tagDeleted != null) {
+          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+            for (int j = 0; j < params.tagDeleted.size(); j++) {
+              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                ctx._source.tags.remove(i);
+                break;
+              }
+            }
+          }
+        }
+        """;
+  }
+
+  private String generateUpdateTagLabelListScript() {
+    return """
+        if (ctx._source.tags != null && params.tagDeleted != null) {
+          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+            for (int j = 0; j < params.tagDeleted.size(); j++) {
+              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                ctx._source.tags.remove(i);
+                break;
+              }
+            }
+          }
+        }
+        if (ctx._source.tags == null) {
+          ctx._source.tags = [];
+        }
+        if (params.tagAdded != null) {
+          for (def newTag : params.tagAdded) {
+            boolean exists = false;
+            for (def existing : ctx._source.tags) {
+              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) {
+              ctx._source.tags.add(newTag);
+            }
+          }
+        }
+        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+        """;
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
@@ -1984,12 +2089,7 @@ public class SearchRepository {
       IndexMapping indexMapping = getIndexMapping(entityType);
       searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
     } catch (Exception ie) {
-      LOG.error(
-          "Issue in deleting  search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
-          entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+      LOG.error("Issue deleting search document for entityType [{}]", entityType, ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -2031,12 +2131,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("deleteEntityIndex", ie));
       LOG.error(
-          "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue deleting the search document for entityID [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -2070,12 +2168,10 @@ public class SearchRepository {
             fqn,
             SearchIndexRetryQueue.failureReason("deleteEntityByFQNPrefix", ie));
         LOG.error(
-            "Issue in Deleting the search document for entityFQN [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue deleting the search document for entityFQN [{}] and entityType [{}]",
             fqn,
             entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -2099,12 +2195,10 @@ public class SearchRepository {
             entityType,
             SearchIndexRetryQueue.failureReason("deleteTimeSeriesEntityById", ie));
         LOG.error(
-            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            "Issue deleting the search document for entityID [{}] and entityType [{}]",
             entityId,
             entityType,
-            ie.getMessage(),
-            ie.getCause(),
-            ExceptionUtils.getStackTrace(ie));
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
@@ -2150,12 +2244,10 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("softDeleteOrRestoreEntityIndex", ie));
       LOG.error(
-          "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          "Issue soft deleting the search document for entityID [{}] and entityType [{}]",
           entityId,
           entityType,
-          ie.getMessage(),
-          ie.getCause(),
-          ExceptionUtils.getStackTrace(ie));
+          ie);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -2401,6 +2493,160 @@ public class SearchRepository {
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchClient.search(request, subjectContext);
+  }
+
+  public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
+      throws IOException {
+    SearchRequest countRequest =
+        new SearchRequest()
+            .withQuery(baseRequest.getQuery())
+            .withIndex(baseRequest.getIndex())
+            .withQueryFilter(baseRequest.getQueryFilter())
+            .withPostFilter(baseRequest.getPostFilter())
+            .withDeleted(baseRequest.getDeleted())
+            .withDomains(baseRequest.getDomains())
+            .withApplyDomainFilter(baseRequest.getApplyDomainFilter())
+            .withSize(0)
+            .withFrom(0)
+            .withFetchSource(false)
+            .withTrackTotalHits(true)
+            .withIncludeAggregations(false);
+    SearchResultListMapper countResult = searchClient.searchForExport(countRequest, subjectContext);
+    long total = countResult.getTotal();
+    if (total > Integer.MAX_VALUE) {
+      throw new IllegalStateException("Search results count exceeds supported maximum: " + total);
+    }
+    return (int) total;
+  }
+
+  public void exportSearchResultsCsvStream(
+      SearchRequest baseRequest,
+      SubjectContext subjectContext,
+      int totalHits,
+      int from,
+      java.io.OutputStream output)
+      throws IOException {
+    java.io.BufferedWriter writer =
+        new java.io.BufferedWriter(
+            new java.io.OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
+    try {
+      writer.write(SearchResultCsvExporter.CSV_HEADER);
+      writer.newLine();
+      writer.flush();
+
+      if (totalHits > 0) {
+        writeCsvBatches(baseRequest, subjectContext, writer, totalHits, from);
+      }
+    } finally {
+      writer.flush();
+    }
+  }
+
+  private void writeCsvBatches(
+      SearchRequest baseRequest,
+      SubjectContext subjectContext,
+      java.io.BufferedWriter writer,
+      int totalHits,
+      int from)
+      throws IOException {
+    long startTime = System.currentTimeMillis();
+    long timeoutMs = 5 * 60 * 1000L;
+    int exported = 0;
+    int maxIterations = (totalHits / SearchResultCsvExporter.BATCH_SIZE) + 2;
+    int iteration = 0;
+    List<Object> searchAfter = null;
+
+    String sortField = resolveSortField(baseRequest.getSortFieldParam());
+    List<String> sourceFields = buildSourceFields(sortField);
+
+    while (exported < totalHits && iteration < maxIterations) {
+      iteration++;
+      enforceTimeout(startTime, timeoutMs);
+
+      int remaining = totalHits - exported;
+      int batchSize = Math.min(SearchResultCsvExporter.BATCH_SIZE, remaining);
+      SearchRequest batchRequest =
+          buildBatchRequest(baseRequest, sortField, sourceFields, searchAfter, batchSize);
+
+      // On the first batch, use from-based pagination to skip to the requested offset.
+      // Subsequent batches use search_after (set above from the previous batch).
+      if (iteration == 1 && from > 0) {
+        batchRequest.withFrom(from);
+      }
+
+      SearchResultListMapper batch = searchClient.searchForExport(batchRequest, subjectContext);
+
+      if (batch.getResults().isEmpty()) {
+        break;
+      }
+
+      for (Map<String, Object> source : batch.getResults()) {
+        if (exported >= totalHits) {
+          break;
+        }
+        writer.write(SearchResultCsvExporter.toCsvRow(source));
+        writer.newLine();
+        exported++;
+      }
+      writer.flush();
+
+      if (batch.getLastHitSortValues() != null) {
+        searchAfter = Arrays.asList(batch.getLastHitSortValues());
+      } else {
+        break;
+      }
+    }
+    writer.flush();
+  }
+
+  private String resolveSortField(String sortFieldParam) {
+    if (sortFieldParam == null || sortFieldParam.isEmpty() || "_score".equals(sortFieldParam)) {
+      return "fullyQualifiedName";
+    }
+    return sortFieldParam;
+  }
+
+  private List<String> buildSourceFields(String sortField) {
+    List<String> sourceFields = new ArrayList<>(SearchResultCsvExporter.EXPORT_SOURCE_FIELDS);
+    // Dynamically include the sort field in _source so that callers can inspect it.
+    // Note: sort values for search_after come from hit.sort[], not _source, but
+    // including the field in _source is useful for debugging and completeness.
+    if (!sourceFields.contains(sortField)) {
+      sourceFields.add(sortField);
+    }
+    return sourceFields;
+  }
+
+  private void enforceTimeout(long startTime, long timeoutMs) {
+    if (System.currentTimeMillis() - startTime > timeoutMs) {
+      throw new IllegalStateException(
+          "Export timed out after 5 minutes. Please add filters to reduce the result set.");
+    }
+  }
+
+  private SearchRequest buildBatchRequest(
+      SearchRequest baseRequest,
+      String sortField,
+      List<String> sourceFields,
+      List<Object> searchAfter,
+      int batchSize) {
+    return new SearchRequest()
+        .withQuery(baseRequest.getQuery())
+        .withIndex(baseRequest.getIndex())
+        .withQueryFilter(baseRequest.getQueryFilter())
+        .withPostFilter(baseRequest.getPostFilter())
+        .withDeleted(baseRequest.getDeleted())
+        .withDomains(baseRequest.getDomains())
+        .withApplyDomainFilter(baseRequest.getApplyDomainFilter())
+        .withSize(batchSize)
+        .withFrom(0)
+        .withFetchSource(true)
+        .withTrackTotalHits(false)
+        .withIncludeAggregations(false)
+        .withIncludeSourceFields(sourceFields)
+        .withSortFieldParam(sortField)
+        .withSortOrder(baseRequest.getSortOrder() != null ? baseRequest.getSortOrder() : "asc")
+        .withSearchAfter(searchAfter);
   }
 
   public Response previewSearch(
@@ -2750,7 +2996,7 @@ public class SearchRepository {
 
   @SuppressWarnings("unused")
   public <T> T getHighLevelClient() {
-    return (T) searchClient.getHighLevelClient();
+    return searchClient.getHighLevelClient();
   }
 
   public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(

@@ -1,0 +1,48 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.status-card-widget-container {
+  &.ant-card {
+    background: @grey-26;
+    border-color: @grey-9;
+  }
+}
+
+.status-count-container {
+  border: @global-border;
+  height: 30px;
+  width: 100%;
+  min-width: 50px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: @border-rad-base;
+
+  &.success {
+    background-color: @green-2;
+    border-color: #23aa66;
+    color: #01361e;
+  }
+  &.aborted {
+    background-color: @yellow-1;
+    border-color: #dc6803;
+    color: #6e1902;
+  }
+  &.failed {
+    background-color: @red-2;
+    border-color: @red-14;
+    color: #710d05;
+  }
+}

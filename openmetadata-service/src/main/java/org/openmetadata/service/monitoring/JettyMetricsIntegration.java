@@ -3,7 +3,6 @@ package org.openmetadata.service.monitoring;
 import io.dropwizard.core.setup.Environment;
 import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.StatisticsHandler;
 
 /**
@@ -35,25 +34,22 @@ public class JettyMetricsIntegration {
       environment
           .lifecycle()
           .addServerLifecycleListener(
-              new io.dropwizard.lifecycle.ServerLifecycleListener() {
-                @Override
-                public void serverStarted(Server srv) {
-                  try {
-                    LOG.info("Server started, initializing Jetty metrics...");
+              srv -> {
+                try {
+                  LOG.info("Server started, initializing Jetty metrics...");
 
-                    // Initialize JettyMetrics for thread pool monitoring
-                    JettyMetrics jettyMetrics = new JettyMetrics(srv);
-                    jettyMetrics.start();
-                    jettyMetrics.bindTo(Metrics.globalRegistry);
+                  // Initialize JettyMetrics for thread pool monitoring
+                  JettyMetrics jettyMetrics = new JettyMetrics(srv);
+                  jettyMetrics.start();
+                  jettyMetrics.bindTo(Metrics.globalRegistry);
 
-                    // Register StatisticsHandler metrics now that server is running
-                    registerStatisticsHandlerMetrics(statisticsHandler);
+                  // Register StatisticsHandler metrics now that server is running
+                  registerStatisticsHandlerMetrics(statisticsHandler);
 
-                    LOG.info(
-                        "Jetty metrics integration complete - Thread pool and request statistics monitoring enabled");
-                  } catch (Exception e) {
-                    LOG.error("Failed to register Jetty metrics", e);
-                  }
+                  LOG.info(
+                      "Jetty metrics integration complete - Thread pool and request statistics monitoring enabled");
+                } catch (Exception e) {
+                  LOG.error("Failed to register Jetty metrics", e);
                 }
               });
 
@@ -66,7 +62,7 @@ public class JettyMetricsIntegration {
     // Request statistics - Jetty 12 uses getRequestTotal() instead of deprecated getRequests()
     Metrics.gauge("jetty.requests.current", handler, StatisticsHandler::getRequestsActive);
     Metrics.gauge("jetty.requests.total", handler, StatisticsHandler::getRequestTotal);
-    Metrics.gauge("jetty.requests.failed", handler, h -> h.getResponses5xx());
+    Metrics.gauge("jetty.requests.failed", handler, StatisticsHandler::getResponses5xx);
     Metrics.gauge("jetty.requests.active.max", handler, StatisticsHandler::getRequestsActiveMax);
 
     // Response time statistics (values are in nanoseconds in Jetty 12)

@@ -21,12 +21,12 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   getElementWithPagination,
   removePolicyFromRole,
 } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const policies = {
   dataConsumerPolicy: 'Data Consumer Policy',

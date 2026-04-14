@@ -54,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11"] # , "3.12"]
+        py-version: ["3.10", "3.11", "3.12"]
         shard:
           - name: "shard-1"
             nox-args: >-

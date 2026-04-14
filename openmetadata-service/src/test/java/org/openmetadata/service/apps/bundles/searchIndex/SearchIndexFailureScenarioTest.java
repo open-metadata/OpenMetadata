@@ -63,53 +63,35 @@ class SearchIndexFailureScenarioTest {
     @Test
     @DisplayName("Should detect 413 error as payload too large")
     void testDetect413Error() throws Exception {
-      SearchIndexExecutor executor = new SearchIndexExecutor(collectionDAO, searchRepository);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isPayloadTooLargeError", String.class);
-      method.setAccessible(true);
-
-      assertTrue((boolean) method.invoke(executor, "Request entity too large"));
-      assertTrue((boolean) method.invoke(executor, "HTTP/1.1 413 Payload Too Large"));
-      assertTrue((boolean) method.invoke(executor, "content too long"));
-      assertTrue((boolean) method.invoke(executor, "Error code: 413"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "Request entity too large"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "HTTP/1.1 413 Payload Too Large"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "content too long"));
+      assertTrue(invokeIsPayloadTooLargeError(processor, "Error code: 413"));
     }
 
     @Test
     @DisplayName("Should detect 413 error as backpressure trigger")
     void test413TriggersBackpressure() throws Exception {
-      SearchIndexExecutor executor = new SearchIndexExecutor(collectionDAO, searchRepository);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isBackpressureError", String.class);
-      method.setAccessible(true);
-
-      assertTrue((boolean) method.invoke(executor, "Request entity too large"));
-      assertTrue((boolean) method.invoke(executor, "413"));
+      assertTrue(invokeShouldRetry(processor, 0, "Request entity too large"));
+      assertTrue(invokeShouldRetry(processor, 0, "413"));
     }
 
     @Test
     @DisplayName("BulkSink should identify 413 as retryable error")
     void testBulkSinkRetries413() throws Exception {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L);
+      ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
-      Field field = ElasticSearchBulkSink.class.getDeclaredField("bulkProcessor");
-      field.setAccessible(true);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          (ElasticSearchBulkSink.CustomBulkProcessor) field.get(sink);
-
-      Method method =
-          ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "shouldRetry", int.class, Throwable.class);
-      method.setAccessible(true);
-
-      assertTrue(
-          (boolean) method.invoke(processor, 0, new RuntimeException("Request entity too large")));
-      assertTrue((boolean) method.invoke(processor, 0, new RuntimeException("Content too long")));
-      assertTrue((boolean) method.invoke(processor, 0, new RuntimeException("413")));
-
-      assertFalse(
-          (boolean) method.invoke(processor, 5, new RuntimeException("Request entity too large")));
+      assertTrue(invokeShouldRetry(processor, 0, "Request entity too large"));
+      assertTrue(invokeShouldRetry(processor, 0, "Content too long"));
+      assertTrue(invokeShouldRetry(processor, 0, "413"));
+      assertFalse(invokeShouldRetry(processor, 5, "Request entity too large"));
     }
   }
 
@@ -385,11 +367,8 @@ class SearchIndexFailureScenarioTest {
     @Test
     @DisplayName("Should correctly identify backpressure errors")
     void testBackpressureErrorDetection() throws Exception {
-      SearchIndexExecutor executor = new SearchIndexExecutor(collectionDAO, searchRepository);
-
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod("isBackpressureError", String.class);
-      method.setAccessible(true);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          getCustomBulkProcessor(new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L));
 
       String[] backpressureErrors = {
         "rejected_execution_exception",
@@ -402,7 +381,7 @@ class SearchIndexFailureScenarioTest {
 
       for (String errorMessage : backpressureErrors) {
         assertTrue(
-            (boolean) method.invoke(executor, errorMessage),
+            invokeShouldRetry(processor, 0, errorMessage),
             "Should be backpressure for: " + errorMessage);
       }
     }
@@ -509,5 +488,35 @@ class SearchIndexFailureScenarioTest {
 
       assertEquals(expectedTotal, finalStats.getJobStats().getSuccessRecords());
     }
+  }
+
+  private ElasticSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(
+      ElasticSearchBulkSink sink) throws Exception {
+    Field field = ElasticSearchBulkSink.class.getDeclaredField("bulkProcessor");
+    field.setAccessible(true);
+    return (ElasticSearchBulkSink.CustomBulkProcessor) field.get(sink);
+  }
+
+  private boolean invokeShouldRetry(
+      ElasticSearchBulkSink.CustomBulkProcessor processor, int attemptNumber, String errorMessage)
+      throws Exception {
+    Method method =
+        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
+            "shouldRetry", int.class, Throwable.class);
+    method.setAccessible(true);
+    Throwable error =
+        errorMessage == null ? new RuntimeException() : new RuntimeException(errorMessage);
+    return (boolean) method.invoke(processor, attemptNumber, error);
+  }
+
+  private boolean invokeIsPayloadTooLargeError(
+      ElasticSearchBulkSink.CustomBulkProcessor processor, String errorMessage) throws Exception {
+    Method method =
+        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
+            "isPayloadTooLargeError", Throwable.class);
+    method.setAccessible(true);
+    Throwable error =
+        errorMessage == null ? new RuntimeException() : new RuntimeException(errorMessage);
+    return (boolean) method.invoke(processor, error);
   }
 }

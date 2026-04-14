@@ -31,6 +31,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
 import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.SortOrder;
@@ -63,7 +64,7 @@ public class OsUtils {
     } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid JSON input", e);
     }
-    return JsonData.of(docMap);
+    return JsonData.of(docMap, jsonpMapper);
   }
 
   public static String parseJsonQuery(String jsonQuery) throws JsonProcessingException {
@@ -80,9 +81,11 @@ public class OsUtils {
   }
 
   private static final ObjectMapper mapper;
+  private static final JacksonJsonpMapper jsonpMapper;
 
   static {
     mapper = new ObjectMapper();
+    jsonpMapper = new JacksonJsonpMapper(mapper);
   }
 
   public static String getEntityRelationshipAggregationField(
@@ -281,6 +284,19 @@ public class OsUtils {
       Pair<String, String> hasToFqnPair,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntityByKey(
+        client, direction, indexAlias, keyName, hasToFqnPair, null, fieldsToRemove);
+  }
+
+  public static Map<String, Object> searchEntityByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Pair<String, String> hasToFqnPair,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
     Map<String, Object> result =
         searchEntitiesByKey(
             client,
@@ -290,6 +306,7 @@ public class OsUtils {
             Set.of(hasToFqnPair.getLeft()),
             0,
             1,
+            fieldsToInclude,
             fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
@@ -311,18 +328,82 @@ public class OsUtils {
       int size,
       List<String> fieldsToRemove)
       throws IOException {
+    return searchEntitiesByKey(
+        client, direction, indexAlias, keyName, keyValues, from, size, null, fieldsToRemove, null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        fieldsToInclude,
+        fieldsToRemove,
+        null);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
+    return searchEntitiesByKey(
+        client,
+        direction,
+        indexAlias,
+        keyName,
+        keyValues,
+        from,
+        size,
+        null,
+        fieldsToRemove,
+        queryFilter);
+  }
+
+  public static Map<String, Object> searchEntitiesByKey(
+      OpenSearchClient client,
+      LineageDirection direction,
+      String indexAlias,
+      String keyName,
+      Set<String> keyValues,
+      int from,
+      int size,
+      List<String> fieldsToInclude,
+      List<String> fieldsToRemove,
+      String queryFilter)
+      throws IOException {
     Map<String, Object> result = new HashMap<>();
     SearchRequest searchRequest =
         getSearchRequest(
             direction,
             indexAlias,
-            null,
+            queryFilter,
             null,
             Map.of(keyName, keyValues),
             from,
             size,
             null,
-            null,
+            fieldsToInclude,
             fieldsToRemove);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;

@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Input, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Card,
+  Divider,
+  Input,
+  SlideoutMenu,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
@@ -24,22 +31,27 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../generated/entity/data/metric';
+import { EntityReference } from '../../generated/entity/type';
 import { TagSource } from '../../generated/type/tagLabel';
 import { TermRelation } from '../../generated/type/termRelation';
 import {
   getGlossariesList,
-  getGlossaryTermAssets,
   getGlossaryTerms,
+  getGlossaryTermsAssetCounts,
+  getGlossaryTermsById,
 } from '../../rest/glossaryAPI';
 import { getMetrics } from '../../rest/metricsAPI';
 import {
   checkRdfEnabled,
+  downloadGlossaryOntology,
   getGlossaryTermGraph,
   GraphData,
 } from '../../rest/rdfAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   getGlossaryTermRelationSettings,
   GlossaryTermRelationType,
@@ -48,19 +60,26 @@ import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
 } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
-import DetailsPanel from './DetailsPanel';
+import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
+import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';
 import GraphSettingsPanel from './GraphSettingsPanel';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import {
+  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+  DATA_MODE_MAX_RENDER_COUNT,
+  GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
+  LayoutEngine,
   LayoutType,
-  NODE_BORDER_COLOR,
-  NODE_FILL_DEFAULT,
+  ONTOLOGY_TERMS_PAGE_SIZE,
   RELATION_COLORS,
   toLayoutEngineType,
+  withoutOntologyAutocompleteAll,
 } from './OntologyExplorer.constants';
 import {
   ExplorationMode,
@@ -74,6 +93,8 @@ import {
   OntologyNode,
 } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
+import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
+import { computeGraphSearchHighlight } from './utils/graphSearchHighlight';
 import { buildHierarchyGraphs } from './utils/hierarchyGraphBuilder';
 import { computeGlossaryGroupPositions } from './utils/layoutCalculations';
 
@@ -102,6 +123,12 @@ const METRIC_RELATION_TYPE = 'metricFor';
 const ASSET_NODE_TYPE = 'dataAsset';
 const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 
+const ONTOLOGY_GRAPH_BACKDROP_CLASS =
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
+
+const ONTOLOGY_TOOLBAR_CARD_CLASS =
+  'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+
 const DEFAULT_SETTINGS: GraphSettings = {
   layout: LayoutType.Hierarchical,
   showEdgeLabels: true,
@@ -116,12 +143,14 @@ const DEFAULT_FILTERS: GraphFilters = {
   searchQuery: '',
 };
 
-const DEFAULT_LIMIT = 500;
-const ASSET_TERM_LIMIT = 40;
-const ASSET_TOTAL_LIMIT = 200;
+const ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH = 576;
 
 function isTermNode(node: OntologyNode): boolean {
   return node.type === 'glossaryTerm' || node.type === 'glossaryTermIsolated';
+}
+
+function isDataAssetLikeNode(node: OntologyNode): boolean {
+  return node.type === ASSET_NODE_TYPE || node.type === METRIC_NODE_TYPE;
 }
 
 function getScopedTermNodes(
@@ -145,6 +174,32 @@ function getScopedTermNodes(
   return termNodes;
 }
 
+function searchHitSourceToEntityRef(source: unknown): EntityReference | null {
+  if (!source || typeof source !== 'object') {
+    return null;
+  }
+  const s = source as Record<string, unknown>;
+  const id = s.id;
+  const typeField = s.entityType ?? s.type;
+  const fqn = s.fullyQualifiedName;
+  if (
+    typeof id !== 'string' ||
+    typeof typeField !== 'string' ||
+    typeof fqn !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    type: typeField,
+    name: typeof s.name === 'string' ? s.name : undefined,
+    displayName: typeof s.displayName === 'string' ? s.displayName : undefined,
+    fullyQualifiedName: fqn,
+    description: typeof s.description === 'string' ? s.description : undefined,
+  };
+}
+
 const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   scope,
   entityId: propEntityId,
@@ -159,15 +214,19 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const contextData = useGenericContext<GlossaryTerm>();
   const entityId =
     propEntityId ?? (scope === 'term' ? contextData?.data?.id : undefined);
+  const termGlossaryId =
+    scope === 'term' ? contextData?.data?.glossary?.id : undefined;
 
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
   const [assetGraphData, setAssetGraphData] =
     useState<OntologyGraphData | null>(null);
   const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(null);
-  const [panelPosition, setPanelPosition] = useState<
-    { x: number; y: number } | undefined
-  >(undefined);
+  const [expandedTermIds, setExpandedTermIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [loadingTermIds, setLoadingTermIds] = useState<Set<string>>(new Set());
   const [rdfEnabled, setRdfEnabled] = useState<boolean | null>(null);
   const [dataSource, setDataSource] = useState<'rdf' | 'database'>('database');
   const [relationTypes, setRelationTypes] = useState<
@@ -182,18 +241,47 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     node: OntologyNode;
     position: { x: number; y: number };
   } | null>(null);
-  const [savedPositions, setSavedPositions] = useState<Record<
-    string,
-    { x: number; y: number }
-  > | null>(null);
+  const [termAssetCounts, setTermAssetCounts] = useState<
+    Record<string, number>
+  >({});
+  const [hasMoreTerms, setHasMoreTerms] = useState(false);
+  const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
+
+  const graphDataRef = useRef<OntologyGraphData | null>(null);
+  const explorationModeRef = useRef<ExplorationMode>('model');
+  const filterFetchedGlossariesRef = useRef<Set<string>>(new Set());
+
+  // Saves the model-mode graph when global data mode overwrites graphData so
+  // it can be restored when the user switches back to model mode.
+  const savedModelGraphRef = useRef<OntologyGraphData | null>(null);
+  const isInGlobalDataModeRef = useRef(false);
+
+  const pendingGlossariesRef = useRef<Glossary[]>([]);
+  const partialGlossaryRef = useRef<{
+    glossary: Glossary;
+    afterCursor: string;
+  } | null>(null);
+  const isLoadingMoreRef = useRef(false);
+  const lastLoadCompletedRef = useRef<number>(0);
 
   const modelFiltersRef = useRef<GraphFilters>(DEFAULT_FILTERS);
   const dataFiltersRef = useRef<GraphFilters>({
     ...DEFAULT_FILTERS,
   });
-  // Prevents the loadAssetsForDataMode useEffect from double-fetching when
-  // handleModeChange has already pre-loaded assets before switching mode.
-  const assetLoadedByHandleModeChangeRef = useRef(false);
+  const dataModeInitialLoadUsesSpinnerRef = useRef(false);
+  const dataModeAbortGenRef = useRef(0);
+  const hasEnteredDataModeRef = useRef(false);
+
+  useEffect(() => {
+    graphDataRef.current = graphData;
+  }, [graphData]);
+
+  useEffect(() => {
+    explorationModeRef.current = explorationMode;
+  }, [explorationMode]);
+
+  const glossariesRef = useRef<Glossary[]>(glossaries);
+  glossariesRef.current = glossaries;
 
   const glossaryColorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -204,19 +292,75 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return map;
   }, [glossaries]);
 
+  const loadedAssetCountPerTerm = useMemo(() => {
+    const counts: Record<string, number> = {};
+    assetGraphData?.edges.forEach((e) => {
+      if (e.relationType === ASSET_RELATION_TYPE) {
+        counts[e.to] = (counts[e.to] ?? 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [assetGraphData]);
+
   const combinedGraphData = useMemo(() => {
     if (!graphData) {
       return null;
     }
-    if (explorationMode !== 'data' || !assetGraphData) {
-      return graphData;
+    if (explorationMode === 'data') {
+      const nodesWithAssetCounts = graphData.nodes.map((node) => {
+        if (
+          node.type !== 'glossaryTerm' &&
+          node.type !== 'glossaryTermIsolated'
+        ) {
+          return node;
+        }
+
+        return {
+          ...node,
+          assetCount: termAssetCounts[node.id] ?? 0,
+          loadedAssetCount: loadedAssetCountPerTerm[node.id] ?? 0,
+          isLoadingAssets: loadingTermIds.has(node.id),
+        };
+      });
+
+      if (!assetGraphData) {
+        return { nodes: nodesWithAssetCounts, edges: graphData.edges };
+      }
+
+      const mergedNodeIds = new Set(nodesWithAssetCounts.map((n) => n.id));
+      const mergedNodes = [...nodesWithAssetCounts];
+      assetGraphData.nodes.forEach((n) => {
+        if (!mergedNodeIds.has(n.id)) {
+          mergedNodeIds.add(n.id);
+          mergedNodes.push(n);
+        }
+      });
+
+      const edgeKey = (e: OntologyEdge) =>
+        `${e.from}-${e.to}-${e.relationType}`;
+      const mergedEdgeKeys = new Set(graphData.edges.map(edgeKey));
+      const mergedEdges = [...graphData.edges];
+      assetGraphData.edges.forEach((e) => {
+        const k = edgeKey(e);
+        if (!mergedEdgeKeys.has(k)) {
+          mergedEdgeKeys.add(k);
+          mergedEdges.push(e);
+        }
+      });
+
+      return { nodes: mergedNodes, edges: mergedEdges };
     }
 
-    return {
-      nodes: [...graphData.nodes, ...assetGraphData.nodes],
-      edges: [...graphData.edges, ...assetGraphData.edges],
-    };
-  }, [graphData, assetGraphData, explorationMode]);
+    return graphData;
+  }, [
+    graphData,
+    assetGraphData,
+    explorationMode,
+    termAssetCounts,
+    loadedAssetCountPerTerm,
+    loadingTermIds,
+  ]);
 
   const filteredGraphData = useMemo(() => {
     if (!combinedGraphData) {
@@ -226,8 +370,15 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     let filteredNodes = [...combinedGraphData.nodes];
     let filteredEdges = [...combinedGraphData.edges];
 
+    const glossaryFilterIds = withoutOntologyAutocompleteAll(
+      filters.glossaryIds
+    );
+    const relationTypeFilterIds = withoutOntologyAutocompleteAll(
+      filters.relationTypes
+    );
+
     // Filter by glossary
-    if (filters.glossaryIds.length > 0) {
+    if (glossaryFilterIds.length > 0) {
       const glossaryTermIds = new Set(
         filteredNodes
           .filter(
@@ -235,51 +386,45 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               n.type !== METRIC_NODE_TYPE &&
               n.type !== ASSET_NODE_TYPE &&
               n.glossaryId &&
-              filters.glossaryIds.includes(n.glossaryId)
+              glossaryFilterIds.includes(n.glossaryId)
           )
           .map((n) => n.id)
       );
 
-      const metricIds = new Set<string>();
-      const assetIds = new Set<string>();
-      filteredEdges.forEach((edge) => {
-        if (edge.relationType === METRIC_RELATION_TYPE) {
-          if (glossaryTermIds.has(edge.to) || glossaryTermIds.has(edge.from)) {
-            metricIds.add(edge.from);
-            metricIds.add(edge.to);
-          }
+      const edgeKey = (e: OntologyEdge) =>
+        `${e.from}-${e.to}-${e.relationType}`;
 
+      // Keep glossary terms plus their directly related nodes/edges
+      const glossaryNeighborIds = new Set<string>(glossaryTermIds);
+      const glossaryEdgeKeys = new Set<string>();
+
+      filteredEdges.forEach((edge) => {
+        const isIncidentToGlossary =
+          glossaryTermIds.has(edge.from) || glossaryTermIds.has(edge.to);
+        if (!isIncidentToGlossary) {
           return;
         }
-        if (edge.relationType === ASSET_RELATION_TYPE) {
-          if (glossaryTermIds.has(edge.to) || glossaryTermIds.has(edge.from)) {
-            assetIds.add(edge.from);
-            assetIds.add(edge.to);
-          }
-        }
+
+        glossaryNeighborIds.add(edge.from);
+        glossaryNeighborIds.add(edge.to);
+        glossaryEdgeKeys.add(edgeKey(edge));
       });
 
       filteredNodes = filteredNodes.filter((n) => {
         if (n.type === 'glossary') {
-          return filters.glossaryIds.includes(n.id);
-        }
-        if (n.type === METRIC_NODE_TYPE) {
-          return metricIds.has(n.id);
-        }
-        if (n.type === ASSET_NODE_TYPE) {
-          return assetIds.has(n.id);
+          return glossaryFilterIds.includes(n.id);
         }
 
-        return n.glossaryId && filters.glossaryIds.includes(n.glossaryId);
+        return glossaryNeighborIds.has(n.id);
       });
-      const nodeIds = new Set(filteredNodes.map((n) => n.id));
-      filteredEdges = filteredEdges.filter(
-        (e) => nodeIds.has(e.from) && nodeIds.has(e.to)
+
+      filteredEdges = filteredEdges.filter((e) =>
+        glossaryEdgeKeys.has(edgeKey(e))
       );
     }
 
     // Filter by relation type
-    if (filters.relationTypes.length > 0) {
+    if (relationTypeFilterIds.length > 0) {
       const nodeTypeMap = new Map(filteredNodes.map((n) => [n.id, n.type]));
       filteredEdges = filteredEdges.filter((e) => {
         const fromType = nodeTypeMap.get(e.from);
@@ -295,7 +440,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           return true;
         }
 
-        return filters.relationTypes.includes(e.relationType);
+        return relationTypeFilterIds.includes(e.relationType);
       });
     }
 
@@ -326,28 +471,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       });
       filteredNodes = filteredNodes.filter(
         (n) => connectedIds.has(n.id) || n.type === 'glossary'
-      );
-    }
-
-    // Filter by search query: show matching nodes and all nodes connected to them
-    if (filters.searchQuery) {
-      const query = filters.searchQuery.toLowerCase().trim();
-      const matchingNodes = filteredNodes.filter(
-        (n) =>
-          n.label.toLowerCase().includes(query) ||
-          n.fullyQualifiedName?.toLowerCase().includes(query) ||
-          n.description?.toLowerCase().includes(query)
-      );
-      const matchingIds = new Set(matchingNodes.map((n) => n.id));
-      filteredEdges.forEach((e) => {
-        if (matchingIds.has(e.from) || matchingIds.has(e.to)) {
-          matchingIds.add(e.from);
-          matchingIds.add(e.to);
-        }
-      });
-      filteredNodes = filteredNodes.filter((n) => matchingIds.has(n.id));
-      filteredEdges = filteredEdges.filter(
-        (e) => matchingIds.has(e.from) && matchingIds.has(e.to)
       );
     }
 
@@ -404,20 +527,30 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [isHierarchyView, hierarchyGraphData, filteredGraphData]);
 
   const hierarchyBakedPositions = useMemo(() => {
-    if (
-      !isHierarchyView ||
-      !hierarchyGraphData ||
-      (settings.layout !== LayoutType.Circular &&
-        settings.layout !== LayoutType.Radial)
-    ) {
+    if (!isHierarchyView || !hierarchyGraphData) {
+      return undefined;
+    }
+    const engine = toLayoutEngineType(settings.layout);
+    if (engine !== LayoutEngine.Circular && engine !== LayoutEngine.Radial) {
       return undefined;
     }
 
-    return computeGlossaryGroupPositions(
-      hierarchyGraphData.nodes,
-      toLayoutEngineType(settings.layout)
+    return computeGlossaryGroupPositions(hierarchyGraphData.nodes, engine);
+  }, [hierarchyGraphData, isHierarchyView, settings.layout]);
+
+  const graphSearchHighlight = useMemo(() => {
+    if (!graphDataToShow) {
+      return null;
+    }
+
+    return computeGraphSearchHighlight(
+      graphDataToShow.nodes,
+      graphDataToShow.edges,
+      filters.searchQuery,
+      glossaries,
+      relationTypes
     );
-  }, [isHierarchyView, hierarchyGraphData, settings.layout]);
+  }, [graphDataToShow, filters.searchQuery, glossaries, relationTypes]);
 
   const mergeMetricsIntoGraph = useCallback(
     (graph: OntologyGraphData | null, metricList: Metric[]) => {
@@ -495,67 +628,185 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     [t]
   );
 
-  const buildAssetGraphData = useCallback(
-    async (termNodes: OntologyNode[]): Promise<OntologyGraphData> => {
-      const nodes: OntologyNode[] = [];
-      const edges: OntologyEdge[] = [];
-      const nodeIds = new Set<string>();
-      const edgeKeys = new Set<string>();
-      let totalAssets = 0;
-
-      for (const termNode of termNodes) {
-        if (!termNode.id || totalAssets >= ASSET_TOTAL_LIMIT) {
-          break;
+  const fetchTermAssetCounts = useCallback(
+    async (
+      termNodes: OntologyNode[],
+      glossaryFilterIds: string[],
+      append = false
+    ) => {
+      if (termNodes.length === 0) {
+        if (!append) {
+          setTermAssetCounts({});
         }
 
-        const limit = Math.min(100, ASSET_TOTAL_LIMIT - totalAssets);
-        try {
-          const response = await getGlossaryTermAssets(termNode.id, limit, 0);
-          const assets = response.data ?? [];
-          totalAssets += assets.length;
-
-          assets.forEach((asset) => {
-            if (!asset.id) {
-              return;
-            }
-            if (!nodeIds.has(asset.id)) {
-              nodes.push({
-                id: asset.id,
-                label:
-                  asset.displayName ||
-                  asset.name ||
-                  asset.fullyQualifiedName ||
-                  asset.id,
-                originalLabel:
-                  asset.displayName ||
-                  asset.name ||
-                  asset.fullyQualifiedName ||
-                  asset.id,
-                type: ASSET_NODE_TYPE,
-                fullyQualifiedName: asset.fullyQualifiedName,
-                description: asset.description,
-                entityRef: asset,
-              });
-              nodeIds.add(asset.id);
-            }
-
-            const edgeKey = `${asset.id}-${termNode.id}-${ASSET_RELATION_TYPE}`;
-            if (!edgeKeys.has(edgeKey)) {
-              edges.push({
-                from: asset.id,
-                to: termNode.id,
-                label: t('label.tagged-with'),
-                relationType: ASSET_RELATION_TYPE,
-              });
-              edgeKeys.add(edgeKey);
-            }
-          });
-        } catch {
-          // Skip assets for this term if fetch fails
-        }
+        return;
       }
 
-      return { nodes, edges };
+      try {
+        const scopedGlossaryId =
+          scope === 'glossary'
+            ? glossaryId
+            : scope === 'term'
+            ? termGlossaryId
+            : undefined;
+        const termGlossaryIds = new Set(
+          termNodes
+            .map((termNode) => termNode.glossaryId)
+            .filter((id): id is string => Boolean(id))
+        );
+        const requestedGlossaryIds = scopedGlossaryId
+          ? [scopedGlossaryId]
+          : glossaryFilterIds.length > 0
+          ? glossaryFilterIds.filter((id) => termGlossaryIds.has(id))
+          : [];
+        const glossaryFqnsToFetch = requestedGlossaryIds
+          .map(
+            (id) =>
+              glossaries.find((glossary) => glossary.id === id)
+                ?.fullyQualifiedName
+          )
+          .filter((fqn): fqn is string => Boolean(fqn));
+
+        const mergedResponse: Record<string, number> = {};
+        if (glossaryFqnsToFetch.length > 0) {
+          const { length } = glossaryFqnsToFetch;
+          const batchSize = GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY;
+          for (let i = 0; i < length; i += batchSize) {
+            const batch = glossaryFqnsToFetch.slice(i, i + batchSize);
+            const responses = await Promise.all(
+              batch.map((fqn) => getGlossaryTermsAssetCounts(fqn))
+            );
+            responses.forEach((response) => {
+              Object.assign(mergedResponse, response);
+            });
+          }
+        } else {
+          Object.assign(mergedResponse, await getGlossaryTermsAssetCounts());
+        }
+
+        const counts: Record<string, number> = {};
+        termNodes.forEach((termNode) => {
+          const lookupKeys = [
+            termNode.fullyQualifiedName,
+            termNode.originalLabel,
+            termNode.label,
+          ].filter((key): key is string => Boolean(key));
+          const matchedKey = lookupKeys.find((key) => key in mergedResponse);
+
+          if (matchedKey) {
+            counts[termNode.id] = mergedResponse[matchedKey];
+          }
+        });
+
+        if (append) {
+          setTermAssetCounts((prev) => ({ ...prev, ...counts }));
+        } else {
+          setTermAssetCounts(counts);
+        }
+      } catch {
+        if (!append) {
+          setTermAssetCounts({});
+        }
+      }
+    },
+    [scope, glossaryId, termGlossaryId, glossaries]
+  );
+
+  const appendTermAssetsForTerm = useCallback(
+    async (termNode: OntologyNode, pageSize: number, fromOffset = 0) => {
+      if (!isTermNode(termNode) || !termNode.fullyQualifiedName) {
+        return;
+      }
+
+      setLoadingTermIds((prev) => new Set(prev).add(termNode.id));
+
+      const size = Math.max(1, pageSize);
+      const pageNumber = Math.floor(fromOffset / size) + 1;
+
+      try {
+        const res = await searchQuery({
+          query: '**',
+          pageNumber,
+          pageSize: size,
+          searchIndex: SearchIndex.ALL,
+          queryFilter: getTermQuery({
+            'tags.tagFQN': termNode.fullyQualifiedName,
+          }) as Record<string, unknown>,
+        });
+
+        const hits = res.hits.hits ?? [];
+        const newAssetNodes: OntologyNode[] = [];
+        const newEdges: OntologyEdge[] = [];
+
+        hits.forEach((hit) => {
+          const entityRef = searchHitSourceToEntityRef(hit._source);
+          if (!entityRef) {
+            return;
+          }
+          newAssetNodes.push({
+            id: entityRef.id,
+            label:
+              entityRef.displayName ||
+              entityRef.name ||
+              entityRef.fullyQualifiedName ||
+              entityRef.id,
+            originalLabel:
+              entityRef.displayName ||
+              entityRef.name ||
+              entityRef.fullyQualifiedName ||
+              entityRef.id,
+            type: ASSET_NODE_TYPE,
+            fullyQualifiedName: entityRef.fullyQualifiedName,
+            description: entityRef.description,
+            entityRef,
+          });
+          newEdges.push({
+            from: entityRef.id,
+            to: termNode.id,
+            label: t('label.tagged-with'),
+            relationType: ASSET_RELATION_TYPE,
+          });
+        });
+
+        setAssetGraphData((prev) => {
+          const prevNodes = prev?.nodes ?? [];
+          const prevEdges = prev?.edges ?? [];
+          const nodeIds = new Set(prevNodes.map((n) => n.id));
+          const edgeKeys = new Set(
+            prevEdges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
+          );
+          const mergedNodes = [...prevNodes];
+          const mergedEdges = [...prevEdges];
+
+          newAssetNodes.forEach((n) => {
+            if (!nodeIds.has(n.id)) {
+              mergedNodes.push(n);
+              nodeIds.add(n.id);
+            }
+          });
+          newEdges.forEach((e) => {
+            const key = `${e.from}-${e.to}-${e.relationType}`;
+            if (!edgeKeys.has(key)) {
+              mergedEdges.push(e);
+              edgeKeys.add(key);
+            }
+          });
+
+          return { nodes: mergedNodes, edges: mergedEdges };
+        });
+      } catch (error) {
+        showErrorToast(
+          isAxiosError(error) ? error : String(error),
+          t('server.entity-fetch-error')
+        );
+      } finally {
+        setLoadingTermIds((prev) => {
+          const next = new Set(prev);
+          next.delete(termNode.id);
+
+          return next;
+        });
+      }
     },
     [t]
   );
@@ -563,19 +814,19 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const fetchAllMetrics = useCallback(async (): Promise<Metric[]> => {
     const allMetrics: Metric[] = [];
     let after: string | undefined;
+    let pages = 0;
+    const MAX_SAFE_PAGES = 500;
 
-    while (allMetrics.length < DEFAULT_LIMIT) {
+    do {
       const response = await getMetrics({
         fields: 'tags',
-        limit: Math.min(100, DEFAULT_LIMIT - allMetrics.length),
+        limit: 100,
         after,
       });
       allMetrics.push(...response.data);
       after = response.paging?.after;
-      if (!after) {
-        break;
-      }
-    }
+      pages += 1;
+    } while (after && pages < MAX_SAFE_PAGES);
 
     return allMetrics;
   }, []);
@@ -748,34 +999,108 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     [t]
   );
 
-  const fetchGraphDataFromRdf = useCallback(
-    async (glossaryIdParam?: string, glossaryList?: Glossary[]) => {
-      try {
-        const rdfData = await getGlossaryTermGraph({
-          glossaryId: glossaryIdParam,
-          limit: DEFAULT_LIMIT,
-          includeIsolated: true,
+  const buildGraphFromCounts = useCallback(
+    (counts: Record<string, number>): OntologyGraphData => {
+      const fqnSet = new Set(Object.keys(counts));
+      const nodes: OntologyNode[] = [];
+      const edges: OntologyEdge[] = [];
+      const edgeSet = new Set<string>();
+
+      fqnSet.forEach((fqn) => {
+        const parts = fqn.split('.');
+        const label = parts[parts.length - 1];
+        const glossaryFqn = parts[0];
+        const glossary = glossaries.find(
+          (g) => g.fullyQualifiedName === glossaryFqn || g.name === glossaryFqn
+        );
+
+        nodes.push({
+          id: fqn,
+          label,
+          type: 'glossaryTerm',
+          fullyQualifiedName: fqn,
+          glossaryId: glossary?.id,
+          group: glossary?.name ?? glossaryFqn,
+          originalLabel: fqn,
         });
 
-        if (rdfData.nodes && rdfData.nodes.length > 0) {
-          // Check if labels are valid (not just UUIDs) - if too many UUID labels, fall back to database
-          const uuidRegex =
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const nodesWithBadLabels = rdfData.nodes.filter(
-            (node) => !node.label || uuidRegex.test(node.label)
-          );
+        if (parts.length > 2) {
+          const parentFqn = parts.slice(0, -1).join('.');
+          if (fqnSet.has(parentFqn)) {
+            const edgeKey = `parent-${parentFqn}-${fqn}`;
+            if (!edgeSet.has(edgeKey)) {
+              edgeSet.add(edgeKey);
+              edges.push({
+                from: parentFqn,
+                to: fqn,
+                label: t('label.parent'),
+                relationType: 'parentOf',
+              });
+            }
+          }
+        }
+      });
 
-          // If more than half the nodes have bad labels, skip RDF and use database
-          if (nodesWithBadLabels.length > rdfData.nodes.length / 2) {
-            return null;
+      return { nodes, edges };
+    },
+    [glossaries, t]
+  );
+
+  const fetchGraphDataFromRdf = useCallback(
+    async (glossaryIdParam?: string, glossaryList?: Glossary[]) => {
+      const PAGE_SIZE = 500;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      const MAX_SAFE_PAGES = 100;
+      try {
+        const allNodes: GraphData['nodes'] = [];
+        const allEdges: GraphData['edges'] = [];
+        let offset = 0;
+        let source: string | undefined;
+        let pages = 0;
+
+        while (pages < MAX_SAFE_PAGES) {
+          const page = await getGlossaryTermGraph({
+            glossaryId: glossaryIdParam,
+            limit: PAGE_SIZE,
+            offset,
+            includeIsolated: true,
+          });
+
+          if (!page.nodes || page.nodes.length === 0) {
+            break;
           }
 
-          setDataSource(rdfData.source === 'database' ? 'database' : 'rdf');
+          allNodes.push(...page.nodes);
+          allEdges.push(...(page.edges ?? []));
+          source = source ?? page.source;
+          pages += 1;
 
-          return convertRdfGraphToOntologyGraph(rdfData, glossaryList ?? []);
+          if (page.nodes.length < PAGE_SIZE) {
+            break;
+          }
+          offset += PAGE_SIZE;
         }
 
-        return null;
+        if (allNodes.length === 0) {
+          return null;
+        }
+
+        const nodesWithBadLabels = allNodes.filter(
+          (node) => !node.label || uuidRegex.test(node.label)
+        );
+
+        if (nodesWithBadLabels.length > allNodes.length / 2) {
+          return null;
+        }
+
+        setDataSource(source === 'database' ? 'database' : 'rdf');
+
+        return convertRdfGraphToOntologyGraph(
+          { nodes: allNodes, edges: allEdges },
+          glossaryList ?? []
+        );
       } catch {
         return null;
       }
@@ -783,37 +1108,333 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     [convertRdfGraphToOntologyGraph]
   );
 
+  const MODEL_TERM_FIELDS = [
+    TabSpecificField.RELATED_TERMS,
+    TabSpecificField.CHILDREN,
+    TabSpecificField.PARENT,
+    TabSpecificField.OWNERS,
+  ];
+
+  const DATA_MODE_TERM_FIELDS = [TabSpecificField.PARENT];
+
+  const fetchTermsForGlossary = useCallback(
+    async (
+      glossary: Glossary,
+      afterCursor?: string,
+      fields: TabSpecificField[] = MODEL_TERM_FIELDS
+    ): Promise<{ terms: GlossaryTerm[]; nextCursor?: string }> => {
+      try {
+        const response = await getGlossaryTerms({
+          glossary: glossary.id,
+          fields,
+          limit: ONTOLOGY_TERMS_PAGE_SIZE,
+          after: afterCursor,
+        });
+
+        return {
+          terms: response.data,
+          nextCursor: response.paging?.after,
+        };
+      } catch {
+        return { terms: [] };
+      }
+    },
+    []
+  );
+
+  const loadNextTermPage = useCallback(
+    async (glossaryList?: Glossary[]): Promise<GlossaryTerm[]> => {
+      if (glossaryList) {
+        pendingGlossariesRef.current = [...glossaryList];
+        partialGlossaryRef.current = null;
+      }
+
+      const isDataMode = explorationModeRef.current === 'data';
+      const fieldsToFetch = isDataMode
+        ? DATA_MODE_TERM_FIELDS
+        : MODEL_TERM_FIELDS;
+
+      const accumulated: GlossaryTerm[] = [];
+
+      if (partialGlossaryRef.current) {
+        const { glossary, afterCursor } = partialGlossaryRef.current;
+        const { terms, nextCursor } = await fetchTermsForGlossary(
+          glossary,
+          afterCursor,
+          fieldsToFetch
+        );
+        accumulated.push(...terms);
+
+        if (nextCursor) {
+          partialGlossaryRef.current = { glossary, afterCursor: nextCursor };
+        } else {
+          partialGlossaryRef.current = null;
+        }
+      }
+
+      while (
+        accumulated.length < ONTOLOGY_TERMS_PAGE_SIZE &&
+        pendingGlossariesRef.current.length > 0
+      ) {
+        const glossary = pendingGlossariesRef.current.shift()!;
+        const { terms, nextCursor } = await fetchTermsForGlossary(
+          glossary,
+          undefined,
+          fieldsToFetch
+        );
+        accumulated.push(...terms);
+
+        if (nextCursor) {
+          partialGlossaryRef.current = { glossary, afterCursor: nextCursor };
+
+          break;
+        }
+      }
+
+      const hasMore =
+        pendingGlossariesRef.current.length > 0 ||
+        partialGlossaryRef.current !== null;
+      setHasMoreTerms(hasMore);
+
+      if (!isDataMode) {
+        // Fetch cross-glossary referenced terms that are not in the current page
+        // so their edges can be rendered. These are fetched individually by id,
+        // not by walking their glossary (which may not be loaded yet).
+        const loadedIds = new Set(accumulated.map((t) => t.id));
+        const missingIds = new Set<string>();
+        accumulated.forEach((term) => {
+          term.relatedTerms?.forEach((relation) => {
+            const id = relation.term?.id;
+            if (id && !loadedIds.has(id)) {
+              missingIds.add(id);
+            }
+          });
+        });
+
+        if (missingIds.size > 0) {
+          const CONCURRENCY = 8;
+          const missingIdList = Array.from(missingIds);
+          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
+            const batch = missingIdList.slice(i, i + CONCURRENCY);
+            const fetched = await Promise.allSettled(
+              batch.map((id) =>
+                getGlossaryTermsById(id, {
+                  fields: [
+                    TabSpecificField.RELATED_TERMS,
+                    TabSpecificField.CHILDREN,
+                    TabSpecificField.PARENT,
+                    TabSpecificField.OWNERS,
+                  ],
+                })
+              )
+            );
+            fetched.forEach((r) => {
+              if (r.status === 'fulfilled') {
+                accumulated.push(r.value);
+              }
+            });
+          }
+        }
+      }
+
+      return accumulated;
+    },
+    [fetchTermsForGlossary]
+  );
+
+  const loadDataModeTerms = useCallback(
+    async (
+      glossaryFilterIds: string[]
+    ): Promise<{
+      graphData: OntologyGraphData;
+      termCounts: Record<string, number>;
+    }> => {
+      let counts: Record<string, number>;
+
+      if (glossaryFilterIds.length > 0) {
+        const filteredFqns = glossaries
+          .filter((g) => glossaryFilterIds.includes(g.id))
+          .map((g) => g.fullyQualifiedName)
+          .filter((fqn): fqn is string => Boolean(fqn));
+
+        const results = await Promise.all(
+          filteredFqns.map((fqn) => getGlossaryTermsAssetCounts(fqn))
+        );
+        const merged: Record<string, number> = {};
+        results.forEach((r) => Object.assign(merged, r));
+
+        counts =
+          Object.keys(merged).length > 0
+            ? merged
+            : await getGlossaryTermsAssetCounts();
+      } else {
+        counts = await getGlossaryTermsAssetCounts();
+      }
+
+      const termCounts = Object.fromEntries(
+        Object.entries(counts).slice(0, DATA_MODE_MAX_RENDER_COUNT)
+      );
+
+      const baseGraph = buildGraphFromCounts(termCounts);
+
+      const savedGraph = savedModelGraphRef.current;
+      if (savedGraph && savedGraph.edges.length > 0) {
+        const fqnSet = new Set(
+          baseGraph.nodes
+            .map((n) => n.fullyQualifiedName)
+            .filter((fqn): fqn is string => Boolean(fqn))
+        );
+        const uuidToFqn = new Map<string, string>();
+        savedGraph.nodes.forEach((n) => {
+          if (n.id && n.fullyQualifiedName) {
+            uuidToFqn.set(n.id, n.fullyQualifiedName);
+          }
+        });
+
+        const existingEdgeKeys = new Set(
+          baseGraph.edges.map((e) => `${e.from}-${e.to}`)
+        );
+        const termTermEdges: OntologyEdge[] = [];
+
+        savedGraph.edges.forEach((edge) => {
+          if (edge.relationType === 'parentOf') {
+            return;
+          }
+          const fromFqn = uuidToFqn.get(edge.from);
+          const toFqn = uuidToFqn.get(edge.to);
+          if (
+            !fromFqn ||
+            !toFqn ||
+            !fqnSet.has(fromFqn) ||
+            !fqnSet.has(toFqn)
+          ) {
+            return;
+          }
+          const key = `${fromFqn}-${toFqn}`;
+          if (!existingEdgeKeys.has(key)) {
+            existingEdgeKeys.add(key);
+            termTermEdges.push({
+              from: fromFqn,
+              to: toFqn,
+              label: edge.label,
+              relationType: edge.relationType,
+            });
+          }
+        });
+
+        return {
+          graphData: {
+            nodes: baseGraph.nodes,
+            edges: [...baseGraph.edges, ...termTermEdges],
+          },
+          termCounts,
+        };
+      }
+
+      return {
+        graphData: baseGraph,
+        termCounts,
+      };
+    },
+    [buildGraphFromCounts, glossaries]
+  );
+
   const fetchGraphDataFromDatabase = useCallback(
-    async (glossaryIdParam?: string, fetchedGlossaries?: Glossary[]) => {
-      const glossariesToUse = fetchedGlossaries ?? glossaries;
-      const allTerms: GlossaryTerm[] = [];
+    async (glossaryIdParam?: string, allGlossaries?: Glossary[]) => {
+      const glossariesToUse = allGlossaries ?? glossariesRef.current;
 
       const glossariesToFetch = glossaryIdParam
         ? glossariesToUse.filter((g) => g.id === glossaryIdParam)
         : glossariesToUse;
 
-      for (const glossary of glossariesToFetch) {
-        try {
-          const termsResponse = await getGlossaryTerms({
-            glossary: glossary.id,
-            fields: [
-              TabSpecificField.RELATED_TERMS,
-              TabSpecificField.CHILDREN,
-              TabSpecificField.PARENT,
-              TabSpecificField.OWNERS,
-            ],
-            limit: 1000,
+      const CONCURRENCY = 8;
+      const MAX_SAFE_PAGES = 50;
+      const fetchAllTermsForGlossary = async (
+        glossary: Glossary
+      ): Promise<GlossaryTerm[]> => {
+        const terms: GlossaryTerm[] = [];
+        let after: string | undefined;
+        let pages = 0;
+        do {
+          try {
+            const termsResponse = await getGlossaryTerms({
+              glossary: glossary.id,
+              fields: [
+                TabSpecificField.RELATED_TERMS,
+                TabSpecificField.CHILDREN,
+                TabSpecificField.PARENT,
+                TabSpecificField.OWNERS,
+              ],
+              limit: 1000,
+              after,
+            });
+            terms.push(...termsResponse.data);
+            after = termsResponse.paging?.after;
+            pages += 1;
+          } catch {
+            break;
+          }
+        } while (after && pages < MAX_SAFE_PAGES);
+
+        return terms;
+      };
+
+      const allTerms: GlossaryTerm[] = [];
+      for (let i = 0; i < glossariesToFetch.length; i += CONCURRENCY) {
+        const batch = glossariesToFetch.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map((g) => fetchAllTermsForGlossary(g))
+        );
+        results.forEach((r) => {
+          if (r.status === 'fulfilled') {
+            allTerms.push(...r.value);
+          }
+        });
+      }
+
+      // When fetching a single glossary (scoped view), related terms from
+      // other glossaries are not included. Fetch them so their edges render.
+      if (glossaryIdParam) {
+        const fetchedIds = new Set(allTerms.map((t) => t.id));
+        const missingIds = new Set<string>();
+        allTerms.forEach((term) => {
+          term.relatedTerms?.forEach((relation) => {
+            const id = relation.term?.id;
+            if (id && !fetchedIds.has(id)) {
+              missingIds.add(id);
+            }
           });
-          allTerms.push(...termsResponse.data);
-        } catch {
-          // Continue with other glossaries if one fails
+        });
+
+        if (missingIds.size > 0) {
+          const missingIdList = Array.from(missingIds);
+          for (let i = 0; i < missingIdList.length; i += CONCURRENCY) {
+            const batch = missingIdList.slice(i, i + CONCURRENCY);
+            const fetched = await Promise.allSettled(
+              batch.map((id) =>
+                getGlossaryTermsById(id, {
+                  fields: [
+                    TabSpecificField.RELATED_TERMS,
+                    TabSpecificField.CHILDREN,
+                    TabSpecificField.PARENT,
+                    TabSpecificField.OWNERS,
+                  ],
+                })
+              )
+            );
+            fetched.forEach((r) => {
+              if (r.status === 'fulfilled') {
+                allTerms.push(r.value);
+              }
+            });
+          }
         }
       }
 
       return buildGraphFromAllTerms(allTerms, glossariesToFetch);
     },
     // Note: glossaries is intentionally excluded to prevent infinite loop
-    // fetchedGlossaries parameter is always passed from fetchAllGlossaryData
+    // allGlossaries parameter is always passed from fetchAllGlossaryData
 
     [buildGraphFromAllTerms]
   );
@@ -822,38 +1443,57 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     async (glossaryIdParam?: string) => {
       setLoading(true);
       try {
-        // Always fetch glossaries list for export functionality
-        const [glossariesResponse, metricsResponse] = await Promise.all([
-          getGlossariesList({
-            fields: 'owners,tags',
-            limit: 100,
-          }),
+        const [allGlossaries, metricsResponse] = await Promise.all([
+          (async () => {
+            const collected = [];
+            let afterCursor: string | undefined;
+            let pages = 0;
+            const MAX_SAFE_PAGES = 500;
+            do {
+              const glossariesResponse = await getGlossariesList({
+                fields: 'owners,tags',
+                limit: 100,
+                after: afterCursor,
+              });
+              collected.push(...glossariesResponse.data);
+              afterCursor = glossariesResponse.paging?.after;
+              pages += 1;
+            } while (afterCursor && pages < MAX_SAFE_PAGES);
+
+            return collected;
+          })(),
           fetchAllMetrics().catch(() => []),
         ]);
-        const fetchedGlossaries = glossariesResponse.data;
-        setGlossaries(fetchedGlossaries);
+        setGlossaries(allGlossaries);
 
         let data: OntologyGraphData | null = null;
 
-        if (rdfEnabled) {
-          data = await fetchGraphDataFromRdf(
-            glossaryIdParam,
-            fetchedGlossaries
-          );
-        }
+        if (glossaryIdParam) {
+          // Scoped view: try RDF first, fall back to database
+          if (rdfEnabled) {
+            data = await fetchGraphDataFromRdf(glossaryIdParam, allGlossaries);
+          }
 
-        if (!data || data.nodes.length === 0) {
+          if (!data || data.nodes.length === 0) {
+            setDataSource('database');
+            data = await fetchGraphDataFromDatabase(
+              glossaryIdParam,
+              allGlossaries
+            );
+          }
+        } else {
+          // Global view: walk glossaries sequentially, stop at PAGE_SIZE terms
           setDataSource('database');
-          data = await fetchGraphDataFromDatabase(
-            glossaryIdParam,
-            fetchedGlossaries
-          );
+          const terms = await loadNextTermPage(allGlossaries);
+          data = buildGraphFromAllTerms(terms, allGlossaries);
         }
 
         const mergedData = mergeMetricsIntoGraph(data, metricsResponse);
-        setGraphData(mergedData);
+        filterFetchedGlossariesRef.current = new Set();
         setAssetGraphData(null);
-        setSavedPositions(null);
+        setTermAssetCounts({});
+        setGraphData(mergedData);
+        lastLoadCompletedRef.current = Date.now();
       } catch (error) {
         showErrorToast(
           isAxiosError(error) ? error : String(error),
@@ -870,26 +1510,47 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       fetchGraphDataFromDatabase,
       fetchAllMetrics,
       mergeMetricsIntoGraph,
+      loadNextTermPage,
+      buildGraphFromAllTerms,
       t,
     ]
   );
 
   const loadAssetsForDataMode = useCallback(async () => {
-    if (!graphData) {
+    const data = graphDataRef.current;
+    if (!data) {
       return;
     }
 
-    const termNodes = getScopedTermNodes(
-      graphData.nodes,
-      filters.glossaryIds,
-      scope,
-      entityId
-    );
+    const gen = dataModeAbortGenRef.current;
+    const useSpinner = dataModeInitialLoadUsesSpinnerRef.current;
+    if (useSpinner) {
+      dataModeInitialLoadUsesSpinnerRef.current = false;
+      setLoading(true);
+    }
 
-    const limitedTerms = termNodes.slice(0, ASSET_TERM_LIMIT);
-    const assetData = await buildAssetGraphData(limitedTerms);
-    setAssetGraphData(assetData);
-  }, [graphData, filters.glossaryIds, scope, entityId, buildAssetGraphData]);
+    try {
+      const glossaryFilterIds = withoutOntologyAutocompleteAll(
+        filters.glossaryIds
+      );
+      const termNodes = getScopedTermNodes(
+        data.nodes,
+        glossaryFilterIds,
+        scope,
+        entityId
+      );
+
+      await fetchTermAssetCounts(termNodes, glossaryFilterIds);
+      if (dataModeAbortGenRef.current !== gen) {
+        return;
+      }
+      setAssetGraphData(null);
+    } finally {
+      if (useSpinner && dataModeAbortGenRef.current === gen) {
+        setLoading(false);
+      }
+    }
+  }, [filters.glossaryIds, scope, entityId, fetchTermAssetCounts]);
 
   // Initialize settings
   useEffect(() => {
@@ -915,29 +1576,162 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     } else if (scope === 'term' && entityId) {
-      fetchAllGlossaryData();
+      fetchAllGlossaryData(termGlossaryId);
     } else {
       setLoading(false);
     }
-  }, [scope, glossaryId, entityId, rdfEnabled, fetchAllGlossaryData]);
+  }, [
+    scope,
+    glossaryId,
+    entityId,
+    termGlossaryId,
+    rdfEnabled,
+    fetchAllGlossaryData,
+  ]);
 
   useEffect(() => {
     if (explorationMode !== 'data') {
+      dataModeAbortGenRef.current++;
+      if (hasEnteredDataModeRef.current) {
+        setLoading(false);
+        hasEnteredDataModeRef.current = false;
+      }
       setAssetGraphData(null);
+      dataModeInitialLoadUsesSpinnerRef.current = false;
+      if (isInGlobalDataModeRef.current && savedModelGraphRef.current) {
+        setGraphData(savedModelGraphRef.current);
+        savedModelGraphRef.current = null;
+      }
+      isInGlobalDataModeRef.current = false;
 
       return;
     }
 
-    // Skip when handleModeChange already pre-loaded assets to avoid a
-    // redundant fetch that would cause an extra graph recreation.
-    if (assetLoadedByHandleModeChangeRef.current) {
-      assetLoadedByHandleModeChangeRef.current = false;
+    hasEnteredDataModeRef.current = true;
+
+    if (scope !== 'global') {
+      // Scoped data mode: fetch counts for existing model-mode graph
+      loadAssetsForDataMode();
 
       return;
     }
+    if (!isInGlobalDataModeRef.current) {
+      savedModelGraphRef.current = graphDataRef.current;
+      isInGlobalDataModeRef.current = true;
+    }
+    const glossaryFilterIds = withoutOntologyAutocompleteAll(
+      filters.glossaryIds
+    );
+    const gen = ++dataModeAbortGenRef.current;
+    setLoading(true);
+    setGraphData(null);
+    setTermAssetCounts({});
+    loadDataModeTerms(glossaryFilterIds)
+      .then(
+        (result: {
+          graphData: OntologyGraphData;
+          termCounts: Record<string, number>;
+        }) => {
+          if (dataModeAbortGenRef.current !== gen) {
+            return;
+          }
+          setGraphData(result.graphData);
+          setTermAssetCounts(result.termCounts);
+          setAssetGraphData(null);
+        }
+      )
+      .catch(() => {})
+      .finally(() => {
+        if (dataModeAbortGenRef.current === gen) {
+          setLoading(false);
+        }
+      });
+  }, [
+    explorationMode,
+    scope,
+    filters.glossaryIds,
+    loadAssetsForDataMode,
+    loadDataModeTerms,
+    dataModeRefreshKey,
+  ]);
+  const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
+    setGraphData((prev) => {
+      const base = prev ?? { nodes: [], edges: [] };
+      const existingNodeIds = new Set(base.nodes.map((n) => n.id));
+      const existingEdgeKeys = new Set(
+        base.edges.map((e) => `${e.from}-${e.to}`)
+      );
+      const newNodes = [...base.nodes];
+      const newEdges = [...base.edges];
 
-    loadAssetsForDataMode();
-  }, [explorationMode, loadAssetsForDataMode]);
+      results.forEach((result) => {
+        result.nodes.forEach((n) => {
+          if (!existingNodeIds.has(n.id)) {
+            newNodes.push(n);
+            existingNodeIds.add(n.id);
+          }
+        });
+        result.edges.forEach((e) => {
+          const key = `${e.from}-${e.to}`;
+          if (!existingEdgeKeys.has(key)) {
+            newEdges.push(e);
+            existingEdgeKeys.add(key);
+          }
+        });
+      });
+
+      return { nodes: newNodes, edges: newEdges };
+    });
+  }, []);
+
+  const loadMissingFilteredGlossaries = useCallback(
+    async (filtered: string[]) => {
+      const loadedGlossaryIds = new Set(
+        (graphDataRef.current?.nodes ?? [])
+          .filter((n) => n.glossaryId)
+          .map((n) => n.glossaryId!)
+      );
+
+      const unloaded = filtered.filter(
+        (id) =>
+          !loadedGlossaryIds.has(id) &&
+          !filterFetchedGlossariesRef.current.has(id)
+      );
+
+      if (unloaded.length === 0) {
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const results = await Promise.all(
+          unloaded.map((id) => fetchGraphDataFromDatabase(id))
+        );
+        unloaded.forEach((id) => filterFetchedGlossariesRef.current.add(id));
+        mergeGraphResults(results);
+      } catch {
+        // keep existing graph on error
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchGraphDataFromDatabase, mergeGraphResults]
+  );
+
+  useEffect(() => {
+    if (explorationMode !== 'model' || scope !== 'global') {
+      return;
+    }
+    const filtered = withoutOntologyAutocompleteAll(filters.glossaryIds);
+    if (filtered.length > 0) {
+      loadMissingFilteredGlossaries(filtered);
+    }
+  }, [
+    explorationMode,
+    scope,
+    filters.glossaryIds,
+    loadMissingFilteredGlossaries,
+  ]);
 
   const handleZoomIn = useCallback(() => {
     graphRef.current?.zoomIn();
@@ -951,8 +1745,89 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     graphRef.current?.fitView();
   }, []);
 
+  const handleExportPng = useCallback(async () => {
+    await graphRef.current?.exportAsPng();
+  }, []);
+
+  const handleExportSvg = useCallback(async () => {
+    await graphRef.current?.exportAsSvg();
+  }, []);
+
+  // Resolve the single glossary ID applicable in the current scope so we know
+  // which glossary to export as an ontology file.
+  const exportableGlossaryId =
+    scope === 'glossary'
+      ? glossaryId
+      : scope === 'term'
+      ? termGlossaryId
+      : undefined;
+
+  const exportableGlossaryName = exportableGlossaryId
+    ? glossaries.find((g) => g.id === exportableGlossaryId)?.name ??
+      exportableGlossaryId
+    : undefined;
+
+  const handleOntologyExportError = useCallback(
+    async (error: unknown) => {
+      if (isAxiosError(error)) {
+        // Export endpoint returns a blob — read the blob as text to extract
+        // the backend error message (e.g. "RDF service not enabled").
+        const data = error.response?.data;
+        if (data instanceof Blob) {
+          try {
+            const text = await data.text();
+            const parsed = JSON.parse(text);
+            showErrorToast(
+              parsed?.message ?? parsed?.error ?? t('message.export-failed')
+            );
+
+            return;
+          } catch {
+            // blob wasn't JSON — fall through to generic message
+          }
+        }
+        showErrorToast(
+          error.response?.data?.message ?? t('message.export-failed')
+        );
+      } else {
+        showErrorToast(t('message.export-failed'));
+      }
+    },
+    [t]
+  );
+
+  const handleExportTurtle = useCallback(async () => {
+    if (!exportableGlossaryId || !exportableGlossaryName) {
+      return;
+    }
+    try {
+      await downloadGlossaryOntology(
+        exportableGlossaryId,
+        exportableGlossaryName,
+        'turtle'
+      );
+    } catch (error) {
+      await handleOntologyExportError(error);
+    }
+  }, [exportableGlossaryId, exportableGlossaryName, handleOntologyExportError]);
+
+  const handleExportRdfXml = useCallback(async () => {
+    if (!exportableGlossaryId || !exportableGlossaryName) {
+      return;
+    }
+    try {
+      await downloadGlossaryOntology(
+        exportableGlossaryId,
+        exportableGlossaryName,
+        'rdfxml'
+      );
+    } catch (error) {
+      await handleOntologyExportError(error);
+    }
+  }, [exportableGlossaryId, exportableGlossaryName, handleOntologyExportError]);
+
   const handleModeChange = useCallback(
-    async (mode: ExplorationMode) => {
+    (mode: ExplorationMode) => {
       if (mode === 'data') {
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
@@ -960,33 +1835,22 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           glossaryIds: filters.glossaryIds,
           viewMode: 'overview' satisfies GraphViewMode,
         };
-        // Pre-fetch assets before switching mode so all state updates are
-        // batched into a single re-render (React 18 automatic batching).
-        // This avoids the double graph recreation: once when explorationMode
-        // changes, and again when inputNodes.length changes after async load.
         if (graphData) {
-          const termNodes = getScopedTermNodes(
-            graphData.nodes,
-            filters.glossaryIds,
-            scope,
-            entityId
-          );
-          const limitedTerms = termNodes.slice(0, ASSET_TERM_LIMIT);
-          const assetData = await buildAssetGraphData(limitedTerms);
-          // Mark so the useEffect skips the redundant load after mode switch.
-          assetLoadedByHandleModeChangeRef.current = true;
-          setAssetGraphData(assetData);
+          dataModeInitialLoadUsesSpinnerRef.current = true;
+          setLoading(true);
         }
         setExplorationMode(mode);
         setFilters(nextFilters);
       } else {
         dataFiltersRef.current = filters;
         setSelectedNode(null);
+        setExpandedTermIds(new Set());
         setExplorationMode(mode);
         setFilters(modelFiltersRef.current);
+        setTermAssetCounts({});
       }
     },
-    [filters, graphData, scope, entityId, buildAssetGraphData]
+    [filters, graphData]
   );
 
   const handleContextMenuClose = useCallback(() => {
@@ -1036,21 +1900,93 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
+    if (explorationMode === 'data') {
+      if (scope === 'global') {
+        setDataModeRefreshKey((k) => k + 1);
+      } else {
+        dataModeInitialLoadUsesSpinnerRef.current = true;
+        loadAssetsForDataMode();
+      }
+
+      return;
+    }
     if (scope === 'global') {
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     }
-  }, [scope, glossaryId, fetchAllGlossaryData]);
+  }, [
+    explorationMode,
+    scope,
+    glossaryId,
+    fetchAllGlossaryData,
+    loadAssetsForDataMode,
+  ]);
+
+  const handleScrollNearEdge = useCallback(() => {
+    const activeGlossaryFilter =
+      withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
+
+    if (
+      explorationMode === 'data' ||
+      activeGlossaryFilter ||
+      !hasMoreTerms ||
+      isLoadingMoreRef.current ||
+      scope !== 'global' ||
+      Date.now() - lastLoadCompletedRef.current < 2000
+    ) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    loadNextTermPage()
+      .then((terms) => {
+        const newPageData = buildGraphFromAllTerms(terms, glossaries);
+        setGraphData((prev) => {
+          if (!prev) {
+            return newPageData;
+          }
+          const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
+          const existingEdgeKeys = new Set(
+            prev.edges.map((e) => `${e.from}-${e.to}`)
+          );
+
+          return {
+            ...prev,
+            nodes: [
+              ...prev.nodes,
+              ...newPageData.nodes.filter((n) => !existingNodeIds.has(n.id)),
+            ],
+            edges: [
+              ...prev.edges,
+              ...newPageData.edges.filter(
+                (e) => !existingEdgeKeys.has(`${e.from}-${e.to}`)
+              ),
+            ],
+          };
+        });
+      })
+      .catch(() => {
+        // keep existing graph on error
+      })
+      .finally(() => {
+        lastLoadCompletedRef.current = Date.now();
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      });
+  }, [
+    explorationMode,
+    filters.glossaryIds,
+    hasMoreTerms,
+    scope,
+    loadNextTermPage,
+    buildGraphFromAllTerms,
+    glossaries,
+  ]);
 
   const handleSettingsChange = useCallback((nextSettings: GraphSettings) => {
-    setSettings((prev) => {
-      if (prev.layout !== nextSettings.layout) {
-        setSavedPositions(null);
-      }
-
-      return nextSettings;
-    });
+    setSettings(nextSettings);
   }, []);
 
   const handleFiltersChange = useCallback((newFilters: GraphFilters) => {
@@ -1065,36 +2001,59 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }));
   }, []);
 
-  const handleNodeFocus = useCallback((nodeId: string) => {
-    if (isValidUUID(nodeId)) {
-      graphRef.current?.focusNode(nodeId);
-    }
-  }, []);
-
-  const handleDetailsPanelNodeClick = useCallback(
-    (nodeId: string) => {
-      handleNodeFocus(nodeId);
-      const node = filteredGraphData?.nodes.find((n) => n.id === nodeId);
-      if (node) {
-        setSelectedNode(node);
-      }
-    },
-    [handleNodeFocus, filteredGraphData]
-  );
-
   const handleGraphNodeClick = useCallback(
-    (node: OntologyNode, position?: { x: number; y: number }) => {
+    (
+      node: OntologyNode,
+      _position?: { x: number; y: number },
+      meta?: {
+        dataModeAssetBadgeClick?: boolean;
+        dataModeLoadMoreBadgeClick?: boolean;
+      }
+    ) => {
       setContextMenu(null);
-      if (
-        explorationMode === 'data' &&
-        (node.type === ASSET_NODE_TYPE || node.type === METRIC_NODE_TYPE)
-      ) {
+      if (explorationMode === 'data' && isTermNode(node)) {
+        if (meta?.dataModeLoadMoreBadgeClick) {
+          const loaded = node.loadedAssetCount ?? 0;
+          void appendTermAssetsForTerm(
+            node,
+            DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+            loaded
+          );
+          setSelectedNode(null);
+
+          return;
+        }
+        if (meta?.dataModeAssetBadgeClick) {
+          setExpandedTermIds((prev) => {
+            const wasExpanded = prev.has(node.id);
+            const next = new Set(prev);
+            if (wasExpanded) {
+              next.delete(node.id);
+            } else {
+              next.add(node.id);
+              const count = termAssetCounts[node.id] ?? node.assetCount ?? 0;
+              if (count > 0) {
+                void appendTermAssetsForTerm(
+                  node,
+                  DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+                  0
+                );
+              }
+            }
+
+            return next;
+          });
+          setSelectedNode(null);
+
+          return;
+        }
+        setSelectedNode(node);
+
         return;
       }
       setSelectedNode(node);
-      setPanelPosition(position);
     },
-    [explorationMode]
+    [explorationMode, appendTermAssetsForTerm, termAssetCounts]
   );
 
   const handleGraphNodeDoubleClick = useCallback(
@@ -1121,20 +2080,27 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, []);
 
   const statsItems = useMemo(() => {
-    if (!filteredGraphData) {
+    if (!graphDataToShow) {
       return [];
     }
-    const termCount = filteredGraphData.nodes.filter(
+    const termCount = graphDataToShow.nodes.filter(
       (n) => n.type === 'glossaryTerm' || n.type === 'glossaryTermIsolated'
     ).length;
-    const metricCount = filteredGraphData.nodes.filter(
+    const metricCount = graphDataToShow.nodes.filter(
       (n) => n.type === METRIC_NODE_TYPE
     ).length;
-    const assetCount = filteredGraphData.nodes.filter(
-      (n) => n.type === ASSET_NODE_TYPE
-    ).length;
-    const relationCount = filteredGraphData.edges.length;
-    const isolatedCount = filteredGraphData.nodes.filter(
+    const assetCount =
+      explorationMode === 'data'
+        ? graphDataToShow.nodes
+            .filter(
+              (n) =>
+                n.type === 'glossaryTerm' || n.type === 'glossaryTermIsolated'
+            )
+            .reduce((sum, n) => sum + (n.assetCount ?? 0), 0)
+        : graphDataToShow.nodes.filter((n) => n.type === ASSET_NODE_TYPE)
+            .length;
+    const relationCount = graphDataToShow.edges.length;
+    const isolatedCount = graphDataToShow.nodes.filter(
       (n) => n.type === 'glossaryTermIsolated'
     ).length;
     const sourceLabel = dataSource === 'rdf' ? ' (RDF)' : '';
@@ -1151,100 +2117,203 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     ];
 
     return items;
-  }, [filteredGraphData, dataSource, explorationMode, t]);
+  }, [graphDataToShow, dataSource, explorationMode, t]);
 
-  const dottedGraphBackgroundStyle: React.CSSProperties = {
-    backgroundColor: '#fff',
-    backgroundImage:
-      'radial-gradient(circle, rgba(148, 163, 184, 0.22) 1px, transparent 1px)',
-    backgroundSize: '14px 14px',
+  const renderGraphContent = () => {
+    const hasNoVisibleNodes =
+      !graphDataToShow || graphDataToShow.nodes.length === 0;
+
+    if (loading && hasNoVisibleNodes) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-loading">
+          <div
+            aria-label={t('label.loading')}
+            className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+            role="status"
+          />
+          <Typography as="p" className="tw:mt-4 tw:text-tertiary">
+            {t('label.loading-graph')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (
+      isHierarchyView &&
+      hierarchyGraphData !== null &&
+      hierarchyGraphData.edges.length === 0
+    ) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-hierarchy-empty">
+          <Typography as="p" className="tw:text-center tw:text-tertiary">
+            {t('message.no-hierarchical-relations-found')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      const hasActiveFilter =
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
+        withoutOntologyAutocompleteAll(filters.relationTypes).length > 0;
+
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-empty">
+          <Typography as="p" className="tw:text-center tw:text-tertiary">
+            {hasActiveFilter
+              ? t('message.no-data-available-for-selected-filter')
+              : t('message.no-glossary-terms-found')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (!graphDataToShow) {
+      return null;
+    }
+
+    return (
+      <>
+        {filters.searchQuery.trim() ? (
+          <div
+            aria-hidden
+            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
+          />
+        ) : null}
+        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+          <OntologyGraph
+            edges={graphDataToShow.edges}
+            expandedTermIds={
+              explorationMode === 'data' ? expandedTermIds : undefined
+            }
+            explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
+            focusNodeId={
+              explorationMode === 'data'
+                ? selectedNode?.id ?? entityId
+                : entityId
+            }
+            glossaryColorMap={glossaryColorMap}
+            graphSearchHighlight={graphSearchHighlight}
+            hierarchyCombos={
+              isHierarchyView && hierarchyGraphData
+                ? hierarchyGraphData.combos.map((c) => ({
+                    id: c.id,
+                    label: c.label,
+                    glossaryId: c.glossaryId,
+                  }))
+                : undefined
+            }
+            nodePositions={hierarchyBakedPositions}
+            nodes={graphDataToShow.nodes}
+            ref={graphRef}
+            selectedNodeId={
+              explorationMode === 'data' && expandedTermIds.size > 1
+                ? null
+                : selectedNode?.id
+            }
+            settings={settings}
+            onNodeClick={handleGraphNodeClick}
+            onNodeContextMenu={handleGraphNodeContextMenu}
+            onNodeDoubleClick={handleGraphNodeDoubleClick}
+            onPaneClick={handleGraphPaneClick}
+            onScrollNearEdge={handleScrollNearEdge}
+          />
+          {isLoadingMore && (
+            <>
+              <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
+              <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
+                <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
+                  <div
+                    aria-label={t('label.loading')}
+                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+                    role="status"
+                  />
+                  <Typography size="text-sm" weight="medium">
+                    {t('label.loading-more-terms')}
+                  </Typography>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </>
+    );
   };
 
   return (
     <div
       className={classNames(
         'tw:flex tw:flex-col tw:overflow-hidden',
+        { 'ontology-slideout-open': Boolean(selectedNode) },
         className
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
       {showHeader && (
-        <div
-          className="tw:flex tw:flex-col tw:gap-2 tw:px-5 tw:py-3 tw:mb-4"
-          data-testid="ontology-explorer-header"
-          style={{
-            borderRadius: 12,
-            border: '1px solid var(--Blue-gray-100, #EAECF5)',
-            background: 'var(--colors-content-content1, #FFF)',
-          }}>
-          <Typography
-            as="h2"
-            className="tw:m-0 tw:text-md tw:font-semibold tw:text-gray-800">
+        <Card
+          className="tw:mb-4 tw:flex tw:flex-col tw:px-5 tw:py-3"
+          data-testid="ontology-explorer-header">
+          <Typography size="text-sm" weight="medium">
             {t('label.ontology-explorer')}
           </Typography>
           {filteredGraphData && statsItems.length > 0 && (
             <div
-              className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap"
+              className="tw:flex tw:flex-wrap tw:items-center tw:gap-2"
               data-testid="ontology-explorer-stats">
               {statsItems.map((item, index) => (
                 <React.Fragment key={`${item}-${index}`}>
-                  {index > 0 && (
-                    <div
-                      aria-hidden
-                      className="tw:shrink-0 tw:self-stretch"
-                      style={{
-                        width: 1,
-                        backgroundColor: 'var(--Blue-gray-100, #EAECF5)',
-                      }}
+                  {index > 0 ? (
+                    <Divider
+                      className="tw:h-4 tw:self-center"
+                      orientation="vertical"
                     />
-                  )}
-                  <span
-                    className="tw:text-sm tw:font-medium tw:leading-5"
+                  ) : null}
+                  <Typography
                     data-testid={
                       index === 0 ? 'ontology-explorer-stats-item' : undefined
                     }
-                    style={{
-                      color: '#414651',
-                    }}>
+                    size="text-sm"
+                    weight="regular">
                     {item}
-                  </span>
+                  </Typography>
                 </React.Fragment>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
-        <div className="tw:relative tw:flex tw:min-h-100 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-          {/* Top filter bar */}
-          <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-50 tw:px-5 tw:pt-5">
-            <div
-              className="tw:border tw:rounded-[6px] tw:py-2.5 tw:px-3"
-              style={{
-                borderColor: NODE_BORDER_COLOR,
-                background: NODE_FILL_DEFAULT,
-                boxShadow:
-                  '0 8px 20px 0 rgba(0, 0, 3, 0.04), 0 2px 4px 0 rgba(0, 0, 3, 0.03)',
-              }}>
-              <FilterToolbar
-                filters={filters}
-                glossaries={glossaries}
-                relationTypes={relationTypes}
-                viewModeDisabled={explorationMode === 'data'}
-                onFiltersChange={handleFiltersChange}
-                onViewModeChange={handleViewModeChange}
-              />
+        <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
+          {/* Top filter bar — only on the standalone global page */}
+          {scope === 'global' && (
+            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-1 tw:px-4 tw:pt-5">
+              <Card className="tw:rounded-md tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-sm">
+                <FilterToolbar
+                  filters={filters}
+                  glossaries={glossaries}
+                  relationTypes={relationTypes}
+                  viewModeDisabled={explorationMode === 'data'}
+                  onClearAll={() => setFilters(DEFAULT_FILTERS)}
+                  onFiltersChange={handleFiltersChange}
+                  onViewModeChange={handleViewModeChange}
+                />
+              </Card>
             </div>
-          </div>
+          )}
 
           {/* Bottom center: Mode tabs + Search in Graph + Settings */}
-          <div
-            className={
-              'tw:absolute tw:bottom-4 tw:left-1/2 tw:-translate-x-1/2 tw:z-50 ' +
-              'tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:rounded-xl ' +
-              'tw:border tw:border-gray-200 tw:bg-white tw:px-3 tw:py-1.5 tw:shadow-md'
-            }>
+          <Card
+            className={classNames(
+              'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
+              ONTOLOGY_TOOLBAR_CARD_CLASS
+            )}>
             <Tabs
               className="tw:w-fit!"
               selectedKey={explorationMode}
@@ -1253,19 +2322,21 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   handleModeChange(key as ExplorationMode);
                 }
               }}>
-              <Tabs.List
-                items={[
-                  { label: t('label.model'), id: 'model' },
-                  { label: t('label.data'), id: 'data' },
-                ]}
-                size="sm"
-                type="button-border"
-              />
+              <Tabs.List size="sm" type="button-border">
+                <Tabs.Item id="model" label={t('label.model')} />
+                <Tabs.Item
+                  className={(state) =>
+                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                  }
+                  id="data"
+                  isDisabled={loading || isLoadingMore}
+                  label={t('label.data')}
+                />
+              </Tabs.List>
               <Tabs.Panel className="tw:hidden" id="model" />
               <Tabs.Panel className="tw:hidden" id="data" />
             </Tabs>
             <Input
-              className="tw:min-w-54.5 tw:rounded-xl [&_input]:tw:pl-10"
               data-testid="ontology-graph-search"
               icon={SearchMd}
               inputClassName="tw:pl-10"
@@ -1275,14 +2346,32 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 setFilters((prev) => ({ ...prev, searchQuery: value }))
               }
             />
+            <ExportGraphPanel
+              onExportPng={handleExportPng}
+              onExportRdfXml={
+                rdfEnabled && exportableGlossaryId
+                  ? handleExportRdfXml
+                  : undefined
+              }
+              onExportSvg={handleExportSvg}
+              onExportTurtle={
+                rdfEnabled && exportableGlossaryId
+                  ? handleExportTurtle
+                  : undefined
+              }
+            />
             <GraphSettingsPanel
               settings={settings}
               onSettingsChange={handleSettingsChange}
             />
-          </div>
+          </Card>
 
           {/* Bottom right: Zoom / view controls */}
-          <div className="tw:absolute tw:bottom-4 tw:right-4 tw:z-50 tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-white tw:shadow-md">
+          <Card
+            className={classNames(
+              'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
+              ONTOLOGY_TOOLBAR_CARD_CLASS
+            )}>
             <OntologyControlButtons
               isLoading={loading}
               onFitToScreen={handleFitToScreen}
@@ -1290,95 +2379,58 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
             />
+          </Card>
+
+          <div
+            className={classNames(
+              ONTOLOGY_GRAPH_BACKDROP_CLASS,
+              'tw:overflow-hidden'
+            )}>
+            {renderGraphContent()}
           </div>
 
-          {loading ? (
-            <div
-              className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-loading">
-              <div
-                className="tw:absolute tw:inset-0"
-                style={dottedGraphBackgroundStyle}
-              />
-              <div
-                aria-label={t('label.loading')}
-                className="tw:z-10 tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-gray-200 tw:border-t-blue-600"
-                role="status"
-              />
-              <Typography as="p" className="tw:mt-4 tw:z-10 tw:text-gray-500">
-                {t('label.loading-graph')}
-              </Typography>
-            </div>
-          ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
-            <div
-              className="tw:relative tw:flex tw:min-h-100 tw:flex-1 tw:flex-col tw:items-center tw:justify-center"
-              data-testid="ontology-graph-empty">
-              <div
-                className="tw:absolute tw:inset-0"
-                style={dottedGraphBackgroundStyle}
-              />
-              <Typography
-                as="p"
-                className="tw:z-10 tw:text-center tw:text-gray-500">
-                {filters.glossaryIds.length > 0 ||
-                filters.relationTypes.length > 0
-                  ? t('message.no-data-available-for-selected-filter')
-                  : t('message.no-glossary-terms-found')}
-              </Typography>
-            </div>
-          ) : (
-            <div
-              className="tw:absolute tw:inset-0"
-              style={dottedGraphBackgroundStyle}>
-              <OntologyGraph
-                edges={graphDataToShow.edges}
-                explorationMode={
-                  isHierarchyView ? 'hierarchy' : explorationMode
+          {selectedNode && (
+            <SlideoutMenu
+              isDismissable
+              isOpen
+              className="tw:z-2"
+              dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
+              width={ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH}
+              onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                  setSelectedNode(null);
                 }
-                focusNodeId={
-                  explorationMode === 'data'
-                    ? selectedNode?.id ?? entityId
-                    : entityId
-                }
-                glossaryColorMap={glossaryColorMap}
-                hierarchyCombos={
-                  isHierarchyView && hierarchyGraphData
-                    ? hierarchyGraphData.combos.map((c) => ({
-                        id: c.id,
-                        label: c.label,
-                        glossaryId: c.glossaryId,
-                      }))
-                    : undefined
-                }
-                nodePositions={
-                  isHierarchyView
-                    ? hierarchyBakedPositions ?? undefined
-                    : savedPositions ?? undefined
-                }
-                nodes={graphDataToShow.nodes}
-                ref={graphRef}
-                selectedNodeId={selectedNode?.id}
-                settings={settings}
-                onNodeClick={handleGraphNodeClick}
-                onNodeContextMenu={handleGraphNodeContextMenu}
-                onNodeDoubleClick={handleGraphNodeDoubleClick}
-                onPaneClick={handleGraphPaneClick}
-              />
-            </div>
-          )}
-
-          {selectedNode && explorationMode !== 'data' && (
-            <DetailsPanel
-              edges={filteredGraphData?.edges}
-              node={selectedNode}
-              nodes={filteredGraphData?.nodes}
-              position={panelPosition}
-              relationTypes={relationTypes}
-              onClose={() => {
-                setSelectedNode(null);
-              }}
-              onNodeClick={handleDetailsPanelNodeClick}
-            />
+              }}>
+              {({ close }) => (
+                <EntitySummaryPanel
+                  isSideDrawer
+                  entityDetails={buildOntologySlideoutEntityDetails(
+                    selectedNode
+                  )}
+                  handleClosePanel={() => {
+                    setSelectedNode(null);
+                    close();
+                  }}
+                  key={selectedNode.id}
+                  ontologyExplorerRelationsSlot={
+                    isDataAssetLikeNode(selectedNode) ? undefined : (
+                      <OntologyNodeRelationsContent
+                        edges={filteredGraphData?.edges ?? []}
+                        node={selectedNode}
+                        nodes={filteredGraphData?.nodes ?? []}
+                        relationTypes={relationTypes}
+                      />
+                    )
+                  }
+                  panelPath={
+                    isDataAssetLikeNode(selectedNode)
+                      ? 'glossary-term-assets-tab'
+                      : 'ontology-explorer'
+                  }
+                  sideDrawerOverviewOnly={isDataAssetLikeNode(selectedNode)}
+                />
+              )}
+            </SlideoutMenu>
           )}
 
           {contextMenu && (

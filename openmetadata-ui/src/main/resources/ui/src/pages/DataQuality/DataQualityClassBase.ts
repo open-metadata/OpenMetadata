@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as DashboardIcon } from '../../assets/svg/ic-dashboard.svg';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
+import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -29,6 +31,14 @@ export type DataQualityLeftSideBarType = {
 class DataQualityClassBase {
   public getLeftSideBar(): DataQualityLeftSideBarType[] {
     return [
+      {
+        key: DataQualityPageTabs.DASHBOARD,
+        id: 'dashboard',
+        label: i18n.t('label.summary'),
+        icon: DashboardIcon,
+        description: i18n.t('label.data-health-overview'),
+        iconProps: { className: 'side-panel-icons' },
+      },
       {
         key: DataQualityPageTabs.TEST_CASES,
         label: i18n.t('label.by-entity', {
@@ -63,6 +73,11 @@ class DataQualityClassBase {
   public getDataQualityTab() {
     return [
       {
+        component: DataQualityDashboard,
+        key: DataQualityPageTabs.DASHBOARD,
+        label: i18n.t('label.summary'),
+      },
+      {
         key: DataQualityPageTabs.TEST_CASES,
         component: TestCases,
         label: i18n.t('label.test-case-plural'),
@@ -76,7 +91,7 @@ class DataQualityClassBase {
   }
 
   public getDefaultActiveTab(): DataQualityPageTabs {
-    return DataQualityPageTabs.TEST_CASES;
+    return DataQualityPageTabs.DASHBOARD;
   }
 
   public getExportDataQualityDashboardButton(

@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { isUndefined } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
   clickOutside,
   createNewPage,
+  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -33,6 +34,10 @@ const table = new TableClass();
 const tier = new TagClass({
   classification: 'Tier',
 });
+// Second tier tag — created but NOT assigned to any asset
+const tierWithoutAsset = new TagClass({
+  classification: 'Tier',
+});
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -41,6 +46,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await table.create(apiContext);
   await domain.create(apiContext);
   await tier.create(apiContext);
+  // Create second tier but do NOT assign it to any asset
+  await tierWithoutAsset.create(apiContext);
 
   await table.patch({
     apiContext,
@@ -80,31 +87,33 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 });
 
-test('search dropdown should work properly for quick filters', async ({
-  page,
-}) => {
-  const items = [
-    {
-      label: 'Domains',
-      key: 'domains.displayName.keyword',
-      value: domain.responseData.displayName,
-    },
-    { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
-  ];
+test.describe('search dropdown quick filters - index readiness', () => {
+  test('search dropdown should work properly for quick filters', async ({
+    page,
+  }) => {
+    const items = [
+      {
+        label: 'Domains',
+        key: 'domains.displayName.keyword',
+        value: domain.responseData.displayName,
+      },
+      { label: 'Tag', key: 'tags.tagFQN', value: 'PersonalData.Personal' },
+    ];
 
-  for (const filter of items) {
-    await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
-    await searchAndClickOnOption(page, filter, true);
+    for (const filter of items) {
+      await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+      await searchAndClickOnOption(page, filter, true);
 
-    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
-      filter.key
-    }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
+      const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
+        filter.key
+      }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
-    const queryRes = page.waitForResponse(querySearchURL);
-    await page.click('[data-testid="update-btn"]');
-    await queryRes;
-    await page.click('[data-testid="clear-filters"]');
-  }
+      const queryRes = page.waitForResponse(querySearchURL);
+      await page.click('[data-testid="update-btn"]');
+      await queryRes;
+      await page.click('[data-testid="clear-filters"]');
+    }
+  });
 });
 
 test('should search for empty or null filters', async ({ page }) => {
@@ -120,48 +129,29 @@ test('should search for empty or null filters', async ({ page }) => {
   }
 });
 
-test('should show correct count for initial options', async ({ page }) => {
-  const items = [{ label: 'Tier', key: 'tier.tagFQN' }];
+test('should show correct count for tier filter options from aggregation', async ({
+  page,
+}) => {
+  const { apiContext } = await getApiContext(page);
+  const res = await apiContext.get(
+    '/api/v1/search/query?q=&index=dataAsset&from=0&size=0&deleted=false'
+  );
+  const data = await res.json();
+  const buckets: { key: string; doc_count: number }[] =
+    data.aggregations['sterms#tier.tagFQN']?.buckets ?? [];
 
-  for (const filter of items) {
-    const aggregateAPI = page.waitForResponse(
-      '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-    );
-    const tierFetchAPI = page.waitForResponse(
-      '/api/v1/tags?parent=Tier&limit=50'
-    );
-    await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+  await page.getByTestId('search-dropdown-Tier').click();
+  await waitForAllLoadersToDisappear(page);
 
-    const res = await aggregateAPI;
-    const tierRes = await tierFetchAPI;
-    const data = await res.json();
-    const tierList = (await tierRes.json()).data;
-    const buckets = data.aggregations['sterms#tier.tagFQN'].buckets;
-
-    await waitForAllLoadersToDisappear(page);
-
-    // The following logic is required due to special case for tier filter
-    // where we are fetching the tier options from tag API and
-    // the count from aggregation API.
-    // So we need to match the bucket count with the corresponding tier option.
-    for (const tierItem of tierList) {
-      // Find the corresponding bucket for the tier
-      const bucket = buckets.find(
-        (item: { key: string }) =>
-          item.key.toLowerCase() === tierItem.fullyQualifiedName?.toLowerCase()
-      );
-      // Check if the tier in the dropdown has a corresponding bucket in elastic search response
-      if (!isUndefined(bucket)) {
-        await expect(
-          page
-            .locator(`[data-menu-id$="-${tierItem.fullyQualifiedName}"]`)
-            .getByTestId('filter-count')
-        ).toHaveText(bucket.doc_count.toString());
-      }
-    }
-
-    await clickOutside(page);
+  for (const bucket of buckets) {
+    await expect(
+      page
+        .locator(`[data-menu-id$="-${bucket.key}"]`)
+        .getByTestId('filter-count')
+    ).toHaveText(bucket.doc_count.toString());
   }
+
+  await clickOutside(page);
 });
 
 test('should search for multiple values along with null filters', async ({
@@ -177,6 +167,11 @@ test('should search for multiple values along with null filters', async ({
       label: 'Domains',
       key: 'domains.displayName.keyword',
       value: domain.responseData.displayName,
+    },
+    {
+      label: 'Tier',
+      key: 'tier.tagFQN',
+      value: tier.responseData.fullyQualifiedName,
     },
   ];
 
@@ -242,4 +237,193 @@ test('Filter by column entity type shows only column results', async ({
 
   const quickFilter = page.getByTestId('search-dropdown-Data Assets');
   await expect(quickFilter).toContainText('tablecolumn');
+});
+
+test.describe('Tier filter - aggregation-based options', () => {
+  test('tier with assigned asset appears in dropdown, tier without asset does not', async ({
+    page,
+  }) => {
+    await test.step('Open Tier filter dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tier').click();
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Search for tier with asset — it is visible in dropdown', async () => {
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
+      );
+      await page
+        .getByTestId('search-input')
+        .fill(tier.responseData.fullyQualifiedName);
+      await searchRes;
+
+      await expect(
+        page.getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
+      ).toBeVisible();
+    });
+
+    await test.step('Search for tier without asset — it is not visible in dropdown', async () => {
+      await page.getByTestId('search-input').clear();
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
+      );
+      await page
+        .getByTestId('search-input')
+        .fill(tierWithoutAsset.responseData.fullyQualifiedName);
+      await searchRes;
+
+      await expect(
+        page.getByTestId(
+          tierWithoutAsset.responseData.fullyQualifiedName.toLowerCase()
+        )
+      ).not.toBeVisible();
+
+      await expect(page.getByText('No data available.')).toBeVisible();
+    });
+
+    await clickOutside(page);
+  });
+
+  test('selecting a tier filter shows only assets tagged with that tier', async ({
+    page,
+  }) => {
+    await test.step('Open Tier filter dropdown and select the tier', async () => {
+      await page.getByTestId('search-dropdown-Tier').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
+      );
+      await page
+        .getByTestId('search-input')
+        .fill(tier.responseData.fullyQualifiedName);
+      await searchRes;
+
+      await page
+        .getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
+        .click();
+      await expect(
+        page.getByTestId(
+          `${tier.responseData.fullyQualifiedName.toLowerCase()}-checkbox`
+        )
+      ).toBeChecked();
+    });
+
+    await test.step('Apply filter and verify asset is visible in results', async () => {
+      const queryRes = page.waitForResponse(
+        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+      );
+      await page.getByTestId('update-btn').click();
+      await queryRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${table.entityResponseData?.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+    });
+  });
+});
+
+test.describe('Metric search result highlight', () => {
+  const metric = new MetricClass();
+
+  test.beforeAll('Create metric entity', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await metric.create(apiContext);
+
+    await expect(async () => {
+      const response = await apiContext.get(
+        `/api/v1/search/query?q=${metric.entity.name}&index=metric&from=0&size=10`
+      );
+      const data = await response.json();
+
+      expect(data.hits.total.value).toBeGreaterThan(0);
+    }).toPass({ timeout: 90_000, intervals: [2_000] });
+
+    await afterAction();
+  });
+
+  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+    page,
+  }) => {
+    await test.step('Select Metric search index and search', async () => {
+      await page.getByTestId('global-search-selector').waitFor({
+        state: 'visible',
+      });
+      await page.getByTestId('global-search-selector').click();
+      await page.getByTestId('global-search-select-dropdown').waitFor({
+        state: 'visible',
+      });
+
+      await page
+        .getByTestId('global-search-select-dropdown')
+        .locator('.rc-virtual-list-holder')
+        .evaluate((el) => {
+          el.scrollTop = el.scrollHeight;
+        });
+
+      const metricOption = page.getByTestId(
+        'global-search-select-option-Metric'
+      );
+      await metricOption.waitFor({ state: 'visible' });
+      await metricOption.click();
+
+      const searchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('metric')
+      );
+
+      await page.getByTestId('searchBox').fill(metric.entity.name);
+      await page.keyboard.press('Enter');
+
+      const response = await searchResponse;
+      expect(response.status()).toBe(200);
+
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('search-results').waitFor({ state: 'visible' });
+    });
+
+    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+      const entityCard = page.getByTestId(
+        `table-data-card_${metric.entity.name}`
+      );
+      await entityCard.waitFor({ state: 'visible' });
+
+      const breadcrumb = entityCard.getByTestId('breadcrumb');
+
+      const firstLink = breadcrumb
+        .getByTestId('breadcrumb-link')
+        .first()
+        .getByRole('link');
+      await expect(firstLink).toHaveText('Metrics');
+
+      const inactiveLink = breadcrumb.getByTestId('inactive-link');
+      await expect(inactiveLink).toHaveText(metric.entity.name);
+      await expect(inactiveLink).not.toContainText('<span');
+      await expect(inactiveLink).not.toContainText('text-highlighter');
+    });
+
+    await test.step('Verify display name header has highlighted search terms', async () => {
+      const entityCard = page.getByTestId(
+        `table-data-card_${metric.entity.name}`
+      );
+      const displayNameHeader = entityCard.getByTestId(
+        'entity-header-display-name'
+      );
+
+      await expect(displayNameHeader).toBeVisible();
+
+      const highlightedSpan = displayNameHeader.locator(
+        'span.text-highlighter'
+      );
+      await expect(highlightedSpan.first()).toBeVisible();
+
+      const fullText = await displayNameHeader.textContent();
+      expect(fullText?.trim()).toBe(metric.entity.name);
+    });
+  });
 });

@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Avatar } from "../components/base/avatar/avatar";
-import { AvatarLabelGroup } from "../components/base/avatar/avatar-label-group";
-import { AvatarProfilePhoto } from "../components/base/avatar/avatar-profile-photo";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Avatar } from '../components/base/avatar/avatar';
+import { AvatarLabelGroup } from '../components/base/avatar/avatar-label-group';
+import { AvatarProfilePhoto } from '../components/base/avatar/avatar-profile-photo';
 
 const meta = {
-  title: "Components/Avatar",
+  title: 'Components/Avatar',
   component: Avatar,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Avatar>;
 
 export default meta;
@@ -29,36 +29,36 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    size: "md",
-    initials: "JD",
+    size: 'md',
+    initials: 'JD',
   },
 };
 
 export const WithImage: Story = {
   args: {
-    size: "md",
-    src: "https://i.pravatar.cc/150?img=1",
-    alt: "User avatar",
+    size: 'md',
+    src: 'https://i.pravatar.cc/150?img=1',
+    alt: 'User avatar',
   },
 };
 
 export const WithInitials: Story = {
   render: () => (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <Avatar size="xxs" initials="JD" />
-      <Avatar size="xs" initials="JD" />
-      <Avatar size="sm" initials="JD" />
-      <Avatar size="md" initials="JD" />
-      <Avatar size="lg" initials="JD" />
-      <Avatar size="xl" initials="JD" />
-      <Avatar size="2xl" initials="JD" />
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <Avatar initials="JD" size="xxs" />
+      <Avatar initials="JD" size="xs" />
+      <Avatar initials="JD" size="sm" />
+      <Avatar initials="JD" size="md" />
+      <Avatar initials="JD" size="lg" />
+      <Avatar initials="JD" size="xl" />
+      <Avatar initials="JD" size="2xl" />
     </div>
   ),
 };
 
 export const Sizes: Story = {
   render: () => (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       <Avatar size="xxs" src="https://i.pravatar.cc/150?img=1" />
       <Avatar size="xs" src="https://i.pravatar.cc/150?img=1" />
       <Avatar size="sm" src="https://i.pravatar.cc/150?img=1" />
@@ -72,47 +72,48 @@ export const Sizes: Story = {
 
 export const WithOnlineStatus: Story = {
   render: () => (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <Avatar size="md" initials="JD" status="online" />
-      <Avatar size="md" initials="JD" status="offline" />
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <Avatar initials="JD" size="md" status="online" />
+      <Avatar initials="JD" size="md" status="offline" />
     </div>
   ),
 };
 
 export const Verified: Story = {
   args: {
-    size: "md",
-    initials: "JD",
+    size: 'md',
+    initials: 'JD',
     verified: true,
   },
 };
 
 export const LabelGroup: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, width: 300 }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 300 }}>
       <AvatarLabelGroup
-        size="sm"
         initials="JD"
-        title="John Doe"
+        size="sm"
         subtitle="john.doe@example.com"
+        title="John Doe"
       />
       <AvatarLabelGroup
         size="md"
         src="https://i.pravatar.cc/150?img=1"
-        title="Jane Smith"
         subtitle="Software Engineer"
+        title="Jane Smith"
       />
       <AvatarLabelGroup
-        size="lg"
         initials="AB"
-        title="Alice Brown"
+        size="lg"
         subtitle="Product Manager"
+        title="Alice Brown"
       />
       <AvatarLabelGroup
         size="xl"
         src="https://i.pravatar.cc/150?img=2"
-        title="Bob Wilson"
         subtitle="Design Lead"
+        title="Bob Wilson"
       />
     </div>
   ),
@@ -120,20 +121,20 @@ export const LabelGroup: StoryObj = {
 
 export const ProfilePhoto: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-      <AvatarProfilePhoto size="sm" initials="JD" />
+    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <AvatarProfilePhoto initials="JD" size="sm" />
       <AvatarProfilePhoto size="md" src="https://i.pravatar.cc/150?img=1" />
-      <AvatarProfilePhoto size="lg" initials="AB" />
+      <AvatarProfilePhoto initials="AB" size="lg" />
     </div>
   ),
 };
 
 export const ProfilePhotoVerified: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-      <AvatarProfilePhoto size="sm" initials="JD" verified />
-      <AvatarProfilePhoto size="md" initials="JD" verified />
-      <AvatarProfilePhoto size="lg" initials="JD" verified />
+    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <AvatarProfilePhoto verified initials="JD" size="sm" />
+      <AvatarProfilePhoto verified initials="JD" size="md" />
+      <AvatarProfilePhoto verified initials="JD" size="lg" />
     </div>
   ),
 };

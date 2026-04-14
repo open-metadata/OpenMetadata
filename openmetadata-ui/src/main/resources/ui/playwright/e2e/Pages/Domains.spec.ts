@@ -20,8 +20,8 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -75,10 +75,10 @@ import {
   deleteAnnouncement,
   editAnnouncement,
   followEntity,
+  getEncodedFqn,
   replyAnnouncement,
   unFollowEntity,
   waitForAllLoadersToDisappear,
-  getEncodedFqn,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
@@ -1202,7 +1202,7 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.locator('h6:has-text("Add Domain")').waitFor({
+        await page.getByTestId('form-heading').waitFor({
           state: 'visible',
         });
       });

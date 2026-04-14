@@ -13,6 +13,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -138,7 +139,7 @@ public class SubjectCacheTest {
     List<PolicyContext> cachedPolicies = SubjectCache.getPolicies("testUser");
 
     assertNotNull(cachedPolicies);
-    assertTrue(cachedPolicies.size() > 0);
+    assertFalse(cachedPolicies.isEmpty());
 
     // Build expected policy order: user roles -> team11 (roles + policies) -> team1 (roles +
     // policies)
@@ -219,7 +220,7 @@ public class SubjectCacheTest {
     // Should still work after invalidation
     List<PolicyContext> afterInvalidation = SubjectCache.getPolicies("testUser");
     assertNotNull(afterInvalidation);
-    assertTrue(afterInvalidation.size() > 0);
+    assertFalse(afterInvalidation.isEmpty());
   }
 
   @Test

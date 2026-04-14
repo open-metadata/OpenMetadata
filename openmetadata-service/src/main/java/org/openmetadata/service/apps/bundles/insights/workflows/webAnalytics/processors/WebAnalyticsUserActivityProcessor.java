@@ -96,9 +96,7 @@ public class WebAnalyticsUserActivityProcessor
                 userDetails.getName(), userId, team, sessions, 1, 1, timestamp);
         userActivityDataMap.put(userId, userActivityData);
       } catch (EntityNotFoundException ex) {
-        LOG.debug(
-            String.format(
-                "Skipping user with id '%s' because it was not found in the database.", userId));
+        LOG.debug("Skipping user with id '{}' because it was not found in the database.", userId);
       }
     } else {
       WebAnalyticsWorkflow.UserActivityData userActivityData = userActivityDataMap.get(userId);

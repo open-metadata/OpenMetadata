@@ -17,7 +17,10 @@ import {
   createIconButtonColorVariant,
   createIconButtonSizeVariant,
 } from '../utils/buttonConstants';
-import { COMPONENT_FONT_SIZES, COMPONENT_LINE_HEIGHTS } from './typography-constants';
+import {
+  COMPONENT_FONT_SIZES,
+  COMPONENT_LINE_HEIGHTS,
+} from './typography-constants';
 
 export const buttonTheme = (
   colors: ThemeColors

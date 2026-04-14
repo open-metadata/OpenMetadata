@@ -73,7 +73,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     if (!errors.isEmpty()) {
       String errorReason = auth.getLastErrorReason();
       if (errorReason != null && !errorReason.isEmpty()) {
-        LOG.error("[SAML ACS]" + errorReason);
+        LOG.error("[SAML ACS] {}", errorReason);
         resp.sendError(500, errorReason);
       }
     } else {
@@ -125,7 +125,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     false,
                     ServiceTokenType.OM_USER);
       } catch (Exception e) {
-        LOG.error("[SAML ACS] User not found: " + username);
+        LOG.error("[SAML ACS] User not found: {}", username);
         userExists = false;
         // Create the user
         user = UserUtil.user(username, email.split("@")[1], username);

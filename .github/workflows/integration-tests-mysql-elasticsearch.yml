@@ -32,7 +32,7 @@ permissions:
   checks: write
 
 concurrency:
-  group: integration-tests-mysql-es-${{ github.head_ref || github.run_id }}
+  group: integration-tests-mysql-es-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified

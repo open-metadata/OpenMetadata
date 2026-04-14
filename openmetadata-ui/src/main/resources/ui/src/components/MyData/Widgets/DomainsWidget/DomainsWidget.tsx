@@ -22,7 +22,6 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
-  ROUTES,
 } from '../../../../constants/constants';
 import {
   applySortToData,
@@ -39,7 +38,10 @@ import {
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
-import { getDomainDetailsPath } from '../../../../utils/RouterUtils';
+import {
+  getDomainDetailsPath,
+  getDomainPath,
+} from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -127,13 +129,13 @@ const DomainsWidget = ({
   }, []);
 
   const handleTitleClick = useCallback(() => {
-    navigate(ROUTES.DOMAIN);
+    navigate(getDomainPath());
   }, [navigate]);
 
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={ROUTES.DOMAIN}
+        actionButtonLink={getDomainPath()}
         actionButtonText={t('label.explore-domain')}
         description={t('message.domains-no-data-message')}
         icon={
@@ -217,7 +219,7 @@ const DomainsWidget = ({
   const footer = useMemo(
     () => (
       <WidgetFooter
-        moreButtonLink="/domain"
+        moreButtonLink={getDomainPath()}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />

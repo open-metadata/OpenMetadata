@@ -186,8 +186,8 @@ function ServiceVersionPage() {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
         databaseUsagePermission
-          ? `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`
-          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+          ? `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.CERTIFICATION}`
+          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`,
         paging
       );
 
@@ -201,7 +201,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`,
         paging
       );
       setData(data);
@@ -219,8 +219,8 @@ function ServiceVersionPage() {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
         dashboardUsagePermission
-          ? `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`
-          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+          ? `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`
+          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`,
         paging
       );
       setData(data);
@@ -233,7 +233,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`,
         paging
       );
       setData(data);
@@ -246,7 +246,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`,
         paging
       );
       setData(data);
@@ -259,7 +259,11 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.CERTIFICATION,
+        ].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
@@ -275,7 +279,11 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.CERTIFICATION,
+        ].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
@@ -291,7 +299,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.CERTIFICATION}`,
         paging,
       });
 

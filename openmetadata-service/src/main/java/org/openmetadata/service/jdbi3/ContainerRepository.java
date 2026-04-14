@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -50,6 +51,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
   private static final String CONTAINER_PATCH_FIELDS = "dataModel";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
 
   public ContainerRepository() {
     super(
@@ -58,7 +60,8 @@ public class ContainerRepository extends EntityRepository<Container> {
         Container.class,
         Entity.getCollectionDAO().containerDAO(),
         CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS);
+        CONTAINER_UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -127,11 +130,7 @@ public class ContainerRepository extends EntityRepository<Container> {
               .collect(java.util.stream.Collectors.toList());
 
       if (!containersWithDataModels.isEmpty()) {
-        bulkPopulateEntityFieldTags(
-            containersWithDataModels,
-            entityType,
-            c -> c.getDataModel().getColumns(),
-            Container::getFullyQualifiedName);
+        bulkPopulateEntityFieldTags(containersWithDataModels, c -> c.getDataModel().getColumns());
       }
     }
   }
@@ -549,16 +548,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate("dataModel", () -> updateDataModel(original, updated));
       compareAndUpdate(
-          "dataModel",
-          () -> {
-            updateDataModel(original, updated);
-          });
-      compareAndUpdate(
-          "prefix",
-          () -> {
-            recordChange("prefix", original.getPrefix(), updated.getPrefix());
-          });
+          "prefix", () -> recordChange("prefix", original.getPrefix(), updated.getPrefix()));
       compareAndUpdate(
           "fileFormats",
           () -> {
@@ -575,53 +567,45 @@ public class ContainerRepository extends EntityRepository<Container> {
 
       compareAndUpdate(
           "numberOfObjects",
-          () -> {
-            recordChange(
-                "numberOfObjects",
-                original.getNumberOfObjects(),
-                updated.getNumberOfObjects(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "numberOfObjects",
+                  original.getNumberOfObjects(),
+                  updated.getNumberOfObjects(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "size",
-          () -> {
-            recordChange(
-                "size",
-                original.getSize(),
-                updated.getSize(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "size",
+                  original.getSize(),
+                  updated.getSize(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "fullPath",
-          () -> {
-            recordChange("fullPath", original.getFullPath(), updated.getFullPath());
-          });
+          () -> recordChange("fullPath", original.getFullPath(), updated.getFullPath()));
       compareAndUpdate(
           "retentionPeriod",
-          () -> {
-            recordChange(
-                "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-          });
+          () ->
+              recordChange(
+                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
 
     private void updateDataModel(Container original, Container updated) {

@@ -433,11 +433,18 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content = @Content(mediaType = "application/json"))
       })
   public Response getAllGlossaryTermsWithAssetsCount(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Filter by parent glossary or glossary term FQN. "
+                      + "When provided, only returns asset counts for children whose FQN starts with this value.")
+          @QueryParam("parent")
+          String parent) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount();
+    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
     return Response.ok(result).build();
   }
 

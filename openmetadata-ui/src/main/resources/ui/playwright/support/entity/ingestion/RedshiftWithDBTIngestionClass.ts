@@ -215,7 +215,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Verify DBT tag category is added
       await waitForAllLoadersToDisappear(page);
 
-      await page.locator('.ant-table-row').waitFor();
+      await page.getByTestId('table').waitFor();
 
       await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
 
@@ -227,7 +227,11 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       });
 
       // Verify tags
-      await page.getByTestId('entity-tags').waitFor();
+      await page
+        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId('tags-container')
+        .getByTestId('entity-tags')
+        .waitFor();
 
       await expect(
         page
@@ -263,10 +267,13 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await visitLineageTab(page);
 
       // Verify entity header display name
-      await page.getByTestId('entity-header-display-name').waitFor();
-      const entityHeaderDisplayName = await page.textContent(
-        '[data-testid="entity-header-display-name"]'
+      const dbtLineageNode = page.getByTestId(
+        `lineage-node-${this.dbtEntityFqn}`
       );
+      await dbtLineageNode.getByTestId('entity-header-display-name').waitFor();
+      const entityHeaderDisplayName = await dbtLineageNode
+        .getByTestId('entity-header-display-name')
+        .textContent();
 
       expect(entityHeaderDisplayName).toContain(DBT.dbtLineageNodeLabel);
 

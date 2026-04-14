@@ -200,30 +200,24 @@ public class MetricRepository extends EntityRepository<Metric> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "granularity",
-          () -> {
-            recordChange("granularity", original.getGranularity(), updated.getGranularity());
-          });
+          () -> recordChange("granularity", original.getGranularity(), updated.getGranularity()));
       compareAndUpdate(
           "metricType",
-          () -> {
-            recordChange("metricType", original.getMetricType(), updated.getMetricType());
-          });
+          () -> recordChange("metricType", original.getMetricType(), updated.getMetricType()));
       compareAndUpdate(
           "unitOfMeasurement",
-          () -> {
-            recordChange(
-                "unitOfMeasurement",
-                original.getUnitOfMeasurement(),
-                updated.getUnitOfMeasurement());
-          });
+          () ->
+              recordChange(
+                  "unitOfMeasurement",
+                  original.getUnitOfMeasurement(),
+                  updated.getUnitOfMeasurement()));
       compareAndUpdate(
           "customUnitOfMeasurement",
-          () -> {
-            recordChange(
-                "customUnitOfMeasurement",
-                original.getCustomUnitOfMeasurement(),
-                updated.getCustomUnitOfMeasurement());
-          });
+          () ->
+              recordChange(
+                  "customUnitOfMeasurement",
+                  original.getCustomUnitOfMeasurement(),
+                  updated.getCustomUnitOfMeasurement()));
       compareAndUpdate(
           "metricExpression",
           () -> {
@@ -234,11 +228,7 @@ public class MetricRepository extends EntityRepository<Metric> {
                   updated.getMetricExpression());
             }
           });
-      compareAndUpdate(
-          "relatedMetrics",
-          () -> {
-            updateRelatedMetrics(original, updated);
-          });
+      compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {

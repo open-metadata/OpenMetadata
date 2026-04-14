@@ -2,7 +2,6 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -238,8 +237,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
-      boolean live)
-      throws IOException;
+      boolean live);
 
   DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,

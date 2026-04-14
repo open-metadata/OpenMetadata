@@ -47,6 +47,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.ClassificationResource;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -64,6 +65,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
+  }
+
+  @Override
+  protected void postDelete(Classification entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeByPrefixFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -287,23 +297,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
       compareAndUpdate(
           "disabled",
-          () -> {
-            recordChange("disabled", original.getDisabled(), updated.getDisabled());
-          });
+          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
       compareAndUpdate(
           "autoClassificationConfig",
-          () -> {
-            recordChange(
-                "autoClassificationConfig",
-                original.getAutoClassificationConfig(),
-                updated.getAutoClassificationConfig(),
-                true);
-          });
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+          () ->
+              recordChange(
+                  "autoClassificationConfig",
+                  original.getAutoClassificationConfig(),
+                  updated.getAutoClassificationConfig(),
+                  true));
+      compareAndUpdate("name", () -> updateName(updated));
     }
 
     public void updateName(Classification updated) {
@@ -337,6 +340,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       updateEntityLinks(oldFqn, newFqn, updated);
       updateAssetIndexes(oldFqn, newFqn);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       invalidateClassification(updated.getId());
     }

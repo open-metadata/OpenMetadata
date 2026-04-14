@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -18,6 +19,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 
@@ -37,8 +39,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     this.embeddingClient = embeddingClient;
   }
 
-  public static synchronized void init(
-      OpenSearchClient client, EmbeddingClient embeddingClient, String language) {
+  public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
     }
@@ -80,7 +81,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         MAPPER
             .createObjectNode()
             .put("technique", "rrf")
-            .put("rank_constant", 60)
+            .put("rank_constant", 30)
             .set("parameters", MAPPER.createObjectNode().set("weights", weights));
     var scoreRanker =
         MAPPER
@@ -103,6 +104,52 @@ public class OpenSearchVectorService implements VectorIndexService {
         HYBRID_PIPELINE_NAME,
         keywordWeight,
         semanticWeight);
+  }
+
+  public Optional<String> checkHybridSearchPipeline() {
+    try {
+      OpenSearchGenericClient genericClient = client.generic();
+      var request =
+          Requests.builder()
+              .endpoint("/_search/pipeline/" + HYBRID_PIPELINE_NAME)
+              .method("GET")
+              .build();
+      try (var response = genericClient.execute(request)) {
+        int status = response.getStatus();
+        if (status < 400) {
+          return Optional.empty();
+        }
+        if (status == 404) {
+          return Optional.of(
+              "Hybrid search pipeline '"
+                  + HYBRID_PIPELINE_NAME
+                  + "' not found. Run a reindex to create it.");
+        }
+        String detail =
+            response
+                .getBody()
+                .map(
+                    b -> {
+                      try {
+                        String body = new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                        return body.length() > 200 ? body.substring(0, 200) : body;
+                      } catch (Exception ignored) {
+                        return "";
+                      }
+                    })
+                .orElse("");
+        return Optional.of(
+            "Unexpected status "
+                + status
+                + " when checking hybrid search pipeline '"
+                + HYBRID_PIPELINE_NAME
+                + "'."
+                + (detail.isEmpty() ? "" : " Response: " + detail));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to check hybrid search pipeline '{}'", HYBRID_PIPELINE_NAME, e);
+      return Optional.of("Failed to check hybrid search pipeline: " + e.toString());
+    }
   }
 
   @Override
@@ -141,31 +188,36 @@ public class OpenSearchVectorService implements VectorIndexService {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embed(query);
-      int overFetchSize = (from + size) * OVER_FETCH_MULTIPLIER;
-
-      String queryJson =
-          VectorSearchQueryBuilder.build(queryVector, overFetchSize, 0, k, filters, threshold);
-      String aliasName = getSearchAlias();
-      String responseBody = executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
-
-      JsonNode root = MAPPER.readTree(responseBody);
-      JsonNode hitsNode = root.path("hits").path("hits");
-
       LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
-      for (JsonNode hit : hitsNode) {
-        double score = hit.path("_score").asDouble(0.0);
-        // When threshold > 0, OpenSearch already applies min_score at the KNN query level.
-        // This post-filter acts as a safety net for the no-threshold case (k-based retrieval),
-        // where low-scoring neighbors may still be returned to fill the k count.
-        if (score < threshold) {
-          continue;
+      int rawOffset = 0;
+      long totalHits = -1L;
+      boolean exhausted = false;
+      int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
+      int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
+      if (threshold <= 0.0) {
+        overFetchSize = Math.min(overFetchSize, k);
+      }
+
+      String aliasName = getSearchAlias();
+      while (!exhausted && byParent.size() < requestedParents) {
+        String queryJson =
+            VectorSearchQueryBuilder.build(
+                queryVector, overFetchSize, rawOffset, k, filters, threshold);
+        String responseBody =
+            executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
+
+        JsonNode root = MAPPER.readTree(responseBody);
+        JsonNode hitsNode = root.path("hits").path("hits");
+        totalHits = extractTotalHits(root);
+
+        int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
+        if (pageHitCount == 0) {
+          exhausted = true;
+          break;
         }
 
-        Map<String, Object> hitMap = MAPPER.convertValue(hit.path("_source"), Map.class);
-        hitMap.put("_score", score);
-
-        String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
-        byParent.computeIfAbsent(parentId, kVal -> new ArrayList<>()).add(hitMap);
+        rawOffset += pageHitCount;
+        exhausted = totalHits >= 0 ? rawOffset >= totalHits : pageHitCount < overFetchSize;
       }
 
       List<Map<String, Object>> results = new ArrayList<>();
@@ -183,12 +235,49 @@ public class OpenSearchVectorService implements VectorIndexService {
         parentCount++;
       }
 
+      boolean hasMore = byParent.size() > (from + parentCount);
       long tookMillis = System.currentTimeMillis() - start;
-      return new VectorSearchResponse(tookMillis, results);
+      return new VectorSearchResponse(
+          tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);
     }
+  }
+
+  private static int collectSearchHits(
+      JsonNode hitsNode,
+      double threshold,
+      LinkedHashMap<String, List<Map<String, Object>>> byParent) {
+    int pageHitCount = 0;
+    for (JsonNode hit : hitsNode) {
+      pageHitCount++;
+      double score = hit.path("_score").asDouble(0.0);
+      // When threshold > 0, OpenSearch already applies min_score at the KNN query level.
+      // This post-filter acts as a safety net for the no-threshold case (k-based retrieval),
+      // where low-scoring neighbors may still be returned to fill the k count.
+      if (score < threshold) {
+        continue;
+      }
+
+      Map<String, Object> hitMap = MAPPER.convertValue(hit.path("_source"), Map.class);
+      hitMap.put("_score", score);
+
+      String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(hitMap);
+    }
+    return pageHitCount;
+  }
+
+  private static long extractTotalHits(JsonNode root) {
+    JsonNode totalNode = root.path("hits").path("total");
+    if (totalNode.isIntegralNumber()) {
+      return totalNode.asLong(-1L);
+    }
+    if (totalNode.isObject()) {
+      return totalNode.path("value").asLong(-1L);
+    }
+    return -1L;
   }
 
   public String getExistingFingerprint(String indexName, String entityId) {
@@ -276,7 +365,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       var request = Requests.builder().endpoint(endpoint).method(method).json(body).build();
       try (var response = genericClient.execute(request)) {
         if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(b -> b.bodyAsString()).orElse("no body");
+          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
           throw new IOException(
               "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
         }

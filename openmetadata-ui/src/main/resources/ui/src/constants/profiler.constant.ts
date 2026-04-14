@@ -475,13 +475,11 @@ export const PROFILER_METRICS_TYPE_OPTIONS = [
 ];
 
 export const DEFAULT_PROFILER_CONFIG_VALUE = {
-  metricConfiguration: [
-    {
-      dataType: undefined,
-      metrics: undefined,
-      disabled: false,
-    },
-  ],
+  metricConfiguration: [],
+  sampleDataConfig: {
+    storeSampleData: true,
+    readSampleData: true,
+  },
 };
 
 export const DEFAULT_SORT_ORDER = {

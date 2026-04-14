@@ -139,6 +139,8 @@ export default function EntitySummaryPanel({
   pipelineViewMode,
   nodesPerLayer,
   onEntityUpdate,
+  ontologyExplorerRelationsSlot,
+  sideDrawerOverviewOnly = false,
 }: Readonly<EntitySummaryPanelProps>) {
   // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
   const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
@@ -167,6 +169,37 @@ export default function EntitySummaryPanel({
 
   const id = entityDetails?.details?.id ?? '';
   const fqn = entityDetails?.details?.fullyQualifiedName ?? '';
+
+  const ontologyExplorerMinimalTwoTabNav = useMemo(
+    () =>
+      Boolean(
+        panelPath === 'ontology-explorer' &&
+          isSideDrawer &&
+          ontologyExplorerRelationsSlot != null
+      ),
+    [panelPath, isSideDrawer, ontologyExplorerRelationsSlot]
+  );
+
+  const ontologyExplorerAppendRelationsTab = useMemo(
+    () =>
+      Boolean(
+        panelPath === 'glossary-term-assets-tab' &&
+          isSideDrawer &&
+          ontologyExplorerRelationsSlot != null
+      ),
+    [panelPath, isSideDrawer, ontologyExplorerRelationsSlot]
+  );
+
+  const ontologyExplorerGraphRelationsTabActive = useMemo(
+    () =>
+      Boolean(
+        isSideDrawer &&
+          ontologyExplorerRelationsSlot != null &&
+          (panelPath === 'ontology-explorer' ||
+            panelPath === 'glossary-term-assets-tab')
+      ),
+    [isSideDrawer, ontologyExplorerRelationsSlot, panelPath]
+  );
 
   const entityType = useMemo(
     () => get(entityDetails, 'details.entityType') as EntityType | undefined,
@@ -744,6 +777,12 @@ export default function EntitySummaryPanel({
   }, [entityDetails?.details?.id]);
 
   useEffect(() => {
+    if (
+      activeTab === EntityRightPanelTab.RELATIONS &&
+      ontologyExplorerGraphRelationsTabActive
+    ) {
+      return;
+    }
     if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
       fetchEntityData();
       fetchEntityTypeDetail();
@@ -759,6 +798,7 @@ export default function EntitySummaryPanel({
     fetchEntityData,
     fetchEntityTypeDetail,
     fetchLineageData,
+    ontologyExplorerGraphRelationsTabActive,
   ]);
 
   const viewPermission = useMemo(
@@ -860,6 +900,17 @@ export default function EntitySummaryPanel({
   };
 
   const renderTabContent = () => {
+    if (
+      activeTab === EntityRightPanelTab.RELATIONS &&
+      ontologyExplorerGraphRelationsTabActive
+    ) {
+      return (
+        <div className="entity-summary-panel-tab-content">
+          <div className="p-x-md p-md">{ontologyExplorerRelationsSlot}</div>
+        </div>
+      );
+    }
+
     if (isPermissionLoading) {
       return <Loader />;
     }
@@ -1009,6 +1060,8 @@ export default function EntitySummaryPanel({
           </>
         );
       }
+      case EntityRightPanelTab.RELATIONS:
+        return null;
       default:
         return null;
     }
@@ -1020,6 +1073,7 @@ export default function EntitySummaryPanel({
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
         'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
+        'ontology-explorer': panelPath === 'ontology-explorer',
       })}
       data-testid="entity-summary-panel-container">
       {isSideDrawer && (
@@ -1051,8 +1105,8 @@ export default function EntitySummaryPanel({
       <div className="d-flex gap-2 w-full h-full">
         <Card
           bordered={false}
-          className={`summary-panel-container ${
-            isSideDrawer ? 'drawer-summary-panel-container' : ''
+          className={`summary-panel-container${
+            isSideDrawer ? ' drawer-summary-panel-container' : ''
           }`}>
           <Card
             className={`content-area ${
@@ -1062,11 +1116,13 @@ export default function EntitySummaryPanel({
             {renderTabContent()}
           </Card>
         </Card>
-        {entityType && (
+        {entityType && !sideDrawerOverviewOnly && (
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
+            appendOntologyRelationsTab={ontologyExplorerAppendRelationsTab}
             entityType={entityType}
             isSideDrawer={isSideDrawer}
+            ontologyExplorerNav={ontologyExplorerMinimalTwoTabNav}
             onTabChange={handleTabChange}
           />
         )}

@@ -36,7 +36,7 @@ import org.openmetadata.schema.services.connections.database.DeltaLakeConnection
 import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
-import org.openmetadata.schema.services.connections.database.IcebergConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
@@ -49,11 +49,11 @@ import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
-import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
@@ -76,6 +76,7 @@ public final class ClassConverterFactory {
         Map.ofEntries(
             Map.entry(AirbyteConnection.class, new AirbyteConnectionClassConverter()),
             Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
+            Map.entry(AirflowRestApiConnection.class, new AirflowRestApiConnectionClassConverter()),
             Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
             Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
@@ -89,9 +90,9 @@ public final class ClassConverterFactory {
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
             Map.entry(GoogleDriveConnection.class, new GoogleDriveConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
-            Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
-            Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
+            Map.entry(
+                MicrosoftAccessConnection.class, new MicrosoftAccessConnectionClassConverter()),
             Map.entry(MssqlConnection.class, new MssqlConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
             Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),

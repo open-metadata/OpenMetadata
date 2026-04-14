@@ -40,10 +40,10 @@ import {
   verifyDescriptionRequiresScroll,
   verifyEndOfDescriptionReachable,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.describe('Long Description Visibility', () => {
   test.slow(true);

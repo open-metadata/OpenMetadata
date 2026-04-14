@@ -118,10 +118,9 @@ class StatsThreadSafetyTest {
                   StepStats rs = stats.getReaderStats();
                   rs.setSuccessRecords(
                       (rs.getSuccessRecords() != null ? rs.getSuccessRecords() : 0) + 1);
-                  rs.setFailedRecords(
-                      (rs.getFailedRecords() != null ? rs.getFailedRecords() : 0) + 0);
+                  rs.setFailedRecords((rs.getFailedRecords() != null ? rs.getFailedRecords() : 0));
                   rs.setWarningRecords(
-                      (rs.getWarningRecords() != null ? rs.getWarningRecords() : 0) + 0);
+                      (rs.getWarningRecords() != null ? rs.getWarningRecords() : 0));
                 }
               }
             } finally {

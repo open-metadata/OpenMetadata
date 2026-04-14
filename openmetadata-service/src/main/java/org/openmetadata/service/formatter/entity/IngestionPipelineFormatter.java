@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -53,8 +54,12 @@ public class IngestionPipelineFormatter implements EntityFormatter {
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String ingestionPipelineName = entity.getName();
-    PipelineStatus status =
-        JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
+    PipelineStatus status = null;
+    try {
+      status = JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
+    } catch (JsonParsingException ignored) {
+      // Malformed historical payloads should still emit a generic update message.
+    }
     if (status != null) {
       // In case of running
       String date =

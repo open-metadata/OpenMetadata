@@ -30,8 +30,10 @@ import {
 import classNames from 'classnames';
 import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -63,7 +65,6 @@ import {
   PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
-import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -85,8 +86,11 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
+import { formatContent } from '../../../utils/BlockEditorUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { stringToDOMElement } from '../../../utils/StringsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
@@ -98,9 +102,75 @@ import {
 } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
+
+interface BulkAssetsSocketMessage {
+  jobId?: string;
+  status?: string;
+  progress?: number;
+  total?: number;
+  result?: BulkOperationResult;
+}
+
+interface ColumnEditFormHandle {
+  getDisplayName: () => string;
+  getDescription: () => string | undefined;
+}
+
+interface ColumnEditFormProps {
+  drawerKey: string;
+  selectedCount: number;
+  firstRow: ColumnGridRowData | undefined;
+  selectedRowsData: ColumnGridRowData[];
+  allRows: ColumnGridRowData[];
+  editorRef: React.RefObject<EditorContentRef>;
+  getTagDisplayLabel: (tag: TagLabel) => string;
+  onDescriptionChange: (description: string, preview: string) => void;
+  onDisplayNameSync: (value: string) => void;
+  onTagsUpdate: (rowId: string, tags: TagLabel[]) => void;
+}
+
+const COLUMN_GRID_API_ENTITY_TYPE_MAP: Readonly<Record<string, EntityType>> = {
+  dashboarddatamodel: EntityType.DASHBOARD_DATA_MODEL,
+  table: EntityType.TABLE,
+  topic: EntityType.TOPIC,
+  container: EntityType.CONTAINER,
+  searchindex: EntityType.SEARCH_INDEX,
+};
+
+const COLUMN_GRID_COLUMN_LINK_TAB_MAP: Readonly<Record<string, EntityTabs>> = {
+  dashboarddatamodel: EntityTabs.MODEL,
+  table: EntityTabs.SCHEMA,
+  topic: EntityTabs.SCHEMA,
+  container: EntityTabs.SCHEMA,
+  searchindex: EntityTabs.FIELDS,
+};
+
+const resolveColumnGridEntityType = (entityTypeFromApi: string): EntityType => {
+  const key = entityTypeFromApi.toLowerCase();
+
+  return COLUMN_GRID_API_ENTITY_TYPE_MAP[key] ?? (key as EntityType);
+};
+
+const getColumnLinkTabForEntityType = (
+  entityTypeFromApi: string
+): EntityTabs => {
+  const key = entityTypeFromApi.toLowerCase();
+
+  return COLUMN_GRID_COLUMN_LINK_TAB_MAP[key] ?? EntityTabs.SCHEMA;
+};
+
 const EDITED_ROW_KEYS: ReadonlyArray<
   'editedDisplayName' | 'editedDescription' | 'editedTags'
 > = ['editedDisplayName', 'editedDescription', 'editedTags'];
+
+const EDIT_FIELD_TO_ROW_KEY: Record<
+  'displayName' | 'description' | 'tags',
+  'editedDisplayName' | 'editedDescription' | 'editedTags'
+> = {
+  displayName: 'editedDisplayName',
+  description: 'editedDescription',
+  tags: 'editedTags',
+};
 
 const TABLE_LAYOUT_CLASSES =
   'tw:table-fixed tw:w-full [&_th]:tw:overflow-hidden [&_td]:tw:overflow-hidden';
@@ -108,8 +178,8 @@ const TABLE_LAYOUT_CLASSES =
 const COLUMN_WIDTH_PERCENT: Record<string, string> = {
   columnName: '22%',
   path: '16%',
-  description: '14%',
-  dataType: '14%',
+  description: '16%',
+  dataType: '12%',
   tags: '18%',
   glossaryTerms: '18%',
 };
@@ -120,8 +190,69 @@ const EmptyCellContent = () => (
   </Typography>
 );
 
+const COLUMN_GRID_TAG_BADGES_MAX_VISIBLE = 2;
+
+const COLUMN_GRID_GLOSSARY_TERMS_BADGES_MAX_VISIBLE = 1;
+
+const COLUMN_NAME_CELL_GRID =
+  'tw:grid tw:w-full tw:min-w-0 tw:grid-cols-[2.25rem_minmax(0,1fr)] tw:items-center tw:gap-1 tw:overflow-hidden';
+
+const COLUMN_NAME_CELL_CHEVRON =
+  'tw:flex tw:min-w-0 tw:items-center tw:justify-center tw:overflow-hidden';
+
+interface ColumnGridTruncatingTagBadgesProps {
+  maxVisible?: number;
+  renderBadge: (tag: TagLabel, index: number) => React.ReactNode;
+  tags: TagLabel[];
+}
+
+const ColumnGridTruncatingTagBadges: React.FC<
+  ColumnGridTruncatingTagBadgesProps
+> = ({
+  maxVisible = COLUMN_GRID_TAG_BADGES_MAX_VISIBLE,
+  renderBadge,
+  tags,
+}) => {
+  if (tags.length === 0) {
+    return null;
+  }
+
+  const limit = Math.max(0, maxVisible);
+  const visibleTags = tags.slice(0, limit);
+  const remaining = tags.length - visibleTags.length;
+
+  return (
+    <div className="tw:flex tw:items-center tw:gap-1.5">
+      {visibleTags.map((tag: TagLabel, index: number) => {
+        const fullLabel = tag.name || tag.tagFQN.split('.').pop() || '';
+
+        return (
+          <div
+            className="tw:min-w-0 tw:flex-1 tw:basis-0 tw:overflow-hidden"
+            key={tag.tagFQN}
+            title={fullLabel}>
+            {renderBadge(tag, index)}
+          </div>
+        );
+      })}
+      {remaining > 0 && <Typography as="span">+{remaining}</Typography>}
+    </div>
+  );
+};
+
 const hasEditedValues = (r: ColumnGridRowData): boolean =>
   some(EDITED_ROW_KEYS, (key) => !isUndefined(r[key]));
+
+const getDescriptionPreview = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return (
+    stringToDOMElement(getSanitizeContent(formatContent(description, 'client')))
+      .textContent ?? ''
+  ).slice(0, 100);
+};
 
 interface ColumnOccurrenceTarget {
   columnFQN: string;
@@ -159,13 +290,263 @@ const extractRowOccurrences = (
   return occurrences;
 };
 
-interface BulkAssetsSocketMessage {
-  jobId?: string;
-  status?: string;
-  progress?: number;
-  total?: number;
-  result?: BulkOperationResult;
-}
+const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
+  (
+    {
+      drawerKey,
+      selectedCount,
+      firstRow,
+      selectedRowsData,
+      allRows,
+      editorRef,
+      getTagDisplayLabel,
+      onDescriptionChange,
+      onDisplayNameSync,
+      onTagsUpdate,
+    },
+    ref
+  ) => {
+    const { t } = useTranslation();
+
+    const initialDisplayName =
+      firstRow?.editedDisplayName ?? firstRow?.displayName ?? '';
+    const [localDisplayName, setLocalDisplayName] =
+      useState(initialDisplayName);
+    const hasDescriptionEditedRef = useRef(false);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        getDisplayName: () => localDisplayName,
+        getDescription: () =>
+          hasDescriptionEditedRef.current
+            ? editorRef.current?.getEditorContent()
+            : undefined,
+      }),
+      [editorRef, localDisplayName]
+    );
+
+    const currentDescription =
+      selectedCount === 1
+        ? firstRow?.editedDescription ?? firstRow?.description ?? ''
+        : '';
+
+    const currentTags =
+      selectedCount === 1 ? firstRow?.editedTags ?? firstRow?.tags ?? [] : [];
+
+    const classificationTagOptions: SelectOption[] = currentTags
+      .filter((tag: TagLabel) => tag.source !== TagSource.Glossary)
+      .map((tag: TagLabel) => {
+        const displayLabel = getTagDisplayLabel(tag);
+
+        return {
+          label: displayLabel,
+          value: tag.tagFQN ?? '',
+          data: {
+            ...tag,
+            displayName: tag.displayName || displayLabel,
+            name: tag.name || displayLabel,
+          },
+        };
+      });
+
+    const glossaryTermOptions: SelectOption[] = currentTags
+      .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
+      .map((tag: TagLabel) => {
+        const displayLabel = getTagDisplayLabel(tag);
+
+        return {
+          label: displayLabel,
+          value: tag.tagFQN ?? '',
+          data: {
+            ...tag,
+            displayName: tag.displayName || displayLabel,
+            name: tag.name || displayLabel,
+          },
+        };
+      });
+
+    return (
+      <div
+        className="tw:flex tw:flex-col tw:gap-6"
+        data-testid="drawer-content">
+        <div className="tw:flex tw:flex-col tw:gap-1">
+          <Typography
+            as="label"
+            className="tw:text-sm tw:font-semibold tw:text-secondary">
+            {t('label.column-name')}
+          </Typography>
+          <Input
+            isDisabled
+            data-testid="column-name-input"
+            size="sm"
+            value={
+              selectedCount === 1
+                ? firstRow?.columnName
+                : `${selectedCount} ${t('label.column-lowercase-plural')} ${t(
+                    'label.selected-lowercase'
+                  )}`
+            }
+          />
+        </div>
+
+        <div className="tw:flex tw:flex-col tw:gap-1">
+          <Typography
+            as="label"
+            className="tw:text-sm tw:font-semibold tw:text-secondary">
+            {t('label.display-name')}
+          </Typography>
+          <Input
+            data-testid="display-name-input"
+            placeholder={t('label.display-name')}
+            size="sm"
+            value={localDisplayName}
+            onChange={(value) => {
+              setLocalDisplayName(value);
+              onDisplayNameSync(value);
+            }}
+          />
+        </div>
+
+        <div
+          className="tw:flex tw:flex-col tw:gap-1"
+          data-testid="description-field">
+          <Typography
+            as="label"
+            className="tw:text-sm tw:font-semibold tw:text-secondary">
+            {t('label.description')}
+          </Typography>
+          <RichTextEditor
+            initialValue={currentDescription}
+            key={`description-${drawerKey}`}
+            placeHolder={t('label.add-entity', {
+              entity: t('label.description'),
+            })}
+            ref={editorRef}
+            onTextChange={() => {
+              hasDescriptionEditedRef.current = true;
+              const content = editorRef.current?.getEditorContent() ?? '';
+              onDescriptionChange(content, getDescriptionPreview(content));
+            }}
+          />
+        </div>
+
+        <div className="tw:flex tw:flex-col tw:gap-1" data-testid="tags-field">
+          <Typography
+            as="label"
+            className="tw:text-sm tw:font-semibold tw:text-secondary">
+            {t('label.tag-plural')}
+          </Typography>
+          <AsyncSelectList
+            autoFocus={false}
+            fetchOptions={tagClassBase.getTags}
+            initialOptions={classificationTagOptions}
+            key={`tags-${drawerKey}`}
+            mode="multiple"
+            placeholder={t('label.select-tags')}
+            onChange={(selectedTags) => {
+              const options = (
+                Array.isArray(selectedTags) ? selectedTags : [selectedTags]
+              ) as SelectOption[];
+              const newTags: TagLabel[] = options
+                .filter((option: SelectOption) => option.data)
+                .map((option: SelectOption) => {
+                  const tagData = option.data as {
+                    fullyQualifiedName?: string;
+                    name?: string;
+                    displayName?: string;
+                    description?: string;
+                  };
+
+                  return {
+                    tagFQN: tagData.fullyQualifiedName ?? option.value,
+                    source: TagSource.Classification,
+                    labelType: LabelType.Manual,
+                    state: State.Confirmed,
+                    name: tagData.name,
+                    displayName: tagData.displayName,
+                    description: tagData.description,
+                  };
+                });
+              selectedRowsData.forEach((selectedRow) => {
+                const rowId = selectedRow.id;
+                const foundRow = allRows.find(
+                  (r: ColumnGridRowData) => r.id === rowId
+                );
+                if (foundRow) {
+                  const existingTags =
+                    foundRow.editedTags ?? foundRow.tags ?? [];
+                  const glossaryTerms = existingTags.filter(
+                    (tag: TagLabel) => tag.source === TagSource.Glossary
+                  );
+                  onTagsUpdate(rowId, [...newTags, ...glossaryTerms]);
+                }
+              });
+            }}
+          />
+        </div>
+
+        <div
+          className="tw:flex tw:flex-col tw:gap-1"
+          data-testid="glossary-terms-field">
+          <Typography
+            as="label"
+            className="tw:text-sm tw:font-semibold tw:text-secondary">
+            {t('label.glossary-term-plural')}
+          </Typography>
+          <TreeAsyncSelectList
+            hasNoActionButtons
+            initialOptions={glossaryTermOptions}
+            key={`glossaryTerms-${drawerKey}`}
+            open={false}
+            placeholder={t('label.select-tags')}
+            onChange={(selectedTerms) => {
+              const options = (
+                Array.isArray(selectedTerms) ? selectedTerms : [selectedTerms]
+              ) as SelectOption[];
+              const newTerms: TagLabel[] = options
+                .filter((option: SelectOption) => option.data)
+                .map((option: SelectOption) => {
+                  const termData = option.data as {
+                    fullyQualifiedName?: string;
+                    name?: string;
+                    displayName?: string;
+                    description?: string;
+                  };
+
+                  return {
+                    tagFQN: termData.fullyQualifiedName ?? option.value,
+                    source: TagSource.Glossary,
+                    labelType: LabelType.Manual,
+                    state: State.Confirmed,
+                    name: termData.name,
+                    displayName: termData.displayName,
+                    description: termData.description,
+                  };
+                });
+              selectedRowsData.forEach((selectedRow) => {
+                const rowId = selectedRow.id;
+                const foundRow = allRows.find(
+                  (r: ColumnGridRowData) => r.id === rowId
+                );
+                if (foundRow) {
+                  const existingTags =
+                    foundRow.editedTags ?? foundRow.tags ?? [];
+                  const classificationTags = existingTags.filter(
+                    (tag: TagLabel) => tag.source !== TagSource.Glossary
+                  );
+                  onTagsUpdate(rowId, [...classificationTags, ...newTerms]);
+                }
+              });
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+);
+
+ColumnEditForm.displayName = 'ColumnEditForm';
 
 const ColumnGrid: React.FC<ColumnGridProps> = ({
   filters: externalFilters,
@@ -185,6 +566,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     total: number;
   } | null>(null);
   const editorRef = React.useRef<EditorContentRef>(null);
+  const columnEditFormRef = useRef<ColumnEditFormHandle | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
   const lastBulkUpdateCountRef = useRef<number>(0);
   const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
@@ -325,6 +707,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnName: child.name || '',
         displayName: child.displayName,
         description: child.description,
+        descriptionPreview: getDescriptionPreview(child.description),
         dataType: child.dataType,
         tags: child.tags,
         occurrenceCount: 1,
@@ -408,6 +791,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   columnName: item.columnName,
                   displayName: group.displayName,
                   description: group.description,
+                  descriptionPreview: getDescriptionPreview(group.description),
                   dataType: group.dataType,
                   tags: group.tags,
                   occurrenceCount: 1,
@@ -454,6 +838,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
             dataType: group?.dataType,
             tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
             occurrenceCount: allOccurrences.length,
@@ -492,6 +877,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 columnName: item.columnName,
                 displayName: group.displayName,
                 description: group.description,
+                descriptionPreview: getDescriptionPreview(group.description),
                 dataType: group.dataType,
                 tags: group.tags,
                 occurrenceCount: 1,
@@ -522,6 +908,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             columnName: item.columnName,
             displayName: group?.displayName,
             description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
             dataType: group?.dataType,
             tags: group?.tags,
             occurrenceCount: allOccurrences.length,
@@ -603,40 +990,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       return null;
     }
 
-    const entityTypeLower = occurrence.entityType.toLowerCase();
-    let entityType: EntityType;
-    let tab: string;
-
-    switch (entityTypeLower) {
-      case 'dashboarddatamodel':
-        entityType = EntityType.DASHBOARD_DATA_MODEL;
-        tab = EntityTabs.MODEL;
-
-        break;
-      case 'table':
-        entityType = EntityType.TABLE;
-        tab = EntityTabs.SCHEMA;
-
-        break;
-      case 'topic':
-        entityType = EntityType.TOPIC;
-        tab = EntityTabs.SCHEMA;
-
-        break;
-      case 'container':
-        entityType = EntityType.CONTAINER;
-        tab = EntityTabs.SCHEMA;
-
-        break;
-      case 'searchindex':
-        entityType = EntityType.SEARCH_INDEX;
-        tab = EntityTabs.FIELDS;
-
-        break;
-      default:
-        entityType = entityTypeLower as EntityType;
-        tab = EntityTabs.SCHEMA;
-    }
+    const entityType = resolveColumnGridEntityType(occurrence.entityType);
+    const tab = getColumnLinkTabForEntityType(occurrence.entityType);
 
     // Extract table FQN from column FQN
     const tableFQN = getTableFQNFromColumnFQN(occurrence.columnFQN);
@@ -662,33 +1017,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     (
       occurrence: ColumnOccurrenceRef
     ): { name: string; link: string } | null => {
-      const entityTypeLower = occurrence.entityType.toLowerCase();
-      let entityType: EntityType;
-
-      switch (entityTypeLower) {
-        case 'dashboarddatamodel':
-          entityType = EntityType.DASHBOARD_DATA_MODEL;
-
-          break;
-        case 'table':
-          entityType = EntityType.TABLE;
-
-          break;
-        case 'topic':
-          entityType = EntityType.TOPIC;
-
-          break;
-        case 'container':
-          entityType = EntityType.CONTAINER;
-
-          break;
-        case 'searchindex':
-          entityType = EntityType.SEARCH_INDEX;
-
-          break;
-        default:
-          entityType = entityTypeLower as EntityType;
-      }
+      const entityType = resolveColumnGridEntityType(occurrence.entityType);
 
       const name =
         occurrence.entityDisplayName ||
@@ -718,7 +1047,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       return (
         <Button
-          className="tw:block tw:min-w-0 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap"
+          className="tw:block tw:min-w-0 tw:truncate"
           color="link-color"
           href={entityInfo.link}>
           {entityInfo.name}
@@ -730,8 +1059,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const renderDescriptionCellAdapter = useCallback(
     (entity: ColumnGridRowData) => {
-      const description = entity.editedDescription ?? entity.description ?? '';
       const hasEdit = entity.editedDescription !== undefined;
+      const displayValue = hasEdit
+        ? entity.editedDescriptionPreview ?? ''
+        : entity.descriptionPreview ?? '';
 
       if (entity.hasCoverage && entity.metadataStatus) {
         const countText =
@@ -742,26 +1073,37 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return (
           <Typography
             as="span"
-            className={getMetadataStatusClassName(entity.metadataStatus)}>
+            className={classNames(
+              getMetadataStatusClassName(entity.metadataStatus),
+              'tw:w-fit'
+            )}>
             {getMetadataStatusLabel(entity.metadataStatus, t)}
             {countText}
           </Typography>
         );
       }
 
-      // Show actual description for child rows or single occurrences
-      // Strip HTML tags for display - React's JSX escaping handles XSS prevention
-      const displayValue = description.replace(/<[^>]*>/g, '').slice(0, 100);
-
       if (hasEdit) {
         return (
-          <Badge color="warning" size="sm" type="color">
-            <Typography as="span">{displayValue || '-'}</Typography>
-          </Badge>
+          <div className="tw:flex tw:min-w-0 tw:max-w-full">
+            <Badge
+              className="tw:shrink tw:truncate"
+              color="warning"
+              size="sm"
+              type="color">
+              {displayValue || '-'}
+            </Badge>
+          </div>
         );
       }
 
-      return <Typography as="span">{displayValue || '-'}</Typography>;
+      return (
+        <Typography
+          as="span"
+          className="tw:block tw:max-w-full tw:truncate tw:whitespace-nowrap tw:overflow-hidden tw:min-w-0">
+          {displayValue || '-'}
+        </Typography>
+      );
     },
     []
   );
@@ -780,29 +1122,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     }
 
-    const visibleTags = classificationTags.slice(0, 2);
-    const remainingCount = classificationTags.length - 2;
-
     return (
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
-        {visibleTags.map((tag: TagLabel, index: number) => (
+      <ColumnGridTruncatingTagBadges
+        renderBadge={(tag: TagLabel, index: number) => (
           <Badge
+            className="tw:inline-flex tw:min-w-0 tw:max-w-full tw:items-center tw:gap-1"
             color={index === 0 ? 'gray' : 'blue'}
-            key={tag.tagFQN}
             size="sm"
             type="color">
-            {index === 0 && <TagIcon className="tw:size-3 tw:mr-1" />}
-            {tag.name || tag.tagFQN.split('.').pop()}
+            {index === 0 ? <TagIcon className="tw:size-3 tw:shrink-0" /> : null}
+            <div className="tw:min-w-0 tw:flex-1">
+              <Typography as="span" className="tw:block tw:min-w-0 tw:truncate">
+                {tag.name || tag.tagFQN.split('.').pop()}
+              </Typography>
+            </div>
           </Badge>
-        ))}
-        {remainingCount > 0 && (
-          <Typography
-            as="span"
-            className="tw:text-tertiary tw:text-xs tw:font-medium">
-            +{remainingCount}
-          </Typography>
         )}
-      </div>
+        tags={classificationTags}
+      />
     );
   }, []);
 
@@ -821,24 +1158,30 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       }
 
-      const visibleTerms = glossaryTerms.slice(0, 1);
-      const remainingCount = glossaryTerms.length - 1;
-
       return (
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
-          {visibleTerms.map((tag: TagLabel) => (
-            <Badge color="gray" key={tag.tagFQN} size="sm" type="color">
-              {tag.name || tag.tagFQN.split('.').pop()}
-            </Badge>
-          ))}
-          {remainingCount > 0 && (
-            <Typography
-              as="span"
-              className="tw:text-tertiary tw:text-xs tw:font-medium">
-              +{remainingCount}
-            </Typography>
-          )}
-        </div>
+        <ColumnGridTruncatingTagBadges
+          maxVisible={COLUMN_GRID_GLOSSARY_TERMS_BADGES_MAX_VISIBLE}
+          renderBadge={(tag: TagLabel) => {
+            const labelText = tag.name || tag.tagFQN.split('.').pop() || '';
+
+            return (
+              <Badge
+                className="tw:inline-flex tw:min-w-0 tw:max-w-full tw:items-center tw:gap-1"
+                color="gray"
+                size="sm"
+                type="color">
+                <div className="tw:min-w-0 tw:flex-1">
+                  <Typography
+                    as="span"
+                    className="tw:block tw:min-w-0 tw:truncate">
+                    {labelText}
+                  </Typography>
+                </div>
+              </Badge>
+            );
+          }}
+          tags={glossaryTerms}
+        />
       );
     },
     []
@@ -872,6 +1215,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   // Update render functions to use listing data state (with correct CellRenderer signature)
   const renderColumnNameCellFinal = useCallback(
     (entity: ColumnGridRowData) => {
+      const columnNameButtonClass = classNames(
+        'tw:flex tw:flex-1 tw:min-w-0 tw:items-center tw:justify-start tw:overflow-hidden tw:text-start',
+        'tw:*:data-text:block tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:truncate'
+      );
+
       if (entity.isGroup && entity.occurrenceCount > 1) {
         const expandHandler = () => {
           const isExpanded = columnGridListing.expandedRows.has(entity.id);
@@ -898,21 +1246,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         const isGroupExpanded = columnGridListing.expandedRows.has(entity.id);
 
         return (
-          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:gap-1 tw:overflow-hidden">
-            <ButtonUtility
-              color="tertiary"
-              icon={
-                <ChevronRight
-                  className={classNames(
-                    'tw:size-4 tw:transition-transform',
-                    isGroupExpanded && 'tw:rotate-90'
-                  )}
-                />
-              }
-              size="sm"
-              onClick={expandHandler}
-            />
+          <div className={COLUMN_NAME_CELL_GRID}>
+            <div className={COLUMN_NAME_CELL_CHEVRON}>
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <ChevronRight
+                    className={classNames(
+                      'tw:size-4 tw:transition-transform',
+                      isGroupExpanded && 'tw:rotate-90'
+                    )}
+                  />
+                }
+                size="sm"
+                onClick={expandHandler}
+              />
+            </div>
             <Button
+              className={columnNameButtonClass}
               color="tertiary"
               onPress={() => {
                 handleGroupSelectRef.current(entity.id, true);
@@ -926,6 +1277,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       if (entity.isStructChild) {
         const hasChildren = entity.children && entity.children.length > 0;
+        const nestedCount = entity.children?.length ?? 0;
+        const nameWithCount =
+          nestedCount > 0
+            ? `${entity.columnName} (${nestedCount})`
+            : entity.columnName;
 
         const structExpandHandler = () => {
           const isExpanded = columnGridListing.expandedStructRows.has(
@@ -954,28 +1310,43 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
 
         return (
-          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:gap-1 tw:overflow-hidden">
-            {hasChildren && (
-              <ButtonUtility
-                color="tertiary"
-                icon={
-                  <ChevronRight
-                    className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isStructExpanded && 'tw:rotate-90'
-                    )}
-                  />
-                }
-                size="sm"
-                onClick={structExpandHandler}
-              />
-            )}
-            <Typography as="span">{entity.columnName}</Typography>
+          <div className={COLUMN_NAME_CELL_GRID}>
+            <div className={COLUMN_NAME_CELL_CHEVRON}>
+              {hasChildren ? (
+                <ButtonUtility
+                  color="tertiary"
+                  icon={
+                    <ChevronRight
+                      className={classNames(
+                        'tw:size-4 tw:transition-transform',
+                        isStructExpanded && 'tw:rotate-90'
+                      )}
+                    />
+                  }
+                  size="sm"
+                  onClick={structExpandHandler}
+                />
+              ) : null}
+            </div>
+            <Button
+              className={columnNameButtonClass}
+              color="tertiary"
+              onPress={() => {
+                handleSelectRef.current(entity.id, true);
+                openDrawerRef.current();
+              }}>
+              {nameWithCount}
+            </Button>
           </div>
         );
       }
 
       const hasStructChildren = entity.children && entity.children.length > 0;
+      const nestedCount = entity.children?.length ?? 0;
+      const nameWithCount =
+        nestedCount > 0
+          ? `${entity.columnName} (${nestedCount})`
+          : entity.columnName;
 
       const occurrenceExpandHandler = () => {
         const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
@@ -1002,29 +1373,32 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
 
       return (
-        <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center tw:gap-1 tw:overflow-hidden">
-          {hasStructChildren && (
-            <ButtonUtility
-              color="tertiary"
-              icon={
-                <ChevronRight
-                  className={classNames(
-                    'tw:size-4 tw:transition-transform',
-                    isOccurrenceExpanded && 'tw:rotate-90'
-                  )}
-                />
-              }
-              size="sm"
-              onClick={occurrenceExpandHandler}
-            />
-          )}
+        <div className={COLUMN_NAME_CELL_GRID}>
+          <div className={COLUMN_NAME_CELL_CHEVRON}>
+            {hasStructChildren ? (
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <ChevronRight
+                    className={classNames(
+                      'tw:size-4 tw:transition-transform',
+                      isOccurrenceExpanded && 'tw:rotate-90'
+                    )}
+                  />
+                }
+                size="sm"
+                onClick={occurrenceExpandHandler}
+              />
+            ) : null}
+          </div>
           <Button
+            className={columnNameButtonClass}
             color="tertiary"
             onPress={() => {
               handleSelectRef.current(entity.id, true);
               openDrawerRef.current();
             }}>
-            {entity.columnName}
+            {nameWithCount}
           </Button>
         </div>
       );
@@ -1045,9 +1419,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       field: 'displayName' | 'description' | 'tags',
       value: string | TagLabel[]
     ) => {
-      const fieldName = `edited${field.charAt(0).toUpperCase()}${field.slice(
-        1
-      )}`;
+      const fieldName = EDIT_FIELD_TO_ROW_KEY[field];
 
       columnGridListing.setAllRows((prev: ColumnGridRowData[]) => {
         const updated = prev.map((row: ColumnGridRowData) =>
@@ -1055,6 +1427,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             ? {
                 ...row,
                 [fieldName]: value,
+                ...(field === 'description'
+                  ? {
+                      editedDescriptionPreview: getDescriptionPreview(
+                        value as string
+                      ),
+                    }
+                  : {}),
               }
             : row
         );
@@ -1081,6 +1460,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             ...r,
             editedDisplayName: undefined,
             editedDescription: undefined,
+            editedDescriptionPreview: undefined,
             editedTags: undefined,
           };
         }
@@ -1116,11 +1496,22 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const handleBulkUpdate = useCallback(async () => {
     setIsUpdating(true);
 
+    const pendingDisplayName = columnEditFormRef.current?.getDisplayName();
+    const pendingDescription = columnEditFormRef.current?.getDescription();
+
     try {
       const columnUpdatesByKey = new Map<string, ColumnUpdate>();
 
       for (const row of selectedRowsData) {
-        if (!hasEditedValues(row)) {
+        const effectiveDisplayName =
+          pendingDisplayName ?? row.editedDisplayName;
+        const hasDisplayNameChange =
+          effectiveDisplayName !== undefined &&
+          effectiveDisplayName !== (row.displayName ?? '');
+
+        const hasDescriptionChange = pendingDescription !== undefined;
+
+        if (!hasDisplayNameChange && !hasDescriptionChange && !row.editedTags) {
           continue;
         }
 
@@ -1132,11 +1523,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             entityType: occurrence.entityType,
           };
 
-          if (row.editedDisplayName !== undefined) {
-            update.displayName = row.editedDisplayName;
+          if (hasDisplayNameChange) {
+            update.displayName = effectiveDisplayName;
           }
-          if (row.editedDescription !== undefined) {
-            update.description = row.editedDescription;
+          if (hasDescriptionChange) {
+            update.description = pendingDescription;
           }
           if (row.editedTags !== undefined) {
             update.tags = row.editedTags;
@@ -1208,6 +1599,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ...r,
           editedDisplayName: undefined,
           editedDescription: undefined,
+          editedDescriptionPreview: undefined,
           editedTags: undefined,
         }))
       );
@@ -1443,7 +1835,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const queue = [parentId];
       while (queue.length > 0) {
         const current = queue.shift() as string;
-        const children = allRows.filter((r) => r.structParentId === current);
+        const children = allRows.filter(
+          (r) => r.structParentId === current || r.parentId === current
+        );
         for (const c of children) {
           result.push(c.id);
           queue.push(c.id);
@@ -1859,237 +2253,43 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     }
 
-    const currentDisplayName =
-      firstRow?.editedDisplayName ?? firstRow?.displayName ?? '';
-    const currentDescription =
-      selectedCount === 1
-        ? firstRow?.editedDescription ?? firstRow?.description ?? ''
-        : '';
-
-    const currentTags =
-      selectedCount === 1 ? firstRow?.editedTags ?? firstRow?.tags ?? [] : [];
-
-    const classificationTagOptions: SelectOption[] = currentTags
-      .filter((tag: TagLabel) => tag.source !== TagSource.Glossary)
-      .map((tag: TagLabel) => {
-        const displayLabel = getTagDisplayLabel(tag);
-
-        return {
-          label: displayLabel,
-          value: tag.tagFQN ?? '',
-          data: {
-            ...tag,
-            displayName: tag.displayName || displayLabel,
-            name: tag.name || displayLabel,
-          },
-        };
-      });
-
-    const glossaryTermOptions: SelectOption[] = currentTags
-      .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
-      .map((tag: TagLabel) => {
-        const displayLabel = getTagDisplayLabel(tag);
-
-        return {
-          label: displayLabel,
-          value: tag.tagFQN ?? '',
-          data: {
-            ...tag,
-            displayName: tag.displayName || displayLabel,
-            name: tag.name || displayLabel,
-          },
-        };
-      });
-
     const drawerKey = `${selectedRowsData.map((row) => row.id).join('-')}`;
 
     return (
-      <div
-        className="tw:flex tw:flex-col tw:gap-6"
-        data-testid="drawer-content"
-        key={drawerKey}>
-        <div className="tw:flex tw:flex-col tw:gap-1">
-          <Typography
-            as="label"
-            className="tw:text-sm tw:font-semibold tw:text-secondary">
-            {t('label.column-name')}
-          </Typography>
-          <Input
-            isDisabled
-            data-testid="column-name-input"
-            size="sm"
-            value={
-              selectedCount === 1
-                ? firstRow?.columnName
-                : `${selectedCount} ${t('label.column-lowercase-plural')} ${t(
-                    'label.selected-lowercase'
-                  )}`
-            }
-          />
-        </div>
-
-        <div className="tw:flex tw:flex-col tw:gap-1">
-          <Typography
-            as="label"
-            className="tw:text-sm tw:font-semibold tw:text-secondary">
-            {t('label.display-name')}
-          </Typography>
-          <Input
-            data-testid="display-name-input"
-            key={`displayName-${drawerKey}`}
-            placeholder={t('label.display-name')}
-            size="sm"
-            value={currentDisplayName}
-            onChange={(value: string) => {
-              columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
-                prev.map((row: ColumnGridRowData) =>
-                  columnGridListing.isSelected(row.id)
-                    ? { ...row, editedDisplayName: value }
-                    : row
-                )
-              );
-            }}
-          />
-        </div>
-
-        <div
-          className="tw:flex tw:flex-col tw:gap-1"
-          data-testid="description-field">
-          <Typography
-            as="label"
-            className="tw:text-sm tw:font-semibold tw:text-secondary">
-            {t('label.description')}
-          </Typography>
-          <RichTextEditor
-            initialValue={currentDescription}
-            key={`description-${drawerKey}`}
-            placeHolder={t('label.add-entity', {
-              entity: t('label.description'),
-            })}
-            ref={editorRef}
-            onTextChange={(value) => {
-              selectedRowsData.forEach((row) => {
-                const rowId = row.id;
-                updateRowField(rowId, 'description', value);
-              });
-            }}
-          />
-        </div>
-
-        <div className="tw:flex tw:flex-col tw:gap-1" data-testid="tags-field">
-          <Typography
-            as="label"
-            className="tw:text-sm tw:font-semibold tw:text-secondary">
-            {t('label.tag-plural')}
-          </Typography>
-          <AsyncSelectList
-            autoFocus={false}
-            fetchOptions={tagClassBase.getTags}
-            initialOptions={classificationTagOptions}
-            key={`tags-${drawerKey}`}
-            mode="multiple"
-            placeholder={t('label.select-tags')}
-            onChange={(selectedTags) => {
-              const options = (
-                Array.isArray(selectedTags) ? selectedTags : [selectedTags]
-              ) as SelectOption[];
-              const newTags: TagLabel[] = options
-                .filter((option: SelectOption) => option.data)
-                .map((option: SelectOption) => {
-                  const tagData = option.data as {
-                    fullyQualifiedName?: string;
-                    name?: string;
-                    displayName?: string;
-                    description?: string;
-                  };
-
-                  return {
-                    tagFQN: tagData.fullyQualifiedName ?? option.value,
-                    source: TagSource.Classification,
-                    labelType: LabelType.Manual,
-                    state: State.Confirmed,
-                    name: tagData.name,
-                    displayName: tagData.displayName,
-                    description: tagData.description,
-                  };
-                });
-              selectedRowsData.forEach((selectedRow) => {
-                const rowId = selectedRow.id;
-                const foundRow = columnGridListing.allRows.find(
-                  (r: ColumnGridRowData) => r.id === rowId
-                );
-                if (foundRow) {
-                  const existingTags =
-                    foundRow.editedTags ?? foundRow.tags ?? [];
-                  const glossaryTerms = existingTags.filter(
-                    (tag: TagLabel) => tag.source === TagSource.Glossary
-                  );
-                  updateRowField(rowId, 'tags', [...newTags, ...glossaryTerms]);
-                }
-              });
-            }}
-          />
-        </div>
-
-        <div
-          className="tw:flex tw:flex-col tw:gap-1"
-          data-testid="glossary-terms-field">
-          <Typography
-            as="label"
-            className="tw:text-sm tw:font-semibold tw:text-secondary">
-            {t('label.glossary-term-plural')}
-          </Typography>
-          <TreeAsyncSelectList
-            hasNoActionButtons
-            initialOptions={glossaryTermOptions}
-            key={`glossaryTerms-${drawerKey}`}
-            open={false}
-            placeholder={t('label.select-tags')}
-            onChange={(selectedTerms) => {
-              const options = (
-                Array.isArray(selectedTerms) ? selectedTerms : [selectedTerms]
-              ) as SelectOption[];
-              const newTerms: TagLabel[] = options
-                .filter((option: SelectOption) => option.data)
-                .map((option: SelectOption) => {
-                  const termData = option.data as {
-                    fullyQualifiedName?: string;
-                    name?: string;
-                    displayName?: string;
-                    description?: string;
-                  };
-
-                  return {
-                    tagFQN: termData.fullyQualifiedName ?? option.value,
-                    source: TagSource.Glossary,
-                    labelType: LabelType.Manual,
-                    state: State.Confirmed,
-                    name: termData.name,
-                    displayName: termData.displayName,
-                    description: termData.description,
-                  };
-                });
-              selectedRowsData.forEach((selectedRow) => {
-                const rowId = selectedRow.id;
-                const foundRow = columnGridListing.allRows.find(
-                  (r: ColumnGridRowData) => r.id === rowId
-                );
-                if (foundRow) {
-                  const existingTags =
-                    foundRow.editedTags ?? foundRow.tags ?? [];
-                  const classificationTags = existingTags.filter(
-                    (tag: TagLabel) => tag.source !== TagSource.Glossary
-                  );
-                  updateRowField(rowId, 'tags', [
-                    ...classificationTags,
-                    ...newTerms,
-                  ]);
-                }
-              });
-            }}
-          />
-        </div>
-      </div>
+      <ColumnEditForm
+        allRows={columnGridListing.allRows}
+        drawerKey={drawerKey}
+        editorRef={editorRef}
+        firstRow={firstRow}
+        getTagDisplayLabel={getTagDisplayLabel}
+        key={drawerKey}
+        ref={columnEditFormRef}
+        selectedCount={selectedCount}
+        selectedRowsData={selectedRowsData}
+        onDescriptionChange={(description, preview) => {
+          columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+            prev.map((row: ColumnGridRowData) =>
+              columnGridListing.isSelected(row.id)
+                ? {
+                    ...row,
+                    editedDescription: description,
+                    editedDescriptionPreview: preview,
+                  }
+                : row
+            )
+          );
+        }}
+        onDisplayNameSync={(value) => {
+          columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+            prev.map((row: ColumnGridRowData) =>
+              columnGridListing.isSelected(row.id)
+                ? { ...row, editedDisplayName: value }
+                : row
+            )
+          );
+        }}
+        onTagsUpdate={(rowId, tags) => updateRowField(rowId, 'tags', tags)}
+      />
     );
   }, [
     columnGridListing,
@@ -2145,13 +2345,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: drawerTitle,
-    anchor: 'right',
     width: '40%',
     closeOnEscape: true,
+    className: 'tw:z-[20]',
     testId: 'column-bulk-operations-form-drawer',
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
     onCancel: discardPendingEdits,
     form: drawerContent,
     onSubmit: handleBulkUpdate,

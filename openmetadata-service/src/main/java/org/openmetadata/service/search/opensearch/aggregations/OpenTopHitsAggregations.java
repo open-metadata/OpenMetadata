@@ -5,6 +5,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.TopHitsAggregation;
@@ -23,7 +24,8 @@ public class OpenTopHitsAggregations implements OpenAggregations {
     this.aggregationName = node.getName();
 
     int size = Integer.parseInt(params.get("size"));
-    String sortField = params.get("sort_field");
+    String sortField =
+        SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(params.get("sort_field"));
     String sortOrderParam = params.get("sort_order");
     SortOrder sortOrder = sortOrderParam.equalsIgnoreCase("desc") ? SortOrder.Desc : SortOrder.Asc;
 

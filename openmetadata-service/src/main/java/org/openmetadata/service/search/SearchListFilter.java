@@ -154,7 +154,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       String ownersList =
           Arrays.stream(owners.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
       return String.format(
-          "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[%s]}}}}",
+          "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[%s]}},\"ignore_unmapped\":true}}",
           ownersList);
     }
     return "";

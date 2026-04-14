@@ -12,11 +12,57 @@
  */
 
 import { render, waitFor } from '@testing-library/react';
+import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
 import tagClassBase from '../../utils/TagClassBase';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  Dialog: Object.assign(
+    jest.fn().mockImplementation(({ children, title }) => (
+      <div role="dialog">
+        <div>{title}</div>
+        {children}
+      </div>
+    )),
+    {
+      Content: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+      Footer: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+    }
+  ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  ModalOverlay: jest
+    .fn()
+    .mockImplementation(({ children, isOpen }) =>
+      isOpen ? <div>{children}</div> : null
+    ),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
 
 jest.mock('../../hooks/useCustomPages', () => ({
   useCustomPages: jest
@@ -65,6 +111,24 @@ jest.mock('../../rest/searchAPI', () => ({
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn(),
 }));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({}),
+}));
+
+const mockDataQualityDashboard = jest.fn();
+
+jest.mock(
+  '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component',
+  () => ({
+    __esModule: true,
+    default: (props: unknown) => {
+      mockDataQualityDashboard(props);
+
+      return <div data-testid="dq-dashboard" />;
+    },
+  })
+);
 
 const mockNavigate = jest.fn();
 
@@ -184,6 +248,7 @@ describe('TagPage', () => {
     (tagClassBase.getAdditionalTagDetailPageTabs as jest.Mock).mockReturnValue(
       []
     );
+    (useRequiredParams as jest.Mock).mockReturnValue({});
   });
 
   it('should call getAdditionalTagDetailPageTabs with the fetched tag', async () => {
@@ -229,6 +294,70 @@ describe('TagPage', () => {
         fields: ['domains', 'owners', 'reviewers'],
       });
       expect(searchQuery).toHaveBeenCalled();
+    });
+  });
+
+  describe('DATA_OBSERVABILITY tab', () => {
+    beforeEach(() => {
+      (useFqn as jest.Mock).mockReturnValue({ fqn: 'PII.NonSensitive' });
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        tab: EntityTabs.DATA_OBSERVABILITY,
+      });
+      mockDataQualityDashboard.mockClear();
+    });
+
+    it('renders DataQualityDashboard when DQ tab is active', async () => {
+      const { getByTestId } = render(<TagPage />);
+
+      await waitFor(() => {
+        expect(getByTestId('dq-dashboard')).toBeInTheDocument();
+      });
+    });
+
+    it('passes isGovernanceView as true to DataQualityDashboard', async () => {
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockDataQualityDashboard).toHaveBeenCalledWith(
+          expect.objectContaining({ isGovernanceView: true })
+        );
+      });
+    });
+
+    it('passes hiddenFilters containing tags to DataQualityDashboard', async () => {
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockDataQualityDashboard).toHaveBeenCalledWith(
+          expect.objectContaining({
+            hiddenFilters: expect.arrayContaining(['tags']),
+          })
+        );
+      });
+    });
+
+    it('passes className as data-quality-governance-tab-wrapper to DataQualityDashboard', async () => {
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockDataQualityDashboard).toHaveBeenCalledWith(
+          expect.objectContaining({
+            className: 'data-quality-governance-tab-wrapper',
+          })
+        );
+      });
+    });
+
+    it('passes initialFilters with tag fqn when tag has a fullyQualifiedName', async () => {
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockDataQualityDashboard).toHaveBeenCalledWith(
+          expect.objectContaining({
+            initialFilters: { tags: ['PII.NonSensitive'] },
+          })
+        );
+      });
     });
   });
 });

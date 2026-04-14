@@ -15,7 +15,10 @@ logging:
   level: INFO
   appenders:
     - type: console
-      logFormat: "%level %logger{5} - %msg%n"
+      layout:
+        type: om-event-layout
+        format: ${LOG_FORMAT:-text}
+        appendLineSeparator: true
 database:
   driverClass: org.postgresql.Driver
   user: test

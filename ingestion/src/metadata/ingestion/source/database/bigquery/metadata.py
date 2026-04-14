@@ -87,7 +87,9 @@ from metadata.ingestion.source.database.bigquery.models import (
 )
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
     BIGQUERY_GET_TABLE_DDLS,
+    BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -117,6 +119,7 @@ _bigquery_table_types = {
     "EXTERNAL": TableType.External,
     "MATERIALIZED_VIEW": TableType.MaterializedView,
     "VIEW": TableType.View,
+    "ICEBERG": TableType.Iceberg,
 }
 
 
@@ -397,13 +400,21 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 ):
                     continue
 
-                if self.incremental.enabled:
+                if (
+                    self.incremental.enabled
+                    and not self.incremental_table_processor.query_failed
+                ):
                     if (
                         table.table_id
                         not in self.incremental_table_processor.get_not_deleted(
                             schema_name
                         )
                     ):
+                        logger.debug(
+                            "Skipping unchanged table '%s.%s'",
+                            schema_name,
+                            table.table_id,
+                        )
                         continue
 
                 yield TableNameAndType(
@@ -543,18 +554,47 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self._table_ddl_cache.clear()
 
+        database = self.context.get().database
+
         try:
-            database = self.context.get().database
-            query = BIGQUERY_GET_TABLE_DDLS.format(
+            dataset_obj = self.get_dataset_obj(schema_name)
+            location = getattr(dataset_obj, "location", None)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "Could not retrieve dataset location for '%s.%s', "
+                "falling back to dataset-scoped query: %s",
+                database,
+                schema_name,
+                exc,
+            )
+            location = None
+
+        query = (
+            BIGQUERY_GET_TABLE_DDLS_BY_REGION.format(
+                database_name=database,
+                schema_name=schema_name,
+                region=location,
+            )
+            if location
+            else BIGQUERY_GET_TABLE_DDLS.format(
                 database_name=database,
                 schema_name=schema_name,
             )
+        )
+
+        try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
             for row in results:
                 self._table_ddl_cache[row.table_name] = row.ddl
         except Exception as exc:
-            logger.warning(f"Error pre-fetching table DDLs for {schema_name}: {exc}")
+            logger.warning(
+                "Error pre-fetching table DDLs for '%s.%s': %s",
+                database,
+                schema_name,
+                exc,
+            )
             logger.debug(traceback.format_exc())
 
     def yield_tag(
@@ -617,16 +657,29 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return ""
 
     def _prepare_schema_incremental_data(self, schema_name: str):
-        """Prepares the data for Incremental Extraction.
+        """Adds deleted tables for this schema to the global context.
 
-        1. Queries Cloud Logging for the changes
-        2. Sets the table map with the changes within the BigQueryIncrementalTableProcessor
-        3. Adds the Deleted Tables to the context
+        Cloud Logging is already queried in get_database_names() for all
+        datasets at once. This method just reads from the populated map.
         """
-        self.incremental_table_processor.set_changed_tables_map(
-            project=self.context.get().database,
-            dataset=schema_name,
-            start_date=self.incremental.start_datetime_utc,
+        if self.incremental_table_processor.query_failed:
+            logger.debug(
+                "Skipping incremental data for schema '%s' — "
+                "Cloud Logging query failed, using full extraction",
+                schema_name,
+            )
+            return
+
+        deleted_tables = self.incremental_table_processor.get_deleted(schema_name)
+        not_deleted_tables = self.incremental_table_processor.get_not_deleted(
+            schema_name
+        )
+        logger.info(
+            "Incremental extraction for schema '%s': "
+            "%d changed table(s), %d deleted table(s)",
+            schema_name,
+            len(not_deleted_tables),
+            len(deleted_tables),
         )
 
         self.context.get_global().deleted_tables.extend(
@@ -639,9 +692,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     schema_name=schema_name,
                     table_name=table_name,
                 )
-                for table_name in self.incremental_table_processor.get_deleted(
-                    schema_name
-                )
+                for table_name in deleted_tables
             ]
         )
 
@@ -653,6 +704,27 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             datasets = self.client.list_datasets(project)
             for dataset in datasets:
                 yield dataset.dataset_id
+
+    def _get_filtered_datasets(self, project_id: str) -> List[str]:
+        """Return dataset IDs that pass the schema filter pattern."""
+        return [
+            schema_name
+            for schema_name in self.get_raw_database_schema_names()
+            if not filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                (
+                    fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=project_id,
+                        schema_name=schema_name,
+                    )
+                    if self.source_config.useFqnForFiltering
+                    else schema_name
+                ),
+            )
+        ]
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -858,6 +930,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         self.incremental_table_processor = (
                             BigQueryIncrementalTableProcessor.from_project(project_id)
                         )
+                        filtered_datasets = self._get_filtered_datasets(project_id)
+                        logger.info(
+                            "Starting incremental extraction for project '%s' "
+                            "with %d datasets",
+                            project_id,
+                            len(filtered_datasets),
+                        )
+                        self.incremental_table_processor.set_tables_map(
+                            project=project_id,
+                            start_date=self.incremental.start_datetime_utc,
+                            datasets=filtered_datasets,
+                        )
+                        if self.incremental_table_processor.query_failed:
+                            logger.warning(
+                                "Cloud Logging query failed for project '%s'. "
+                                "Falling back to full extraction.",
+                                project_id,
+                            )
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -1157,21 +1247,50 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[BigQueryStoredProcedure]:
         """List BigQuery Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            with self.engine.connect() as conn:
-                results = conn.execute(
-                    text(
-                        BIGQUERY_GET_STORED_PROCEDURES.format(
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                        )
-                    )
-                ).all()
-            for row in results:
-                row_dict = row._asdict() if hasattr(row, "_asdict") else row
-                stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
-                if self.is_stored_procedure_filtered(stored_procedure.name):
-                    continue
-                yield stored_procedure
+            database = self.context.get().database
+            schema = self.context.get().database_schema
+            try:
+                dataset_obj = self.get_dataset_obj(schema)
+                location = getattr(dataset_obj, "location", None)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.debug(
+                    "Could not retrieve dataset location for '%s.%s', "
+                    "falling back to dataset-scoped query: %s",
+                    database,
+                    schema,
+                    exc,
+                )
+                location = None
+            query = (
+                BIGQUERY_GET_STORED_PROCEDURES_BY_REGION.format(
+                    database_name=database,
+                    schema_name=schema,
+                    region=location,
+                )
+                if location
+                else BIGQUERY_GET_STORED_PROCEDURES.format(
+                    database_name=database,
+                    schema_name=schema,
+                )
+            )
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(text(query)).all()
+                for row in results:
+                    row_dict = row._asdict() if hasattr(row, "_asdict") else row
+                    stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
+                    yield stored_procedure
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Error listing stored procedures for schema '%s.%s': %s",
+                    database,
+                    schema,
+                    exc,
+                )
 
     def yield_stored_procedure(
         self, stored_procedure: BigQueryStoredProcedure

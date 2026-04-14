@@ -1,8 +1,6 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
@@ -185,10 +183,10 @@ public class PatchOperationMetricsTest {
     RequestLatencyContext.endRequest();
 
     // Verify all metrics are recorded
-    assertTrue(meterRegistry.find("entity.patch.apply").timer() != null);
-    assertTrue(meterRegistry.find("entity.patch.update_total").timer() != null);
-    assertTrue(meterRegistry.find("search.index.update").timer() != null);
-    assertTrue(meterRegistry.find("entity.patch.search_index").timer() != null);
+    assertNotNull(meterRegistry.find("entity.patch.apply").timer());
+    assertNotNull(meterRegistry.find("entity.patch.update_total").timer());
+    assertNotNull(meterRegistry.find("search.index.update").timer());
+    assertNotNull(meterRegistry.find("entity.patch.search_index").timer());
 
     // Verify request latency context metrics
     Timer totalTimer =

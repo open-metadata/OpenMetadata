@@ -12,13 +12,17 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  CROSS_GLOSSARY_CURVE_OFFSET,
-  CROSS_GLOSSARY_EDGE_COLOR,
   DATA_MODE_ASSET_CIRCLE_SIZE,
+  DATA_MODE_ASSET_EDGE_STROKE_COLOR,
+  DATA_MODE_TERM_H_SPACING,
   DATA_MODE_TERM_NODE_SIZE,
+  DATA_MODE_TERM_V_SPACING,
+  DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
+  LayoutEngine,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
 } from '../OntologyExplorer.constants';
@@ -28,10 +32,13 @@ import {
   OntologyEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
+import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
+  MODEL_NODE_MAX_WIDTH,
   NODE_HEIGHT,
+  truncateNodeLabelByWidth,
 } from '../utils/graphConfig';
 import {
   buildComboStyle,
@@ -43,9 +50,10 @@ import {
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
 import {
-  computeDataModePositions,
   computeGlossaryGroupPositions,
+  computeOutermostRingRadius,
 } from '../utils/layoutCalculations';
+import { ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE } from '../utils/ontologyComboAwarePolylineEdge';
 
 const INVERSE_RELATION_PAIRS: Record<string, string> = {
   broader: 'narrower',
@@ -140,11 +148,13 @@ export function useGraphDataBuilder({
   explorationMode,
   settings,
   selectedNodeId,
+  expandedTermIds,
   clickedEdgeId,
   nodePositions,
   glossaryColorMap,
   layoutType,
   hierarchyCombos = [],
+  graphSearchHighlight = null,
 }: BuildGraphDataProps) {
   const computeNodeColor = useCallback(
     (node: OntologyNode): string =>
@@ -194,10 +204,27 @@ export function useGraphDataBuilder({
   }, [selectedNodeId, inputEdges, inputNodes, explorationMode]);
 
   const graphData = useMemo(() => {
+    const searchHighlightActive = Boolean(graphSearchHighlight?.active);
+    let searchNodeSet: Set<string> | null = null;
+    let searchEdgeSet: Set<string> | null = null;
+    let searchGlossarySet: Set<string> | null = null;
+
+    if (searchHighlightActive) {
+      searchNodeSet = new Set(graphSearchHighlight?.highlightedNodeIds ?? []);
+      searchEdgeSet = new Set(graphSearchHighlight?.highlightedEdgeKeys ?? []);
+
+      if ((graphSearchHighlight?.highlightedGlossaryIds.length ?? 0) > 0) {
+        searchGlossarySet = new Set(
+          graphSearchHighlight?.highlightedGlossaryIds ?? []
+        );
+      }
+    }
+
     let nodesForGraph: OntologyNode[];
     let edgesForGraph: MergedEdge[];
-    let dataModePositions: Record<string, { x: number; y: number }> = {};
     let termAssetCountMap = new Map<string, number>();
+    let termHSpacing = DATA_MODE_TERM_H_SPACING;
+    let termVSpacing = DATA_MODE_TERM_V_SPACING;
 
     if (explorationMode === 'data') {
       const allAssetIds = new Set(
@@ -209,51 +236,93 @@ export function useGraphDataBuilder({
         inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
       );
 
-      const termsWithAssets = new Set<string>();
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termsWithAssets.add(edge.from);
-        }
-        if (allTermIds.has(edge.to) && allAssetIds.has(edge.from)) {
-          termsWithAssets.add(edge.to);
-        }
-      });
-
-      const visibleTermIds = new Set(termsWithAssets);
-      mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allTermIds.has(edge.to)) {
-          if (termsWithAssets.has(edge.from) || termsWithAssets.has(edge.to)) {
-            visibleTermIds.add(edge.from);
-            visibleTermIds.add(edge.to);
-          }
-        }
-      });
+      const visibleTermIds = new Set(allTermIds);
 
       const visibleAssetIds = new Set<string>();
-      if (selectedNodeId && allTermIds.has(selectedNodeId)) {
+      const idsToExpand =
+        expandedTermIds && expandedTermIds.size > 0
+          ? expandedTermIds
+          : new Set<string>();
+      idsToExpand.forEach((termId) => {
+        if (!allTermIds.has(termId)) {
+          return;
+        }
         mergedEdgesList.forEach((edge) => {
-          if (edge.from === selectedNodeId && allAssetIds.has(edge.to)) {
+          if (edge.from === termId && allAssetIds.has(edge.to)) {
             visibleAssetIds.add(edge.to);
           }
-          if (edge.to === selectedNodeId && allAssetIds.has(edge.from)) {
+          if (edge.to === termId && allAssetIds.has(edge.from)) {
             visibleAssetIds.add(edge.from);
           }
         });
+      });
+
+      if (idsToExpand.size > 0) {
+        let maxFootprint = 0;
+        idsToExpand.forEach((termId) => {
+          if (!allTermIds.has(termId)) {
+            return;
+          }
+          let visibleCount = 0;
+          mergedEdgesList.forEach((edge) => {
+            if (edge.from === termId && allAssetIds.has(edge.to)) {
+              visibleCount++;
+            }
+            if (edge.to === termId && allAssetIds.has(edge.from)) {
+              visibleCount++;
+            }
+          });
+          const footprint = computeOutermostRingRadius(visibleCount);
+          if (footprint > maxFootprint) {
+            maxFootprint = footprint;
+          }
+        });
+        if (maxFootprint > 0) {
+          const minSpacing = maxFootprint * 2 + 40;
+          termHSpacing = Math.max(DATA_MODE_TERM_H_SPACING, minSpacing);
+          termVSpacing = Math.max(DATA_MODE_TERM_V_SPACING, minSpacing);
+        }
+      }
+
+      const LABEL_SPACING_GAP = 56;
+      const maxTermLabelWidth = inputNodes.reduce((max, n) => {
+        if (allAssetIds.has(n.id)) {
+          return max;
+        }
+        const rawLabel = n.originalLabel ?? n.label;
+        const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
+
+        return Math.max(max, w);
+      }, 0);
+      if (maxTermLabelWidth > 0) {
+        termHSpacing = Math.max(
+          termHSpacing,
+          maxTermLabelWidth + LABEL_SPACING_GAP
+        );
       }
 
       termAssetCountMap = new Map<string, number>();
+      inputNodes.forEach((node) => {
+        if (allTermIds.has(node.id) && typeof node.assetCount === 'number') {
+          termAssetCountMap.set(node.id, node.assetCount);
+        }
+      });
       mergedEdgesList.forEach((edge) => {
         if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.from,
-            (termAssetCountMap.get(edge.from) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.from)) {
+            termAssetCountMap.set(
+              edge.from,
+              (termAssetCountMap.get(edge.from) ?? 0) + 1
+            );
+          }
         }
         if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
-          termAssetCountMap.set(
-            edge.to,
-            (termAssetCountMap.get(edge.to) ?? 0) + 1
-          );
+          if (!termAssetCountMap.has(edge.to)) {
+            termAssetCountMap.set(
+              edge.to,
+              (termAssetCountMap.get(edge.to) ?? 0) + 1
+            );
+          }
         }
       });
 
@@ -261,13 +330,6 @@ export function useGraphDataBuilder({
       nodesForGraph = inputNodes.filter((n) => visibleIds.has(n.id));
       edgesForGraph = mergedEdgesList.filter(
         (e) => visibleIds.has(e.from) && visibleIds.has(e.to)
-      );
-
-      const visTermNodes = nodesForGraph.filter((n) => !allAssetIds.has(n.id));
-      dataModePositions = computeDataModePositions(
-        visTermNodes,
-        edgesForGraph,
-        visibleAssetIds
       );
     } else if (explorationMode === 'hierarchy') {
       nodesForGraph = inputNodes;
@@ -291,17 +353,16 @@ export function useGraphDataBuilder({
       nodeIdToType.set(n.id, n.type);
     });
 
-    const distinctGlossaryIds = new Set(
-      nodesForGraph.map((n) => n.glossaryId).filter(Boolean)
-    );
-    const needsGroupLayout =
-      explorationMode !== 'data' &&
-      explorationMode !== 'hierarchy' &&
-      distinctGlossaryIds.size > 1;
-
-    const groupPositions: Record<string, { x: number; y: number }> =
-      needsGroupLayout
-        ? computeGlossaryGroupPositions(nodesForGraph, layoutType)
+    const dataModeTermPositions: Record<string, { x: number; y: number }> =
+      explorationMode === 'data'
+        ? computeGlossaryGroupPositions(
+            nodesForGraph.filter(
+              (n) => n.type !== 'dataAsset' && n.type !== 'metric'
+            ),
+            LayoutEngine.Dagre,
+            termHSpacing,
+            termVSpacing
+          )
         : {};
 
     const localAssetToTermColor = new Map<string, string>();
@@ -332,27 +393,43 @@ export function useGraphDataBuilder({
     const g6Nodes: NodeData[] = nodesForGraph.map((node) => {
       const color = computeNodeColor(node);
       const height = NODE_HEIGHT;
-      const label = node.originalLabel ?? node.label;
-      const nodeWidth = estimateNodeWidth(label);
+      const rawLabel = node.originalLabel ?? node.label;
+      const isInModelMode = explorationMode === 'model';
+      const isDataAsset = node.type === 'dataAsset' || node.type === 'metric';
+      const shouldTruncateLabel =
+        isInModelMode || (explorationMode === 'data' && !isDataAsset);
+      const estimatedWidth = estimateNodeWidth(rawLabel);
+      const nodeWidth = shouldTruncateLabel
+        ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
+        : estimatedWidth;
+      const label = shouldTruncateLabel
+        ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
+        : rawLabel;
       const pos =
-        explorationMode === 'data'
-          ? dataModePositions[node.id]
-          : explorationMode === 'hierarchy'
+        explorationMode === 'hierarchy'
           ? nodePositions?.[node.id]
-          : groupPositions[node.id] ?? nodePositions?.[node.id];
+          : explorationMode === 'data'
+          ? isDataAsset
+            ? undefined
+            : dataModeTermPositions[node.id]
+          : undefined;
       const isSelected =
         explorationMode === 'hierarchy'
           ? node.termId === selectedNodeId || selectedNodeId === node.id
           : selectedNodeId === node.id;
       const isHighlighted =
         selectedNodeId !== null && !isSelected && neighborSet.has(node.id);
-      const isDimmed =
+      const isDimmedBySelection =
         selectedNodeId !== null && !isSelected && !neighborSet.has(node.id);
+      const isDimmedBySearch =
+        Boolean(searchNodeSet) && !searchNodeSet!.has(node.id);
+      const isDimmed = searchHighlightActive
+        ? isDimmedBySearch
+        : isDimmedBySelection;
 
       const isInHierarchyMode = explorationMode === 'hierarchy';
       const isInDataMode = explorationMode === 'data';
-      const isDataAssetOrMetric =
-        node.type === 'dataAsset' || node.type === 'metric';
+      const isDataAssetOrMetric = isDataAsset;
 
       if (isInHierarchyMode) {
         const comboId = `hierarchy-combo-${node.glossaryId}`;
@@ -391,10 +468,15 @@ export function useGraphDataBuilder({
         const sz = DATA_MODE_ASSET_CIRCLE_SIZE;
         const assetColor =
           localAssetToTermColor.get(node.id) ?? NODE_BORDER_COLOR;
+        const entityTypeLabel =
+          node.entityRef?.type !== undefined
+            ? entityUtilClassBase.getFormattedEntityType(node.entityRef.type)
+            : undefined;
+        const entityIconUrl = getEntityIconUrl(node.entityRef?.type);
 
         return {
           id: node.id,
-          type: 'circle',
+          type: 'data-mode-asset',
           data: {
             ontologyNode: node,
             label,
@@ -411,7 +493,9 @@ export function useGraphDataBuilder({
             getCanvasColor,
             label,
             assetColor,
-            pos
+            pos,
+            entityTypeLabel,
+            entityIconUrl
           ),
         };
       }
@@ -419,9 +503,11 @@ export function useGraphDataBuilder({
       if (isInDataMode) {
         const sz = DATA_MODE_TERM_NODE_SIZE;
         const assetCount = termAssetCountMap.get(node.id) ?? 0;
+        const assetsExpanded = Boolean(expandedTermIds?.has(node.id));
 
         return {
           id: node.id,
+          type: 'circle',
           data: {
             ontologyNode: node,
             label,
@@ -433,6 +519,9 @@ export function useGraphDataBuilder({
             nodeWidth,
             glossaryId: node.glossaryId ?? '',
             assetCount,
+            loadedAssetCount: node.loadedAssetCount ?? 0,
+            assetsExpanded,
+            isLoadingAssets: node.isLoadingAssets ?? false,
           },
           style: buildDataModeTermNodeStyle(getCanvasColor, label, color, pos),
         };
@@ -472,8 +561,8 @@ export function useGraphDataBuilder({
           )
         : null;
 
-    const g6Edges: EdgeData[] = edgesForGraph.map((edge, index) => {
-      const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
+    const g6Edges: EdgeData[] = edgesForGraph.map((edge) => {
+      const edgeId = `edge-${edge.from}-${edge.to}-${edge.relationType}`;
       const fromGlossary = nodeIdToGlossaryId.get(edge.from);
       const toGlossary = nodeIdToGlossaryId.get(edge.to);
       const isCrossTeam = Boolean(
@@ -484,7 +573,8 @@ export function useGraphDataBuilder({
         selectedNodeId === edge.to ||
         (selectedScopedIds != null &&
           (selectedScopedIds.has(edge.from) || selectedScopedIds.has(edge.to)));
-      const isEdgeDimmed =
+      const edgeKeyStr = `${edge.from}::${edge.to}::${edge.relationType}`;
+      const isDimmedBySelection =
         selectedNodeId !== null &&
         selectedNodeId !== edge.from &&
         selectedNodeId !== edge.to &&
@@ -493,10 +583,12 @@ export function useGraphDataBuilder({
         ) &&
         !neighborSet.has(edge.from) &&
         !neighborSet.has(edge.to);
+      const isDimmedBySearch =
+        Boolean(searchEdgeSet) && !searchEdgeSet!.has(edgeKeyStr);
+      const isEdgeDimmed = searchHighlightActive
+        ? isDimmedBySearch
+        : isDimmedBySelection;
       const isClickedEdge = edgeId === clickedEdgeId;
-      const edgeColor = isCrossTeam
-        ? CROSS_GLOSSARY_EDGE_COLOR
-        : RELATION_COLORS[edge.relationType] ?? EDGE_STROKE_COLOR;
 
       const fromType = nodeIdToType.get(edge.from);
       const toType = nodeIdToType.get(edge.to);
@@ -506,6 +598,29 @@ export function useGraphDataBuilder({
         fromType !== 'metric' &&
         toType !== 'dataAsset' &&
         toType !== 'metric';
+
+      const isTermTermEdge =
+        fromType !== 'dataAsset' &&
+        fromType !== 'metric' &&
+        toType !== 'dataAsset' &&
+        toType !== 'metric';
+
+      const isCrossGlossaryTermEdge =
+        isCrossTeam && isTermTermEdge && explorationMode !== 'data';
+
+      const useComboAwarePolyline =
+        isTermTermInDataMode || isCrossGlossaryTermEdge;
+
+      const rawEdgeColor =
+        explorationMode === 'data' && !isTermTermInDataMode
+          ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
+          : RELATION_COLORS[edge.relationType] ?? EDGE_STROKE_COLOR;
+      const edgeColor = getCanvasColor(
+        rawEdgeColor,
+        explorationMode === 'data' && !isTermTermInDataMode
+          ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
+          : EDGE_STROKE_COLOR
+      );
 
       const showLabel =
         settings.showEdgeLabels &&
@@ -523,16 +638,17 @@ export function useGraphDataBuilder({
 
       const baseEdgeStyle = {
         stroke: edgeColor,
-        lineWidth: isCrossTeam ? 2 : isHighlighted || isClickedEdge ? 2.5 : 1.5,
+        lineWidth: isHighlighted || isClickedEdge ? 2.5 : 1.5,
         lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
-        opacity: 1,
+        opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
         endArrow: explorationMode !== 'data',
         ...(labelText &&
           getEdgeRelationLabelStyle(labelText, edge.relationType)),
       };
-      const crossGlossaryStyle = isCrossTeam
-        ? { curveOffset: CROSS_GLOSSARY_CURVE_OFFSET }
-        : {};
+
+      const edgeType = useComboAwarePolyline
+        ? ONTOLOGY_COMBO_AWARE_POLYLINE_EDGE_TYPE
+        : 'cubic-vertical';
 
       return {
         id: edgeId,
@@ -545,12 +661,18 @@ export function useGraphDataBuilder({
           isClickedEdge,
           isCrossTeam,
           isEdgeDimmed,
-          edgeShapeType: 'cubic-vertical',
+          edgeShapeType: edgeType,
         },
-        type: 'cubic-vertical',
+        type: edgeType,
         style: {
           ...baseEdgeStyle,
-          ...crossGlossaryStyle,
+          ...(useComboAwarePolyline && {
+            router: {
+              type: 'shortest-path',
+              offset: 20,
+              enableObstacleAvoidance: true,
+            },
+          }),
         },
       };
     });
@@ -560,9 +682,16 @@ export function useGraphDataBuilder({
       hierarchyCombos.forEach((combo) => {
         const color =
           glossaryColorMap[combo.glossaryId] ?? 'var(--color-gray-400)';
+        const isComboDimmed = Boolean(
+          searchGlossarySet && !searchGlossarySet.has(combo.glossaryId)
+        );
         combos.push({
           id: combo.id,
-          data: { glossaryName: combo.label, color },
+          data: {
+            glossaryName: combo.label,
+            color,
+            isDimmed: isComboDimmed,
+          },
           style: buildComboStyle(combo.label, color),
         });
       });
@@ -581,9 +710,12 @@ export function useGraphDataBuilder({
         }
         const name = terms[0].group ?? glossaryId;
         const color = glossaryColorMap[glossaryId] ?? 'var(--color-gray-400)';
+        const isComboDimmed = Boolean(
+          searchGlossarySet && !searchGlossarySet.has(glossaryId)
+        );
         combos.push({
           id: `glossary-group-${glossaryId}`,
-          data: { glossaryName: name, color },
+          data: { glossaryName: name, color, isDimmed: isComboDimmed },
           style: buildComboStyle(name, color),
         });
       });
@@ -600,15 +732,47 @@ export function useGraphDataBuilder({
     mergedEdgesList,
     settings.showEdgeLabels,
     selectedNodeId,
-    nodePositions,
+    expandedTermIds,
     glossaryColorMap,
     neighborSet,
     computeNodeColor,
     clickedEdgeId,
+    nodePositions,
     layoutType,
     explorationMode,
     hierarchyCombos,
+    graphSearchHighlight,
   ]);
 
-  return { graphData, mergedEdgesList, neighborSet, computeNodeColor };
+  const assetToTermMap = useMemo(() => {
+    if (explorationMode !== 'data') {
+      return {} as Record<string, string>;
+    }
+    const map: Record<string, string> = {};
+    const allAssetIds = new Set(
+      inputNodes
+        .filter((n) => n.type === 'dataAsset' || n.type === 'metric')
+        .map((n) => n.id)
+    );
+    const allTermIds = new Set(
+      inputNodes.filter((n) => !allAssetIds.has(n.id)).map((n) => n.id)
+    );
+    mergedEdgesList.forEach((edge) => {
+      if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
+        map[edge.to] = edge.from;
+      } else if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
+        map[edge.from] = edge.to;
+      }
+    });
+
+    return map;
+  }, [explorationMode, inputNodes, mergedEdgesList]);
+
+  return {
+    graphData,
+    mergedEdgesList,
+    neighborSet,
+    computeNodeColor,
+    assetToTermMap,
+  };
 }

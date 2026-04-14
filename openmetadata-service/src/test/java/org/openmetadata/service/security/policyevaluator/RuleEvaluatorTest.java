@@ -187,12 +187,10 @@ class RuleEvaluatorTest {
               DatabaseSchema cachedSchema = i.getArgument(0);
               EntityReference dbRef = cachedSchema.getDatabase();
               if (dbRef == null) return null;
-              Database db =
-                  JsonUtils.readValue(
-                      EntityRepository.CACHE_WITH_ID.get(
-                          new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
-                      Database.class);
-              return db;
+              return JsonUtils.readValue(
+                  EntityRepository.CACHE_WITH_ID.get(
+                      new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
+                  Database.class);
             });
     createResourceContextSchema =
         Mockito.spy(new CreateResourceContext<>(Entity.DATABASE_SCHEMA, schema));
@@ -482,6 +480,35 @@ class RuleEvaluatorTest {
             "!matchAnyCertification('Certification.Bronze', 'Certification.Silver')"));
     assertFalse(evaluateExpression("matchAnyCertification('Certification.Bronze')"));
     assertTrue(evaluateExpression("!matchAnyCertification('Certification.Bronze')"));
+  }
+
+  @Test
+  void test_matchAnyCertification_nullEntity() {
+    ResourceContextInterface nullEntityContext = mock(ResourceContextInterface.class);
+    Mockito.when(nullEntityContext.getEntity()).thenReturn(null);
+
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, nullEntityContext);
+    EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
+
+    assertFalse(
+        parseExpression("matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_matchAnyCertification_nullResourceContext() {
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, null);
+    EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
+
+    assertFalse(
+        parseExpression("matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyCertification('Certification.Gold')")
+            .getValue(ctx, Boolean.class));
   }
 
   @Test

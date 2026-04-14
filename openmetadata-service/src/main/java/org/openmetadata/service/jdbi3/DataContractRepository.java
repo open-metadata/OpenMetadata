@@ -711,20 +711,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (binaryTypes.contains(type1) && binaryTypes.contains(type2)) {
       return true;
     }
-    if (complexTypes.contains(type1) && complexTypes.contains(type2)) {
-      return true;
-    }
-
-    return false;
+    return complexTypes.contains(type1) && complexTypes.contains(type2);
   }
 
   /**
    * Validates entity-specific constraints for data contracts based on entity type.
    * Throws BadRequestException if any constraints are violated.
    *
-   * Supported entities: table, storedProcedure, database, databaseSchema, dashboard,
-   * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api,
-   * mlmodel, container, directory, file, spreadsheet, worksheet
+   * Supported entities: table, storedProcedure, database, databaseSchema, dashboard, chart,
+   * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api, apiService,
+   * metric, mlmodel, container, directory, file, spreadsheet, worksheet, dataProduct
    *
    * Validation support by entity type:
    * - All entities: Support semantics validation
@@ -737,7 +733,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<String> violations = new ArrayList<>();
 
     // First, check if the entity type is supported for data contracts
-    if (!isSupportedEntityType(entityType)) {
+    if (!isEntityTypeSupported(entityType)) {
       violations.add(
           String.format("Entity type '%s' is not supported for data contracts", entityType));
     } else {
@@ -772,7 +768,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   /**
    * Checks if the given entity type is supported for data contracts.
    */
-  private boolean isSupportedEntityType(String entityType) {
+  public boolean isEntityTypeSupported(String entityType) {
     return Set.of(
             Entity.TABLE,
             Entity.STORED_PROCEDURE,
@@ -787,6 +783,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Entity.API_COLLECTION,
             Entity.API_ENDPOINT,
             Entity.API,
+            Entity.API_SERVICE,
+            Entity.METRIC,
             Entity.MLMODEL,
             Entity.CONTAINER,
             Entity.DIRECTORY,
@@ -892,10 +890,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<UUID> testsToRemove =
         currentTests.stream().filter(testId -> !testCaseRefs.contains(testId)).toList();
     if (!nullOrEmpty(testsToRemove)) {
-      testsToRemove.forEach(
-          test -> {
-            testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
-          });
+      for (UUID test : testsToRemove) {
+        testCaseRepository.deleteTestCaseFromLogicalTestSuite(testSuite.getId(), test);
+      }
     }
   }
 
@@ -1206,7 +1203,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                   .collect(Collectors.toList()));
 
     } catch (Exception e) {
-      LOG.error("Error during semantics validation", e);
+      LOG.error(
+          "Error during semantics validation for contract {}: {}",
+          dataContract.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+      int totalRules = Optional.ofNullable(dataContract.getSemantics()).map(List::size).orElse(0);
+      validation.withFailed(totalRules).withPassed(0).withTotal(totalRules);
     }
 
     return validation;
@@ -1222,10 +1225,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTests().stream().map(EntityReference::getFullyQualifiedName).toList();
     List<ResultSummary> testSummary =
         testSuite.getTestCaseResultSummary().stream()
-            .filter(
-                test -> {
-                  return currentTests.contains(test.getTestCaseName());
-                })
+            .filter(test -> currentTests.contains(test.getTestCaseName()))
             .toList();
 
     List<ResultSummary> failedTests =
@@ -1245,19 +1245,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     result.withContractExecutionStatus(fallbackStatus);
 
     if (!nullOrEmpty(result.getSchemaValidation())) {
-      if (result.getSchemaValidation().getFailed() > 0) {
+      Integer schemaFailed = result.getSchemaValidation().getFailed();
+      if (schemaFailed != null && schemaFailed > 0) {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getSemanticsValidation())) {
-      if (result.getSemanticsValidation().getFailed() > 0) {
+      Integer semanticsFailed = result.getSemanticsValidation().getFailed();
+      if (semanticsFailed != null && semanticsFailed > 0) {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getQualityValidation())) {
-      if (result.getQualityValidation().getFailed() > 0) {
+      Integer qualityFailed = result.getQualityValidation().getFailed();
+      if (qualityFailed != null && qualityFailed > 0) {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
@@ -1403,49 +1406,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "latestResult",
-          () -> {
-            recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
-          });
+          () ->
+              recordChange("latestResult", original.getLatestResult(), updated.getLatestResult()));
       compareAndUpdate(
           "entityStatus",
-          () -> {
-            recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
-          });
+          () ->
+              recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus()));
       compareAndUpdate(
           "testSuite",
-          () -> {
-            recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
-          });
+          () -> recordChange("testSuite", original.getTestSuite(), updated.getTestSuite()));
       compareAndUpdate(
           "termsOfUse",
-          () -> {
-            recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse());
-          });
+          () -> recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse()));
       compareAndUpdate(
           "security",
-          () -> {
-            recordChange("security", original.getSecurity(), updated.getSecurity());
-          });
-      compareAndUpdate(
-          "sla",
-          () -> {
-            recordChange("sla", original.getSla(), updated.getSla());
-          });
-      compareAndUpdate(
-          "schema",
-          () -> {
-            updateSchema(original, updated);
-          });
-      compareAndUpdate(
-          "qualityExpectations",
-          () -> {
-            updateQualityExpectations(original, updated);
-          });
-      compareAndUpdate(
-          "semantics",
-          () -> {
-            updateSemantics(original, updated);
-          });
+          () -> recordChange("security", original.getSecurity(), updated.getSecurity()));
+      compareAndUpdate("sla", () -> recordChange("sla", original.getSla(), updated.getSla()));
+      compareAndUpdate("schema", () -> updateSchema(original, updated));
+      compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
+      compareAndUpdate("semantics", () -> updateSemantics(original, updated));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
@@ -1656,11 +1635,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // Add entity's own semantics (not inherited)
       if (merged.getSemantics() != null) {
-        for (SemanticsRule entityRule : merged.getSemantics()) {
-          // Keep the inherited flag as-is from the entity rule (should be false/null for native
-          // rules)
-          mergedSemantics.add(entityRule);
-        }
+        // Keep the inherited flag as-is from the entity rule (should be false/null for native
+        // rules)
+        mergedSemantics.addAll(merged.getSemantics());
       }
 
       merged.setSemantics(mergedSemantics);

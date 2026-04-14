@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TestCase } from '../../../../generated/tests/testCase';
+import FailedTestCaseSampleData from '../FailedTestCaseSampleData/FailedTestCaseSampleData.component';
 
 export interface AdditionalComponentInterface {
   id: string;
@@ -21,7 +22,7 @@ class TestCaseResultTabClassBase {
   public getAdditionalComponents(
     _testCaseData?: TestCase
   ): Array<AdditionalComponentInterface> {
-    return [];
+    return [{ id: 'failed-sample-data', Component: FailedTestCaseSampleData }];
   }
 
   public getAlertBanner(): React.FC | null {

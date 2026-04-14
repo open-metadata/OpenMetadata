@@ -203,13 +203,19 @@ export const addOwnerWithoutValidation = async ({
       (await usersTab.getAttribute('aria-selected')) === 'true';
 
     if (!isTabAlreadySelected) {
+      // The call with size > 0 only fires after the tab click.
       const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=&index=user&*'
+        (response) =>
+          response.url().includes('/api/v1/search/query?q=&index=user') &&
+          !response.url().includes('size=0') &&
+          response.status() === 200
       );
       await usersTab.click();
+      await expect(usersTab).toHaveAttribute('aria-selected', 'true');
       await userListResponse;
     }
   }
+
   await waitForAllLoadersToDisappear(page);
 
   const ownerSearchBar = await page
@@ -1053,6 +1059,17 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
+  const columnsProfileResponsePromise =
+    entityType === 'table'
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tables/name/') &&
+            response.url().includes('/columns') &&
+            response.url().includes('profile') &&
+            response.request().method() === 'GET',
+          { timeout: 90_000 }
+        )
+      : null;
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1081,6 +1098,10 @@ export const openColumnDetailPanel = async ({
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
+  }
+
+  if (columnsProfileResponsePromise) {
+    await columnsProfileResponsePromise;
   }
 
   const panelContainer = page.locator('.column-detail-panel');
@@ -1435,9 +1456,9 @@ export const replyAnnouncement = async (page: Page) => {
 
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
 
-  await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('add-reply')).toBeVisible();
 
-  await page.getByTestId('add-reply').locator('svg').click();
+  await page.getByTestId('add-reply').click();
 
   await expect(page.locator('.ql-editor')).toBeVisible();
 
@@ -1944,9 +1965,18 @@ export const restoreEntity = async (page: Page) => {
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
+
+  const restoreResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restore') &&
+      response.request().method() === 'PUT'
+  );
+
   await page.click('button:has-text("Restore")');
 
-  await toastNotification(page, /restored successfully/);
+  const response = await restoreResponse;
+
+  expect(response.status()).toBe(200);
 
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeHidden();
 };
@@ -2188,15 +2218,7 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  if (filterKey === 'tier.tagFQN') {
-    const tierList = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
-    );
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-    await tierList;
-  } else {
-    await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  }
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,
     {
@@ -2207,17 +2229,11 @@ export const checkExploreSearchFilter = async (
     true
   );
 
-  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
-
-  // Use JSON.stringify to properly escape both backslashes and double quotes
+  const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
   const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
-
-  const filterValueForSearchURL =
-    filterKey === 'tier.tagFQN'
-      ? filterValue
-      : /["%]/.test(filterValue ?? '')
-      ? escapedValue
-      : rawFilterValue;
+  const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
+    ? escapedValue
+    : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(

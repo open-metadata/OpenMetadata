@@ -229,9 +229,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   private TestCase getTestCaseReference(String testCaseFQN) {
-    TestCase testCase =
-        Entity.getEntityByName(TEST_CASE, testCaseFQN, TEST_DEFINITION, Include.ALL);
-    return testCase;
+    return Entity.getEntityByName(TEST_CASE, testCaseFQN, TEST_DEFINITION, Include.ALL);
   }
 
   private EntityReference getTestDefinitionReference(TestCase testCase, String testCaseFQN) {

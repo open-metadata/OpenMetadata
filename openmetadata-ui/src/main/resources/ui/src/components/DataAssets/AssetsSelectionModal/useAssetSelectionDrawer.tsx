@@ -62,7 +62,6 @@ export const useAssetSelectionDrawer = ({
 
   // Create the drawer - always mounted but content conditionally rendered
   const assetDrawer = useCompositeDrawer({
-    anchor: 'right',
     width: 670,
     closeOnEscape: false,
     testId: 'asset-selection-modal',

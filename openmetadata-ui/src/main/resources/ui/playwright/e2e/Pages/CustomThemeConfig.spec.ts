@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect, Request } from '@playwright/test';
-import { GlobalSettingOptions } from '../../constant/settings';
-import { SidebarItem } from '../../constant/sidebar';
-import { redirectToHomePage } from '../../utils/common';
-import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { redirectToHomePage } from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
 
 const config = {
   logo: 'https://custom-logo.png',

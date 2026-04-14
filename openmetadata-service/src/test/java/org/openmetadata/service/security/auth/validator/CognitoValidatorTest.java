@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth.validator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -53,7 +54,7 @@ public class CognitoValidatorTest {
 
     // Should fail somewhere in the validation process
     assertEquals("failed", result != null ? "failed" : "success");
-    assertTrue(result != null);
+    assertNotNull(result);
   }
 
   @Test
@@ -104,7 +105,7 @@ public class CognitoValidatorTest {
     FieldError result = validator.validateCognitoConfiguration(authConfig, oidcConfig);
 
     // Should pass basic validation, may fail on network calls but with proper field path
-    assertTrue(result != null);
+    assertNotNull(result);
   }
 
   @Test
@@ -122,7 +123,7 @@ public class CognitoValidatorTest {
     FieldError result = validator.validateCognitoConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
-    assertTrue(result != null);
+    assertNotNull(result);
   }
 
   @Test
@@ -137,7 +138,7 @@ public class CognitoValidatorTest {
     FieldError result = validator.validateCognitoConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
-    assertTrue(result != null);
+    assertNotNull(result);
   }
 
   @Test
@@ -159,7 +160,7 @@ public class CognitoValidatorTest {
     FieldError result = validator.validateCognitoConfiguration(authConfig, oidcConfig);
 
     // Should pass basic validation, may fail on network calls but with proper field path
-    assertTrue(result != null);
+    assertNotNull(result);
   }
 
   @Test

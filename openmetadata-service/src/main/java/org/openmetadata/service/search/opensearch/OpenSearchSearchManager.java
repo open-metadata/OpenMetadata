@@ -59,6 +59,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
@@ -857,7 +858,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * @param requestBuilder the request builder to apply RBAC constraints to
    */
   private void applyRbacQueryWithCaching(
-      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) throws IOException {
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
     if (!shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       return;
     }
@@ -946,8 +947,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
         if (jsonObject.containsKey("_source")) {
           JsonValue sourceValue = jsonObject.get("_source");
-          if (sourceValue instanceof JsonObject) {
-            JsonObject sourceObject = (JsonObject) sourceValue;
+          if (sourceValue instanceof JsonObject sourceObject) {
             if (sourceObject.containsKey("include")) {
               JsonArray includesArray = sourceObject.getJsonArray("include");
               includes = new String[includesArray.size()];
@@ -1010,6 +1010,89 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   public Response doSearch(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    OpenSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+
+    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
+
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    try {
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+      if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
+        return Response.status(OK).entity(searchResponse.toJsonString()).build();
+      } else {
+        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
+        return Response.status(OK).entity(response).build();
+      }
+
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to find index %s", request.getIndex()));
+      } else {
+        throw buildSearchException(e);
+      }
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
+  }
+
+  @Override
+  public SearchResultListMapper searchForExport(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    OpenSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+
+    try {
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+      List<Map<String, Object>> results = new ArrayList<>();
+      Object[] lastHitSortValues = null;
+
+      if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
+        List<Hit<JsonData>> hits = response.hits().hits();
+        for (Hit<JsonData> hit : hits) {
+          if (hit.source() != null) {
+            results.add(OsUtils.jsonDataToMap(hit.source()));
+          }
+        }
+        Hit<JsonData> lastHit = hits.getLast();
+        if (lastHit.sort() != null && !lastHit.sort().isEmpty()) {
+          lastHitSortValues =
+              lastHit.sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
+        }
+      }
+
+      long totalHits = 0;
+      if (response.hits().total() != null) {
+        totalHits = response.hits().total().value();
+      }
+
+      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to find index %s", request.getIndex()));
+      } else {
+        throw buildSearchException(e);
+      }
+    }
+  }
+
+  private OpenSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
@@ -1140,14 +1223,18 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     // Handle sorting
     if (!nullOrEmpty(request.getSortFieldParam())
         && !Boolean.TRUE.equals(request.getIsHierarchy())) {
-      String sortField = request.getSortFieldParam();
+      String sortField =
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getSortFieldParam());
       String sortTypeCapitalized =
           request.getSortOrder().substring(0, 1).toUpperCase()
               + request.getSortOrder().substring(1).toLowerCase();
       SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
       if (!sortField.equalsIgnoreCase("_score")) {
-        requestBuilder.sort(sortField, sortOrder, "integer");
+        boolean isKeywordField =
+            sortField.endsWith(".keyword")
+                || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
+        requestBuilder.sort(sortField, sortOrder, isKeywordField ? "keyword" : "integer");
       } else {
         requestBuilder.sort(sortField, sortOrder, null);
       }
@@ -1189,34 +1276,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
 
     requestBuilder.timeout("30s");
-
-    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
-
-    try {
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
-
-      if (searchTimerSample != null) {
-        RequestLatencyContext.endSearchOperation(searchTimerSample);
-      }
-
-      if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
-        return Response.status(OK).entity(searchResponse.toJsonString()).build();
-      } else {
-        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
-        return Response.status(OK).entity(response).build();
-      }
-
-    } catch (OpenSearchException e) {
-      if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
-      } else {
-        throw buildSearchException(e);
-      }
-    }
+    return requestBuilder;
   }
 
   private OpenSearchRequestBuilder buildHierarchyQuery(
@@ -1502,11 +1562,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       requestBuilder.size(request.getSize());
 
       // Apply RBAC constraints using applyRbacQueryWithCaching
-      try {
-        applyRbacQueryWithCaching(subjectContext, requestBuilder);
-      } catch (IOException e) {
-        LOG.warn("Failed to apply RBAC query with caching, continuing without RBAC", e);
-      }
+      applyRbacQueryWithCaching(subjectContext, requestBuilder);
 
       // Add aggregations for fallback NLQ search
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());

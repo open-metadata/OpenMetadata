@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, useTheme } from '@mui/material';
 import { Avatar } from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, toLower, toString } from 'lodash';
+import { isEmpty, toLower, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,6 +57,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getContractByEntityId } from '../../../rest/contractAPI';
@@ -75,7 +75,6 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
-import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -91,8 +90,8 @@ import {
   getPrioritizedEditPermission,
 } from '../../../utils/PermissionsUtils';
 import {
+  getDataProductDetailsPath,
   getDomainPath,
-  getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
@@ -134,9 +133,9 @@ const DataProductsDetailsPage = ({
   onUpdateVote,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
@@ -234,13 +233,18 @@ const DataProductsDetailsPage = ({
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
     const items: BreadcrumbItem[] = [];
 
-    // Add Data Products listing page FIRST
+    if (isMarketplace) {
+      items.push({
+        name: t('label.data-marketplace'),
+        url: ROUTES.DATA_MARKETPLACE,
+      });
+    }
+
     items.push({
       name: t('label.data-product-plural'),
-      url: ROUTES.DATA_PRODUCT,
+      url: dataProductBasePath,
     });
 
-    // Add parent domain SECOND (if exists)
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
         name: getEntityName(dataProduct.domains[0]),
@@ -249,7 +253,7 @@ const DataProductsDetailsPage = ({
     }
 
     return items;
-  }, [dataProduct.domains, t]);
+  }, [dataProduct.domains, isMarketplace, dataProductBasePath, t]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
@@ -488,9 +492,8 @@ const DataProductsDetailsPage = ({
   const onNameSave = async (obj: { name: string; displayName?: string }) => {
     if (dataProduct) {
       const { name, displayName } = obj;
-      let updatedDetails = cloneDeep(dataProduct);
 
-      updatedDetails = {
+      const updatedDetails = {
         ...dataProduct,
         displayName: displayName?.trim(),
         name: name?.trim(),
@@ -501,16 +504,11 @@ const DataProductsDetailsPage = ({
 
         // If name changed, navigate to the new URL
         if (name && name.trim() !== dataProduct.name) {
-          navigate(
-            getEntityDetailsPath(
-              EntityType.DATA_PRODUCT,
-              name.trim(),
-              activeTab
-            ),
-            { replace: true }
-          );
+          navigate(getDataProductDetailsPath(name.trim(), activeTab), {
+            replace: true,
+          });
         }
-      } catch (error) {
+      } catch {
         // Error is already handled by the parent component
       } finally {
         setIsNameEditing(false);
@@ -546,11 +544,7 @@ const DataProductsDetailsPage = ({
             toString(dataProduct.version),
             activeKey
           )
-        : getEntityDetailsPath(
-            EntityType.DATA_PRODUCT,
-            dataProductFqn,
-            activeKey
-          );
+        : getDataProductDetailsPath(dataProductFqn, activeKey);
 
       navigate(path, {
         replace: true,
@@ -560,7 +554,7 @@ const DataProductsDetailsPage = ({
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn)
+      ? getDataProductDetailsPath(dataProductFqn)
       : getVersionPath(
           EntityType.DATA_PRODUCT,
           dataProductFqn,
@@ -625,7 +619,7 @@ const DataProductsDetailsPage = ({
         {...getEntityAvatarProps({ ...dataProduct, entityType: 'dataProduct' })}
       />
     );
-  }, [dataProduct, theme]);
+  }, [dataProduct]);
 
   useEffect(() => {
     fetchDataProductPermission();
@@ -702,14 +696,9 @@ const DataProductsDetailsPage = ({
 
   const content = (
     <>
-      <Box
-        className="data-product-details"
-        data-testid="data-product-details"
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
-        }}>
+      <div
+        className="data-product-details tw:flex tw:flex-col tw:gap-1.5"
+        data-testid="data-product-details">
         <CoverImage
           imageUrl={
             (dataProduct.style as Style & { coverImage?: { url?: string } })
@@ -732,8 +721,8 @@ const DataProductsDetailsPage = ({
               : undefined
           }
         />
-        <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
-          <Box sx={{ flex: 1 }}>
+        <div className="tw:flex tw:mx-5 tw:items-end">
+          <div className="tw:flex-1">
             <EntityHeader
               badge={statusBadge}
               breadcrumb={[]}
@@ -747,16 +736,9 @@ const DataProductsDetailsPage = ({
               suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />}
               titleColor={dataProduct.style?.color}
             />
-          </Box>
-          <Box>
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 3,
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                pb: '4px',
-              }}>
+          </div>
+          <div>
+            <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView && dataProductPermission.Create && (
                 <Button
                   data-testid="data-product-details-add-button"
@@ -842,9 +824,9 @@ const DataProductsDetailsPage = ({
                   onClick={handleOpenAnnouncementDrawer}
                 />
               )}
-            </Box>
-          </Box>
-        </Box>
+            </div>
+          </div>
+        </div>
 
         <GenericProvider<DataProduct>
           muiTags
@@ -856,10 +838,8 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
-          <Box
-            className="data-product-details-page-tabs"
-            sx={{ width: '100%' }}>
-            <Box sx={{ padding: 5 }}>
+          <div className="data-product-details-page-tabs tw:w-full">
+            <div className="tw:p-5">
               <Tabs
                 destroyInactiveTabPane
                 activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
@@ -879,10 +859,10 @@ const DataProductsDetailsPage = ({
                 }
                 onChange={handleTabChange}
               />
-            </Box>
-          </Box>
+            </div>
+          </div>
         </GenericProvider>
-      </Box>
+      </div>
 
       <EntityNameModal<DataProduct>
         allowRename
@@ -949,7 +929,7 @@ const DataProductsDetailsPage = ({
   return (
     <>
       {breadcrumbs}
-      <Box sx={getDomainContainerStyles(theme)}>{content}</Box>
+      <div className="domain-page-container">{content}</div>
     </>
   );
 };

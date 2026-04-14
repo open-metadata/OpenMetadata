@@ -160,9 +160,9 @@ public class CreateIngestionPipelineImpl {
     if (!supportsPipelineType(
         pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
       LOG.debug(
-          String.format(
-              "[GovernanceWorkflows] Service '%s' does not support Ingestion Pipeline of type '%s'",
-              service.getName(), pipelineType));
+          "[GovernanceWorkflows] Service '{}' does not support Ingestion Pipeline of type '{}'",
+          service.getName(),
+          pipelineType);
       return new CreateIngestionPipelineResult(null, true);
     }
     LOG.info(

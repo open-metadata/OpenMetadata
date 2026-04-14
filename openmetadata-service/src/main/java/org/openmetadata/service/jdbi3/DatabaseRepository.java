@@ -532,26 +532,22 @@ public class DatabaseRepository extends EntityRepository<Database> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "retentionPeriod",
-          () -> {
-            recordChange(
-                "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-          });
+          () ->
+              recordChange(
+                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
       compareAndUpdate(
           "sourceUrl",
-          () -> {
-            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-          });
+          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
           "sourceHash",
-          () -> {
-            recordChange(
-                "sourceHash",
-                original.getSourceHash(),
-                updated.getSourceHash(),
-                false,
-                EntityUtil.objectMatch,
-                false);
-          });
+          () ->
+              recordChange(
+                  "sourceHash",
+                  original.getSourceHash(),
+                  updated.getSourceHash(),
+                  false,
+                  EntityUtil.objectMatch,
+                  false));
     }
   }
 

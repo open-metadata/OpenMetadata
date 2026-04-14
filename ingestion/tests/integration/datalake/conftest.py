@@ -44,7 +44,7 @@ INGESTION_CONFIG = {
                     "securityConfig": {
                         "awsAccessKeyId": "fake_access_key",
                         "awsSecretAccessKey": "fake_secret_key",
-                        "awsRegion": "us-weat-1",
+                        "awsRegion": "us-west-1",
                     }
                 },
                 "bucketName": f"{BUCKET_NAME}",
@@ -76,7 +76,7 @@ DATA_QUALITY_CONFIG = {
                     "securityConfig": {
                         "awsAccessKeyId": "fake_access_key",
                         "awsSecretAccessKey": "fake_secret_key",
-                        "awsRegion": "us-weat-1",
+                        "awsRegion": "us-west-1",
                     }
                 },
                 "bucketName": f"{BUCKET_NAME}",

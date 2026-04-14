@@ -22,7 +22,7 @@ export interface GraphNode {
   id: string;
   label: string;
   type: string;
-  group: string;
+  group?: string;
   title?: string;
   description?: string;
   owner?: string;

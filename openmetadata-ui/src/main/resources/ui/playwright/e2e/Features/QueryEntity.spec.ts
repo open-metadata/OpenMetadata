@@ -19,8 +19,8 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
-import { createQueryByTableName, queryFilters } from '../../utils/query';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { createQueryByTableName, queryFilters } from '../../utils/query';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

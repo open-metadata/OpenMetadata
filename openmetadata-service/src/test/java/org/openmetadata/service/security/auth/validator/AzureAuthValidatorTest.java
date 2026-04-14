@@ -45,20 +45,17 @@ public class AzureAuthValidatorTest {
 
   @Test
   void testValidateAzureConfiguration_InvalidClientIdFormat() {
-    // Test with valid authority but missing publicKeyUrls
+    // Public client IDs are GUIDs in Azure AD, so malformed IDs should fail locally.
     authConfig.setAuthority("https://login.microsoftonline.com/common");
     authConfig.setClientId("invalid-client-id");
     authConfig.setClientType(ClientType.PUBLIC);
-    // Not setting publicKeyUrls to trigger error
 
     FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
-    // Will fail on publicKeyUrls check first
     assertEquals("failed", result != null ? "failed" : "success");
     if (result != null) {
-      assertEquals("authenticationConfiguration.publicKeyUrls", result.getField());
-      assertTrue(
-          result.getError().contains("Public key") || result.getError().contains("public key"));
+      assertEquals("authenticationConfiguration.clientId", result.getField());
+      assertTrue(result.getError().contains("valid GUID"));
     }
   }
 

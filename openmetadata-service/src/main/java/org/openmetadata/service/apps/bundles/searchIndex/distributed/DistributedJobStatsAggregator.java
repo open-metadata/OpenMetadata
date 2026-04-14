@@ -251,6 +251,25 @@ public class DistributedJobStatsAggregator {
     }
   }
 
+  private Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> fetchVectorStatsByEntity(
+      SearchIndexJob job) {
+    try {
+      return coordinator
+          .getCollectionDAO()
+          .searchIndexServerStatsDAO()
+          .getStatsByEntityType(job.getId().toString())
+          .stream()
+          .collect(
+              java.util.stream.Collectors.toMap(
+                  CollectionDAO.SearchIndexServerStatsDAO.EntityStats::entityType,
+                  e -> e,
+                  (a, b) -> a));
+    } catch (Exception e) {
+      LOG.debug("Could not fetch per-entity vector stats for job {}", job.getId(), e);
+      return java.util.Collections.emptyMap();
+    }
+  }
+
   /**
    * Notify the progress listener about job status and progress.
    *
@@ -332,6 +351,9 @@ public class DistributedJobStatsAggregator {
     jobStats.setFailedRecords(safeToInt(job.getFailedRecords()));
     stats.setJobStats(jobStats);
 
+    Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> vectorByEntity =
+        fetchVectorStatsByEntity(job);
+
     EntityStats entityStats = new EntityStats();
     if (job.getEntityStats() != null) {
       for (Map.Entry<String, SearchIndexJob.EntityTypeStats> entry :
@@ -341,6 +363,14 @@ public class DistributedJobStatsAggregator {
         stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
         stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
         stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
+
+        CollectionDAO.SearchIndexServerStatsDAO.EntityStats vectorEntityStats =
+            vectorByEntity.get(entry.getKey());
+        if (vectorEntityStats != null) {
+          stepStats.setVectorSuccessRecords(safeToInt(vectorEntityStats.vectorSuccess()));
+          stepStats.setVectorFailedRecords(safeToInt(vectorEntityStats.vectorFailed()));
+        }
+
         entityStats.getAdditionalProperties().put(entry.getKey(), stepStats);
       }
     }

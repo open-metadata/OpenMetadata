@@ -483,10 +483,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       response
           .result()
-          .forEach(
-              (index, aliasMetadata) -> {
-                aliases.addAll(aliasMetadata.aliases().keySet());
-              });
+          .forEach((index, aliasMetadata) -> aliases.addAll(aliasMetadata.aliases().keySet()));
 
       LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
     } catch (Exception e) {

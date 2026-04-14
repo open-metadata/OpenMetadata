@@ -13,16 +13,15 @@
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
-import { performAdminLogin } from '../../utils/admin';
 import {
-  ADD_TEST_CASE_SELECTION_CARD,
   addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
   addTestCaseListFilterByStatusInAddTestCasesDialog,
   addTestCaseListFilterByTableInAddTestCasesDialog,
   addTestCaseListFilterByTestTypeInAddTestCasesDialog,
   addTestCaseListResetFiltersInAddTestCasesDialog,
-  addTestCaseListToggleSelectAllInAddTestCasesDialog,
+  ADD_TEST_CASE_SELECTION_CARD,
 } from '../../utils/addTestCaseList';
+import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   redirectToHomePage,
@@ -152,7 +151,21 @@ test(
     });
 
     await test.step('Select all then unselect all test cases in modal', async () => {
-      await addTestCaseListToggleSelectAllInAddTestCasesDialog(page);
+      const dialog = page.getByRole('dialog', ADD_TEST_CASES_DIALOG);
+      const selectAllCheckbox = dialog.getByTestId('select-all-test-cases');
+      const firstTestCaseCheckbox = dialog
+        .locator('[data-testid^="checkbox-"]')
+        .first();
+
+      await expect(
+        dialog.getByTestId('select-all-total-test-cases')
+      ).not.toBeVisible();
+
+      await selectAllCheckbox.click();
+      await expect(firstTestCaseCheckbox).toBeChecked();
+
+      await selectAllCheckbox.click();
+      await expect(firstTestCaseCheckbox).not.toBeChecked();
     });
 
     await test.step('Select test case in modal then cancel', async () => {

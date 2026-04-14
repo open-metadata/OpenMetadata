@@ -239,7 +239,7 @@ public class DataAssetsWorkflow {
           searchInterface.getEntityAttributeFields(
               dataInsightsSearchConfiguration, source.getEntityType()));
 
-      processSource(source, Collections.unmodifiableMap(new HashMap<>(contextData)), budget);
+      processSource(source, Map.copyOf(contextData), budget);
     }
   }
 

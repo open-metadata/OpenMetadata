@@ -26,9 +26,9 @@ import {
   addCustomPropertiesForEntity,
   setValueForProperty,
 } from '../../utils/customProperty';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { setSliderValue } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

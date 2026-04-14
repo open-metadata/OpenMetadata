@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import React from 'react';
 import { EntityTabs } from '../../enums/entity.enum';
 import glossaryTermClassBase, {
   GlossaryTermClassBase,
@@ -28,7 +29,25 @@ jest.mock('../../utils/CustomizePage/CustomizePageUtils', () => ({
   getTabLabelFromId: jest.fn((tab: string) => tab),
 }));
 
-const mockProps = {} as GlossaryTermDetailPageTabProps;
+jest.mock(
+  '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component',
+  () => ({ __esModule: true, default: () => null })
+);
+
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+jest.mock('../i18next/LocalUtil', () => ({
+  __esModule: true,
+  default: { t: jest.fn((key: string) => key) },
+}));
+
+const mockProps = {
+  glossaryTerm: { fullyQualifiedName: 'Finance.Revenue' },
+  isVersionView: false,
+} as unknown as GlossaryTermDetailPageTabProps;
 
 describe('GlossaryTermClassBase', () => {
   let instance: GlossaryTermClassBase;
@@ -40,18 +59,90 @@ describe('GlossaryTermClassBase', () => {
 
   describe('getGlossaryTermDetailPageTabs', () => {
     it('delegates to getGlossaryTermDetailPageTabs util', () => {
-      const result = instance.getGlossaryTermDetailPageTabs(mockProps);
+      instance.getGlossaryTermDetailPageTabs(mockProps);
 
       expect(getGlossaryTermDetailPageTabs).toHaveBeenCalledWith(mockProps);
-      expect(result).toEqual([{ key: 'mock-tab' }]);
+    });
+  });
+
+  describe('getGlossaryTermDetailPageTabs — DATA_OBSERVABILITY tab', () => {
+    it('appends DATA_OBSERVABILITY tab in non-version view', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabs(mockProps);
+      const dqTab = tabs.find((t) => t.key === EntityTabs.DATA_OBSERVABILITY);
+
+      expect(dqTab).toBeDefined();
+    });
+
+    it('DATA_OBSERVABILITY tab is NOT present in version view', () => {
+      const props = { ...mockProps, isVersionView: true };
+      const tabs = instance.getGlossaryTermDetailPageTabs(props);
+      const dqTab = tabs.find((t) => t.key === EntityTabs.DATA_OBSERVABILITY);
+
+      expect(dqTab).toBeUndefined();
+    });
+
+    it('DQ tab passes isGovernanceView as true', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabs(mockProps);
+      const dqTab = tabs.find((t) => t.key === EntityTabs.DATA_OBSERVABILITY);
+      const childProps = (
+        dqTab?.children as React.ReactElement<{
+          isGovernanceView: boolean;
+          hiddenFilters: string[];
+          initialFilters?: Record<string, string[]>;
+        }>
+      ).props;
+
+      expect(childProps.isGovernanceView).toBe(true);
+    });
+
+    it('DQ tab passes glossaryTerm.fqn as initialFilters.glossaryTerms', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabs(mockProps);
+      const dqTab = tabs.find((t) => t.key === EntityTabs.DATA_OBSERVABILITY);
+      const childProps = (
+        dqTab?.children as React.ReactElement<{
+          isGovernanceView: boolean;
+          hiddenFilters: string[];
+          initialFilters?: Record<string, string[]>;
+        }>
+      ).props;
+
+      expect(childProps.initialFilters?.glossaryTerms).toEqual([
+        'Finance.Revenue',
+      ]);
+    });
+
+    it('DQ tab hides glossaryTerms filter', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabs(mockProps);
+      const dqTab = tabs.find((t) => t.key === EntityTabs.DATA_OBSERVABILITY);
+      const childProps = (
+        dqTab?.children as React.ReactElement<{
+          isGovernanceView: boolean;
+          hiddenFilters: string[];
+          initialFilters?: Record<string, string[]>;
+        }>
+      ).props;
+
+      expect(childProps.hiddenFilters).toContain('glossaryTerms');
+    });
+
+    it('DQ tab passes className as data-quality-governance-tab-wrapper', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabs(mockProps);
+      const dqTab = tabs.find((t) => t.key === EntityTabs.DATA_OBSERVABILITY);
+      const childProps = (
+        dqTab?.children as React.ReactElement<{
+          className?: string;
+        }>
+      ).props;
+
+      expect(childProps.className).toBe('data-quality-governance-tab-wrapper');
     });
   });
 
   describe('getGlossaryTermDetailPageTabsIds', () => {
-    it('returns all 5 expected tab IDs', () => {
+    it('returns all 6 expected tab IDs', () => {
       const tabs = instance.getGlossaryTermDetailPageTabsIds();
 
-      expect(tabs).toHaveLength(5);
+      expect(tabs).toHaveLength(6);
     });
 
     it('includes OVERVIEW tab', () => {
@@ -114,7 +205,30 @@ describe('GlossaryTermClassBase', () => {
         EntityTabs.ASSETS,
         EntityTabs.ACTIVITY_FEED,
         EntityTabs.CUSTOM_PROPERTIES,
+        EntityTabs.DATA_OBSERVABILITY,
       ]);
+    });
+
+    it('includes DATA_OBSERVABILITY tab ID', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabsIds();
+
+      expect(
+        tabs.find((t) => t.id === EntityTabs.DATA_OBSERVABILITY)
+      ).toBeDefined();
+    });
+
+    it('DATA_OBSERVABILITY tab is not editable', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabsIds();
+      const dqTab = tabs.find((t) => t.id === EntityTabs.DATA_OBSERVABILITY);
+
+      expect(dqTab?.editable).toBe(false);
+    });
+
+    it('DATA_OBSERVABILITY tab has empty layout', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabsIds();
+      const dqTab = tabs.find((t) => t.id === EntityTabs.DATA_OBSERVABILITY);
+
+      expect(dqTab?.layout).toEqual([]);
     });
   });
 

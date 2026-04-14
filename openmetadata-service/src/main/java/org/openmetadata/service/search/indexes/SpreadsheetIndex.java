@@ -30,8 +30,7 @@ public class SpreadsheetIndex implements SearchIndex {
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SPREADSHEET, spreadsheet));
-    List<TagLabel> tags = new ArrayList<>();
-    tags.addAll(parseTags.getTags());
+    List<TagLabel> tags = new ArrayList<>(parseTags.getTags());
 
     Map<String, Object> commonAttributes = getCommonAttributesMap(spreadsheet, Entity.SPREADSHEET);
     doc.putAll(commonAttributes);

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -85,8 +85,8 @@ import {
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { submitTestCaseForm } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -122,7 +122,7 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Data Contracts', () => {
   const user = new UserClass();
   test.slow(true);
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -449,20 +449,7 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
             'Pipeline will only be triggered manually.'
           );
 
-          const pipelineResponse = page.waitForResponse(
-            '/api/v1/services/ingestionPipelines'
-          );
-          const deploy = page.waitForResponse(
-            '/api/v1/services/ingestionPipelines/deploy/*'
-          );
-
-          const testCaseResponse = page.waitForResponse(
-            '/api/v1/dataQuality/testCases'
-          );
-          await page.click('[data-testid="create-btn"]');
-          await testCaseResponse;
-          await pipelineResponse;
-          await deploy;
+          await submitTestCaseForm(page);
 
           await expect(page.getByRole('dialog')).not.toBeVisible();
 
@@ -488,19 +475,12 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           if (
             typeof response === 'object' &&
             response !== null &&
-            'latestResult' in response
+            'id' in response
           ) {
-            const {
-              id: contractId,
-              latestResult: { resultId: latestResultId },
-            } = response;
+            const { id: contractId } = response as { id: string };
 
-            if (contractId && latestResultId) {
-              await waitForDataContractExecution(
-                page,
-                contractId,
-                latestResultId
-              );
+            if (contractId) {
+              await waitForDataContractExecution(page, contractId);
             }
           }
 

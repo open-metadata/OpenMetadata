@@ -99,8 +99,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     if (!java.util.Objects.equals(existing.getContexts(), seed.getContexts())) return true;
     if (!java.util.Objects.equals(existing.getDifficulty(), seed.getDifficulty())) return true;
     if (!java.util.Objects.equals(existing.getSource(), seed.getSource())) return true;
-    if (!java.util.Objects.equals(existing.getStatus(), seed.getStatus())) return true;
-    return false;
+    return !java.util.Objects.equals(existing.getStatus(), seed.getStatus());
   }
 
   @Override
@@ -408,39 +407,28 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "categories",
-          () -> {
-            recordChange("categories", original.getCategories(), updated.getCategories());
-          });
+      compareAndUpdate("categories", this::run);
       compareAndUpdate(
           "contexts",
-          () -> {
-            recordChange("contexts", original.getContexts(), updated.getContexts(), true);
-          });
+          () -> recordChange("contexts", original.getContexts(), updated.getContexts(), true));
       compareAndUpdate(
           "difficulty",
-          () -> {
-            recordChange("difficulty", original.getDifficulty(), updated.getDifficulty());
-          });
+          () -> recordChange("difficulty", original.getDifficulty(), updated.getDifficulty()));
       compareAndUpdate(
-          "source",
-          () -> {
-            recordChange("source", original.getSource(), updated.getSource(), true);
-          });
+          "source", () -> recordChange("source", original.getSource(), updated.getSource(), true));
       compareAndUpdate(
           "estimatedDuration",
-          () -> {
-            recordChange(
-                "estimatedDuration",
-                original.getEstimatedDuration(),
-                updated.getEstimatedDuration());
-          });
+          () ->
+              recordChange(
+                  "estimatedDuration",
+                  original.getEstimatedDuration(),
+                  updated.getEstimatedDuration()));
       compareAndUpdate(
-          "status",
-          () -> {
-            recordChange("status", original.getStatus(), updated.getStatus());
-          });
+          "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
+    }
+
+    private void run() {
+      recordChange("categories", original.getCategories(), updated.getCategories());
     }
   }
 }

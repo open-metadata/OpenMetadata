@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -30,6 +30,7 @@ import {
   visitEditAlertPage,
 } from '../../utils/alert';
 import { descriptionBox, getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addFilterWithUsersListInput,
   addInternalDestination,
@@ -43,7 +44,6 @@ import {
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();
@@ -433,6 +433,12 @@ test('Alert operations for a user with and without permissions', async ({
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
+
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);

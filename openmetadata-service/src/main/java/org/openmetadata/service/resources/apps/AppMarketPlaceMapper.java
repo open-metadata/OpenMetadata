@@ -14,7 +14,7 @@ import org.openmetadata.service.mapper.EntityMapper;
 
 public class AppMarketPlaceMapper
     implements EntityMapper<AppMarketPlaceDefinition, CreateAppMarketPlaceDefinitionReq> {
-  private PipelineServiceClientInterface pipelineServiceClient;
+  private final PipelineServiceClientInterface pipelineServiceClient;
 
   public AppMarketPlaceMapper(PipelineServiceClientInterface pipelineServiceClient) {
     this.pipelineServiceClient = pipelineServiceClient;

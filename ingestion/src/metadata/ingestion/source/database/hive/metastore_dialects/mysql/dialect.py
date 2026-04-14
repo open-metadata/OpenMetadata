@@ -99,7 +99,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
 
     def get_table_names(self, connection, schema=None, **kw):
         query = self._get_table_names_base_query(schema=schema)
-        query += """ WHERE TBL_TYPE != 'VIRTUAL_VIEW'"""
+        query += """ WHERE (TBL_TYPE != 'VIRTUAL_VIEW' OR TBL_TYPE IS NULL)"""
         table_names = [row[0] for row in connection.execute(text(query))]
         logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
         return table_names

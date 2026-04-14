@@ -91,8 +91,7 @@ def create_service_request(mysql_container):
                 "config": {
                     "username": mysql_container.username,
                     "authType": {"password": mysql_container.password},
-                    "hostPort": "localhost:"
-                    + mysql_container.get_exposed_port(mysql_container.port),
+                    "hostPort": f"localhost:{mysql_container.get_exposed_port(mysql_container.port)}",
                     "databaseSchema": mysql_container.dbname,
                 }
             },

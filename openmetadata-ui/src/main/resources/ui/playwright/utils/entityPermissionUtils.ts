@@ -223,6 +223,22 @@ export const testCommonOperations = async (
     await checkElementVisibility(testUserPage, config, effect);
   }
 
+  if (effect === 'deny') {
+    const tierLocator = testUserPage.getByTestId('Tier');
+    if (await tierLocator.isVisible()) {
+      await tierLocator.click();
+      await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+    }
+
+    const certLocator = testUserPage.getByTestId('certification-value');
+    if (await certLocator.isVisible()) {
+      await certLocator.click();
+      await expect(
+        testUserPage.getByTestId('certification-cards')
+      ).not.toBeVisible();
+    }
+  }
+
   // Check custom properties
   const customPropertiesLocator = testUserPage.locator(
     '[data-testid="custom_properties"]'

@@ -30,7 +30,7 @@ public class MigrationUtil {
       dataInsightSystemChartRepository.getDao().update(chart);
     } catch (Exception ex) {
       LOG.warn(ex.toString());
-      LOG.warn(String.format("Error updating chart %s ", chart));
+      LOG.warn("Error updating chart {} ", chart);
     }
   }
 
@@ -83,8 +83,7 @@ public class MigrationUtil {
         workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
       } catch (Exception ex) {
         LOG.warn(ex.toString());
-        LOG.warn(
-            String.format("Error updating workflow definition %s", workflowDefinition.getName()));
+        LOG.warn("Error updating workflow definition {}", workflowDefinition.getName());
       }
     }
   }

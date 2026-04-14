@@ -128,18 +128,13 @@ public class MultiDomainHasDomainIT {
                             .pollInterval(Duration.ofSeconds(2))
                             .untilAsserted(
                                 () -> {
-                                  String searchResponse =
-                                      testUserClient
-                                          .search()
-                                          .query("*")
-                                          .index("table_search_index")
-                                          .size(50)
-                                          .execute();
-                                  assertTrue(
-                                      searchResponse.contains(domain1TableId),
+                                  assertSearchReturnsTable(
+                                      testUserClient,
+                                      domain1TableId,
                                       "Search should return tableInDomain1 for multi-domain user");
-                                  assertTrue(
-                                      searchResponse.contains(domain2TableId),
+                                  assertSearchReturnsTable(
+                                      testUserClient,
+                                      domain2TableId,
                                       "Search should return tableInDomain2 for multi-domain user");
                                 });
 
@@ -221,15 +216,9 @@ public class MultiDomainHasDomainIT {
                         .pollInterval(Duration.ofSeconds(2))
                         .untilAsserted(
                             () -> {
-                              String searchResponse =
-                                  testUserClient
-                                      .search()
-                                      .query("*")
-                                      .index("table_search_index")
-                                      .size(50)
-                                      .execute();
-                              assertTrue(
-                                  searchResponse.contains(domainTableId),
+                              assertSearchReturnsTable(
+                                  testUserClient,
+                                  domainTableId,
                                   "Search should return tableInDomain for single-domain user");
                             });
 
@@ -305,15 +294,9 @@ public class MultiDomainHasDomainIT {
                         .pollInterval(Duration.ofSeconds(2))
                         .untilAsserted(
                             () -> {
-                              String searchResponse =
-                                  testUserClient
-                                      .search()
-                                      .query("*")
-                                      .index("table_search_index")
-                                      .size(50)
-                                      .execute();
-                              assertTrue(
-                                  searchResponse.contains(noDomainTableId),
+                              assertSearchReturnsTable(
+                                  testUserClient,
+                                  noDomainTableId,
                                   "User with domains should see assets that have no domain assigned");
                             });
 
@@ -464,5 +447,14 @@ public class MultiDomainHasDomainIT {
               null,
               RequestOptions.builder().build());
     }
+  }
+
+  private void assertSearchReturnsTable(
+      OpenMetadataClient client, String tableId, String failureMessage) throws Exception {
+    String searchResponse =
+        client.search().query("id:" + tableId).index("table_search_index").size(1).execute();
+    assertTrue(
+        searchResponse.contains("\"id\":\"" + tableId + "\""),
+        failureMessage + ". Response: " + searchResponse);
   }
 }

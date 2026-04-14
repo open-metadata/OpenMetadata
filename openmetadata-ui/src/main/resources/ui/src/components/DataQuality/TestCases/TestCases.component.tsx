@@ -98,7 +98,8 @@ export const TestCases = () => {
   const { permissions } = usePermissionProvider();
   const { isTestCaseSummaryLoading, testCaseSummary } =
     useDataQualityProvider();
-  const { testCase: testCasePermission } = permissions;
+  const { testCase: testCasePermission, testSuite: testSuitePermission } =
+    permissions;
   const { showModal } = useEntityExportModalProvider();
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -740,6 +741,7 @@ export const TestCases = () => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          enableBulkActions={Boolean(testSuitePermission?.Create)}
           fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}

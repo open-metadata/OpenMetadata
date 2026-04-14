@@ -1773,6 +1773,7 @@ class SampleDataSource(
                 replicationFactor=topic["replicationFactor"],
                 maximumMessageSize=topic["maximumMessageSize"],
                 cleanupPolicies=topic["cleanupPolicies"],
+                tags=topic.get("tags", []),
                 service=self.kafka_service.fullyQualifiedName,
             )
 
@@ -1856,6 +1857,7 @@ class SampleDataSource(
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
                     sourceUrl=chart["sourceUrl"],
+                    tags=chart.get("tags", []),
                     service=self.looker_service.fullyQualifiedName,
                 )
                 yield Either(right=chart_ev)
@@ -1977,6 +1979,7 @@ class SampleDataSource(
                 description=dashboard["description"],
                 sourceUrl=dashboard["sourceUrl"],
                 charts=dashboard["charts"],
+                tags=dashboard.get("tags", []),
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
             )
