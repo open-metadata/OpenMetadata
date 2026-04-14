@@ -225,37 +225,33 @@ export const OIDC_PROVIDER_OPTIONS: OidcProviderOption[] = [
     key: AuthProvider.Azure,
     label: 'Azure AD',
     icon: AzureIcon,
-    discoveryUriTemplate:
-      'https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration',
+    discoveryUriTemplate: '',
     helpText:
-      'Get credentials from Azure Portal → App registrations → Your app → Certificates & secrets',
+      'Get credentials from Azure Portal → App registrations → Your app → Certificates & secrets. Discovery URI format: https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration',
   },
   {
     key: AuthProvider.Okta,
     label: 'Okta',
     icon: OktaIcon,
-    discoveryUriTemplate:
-      'https://{your-domain}.okta.com/.well-known/openid-configuration',
+    discoveryUriTemplate: '',
     helpText:
-      'Get credentials from Okta Admin Console → Applications → Your app → Client Credentials',
+      'Get credentials from Okta Admin Console → Applications → Your app → Client Credentials. Discovery URI format: https://{your-domain}.okta.com/.well-known/openid-configuration',
   },
   {
     key: AuthProvider.Auth0,
     label: 'Auth0',
     icon: Auth0Icon,
-    discoveryUriTemplate:
-      'https://{your-domain}.auth0.com/.well-known/openid-configuration',
+    discoveryUriTemplate: '',
     helpText:
-      'Get credentials from Auth0 Dashboard → Applications → Your app → Settings',
+      'Get credentials from Auth0 Dashboard → Applications → Your app → Settings. Discovery URI format: https://{your-domain}.auth0.com/.well-known/openid-configuration',
   },
   {
     key: AuthProvider.AwsCognito,
     label: 'AWS Cognito',
     icon: CognitoIcon,
-    discoveryUriTemplate:
-      'https://cognito-idp.{region}.amazonaws.com/{pool-id}/.well-known/openid-configuration',
+    discoveryUriTemplate: '',
     helpText:
-      'Get credentials from AWS Console → Cognito → User Pools → Your pool → App integration',
+      'Get credentials from AWS Console → Cognito → User Pools → Your pool → App integration. Discovery URI format: https://cognito-idp.{region}.amazonaws.com/{pool-id}/.well-known/openid-configuration',
   },
   {
     key: AuthProvider.CustomOidc,

@@ -14,19 +14,26 @@
 import { Button, Typography } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { validateSecurityConfiguration } from '../../../rest/securityConfigAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { TestLoginFormData, TestLoginResult } from './TestLogin.interface';
+import {
+  SecurityConfigForValidation,
+  TestLoginFormData,
+  TestLoginResult,
+} from './TestLogin.interface';
 
 interface TestLoginButtonProps {
   onSuccess: (result: TestLoginResult) => void;
   disabled?: boolean;
   formData?: TestLoginFormData;
+  securityConfig?: SecurityConfigForValidation;
 }
 
 const TestLoginButton: React.FC<TestLoginButtonProps> = ({
   onSuccess,
   disabled = false,
   formData,
+  securityConfig,
 }) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +127,41 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       return;
     }
 
+    // Validate configuration before opening popup
+    if (securityConfig) {
+      try {
+        const response = await validateSecurityConfiguration(
+          securityConfig as never,
+          'testLogin'
+        );
+        const validationResult = response.data ?? response;
+
+        if (
+          validationResult.status === 'FAILED' &&
+          validationResult.errors?.length
+        ) {
+          const errorMsg = validationResult.errors
+            .map(
+              (e: { field: string; error: string }) =>
+                `${e.field}: ${e.error}`
+            )
+            .join(', ');
+          setIsLoading(false);
+          setStatus('error');
+          setErrorMessage(errorMsg);
+          showErrorToast(errorMsg);
+
+          return;
+        }
+      } catch {
+        setIsLoading(false);
+        setStatus('error');
+        setErrorMessage(t('message.test-login-failed'));
+
+        return;
+      }
+    }
+
     const callbackUrl =
       formData?.oidcConfiguration?.callbackUrl ??
       `${window.location.origin}/callback`;
@@ -180,7 +222,7 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
         }, 1000);
       }
     }, 500);
-  }, [formData, isLoading, status, t]);
+  }, [formData, securityConfig, isLoading, status, t]);
 
   return (
     <div className="d-flex flex-col gap-2">
