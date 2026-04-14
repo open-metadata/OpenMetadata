@@ -15,7 +15,7 @@ public record StorageServiceIndex(StorageService storageService) implements Sear
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(storageService, Entity.STORAGE_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(storageService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, storageService.getEntityReference());
     return doc;
   }
 }

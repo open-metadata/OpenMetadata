@@ -15,7 +15,7 @@ public record MessagingServiceIndex(MessagingService messagingService) implement
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(messagingService, Entity.MESSAGING_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(messagingService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, messagingService.getEntityReference());
     return doc;
   }
 }

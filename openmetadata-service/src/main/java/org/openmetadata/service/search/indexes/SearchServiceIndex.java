@@ -15,7 +15,7 @@ public record SearchServiceIndex(SearchService searchService) implements SearchI
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(searchService, Entity.SEARCH_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(searchService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, searchService.getEntityReference());
     return doc;
   }
 }

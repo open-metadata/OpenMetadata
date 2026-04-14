@@ -56,7 +56,7 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
+    SearchIndex.populateLineageData(doc, dashboardDataModel.getEntityReference());
     doc.put("domains", getEntitiesWithDisplayName(dashboardDataModel.getDomains()));
     return doc;
   }

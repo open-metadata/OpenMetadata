@@ -14,7 +14,7 @@ public record LlmServiceIndex(LLMService llmService) implements SearchIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(llmService, Entity.LLM_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(llmService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, llmService.getEntityReference());
     return doc;
   }
 }

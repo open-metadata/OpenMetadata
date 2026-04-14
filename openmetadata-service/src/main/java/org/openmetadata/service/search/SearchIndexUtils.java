@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +22,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -43,6 +45,39 @@ public final class SearchIndexUtils {
       List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
+
+  /**
+   * Deduplicates identical SQL queries across lineage edges in-place.
+   *
+   * <p>Each unique SQL text is assigned a sequential integer key ("1", "2", …). Every edge that
+   * carries that SQL has its {@code sqlQuery} cleared and {@code sqlQueryKey} set to the shared
+   * key. The returned map contains {@code key → sqlText} for all unique SQLs found.
+   *
+   * <p>Edges with no SQL are left untouched.
+   */
+  public static Map<String, String> deduplicateSqlAcrossEdges(List<EsLineageData> edges) {
+    Map<String, String> sqlTextToKey = new LinkedHashMap<>();
+    Map<String, String> sqlQueries = new LinkedHashMap<>();
+    int[] counter = {0};
+
+    for (EsLineageData edge : edges) {
+      String sql = edge.getSqlQuery();
+      if (sql != null && !sql.isEmpty()) {
+        String key =
+            sqlTextToKey.computeIfAbsent(
+                sql,
+                k -> {
+                  String newKey = String.valueOf(++counter[0]);
+                  sqlQueries.put(newKey, sql);
+                  return newKey;
+                });
+        edge.setSqlQueryKey(key);
+        edge.setSqlQuery(null);
+      }
+    }
+
+    return sqlQueries;
+  }
 
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {

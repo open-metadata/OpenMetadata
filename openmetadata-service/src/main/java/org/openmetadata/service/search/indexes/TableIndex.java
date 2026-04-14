@@ -78,7 +78,7 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
     doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
-    doc.put("upstreamLineage", SearchIndex.getLineageData(table.getEntityReference()));
+    SearchIndex.populateLineageData(doc, table.getEntityReference());
     doc.put("processedLineage", table.getProcessedLineage());
     doc.put(
         "upstreamEntityRelationship", SearchIndex.populateUpstreamEntityRelationshipData(table));

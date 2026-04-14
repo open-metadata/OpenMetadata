@@ -25,7 +25,7 @@ public class AiGovernancePolicyIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(aiGovernancePolicy.getEntityReference()));
+    SearchIndex.populateLineageData(doc, aiGovernancePolicy.getEntityReference());
     return doc;
   }
 }

@@ -26,7 +26,7 @@ public class DashboardIndex implements SearchIndex {
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", dashboard.getServiceType());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboard.getEntityReference()));
+    SearchIndex.populateLineageData(doc, dashboard.getEntityReference());
     doc.put("service", getEntityWithDisplayName(dashboard.getService()));
     return doc;
   }

@@ -24,7 +24,7 @@ public class AiApplicationIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(aiApplication.getEntityReference()));
+    SearchIndex.populateLineageData(doc, aiApplication.getEntityReference());
     return doc;
   }
 }

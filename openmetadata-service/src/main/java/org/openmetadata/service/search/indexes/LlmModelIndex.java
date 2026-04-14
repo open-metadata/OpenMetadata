@@ -23,7 +23,7 @@ public class LlmModelIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(llmModel.getEntityReference()));
+    SearchIndex.populateLineageData(doc, llmModel.getEntityReference());
     if (llmModel.getService() != null) {
       doc.put("service", getEntityWithDisplayName(llmModel.getService()));
     }

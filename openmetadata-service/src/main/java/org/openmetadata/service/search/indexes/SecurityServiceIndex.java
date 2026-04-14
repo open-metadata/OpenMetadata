@@ -39,7 +39,7 @@ public class SecurityServiceIndex implements SearchIndex {
     doc.put("tags", tags);
     doc.put("serviceType", securityService.getServiceType());
     doc.put("entityType", Entity.SECURITY_SERVICE);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(securityService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, securityService.getEntityReference());
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
 

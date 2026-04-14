@@ -25,7 +25,7 @@ public class PromptTemplateIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(promptTemplate.getEntityReference()));
+    SearchIndex.populateLineageData(doc, promptTemplate.getEntityReference());
     return doc;
   }
 }

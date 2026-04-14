@@ -27,7 +27,7 @@ public class PipelineIndex implements SearchIndex {
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", pipeline.getServiceType());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(pipeline.getEntityReference()));
+    SearchIndex.populateLineageData(doc, pipeline.getEntityReference());
     doc.put("service", getEntityWithDisplayName(pipeline.getService()));
     return doc;
   }

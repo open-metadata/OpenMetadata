@@ -23,7 +23,7 @@ public class McpServerIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(mcpServer.getEntityReference()));
+    SearchIndex.populateLineageData(doc, mcpServer.getEntityReference());
     return doc;
   }
 }

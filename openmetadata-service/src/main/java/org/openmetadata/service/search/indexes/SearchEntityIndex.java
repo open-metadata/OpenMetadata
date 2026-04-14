@@ -22,7 +22,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("indexType", searchIndex.getIndexType());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
+    SearchIndex.populateLineageData(doc, searchIndex.getEntityReference());
     return doc;
   }
 

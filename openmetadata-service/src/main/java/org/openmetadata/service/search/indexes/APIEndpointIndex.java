@@ -81,7 +81,7 @@ public class APIEndpointIndex implements SearchIndex {
     doc.put("tags", flattenedTagList);
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
+    SearchIndex.populateLineageData(doc, apiEndpoint.getEntityReference());
     doc.put(
         "requestSchema",
         apiEndpoint.getRequestSchema() != null ? apiEndpoint.getRequestSchema() : null);

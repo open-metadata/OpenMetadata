@@ -23,7 +23,7 @@ public record DomainIndex(Domain domain) implements SearchIndex {
     doc.put("tags", parseTags.getTags());
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(domain.getEntityReference()));
+    SearchIndex.populateLineageData(doc, domain.getEntityReference());
     return doc;
   }
 

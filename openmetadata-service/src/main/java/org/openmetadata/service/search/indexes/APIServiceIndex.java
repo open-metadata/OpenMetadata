@@ -14,7 +14,7 @@ public record APIServiceIndex(org.openmetadata.schema.entity.services.ApiService
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(apiService, Entity.API_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(apiService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, apiService.getEntityReference());
     return doc;
   }
 }

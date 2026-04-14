@@ -27,7 +27,7 @@ public record McpServiceIndex(McpService mcpService) implements SearchIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(mcpService, Entity.MCP_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(mcpService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, mcpService.getEntityReference());
     return doc;
   }
 }

@@ -19,7 +19,7 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));
     doc.put("tags", parseTags.getTags());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
+    SearchIndex.populateLineageData(doc, storedProcedure.getEntityReference());
     doc.put("tier", parseTags.getTierTag());
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());

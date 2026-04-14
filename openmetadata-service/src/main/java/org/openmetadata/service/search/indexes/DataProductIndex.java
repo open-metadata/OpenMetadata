@@ -21,7 +21,7 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dataProduct.getEntityReference()));
+    SearchIndex.populateLineageData(doc, dataProduct.getEntityReference());
     return doc;
   }
 

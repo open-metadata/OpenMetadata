@@ -14,7 +14,7 @@ public record PipelineServiceIndex(PipelineService pipelineService) implements S
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(pipelineService, Entity.PIPELINE_SERVICE);
     doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(pipelineService.getEntityReference()));
+    SearchIndex.populateLineageData(doc, pipelineService.getEntityReference());
     return doc;
   }
 }

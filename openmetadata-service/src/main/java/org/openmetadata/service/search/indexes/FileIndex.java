@@ -51,7 +51,7 @@ public class FileIndex implements SearchIndex {
     doc.put("createdTime", file.getCreatedTime());
     doc.put("modifiedTime", file.getModifiedTime());
     doc.put("lastModifiedBy", getEntityWithDisplayName(file.getLastModifiedBy()));
-    doc.put("upstreamLineage", SearchIndex.getLineageData(file.getEntityReference()));
+    SearchIndex.populateLineageData(doc, file.getEntityReference());
     return doc;
   }
 
