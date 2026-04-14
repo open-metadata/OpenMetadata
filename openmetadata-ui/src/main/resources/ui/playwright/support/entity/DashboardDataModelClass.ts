@@ -217,8 +217,7 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async exists(apiContext: APIRequestContext): Promise<boolean> {
-    const name =
-      this.serviceResponseData?.fullyQualifiedName ?? '';
+    const name = this.serviceResponseData?.fullyQualifiedName ?? '';
     const res = await apiContext.get(
       `/api/v1/services/dashboardServices/name/${encodeURIComponent(name)}`
     );

@@ -212,8 +212,7 @@ export class FileClass extends EntityClass {
   }
 
   async exists(apiContext: APIRequestContext): Promise<boolean> {
-    const name =
-      this.serviceResponseData?.fullyQualifiedName ?? '';
+    const name = this.serviceResponseData?.fullyQualifiedName ?? '';
     const res = await apiContext.get(
       `/api/v1/services/driveServices/name/${encodeURIComponent(name)}`
     );
