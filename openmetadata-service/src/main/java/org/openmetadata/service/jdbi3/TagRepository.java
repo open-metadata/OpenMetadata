@@ -18,6 +18,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
+import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
@@ -28,7 +30,6 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
-import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -84,7 +85,9 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -111,6 +114,19 @@ public class TagRepository extends EntityRepository<Tag> {
     if (searchRepository != null) {
       inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
     }
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_NAME, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_CERTIFICATION, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
+    return descriptors;
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
@@ -286,34 +302,17 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
-    EntityReference classification = tag.getClassification();
-    EntityReference parent = tag.getParent();
-
-    // Parent and Classification are not stored as part of JSON. Build it on the fly based on
-    // relationships
-    tag.withClassification(null).withParent(null);
     store(tag, update);
-    tag.withClassification(classification).withParent(parent);
+  }
+
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("classification", "parent");
   }
 
   @Override
   public void storeEntities(List<Tag> entities) {
-    List<Tag> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Tag tag : entities) {
-      EntityReference classification = tag.getClassification();
-      EntityReference parent = tag.getParent();
-
-      tag.withClassification(null).withParent(null);
-
-      String jsonCopy = gson.toJson(tag);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Tag.class));
-
-      tag.withClassification(classification).withParent(parent);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -603,6 +602,12 @@ public class TagRepository extends EntityRepository<Tag> {
     daoCollection
         .tagUsageDAO()
         .deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
+
+    // Remove this tag from policy rule conditions
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -740,7 +745,7 @@ public class TagRepository extends EntityRepository<Tag> {
     var queryBuilder = new StringBuilder();
     tagFQNs.forEach(
         tagFQN -> {
-          if (queryBuilder.length() > 0) {
+          if (!queryBuilder.isEmpty()) {
             queryBuilder.append(" UNION ALL ");
           }
           var escapedFQN = tagFQN.replace("'", "''");
@@ -887,22 +892,43 @@ public class TagRepository extends EntityRepository<Tag> {
       super(original, updated, operation);
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange(
-          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled", original.getDisabled(), updated.getDisabled());
-      recordChange("recognizers", original.getRecognizers(), updated.getRecognizers(), true);
-      recordChange(
+      compareAndUpdate("mutuallyExclusive", this::run);
+      compareAndUpdate(
+          "disabled",
+          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
+      compareAndUpdate(
+          "recognizers",
+          () ->
+              recordChange(
+                  "recognizers", original.getRecognizers(), updated.getRecognizers(), true));
+      compareAndUpdate(
           "autoClassificationEnabled",
-          original.getAutoClassificationEnabled(),
-          updated.getAutoClassificationEnabled());
-      recordChange(
+          () ->
+              recordChange(
+                  "autoClassificationEnabled",
+                  original.getAutoClassificationEnabled(),
+                  updated.getAutoClassificationEnabled()));
+      compareAndUpdate(
           "autoClassificationPriority",
-          original.getAutoClassificationPriority(),
-          updated.getAutoClassificationPriority());
-      updateNameAndParent(updated);
+          () ->
+              recordChange(
+                  "autoClassificationPriority",
+                  original.getAutoClassificationPriority(),
+                  updated.getAutoClassificationPriority()));
+      compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
     }
 
     /**
@@ -947,6 +973,11 @@ public class TagRepository extends EntityRepository<Tag> {
         }
 
         updateEntityLinks(oldFqn, newFqn, updated);
+
+        PolicyConditionUpdater.updateAllPolicyConditions(
+            condition ->
+                PolicyConditionUpdater.renamePrefixInCondition(
+                    condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
       }
 
       if (classificationChanged) {
@@ -1023,6 +1054,11 @@ public class TagRepository extends EntityRepository<Tag> {
         invalidateTags(tagRecord.getId());
       }
     }
+
+    private void run() {
+      recordChange(
+          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+    }
   }
 
   @Override
@@ -1041,11 +1077,19 @@ public class TagRepository extends EntityRepository<Tag> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Tag goes back to DRAFT.
-    if (EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
+    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
+        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
       try {
         closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+  }
+
+  @Override
+  protected void preDelete(Tag entity, String deletedBy) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
     }
   }
 

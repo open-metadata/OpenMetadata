@@ -15,11 +15,34 @@ import { render, waitFor } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchQuery } from '../../rest/searchAPI';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
 
 const mockParam = {
   tab: GlobalSettingOptions.USERS,
@@ -335,7 +358,7 @@ describe('Test UserListPage component', () => {
             },
           },
         },
-        searchIndex: 'user_search_index',
+        searchIndex: SearchIndex.USER,
         includeDeleted: false,
       });
     });
@@ -368,7 +391,7 @@ describe('Test UserListPage component', () => {
             },
           },
         },
-        searchIndex: 'user_search_index',
+        searchIndex: SearchIndex.USER,
         includeDeleted: false,
       });
     });

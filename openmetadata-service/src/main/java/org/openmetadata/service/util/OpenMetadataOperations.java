@@ -14,11 +14,9 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -57,6 +55,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
@@ -114,6 +113,8 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -174,11 +175,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
+    LOG.info(
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
+            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -207,14 +211,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
         row.add(serverChangeLog.getInstalledOn());
 
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson =
-              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-          for (Map.Entry<String, JsonElement> entry : metricsJson.entrySet()) {
-            if (!columns.contains(entry.getKey())) {
-              columns.add(entry.getKey());
-            }
-            row.add(entry.getValue().toString());
-          }
+          JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
+          metricsJson
+              .fields()
+              .forEachRemaining(
+                  entry -> {
+                    columns.add(entry.getKey());
+                    row.add(entry.getValue().toString());
+                  });
         }
         rows.add(row);
       }
@@ -570,7 +574,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       LOG.info("Reading security configuration from file: {}", configFile);
-      String yamlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+      String yamlContent = Files.readString(file.toPath());
 
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       SecurityConfiguration securityConfig =
@@ -860,9 +864,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getInstance()
-                .getCurrentAuthConfig()
-                .getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -880,7 +882,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(Map.of());
+            .withAppConfiguration(Map.of())
+            .withAllowBotImpersonation(Boolean.TRUE.equals(definition.getAllowBotImpersonation()));
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -993,6 +996,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.error("Auth Provider is Not Basic. Cannot apply Password");
         return 1;
       }
+
+      initOrganization();
 
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
@@ -1985,10 +1990,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Trigger Application
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
-
-    return result;
+    return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
   @SneakyThrows
@@ -2169,7 +2171,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           pipelineRepository.listAll(
               new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
               new ListFilter(Include.NON_DELETED));
-      LOG.debug(String.format("Pipelines %d", pipelines.size()));
+      LOG.debug("Pipelines size {}", pipelines.size());
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
       List<List<String>> pipelineStatuses = new ArrayList<>();
 
@@ -2456,6 +2458,95 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to analyze tables due to ", e);
+      return 1;
+    }
+  }
+
+  /**
+   * Unlike most ops commands (e.g. deploy-pipelines) that delegate to the server API, this command
+   * operates directly on the database. This is intentional: when JWT signing keys have been rotated,
+   * all existing bot tokens — including the ingestion-bot token we'd use to authenticate against the
+   * server — are invalid. We must bypass the server to regenerate tokens in this scenario.
+   */
+  @Command(
+      name = "regenerate-bot-tokens",
+      description =
+          "Regenerates JWT tokens for all bot users. "
+              + "Use this after rotating JWT signing keys or changing the cluster name.")
+  public Integer regenerateBotTokens(
+      @Option(
+              names = {"--expiry"},
+              description =
+                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                      + "Defaults to Unlimited.",
+              defaultValue = "Unlimited")
+          JWTTokenExpiry expiry) {
+    try {
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+
+      JWTTokenGenerator.getInstance()
+          .init(
+              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+
+      initOrganization();
+
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+      List<Bot> bots =
+          botRepository.listAll(
+              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
+
+      List<List<String>> rows = new ArrayList<>();
+
+      for (Bot listedBot : bots) {
+        String botName = listedBot.getName();
+        try {
+          // Fetch individually so that setFields populates the botUser relationship
+          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
+
+          if (bot.getBotUser() == null) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
+            continue;
+          }
+
+          User botUser =
+              userRepository.getByName(
+                  null,
+                  bot.getBotUser().getFullyQualifiedName(),
+                  new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
+
+          if (botUser.getAuthenticationMechanism() == null
+              || botUser.getAuthenticationMechanism().getAuthType()
+                  != AuthenticationMechanism.AuthType.JWT) {
+            rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
+            continue;
+          }
+
+          JWTAuthMechanism newJwtAuth =
+              JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
+          botUser.setAuthenticationMechanism(
+              new AuthenticationMechanism()
+                  .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                  .withConfig(newJwtAuth));
+          UserUtil.addOrUpdateUser(botUser);
+
+          rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
+        } catch (Exception e) {
+          LOG.error("Failed to regenerate token for bot: {}", botName, e);
+          rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
+        }
+      }
+
+      boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
+      printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
+      return hasFailures ? 1 : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to regenerate bot tokens due to ", e);
       return 1;
     }
   }
@@ -2768,7 +2859,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -2841,7 +2936,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS " + tableName);
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {} ", tableName, e);
                   }
                 });
         handle.execute("SET FOREIGN_KEY_CHECKS = 1");
@@ -2856,7 +2951,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   try {
                     handle.execute("DROP TABLE IF EXISTS \"" + tableName + "\" CASCADE");
                   } catch (Exception e) {
-                    LOG.warn("Failed to drop table: " + tableName, e);
+                    LOG.warn("Failed to drop table: {}", tableName, e);
                   }
                 });
       }
@@ -2927,7 +3022,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
           roleRepository.initializeEntity(role);
         }
-        teamRepository.initOrganization();
       } catch (Exception ex) {
         LOG.error("Failed to initialize organization due to ", ex);
         throw new RuntimeException(ex);
@@ -2935,6 +3029,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         rootLogger.setLevel(originalLevel);
       }
     }
+    teamRepository.initOrganization();
   }
 
   public static void printToAsciiTable(
@@ -2959,17 +3054,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
         List<String> row = new ArrayList<>();
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson =
-              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-          Set<String> keys = metricsJson.keySet();
-          columns.addAll(keys);
+          JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
+          metricsJson.fieldNames().forEachRemaining(columns::add);
           row.add(serverChangeLog.getVersion());
           row.add(serverChangeLog.getInstalledOn());
-          row.addAll(
-              metricsJson.entrySet().stream()
-                  .map(Map.Entry::getValue)
-                  .map(JsonElement::toString)
-                  .toList());
+          metricsJson.fields().forEachRemaining(entry -> row.add(entry.getValue().toString()));
           rows.add(row);
         }
       }

@@ -1298,7 +1298,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       assertEquals(1, createdTerm.getRelatedTerms().size());
       assertEquals(
           approvedTerm.getFullyQualifiedName(),
-          createdTerm.getRelatedTerms().getFirst().getFullyQualifiedName());
+          createdTerm.getRelatedTerms().getFirst().getTerm().getFullyQualifiedName());
     }
   }
 

@@ -13,7 +13,6 @@
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@untitledui/icons';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { InternalAxiosRequestConfig } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
@@ -370,39 +369,6 @@ export const iconTooltipDataRender = () => (
   </Tooltip>
 );
 
-export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
-  const domainOptions: ItemType[] = [
-    {
-      label: t('label.all-domain-plural'),
-      key: DEFAULT_DOMAIN_VALUE,
-    },
-  ];
-
-  for (const domain of domains) {
-    domainOptions.push({
-      label: getEntityName(domain),
-      key: domain.fullyQualifiedName ?? '',
-      icon: get(domain, 'parent') ? (
-        <SubDomainIcon
-          color={DE_ACTIVE_COLOR}
-          height={20}
-          name="subdomain"
-          width={20}
-        />
-      ) : (
-        <DomainIcon
-          color={DE_ACTIVE_COLOR}
-          height={20}
-          name="domain"
-          width={20}
-        />
-      ),
-    });
-  }
-
-  return domainOptions;
-};
-
 export const renderDomainLink = (
   domain: EntityReference,
   domainDisplayName: ReactNode,
@@ -754,7 +720,7 @@ export const getDomainIcon = (iconURL?: string) => {
   // Try to render the icon using the utility (handles both URLs and icon names)
   const iconElement = renderIcon(iconURL, {
     size: 24,
-    className: 'domain-icon-url h-6 w-6',
+    className: 'tw:h-6 tw:w-6',
   });
 
   // If we got an icon element, return it

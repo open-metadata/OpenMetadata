@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, useTheme } from '@mui/material';
 import classNames from 'classnames';
 import { reverse } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/type';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
+import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
+import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
 
 interface OwnerUserListProps {
   owners: EntityReference[];
   maxVisibleOwners: number;
-  avatarSize: number;
+  avatarSize: AvatarSize;
   className?: string;
   isCompactView: boolean;
   ownerLabelClassName?: string;
@@ -38,9 +39,7 @@ const OwnerUserList = ({
   ownerLabelClassName,
   maxVisibleOwners,
 }: OwnerUserListProps) => {
-  const theme = useTheme();
   const [showAllOwners, setShowAllOwners] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const { showMoreButton, renderVisibleOwners, remainingOwnersCount } =
     useMemo(() => {
@@ -50,7 +49,7 @@ const OwnerUserList = ({
       const remainingOwnersCount = owners.length - maxVisibleOwners;
 
       return {
-        showMoreButton: remainingOwnersCount > 0 && !showAllOwners,
+        showMoreButton: remainingOwnersCount > 0,
         renderVisibleOwners: isCompactView
           ? visibleOwners
           : reverse(visibleOwners),
@@ -59,40 +58,29 @@ const OwnerUserList = ({
     }, [owners, showAllOwners, maxVisibleOwners]);
 
   return (
-    <Box
-      sx={{
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-      }}>
+    <div className="tw:w-full tw:flex tw:items-center">
       {!isCompactView && (
         <IconUser
+          className={classNames(
+            'tw:text-gray-700 tw:flex-none tw:mr-0.5',
+            AVATAR_SIZE_CLASS_MAP[avatarSize]
+          )}
           data-testid="user-owner-icon"
-          style={{
-            width: avatarSize,
-            height: avatarSize,
-            color: theme.palette.allShades.gray[700],
-            flex: 'none',
-            marginRight: '2px',
-          }}
         />
       )}
 
-      <Box
-        className={classNames('avatar-group', className)}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          position: 'relative',
-          marginLeft: '4px',
-          width: '100%',
-          marginRight: isCompactView ? '8px' : '0',
-          flexDirection: isCompactView ? 'inherit' : 'row-reverse',
-          gap: isCompactView ? '8px' : '0',
-          flexWrap: isCompactView ? 'wrap' : 'initial',
-        }}>
+      <div
+        className={classNames(
+          'avatar-group tw:relative tw:ml-1 tw:w-full',
+          {
+            'tw:mr-2 tw:flex-row tw:gap-2 tw:flex-wrap': isCompactView,
+            'tw:mr-0 tw:flex-row-reverse tw:gap-0 tw:flex-nowrap':
+              !isCompactView,
+          },
+          className
+        )}>
         {renderVisibleOwners.map((owner: EntityReference) => (
-          <Box
+          <div
             className={classNames(
               {
                 'w-max-full': isCompactView,
@@ -107,23 +95,21 @@ const OwnerUserList = ({
               owner={owner}
               ownerDisplayName={ownerDisplayName?.get(owner.name ?? '')}
             />
-          </Box>
+          </div>
         ))}
-      </Box>
+      </div>
 
       {showMoreButton && (
         <OwnerReveal
           avatarSize={isCompactView ? 24 : avatarSize}
           isCompactView={isCompactView}
-          isDropdownOpen={isDropdownOpen}
           owners={owners.slice(maxVisibleOwners)}
           remainingCount={remainingOwnersCount}
-          setIsDropdownOpen={setIsDropdownOpen}
           setShowAllOwners={setShowAllOwners}
           showAllOwners={showAllOwners}
         />
       )}
-    </Box>
+    </div>
   );
 };
 

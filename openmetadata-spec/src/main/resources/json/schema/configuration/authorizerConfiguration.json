@@ -82,6 +82,11 @@
       "description": "Use Roles from Provider",
       "type": "boolean",
       "default": false
+    },
+    "defaultOAuthRole": {
+      "title": "Default OAuth Role",
+      "description": "Default role assigned to new OAuth users during self-signup. If not specified, users will be created without roles.",
+      "type": "string"
     }
   },
   "required": ["className", "containerRequestFilter", "adminPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],

@@ -574,6 +574,11 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.skyscreamer</groupId>
       <artifactId>jsonassert</artifactId>
       <version>1.5.1</version>
@@ -674,15 +679,6 @@
       <groupId>io.socket</groupId>
       <artifactId>engine.io-server</artifactId>
       <version>6.2.1</version>
-    </dependency>
-    <dependency>
-      <groupId>io.modelcontextprotocol.sdk</groupId>
-      <artifactId>mcp-bom</artifactId>
-      <type>pom</type>
-    </dependency>
-    <dependency>
-      <groupId>io.modelcontextprotocol.sdk</groupId>
-      <artifactId>mcp</artifactId>
     </dependency>
     <!-- Jetty EE10 WebSocket dependencies for Jetty 12 / Dropwizard 5.0 -->
     <dependency>
@@ -847,11 +843,6 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
       <version>${resilience4j-ratelimiter.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.platform</groupId>
-      <artifactId>junit-platform-commons</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>info.picocli</groupId>
@@ -1191,6 +1182,18 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <includes combine.self="override">
+            <include>**/Test*.java</include>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+            <include>**/*TestCase.java</include>
+          </includes>
+        </configuration>
       </plugin>
     </plugins>
   </build>

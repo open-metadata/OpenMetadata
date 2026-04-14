@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Toggle } from "../components/base/toggle/toggle";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Toggle } from '../components/base/toggle/toggle';
 
 const meta = {
-  title: "Components/Toggle",
+  title: 'Components/Toggle',
   component: Toggle,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Toggle>;
 
 export default meta;
@@ -27,32 +27,32 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    label: "Enable feature",
-    size: "sm",
+    label: 'Enable feature',
+    size: 'sm',
   },
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Toggle size="sm" label="Small toggle" />
-      <Toggle size="md" label="Medium toggle" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Toggle label="Small toggle" size="sm" />
+      <Toggle label="Medium toggle" size="md" />
     </div>
   ),
 };
 
 export const WithHint: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Toggle
-        size="sm"
-        label="Email notifications"
         hint="Receive updates about your account activity."
+        label="Email notifications"
+        size="sm"
       />
       <Toggle
-        size="md"
-        label="Marketing emails"
         hint="Get updates on new features and promotions."
+        label="Marketing emails"
+        size="md"
       />
     </div>
   ),
@@ -60,38 +60,38 @@ export const WithHint: StoryObj = {
 
 export const DefaultSelected: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Toggle label="Off by default" />
-      <Toggle label="On by default" defaultSelected />
+      <Toggle defaultSelected label="On by default" />
     </div>
   ),
 };
 
 export const Disabled: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Toggle label="Disabled off" isDisabled />
-      <Toggle label="Disabled on" isDisabled defaultSelected />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Toggle isDisabled label="Disabled off" />
+      <Toggle defaultSelected isDisabled label="Disabled on" />
     </div>
   ),
 };
 
 export const Slim: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Toggle size="sm" slim label="Slim small" />
-      <Toggle size="md" slim label="Slim medium" />
-      <Toggle size="sm" slim label="Slim selected" defaultSelected />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Toggle slim label="Slim small" size="sm" />
+      <Toggle slim label="Slim medium" size="md" />
+      <Toggle defaultSelected slim label="Slim selected" size="sm" />
     </div>
   ),
 };
 
 export const WithoutLabel: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", gap: 12 }}>
+    <div style={{ display: 'flex', gap: 12 }}>
       <Toggle size="sm" />
       <Toggle size="md" />
-      <Toggle size="sm" defaultSelected />
+      <Toggle defaultSelected size="sm" />
     </div>
   ),
 };

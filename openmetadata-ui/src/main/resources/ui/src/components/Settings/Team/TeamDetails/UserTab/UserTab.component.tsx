@@ -334,6 +334,7 @@ export const UserTab = ({
           <Space>
             <UserSelectableList
               hasPermission
+              includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip placement="topRight" title={addUserButtonTitle}>
@@ -402,6 +403,7 @@ export const UserTab = ({
                 {users.length > 0 && editUserPermission && (
                   <UserSelectableList
                     hasPermission
+                    includeBot
                     selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}>
                     <Button data-testid="add-new-user" type="primary">

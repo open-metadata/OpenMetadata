@@ -16,7 +16,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 import org.openmetadata.schema.service.configuration.elasticsearch.Openai;
 
 @Slf4j
-public final class OpenAIEmbeddingClient implements EmbeddingClient {
+public final class OpenAIEmbeddingClient extends EmbeddingClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final HttpClient httpClient;
@@ -27,6 +27,7 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
   private final boolean isAzure;
 
   public OpenAIEmbeddingClient(ElasticSearchConfiguration config) {
+    super(resolveMaxConcurrent(config));
     NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
     Openai openaiCfg = nlsCfg.getOpenai();
     if (openaiCfg == null) {
@@ -77,6 +78,19 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
       int dimension,
       String endpoint,
       boolean isAzure) {
+    this(
+        httpClient, apiKey, modelId, dimension, endpoint, isAzure, DEFAULT_MAX_CONCURRENT_REQUESTS);
+  }
+
+  OpenAIEmbeddingClient(
+      HttpClient httpClient,
+      String apiKey,
+      String modelId,
+      int dimension,
+      String endpoint,
+      boolean isAzure,
+      int maxConcurrentRequests) {
+    super(maxConcurrentRequests);
     this.httpClient = httpClient;
     this.apiKey = apiKey;
     this.modelId = modelId;
@@ -105,7 +119,7 @@ public final class OpenAIEmbeddingClient implements EmbeddingClient {
   }
 
   @Override
-  public float[] embed(String text) {
+  protected float[] doEmbed(String text) {
     if (text == null || text.isBlank()) {
       throw new IllegalArgumentException("Input text must not be null or blank");
     }

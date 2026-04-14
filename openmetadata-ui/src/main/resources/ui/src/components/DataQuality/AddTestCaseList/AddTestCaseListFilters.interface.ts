@@ -1,0 +1,28 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
+import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
+
+export interface AddTestCaseListFiltersProps {
+  filterOptions: Record<AddTestCaseListFilterKey, SearchDropdownOption[]>;
+  filterSelectedKeys: Record<AddTestCaseListFilterKey, SearchDropdownOption[]>;
+  filterLoading?: Partial<Record<AddTestCaseListFilterKey, boolean>>;
+  onChange: (
+    values: SearchDropdownOption[],
+    searchKey: AddTestCaseListFilterKey
+  ) => void;
+  onSearch: (searchText: string, searchKey: AddTestCaseListFilterKey) => void;
+  hideTableFilter?: boolean;
+  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
+}

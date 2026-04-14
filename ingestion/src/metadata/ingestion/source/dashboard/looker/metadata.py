@@ -566,6 +566,11 @@ class LookerSource(DashboardServiceSource):
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     project=first_project,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
+                    )
+                    if view.source_file and first_project
+                    else None,
                 )
 
                 yield Either(right=data_model_request)
@@ -669,6 +674,9 @@ class LookerSource(DashboardServiceSource):
                     sql=self._get_explore_sql(model),
                     # In Looker, you need to create Explores and Views within a Project
                     project=model.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/explore/{model.model_name}/{model.name}"
+                    ),
                 )
                 yield Either(right=explore_datamodel)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
@@ -818,6 +826,11 @@ class LookerSource(DashboardServiceSource):
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     # In Looker, you need to create Explores and Views within a Project
                     project=explore.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
+                    )
+                    if view.source_file and explore.project_name
+                    else None,
                 )
                 yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(datamodel_view_name)
@@ -825,12 +838,9 @@ class LookerSource(DashboardServiceSource):
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
-                yield Either(
-                    left=StackTraceError(
-                        name=view_name,
-                        error=f"Cannot find the view [{view_name}]: empty",
-                        stackTrace=traceback.format_exc(),
-                    )
+                logger.warning(
+                    f"Cannot find the view [{view_name}] in the configured repositories. "
+                    "It may be defined in an imported project not listed in 'additionalRepositories'."
                 )
 
     def replace_derived_references(self, sql_query):
@@ -1403,6 +1413,8 @@ class LookerSource(DashboardServiceSource):
         clean_table_name = table_name.lower().split(" as ")[0].strip()
         if dialect == Dialect.BIGQUERY:
             clean_table_name = clean_table_name.strip("`")
+        elif dialect == Dialect.DATABRICKS:
+            clean_table_name = clean_table_name.replace("`", "").strip()
         return clean_table_name
 
     def _resolve_lookml_constants(

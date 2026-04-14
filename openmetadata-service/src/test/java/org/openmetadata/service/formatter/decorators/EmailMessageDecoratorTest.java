@@ -14,13 +14,18 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 class EmailMessageDecoratorTest {
   private EmailMessageDecorator decorator;
@@ -134,5 +139,83 @@ class EmailMessageDecoratorTest {
     String fqn = "orders_EUR_to_USD";
     String encoded = encodeEntityFqnSafe(fqn);
     assertEquals("orders_EUR_to_USD", encoded); // No encoding needed for underscores and letters
+  }
+
+  @Test
+  @DisplayName("Should map outgoing messages into email payloads")
+  void testGetEmailMessageMapsOutgoingMessageFields() {
+    OutgoingMessage outgoingMessage = new OutgoingMessage();
+    outgoingMessage.setUserName("alice");
+    outgoingMessage.setEntityUrl("http://entity");
+    outgoingMessage.setMessages(List.of("Owner changed", "Tag added"));
+
+    EmailMessage emailMessage = decorator.getEmailMessage(outgoingMessage);
+
+    assertEquals("alice", emailMessage.getUserName());
+    assertEquals("alice", emailMessage.getUpdatedBy());
+    assertEquals("http://entity", emailMessage.getEntityUrl());
+    assertEquals(List.of("Owner changed", "Tag added"), emailMessage.getChangeMessage());
+  }
+
+  @Test
+  @DisplayName("Should reject empty outgoing messages and build default test message")
+  void testGetEmailMessageRejectsEmptyMessagesAndBuildsTestMessage() {
+    OutgoingMessage outgoingMessage = new OutgoingMessage();
+    outgoingMessage.setMessages(List.of());
+
+    assertThrows(UnhandledServerException.class, () -> decorator.getEmailMessage(outgoingMessage));
+
+    EmailMessage testMessage = decorator.buildTestMessage();
+    assertEquals("test_user", testMessage.getUserName());
+    assertEquals("system", testMessage.getUpdatedBy());
+    assertEquals("", testMessage.getEntityUrl());
+    assertEquals(1, testMessage.getChangeMessage().size());
+  }
+
+  @Test
+  @DisplayName(
+      "Should delegate entity and thread payload construction through email message mapping")
+  void testBuildEntityAndThreadMessageDelegateToOutgoingMessages() {
+    OutgoingMessage entityOutgoing = new OutgoingMessage();
+    entityOutgoing.setUserName("entity-user");
+    entityOutgoing.setEntityUrl("entity-url");
+    entityOutgoing.setMessages(List.of("entity message"));
+
+    OutgoingMessage threadOutgoing = new OutgoingMessage();
+    threadOutgoing.setUserName("thread-user");
+    threadOutgoing.setEntityUrl("thread-url");
+    threadOutgoing.setMessages(List.of("thread message"));
+
+    TestEmailMessageDecorator testDecorator =
+        new TestEmailMessageDecorator(entityOutgoing, threadOutgoing);
+
+    EmailMessage entityMessage = testDecorator.buildEntityMessage("publisher", new ChangeEvent());
+    EmailMessage threadMessage = testDecorator.buildThreadMessage("publisher", new ChangeEvent());
+
+    assertEquals("entity-user", entityMessage.getUserName());
+    assertEquals(List.of("entity message"), entityMessage.getChangeMessage());
+    assertEquals("thread-user", threadMessage.getUserName());
+    assertEquals(List.of("thread message"), threadMessage.getChangeMessage());
+  }
+
+  private static class TestEmailMessageDecorator extends EmailMessageDecorator {
+    private final OutgoingMessage entityOutgoing;
+    private final OutgoingMessage threadOutgoing;
+
+    private TestEmailMessageDecorator(
+        OutgoingMessage entityOutgoing, OutgoingMessage threadOutgoing) {
+      this.entityOutgoing = entityOutgoing;
+      this.threadOutgoing = threadOutgoing;
+    }
+
+    @Override
+    public OutgoingMessage createEntityMessage(String publisherName, ChangeEvent event) {
+      return entityOutgoing;
+    }
+
+    @Override
+    public OutgoingMessage createThreadMessage(String publisherName, ChangeEvent event) {
+      return threadOutgoing;
+    }
   }
 }

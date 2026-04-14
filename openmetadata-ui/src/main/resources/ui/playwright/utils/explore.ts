@@ -16,6 +16,7 @@ import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { openEntitySummaryPanel } from './entityPanel';
 
 export interface Bucket {
@@ -30,16 +31,12 @@ export const searchAndClickOnOption = async (
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
   // Filtering for tiers is done on client side, so no API call will be triggered
-  if (filter.key === 'tier.tagFQN') {
-    testId = filter.value ?? '';
-  } else {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
-    );
+  const searchRes = page.waitForResponse(
+    `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
+  );
 
-    await page.fill('[data-testid="search-input"]', filter.value ?? '');
-    await searchRes;
-  }
+  await page.fill('[data-testid="search-input"]', filter.value ?? '');
+  await searchRes;
 
   await page.getByTestId(testId).click();
 
@@ -69,10 +66,7 @@ export const selectNullOption = async (
                   ? [
                       {
                         term: {
-                          [filter.key]:
-                            filter.key === 'tier.tagFQN'
-                              ? filter.value
-                              : filter.value.toLowerCase(),
+                          [filter.key]: filter.value.toLowerCase(),
                         },
                       },
                     ]
@@ -94,7 +88,7 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
   await queryRes;
 
   const queryParams = page.url().split('?')[1];
@@ -115,9 +109,12 @@ export const checkCheckboxStatus = async (
   isChecked: boolean
 ) => {
   const checkbox = page.getByTestId(boxId);
-  const isCheckedOnPage = await checkbox.isChecked();
 
-  expect(isCheckedOnPage).toEqual(isChecked);
+  if (isChecked) {
+    await expect(checkbox).toBeChecked();
+  } else {
+    await expect(checkbox).not.toBeChecked();
+  }
 };
 
 export const selectDataAssetFilter = async (
@@ -173,7 +170,7 @@ export const expandServiceInExploreTree = async (
   if (!serviceExpanded) {
     // Check that the service exists in the explore tree
     const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+      '/api/v1/search/query?q=&index=database&from=0&size=0*mysql*'
     );
     await page
       .locator('div')
@@ -302,9 +299,9 @@ export const validateBucketsForIndexAndSort = async (
 };
 
 export const selectSortOrder = async (page: Page, sortOrder: string) => {
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('sorting-dropdown-label').click();
-  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+  await page.getByRole('menuitem', { name: sortOrder }).waitFor({
     state: 'visible',
   });
   const nameFilter = page.waitForResponse(
@@ -322,20 +319,22 @@ export const selectSortOrder = async (page: Page, sortOrder: string) => {
   );
   await page.getByTestId('sort-order-button').click();
   await ascSortOrder;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyEntitiesAreSorted = async (page: Page) => {
   // Wait for search results to be stable after sort
-  await page.waitForSelector('[data-testid="search-results"]', {
+  await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });
-  await page.waitForLoadState('networkidle');
 
-  const entityNames = await page.$$eval(
-    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
-    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
-  );
+  const entityNames = (
+    await page
+      .locator(
+        '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]'
+      )
+      .allTextContents()
+  ).map((name) => name.trim());
 
   // Elasticsearch keyword field with case-insensitive sorting
   const sortedEntityNames = [...entityNames].sort((a, b) => {
@@ -354,19 +353,32 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
   expect(entityNames).toEqual(sortedEntityNames);
 };
 
-export const navigateToExploreAndSelectEntity = async (
-  page: Page,
-  entityName: string,
-  endpoint?: string,
-  fullyQualifiedName?: string
-) => {
+export const navigateToExploreAndSelectEntity = async ({
+  page,
+  entityName,
+  endpoint,
+  fullyQualifiedName,
+  exploreTab,
+}: {
+  page: Page;
+  entityName: string;
+  endpoint?: string;
+  fullyQualifiedName?: string;
+  exploreTab?: string;
+}) => {
   await redirectToExplorePage(page);
 
   await expect(page.locator('[data-testid="loader"]')).toHaveCount(0, {
     timeout: 30000,
   });
 
-  await openEntitySummaryPanel(page, entityName, endpoint, fullyQualifiedName);
+  await openEntitySummaryPanel({
+    page,
+    entityName,
+    endpoint,
+    fullyQualifiedName,
+    exploreTab,
+  });
 };
 
 export const getFlatColumnCountOfTable = (

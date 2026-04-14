@@ -19,6 +19,11 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ReadBundleContext;
+import org.openmetadata.service.resources.filters.ETagRequestFilter;
+import org.openmetadata.service.util.RequestEntityCache;
 
 /**
  * Response filter to clean up ThreadLocal impersonation context after each request. This prevents
@@ -33,5 +38,10 @@ public class ImpersonationCleanupFilter implements ContainerResponseFilter {
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     // Always clear ThreadLocal after request completes (success or failure)
     ImpersonationContext.clear();
+    ETagRequestFilter.clearIfMatchHeader();
+    RequestEntityCache.clear();
+    ReadBundleContext.clear();
+    EntityRepository.clearInheritanceParentCache();
+    Entity.clearRepositoryThreadLocals();
   }
 }

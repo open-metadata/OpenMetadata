@@ -70,6 +70,7 @@ export const useSelectionState = <T extends { id: string }>(
     isIndeterminate,
     handleSelectAll,
     handleSelect,
+    setSelectedEntities,
     clearSelection,
     isSelected,
   };

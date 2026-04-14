@@ -6,6 +6,7 @@ import json
 import uuid
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -47,6 +48,8 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_raw_query,
+    get_manifest_column_name,
+    get_snapshot_effective_schema_and_database,
     validate_custom_property_value,
     validate_date_time_format,
     validate_email_format,
@@ -114,6 +117,8 @@ MOCK_SAMPLE_MANIFEST_VERSIONLESS_BROKEN_EXPOSURES = (
 MOCK_SAMPLE_MANIFEST_NULL_DB = "resources/datasets/manifest_null_db.json"
 
 MOCK_SAMPLE_MANIFEST_TEST_NODE = "resources/datasets/manifest_test_node.json"
+
+MOCK_SAMPLE_MANIFEST_SNAPSHOT = "resources/datasets/manifest_snapshot.json"
 
 EXPECTED_DATA_MODEL_FQNS = [
     "dbt_test.dev.dbt_jaffle.customers",
@@ -628,6 +633,9 @@ class DbtUnitTest(TestCase):
         )
         if hasattr(manifest_node, "column_name"):
             delattr(manifest_node, "column_name")
+        kwargs = getattr(getattr(manifest_node, "test_metadata", None), "kwargs", None)
+        if isinstance(kwargs, dict):
+            kwargs.pop("column_name", None)
         dbt_test = {
             "manifest_node": manifest_node,
             "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
@@ -638,6 +646,71 @@ class DbtUnitTest(TestCase):
         self.assertNotIn("::columns::", result[0])
         self.assertIn(
             "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers>", result[0]
+        )
+
+    def test_dbt_generate_entity_link_column_from_test_metadata_kwargs(self):
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        if hasattr(manifest_node, "column_name"):
+            delattr(manifest_node, "column_name")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            [
+                "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"
+            ],
+            result,
+        )
+
+    def test_get_manifest_column_name(self):
+        self.assertEqual(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "MY_COLUMN"}),
+                )
+            ),
+            "MY_COLUMN",
+        )
+        self.assertEqual(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name="top",
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "kw"}),
+                )
+            ),
+            "top",
+        )
+        self.assertIsNone(get_manifest_column_name(SimpleNamespace(column_name=None)))
+        # SQL expressions in kwargs (e.g. Redshift's || concatenation operator)
+        # must not be used as column identifiers — they contain characters that
+        # are forbidden by the entityLink Pydantic pattern.
+        self.assertIsNone(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(
+                        kwargs={"column_name": "date || '-' || order_id"}
+                    ),
+                )
+            )
+        )
+        # Verify other forbidden chars (<, >) are also filtered
+        self.assertIsNone(
+            get_manifest_column_name(
+                SimpleNamespace(
+                    column_name=None,
+                    test_metadata=SimpleNamespace(kwargs={"column_name": "col<value>"}),
+                )
+            )
         )
 
     def test_dbt_compiled_query(self):
@@ -1165,6 +1238,28 @@ class DbtUnitTest(TestCase):
         self.assertEqual(dbt_meta_tags, expected_tags)
 
     @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_classification_tags_quoted_table_level(self, get_tag_label):
+        """Table-level tags with quoted names containing dots are parsed correctly"""
+        expected_tag = TagLabel(
+            tagFQN='PII."22.8.5.1"',
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_meta = {"openmetadata": {"tags": ['PII."22.8.5.1"']}}
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
+        )
+
+        assert dbt_meta_tags == [expected_tag]
+        call_kwargs = get_tag_label.call_args
+        assert call_kwargs.kwargs["classification_name"] == "PII"
+        assert call_kwargs.kwargs["tag_name"] == '"22.8.5.1"'
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
     def test_dbt_combined_meta_tags(self, get_tag_label):
         """Test processing combined glossary, tier, and classification tags"""
         get_tag_label.side_effect = [
@@ -1208,6 +1303,46 @@ class DbtUnitTest(TestCase):
         # Should have 3 tags: 1 glossary + 1 tier + 1 classification
         self.assertEqual(len(dbt_meta_tags), 3)
 
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_glossary_and_tier_processed_when_include_tags_false(
+        self, get_tag_label
+    ):
+        """Glossary and tier must be ingested even when includeTags=False; only
+        classification tags from openmetadata.tags should be suppressed."""
+        from unittest.mock import patch as _patch
+
+        glossary_label = TagLabel(
+            tagFQN="Test_Glossary.term_one",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Glossary.value,
+        )
+        tier_label = TagLabel(
+            tagFQN="Tier.Tier1",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.side_effect = [glossary_label, tier_label]
+
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Test_Glossary.term_one"],
+                "tier": "Tier.Tier1",
+                "tags": ["PII.Sensitive"],
+            }
+        }
+
+        with _patch.object(self.dbt_source_obj.source_config, "includeTags", False):
+            result = self.dbt_source_obj.process_dbt_meta(
+                manifest_meta=manifest_meta,
+                table_fqn="test_service.test_db.test_schema.test_table",
+            )
+
+        assert len(result) == 2
+        assert glossary_label in result
+        assert tier_label in result
+
     def test_dbt_classification_tags_edge_cases(self):
         """Test edge cases for classification tags processing"""
 
@@ -1238,6 +1373,163 @@ class DbtUnitTest(TestCase):
             table_fqn="test_service.test_db.test_schema.test_table",
         )
         self.assertEqual(dbt_meta_tags, [])
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags(self, get_tag_label):
+        """Test that meta.openmetadata.tags on dbt columns are resolved and applied"""
+        expected_tag = TagLabel(
+            tagFQN="PII.Sensitive",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_column = SimpleNamespace(
+            name="email_address",
+            tags=[],
+            meta={"openmetadata": {"tags": ["PII.Sensitive"]}},
+            description="User email",
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"email_address": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+
+        assert len(columns) == 1
+        assert expected_tag in columns[0].tags
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags_invalid_format(self, get_tag_label):
+        """Tags without a classification separator are silently skipped"""
+        get_tag_label.return_value = None
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ["InvalidTagNoSeparator"]}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+
+        assert len(columns) == 1
+        assert columns[0].tags == []
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_column_meta_classification_tags_quoted(self, get_tag_label):
+        """Quoted tag names containing dots (e.g. PII."22.8.5.1") are parsed correctly"""
+        expected_tag = TagLabel(
+            tagFQN='PII."22.8.5.1"',
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
+        get_tag_label.return_value = expected_tag
+
+        manifest_column = SimpleNamespace(
+            name="ip_col",
+            tags=[],
+            meta={"openmetadata": {"tags": ['PII."22.8.5.1"']}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"ip_col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+
+        assert len(columns) == 1
+        assert expected_tag in columns[0].tags
+        call_kwargs = get_tag_label.call_args
+        assert call_kwargs.kwargs["classification_name"] == "PII"
+        assert call_kwargs.kwargs["tag_name"] == '"22.8.5.1"'
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_process_dbt_meta_bad_tag_does_not_abort_meta(
+        self, mock_fqn, get_tag_label
+    ):
+        """A malformed tag FQN must not prevent glossary terms from being processed"""
+        from antlr4.error.Errors import ParseCancellationException
+
+        mock_fqn.FQN_SEPARATOR = "."
+        mock_fqn.split.side_effect = ParseCancellationException("bad fqn")
+
+        expected_glossary = TagLabel(
+            tagFQN="Glossary.Term1",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Glossary.value,
+        )
+        get_tag_label.return_value = expected_glossary
+
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Glossary.Term1"],
+                "tags": ['malformed."unclosed'],
+            }
+        }
+        result = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta,
+            table_fqn="svc.db.schema.table",
+        )
+        assert expected_glossary in result
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_parse_data_model_columns_bad_tag_does_not_drop_column(self, mock_fqn):
+        """A malformed tag FQN must not cause the entire column to be skipped"""
+        from antlr4.error.Errors import ParseCancellationException
+
+        mock_fqn.FQN_SEPARATOR = "."
+        mock_fqn.split.side_effect = ParseCancellationException("bad fqn")
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ['malformed."unclosed']}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+        assert len(columns) == 1
+        assert columns[0].tags == []
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
+    def test_parse_data_model_columns_skips_split_when_include_tags_false(
+        self, mock_fqn
+    ):
+        """fqn.split must not be called for meta.openmetadata.tags when includeTags=False"""
+        from unittest.mock import patch as _patch
+
+        mock_fqn.FQN_SEPARATOR = "."
+
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"tags": ["PII.Sensitive"]}},
+            description=None,
+            data_type="varchar",
+        )
+        manifest_node = SimpleNamespace(columns={"col": manifest_column})
+
+        with _patch.object(self.dbt_source_obj.source_config, "includeTags", False):
+            columns = self.dbt_source_obj.parse_data_model_columns(
+                manifest_node=manifest_node, catalog_node=None
+            )
+        mock_fqn.split.assert_not_called()
+        assert len(columns) == 1
 
     def test_parse_exposure_node_exposure_absent(self):
         _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)
@@ -1952,6 +2244,79 @@ class DbtUnitTest(TestCase):
                     "dbtSourceProject field should not be None",
                 )
 
+    def test_remove_manifest_non_required_keys_strips_constraint_extra_keys(self):
+        """
+        Regression test: extra keys in constraint objects should be removed from each
+        constraint dict, not from the column dict that contains those constraints.
+        Before the fix, the code iterated over column-level keys and deleted any that
+        weren't in REQUIRED_CONSTRAINT_KEYS, wiping column fields like description,
+        meta, and the constraints list itself — causing false version bumps on every
+        subsequent dbt ingestion run.
+        """
+        manifest = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {
+                "model.project.orders": {
+                    "name": "orders",
+                    "resource_type": "model",
+                    "schema": "public",
+                    "columns": {
+                        "order_id": {
+                            "name": "order_id",
+                            "description": "Primary key for orders",
+                            "meta": {"pii": False},
+                            "tags": ["primary"],
+                            "constraints": [
+                                {
+                                    "type": "not_null",
+                                    "name": "order_id_not_null",
+                                    "expression": None,
+                                    "warn_unenforced": False,
+                                    "warn_unsupported": False,
+                                    "custom_undocumented_key": "should_be_removed",
+                                }
+                            ],
+                        },
+                        "status": {
+                            "name": "status",
+                            "description": "Order status",
+                            "meta": {},
+                            "tags": [],
+                            "constraints": None,
+                        },
+                    },
+                }
+            },
+            "sources": {},
+            "exposures": {},
+        }
+
+        self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=manifest)
+
+        order_id_col = manifest["nodes"]["model.project.orders"]["columns"]["order_id"]
+        status_col = manifest["nodes"]["model.project.orders"]["columns"]["status"]
+
+        # Column-level keys must be preserved — the bug stripped them
+        assert order_id_col["description"] == "Primary key for orders"
+        assert order_id_col["meta"] == {"pii": False}
+        assert order_id_col["tags"] == ["primary"]
+        assert order_id_col["constraints"] is not None
+
+        # Extra key inside constraint should be removed
+        constraint = order_id_col["constraints"][0]
+        assert "custom_undocumented_key" not in constraint
+
+        # Required constraint keys must be preserved
+        assert constraint["type"] == "not_null"
+        assert constraint["name"] == "order_id_not_null"
+        assert constraint["expression"] is None
+        assert constraint["warn_unenforced"] is False
+        assert constraint["warn_unsupported"] is False
+
+        # Column without constraints gets constraints set to None
+        assert status_col["constraints"] is None
+        assert status_col["description"] == "Order status"
+
     def test_constants_required_constraint_keys(self):
         """Test REQUIRED_CONSTRAINT_KEYS constant"""
         from metadata.ingestion.source.database.dbt.constants import (
@@ -2349,6 +2714,132 @@ class DbtUnitTest(TestCase):
 
         self.assertEqual(len(tag_names_used), 1)
         self.assertEqual(tag_names_used[0], "process_tag")
+
+    def test_dbt_snapshot_columns_none(self):
+        """parse_data_model_columns returns [] without raising when manifest columns is None."""
+        manifest_node = SimpleNamespace(columns=None)
+        columns = self.dbt_source_obj.parse_data_model_columns(
+            manifest_node=manifest_node, catalog_node=None
+        )
+        assert columns == []
+
+    def test_dbt_snapshot_target_schema_override(self):
+        """Snapshot config.target_schema and target_database take precedence over node-level fields."""
+        manifest_node = SimpleNamespace(
+            schema_="jaffle_shop",
+            database="dev",
+            config=SimpleNamespace(
+                target_schema="snapshots", target_database="warehouse"
+            ),
+        )
+        location = get_snapshot_effective_schema_and_database(manifest_node)
+        assert location.schema_ == "snapshots"
+        assert location.database == "warehouse"
+
+    def test_dbt_snapshot_no_target_schema_override(self):
+        """When target_schema/target_database are None the node-level values are used."""
+        manifest_node = SimpleNamespace(
+            schema_="jaffle_shop",
+            database="dev",
+            config=SimpleNamespace(target_schema=None, target_database=None),
+        )
+        location = get_snapshot_effective_schema_and_database(manifest_node)
+        assert location.schema_ == "jaffle_shop"
+        assert location.database == "dev"
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
+    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
+    def test_dbt_snapshot_datamodel(self, es_search_from_fqn, get_dbt_owner):
+        """Snapshot nodes with columns=null and target_schema produce a DataModelLink, not an error."""
+        get_dbt_owner.return_value = None
+        es_search_from_fqn.return_value = [
+            Table(
+                id=uuid.uuid4(),
+                name="snap_orders",
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+                fullyQualifiedName="dbt_test.dev.snapshots.snap_orders",
+                columns=[],
+            )
+        ]
+
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_SNAPSHOT)
+        data_model_links = []
+        errors = []
+        for result in self.dbt_source_obj.yield_data_models(dbt_objects=dbt_objects):
+            if isinstance(result, Either) and result.right:
+                data_model_links.append(result.right)
+            elif isinstance(result, Either) and result.left:
+                errors.append(result.left)
+
+        assert errors == [], f"Expected no errors but got: {errors}"
+        assert len(data_model_links) == 1
+        snapshot_dm = data_model_links[0].datamodel
+        assert snapshot_dm.resourceType == "snapshot"
+        assert snapshot_dm.columns == []
+
+    def test_parse_upstream_nodes_snapshot_target_schema(self):
+        """A model that depends_on a snapshot with target_schema override must resolve lineage using the effective schema."""
+        snap_key = "snapshot.jaffle_shop.snap_orders"
+        model_key = "model.jaffle_shop.orders"
+
+        snapshot_node = SimpleNamespace(
+            resource_type="snapshot",
+            name="snap_orders",
+            database="dev",
+            schema_="raw",
+            config=SimpleNamespace(target_schema="snapshots", target_database=None),
+            config_materialized=None,
+            depends_on=SimpleNamespace(nodes=[]),
+        )
+
+        model_node = SimpleNamespace(
+            resource_type="model",
+            name="orders",
+            database="dev",
+            schema_="public",
+            config=SimpleNamespace(target_schema=None, target_database=None),
+            config_materialized=None,
+            depends_on=SimpleNamespace(nodes=[snap_key]),
+        )
+
+        manifest_entities = {snap_key: snapshot_node, model_key: model_node}
+
+        expected_fqn = "dbt_test.dev.snapshots.snap_orders"
+
+        def fake_get_table_entity(table_fqn):
+            if table_fqn == expected_fqn:
+                return MagicMock()
+            return None
+
+        with patch.object(
+            self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity
+        ):
+            with patch.object(
+                self.dbt_source_obj,
+                "is_filtered",
+                return_value=MagicMock(is_filtered=False),
+            ):
+                with patch(
+                    "metadata.ingestion.source.database.dbt.metadata.get_dbt_model_name",
+                    return_value="snap_orders",
+                ):
+                    with patch(
+                        "metadata.ingestion.source.database.dbt.metadata.get_corrected_name",
+                        side_effect=lambda x: x,
+                    ):
+                        with patch(
+                            "metadata.ingestion.source.database.dbt.metadata.fqn.build",
+                            side_effect=lambda *args, **kwargs: (
+                                f"dbt_test.{kwargs.get('database_name')}.{kwargs.get('schema_name')}.{kwargs.get('table_name')}"
+                            ),
+                        ):
+                            result = self.dbt_source_obj.parse_upstream_nodes(
+                                manifest_entities, model_node
+                            )
+
+        assert result == [
+            expected_fqn
+        ], f"Expected lineage to resolve via target_schema 'snapshots', got: {result}"
 
 
 class TestDownloadDbtFiles(TestCase):
@@ -3134,3 +3625,160 @@ class TestFilterLatestPerProject:
         assert _has_date_pattern("project/dbt_project_one") is False
         assert _has_date_pattern("project/some_static_dir") is False
         assert _has_date_pattern("dir_a") is False
+
+
+class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
+    """
+    Tests that add_dbt_test_result() skips entries that were compiled but
+    never executed (produced by dbt jobs that only run ``dbt run``).
+
+    When multiple dbt Cloud jobs share the same project a ``dbt run`` job
+    populates run_results.json with test nodes that have status="success" but
+    message=null because no SQL was actually executed.  These compiled-only
+    entries must not be ingested as real test case results.
+    """
+
+    @staticmethod
+    def _make_dbt_source():
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = MagicMock(spec=DbtSource)
+        # Bind the real method so self is the mock instance
+        source.add_dbt_test_result = DbtSource.add_dbt_test_result.__get__(
+            source, DbtSource
+        )
+        source.metadata = MagicMock()
+        source.context = MagicMock()
+        return source
+
+    @staticmethod
+    def _make_manifest_node(name="test_not_null_orders_id"):
+        node = MagicMock()
+        node.name = name
+        return node
+
+    @staticmethod
+    def _make_test_result(status, message, timing=None):
+        result = MagicMock()
+        result.status = MagicMock(value=status)
+        result.message = message
+        result.timing = timing or []
+        result.unique_id = f"test.pkg.{status}"
+        return result
+
+    def _make_dbt_test(self, status, message, timing=None, upstream=None):
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status=status, message=message, timing=timing
+            ),
+            DbtCommonEnum.UPSTREAM.value: upstream or [],
+        }
+
+    def test_compiled_only_null_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message=None.
+        Must not call add_test_case_results.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=None))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_compiled_only_empty_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message="" (empty string).
+        Empty string is falsy — must also be skipped.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=""))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_real_pass_result_is_ingested(self):
+        """
+        Real test pass: status=pass, message="Pass".
+        Must call add_test_case_results exactly once.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="pass", message="Pass", timing=[timing]
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_failure_result_is_ingested(self):
+        """
+        Real test failure: status=fail, message populated.
+        Must not be skipped by the compiled-only guard.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="fail",
+                message="Got 3 results, configured to fail if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_warn_result_is_ingested(self):
+        """
+        Real test warn: status=warn, message populated.
+        Must not be skipped.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="warn",
+                message="Got 1 result, configured to warn if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()

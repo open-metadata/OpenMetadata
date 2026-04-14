@@ -24,6 +24,19 @@
     "glossary",
     "parent",
     "children",
-    "experts"
+    "experts",
+    "style",
+    "lifeCycle",
+    "schema",
+    "semantics",
+    "qualityExpectations",
+    "termsOfUse",
+    "security",
+    "sla",
+    "testSuite",
+    "latestResult",
+    "consumesFrom",
+    "providesTo",
+    "lifecycleStage"
   ]
 }

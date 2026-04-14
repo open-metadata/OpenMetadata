@@ -75,6 +75,7 @@ export interface SelectionState {
   isIndeterminate: boolean;
   handleSelectAll: (checked: boolean) => void;
   handleSelect: (id: string, checked: boolean) => void;
+  setSelectedEntities: (ids: string[] | ((prev: string[]) => string[])) => void;
   clearSelection: () => void;
   isSelected: (id: string) => boolean;
 }
@@ -101,7 +102,7 @@ export interface ColumnConfig<T> {
   key: string;
   labelKey: string;
   render: string;
-  getValue?: (entity: T) => ReactNode | string | number | null;
+  getValue?: (entity: T) => ReactNode | string | number | null | object[];
   customRenderer?: string;
 }
 

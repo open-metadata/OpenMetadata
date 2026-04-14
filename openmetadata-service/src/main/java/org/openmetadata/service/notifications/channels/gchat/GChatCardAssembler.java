@@ -281,8 +281,11 @@ final class GChatCardAssembler extends AbstractVisitor {
   }
 
   void renderImageWidget(Image image) {
-    String altInline = inline.renderInlineChildren(image).trim();
-    String alt = !altInline.isEmpty() ? altInline : extractPlainText(image);
+    String alt = extractPlainText(image);
+    if (alt.isEmpty()) {
+      String title = image.getTitle();
+      alt = title == null ? "" : title.trim();
+    }
     if (alt.isEmpty()) alt = "Image";
 
     String url = sanitizeUrl(image.getDestination());

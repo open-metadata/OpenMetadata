@@ -26,6 +26,7 @@ on:
       - "openmetadata-clients/**"
       - "openmetadata-sdk/**"
       - "openmetadata-integration-tests/**"
+      - "openmetadata-mcp/**"
       - "common/**"
       - "pom.xml"
       - "yarn.lock"
@@ -37,13 +38,14 @@ on:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-integration-tests/**"
+      - "openmetadata-mcp/**"
 
 permissions:
   contents: read
   checks: write
 
 concurrency:
-  group: maven-build-collate-${{ github.head_ref || github.run_id }}
+  group: maven-build-collate-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
   maven-collate-ci:

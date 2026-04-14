@@ -15,9 +15,10 @@
  */
 export interface Webhook {
     /**
-     * Authentication configuration for the webhook.
+     * Authentication configuration for the webhook. If not specified, the webhook will be sent
+     * without authentication.
      */
-    authType?: WebhookNoAuth | WebhookBearerAuth | WebhookOAuth2Config;
+    authType?: AuthenticationConfigurationType;
     /**
      * Endpoint to receive the webhook events over POST requests.
      */
@@ -52,27 +53,51 @@ export interface Webhook {
     sendToOwners?: boolean;
 }
 
-export interface WebhookNoAuth {
-    type: WebhookAuthType.None;
-}
-
-export interface WebhookBearerAuth {
-    type: WebhookAuthType.Bearer;
-    secretKey: string;
-}
-
-export interface WebhookOAuth2Config {
-    type: WebhookAuthType.OAuth2;
-    tokenUrl: string;
-    clientId: string;
-    clientSecret: string;
+/**
+ * Authentication configuration for the webhook. If not specified, the webhook will be sent
+ * without authentication.
+ *
+ * No authentication.
+ *
+ * Bearer token authentication for webhook endpoints.
+ *
+ * OAuth2 Client Credentials configuration for webhook authentication.
+ */
+export interface AuthenticationConfigurationType {
+    /**
+     * Authentication type discriminator.
+     */
+    type: Type;
+    /**
+     * Secret key used for computing HMAC SHA256 signature of webhook payload, sent in the
+     * X-OM-Signature header.
+     */
+    secretKey?: string;
+    /**
+     * OAuth2 client identifier. Stored encrypted via Fernet.
+     */
+    clientId?: string;
+    /**
+     * OAuth2 client secret. Stored encrypted via Fernet.
+     */
+    clientSecret?: string;
+    /**
+     * Optional OAuth2 scopes to request (space-separated).
+     */
     scope?: string;
+    /**
+     * Token endpoint URL to obtain access tokens.
+     */
+    tokenUrl?: string;
 }
 
-export enum WebhookAuthType {
-    None = "none",
+/**
+ * Authentication type discriminator.
+ */
+export enum Type {
     Bearer = "bearer",
-    OAuth2 = "oauth2",
+    None = "none",
+    Oauth2 = "oauth2",
 }
 
 /**

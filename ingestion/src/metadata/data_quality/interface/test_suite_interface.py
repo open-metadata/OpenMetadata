@@ -17,6 +17,7 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Optional, Set, Type
 
+from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -27,7 +28,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter_factory
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -108,7 +109,7 @@ class TestSuiteInterface(ABC):
         """
         cls.runtime_params_setter_fact = class_fact
 
-    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResult]:
+    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:
         """run column data quality tests"""
         runtime_params_setter_fact: RuntimeParameterSetterFactory = (
             self._get_runtime_params_setter_fact()
@@ -132,17 +133,25 @@ class TestSuiteInterface(ABC):
         validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
         try:
-            return validator.run_validation()
+            test_result = validator.run_validation()
+            response = TestCaseResultResponse(
+                testCaseResult=test_result, testCase=test_case
+            )
+            validator.result_with_failed_samples(response)
+            return response
         except Exception as err:
             message = (
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             )
             logger.exception(message)
-            return validator.get_test_case_result_object(
-                validator.execution_date,
-                TestCaseStatus.Aborted,
-                message,
-                [],
+            return TestCaseResultResponse(
+                testCase=test_case,
+                testCaseResult=validator.get_test_case_result_object(
+                    validator.execution_date,
+                    TestCaseStatus.Aborted,
+                    message,
+                    [],
+                ),
             )
 
     def _get_table_config(self):

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { waitForAllLoadersToDisappear } from './entity';
 import { setClassificationDisabled, setTagDisabledByFqn } from './tag';
 
 export { setTagDisabled, setTagDisabledByFqn } from './tag';
@@ -28,15 +29,15 @@ export const openCertificationDropdown = async (page: Page) => {
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
-  await page.waitForSelector('.certification-card-popover', {
+  await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
   });
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const closeCertificationDropdown = async (page: Page) => {
   await page.getByTestId('close-certification').click();
-  await page.waitForSelector('.certification-card-popover', {
+  await page.locator('.certification-card-popover').waitFor({
     state: 'hidden',
   });
 };

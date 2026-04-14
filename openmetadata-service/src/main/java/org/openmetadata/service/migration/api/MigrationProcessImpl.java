@@ -163,6 +163,16 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   @Override
+  public boolean isReprocessing() {
+    return migrationFile.isReprocessing();
+  }
+
+  @Override
+  public boolean hasNewStatements() {
+    return migrationFile.hasNewStatements();
+  }
+
+  @Override
   public void close() {
     if (handle != null) {
       handle.close();

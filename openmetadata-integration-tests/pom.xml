@@ -12,8 +12,8 @@
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
     <maven.failsafe.version>3.1.2</maven.failsafe.version>
-    <junit.jupiter.version>5.10.2</junit.jupiter.version>
-    <junit.platform.version>1.10.2</junit.platform.version>
+    <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
+    <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
     <dockerjava.version>3.4.2</dockerjava.version>
   </properties>
   <dependencyManagement>
@@ -218,6 +218,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -251,6 +253,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
@@ -302,6 +306,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                   </includes>
@@ -336,6 +342,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                   </excludes>
@@ -388,6 +396,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -421,6 +431,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
@@ -472,6 +484,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                   </includes>
@@ -506,6 +520,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                   </excludes>
@@ -558,6 +574,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -593,6 +611,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>

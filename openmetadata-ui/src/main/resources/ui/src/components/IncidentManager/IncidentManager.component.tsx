@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Skeleton } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -21,6 +21,7 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -141,6 +142,7 @@ const IncidentManager = ({
       data: [],
       isLoading: true,
     });
+  const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
   const [users, setUsers] = useState<{
     options: Option[];
   }>({
@@ -186,6 +188,19 @@ const IncidentManager = ({
   >([]);
 
   const { t } = useTranslation();
+
+  const dateFilterOptions = useMemo(
+    () => [
+      { name: t('label.created-at'), value: 'timestamp' },
+      { name: t('label.updated-at'), value: 'updatedAt' },
+    ],
+    [t]
+  );
+
+  const selectedDateFilterKey = (filters.dateField as string) ?? 'timestamp';
+  const selectedDateFilterOption =
+    dateFilterOptions.find((o) => o.value === selectedDateFilterKey) ??
+    dateFilterOptions[0];
 
   const {
     paging,
@@ -427,12 +442,20 @@ const IncidentManager = ({
     }
   };
 
+  const handleDateFieldChange = useCallback(
+    (value: string) => {
+      updateFilters({ dateField: value as 'timestamp' | 'updatedAt' });
+    },
+    [updateFilters]
+  );
+
   const handleDateRangeClear = useCallback(() => {
     const updatedFilters = omit(allParams, [
       'startTs',
       'endTs',
       'key',
       'title',
+      'dateField',
     ]);
     navigate(
       {
@@ -748,7 +771,47 @@ const IncidentManager = ({
             </Select>
           </Form.Item>
           {isDateRangePickerVisible && (
-            <Form.Item className="m-b-0" label={t('label.date')}>
+            <div className="tw:flex tw:gap-2">
+              <Dropdown.Root
+                isOpen={isDateFilterOpen}
+                onOpenChange={setIsDateFilterOpen}>
+                <Button
+                  className="tw:border-0 tw:bg-transparent tw:self-center m-r-xs sorting-dropdown tw:hover:*:data-text:decoration-transparent! tw:hover:*:data-text:no-underline!"
+                  color="link-gray"
+                  data-testid="sort-field-dropdown-trigger"
+                  iconTrailing={
+                    <DropDownIcon
+                      className="align-middle"
+                      height={16}
+                      width={16}
+                    />
+                  }>
+                  <span className="tw:text-sm">
+                    {selectedDateFilterOption.name}
+                  </span>
+                </Button>
+                <Dropdown.Popover className="tw:w-max">
+                  <Dropdown.Menu
+                    items={dateFilterOptions}
+                    selectedKeys={[selectedDateFilterKey]}
+                    selectionMode="single"
+                    onAction={(key) => {
+                      if (isString(key)) {
+                        handleDateFieldChange(key);
+                        setIsDateFilterOpen(false);
+                      }
+                    }}>
+                    {(field) => (
+                      <Dropdown.Item
+                        data-testid={`date-field-item-${field.value}`}
+                        id={field.value}
+                        key={field.value}
+                        label={field.name}
+                      />
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
               <MuiDatePickerMenu
                 allowClear
                 showSelectedCustomRange
@@ -757,7 +820,7 @@ const IncidentManager = ({
                 size="small"
                 onClear={handleDateRangeClear}
               />
-            </Form.Item>
+            </div>
           )}
         </div>
       </div>

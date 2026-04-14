@@ -16,7 +16,17 @@ Validator Mixin for SQA tests cases
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, String, Table, case, func, inspect, literal, select
+from sqlalchemy import (
+    Column,
+    String,
+    Table,
+    case,
+    func,
+    inspect,
+    literal,
+    literal_column,
+    select,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement, FromClause
@@ -198,6 +208,12 @@ class SQAValidatorMixin:
         ('NULL', 'Others'). This prevents type mismatch errors when mixing numeric
         dimension columns with string labels.
 
+        Uses literal_column instead of literal to inline string constants directly
+        in the SQL. This avoids bind parameters in the CASE expression, which is
+        critical for Trino: when this expression appears in both SELECT and GROUP BY,
+        bind parameters get different positional indices, making Trino unable to
+        match the two expressions as equivalent (EXPRESSION_NOT_AGGREGATE error).
+
         Args:
             dimension_col: The dimension column to normalize
 
@@ -205,12 +221,13 @@ class SQAValidatorMixin:
             ColumnElement: Normalized dimension expression (CASE statement)
         """
         dimension_col_as_string = func.cast(dimension_col, String)
+        null_label = literal_column(f"'{DIMENSION_NULL_LABEL}'")
 
         normalized_dimension = case(
-            (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+            (dimension_col.is_(None), null_label),
             (
-                func.upper(dimension_col_as_string) == "NULL",
-                literal(DIMENSION_NULL_LABEL),
+                func.upper(dimension_col_as_string) == null_label,
+                null_label,
             ),
             else_=dimension_col_as_string,
         )

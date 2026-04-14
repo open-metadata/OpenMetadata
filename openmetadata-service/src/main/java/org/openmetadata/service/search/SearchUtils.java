@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.http.HttpHost;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -224,6 +227,22 @@ public final class SearchUtils {
     return hosts.toArray(new org.apache.hc.core5.http.HttpHost[0]);
   }
 
+  public static BasicCredentialsProvider buildScopedCredentialsProvider(
+      ElasticSearchConfiguration esConfig, org.apache.hc.core5.http.HttpHost[] httpHosts) {
+    if (StringUtils.isEmpty(esConfig.getUsername())
+        || StringUtils.isEmpty(esConfig.getPassword())) {
+      return null;
+    }
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    for (org.apache.hc.core5.http.HttpHost host : httpHosts) {
+      credentialsProvider.setCredentials(
+          new AuthScope(host.getHostName(), host.getPort()),
+          new UsernamePasswordCredentials(
+              esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+    }
+    return credentialsProvider;
+  }
+
   private static org.apache.hc.core5.http.HttpHost parseHostEntryForHc5(
       String hostEntry, int defaultPort, String scheme, String searchType) {
     String[] parts = hostEntry.split(":");
@@ -293,7 +312,7 @@ public final class SearchUtils {
       return Collections.emptySet();
     }
     Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
-    requiredFields.removeAll(SOURCE_FIELDS_TO_EXCLUDE);
+    SOURCE_FIELDS_TO_EXCLUDE.forEach(requiredFields::remove);
     // Without these fields lineage can't be built
     requiredFields.addAll(
         Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));

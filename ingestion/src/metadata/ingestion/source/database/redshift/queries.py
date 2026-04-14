@@ -275,12 +275,6 @@ REDSHIFT_EXTERNAL_TABLE_LOCATION = """
     where redshift_database_name='{database_name}'
 """
 
-REDSHIFT_PARTITION_DETAILS = """
-  select "schema", "table", diststyle
-  from SVV_TABLE_INFO
-  where diststyle not like 'AUTO%%'
-"""
-
 
 REDSHIFT_TABLE_COMMENTS = """
     SELECT n.nspname as schema,
@@ -318,11 +312,6 @@ SELECT
     has_table_privilege('SYS_PROCEDURE_CALL', 'SELECT') as can_access_sys_procedure_call;
 """
 
-
-REDSHIFT_TEST_PARTITION_DETAILS = """
-SELECT
-    has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info
-"""
 
 REDSHIFT_GET_ALL_CONSTRAINTS = """
 select

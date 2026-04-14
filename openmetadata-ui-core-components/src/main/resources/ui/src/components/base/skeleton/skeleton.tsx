@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CSSProperties, ReactNode } from "react";
-import { cx } from "@/utils/cx";
+import { CSSProperties, ReactNode } from 'react';
+import { cx } from '@/utils/cx';
 
-export type SkeletonVariant = "text" | "rectangular" | "rounded" | "circular";
-export type SkeletonAnimation = "pulse" | "wave" | false;
+export type SkeletonVariant = 'text' | 'rectangular' | 'rounded' | 'circular';
+export type SkeletonAnimation = 'pulse' | 'wave' | false;
 
 export interface SkeletonProps {
   /**
@@ -50,15 +50,15 @@ export interface SkeletonProps {
 }
 
 const VARIANT_CLASSES: Record<SkeletonVariant, string> = {
-  text: "tw:rounded",
-  rectangular: "",
-  rounded: "tw:rounded-md",
-  circular: "tw:rounded-full",
+  text: 'tw:rounded',
+  rectangular: '',
+  rounded: 'tw:rounded-md',
+  circular: 'tw:rounded-full',
 };
 
 export const Skeleton = ({
-  variant = "text",
-  animation = "pulse",
+  variant = 'text',
+  animation = 'pulse',
   width,
   height,
   className,
@@ -68,16 +68,16 @@ export const Skeleton = ({
   const computedStyle: CSSProperties = { ...style };
 
   if (width !== undefined) {
-    computedStyle.width = typeof width === "number" ? `${width}px` : width;
+    computedStyle.width = typeof width === 'number' ? `${width}px` : width;
   }
 
   if (height !== undefined) {
-    computedStyle.height = typeof height === "number" ? `${height}px` : height;
-  } else if (variant === "text") {
-    computedStyle.height = "1.2em";
+    computedStyle.height = typeof height === 'number' ? `${height}px` : height;
+  } else if (variant === 'text') {
+    computedStyle.height = '1.2em';
   }
 
-  if (variant === "circular") {
+  if (variant === 'circular') {
     if (computedStyle.width && !computedStyle.height) {
       computedStyle.height = computedStyle.width;
     } else if (computedStyle.height && !computedStyle.width) {
@@ -88,15 +88,14 @@ export const Skeleton = ({
   return (
     <span
       aria-hidden="true"
-      style={computedStyle}
       className={cx(
-        "tw:block tw:bg-quaternary",
+        'tw:block tw:bg-quaternary',
         VARIANT_CLASSES[variant],
-        animation === "pulse" && "tw:animate-pulse",
-        animation === "wave" && "skeleton-wave",
-        className,
+        animation === 'pulse' && 'tw:animate-pulse',
+        animation === 'wave' && 'skeleton-wave',
+        className
       )}
-    >
+      style={computedStyle}>
       {children && <span className="tw:invisible">{children}</span>}
     </span>
   );

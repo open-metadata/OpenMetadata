@@ -20,6 +20,7 @@ import {
 import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
 import kinesisConnection from '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json';
+import pubSubConnection from '../jsons/connectionSchemas/connections/messaging/pubSubConnection.json';
 import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
@@ -55,6 +56,11 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
 
     case MessagingServiceType.Kinesis:
       schema = kinesisConnection;
+
+      break;
+
+    case MessagingServiceType.PubSub:
+      schema = pubSubConnection;
 
       break;
 

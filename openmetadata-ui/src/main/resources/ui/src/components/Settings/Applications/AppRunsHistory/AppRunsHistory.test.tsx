@@ -295,6 +295,31 @@ describe('AppRunsHistory', () => {
     expect(screen.getByText('--')).toBeInTheDocument();
   });
 
+  it('should show current configuration when internal app has no run history yet', async () => {
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [],
+      paging: {
+        offset: 0,
+        total: 0,
+      },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    const configButton = screen.getByTestId('app-historical-config');
+
+    expect(configButton).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.log-plural' })
+    ).toBeDisabled();
+
+    fireEvent.click(configButton);
+
+    expect(screen.getByTestId('app-run-config-close')).toBeInTheDocument();
+    expect(screen.getByText('Configure Save')).toBeInTheDocument();
+  });
+
   it('should render the stop button when conditions are met', async () => {
     const mockRunRecordWithStopButton = {
       ...mockApplicationData,

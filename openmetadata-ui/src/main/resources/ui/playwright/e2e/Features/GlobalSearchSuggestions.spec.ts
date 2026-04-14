@@ -55,7 +55,7 @@ test.describe('Global Search Column Suggestions', () => {
     await expect(suggestionsContainer).toBeVisible();
 
     const columnSuggestion = suggestionsContainer
-      .getByTestId('group-column_search_index')
+      .getByTestId('group-tableColumn')
       .locator(columnSelector);
 
     await expect(columnSuggestion).toContainText(columnName);

@@ -48,6 +48,14 @@ def _(element, compiler, **kw):
     return f"CAST({proc} AS BIGINT)"
 
 
+@compiles(ColumnCountFn, Dialects.Informix)
+def _(element, compiler, **kw):
+    """Informix JDBC rejects ? in SELECT expressions. literal_binds=True inlines
+    the value directly into SQL so no bind parameter placeholder is generated."""
+    kw["literal_binds"] = True
+    return compiler.process(element.clauses, **kw)
+
+
 class ColumnCount(StaticMetric):
     """
     COLUMN_COUNT Metric

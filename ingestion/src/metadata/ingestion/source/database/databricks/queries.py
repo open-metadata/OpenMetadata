@@ -87,28 +87,28 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"
 
-DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB = """
-SELECT 
-    entity_id AS job_id,
+DATABRICKS_GET_TABLE_LINEAGE = """
+SELECT
+    entity_id,
     source_table_full_name,
     target_table_full_name
 FROM system.access.table_lineage
-WHERE entity_type = 'JOB'
+WHERE entity_type IN ('JOB', 'PIPELINE')
     AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
     AND source_table_full_name IS NOT NULL
     AND target_table_full_name IS NOT NULL
 GROUP BY entity_id, source_table_full_name, target_table_full_name
 """
 
-DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = """
+DATABRICKS_GET_COLUMN_LINEAGE = """
 SELECT
-    entity_id as job_id,
+    entity_id,
     source_table_full_name,
     source_column_name,
     target_table_full_name,
     target_column_name
 FROM system.access.column_lineage
-WHERE entity_type = 'JOB'
+WHERE entity_type IN ('JOB', 'PIPELINE')
     AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
     AND source_table_full_name IS NOT NULL
     AND target_table_full_name IS NOT NULL

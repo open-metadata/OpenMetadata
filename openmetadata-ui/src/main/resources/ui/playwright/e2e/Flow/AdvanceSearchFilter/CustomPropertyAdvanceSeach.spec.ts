@@ -68,6 +68,14 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await dashboard.delete(apiContext);
+    await topic1.delete(apiContext);
+    await topic2.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);

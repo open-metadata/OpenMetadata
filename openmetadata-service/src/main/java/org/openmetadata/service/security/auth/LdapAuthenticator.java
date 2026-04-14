@@ -145,7 +145,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
+  public JwtResponse loginUser(LoginRequest loginRequest) throws IOException {
     String email = loginRequest.getEmail();
     checkIfLoginBlocked(email);
     User omUser = lookUserInProvider(email, loginRequest.getPassword());
@@ -202,8 +202,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void validatePassword(String userDn, String reqPassword, User dummy)
-      throws TemplateException, IOException {
+  public void validatePassword(String userDn, String reqPassword, User dummy) {
     // Retry configuration for connection establishment
     final int maxRetries = 3;
     final int baseDelayMs = 500;
@@ -223,8 +222,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         "Unable to connect to authentication server after " + maxRetries + " attempts.");
   }
 
-  private void performLdapBind(String userDn, String reqPassword, User dummy)
-      throws TemplateException, IOException {
+  private void performLdapBind(String userDn, String reqPassword, User dummy) {
     BindResult bindingResult = null;
     LDAPConnection userConnection = null;
     try {
@@ -275,7 +273,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User lookUserInProvider(String email, String pwd) throws TemplateException, IOException {
+  public User lookUserInProvider(String email, String pwd) throws IOException {
     String userDN = getUserDnFromLdap(email);
 
     if (!nullOrEmpty(userDN)) {
@@ -627,7 +625,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  private void handleLdapException(Exception ex) throws TemplateException, IOException {
+  private void handleLdapException(Exception ex) {
     if (ex instanceof LDAPException ldapEx) {
       ResultCode resultCode = ldapEx.getResultCode();
       String errorMessage = ldapEx.getMessage();

@@ -14,7 +14,6 @@ Main class to run data tests
 """
 
 
-from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
@@ -34,12 +33,8 @@ class DataTestsRunner:
             f"Executing test case {test_case.name.root} "
             f"for entity {self.test_runner_interface.table_entity.fullyQualifiedName.root}"
         )
-        test_result = self.test_runner_interface.run_test_case(
+        result = self.test_runner_interface.run_test_case(
             test_case,
         )
 
-        if test_result:
-            return TestCaseResultResponse(
-                testCaseResult=test_result, testCase=test_case
-            )
-        return None
+        return result

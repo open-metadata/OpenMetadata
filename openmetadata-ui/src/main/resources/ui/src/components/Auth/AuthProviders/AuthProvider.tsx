@@ -41,11 +41,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
-import {
-  ES_MAX_PAGE_SIZE,
-  REDIRECT_PATHNAME,
-  ROUTES,
-} from '../../../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
@@ -56,9 +52,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
-import { getDomainList } from '../../../rest/domainAPI';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -150,7 +144,6 @@ export const AuthProvider = ({
     isAuthenticating,
     initializeAuthState,
   } = useApplicationStore();
-  const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
   const location = useCustomLocation();
@@ -175,9 +168,27 @@ export const AuthProvider = ({
   const onLoginHandler = () => {
     setApplicationLoading(true);
 
-    authenticatorRef.current?.invokeLogin();
+    let attempts = 0;
+    const maxAttempts = 100;
 
-    resetWebAnalyticSession();
+    const invokeLogin = () => {
+      if (authenticatorRef.current) {
+        authenticatorRef.current.invokeLogin?.();
+        resetWebAnalyticSession();
+      } else if (attempts < maxAttempts) {
+        // Polling mechanism to wait for authenticator ref to be available.
+        // This handles race conditions in production builds where onLoginHandler
+        // may be called before the authenticator component has mounted and set the ref.
+        // Retry every 50ms until ref is available (max 100 attempts = 5 seconds).
+        attempts++;
+        setTimeout(invokeLogin, 50);
+      } else {
+        // Max attempts reached, stop loading and silently fail
+        setApplicationLoading(false);
+      }
+    };
+
+    invokeLogin();
   };
 
   // Handler to perform logout within application
@@ -206,21 +217,6 @@ export const AuthProvider = ({
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
   }, [timeoutId]);
-
-  const fetchDomainList = useCallback(async () => {
-    try {
-      updateDomainLoading(true);
-      const { data } = await getDomainList({
-        limit: ES_MAX_PAGE_SIZE,
-        fields: 'parent',
-      });
-      updateDomains(data);
-    } catch (error) {
-      // silent fail
-    } finally {
-      updateDomainLoading(false);
-    }
-  }, []);
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
@@ -276,8 +272,6 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
-        // Fetch domains at the start
-        await fetchDomainList();
       } else {
         resetUserDetails();
       }
@@ -312,9 +306,9 @@ export const AuthProvider = ({
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
       refreshToken ||
-      [AuthProviderEnum.Basic, AuthProviderEnum.LDAP].indexOf(
+      ![AuthProviderEnum.Basic, AuthProviderEnum.LDAP].includes(
         authConfig?.provider as AuthProviderEnum
-      ) === -1;
+      );
 
     if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
       // Have 5m buffer before start trying for silent signIn
@@ -342,6 +336,49 @@ export const AuthProvider = ({
       tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
     }
   }, [authenticatorRef.current?.renewIdToken]);
+
+  // When the tab becomes visible after being backgrounded, browsers may have
+  // throttled or suspended the proactive renewal timer. Check token freshness
+  // immediately and refresh if expired, or reschedule the timer with the
+  // correct remaining time.
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      try {
+        const token = await getOidcToken();
+        const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+
+        // eslint-disable-next-line no-console
+        console.debug(
+          '[VisibilityHandler] token length:',
+          token?.length,
+          'isExpired:',
+          isExpired,
+          'timeoutExpiry:',
+          timeoutExpiry,
+          'hasTokenService:',
+          !!tokenService.current
+        );
+
+        if (isExpired || timeoutExpiry <= 0) {
+          tokenService.current?.refreshToken();
+        } else {
+          startTokenExpiryTimer();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[VisibilityHandler] error:', error);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   /**
    * Performs cleanup around timers
@@ -379,9 +416,6 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
-
-          // Fetch domains at the start
-          await fetchDomainList();
 
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -523,10 +557,10 @@ export const AuthProvider = ({
                 // Refresh the token and retry the requests in the queue
                 tokenService.current
                   .refreshToken()
-                  .then((token) => {
+                  .then(async (token) => {
                     if (token) {
                       // Retry the pending requests
-                      initializeAxiosInterceptors();
+                      await initializeAxiosInterceptors();
                       pendingRequests.forEach(({ resolve, reject, config }) => {
                         axiosClient.request(config).then(resolve).catch(reject);
                       });

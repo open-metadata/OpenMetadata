@@ -17,7 +17,6 @@ import { SearchIndex } from '../enums/search.enum';
 import { Domain, DomainType } from '../generated/entity/domains/domain';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
-  getDomainOptions,
   getQueryFilterToIncludeDomain,
   isDomainExist,
   withDomainFilter,
@@ -26,30 +25,6 @@ import { getPathNameFromWindowLocation } from './RouterUtils';
 
 jest.mock('../hooks/useDomainStore');
 jest.mock('./RouterUtils');
-
-describe('getDomainOptions function', () => {
-  const domains = [
-    {
-      id: '1',
-      name: 'Domain 1',
-      fullyQualifiedName: 'domain1',
-      description: 'test',
-      domainType: DomainType.Aggregate,
-    },
-  ];
-
-  it('should return an array of ItemType objects', () => {
-    const result = getDomainOptions(domains);
-
-    expect(Array.isArray(result)).toBeTruthy();
-    expect(result).toHaveLength(2);
-
-    result.forEach((item) => {
-      expect(item).toHaveProperty('label');
-      expect(item).toHaveProperty('key');
-    });
-  });
-});
 
 describe('isDomainExist', () => {
   it('should return true if domain fqn matches directly', () => {

@@ -83,7 +83,13 @@ export class DataQualityPageObject extends RightPanelBase {
    * @returns DataQualityPageObject for method chaining
    */
   async navigateToDataQualityTab(): Promise<DataQualityPageObject> {
+    const testCasesResponse = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/dataQuality/testCases/search/list') &&
+        resp.request().method() === 'GET'
+    );
     await this.rightPanel.navigateToTab('data quality');
+    await testCasesResponse;
     await this.waitForLoadersToDisappear();
     return this;
   }
@@ -114,7 +120,8 @@ export class DataQualityPageObject extends RightPanelBase {
    */
   async searchFor(text: string): Promise<DataQualityPageObject> {
     await this.searchBar.fill(text);
-    await this.page.waitForTimeout(300); // Wait for debounce
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for search debounce to trigger
+    await this.page.waitForTimeout(300);
     return this;
   }
 
@@ -123,7 +130,8 @@ export class DataQualityPageObject extends RightPanelBase {
    */
   async clearSearch(): Promise<DataQualityPageObject> {
     await this.searchBar.clear();
-    await this.page.waitForTimeout(300); // Wait for debounce
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for search debounce to trigger
+    await this.page.waitForTimeout(300);
     return this;
   }
 
@@ -154,7 +162,6 @@ export class DataQualityPageObject extends RightPanelBase {
       .first();
     await testCaseLink.waitFor({ state: 'visible' });
     await testCaseLink.click();
-    await this.page.waitForLoadState('networkidle');
     return this;
   }
 

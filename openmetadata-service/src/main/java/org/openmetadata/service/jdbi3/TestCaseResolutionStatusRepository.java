@@ -175,6 +175,21 @@ public class TestCaseResolutionStatusRepository
       TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    long lastTimestamp =
+        lastIncident != null && lastIncident.getTimestamp() != null
+            ? lastIncident.getTimestamp()
+            : -1L;
+    long incomingTimestamp =
+        recordEntity.getTimestamp() != null
+            ? recordEntity.getTimestamp()
+            : System.currentTimeMillis();
+    if (incomingTimestamp <= lastTimestamp) {
+      incomingTimestamp = lastTimestamp + 1;
+    }
+    recordEntity.setTimestamp(incomingTimestamp);
+    if (recordEntity.getUpdatedAt() == null || recordEntity.getUpdatedAt() < incomingTimestamp) {
+      recordEntity.setUpdatedAt(incomingTimestamp);
+    }
 
     if (recordEntity.getStateId() == null) {
       recordEntity.setStateId(UUID.randomUUID());

@@ -139,6 +139,12 @@ export interface NaturalLanguageSearch {
      */
     keywordWeight?: number;
     /**
+     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
+     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
+     * limits.
+     */
+    maxConcurrentEmbeddingRequests?: number;
+    /**
      * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
      * endpoints.
      */

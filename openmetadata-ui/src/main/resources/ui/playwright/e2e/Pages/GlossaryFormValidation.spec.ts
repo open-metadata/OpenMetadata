@@ -37,7 +37,7 @@ test.describe('Glossary Form Validation', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
     await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    await page.getByTestId('form-heading').waitFor();
 
     // Fill description but leave name empty
     await page.locator(descriptionBox).fill('Test description');
@@ -55,7 +55,7 @@ test.describe('Glossary Form Validation', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
     await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    await page.getByTestId('form-heading').waitFor();
 
     // Fill name but leave description empty
     await page.fill('[data-testid="name"]', 'TestGlossary');
@@ -81,7 +81,7 @@ test.describe('Glossary Form Validation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       // Use the same name as existing glossary
       await page.fill('[data-testid="name"]', glossary.data.name);

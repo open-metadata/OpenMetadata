@@ -16,6 +16,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.SortMode;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
@@ -73,6 +74,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -353,7 +355,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -424,9 +426,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (searchAfter != null && searchAfter.length > 0) {
       List<String> searchAfterList = new ArrayList<>();
       for (Object value : searchAfter) {
-        if (value instanceof es.co.elastic.clients.elasticsearch._types.FieldValue) {
-          es.co.elastic.clients.elasticsearch._types.FieldValue fieldValue =
-              (es.co.elastic.clients.elasticsearch._types.FieldValue) value;
+        if (value instanceof FieldValue fieldValue) {
           searchAfterList.add(String.valueOf(fieldValue._get()));
         } else {
           searchAfterList.add(String.valueOf(value));
@@ -519,7 +519,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw buildSearchException(e);
       }
     }
   }
@@ -890,8 +890,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
         if (jsonObject.containsKey("_source")) {
           JsonValue sourceValue = jsonObject.get("_source");
-          if (sourceValue instanceof JsonObject) {
-            JsonObject sourceObj = (JsonObject) sourceValue;
+          if (sourceValue instanceof JsonObject sourceObj) {
             if (sourceObj.containsKey("include")) {
               includes =
                   sourceObj.getJsonArray("include").stream()
@@ -970,6 +969,94 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   public Response doSearch(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    ElasticSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+
+    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
+
+    try {
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
+
+      if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
+        String responseJson = serializeSearchResponse(searchResponse);
+        return Response.status(OK).entity(responseJson).build();
+      } else {
+        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
+        return Response.status(OK).entity(response).build();
+      }
+
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to find index %s", request.getIndex()));
+      } else {
+        throw buildSearchException(e);
+      }
+    }
+  }
+
+  @Override
+  public SearchResultListMapper searchForExport(
+      org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    ElasticSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+
+    try {
+      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+      List<Map<String, Object>> results = new ArrayList<>();
+      Object[] lastHitSortValues = null;
+
+      if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
+        List<Hit<JsonData>> hits = response.hits().hits();
+        for (Hit<JsonData> hit : hits) {
+          if (hit.source() != null) {
+            results.add(EsUtils.jsonDataToMap(hit.source()));
+          }
+        }
+        Hit<JsonData> lastHit = hits.getLast();
+        if (lastHit.sort() != null && !lastHit.sort().isEmpty()) {
+          lastHitSortValues =
+              lastHit.sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
+        }
+      }
+
+      long totalHits = 0;
+      if (response.hits().total() != null) {
+        totalHits = response.hits().total().value();
+      }
+
+      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to find index %s", request.getIndex()));
+      } else {
+        throw buildSearchException(e);
+      }
+    }
+  }
+
+  private ElasticSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
@@ -1097,14 +1184,18 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Handle sorting
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
-      String sortField = request.getSortFieldParam();
+      String sortField =
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getSortFieldParam());
       String sortTypeCapitalized =
           request.getSortOrder().substring(0, 1).toUpperCase()
               + request.getSortOrder().substring(1).toLowerCase();
       SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
       if (!sortField.equalsIgnoreCase("_score")) {
-        requestBuilder.sort(sortField, sortOrder, "integer");
+        boolean isKeywordField =
+            sortField.endsWith(".keyword")
+                || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
+        requestBuilder.sort(sortField, sortOrder, isKeywordField ? "keyword" : "integer");
       } else {
         requestBuilder.sort(sortField, sortOrder, null);
       }
@@ -1146,38 +1237,20 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     requestBuilder.timeout("30s");
+    return requestBuilder;
+  }
 
-    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
-
-    try {
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse;
-      try {
-        searchResponse = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
-
-      if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
-        String responseJson = serializeSearchResponse(searchResponse);
-        return Response.status(OK).entity(responseJson).build();
-      } else {
-        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
-        return Response.status(OK).entity(response).build();
-      }
-
-    } catch (ElasticsearchException e) {
-      if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
+  private static SearchException buildSearchException(ElasticsearchException e) {
+    String detail = e.getMessage();
+    ErrorCause error = e.error();
+    if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
+      String rootCauses =
+          error.rootCause().stream()
+              .map(c -> c.type() + ": " + c.reason())
+              .collect(Collectors.joining("; "));
+      detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
     }
+    return new SearchException(String.format("Search failed due to %s", detail));
   }
 
   private ElasticSearchRequestBuilder buildHierarchyQuery(
@@ -1189,8 +1262,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     String indexName = request.getIndex();
     String glossaryTermIndex =
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String glossaryTermAlias =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getAlias(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String domainAlias =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getAlias(clusterAlias);
 
     Query existingQuery = requestBuilder.query();
     org.openmetadata.service.search.elasticsearch.ElasticQueryBuilder.BoolQueryBuilder
@@ -1210,7 +1287,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                             q.matchPhrase(
                                 mp -> mp.field("displayName").query(request.getQuery()))));
 
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)
+        || indexName.equalsIgnoreCase(glossaryTermAlias)) {
       baseQueryBuilder
           .should(
               Query.of(
@@ -1223,7 +1301,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                       q.matchPhrase(
                           mp -> mp.field("glossary.displayName").query(request.getQuery()))))
           .must(Query.of(q -> q.match(m -> m.field("entityStatus").query("Approved"))));
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+    } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       baseQueryBuilder
           .should(
               Query.of(
@@ -1309,12 +1387,17 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     String indexName = request.getIndex();
     String glossaryTermIndex =
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String glossaryTermAlias =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getAlias(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String domainAlias =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getAlias(clusterAlias);
 
-    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)
+        || indexName.equalsIgnoreCase(glossaryTermAlias)) {
       response = buildGlossaryTermSearchHierarchy(searchResponse);
-    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+    } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
     return response;

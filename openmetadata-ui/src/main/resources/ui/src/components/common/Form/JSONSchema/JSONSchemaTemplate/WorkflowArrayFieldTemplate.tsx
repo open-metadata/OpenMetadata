@@ -122,7 +122,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       <Col className="select-container" span={24}>
         <Select
           className="m-t-xss w-full"
-          data-testid="workflow-array-field-template"
+          data-testid={`workflow-array-field-${id}`}
           disabled={props.disabled}
           id={id}
           mode={options ? 'multiple' : 'tags'}

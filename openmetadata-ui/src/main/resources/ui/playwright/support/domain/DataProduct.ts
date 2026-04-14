@@ -14,12 +14,12 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
+import { getEncodedFqn } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
 import { SubDomain } from './SubDomain';
-import { getEncodedFqn } from '../../utils/entity';
 
 type UserTeamRef = {
   name: string;
@@ -100,6 +100,14 @@ export class DataProduct extends EntityClass {
     const response = await apiContext.post('/api/v1/dataProducts', {
       data: this.data,
     });
+
+    if (!response.ok()) {
+      const text = await response.text();
+      throw new Error(
+        `DataProduct.create() failed with status ${response.status()}: ${text}`
+      );
+    }
+
     const data = await response.json();
     this.responseData = data;
 

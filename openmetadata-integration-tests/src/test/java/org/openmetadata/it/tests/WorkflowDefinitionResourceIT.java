@@ -31,6 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.awaitility.core.ConditionTimeoutException;
+import org.flowable.engine.ManagementService;
+import org.flowable.engine.RepositoryService;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -122,6 +126,8 @@ import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1898,6 +1904,8 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
 
+      waitForWorkflowIdle(wd.getFullyQualifiedName());
+
       // Force delete with hardDelete=true and recursive=true to clean up properly
       executeWithDeadlockRetryVoid(
           () -> {
@@ -1947,6 +1955,48 @@ public class WorkflowDefinitionResourceIT {
             }
           },
           "fallback-delete-workflow-" + workflowName);
+    }
+  }
+
+  /**
+   * Waits until any async-after jobs left by PeriodicBatchEntityTrigger's fetch task have been
+   * picked up and executed. These jobs are ephemeral (complete in &lt;100ms) but if the deployment
+   * is deleted while one is in flight the Flowable job executor NPEs when it tries to resolve the
+   * process definition. Returns immediately for event-based workflows that have no
+   * "&lt;name&gt;Trigger%" process definitions deployed, or for periodic-batch workflows whose
+   * trigger PDs currently have no pending jobs.
+   */
+  private void waitForWorkflowIdle(String workflowFqn) {
+    RepositoryService repositoryService = WorkflowHandler.getInstance().getRepositoryService();
+    String triggerWorkflowId = TriggerFactory.getTriggerWorkflowId(workflowFqn);
+    List<ProcessDefinition> triggerPDs =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .list()
+            .stream()
+            .filter(pd -> pd.getKey() != null && pd.getKey().startsWith(triggerWorkflowId))
+            .toList();
+    if (triggerPDs.isEmpty()) {
+      return;
+    }
+    ManagementService managementService = WorkflowHandler.getInstance().getManagementService();
+    List<String> triggerPDIds = triggerPDs.stream().map(ProcessDefinition::getId).toList();
+    try {
+      await("async-after jobs for " + workflowFqn + " trigger PDs to drain")
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofMillis(100))
+          .pollDelay(Duration.ZERO)
+          .ignoreExceptions()
+          .until(
+              () ->
+                  triggerPDIds.stream()
+                      .allMatch(
+                          pdId ->
+                              managementService.createJobQuery().processDefinitionId(pdId).count()
+                                  == 0));
+    } catch (ConditionTimeoutException timeout) {
+      LOG.warn("waitForWorkflowIdle({}) timed out after 10s; proceeding with delete", workflowFqn);
     }
   }
 
@@ -2461,7 +2511,7 @@ public class WorkflowDefinitionResourceIT {
 
       // Verify only database entities were updated, glossary remains unchanged
       await()
-          .atMost(Duration.ofSeconds(60))
+          .atMost(Duration.ofMinutes(2))
           .pollInterval(Duration.ofSeconds(2))
           .pollDelay(Duration.ofSeconds(1))
           .ignoreExceptions()
@@ -2500,6 +2550,7 @@ public class WorkflowDefinitionResourceIT {
       // Cleanup - Use hardDelete to prevent duplicate key violations on retries
       if (workflowId != null) {
         try {
+          waitForWorkflowIdle(workflowName);
           Map<String, String> params = new HashMap<>();
           params.put("hardDelete", "true");
           client.workflowDefinitions().delete(workflowId, params);
@@ -2943,6 +2994,7 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName("MultiEntityPeriodicQuery", null);
+      waitForWorkflowIdle(wd.getFullyQualifiedName());
       executeWithDeadlockRetryVoid(
           () -> {
             try {
@@ -9541,5 +9593,392 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Cleanup error: {}", e.getMessage());
     }
+  }
+
+  @Test
+  @Order(42)
+  void test_SelfApprovalPrevention(TestNamespace ns) throws IOException {
+    LOG.info("Starting test_SelfApprovalPrevention");
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+
+    // Step 1: Create three users
+    LOG.debug("Creating test users for self-approval prevention testing");
+
+    // Intentionally use a dotted username to cover the FQN quoting path:
+    // OpenMetadata quotes names containing dots (e.g. "ram.balaji"), so the entity link stored in
+    // the assignees list is <#E::user::"approver1.TIMESTAMP"> while event.getUserName() returns the
+    // raw unquoted value. The self-approval prevention must use FullyQualifiedName.quoteName()
+    // before comparing — this test explicitly validates that fix.
+    CreateUser createUser1 =
+        new CreateUser()
+            .withName("approver1." + uniqueSuffix)
+            .withEmail("approver1." + uniqueSuffix + "@example.com")
+            .withDisplayName("Test Approver 1")
+            .withIsAdmin(true); // Make user1 an admin so they can update reviewers
+    User user1 = client.users().create(createUser1);
+    LOG.debug("Created user 1: {}", user1.getName());
+
+    CreateUser createUser2 =
+        new CreateUser()
+            .withName("approver2_" + uniqueSuffix)
+            .withEmail("approver2_" + uniqueSuffix + "@example.com")
+            .withDisplayName("Test Approver 2");
+    User user2 = client.users().create(createUser2);
+    LOG.debug("Created user 2: {}", user2.getName());
+
+    CreateUser createUser3 =
+        new CreateUser()
+            .withName("approver3_" + uniqueSuffix)
+            .withEmail("approver3_" + uniqueSuffix + "@example.com")
+            .withDisplayName("Test Approver 3");
+    User user3 = client.users().create(createUser3);
+    LOG.debug("Created user 3: {}", user3.getName());
+
+    // Step 2: Create classification first (without reviewers)
+    LOG.debug("Creating initial classification");
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("test_classification"))
+            .withDisplayName("Test Classification for Self-Approval")
+            .withDescription("Classification to test self-approval prevention");
+    Classification classification = client.classifications().create(createClassification);
+    LOG.debug("Created initial classification: {}", classification.getName());
+
+    // Step 3: Create workflow for classification approval
+    LOG.debug("Creating workflow for classification approval testing");
+
+    String workflowJson =
+        """
+        {
+          "name": "%s",
+          "displayName": "Self-Approval Prevention Test Workflow",
+          "description": "Workflow testing prevention of self-approval",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["classification"],
+              "events": ["Updated"],
+              "exclude": [],
+              "filter": {}
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {
+              "name": "start",
+              "displayName": "Start",
+              "type": "startEvent",
+              "subType": "startEvent"
+            },
+            {
+              "name": "setStatusInReview",
+              "displayName": "Set Status In Review",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "config": {
+                "fieldName": "entityStatus",
+                "fieldValue": "In Review"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "global"
+              },
+              "output": []
+            },
+            {
+              "name": "ApprovalTask",
+              "displayName": "Approval Task",
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "config": {
+                "assignees": {
+                  "addReviewers": true,
+                  "addOwners": false,
+                  "candidates": []
+                }
+              },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global"
+              },
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {
+              "name": "setStatusApproved",
+              "displayName": "Set Status Approved",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "config": {
+                "fieldName": "entityStatus",
+                "fieldValue": "Approved"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "global"
+              },
+              "output": []
+            },
+            {
+              "name": "setStatusRejected",
+              "displayName": "Set Status Rejected",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "config": {
+                "fieldName": "entityStatus",
+                "fieldValue": "Rejected"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "global"
+              },
+              "output": []
+            },
+            {
+              "name": "endApproved",
+              "displayName": "End Approved",
+              "type": "endEvent",
+              "subType": "endEvent"
+            },
+            {
+              "name": "endRejected",
+              "displayName": "End Rejected",
+              "type": "endEvent",
+              "subType": "endEvent"
+            }
+          ],
+          "edges": [
+            {"from": "start", "to": "setStatusInReview"},
+            {"from": "setStatusInReview", "to": "ApprovalTask"},
+            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "true"},
+            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "false"},
+            {"from": "setStatusApproved", "to": "endApproved"},
+            {"from": "setStatusRejected", "to": "endRejected"}
+          ],
+          "config": {"storeStageStatus": false}
+        }
+        """
+            .formatted("SelfApprovalPreventionWorkflow");
+
+    CreateWorkflowDefinition workflow;
+    try {
+      LOG.debug(
+          "Attempting to parse workflow JSON: {}",
+          workflowJson.substring(0, Math.min(500, workflowJson.length())));
+      workflow = JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+    } catch (Exception e) {
+      LOG.error("Failed to parse workflow JSON: {}", e.getMessage());
+      LOG.error("Workflow JSON content: {}", workflowJson);
+      throw e;
+    }
+
+    String workflowResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+
+    JsonNode workflowCreated = MAPPER.readTree(workflowResponse);
+    String workflowId = workflowCreated.get("id").asText();
+    LOG.debug("Created self-approval prevention workflow: {}", workflowId);
+
+    // Step 4: Create client for user1 and update classification (user1 making the change and is a
+    // reviewer)
+    LOG.debug("Creating admin client for user1 and updating classification with reviewers");
+
+    // Create admin client for user1 (the one making the change) with admin privileges
+    OpenMetadataClient user1Client =
+        SdkClients.createClient(user1.getEmail(), user1.getEmail(), new String[] {"admin"});
+
+    EntityReference user1Ref =
+        new EntityReference()
+            .withId(user1.getId())
+            .withType("user")
+            .withName(user1.getName())
+            .withFullyQualifiedName(user1.getFullyQualifiedName());
+
+    EntityReference user2Ref =
+        new EntityReference()
+            .withId(user2.getId())
+            .withType("user")
+            .withName(user2.getName())
+            .withFullyQualifiedName(user2.getFullyQualifiedName());
+
+    EntityReference user3Ref =
+        new EntityReference()
+            .withId(user3.getId())
+            .withType("user")
+            .withName(user3.getName())
+            .withFullyQualifiedName(user3.getFullyQualifiedName());
+
+    // Construct JSON patch to add reviewers and update description
+    String reviewersJson =
+        String.format(
+            "["
+                + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Updated description to trigger workflow\"},"
+                + "{\"op\":\"add\",\"path\":\"/reviewers\",\"value\":["
+                + "{\"id\":\"%s\",\"type\":\"user\",\"name\":\"%s\",\"fullyQualifiedName\":\"%s\"},"
+                + "{\"id\":\"%s\",\"type\":\"user\",\"name\":\"%s\",\"fullyQualifiedName\":\"%s\"},"
+                + "{\"id\":\"%s\",\"type\":\"user\",\"name\":\"%s\",\"fullyQualifiedName\":\"%s\"}"
+                + "]}]",
+            user1.getId(),
+            user1.getName(),
+            user1.getFullyQualifiedName().replace("\"", "\\\""),
+            user2.getId(),
+            user2.getName(),
+            user2.getFullyQualifiedName().replace("\"", "\\\""),
+            user3.getId(),
+            user3.getName(),
+            user3.getFullyQualifiedName().replace("\"", "\\\""));
+
+    // Update the classification to add reviewers (INCLUDING user1 who is making the update)
+    JsonNode patch = MAPPER.readTree(reviewersJson);
+    Classification updatedClassification =
+        user1Client.classifications().patch(classification.getId(), patch);
+    LOG.debug(
+        "Patched classification: {} with reviewers: [{}, {}, {}] (user1 client making update)",
+        updatedClassification.getName(),
+        user1.getName(),
+        user2.getName(),
+        user3.getName());
+
+    // Step 5: Wait and verify task creation
+    LOG.info("Waiting for workflow to process classification update and create approval task...");
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              try {
+                String feedResponse =
+                    user1Client
+                        .getHttpClient()
+                        .executeForString(
+                            HttpMethod.GET,
+                            "/v1/feed?type=Task",
+                            null,
+                            RequestOptions.builder().build());
+
+                JsonNode feedData = MAPPER.readTree(feedResponse);
+                JsonNode threads = feedData.get("data");
+
+                boolean foundTask = false;
+                boolean selfApprovalPrevented = false;
+
+                for (JsonNode thread : threads) {
+                  LOG.debug("Checking thread: {}", thread);
+                  if (thread.has("task")) {
+                    JsonNode task = thread.get("task");
+                    LOG.debug("Found task: {}", task);
+
+                    // Check if thread has about field (about is on the Thread, not the Task)
+                    if (!thread.has("about") || thread.get("about") == null) {
+                      LOG.debug("Thread missing 'about' field, skipping");
+                      continue;
+                    }
+
+                    String taskAbout = thread.get("about").asText();
+                    LOG.debug("Thread about: {}", taskAbout);
+
+                    if (taskAbout.contains(classification.getFullyQualifiedName())) {
+                      foundTask = true;
+                      LOG.debug("Found matching task for classification");
+
+                      if (!task.has("assignees") || task.get("assignees") == null) {
+                        LOG.warn("Task missing 'assignees' field");
+                        continue;
+                      }
+
+                      JsonNode assignees = task.get("assignees");
+                      LOG.debug("Task assignees: {}", assignees);
+
+                      // Verify that user1 (the updater) is NOT in the assignees due to
+                      // self-approval prevention
+                      boolean user1InAssignees = false;
+                      boolean user2InAssignees = false;
+                      boolean user3InAssignees = false;
+
+                      for (JsonNode assignee : assignees) {
+                        if (assignee.has("name") && assignee.get("name") != null) {
+                          String assigneeName = assignee.get("name").asText();
+                          LOG.debug("Checking assignee: {}", assigneeName);
+                          if (user1.getName().equals(assigneeName)) {
+                            user1InAssignees = true;
+                          }
+                          if (user2.getName().equals(assigneeName)) {
+                            user2InAssignees = true;
+                          }
+                          if (user3.getName().equals(assigneeName)) {
+                            user3InAssignees = true;
+                          }
+                        }
+                      }
+
+                      LOG.debug(
+                          "Task assignees analysis: user1 (updater) in assignees: {}, user2 in assignees: {}, user3 in assignees: {}",
+                          user1InAssignees,
+                          user2InAssignees,
+                          user3InAssignees);
+
+                      // Self-approval prevention: user1 should NOT be in assignees, but user2,
+                      // user3 should be
+                      selfApprovalPrevented =
+                          !user1InAssignees && user2InAssignees && user3InAssignees;
+                      break;
+                    }
+                  }
+                }
+
+                assertTrue(foundTask, "Expected to find approval task for classification");
+                assertTrue(
+                    selfApprovalPrevented,
+                    "Self-approval prevention failed: creator should not be in assignees");
+
+              } catch (Exception e) {
+                LOG.error("Error during task verification: {}", e.getMessage());
+                fail(
+                    "Failed to verify task creation and self-approval prevention: "
+                        + e.getMessage());
+              }
+            });
+
+    LOG.info("✓ Verified that self-approval prevention is working correctly");
+
+    // Step 6: Cleanup
+    LOG.debug("Cleaning up test resources");
+
+    // Delete workflow
+    try {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              BASE_PATH + "/" + workflowId,
+              null,
+              RequestOptions.builder().build());
+      LOG.debug("✓ Deleted workflow");
+    } catch (Exception e) {
+      LOG.warn("Failed to delete workflow: {}", e.getMessage());
+    }
+
+    // Delete classification
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    client.classifications().delete(classification.getId().toString(), params);
+    LOG.debug("✓ Deleted classification");
+
+    // Delete users
+    client.users().delete(user1.getId().toString(), params);
+    client.users().delete(user2.getId().toString(), params);
+    client.users().delete(user3.getId().toString(), params);
+    LOG.debug("✓ Deleted test users");
+
+    LOG.info("test_SelfApprovalPrevention completed successfully");
   }
 }

@@ -27,10 +27,12 @@ import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CHILDREN;
+import static org.openmetadata.service.Entity.FIELD_DATA_CONTRACT;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
@@ -57,6 +59,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
@@ -69,7 +72,6 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
@@ -93,7 +95,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import com.google.gson.Gson;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -124,6 +125,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -141,11 +143,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
@@ -167,13 +171,13 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
@@ -193,6 +197,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
@@ -210,6 +215,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -226,15 +232,18 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -242,6 +251,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -284,16 +294,19 @@ import software.amazon.awssdk.utils.Either;
 public abstract class EntityRepository<T extends EntityInterface> {
 
   public static final String BULK_IMPORT = "bulkImport";
+  private static final int RELATION_DELETE_BATCH_SIZE = 500;
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
-  public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
+  private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
+
+  public static final LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
           .maximumSize(20000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithName());
-  public static final LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID =
+  public static final LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
       CacheBuilder.newBuilder()
           .maximumSize(20000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
@@ -342,7 +355,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .build(
               new CacheLoader<String, Integer>() {
                 @Override
-                public Integer load(String key) throws Exception {
+                public Integer load(String key) {
                   throw new UnsupportedOperationException("Use get() method with a custom loader");
                 }
               });
@@ -368,6 +381,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomains;
   protected final boolean supportsDataProducts;
+  protected final boolean supportsDataContract;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   @Getter protected final boolean supportsEntityStatus;
@@ -387,6 +401,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected boolean supportsSearch = false;
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
+  private final ReadPlanner readPlanner = new ReadPlanner();
+
+  /**
+   * Thread-local cache for parent entities during bulk prepare operations.
+   * Set by {@link #preloadParentsForBulk(List)} and cleared after use.
+   */
+  private final ThreadLocal<Map<UUID, EntityInterface>> parentCacheForPrepare = new ThreadLocal<>();
+
+  private static final ThreadLocal<Map<InheritanceCacheKey, EntityInterface>>
+      inheritanceParentCache = ThreadLocal.withInitial(HashMap::new);
 
   protected final ChangeSummarizer<T> changeSummarizer;
 
@@ -478,6 +502,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
       this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
     }
+    this.supportsDataContract = allowedFields.contains(FIELD_DATA_CONTRACT);
     this.supportsStyle = allowedFields.contains(FIELD_STYLE);
     if (supportsStyle) {
       this.patchFields.addField(allowedFields, FIELD_STYLE);
@@ -527,9 +552,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    changeSummarizer = new ChangeSummarizer<>(entityClass, changeSummaryFields);
+    changeSummarizer =
+        new ChangeSummarizer<>(entityClass, getEffectiveChangeSummaryFields(changeSummaryFields));
 
     Entity.registerEntity(entityClass, entityType, this);
+  }
+
+  private Set<String> getEffectiveChangeSummaryFields(Set<String> configuredFields) {
+    Set<String> effectiveFields = new HashSet<>(configuredFields);
+
+    if (allowedFields.contains(FIELD_DESCRIPTION)) {
+      effectiveFields.add(FIELD_DESCRIPTION);
+    }
+    if (allowedFields.contains(FIELD_OWNERS)) {
+      effectiveFields.add(FIELD_OWNERS);
+    }
+
+    return effectiveFields;
   }
 
   /**
@@ -611,13 +650,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void deleteToMany(
       List<UUID> toIds, String toEntity, Relationship relationship, String fromEntity) {
     if (toIds.isEmpty()) return;
-    List<String> idStrings = toIds.stream().map(UUID::toString).toList();
-    if (fromEntity != null) {
-      daoCollection
-          .relationshipDAO()
-          .deleteToMany(idStrings, toEntity, relationship.ordinal(), fromEntity);
-    } else {
-      daoCollection.relationshipDAO().deleteToMany(idStrings, toEntity, relationship.ordinal());
+    for (int i = 0; i < toIds.size(); i += RELATION_DELETE_BATCH_SIZE) {
+      List<String> idBatch =
+          toIds.subList(i, Math.min(i + RELATION_DELETE_BATCH_SIZE, toIds.size())).stream()
+              .map(UUID::toString)
+              .toList();
+      if (fromEntity != null) {
+        daoCollection
+            .relationshipDAO()
+            .deleteToMany(idBatch, toEntity, relationship.ordinal(), fromEntity);
+      } else {
+        daoCollection.relationshipDAO().deleteToMany(idBatch, toEntity, relationship.ordinal());
+      }
     }
   }
 
@@ -628,13 +672,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void deleteFromMany(
       List<UUID> fromIds, String fromEntity, Relationship relationship, String toEntity) {
     if (fromIds.isEmpty()) return;
-    List<String> idStrings = fromIds.stream().map(UUID::toString).toList();
-    if (toEntity != null) {
-      daoCollection
-          .relationshipDAO()
-          .deleteFromMany(idStrings, fromEntity, relationship.ordinal(), toEntity);
-    } else {
-      daoCollection.relationshipDAO().deleteFromMany(idStrings, fromEntity, relationship.ordinal());
+    for (int i = 0; i < fromIds.size(); i += RELATION_DELETE_BATCH_SIZE) {
+      List<String> idBatch =
+          fromIds.subList(i, Math.min(i + RELATION_DELETE_BATCH_SIZE, fromIds.size())).stream()
+              .map(UUID::toString)
+              .toList();
+      if (toEntity != null) {
+        daoCollection
+            .relationshipDAO()
+            .deleteFromMany(idBatch, fromEntity, relationship.ordinal(), toEntity);
+      } else {
+        daoCollection.relationshipDAO().deleteFromMany(idBatch, fromEntity, relationship.ordinal());
+      }
     }
   }
 
@@ -689,20 +738,367 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    EntityInterface parent = supportsDomains ? getParentEntity(entity, "domains") : null;
+    if (!requiresParentForInheritance(entity, fields)) {
+      return;
+    }
+    String inheritableFields = getInheritableFields();
+    EntityReference parentRef = getParentReference(entity);
+    EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
+    if (parent == null) {
+      parent = getParentEntity(entity, inheritableFields);
+      cacheInheritanceParent(parentRef, inheritableFields, parent);
+    }
     if (parent != null) {
-      inheritDomains(entity, fields, parent);
+      // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
+      applyInheritance(entity, fields, parent);
     }
   }
 
   /**
-   * The default behavior is to execute one by one. For batch execution, override this method in the subclass.
-   *
-   * @see GlossaryTermRepository#setInheritedFields(List, Fields) for an example implementation
+   * Return the parent's EntityReference without loading the parent entity. Subclasses override this
+   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}.
+   */
+  protected EntityReference getParentReference(T entity) {
+    return null;
+  }
+
+  /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
+  protected String getInheritableFields() {
+    return "domains";
+  }
+
+  /** Get the list of propagatable fields to child entities in the search index **/
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return List.of(
+        new PropagationDescriptor(
+            FIELD_OWNERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null),
+        new PropagationDescriptor(
+            FIELD_DOMAINS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null),
+        new PropagationDescriptor(
+            Entity.FIELD_DISABLED, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null),
+        new PropagationDescriptor(
+            Entity.FIELD_TEST_SUITES, PropagationDescriptor.PropagationType.RAW_REPLACE, null),
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME,
+            PropagationDescriptor.PropagationType.NESTED_FIELD,
+            entityType + "." + FIELD_DISPLAY_NAME));
+  }
+
+  /**
+   * Determine whether parent traversal is required for inheritance based on requested fields and
+   * whether the entity already has local values.
+   */
+  protected boolean requiresParentForInheritance(T entity, Fields fields) {
+    boolean needsOwners =
+        supportsOwners && fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners());
+    boolean needsDomains =
+        supportsDomains && fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains());
+    return needsOwners || needsDomains;
+  }
+
+  public final T getForInheritance(UUID id, Fields fields, Include include) {
+    T entity = find(id, include);
+    List<CollectionDAO.EntityRelationshipObject> inheritanceRelations =
+        daoCollection
+            .relationshipDAO()
+            .findToRelationshipsForEntity(
+                entity.getId(), entityType, inheritanceRelationOrdinals(fields), ALL);
+    if (fields.contains(FIELD_OWNERS)) {
+      entity.setOwners(
+          resolveReferencesFromToRecords(
+              inheritanceRelations, Relationship.OWNS, null, NON_DELETED));
+    }
+    if (fields.contains(FIELD_DOMAINS)) {
+      entity.setDomains(
+          resolveReferencesFromToRecords(
+              inheritanceRelations, Relationship.HAS, DOMAIN, NON_DELETED));
+    }
+    if (!requiresParentForInheritance(entity, fields)) {
+      return entity;
+    }
+
+    EntityReference containerRef =
+        resolveParentReferenceFromToRecords(inheritanceRelations, Relationship.CONTAINS, null);
+    if (containerRef == null) {
+      containerRef = getFromEntityRef(entity.getId(), Relationship.CONTAINS, null, false);
+    }
+    if (containerRef != null) {
+      // Preserve the requested inheritance shape (e.g. retentionPeriod-only), but only for this
+      // repository's declared inheritable fields to avoid leaking invalid fields up the chain.
+      String parentFields = projectInheritanceFields(fields);
+      EntityInterface parent =
+          Entity.getEntityForInheritance(
+              containerRef.getType(), containerRef.getId(), parentFields, ALL);
+      applyInheritance(entity, fields, parent);
+    }
+    return entity;
+  }
+
+  private List<Integer> inheritanceRelationOrdinals(Fields fields) {
+    Fields inheritanceFields = fields == null ? Fields.EMPTY_FIELDS : fields;
+    Set<Integer> relations = new HashSet<>();
+    if (supportsOwners && inheritanceFields.contains(FIELD_OWNERS)) {
+      relations.add(Relationship.OWNS.ordinal());
+    }
+    if (supportsDomains && inheritanceFields.contains(FIELD_DOMAINS)) {
+      relations.add(Relationship.HAS.ordinal());
+    }
+    // Parent traversal for inheritance always needs CONTAINS regardless of requested relation
+    // fields.
+    relations.add(Relationship.CONTAINS.ordinal());
+    return new ArrayList<>(relations);
+  }
+
+  private String projectInheritanceFields(Fields fields) {
+    String inheritableFields = getInheritableFields();
+    if (inheritableFields == null || inheritableFields.isBlank()) {
+      return "";
+    }
+    if (fields == null || nullOrEmpty(fields.getFieldList())) {
+      return inheritableFields;
+    }
+
+    List<String> projectedFields = new ArrayList<>();
+    for (String inheritableField : inheritableFields.split(",")) {
+      String normalized = inheritableField.trim();
+      if (!normalized.isEmpty() && fields.contains(normalized)) {
+        projectedFields.add(normalized);
+      }
+    }
+
+    return projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+  }
+
+  public void fetchInheritableRelationships(List<T> entities, Fields fields) {
+    if (entities.isEmpty()) return;
+    if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
+    fetchAndSetDomains(entities, fields);
+  }
+
+  @SuppressWarnings("unchecked")
+  public void fetchInheritableRelationshipsUntyped(List<?> entities, Fields fields) {
+    fetchInheritableRelationships((List<T>) entities, fields);
+  }
+
+  @SuppressWarnings("unchecked")
+  public void setInheritedFieldsUntyped(List<?> entities, Fields fields) {
+    setInheritedFields((List<T>) entities, fields);
+  }
+
+  /** Apply inherited fields from a loaded parent to the entity. Override for custom inheritance logic. */
+  protected void applyInheritance(T entity, Fields fields, EntityInterface parent) {
+    inheritDomains(entity, fields, parent);
+  }
+
+  /**
+   * Batch-preload parent entities needed by {@link #prepare(Object, boolean)} during bulk operations.
+   * Default uses {@link #getParentReference(Object)} to collect unique parents and batch-load them.
+   * Repos with custom parent loading in prepare() can override for different behavior.
+   */
+  public void preloadParentsForBulk(List<T> entities) {
+    if (entities == null || entities.isEmpty()) return;
+    var uniqueRefs = new LinkedHashMap<UUID, EntityReference>();
+    for (var entity : entities) {
+      var ref = getParentReference(entity);
+      if (ref != null && ref.getId() != null) {
+        uniqueRefs.putIfAbsent(ref.getId(), ref);
+      }
+    }
+    if (uniqueRefs.isEmpty()) return;
+    var loaded = new HashMap<UUID, EntityInterface>();
+    var refsByType =
+        uniqueRefs.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
+    for (var entry : refsByType.entrySet()) {
+      List<? extends EntityInterface> parents = Entity.getEntities(entry.getValue(), "", ALL);
+      for (var parent : parents) {
+        loaded.put(parent.getId(), parent);
+      }
+    }
+    setParentCache(loaded);
+  }
+
+  /** Get a parent entity from the bulk-prepare cache, or load from DB if not cached. */
+  protected EntityInterface getCachedParentOrLoad(
+      EntityReference ref, String fields, Include include) {
+    var cache = parentCacheForPrepare.get();
+    if (cache != null && ref != null && ref.getId() != null) {
+      var cached = cache.get(ref.getId());
+      if (cached != null) return cached;
+    }
+    return Entity.getEntity(ref, fields, include);
+  }
+
+  /** Store preloaded parents in the thread-local cache. */
+  protected void setParentCache(Map<UUID, EntityInterface> cache) {
+    parentCacheForPrepare.set(cache);
+  }
+
+  /** Clear the parent cache after bulk prepare. */
+  public void clearParentCache() {
+    parentCacheForPrepare.remove();
+    inheritanceParentCache.remove();
+  }
+
+  public static void clearInheritanceParentCache() {
+    inheritanceParentCache.remove();
+  }
+
+  private EntityInterface getCachedInheritanceParent(EntityReference parentRef, String fields) {
+    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
+      return null;
+    }
+    Map<InheritanceCacheKey, EntityInterface> cache = inheritanceParentCache.get();
+    InheritanceCacheKey directKey = inheritanceCacheKey(parentRef, fields);
+    EntityInterface direct = cache.get(directKey);
+    if (direct != null) {
+      return direct;
+    }
+
+    // Reuse a superset entry when the same parent was already loaded with broader fields
+    // (for example "owners,domains,retentionPeriod" can serve "owners,domains").
+    Set<String> requestedFields = parseFieldSet(directKey.fieldsKey());
+    for (Entry<InheritanceCacheKey, EntityInterface> entry : cache.entrySet()) {
+      InheritanceCacheKey cachedKey = entry.getKey();
+      if (!cachedKey.entityType().equals(parentRef.getType())
+          || !cachedKey.entityId().equals(parentRef.getId())) {
+        continue;
+      }
+      if (parseFieldSet(cachedKey.fieldsKey()).containsAll(requestedFields)) {
+        return entry.getValue();
+      }
+    }
+    return null;
+  }
+
+  protected final <P extends EntityInterface> P getOrLoadInheritanceParent(
+      EntityReference parentRef, String fields, Class<P> parentClass) {
+    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
+      return null;
+    }
+    EntityInterface parent = getCachedInheritanceParent(parentRef, fields);
+    if (parent == null) {
+      parent = Entity.getEntityForInheritance(parentRef.getType(), parentRef.getId(), fields, ALL);
+      cacheInheritanceParent(parentRef, fields, parent);
+    }
+    if (!parentClass.isInstance(parent)) {
+      return null;
+    }
+    return parentClass.cast(parent);
+  }
+
+  private void cacheInheritanceParent(
+      EntityReference parentRef, String fields, EntityInterface parent) {
+    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
+      return;
+    }
+    if (parent == null || parent.getId() == null) {
+      return;
+    }
+    inheritanceParentCache.get().put(inheritanceCacheKey(parentRef, fields), parent);
+  }
+
+  private InheritanceCacheKey inheritanceCacheKey(EntityReference parentRef, String fields) {
+    return new InheritanceCacheKey(
+        parentRef.getType(), parentRef.getId(), normalizeFieldList(fields));
+  }
+
+  private String normalizeFieldList(String fields) {
+    if (fields == null || fields.isBlank()) {
+      return "";
+    }
+    // Canonicalize field order so cache keys are stable across equivalent requests
+    // (e.g. "owners,domains" and "domains, owners" should share the same parent entry).
+    return fields
+        .lines()
+        .flatMap(line -> Stream.of(line.split(",")))
+        .map(String::trim)
+        .filter(field -> !field.isEmpty())
+        .distinct()
+        .sorted()
+        .collect(Collectors.joining(","));
+  }
+
+  private Set<String> parseFieldSet(String fields) {
+    if (fields == null || fields.isBlank()) {
+      return Collections.emptySet();
+    }
+    return Stream.of(fields.split(","))
+        .map(String::trim)
+        .filter(field -> !field.isEmpty())
+        .collect(Collectors.toSet());
+  }
+
+  /**
+   * Batch implementation that collects unique parent references, loads them in bulk, and applies
+   * inheritance. Subclasses only need to override {@link #getParentReference(Object)},
+   * {@link #getInheritableFields()}, and {@link #applyInheritance(Object, Fields, EntityInterface)}.
+   * Repos with complex inheritance (e.g. GlossaryTerm, TestCase) can still override this method directly.
    */
   protected void setInheritedFields(List<T> entities, Fields fields) {
-    for (T entity : entities) {
-      setInheritedFields(entity, fields);
+    if (entities.isEmpty()) return;
+    String inheritableFields = getInheritableFields();
+
+    var parentRefMap = new HashMap<UUID, EntityReference>();
+    for (var entity : entities) {
+      if (!requiresParentForInheritance(entity, fields)) {
+        continue;
+      }
+      var ref = getParentReference(entity);
+      if (ref != null && ref.getId() != null) {
+        parentRefMap.putIfAbsent(ref.getId(), ref);
+      }
+    }
+
+    if (parentRefMap.isEmpty()) {
+      for (var entity : entities) {
+        setInheritedFields(entity, fields);
+      }
+      return;
+    }
+
+    var refsByType =
+        parentRefMap.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
+
+    var loadedParents = new HashMap<UUID, EntityInterface>();
+    var missingRefsByType = new HashMap<String, List<EntityReference>>();
+    for (var entry : refsByType.entrySet()) {
+      var missingRefs = new ArrayList<EntityReference>();
+      for (var ref : entry.getValue()) {
+        var cachedParent = getCachedInheritanceParent(ref, inheritableFields);
+        if (cachedParent != null) {
+          loadedParents.put(ref.getId(), cachedParent);
+        } else {
+          missingRefs.add(ref);
+        }
+      }
+      if (!missingRefs.isEmpty()) {
+        missingRefsByType.put(entry.getKey(), missingRefs);
+      }
+    }
+
+    for (var entry : missingRefsByType.entrySet()) {
+      List<? extends EntityInterface> parents =
+          Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
+      for (var parent : parents) {
+        loadedParents.put(parent.getId(), parent);
+        var parentRef = parentRefMap.get(parent.getId());
+        if (parentRef != null) {
+          cacheInheritanceParent(parentRef, inheritableFields, parent);
+        }
+      }
+    }
+
+    for (var entity : entities) {
+      if (!requiresParentForInheritance(entity, fields)) {
+        continue;
+      }
+      var ref = getParentReference(entity);
+      if (ref != null && loadedParents.get(ref.getId()) instanceof EntityInterface parent) {
+        applyInheritance(entity, fields, parent);
+      } else {
+        // Preserve behavior when a parent cannot be resolved via batch loading.
+        setInheritedFields(entity, fields);
+      }
     }
   }
 
@@ -880,21 +1276,68 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    T requestCachedEntity =
+        RequestEntityCache.getById(
+            entityType, id, fields, relationIncludes, fromCache, entityClass);
+    if (requestCachedEntity != null) {
+      return withHref(uriInfo, requestCachedEntity);
+    }
+
     if (!fromCache) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
-    T entity = find(id, relationIncludes.getDefaultInclude());
-    setFieldsInternal(entity, fields, relationIncludes);
-    setInheritedFields(entity, fields);
+    T entity =
+        withPhase("entityLookup", () -> find(id, relationIncludes.getDefaultInclude(), fromCache));
+    ReadPlan readPlan =
+        withPhase("readCreatePlan", () -> createReadPlan(entity, fields, relationIncludes));
+    ReadBundle readBundle = withPhase("buildReadBundle", () -> buildReadBundle(entity, readPlan));
+    ReadBundleContext.push(readBundle);
+    try {
+      withPhase("setFields", () -> setFieldsInternal(entity, fields, relationIncludes));
+      withPhase("setInheritedFields", () -> setInheritedFields(entity, fields));
+    } finally {
+      ReadBundleContext.pop();
+    }
+    withPhase("readClearFields", () -> clearFieldsInternal(entity, fields));
+    T hydratedEntity = withPhase("readWithHref", () -> withHref(uriInfo, entity));
+    withPhase(
+        "requestCachePutById",
+        () ->
+            RequestEntityCache.putById(
+                entityType, id, fields, relationIncludes, fromCache, hydratedEntity, entityClass));
+    if (hydratedEntity.getFullyQualifiedName() != null) {
+      withPhase(
+          "requestCachePutByName",
+          () ->
+              RequestEntityCache.putByName(
+                  entityType,
+                  hydratedEntity.getFullyQualifiedName(),
+                  fields,
+                  relationIncludes,
+                  fromCache,
+                  hydratedEntity,
+                  entityClass));
+    }
+    return hydratedEntity;
+  }
 
-    T entityClone = JsonUtils.deepCopy(entity, entityClass);
-    clearFieldsInternal(entityClone, fields);
-    return withHref(uriInfo, entityClone);
+  private <R> R withPhase(String phaseName, Supplier<R> operation) {
+    try (var ignored = phase(phaseName)) {
+      return operation.get();
+    }
+  }
+
+  private void withPhase(String phaseName, Runnable operation) {
+    try (var ignored = phase(phaseName)) {
+      operation.run();
+    }
   }
 
   public final List<T> get(UriInfo uriInfo, List<UUID> ids, Fields fields, Include include) {
     List<T> entities = find(ids, include);
-    setFieldsInBulk(fields, entities);
+    try (var ignored = phase("setFieldsBulk")) {
+      setFieldsInBulk(fields, entities);
+    }
     entities.forEach(entity -> withHref(uriInfo, entity));
     return entities;
   }
@@ -920,22 +1363,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
-    try {
-      if (!fromCache) {
-        CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+    if (!fromCache) {
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      T entity;
+      try (var ignored = phase("dbFindByIdNoCache")) {
+        entity = dao.findEntityById(id, include);
       }
-      @SuppressWarnings("unchecked")
-      T entity =
-          JsonUtils.deepCopy(
-              (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
+      if (entity == null) {
+        throw new EntityNotFoundException(entityNotFound(entityType, id));
+      }
+      if (entity.getId() == null) {
+        LOG.error(
+            "CRITICAL: Entity loaded from database has null ID! Type: {}, Expected ID: {}, FQN: {}",
+            entityType,
+            id,
+            entity.getFullyQualifiedName());
+        entity.setId(id);
+      }
+      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+        throw new EntityNotFoundException(entityNotFound(entityType, id));
+      }
+      return entity;
+    }
+
+    try {
+      String cachedJson;
+      try (var ignored = phase("cacheGet")) {
+        cachedJson = CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
+      }
+      T entity;
+      try (var ignored = phase("cacheCopy")) {
+        entity = JsonUtils.readValue(cachedJson, entityClass);
+      }
 
       // Validate the entity retrieved from cache
       if (entity != null && entity.getId() == null) {
         LOG.error(
             "CRITICAL: Entity from cache has null ID! Type: {}, Expected ID: {}", entityType, id);
-        // Invalidate the corrupted cache entry and reload from database
         CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-        // Try one more time without cache
         entity = dao.findEntityById(id, include);
         if (entity == null) {
           throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -953,7 +1419,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<T> find(List<UUID> ids, Include include) {
-    return dao.findEntitiesByIds(ids, include);
+    try (var ignored = phase("dbBatchFind")) {
+      return dao.findEntitiesByIds(ids, include);
+    }
   }
 
   public T getByName(UriInfo uriInfo, String fqn, Fields fields) {
@@ -972,16 +1440,326 @@ public abstract class EntityRepository<T extends EntityInterface> {
       RelationIncludes relationIncludes,
       boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
+    T requestCachedEntity =
+        RequestEntityCache.getByName(
+            entityType, fqn, fields, relationIncludes, fromCache, entityClass);
+    if (requestCachedEntity != null) {
+      return withHref(uriInfo, requestCachedEntity);
+    }
+
     if (!fromCache) {
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
     }
-    T entity = findByName(fqn, relationIncludes.getDefaultInclude());
-    setFieldsInternal(entity, fields, relationIncludes);
-    setInheritedFields(entity, fields);
+    T entity;
+    try (var ignored = phase("entityLookup")) {
+      entity = findByName(fqn, relationIncludes.getDefaultInclude(), fromCache);
+    }
+    ReadPlan readPlan;
+    try (var ignored = phase("readCreatePlan")) {
+      readPlan = createReadPlan(entity, fields, relationIncludes);
+    }
+    ReadBundle readBundle;
+    try (var ignored = phase("buildReadBundle")) {
+      readBundle = buildReadBundle(entity, readPlan);
+    }
+    ReadBundleContext.push(readBundle);
+    try {
+      try (var ignored = phase("setFields")) {
+        setFieldsInternal(entity, fields, relationIncludes);
+      }
+      try (var ignored = phase("setInheritedFields")) {
+        setInheritedFields(entity, fields);
+      }
+    } finally {
+      ReadBundleContext.pop();
+    }
+    try (var ignored = phase("readClearFields")) {
+      clearFieldsInternal(entity, fields);
+    }
+    try (var ignored = phase("readWithHref")) {
+      entity = withHref(uriInfo, entity);
+    }
+    try (var ignored = phase("requestCachePutByName")) {
+      RequestEntityCache.putByName(
+          entityType, fqn, fields, relationIncludes, fromCache, entity, entityClass);
+    }
+    if (entity.getId() != null) {
+      try (var ignored = phase("requestCachePutById")) {
+        RequestEntityCache.putById(
+            entityType, entity.getId(), fields, relationIncludes, fromCache, entity, entityClass);
+      }
+    }
+    return entity;
+  }
 
-    T entityClone = JsonUtils.deepCopy(entity, entityClass);
-    clearFieldsInternal(entityClone, fields);
-    return withHref(uriInfo, entityClone);
+  private ReadPlan createReadPlan(T entity, Fields fields, RelationIncludes relationIncludes) {
+    ReadPlanBuilder builder =
+        readPlanner.newBuilder(entity, fields, relationIncludes, readPlannerConfig());
+    augmentReadPlan(builder, entity, fields, relationIncludes);
+    return builder.build();
+  }
+
+  private ReadPlanner.ReadPlannerConfig readPlannerConfig() {
+    return new ReadPlanner.ReadPlannerConfig(
+        entityType,
+        supportsOwners,
+        supportsDomains,
+        supportsFollower,
+        supportsReviewers,
+        supportsDataProducts,
+        supportsExperts,
+        supportsExtension,
+        supportsTags,
+        supportsVotes);
+  }
+
+  /**
+   * Hook for repositories to extend {@link ReadPlan} with entity-specific relation fields or
+   * prefetch intent without changing common planner behavior.
+   */
+  protected void augmentReadPlan(
+      ReadPlanBuilder builder, T entity, Fields fields, RelationIncludes relationIncludes) {
+    // Default no-op. Repositories can append entity-specific read planning here.
+  }
+
+  /**
+   * Hook for repositories to execute entity-specific prefetch reads using the already-built read plan.
+   * Results should be attached to the entity or request-scoped bundle to avoid fallback DAO calls.
+   */
+  protected void prefetchEntitySpecificReadData(T entity, ReadPlan readPlan, ReadBundle bundle) {
+    // Default no-op. Repositories can prefetch entity-specific data in few queries here.
+  }
+
+  private ReadBundle buildReadBundle(T entity, ReadPlan readPlan) {
+    ReadBundle bundle = new ReadBundle();
+    if (entity == null || entity.getId() == null || readPlan == null || readPlan.isEmpty()) {
+      return bundle;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> toRecords;
+    try (var ignored = phase("readBundleFetchToRelationships")) {
+      toRecords =
+          fetchToRelationshipsForEntity(
+              entity.getId(), entityType, readPlan.getToRelationsByInclude());
+    }
+    List<CollectionDAO.EntityRelationshipObject> fromRecords;
+    try (var ignored = phase("readBundleFetchFromRelationships")) {
+      fromRecords =
+          fetchFromRelationshipsForEntity(
+              entity.getId(), entityType, readPlan.getFromRelationsByInclude());
+    }
+
+    readPlan
+        .getRelationSpecs()
+        .forEach(
+            (field, spec) -> {
+              List<EntityReference> references;
+              if (spec.direction() == ReadPlan.RelationDirection.TO) {
+                references =
+                    resolveReferencesFromToRecords(
+                        toRecords, spec.relationship(), spec.relatedEntityType(), spec.include());
+              } else {
+                references =
+                    resolveReferencesFromFromRecords(
+                        fromRecords, spec.relationship(), spec.relatedEntityType(), spec.include());
+              }
+              bundle.putRelations(entity.getId(), field, spec.include(), references);
+            });
+
+    if (readPlan.shouldLoadTags()) {
+      List<TagLabel> tags;
+      try (var ignored = phase("readBundleFetchTags")) {
+        tags =
+            batchFetchTags(List.of(entity.getFullyQualifiedName()))
+                .getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList());
+      }
+      bundle.putTags(entity.getId(), tags);
+    }
+
+    if (readPlan.shouldLoadVotes()) {
+      Votes votes;
+      try (var ignored = phase("readBundleFetchVotes")) {
+        votes = batchFetchVotes(List.of(entity)).getOrDefault(entity.getId(), new Votes());
+      }
+      bundle.putVotes(entity.getId(), votes);
+    }
+
+    if (readPlan.shouldLoadExtension()) {
+      Object extension;
+      try (var ignored = phase("readBundleFetchExtension")) {
+        extension = batchFetchExtensions(List.of(entity)).get(entity.getId());
+      }
+      bundle.putExtension(entity.getId(), extension);
+    }
+
+    try (var ignored = phase("readBundlePrefetchEntitySpecific")) {
+      prefetchEntitySpecificReadData(entity, readPlan, bundle);
+    }
+    return bundle;
+  }
+
+  private Map<Include, Set<Integer>> collapseRelationGroups(
+      Map<Include, Set<Integer>> relationsByInclude) {
+    Map<Include, Set<Integer>> collapsed = new HashMap<>();
+    relationsByInclude.forEach(
+        (include, relations) -> {
+          if (!nullOrEmpty(relations)) {
+            collapsed.put(include, new HashSet<>(relations));
+          }
+        });
+    Set<Integer> allRelations = collapsed.getOrDefault(ALL, Collections.emptySet());
+    if (!allRelations.isEmpty()) {
+      collapsed.forEach(
+          (include, relations) -> {
+            if (include != ALL) {
+              relations.removeAll(allRelations);
+            }
+          });
+    }
+    collapsed.values().removeIf(Set::isEmpty);
+    return collapsed;
+  }
+
+  private List<CollectionDAO.EntityRelationshipObject> fetchToRelationshipsForEntity(
+      UUID entityId, String entityType, Map<Include, Set<Integer>> relationsByInclude) {
+    if (nullOrEmpty(relationsByInclude)) {
+      return Collections.emptyList();
+    }
+    List<CollectionDAO.EntityRelationshipObject> records = new ArrayList<>();
+    Map<Include, Set<Integer>> queryPlan = collapseRelationGroups(relationsByInclude);
+    for (Entry<Include, Set<Integer>> entry : queryPlan.entrySet()) {
+      records.addAll(
+          daoCollection
+              .relationshipDAO()
+              .findToRelationshipsForEntity(
+                  entityId, entityType, new ArrayList<>(entry.getValue()), entry.getKey()));
+    }
+    return records;
+  }
+
+  private List<CollectionDAO.EntityRelationshipObject> fetchFromRelationshipsForEntity(
+      UUID entityId, String entityType, Map<Include, Set<Integer>> relationsByInclude) {
+    if (nullOrEmpty(relationsByInclude)) {
+      return Collections.emptyList();
+    }
+    List<CollectionDAO.EntityRelationshipObject> records = new ArrayList<>();
+    Map<Include, Set<Integer>> queryPlan = collapseRelationGroups(relationsByInclude);
+    for (Entry<Include, Set<Integer>> entry : queryPlan.entrySet()) {
+      records.addAll(
+          daoCollection
+              .relationshipDAO()
+              .findFromRelationshipsForEntity(
+                  entityId, entityType, new ArrayList<>(entry.getValue()), entry.getKey()));
+    }
+    return records;
+  }
+
+  private List<EntityReference> resolveReferencesFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType,
+      Include include) {
+    List<EntityRelationshipRecord> relationRecords =
+        toRelationshipRecordsFromToRecords(records, relationship, fromEntityType);
+
+    return Entity.getEntityRelationshipRepository().getEntityReferences(relationRecords, include);
+  }
+
+  private EntityReference resolveSingleFromReferenceFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType,
+      Include include) {
+    List<EntityReference> references =
+        resolveReferencesFromToRecords(records, relationship, fromEntityType, include);
+    if (references.isEmpty()) {
+      return null;
+    }
+    if (references.size() > 1) {
+      LOG.warn(
+          "Possible database issues - multiple relations {} for entity {} fromEntityType {}",
+          relationship.value(),
+          entityType,
+          fromEntityType);
+    }
+    return references.get(0);
+  }
+
+  private EntityReference resolveParentReferenceFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType) {
+    if (records == null || records.isEmpty()) {
+      return null;
+    }
+    List<CollectionDAO.EntityRelationshipObject> matchingRecords =
+        records.stream()
+            .filter(record -> record.getRelation() == relationship.ordinal())
+            .filter(
+                record -> fromEntityType == null || fromEntityType.equals(record.getFromEntity()))
+            .toList();
+    if (matchingRecords.isEmpty()) {
+      return null;
+    }
+    if (matchingRecords.size() > 1) {
+      LOG.warn(
+          "Possible database issues - multiple relations {} for entity {} fromEntityType {}",
+          relationship.value(),
+          entityType,
+          fromEntityType);
+    }
+    CollectionDAO.EntityRelationshipObject record = matchingRecords.get(0);
+    if (nullOrEmpty(record.getFromEntity()) || nullOrEmpty(record.getFromId())) {
+      return null;
+    }
+    return new EntityReference()
+        .withType(record.getFromEntity())
+        .withId(UUID.fromString(record.getFromId()));
+  }
+
+  private List<EntityRelationshipRecord> toRelationshipRecordsFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType) {
+    if (records == null || records.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return records.stream()
+        .filter(record -> record.getRelation() == relationship.ordinal())
+        .filter(record -> fromEntityType == null || fromEntityType.equals(record.getFromEntity()))
+        .map(
+            record ->
+                EntityRelationshipRecord.builder()
+                    .id(UUID.fromString(record.getFromId()))
+                    .type(record.getFromEntity())
+                    .json(record.getJson())
+                    .build())
+        .toList();
+  }
+
+  private List<EntityReference> resolveReferencesFromFromRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String toEntityType,
+      Include include) {
+    if (records == null || records.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<EntityRelationshipRecord> relationRecords =
+        records.stream()
+            .filter(record -> record.getRelation() == relationship.ordinal())
+            .filter(record -> toEntityType == null || toEntityType.equals(record.getToEntity()))
+            .map(
+                record ->
+                    EntityRelationshipRecord.builder()
+                        .id(UUID.fromString(record.getToId()))
+                        .type(record.getToEntity())
+                        .json(record.getJson())
+                        .build())
+            .toList();
+
+    return Entity.getEntityRelationshipRepository().getEntityReferences(relationRecords, include);
   }
 
   public final Optional<T> getByNameOrNull(
@@ -1036,14 +1814,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
-    try {
-      if (!fromCache) {
-        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+    if (!fromCache) {
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      T entity;
+      try (var ignored = phase("dbFindByNameNoCache")) {
+        entity = dao.findEntityByName(fqn, include);
       }
-      @SuppressWarnings("unchecked")
-      T entity =
-          JsonUtils.deepCopy(
-              (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn)), entityClass);
+      if (entity == null) {
+        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      }
+      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
+          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
+      }
+      return entity;
+    }
+
+    try {
+      String cachedJson;
+      try (var ignored = phase("cacheGet")) {
+        cachedJson = CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+      }
+      T entity;
+      try (var ignored = phase("cacheCopy")) {
+        entity = JsonUtils.readValue(cachedJson, entityClass);
+      }
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
@@ -1101,8 +1896,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-    fetchAndSetFields(entities, fields);
-    setInheritedFields(entities, fields);
+    try (var ignored = phase("fetchFields")) {
+      fetchAndSetFields(entities, fields);
+    }
+    try (var ignored = phase("setInheritedFields")) {
+      setInheritedFields(entities, fields);
+    }
+
     for (T entity : entities) {
       clearFieldsInternal(entity, fields);
     }
@@ -1134,11 +1934,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
-      for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, entityClass);
-        entities.add(entity);
+      try (var ignored = phase("jsonDeserialize")) {
+        for (String json : jsons) {
+          T entity = JsonUtils.readValue(json, entityClass);
+          entities.add(entity);
+        }
       }
-      setFieldsInBulk(fields, entities);
+      try (var ignored = phase("setFieldsBulk")) {
+        setFieldsInBulk(fields, entities);
+      }
       entities.forEach(entity -> withHref(uriInfo, entity));
 
       String beforeCursor;
@@ -1207,12 +2011,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unchecked")
   Map<String, String> parseCursorMap(String param) {
+    Map<String, String> cursorMap;
     if (param == null) {
-      return Map.of("name", null, "id", null);
+      cursorMap = Map.of("name", null, "id", null);
     } else if (nullOrEmpty(param)) {
-      return Map.of("name", "", "id", "");
+      cursorMap = Map.of("name", "", "id", "");
+    } else {
+      cursorMap = JsonUtils.readValue(param, Map.class);
     }
-    return JsonUtils.readValue(param, Map.class);
+    return cursorMap;
   }
 
   public ResultList<T> listBefore(
@@ -1420,7 +2227,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 fetchLimit);
 
     List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
-    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
 
@@ -1457,6 +2264,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getResultList(entities, beforeCursorValue, afterCursorValue, total);
   }
 
+  /**
+   * Hook to hydrate entities returned from {@link #listEntityHistoryByTimestamp(long, long, String,
+   * String, int)}.
+   *
+   * <p>Default behavior is intentionally lightweight: return the historical snapshots as stored in
+   * the extension table and avoid expensive relationship re-hydration for each row.
+   */
+  protected void hydrateHistoryEntities(List<T> entities) {
+    // Historical snapshots are already serialized versions; avoid N+1 hydration on /history.
+  }
+
   private String decodeAndValidateCursor(String cursor) {
     if (cursor == null) {
       throw new RuntimeException("Cursor is null");
@@ -1479,8 +2297,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T e : entities) {
       prepareInternal(e, false);
     }
-    List<T> createdEntities = createManyEntities(entities);
-    return createdEntities;
+    return createManyEntities(entities);
   }
 
   public final T create(UriInfo uriInfo, T entity) {
@@ -1508,7 +2325,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    prepareInternal(entity, false);
+    try (var ignored = phase("createPrepareInternal")) {
+      prepareInternal(entity, false);
+    }
 
     // Set updatedBy and impersonatedBy after prepare but before storing
     if (updatedBy != null) {
@@ -1535,6 +2354,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeDomains(entity, entity.getDomains());
     storeDataProducts(entity, entity.getDataProducts());
     storeReviewers(entity, entity.getReviewers());
+    applyCertification(entity);
     storeRelationships(entity);
   }
 
@@ -1549,9 +2369,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeReviewers(entities);
     storeDataProducts(entities);
     applyTagsToEntities(entities);
+    applyCertificationBatch(entities);
 
-    // Entity-specific relationships - must be per-entity (abstract method)
+    // Repository-specific relationship writes can still batch here.
+    storeEntitySpecificRelationshipsForMany(entities);
+  }
+
+  protected void storeEntitySpecificRelationshipsForMany(List<T> entities) {
     entities.forEach(this::storeRelationships);
+  }
+
+  protected final void bulkInsertRelationships(
+      List<CollectionDAO.EntityRelationshipObject> relationships) {
+    if (!nullOrEmpty(relationships)) {
+      // Keep insert order deterministic to reduce deadlock probability under concurrent writes.
+      List<CollectionDAO.EntityRelationshipObject> orderedRelationships =
+          new ArrayList<>(relationships);
+      orderedRelationships.sort(
+          Comparator.comparing(
+                  CollectionDAO.EntityRelationshipObject::getFromId,
+                  Comparator.nullsLast(String::compareTo))
+              .thenComparing(
+                  CollectionDAO.EntityRelationshipObject::getToId,
+                  Comparator.nullsLast(String::compareTo))
+              .thenComparingInt(CollectionDAO.EntityRelationshipObject::getRelation)
+              .thenComparing(
+                  CollectionDAO.EntityRelationshipObject::getFromEntity,
+                  Comparator.nullsLast(String::compareTo))
+              .thenComparing(
+                  CollectionDAO.EntityRelationshipObject::getToEntity,
+                  Comparator.nullsLast(String::compareTo)));
+      daoCollection.relationshipDAO().bulkInsertTo(orderedRelationships);
+    }
+  }
+
+  protected final CollectionDAO.EntityRelationshipObject newRelationship(
+      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    return CollectionDAO.EntityRelationshipObject.builder()
+        .fromId(fromId.toString())
+        .toId(toId.toString())
+        .fromEntity(fromEntity)
+        .toEntity(toEntity)
+        .relation(relationship.ordinal())
+        .build();
   }
 
   @Transaction
@@ -1576,7 +2436,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -1604,7 +2464,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -1630,7 +2490,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -1656,7 +2516,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -1665,17 +2525,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsTags) {
       return;
     }
+    Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
     for (T entity : entities) {
       List<TagLabel> nonDerivedTags =
           listOrEmpty(entity.getTags()).stream()
               .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
               .toList();
-      if (!nonDerivedTags.isEmpty()) {
-        daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, entity.getFullyQualifiedName());
-        for (TagLabel tagLabel : nonDerivedTags) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-              tagLabel, entity.getFullyQualifiedName());
-        }
+      if (nonDerivedTags.isEmpty()) {
+        continue;
+      }
+      tagsByTarget
+          .computeIfAbsent(entity.getFullyQualifiedName(), ignored -> new ArrayList<>())
+          .addAll(nonDerivedTags);
+    }
+
+    if (tagsByTarget.isEmpty()) {
+      return;
+    }
+
+    daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
+
+    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+      String targetFqn = entry.getKey();
+      for (TagLabel tagLabel : entry.getValue()) {
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
       }
     }
   }
@@ -1700,11 +2573,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
             : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    entity.setDomains(getDomains(entity, relationIncludes.getIncludeFor(FIELD_DOMAINS)));
+    entity.setDomains(
+        fields.contains(FIELD_DOMAINS)
+            ? getDomains(entity, relationIncludes.getIncludeFor(FIELD_DOMAINS))
+            : entity.getDomains());
     entity.setDataProducts(
         fields.contains(FIELD_DATA_PRODUCTS)
             ? getDataProducts(entity, relationIncludes.getIncludeFor(FIELD_DATA_PRODUCTS))
             : entity.getDataProducts());
+    entity.setDataContract(
+        fields.contains(FIELD_DATA_CONTRACT)
+            ? getDataContract(entity, relationIncludes.getIncludeFor(FIELD_DATA_CONTRACT))
+            : entity.getDataContract());
     entity.setFollowers(
         fields.contains(FIELD_FOLLOWERS)
             ? getFollowers(entity, relationIncludes.getIncludeFor(FIELD_FOLLOWERS))
@@ -1764,31 +2644,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  /**
-   * Count how many relationship fields are requested to determine if batch fetching is beneficial
-   */
-  private int countRelationshipFields(Fields fields) {
-    int count = 0;
-    if (fields.contains(FIELD_OWNERS)) count++;
-    if (fields.contains(FIELD_TAGS)) count++;
-    if (fields.contains(FIELD_CERTIFICATION)) count++;
-    if (fields.contains(FIELD_EXTENSION)) count++;
-    if (fields.contains(FIELD_DOMAINS)) count++;
-    if (fields.contains(FIELD_DATA_PRODUCTS)) count++;
-    if (fields.contains(FIELD_FOLLOWERS)) count++;
-    if (fields.contains(FIELD_CHILDREN)) count++;
-    if (fields.contains(FIELD_EXPERTS)) count++;
-    if (fields.contains(FIELD_REVIEWERS)) count++;
-    if (fields.contains(FIELD_VOTES)) count++;
-    return count;
-  }
-
   public final void clearFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
     entity.setDomains(fields.contains(FIELD_DOMAINS) ? entity.getDomains() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
+    entity.setDataContract(fields.contains(FIELD_DATA_CONTRACT) ? entity.getDataContract() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
@@ -1797,12 +2659,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     clearFields(entity, fields);
   }
 
-  @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, String updatedBy) {
     return createOrUpdate(uriInfo, updated, updatedBy, null);
   }
 
-  @Transaction
   public final PutResponse<T> createOrUpdate(
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     // Check if parent entity is being deleted
@@ -1815,32 +2675,46 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
+    T original;
+    try (var ignored = phase("upsertFindOriginal")) {
+      original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
+    }
     if (original == null) { // If an original entity does not exist then create it, else update
       // Always set impersonatedBy to clear it when null (regular user operations)
       updated.setImpersonatedBy(impersonatedBy);
-      return new PutResponse<>(
-          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+      T created;
+      try (var ignored = phase("upsertCreate")) {
+        created = withHref(uriInfo, createNewEntity(updated));
+      }
+      return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
     }
-    return update(uriInfo, original, updated, updatedBy, impersonatedBy);
+    try (var ignored = phase("upsertUpdate")) {
+      return update(uriInfo, original, updated, updatedBy, impersonatedBy);
+    }
   }
 
-  @Transaction
   public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
     return createOrUpdateForImport(uriInfo, updated, updatedBy, null);
   }
 
-  @Transaction
   public PutResponse<T> createOrUpdateForImport(
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
-    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
+    T original;
+    try (var ignored = phase("upsertFindOriginalImport")) {
+      original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
+    }
     if (original == null) { // If an original entity does not exist then create it, else update
       // Always set impersonatedBy to clear it when null (regular user operations)
       updated.setImpersonatedBy(impersonatedBy);
-      return new PutResponse<>(
-          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+      T created;
+      try (var ignored = phase("upsertCreateImport")) {
+        created = withHref(uriInfo, createNewEntity(updated));
+      }
+      return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
     }
-    return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
+    try (var ignored = phase("upsertUpdateImport")) {
+      return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
+    }
   }
 
   /**
@@ -1972,9 +2846,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
-
-    // Update RDF
+    try (var ignored = phase("lifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+    }
     RdfUpdater.updateEntity(entity);
   }
 
@@ -2001,128 +2875,126 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity != null && entity.getId() != null && entity.getFullyQualifiedName() != null;
   }
 
-  /**
-   * Write to Redis cache after DB operations
-   * This is completely separate from Guava cache which manages itself through loaders
-   * Redis cache is optional and only used when configured for distributed caching
-   */
   protected void writeThroughCache(T entity, boolean update) {
-    // This method should ONLY handle Redis cache, not Guava cache
-    // Guava cache is self-managing through its CacheLoader implementation
-
-    // Only write to Redis if configured
-    writeToRedisCache(entity, update);
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null || !isValidEntityForCache(entity) || "user".equals(entityType)) {
+      return;
+    }
+    UUID entityId = entity.getId();
+    String fqn = entity.getFullyQualifiedName();
+    CompletableFuture.runAsync(
+        () -> writeToRedisCache(cachedEntityDao, entityId, fqn),
+        AsyncService.getInstance().getExecutorService());
   }
 
-  /**
-   * Write multiple entities to Redis cache after batch DB operations
-   * More efficient than calling writeThroughCache for each entity
-   */
   protected void writeThroughCacheMany(List<T> entities, boolean update) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
       return;
     }
-
-    // Skip user entities
     if ("user".equals(entityType)) {
       return;
     }
-
+    List<UUID> ids = new ArrayList<>();
+    List<String> fqns = new ArrayList<>();
     for (T entity : entities) {
-      try {
-        if (!isValidEntityForCache(entity)) {
-          continue;
-        }
-
-        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
-        if (entityJson != null && !entityJson.isEmpty()) {
-          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
-          if (entity.getFullyQualifiedName() != null) {
-            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
-          }
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+      if (isValidEntityForCache(entity)) {
+        ids.add(entity.getId());
+        fqns.add(entity.getFullyQualifiedName());
       }
     }
-    LOG.debug("Batch populated Redis cache for {} {} entities", entities.size(), entityType);
+    if (ids.isEmpty()) return;
+    CompletableFuture.runAsync(
+        () -> {
+          for (int i = 0; i < ids.size(); i++) {
+            writeToRedisCache(cachedEntityDao, ids.get(i), fqns.get(i));
+          }
+        },
+        AsyncService.getInstance().getExecutorService());
   }
 
   /**
-   * Write entity to Redis cache if available
-   * This reduces database calls in distributed deployments
+   * Bulk updates benefit more from cheap invalidation than write-through recaching.
+   * This avoids N background DB reads that can contend with foreground requests.
    */
-  private void writeToRedisCache(T entity, boolean update) {
-    // Only proceed if Redis cache is configured
-    var cachedEntityDao = CacheBundle.getCachedEntityDao();
-    if (cachedEntityDao == null) {
-      return; // No Redis cache configured
+  protected void invalidateMany(List<T> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
     }
+    for (T entity : entities) {
+      invalidate(entity);
+    }
+  }
 
+  private void writeToRedisCache(CachedEntityDao cachedEntityDao, UUID entityId, String fqn) {
     try {
-      // Validate entity
-      if (!isValidEntityForCache(entity)) {
-        LOG.debug(
-            "Invalid entity for Redis cache: {} {}",
-            entityType,
-            entity != null ? entity.getId() : "null");
-        return;
-      }
-
-      // Skip user entities
-      if ("user".equals(entityType)) {
-        return;
-      }
-
-      if (update) {
-        // For updates, repopulate Redis cache with the updated entity
-        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
-        if (entityJson != null && !entityJson.isEmpty()) {
-          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
-          if (entity.getFullyQualifiedName() != null) {
-            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
-          }
-          LOG.debug("Updated Redis cache after PATCH: {} {}", entityType, entity.getId());
-        }
-      } else {
-        // For creates, populate Redis cache with complete entity
-        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
-        if (entityJson != null && !entityJson.isEmpty()) {
-          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
-          if (entity.getFullyQualifiedName() != null) {
-            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
-          }
-          LOG.debug("Populated Redis cache for new entity: {} {}", entityType, entity.getId());
+      String entityJson = dao.findById(dao.getTableName(), entityId, "");
+      if (entityJson != null && !entityJson.isEmpty()) {
+        cachedEntityDao.putBase(entityType, entityId, entityJson);
+        if (fqn != null) {
+          cachedEntityDao.putByName(entityType, fqn, entityJson);
         }
       }
     } catch (Exception e) {
-      // Redis cache failures should not affect the operation
-      LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+      LOG.debug("Failed to write to Redis cache: {} {}", entityType, entityId, e);
     }
   }
 
   protected void postCreate(List<T> entities) {
-    for (T entity : entities) {
-      EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
 
-      // Update RDF
+    // Keep lifecycle side effects idempotent within a batch by collapsing duplicate entity IDs.
+    List<T> uniqueEntities = new ArrayList<>(entities.size());
+    Set<UUID> seenEntityIds = new HashSet<>();
+    for (T entity : entities) {
+      if (entity == null || entity.getId() == null) {
+        continue;
+      }
+      if (seenEntityIds.add(entity.getId())) {
+        uniqueEntities.add(entity);
+      }
+    }
+    if (uniqueEntities.isEmpty()) {
+      return;
+    }
+
+    try (var ignored = phase("lifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntitiesCreated(new ArrayList<>(uniqueEntities), null);
+    }
+
+    for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    EntityLifecycleEventDispatcher.getInstance()
-        .onEntityUpdated(updated, updated.getChangeDescription(), null);
+    try (var ignored = phase("lifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntityUpdated(updated, updated.getChangeDescription(), null);
+    }
     RdfUpdater.updateEntity(updated);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
-    EntityLifecycleEventDispatcher.getInstance()
-        .onEntityUpdated(updated, updated.getChangeDescription(), null);
+    try (var ignored = phase("lifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntityUpdated(updated, updated.getChangeDescription(), null);
+    }
     RdfUpdater.updateEntity(updated);
+  }
+
+  protected void postUpdateMany(List<T> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    writeThroughCacheMany(entities, true);
+    EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(entities, null, null);
+    entities.forEach(RdfUpdater::updateEntity);
   }
 
   @Transaction
@@ -2130,58 +3002,71 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated, updatedBy, null);
   }
 
-  @Transaction
   public final PutResponse<T> update(
       UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
-    setFieldsInternal(original, putFields);
+    try (var ignored = phase("putHydrateOriginal")) {
+      setFieldsInternal(original, putFields);
+    }
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
-      restoreEntity(updated.getUpdatedBy(), original.getId());
+      try (var ignored = phase("putRestoreEntity")) {
+        restoreEntity(updated.getUpdatedBy(), original.getId());
+      }
     }
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
-    entityUpdater.update();
+    try (var ignored = phase("putEntityUpdate")) {
+      entityUpdater.update();
+    }
     EventType change =
         entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
-    setInheritedFields(updated, new Fields(allowedFields));
+    try (var ignored = phase("putSetInheritedFields")) {
+      setInheritedFields(updated, new Fields(allowedFields));
+    }
     if (change == ENTITY_UPDATED) {
       updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     }
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
   public final PutResponse<T> updateForImport(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
     return updateForImport(uriInfo, original, updated, updatedBy, null);
   }
 
-  @Transaction
   public final PutResponse<T> updateForImport(
       UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
-    setFieldsInternal(original, putFields);
+    try (var ignored = phase("putHydrateOriginalImport")) {
+      setFieldsInternal(original, putFields);
+    }
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
-      restoreEntity(updated.getUpdatedBy(), original.getId());
+      try (var ignored = phase("putRestoreEntityImport")) {
+        restoreEntity(updated.getUpdatedBy(), original.getId());
+      }
     }
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
-    entityUpdater.updateForImport();
+    try (var ignored = phase("putEntityUpdateImport")) {
+      entityUpdater.updateForImport();
+    }
     EventType change =
         entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
-    setInheritedFields(updated, new Fields(allowedFields));
+    try (var ignored = phase("putSetInheritedFieldsImport")) {
+      setInheritedFields(updated, new Fields(allowedFields));
+    }
     if (change == ENTITY_UPDATED) {
       updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     }
@@ -2192,18 +3077,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Use method with ChangeContext
    */
   @Deprecated
-  @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     return patch(uriInfo, id, user, patch, null, null, null);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
     return patch(uriInfo, id, user, patch, changeSource, null, null);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo,
       UUID id,
@@ -2214,7 +3096,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return patch(uriInfo, id, user, patch, changeSource, null, impersonatedBy);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo,
       UUID id,
@@ -2223,9 +3104,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSource changeSource,
       String ifMatchHeader,
       String impersonatedBy) {
-    // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
-    setInheritedFields(original, patchFields);
+    Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
+
+    // Get only the fields relevant to this patch operation
+    T original;
+    try (var ignored = phase("patchLoadOriginal")) {
+      original = get(null, id, patchFields, NON_DELETED, false);
+    }
 
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
@@ -2241,13 +3126,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
+        original,
+        patch,
+        patchedFieldNames,
+        user,
+        uriInfo,
+        changeSource,
+        useOptimisticLocking,
+        impersonatedBy);
   }
 
   /**
    * PATCH using fully qualified name
    */
-  @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
     return patch(uriInfo, fqn, user, patch, null, null, null);
   }
@@ -2257,7 +3148,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return patch(uriInfo, fqn, user, patch, changeSource, null, null);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo,
       String fqn,
@@ -2268,7 +3158,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return patch(uriInfo, fqn, user, patch, changeSource, ifMatchHeader, null);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo,
       String fqn,
@@ -2277,9 +3166,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSource changeSource,
       String ifMatchHeader,
       String impersonatedBy) {
-    // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
-    setInheritedFields(original, patchFields);
+    Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
+
+    // Get only the fields relevant to this patch operation
+    T original;
+    try (var ignored = phase("patchLoadOriginalByName")) {
+      original = getByName(null, fqn, patchFields, NON_DELETED, false);
+    }
 
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
@@ -2295,50 +3188,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
-  }
-
-  private PatchResponse<T> patchCommon(
-      T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
-    return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, false, null);
-  }
-
-  private PatchResponse<T> patchCommonWithOptimisticLocking(
-      T original,
-      JsonPatch patch,
-      String user,
-      UriInfo uriInfo,
-      ChangeSource changeSource,
-      boolean useOptimisticLocking) {
-    return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
+        original,
+        patch,
+        patchedFieldNames,
+        user,
+        uriInfo,
+        changeSource,
+        useOptimisticLocking,
+        impersonatedBy);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
       T original,
       JsonPatch patch,
+      Set<String> patchedFieldNames,
       String user,
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking,
       String impersonatedBy) {
-    // Start timing JSON patch application
-    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    T updated;
+    try (var ignored = phase("patchApplyJson")) {
+      updated = JsonUtils.applyPatch(original, patch, entityClass);
+    }
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    prepareInternal(updated, true);
-    RuleEngine.getInstance().evaluateUpdate(original, updated);
+    try (var ignored = phase("patchPrepareInternal")) {
+      prepareInternal(updated, true);
+    }
+    try (var ignored = phase("patchRuleEvaluation")) {
+      RuleEngine.getInstance().evaluateUpdate(original, updated);
+    }
 
     // Validate and populate owners
-    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+    List<EntityReference> validatedOwners;
+    try (var ignored = phase("patchValidateOwners")) {
+      validatedOwners = getValidatedOwners(updated.getOwners());
+    }
     updated.setOwners(validatedOwners);
 
     // Validate and populate domain
-    List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
+    List<EntityReference> validatedDomains;
+    try (var ignored = phase("patchValidateDomains")) {
+      validatedDomains = getValidatedDomains(updated.getDomains());
+    }
     updated.setDomains(validatedDomains);
-    restorePatchAttributes(original, updated);
+    try (var ignored = phase("patchRestoreAttributes")) {
+      restorePatchAttributes(original, updated);
+    }
 
     // Always set impersonatedBy to the passed value (which can be null)
     // This ensures that when regular users make changes (impersonatedBy=null),
@@ -2347,25 +3245,60 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
-    if (useOptimisticLocking) {
-      // Use the 5-parameter version for optimistic locking
-      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
-      entityUpdater.updateWithOptimisticLocking();
-    } else {
-      // Use the 4-parameter version to maintain backward compatibility with concrete repository
-      // implementations
-      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
-      entityUpdater.update();
+    try (var ignored = phase("patchEntityUpdate")) {
+      if (useOptimisticLocking) {
+        entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
+        entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.updateWithOptimisticLocking();
+      } else {
+        entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
+        entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.update();
+      }
     }
 
     if (entityUpdater.fieldsChanged()) {
-      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
+      try (var ignored = phase("patchSetInheritedFields")) {
+        setInheritedFields(updated, patchFields);
+      }
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     if (entityUpdater.incrementalFieldsChanged()) {
       return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
+  }
+
+  /**
+   * Update only the changeSummary entry for a specific field without modifying the entity data.
+   * Used when accepting a suggestion that sets the same value already present — the JSON patch is
+   * empty so the normal update path produces no FieldChange, but the changeSummary must still
+   * reflect who accepted the suggestion.
+   */
+  @Transaction
+  public void patchChangeSummary(
+      UUID entityId, String fieldName, ChangeSource changeSource, String user) {
+    T entity = get(null, entityId, getFields("changeDescription"));
+    ChangeDescription cd = entity.getChangeDescription();
+    if (cd == null) {
+      cd = new ChangeDescription().withPreviousVersion(entity.getVersion());
+    }
+    ChangeSummaryMap csm = cd.getChangeSummary();
+    if (csm == null) {
+      csm = new ChangeSummaryMap();
+      cd.setChangeSummary(csm);
+    }
+
+    csm.getAdditionalProperties()
+        .put(
+            fieldName,
+            new ChangeSummary()
+                .withChangeSource(changeSource)
+                .withChangedBy(user)
+                .withChangedAt(System.currentTimeMillis()));
+
+    entity.setChangeDescription(cd);
+    dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
   }
 
   @Transaction
@@ -2503,19 +3436,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
-    if (hardDelete) {
-      // Hard delete - dispatch delete event
-      EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
-    } else {
-      // Soft delete - dispatch soft delete event
-      EntityLifecycleEventDispatcher.getInstance()
-          .onEntitySoftDeletedOrRestored(entity, true, null);
+    try (var ignored = phase("lifecycleDispatch")) {
+      if (hardDelete) {
+        EntityLifecycleEventDispatcher.getInstance().onEntityDeleted(entity, null);
+      } else {
+        EntityLifecycleEventDispatcher.getInstance()
+            .onEntitySoftDeletedOrRestored(entity, true, null);
+      }
     }
   }
 
   public final void restoreFromSearch(T entity) {
-    // Dispatch entity restore event
-    EntityLifecycleEventDispatcher.getInstance().onEntitySoftDeletedOrRestored(entity, false, null);
+    try (var ignored = phase("lifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance()
+          .onEntitySoftDeletedOrRestored(entity, false, null);
+    }
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -2853,6 +3788,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+    RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
 
     // Also invalidate Redis cache
     invalidateCache(entity);
@@ -2908,41 +3844,87 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
-  @Transaction
   protected T createNewEntity(T entity) {
-    storeEntity(entity, false);
-    storeExtension(entity);
-    storeRelationshipsInternal(entity);
-    setInheritedFields(entity, new Fields(allowedFields));
-    postCreate(entity);
+    createNewEntityFlush(entity);
+    try (var ignored = phase("createPostCreate")) {
+      postCreate(entity);
+    }
 
     // Write-through cache: store entity in cache after creation
-    writeThroughCache(entity, false);
+    try (var ignored = phase("createWriteThroughCache")) {
+      writeThroughCache(entity, false);
+    }
 
     return entity;
   }
 
   @Transaction
+  private void createNewEntityFlush(T entity) {
+    try (var ignored = phase("createStoreEntity")) {
+      storeEntity(entity, false);
+      storeExtension(entity);
+    }
+    try (var ignored = phase("createStoreRelationships")) {
+      storeRelationshipsInternal(entity);
+    }
+    try (var ignored = phase("createSetInheritedFields")) {
+      setInheritedFields(entity, new Fields(allowedFields));
+    }
+  }
+
   private List<T> createManyEntities(List<T> entities) {
-    storeEntities(entities);
-    storeExtensions(entities);
-    // TODO: [START] Optimize the below ops to store all in one go
-    storeRelationshipsInternal(entities);
-    setInheritedFields(entities, new Fields(allowedFields));
-    // TODO: [END]
-    postCreate(entities);
+    createManyEntitiesFlush(entities);
+    try (var ignored = phase("postCreate")) {
+      postCreate(entities);
+    }
+
     return entities;
   }
 
-  private void nullifyEntityFields(T entity) {
-    entity.setHref(null);
-    entity.setOwners(null);
-    entity.setChildren(null);
-    entity.setTags(null);
-    entity.setDomains(null);
-    entity.setDataProducts(null);
-    entity.setFollowers(null);
-    entity.setExperts(null);
+  @Transaction
+  private void createManyEntitiesFlush(List<T> entities) {
+    try (var ignored = phase("storeEntities")) {
+      storeEntities(entities);
+      storeExtensions(entities);
+    }
+    try (var ignored = phase("storeRelationships")) {
+      storeRelationshipsInternal(entities);
+    }
+    try (var ignored = phase("setInheritedFields")) {
+      setInheritedFields(entities, new Fields(allowedFields));
+    }
+  }
+
+  private static final List<String> FIELDS_STORED_AS_RELATIONSHIPS =
+      List.of(
+          "href",
+          "owners",
+          "children",
+          "tags",
+          "domains",
+          "dataProducts",
+          "dataContract",
+          "followers",
+          "experts",
+          "reviewers",
+          "certification");
+
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return Collections.emptyList();
+  }
+
+  protected ObjectNode storageJsonNode(T entity) {
+    ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
+    node.remove(FIELDS_STORED_AS_RELATIONSHIPS);
+    List<String> extraStrippedFields = getFieldsStrippedFromStorageJson();
+    if (!nullOrEmpty(extraStrippedFields)) {
+      node.remove(extraStrippedFields);
+    }
+    return node;
+  }
+
+  protected String serializeForStorage(T entity) {
+    return storageJsonNode(entity).toString();
   }
 
   @Transaction
@@ -2951,31 +3933,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void store(T entity, boolean update, Double expectedVersion) {
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
-    // relationships
-    List<EntityReference> owners = entity.getOwners();
-    List<EntityReference> children = entity.getChildren();
-    List<TagLabel> tags = entity.getTags();
-    List<EntityReference> domains = entity.getDomains();
-    List<EntityReference> dataProducts = entity.getDataProducts();
-    List<EntityReference> followers = entity.getFollowers();
-    List<EntityReference> experts = entity.getExperts();
-    nullifyEntityFields(entity);
+    String json = serializeForStorage(entity);
 
     if (update) {
       if (expectedVersion != null) {
-        // Use optimistic locking with version check
         int rowsUpdated =
             dao.updateWithVersion(
                 dao.getTableName(),
                 dao.getNameHashColumn(),
                 entity.getFullyQualifiedName(),
                 entity.getId().toString(),
-                JsonUtils.pojoToJson(entity),
+                json,
                 expectedVersion.toString());
 
         if (rowsUpdated == 0) {
-          // Version mismatch - the entity was modified by another process
           throw new PreconditionFailedException(
               "The entity has been modified by another user. Please refresh and retry.");
         }
@@ -2987,84 +3958,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
             expectedVersion,
             entity.getVersion());
       } else {
-        // Regular update without version check (backward compatibility)
-        dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
+        dao.update(entity.getId(), entity.getFullyQualifiedName(), json);
         LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
       }
       invalidate(entity);
     } else {
-      dao.insert(entity, entity.getFullyQualifiedName());
+      dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
-
-    // Restore the relationships
-    entity.setOwners(owners);
-    entity.setChildren(children);
-    entity.setTags(tags);
-    entity.setDomains(domains);
-    entity.setDataProducts(dataProducts);
-    entity.setFollowers(followers);
-    entity.setExperts(experts);
   }
 
   protected void storeMany(List<T> entities) {
-    List<EntityInterface> nullifiedEntities = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
     for (T entity : entities) {
-      // Don't store owner, database, href and tags as JSON. Build it on the fly based on
-      // relationships
-      List<EntityReference> owners = entity.getOwners();
-      List<EntityReference> children = entity.getChildren();
-      List<TagLabel> tags = entity.getTags();
-      List<EntityReference> domains = entity.getDomains();
-      List<EntityReference> dataProducts = entity.getDataProducts();
-      List<EntityReference> followers = entity.getFollowers();
-      List<EntityReference> experts = entity.getExperts();
-      nullifyEntityFields(entity);
-
-      String jsonCopy = gson.toJson(entity);
-      nullifiedEntities.add(gson.fromJson(jsonCopy, entityClass));
-
-      // Restore the relationships
-      entity.setOwners(owners);
-      entity.setChildren(children);
-      entity.setTags(tags);
-      entity.setDomains(domains);
-      entity.setDataProducts(dataProducts);
-      entity.setFollowers(followers);
-      entity.setExperts(experts);
+      fqns.add(entity.getFullyQualifiedName());
+      jsons.add(serializeForStorage(entity));
     }
-
-    dao.insertMany(nullifiedEntities);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   protected void updateMany(List<T> entities) {
-    List<EntityInterface> nullifiedEntities = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<UUID> ids = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
     for (T entity : entities) {
-      List<EntityReference> owners = entity.getOwners();
-      List<EntityReference> children = entity.getChildren();
-      List<TagLabel> tags = entity.getTags();
-      List<EntityReference> domains = entity.getDomains();
-      List<EntityReference> dataProducts = entity.getDataProducts();
-      List<EntityReference> followers = entity.getFollowers();
-      List<EntityReference> experts = entity.getExperts();
-      nullifyEntityFields(entity);
-
-      String jsonCopy = gson.toJson(entity);
-      nullifiedEntities.add(gson.fromJson(jsonCopy, entityClass));
-
-      // Restore the relationships
-      entity.setOwners(owners);
-      entity.setChildren(children);
-      entity.setTags(tags);
-      entity.setDomains(domains);
-      entity.setDataProducts(dataProducts);
-      entity.setFollowers(followers);
-      entity.setExperts(experts);
+      fqns.add(entity.getFullyQualifiedName());
+      ids.add(entity.getId());
+      jsons.add(serializeForStorage(entity));
     }
-
-    dao.updateMany(nullifiedEntities);
+    dao.updateMany(dao.getTableName(), dao.getNameHashColumn(), fqns, ids, jsons);
   }
 
   @Transaction
@@ -3439,8 +4362,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final Object getExtension(T entity) {
-    if (!supportsExtension) {
+    if (!supportsExtension || entity == null || entity.getId() == null) {
       return null;
+    }
+    ReadBundle readBundle = ReadBundleContext.getCurrent();
+    if (readBundle != null && readBundle.hasExtension(entity.getId())) {
+      return readBundle.getExtensionOrNull(entity.getId());
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
     List<ExtensionRecord> records =
@@ -3510,7 +4437,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void applyTags(T entity) {
     if (supportsTags) {
       // Add entity level tags by adding tag to the entity relationship
-      applyTags(entity.getTags(), entity.getFullyQualifiedName());
+      applyTags(entity.getTags(), entity.getFullyQualifiedName(), entityType, entity.getId());
     }
   }
 
@@ -3519,6 +4446,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
+    applyTags(tagLabels, targetFQN, null, null);
+  }
+
+  /**
+   * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
+   */
+  @Transaction
+  public final void applyTags(
+      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
@@ -3535,7 +4471,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getMetadata());
 
         // Update RDF store
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -3545,6 +4482,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
+    applyTagsAdd(tagLabels, targetFQN, null, null);
+  }
+
+  /**
+   * Apply multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsAdd(
+      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -3559,7 +4505,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Update RDF store for each tag
       for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -3569,6 +4516,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
+    applyTagsDelete(tagLabels, targetFQN, null, null);
+  }
+
+  /**
+   * Delete multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsDelete(
+      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -3583,30 +4539,207 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Remove from RDF store for each tag
       for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel.getTagFQN(), targetFQN);
+        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(
+            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
 
   protected AssetCertification getCertification(T entity) {
-    return !supportsCertification ? null : getCertification(entity.getCertification());
+    if (!supportsCertification) return null;
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) return null;
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> certTags =
+        daoCollection
+            .tagUsageDAO()
+            .getCertTagsInternalBatch(
+                List.of(entity.getFullyQualifiedName()), certClassification + ".%");
+    if (nullOrEmpty(certTags)) return null;
+    TagLabel tagLabel = certTags.get(0).toTagLabel();
+    TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
+    return new AssetCertification()
+        .withTagLabel(tagLabel)
+        .withAppliedDate(tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
+        .withExpiryDate(
+            tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null);
   }
 
-  protected AssetCertification getCertification(AssetCertification certification) {
-    if (certification == null) {
-      return null;
+  protected void applyCertification(T entity) {
+    if (!supportsCertification || entity.getCertification() == null) return;
+    if (entity.getCertification().getTagLabel() == null
+        || entity.getCertification().getTagLabel().getTagFQN() == null) return;
+    AssetCertification existing = getCertification(entity);
+    AssetCertification incoming = entity.getCertification();
+    if (existing != null
+        && existing.getTagLabel() != null
+        && incoming.getTagLabel() != null
+        && existing.getTagLabel().getTagFQN().equals(incoming.getTagLabel().getTagFQN())
+        && Objects.equals(existing.getExpiryDate(), incoming.getExpiryDate())) {
+      return;
+    }
+    deleteCertificationTag(entity.getFullyQualifiedName());
+    AssetCertification cert = entity.getCertification();
+    TagLabel tagLabel = cert.getTagLabel();
+    TagLabelMetadata metadata = new TagLabelMetadata().withExpiryDate(cert.getExpiryDate());
+    daoCollection
+        .tagUsageDAO()
+        .applyTag(
+            TagLabel.TagSource.CLASSIFICATION.ordinal(),
+            tagLabel.getTagFQN(),
+            tagLabel.getTagFQN(),
+            entity.getFullyQualifiedName(),
+            TagLabel.LabelType.AUTOMATED.ordinal(),
+            TagLabel.State.CONFIRMED.ordinal(),
+            null,
+            entity.getUpdatedBy(),
+            metadata);
+  }
+
+  protected void applyCertificationBatch(List<T> entities) {
+    if (!supportsCertification) return;
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) return;
+
+    List<T> certEntities =
+        entities.stream()
+            .filter(
+                e ->
+                    e.getCertification() != null
+                        && e.getCertification().getTagLabel() != null
+                        && e.getCertification().getTagLabel().getTagFQN() != null)
+            .toList();
+    if (certEntities.isEmpty()) return;
+
+    List<String> targetFQNs =
+        certEntities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagsByPrefixAndTargets(
+            TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", targetFQNs);
+
+    Map<String, List<TagLabel>> certTagsByTarget = new LinkedHashMap<>();
+    for (T entity : certEntities) {
+      AssetCertification cert = entity.getCertification();
+      TagLabel tagLabel =
+          new TagLabel()
+              .withSource(TagLabel.TagSource.CLASSIFICATION)
+              .withTagFQN(cert.getTagLabel().getTagFQN())
+              .withLabelType(TagLabel.LabelType.AUTOMATED)
+              .withState(TagLabel.State.CONFIRMED)
+              .withAppliedBy(entity.getUpdatedBy())
+              .withMetadata(new TagLabelMetadata().withExpiryDate(cert.getExpiryDate()));
+      certTagsByTarget.put(entity.getFullyQualifiedName(), List.of(tagLabel));
+    }
+    daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(certTagsByTarget);
+  }
+
+  protected void deleteCertificationTag(String entityFQN) {
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) return;
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagsByPrefixAndTarget(
+            TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
+  }
+
+  protected String getCertificationClassification() {
+    if (!supportsCertification) return null;
+    return SettingsCache.getSettingOrDefault(
+            SettingsType.ASSET_CERTIFICATION_SETTINGS,
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"),
+            AssetCertificationSettings.class)
+        .getAllowedClassification();
+  }
+
+  private Optional<List<EntityReference>> getRelationsFromReadBundle(
+      T entity, String field, Include include) {
+    if (entity == null || entity.getId() == null) {
+      return Optional.empty();
+    }
+    ReadBundle readBundle = ReadBundleContext.getCurrent();
+    if (readBundle == null) {
+      recordReadBundleFallback(field, "no_bundle");
+      return Optional.empty();
+    }
+    Optional<List<EntityReference>> relationRefs =
+        readBundle.getRelations(entity.getId(), field, include);
+    if (relationRefs.isPresent()) {
+      return relationRefs;
     }
 
-    String certificationTagFqn = certification.getTagLabel().getTagFQN();
-    TagLabel certificationTagLabel =
-        EntityUtil.toTagLabel(TagLabelUtil.getTag(certificationTagFqn));
-    certification.setTagLabel(certificationTagLabel);
-    return certification;
+    Include requestedInclude = include == null ? ALL : include;
+    if (readBundle.hasLoadedRelationForField(entity.getId(), field)) {
+      Set<Include> loadedIncludes = readBundle.getLoadedIncludesForField(entity.getId(), field);
+      if (!loadedIncludes.isEmpty() && !loadedIncludes.contains(requestedInclude)) {
+        LOG.debug(
+            "ReadBundle include mismatch for {}:{} field={} requestedInclude={} loadedIncludes={}. Falling back to DAO.",
+            entityType,
+            entity.getId(),
+            field,
+            requestedInclude,
+            loadedIncludes);
+        recordReadBundleFallback(field, "include_mismatch");
+        return Optional.empty();
+      }
+    }
+    recordReadBundleFallback(field, "not_loaded");
+    return Optional.empty();
+  }
+
+  private Optional<List<TagLabel>> getTagsFromReadBundle(T entity) {
+    if (entity == null || entity.getId() == null) {
+      return Optional.empty();
+    }
+    ReadBundle readBundle = ReadBundleContext.getCurrent();
+    if (readBundle == null) {
+      recordReadBundleFallback(FIELD_TAGS, "no_bundle");
+      return Optional.empty();
+    }
+    Optional<List<TagLabel>> tags = readBundle.getTags(entity.getId());
+    if (tags.isEmpty()) {
+      recordReadBundleFallback(FIELD_TAGS, "not_loaded");
+    }
+    return tags;
+  }
+
+  private Optional<Votes> getVotesFromReadBundle(T entity) {
+    if (entity == null || entity.getId() == null) {
+      return Optional.empty();
+    }
+    ReadBundle readBundle = ReadBundleContext.getCurrent();
+    if (readBundle == null) {
+      recordReadBundleFallback(FIELD_VOTES, "no_bundle");
+      return Optional.empty();
+    }
+    Optional<Votes> votes = readBundle.getVotes(entity.getId());
+    if (votes.isEmpty()) {
+      recordReadBundleFallback(FIELD_VOTES, "not_loaded");
+    }
+    return votes;
+  }
+
+  private void recordReadBundleFallback(String field, String reason) {
+    Metrics.counter(
+            "readbundle.fallback",
+            "entity",
+            entityType,
+            "field",
+            field == null ? "unknown" : field,
+            "reason",
+            reason == null ? "unknown" : reason)
+        .increment();
   }
 
   protected List<TagLabel> getTags(T entity) {
     if (!supportsTags) {
       return null;
+    }
+
+    Optional<List<TagLabel>> bundleTags = getTagsFromReadBundle(entity);
+    if (bundleTags.isPresent()) {
+      return bundleTags.get();
     }
 
     // Try to get from cache first
@@ -3636,14 +4769,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    // Populate Glossary Tags on Read
-    return addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
+    List<TagLabel> tags = addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
+    String certClassification = getCertificationClassification();
+    if (certClassification != null && tags != null) {
+      tags = new ArrayList<>(tags);
+      tags.removeIf(
+          tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+    }
+    return tags;
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
-    return !supportsTags
-        ? null
-        : daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
+    if (!supportsTags) {
+      return null;
+    }
+    Map<String, List<TagLabel>> result =
+        daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
+    String certClassification = getCertificationClassification();
+    if (certClassification != null && result != null) {
+      result
+          .values()
+          .forEach(
+              tags ->
+                  tags.removeIf(
+                      tag ->
+                          certClassification.equals(
+                              FullyQualifiedName.getParentFQN(tag.getTagFQN()))));
+    }
+    return result;
   }
 
   protected List<EntityReference> getFollowers(T entity) {
@@ -3651,15 +4804,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getFollowers(T entity, Include include) {
-    return !supportsFollower || entity == null
-        ? Collections.emptyList()
-        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER, include);
+    Optional<List<EntityReference>> bundleFollowers =
+        getRelationsFromReadBundle(entity, FIELD_FOLLOWERS, include);
+    return bundleFollowers.orElseGet(
+        () ->
+            !supportsFollower || entity == null
+                ? Collections.emptyList()
+                : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER, include));
   }
 
   protected Votes getVotes(T entity) {
     if (!supportsVotes || entity == null) {
       return new Votes();
     }
+
+    Optional<Votes> bundleVotes = getVotesFromReadBundle(entity);
+    if (bundleVotes.isPresent()) {
+      return bundleVotes.get();
+    }
+
     List<EntityRelationshipRecord> upVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> downVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> records =
@@ -3864,6 +5027,69 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
     return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+  }
+
+  protected final Map<UUID, EntityReference> batchFetchContainers(
+      List<T> entities, String fromEntityType, Include include) {
+    Map<UUID, EntityReference> containerMap = new HashMap<>();
+    if (entities == null || entities.isEmpty()) {
+      return containerMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> relations =
+        fromEntityType == null
+            ? daoCollection
+                .relationshipDAO()
+                .findFromBatch(
+                    entityListToStrings(entities), Relationship.CONTAINS.ordinal(), include)
+            : daoCollection
+                .relationshipDAO()
+                .findFromBatch(
+                    entityListToStrings(entities),
+                    Relationship.CONTAINS.ordinal(),
+                    fromEntityType,
+                    include);
+
+    if (nullOrEmpty(relations)) {
+      return containerMap;
+    }
+
+    Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (var relation : relations) {
+      if (relation.getFromEntity() == null || relation.getFromId() == null) {
+        continue;
+      }
+      idsByType
+          .computeIfAbsent(relation.getFromEntity(), k -> new HashSet<>())
+          .add(UUID.fromString(relation.getFromId()));
+    }
+
+    Map<String, Map<UUID, EntityReference>> refsByType = new HashMap<>();
+    for (var entry : idsByType.entrySet()) {
+      List<EntityReference> refs =
+          Entity.getEntityReferencesByIds(
+              entry.getKey(), new ArrayList<>(entry.getValue()), include);
+      refsByType.put(
+          entry.getKey(), refs.stream().collect(Collectors.toMap(EntityReference::getId, r -> r)));
+    }
+
+    for (var relation : relations) {
+      if (relation.getFromEntity() == null
+          || relation.getFromId() == null
+          || relation.getToId() == null) {
+        continue;
+      }
+      var refs = refsByType.get(relation.getFromEntity());
+      if (refs == null) {
+        continue;
+      }
+      EntityReference containerRef = refs.get(UUID.fromString(relation.getFromId()));
+      if (containerRef != null) {
+        containerMap.putIfAbsent(UUID.fromString(relation.getToId()), containerRef);
+      }
+    }
+
+    return containerMap;
   }
 
   public final EntityReference getFromEntityRef(
@@ -4124,6 +5350,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyList();
     }
 
+    Optional<List<EntityReference>> bundleOwners =
+        getRelationsFromReadBundle(entity, FIELD_OWNERS, include);
+    if (bundleOwners.isPresent()) {
+      return bundleOwners.get();
+    }
+
     // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
     if (include == NON_DELETED && cachedRelationshipDao != null) {
@@ -4163,6 +5395,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsDomains) {
       return null;
     }
+
+    Optional<List<EntityReference>> bundleDomains =
+        getRelationsFromReadBundle(entity, FIELD_DOMAINS, include);
+    if (bundleDomains.isPresent()) {
+      return bundleDomains.get();
+    }
+
     if (entity.getId() == null) {
       LOG.error(
           "Entity has null ID when getting domains! Entity type: {}, Entity: {}",
@@ -4199,9 +5438,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<EntityReference> getDataProducts(T entity, Include include) {
-    return !supportsDataProducts
-        ? null
-        : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT, include);
+    if (!supportsDataProducts) {
+      return null;
+    }
+
+    Optional<List<EntityReference>> bundleDataProducts =
+        getRelationsFromReadBundle(entity, FIELD_DATA_PRODUCTS, include);
+    return bundleDataProducts.orElseGet(
+        () -> findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT, include));
   }
 
   protected List<EntityReference> getDataProducts(UUID entityId, String entityType) {
@@ -4211,6 +5455,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getDataProducts(
       UUID entityId, String entityType, Include include) {
     return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT, include);
+  }
+
+  protected EntityReference getDataContract(T entity) {
+    return getDataContract(entity, NON_DELETED);
+  }
+
+  protected EntityReference getDataContract(T entity, Include include) {
+    if (!supportsDataContract) {
+      return null;
+    }
+
+    Optional<List<EntityReference>> bundleDataContract =
+        getRelationsFromReadBundle(entity, FIELD_DATA_CONTRACT, include);
+    if (bundleDataContract.isPresent()) {
+      List<EntityReference> refs = bundleDataContract.get();
+      return (refs == null || refs.isEmpty()) ? null : refs.get(0);
+    }
+
+    List<EntityReference> refs =
+        findTo(entity.getId(), entityType, Relationship.CONTAINS, DATA_CONTRACT, include);
+    return refs.isEmpty() ? null : refs.get(0);
   }
 
   public EntityInterface getParentEntity(T entity, String fields) {
@@ -4226,7 +5491,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getChildren(T entity, Include include) {
-    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType, include);
+    Optional<List<EntityReference>> bundleChildren =
+        getRelationsFromReadBundle(entity, FIELD_CHILDREN, include);
+    return bundleChildren.orElseGet(
+        () -> findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType, include));
   }
 
   protected List<EntityReference> getReviewers(T entity) {
@@ -4234,9 +5502,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getReviewers(T entity, Include include) {
-    return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null, include)
-        : null;
+    Optional<List<EntityReference>> bundleReviewers =
+        getRelationsFromReadBundle(entity, FIELD_REVIEWERS, include);
+    return bundleReviewers.orElseGet(
+        () ->
+            supportsReviewers
+                ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null, include)
+                : null);
   }
 
   protected List<EntityReference> getExperts(T entity) {
@@ -4244,26 +5516,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getExperts(T entity, Include include) {
-    return supportsExperts
-        ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER, include)
-        : null;
+    Optional<List<EntityReference>> bundleExperts =
+        getRelationsFromReadBundle(entity, FIELD_EXPERTS, include);
+    return bundleExperts.orElseGet(
+        () ->
+            supportsExperts
+                ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER, include)
+                : null);
   }
 
   public final void inheritDomains(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains()) && parent != null) {
-      entity.setDomains(
-          !nullOrEmpty(parent.getDomains()) ? parent.getDomains() : Collections.emptyList());
-      listOrEmpty(entity.getDomains()).forEach(domain -> domain.setInherited(true));
+      entity.setDomains(inheritedEntityReferences(parent.getDomains()));
+    }
+  }
+
+  public final void inheritDataProducts(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_DATA_PRODUCTS)
+        && nullOrEmpty(entity.getDataProducts())
+        && parent != null) {
+      entity.setDataProducts(inheritedEntityReferences(parent.getDataProducts()));
     }
   }
 
   public final void inheritFollowers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_FOLLOWERS) && nullOrEmpty(entity.getFollowers()) && parent != null) {
-      entity.setFollowers(
-          Optional.ofNullable(parent.getFollowers())
-              .filter(list -> !list.isEmpty())
-              .orElse(Collections.emptyList()));
-      listOrEmpty(entity.getFollowers()).forEach(follower -> follower.setInherited(true));
+      entity.setFollowers(inheritedEntityReferences(parent.getFollowers()));
     }
   }
 
@@ -4276,10 +5554,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final List<EntityReference> getInheritedOwners(
       T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners()) && parent != null) {
-      List<EntityReference> owners =
-          !nullOrEmpty(parent.getOwners()) ? parent.getOwners() : Collections.emptyList();
-      owners.forEach(owner -> owner.setInherited(true));
-      return owners;
+      return inheritedEntityReferences(parent.getOwners());
     }
     return entity.getOwners();
   }
@@ -4293,18 +5568,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final List<EntityReference> getInheritedExperts(
       T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts()) && parent != null) {
-      List<EntityReference> experts =
-          !nullOrEmpty(parent.getExperts()) ? parent.getExperts() : Collections.emptyList();
-      experts.forEach(expert -> expert.withInherited(true));
-      return experts;
+      return inheritedEntityReferences(parent.getExperts());
     }
     return entity.getExperts();
   }
 
   public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_REVIEWERS) && parent != null) {
-      entity.setReviewers(mergedInheritedEntityRefs(entity.getReviewers(), parent.getReviewers()));
+      entity.setReviewers(
+          mergedInheritedEntityRefs(
+              entity.getReviewers(), inheritedEntityReferences(parent.getReviewers())));
     }
+  }
+
+  private List<EntityReference> inheritedEntityReferences(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return Collections.emptyList();
+    }
+    return references.stream()
+        .map(
+            reference -> {
+              EntityReference copy = JsonUtils.deepCopy(reference, EntityReference.class);
+              copy.setInherited(true);
+              return copy;
+            })
+        .toList();
   }
 
   protected List<EntityReference> getValidatedOwners(List<EntityReference> owners) {
@@ -4363,7 +5651,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .build())
               .collect(Collectors.toList());
 
-      daoCollection.relationshipDAO().bulkInsertTo(ownerRelationships);
+      bulkInsertRelationships(ownerRelationships);
     }
   }
 
@@ -4401,7 +5689,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .build())
               .collect(Collectors.toList());
 
-      daoCollection.relationshipDAO().bulkInsertTo(reviewerRelationships);
+      bulkInsertRelationships(reviewerRelationships);
     }
   }
 
@@ -4428,7 +5716,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .build())
               .collect(Collectors.toList());
 
-      daoCollection.relationshipDAO().bulkInsertTo(dataProductRelationships);
+      bulkInsertRelationships(dataProductRelationships);
     }
   }
 
@@ -4695,10 +5983,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return domainFqns.stream()
-        .map(
-            domainFqn -> {
-              return Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED);
-            })
+        .map(domainFqn -> Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
@@ -4712,10 +5997,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return domains.stream()
-        .map(
-            domain -> {
-              return Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED);
-            })
+        .map(domain -> Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
@@ -4931,14 +6213,61 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
-    private ChangeSource changeSource;
+    private final ChangeSource changeSource;
     private final boolean useOptimisticLocking;
+    @Setter private Set<String> patchedFields;
+    private final List<Runnable> deferredReactOperations = new ArrayList<>();
+    private boolean deferredReactExecuted;
 
     // Store the original FQN at construction time, before any modifications or revert.
     // This is needed because during change consolidation, revert() reassigns 'original' to
     // 'previous',
     // which would cause original.getFullyQualifiedName() to return an outdated value.
     @Getter private final String originalFqn;
+
+    protected boolean shouldCompare(String fieldName) {
+      if (patchedFields == null || fieldName == null) {
+        return true;
+      }
+
+      if (patchedFields.contains(fieldName)) {
+        return true;
+      }
+
+      // PATCH stores top-level field names (for example "columns"), while change tracking may use
+      // nested names (for example "columns.colA.description"). Match both hierarchies.
+      int fieldPathSeparator = fieldName.indexOf(Entity.SEPARATOR);
+      if (fieldPathSeparator > 0
+          && patchedFields.contains(fieldName.substring(0, fieldPathSeparator))) {
+        return true;
+      }
+
+      for (String patchedField : patchedFields) {
+        if (fieldName.startsWith(patchedField + Entity.SEPARATOR)
+            || patchedField.startsWith(fieldName + Entity.SEPARATOR)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    protected final void compareAndUpdate(String fieldName, Runnable updater) {
+      if (shouldCompare(fieldName)) {
+        updater.run();
+      }
+    }
+
+    protected final void compareAndUpdateAny(Runnable updater, String... fieldNames) {
+      if (fieldNames == null) {
+        return;
+      }
+      for (String fieldName : fieldNames) {
+        if (shouldCompare(fieldName)) {
+          updater.run();
+          return;
+        }
+      }
+    }
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
@@ -4970,56 +6299,153 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updatingUser = updatingUser;
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
+      this.deferredReactExecuted = false;
     }
 
-    /**
-     * Compare original and updated entities and perform updates. Update the entity version and track changes.
-     */
-    @Transaction
+    protected final void deferReactOperation(Runnable operation) {
+      if (operation != null) {
+        deferredReactOperations.add(operation);
+      }
+    }
+
+    public final void runDeferredReactOperations() {
+      if (deferredReactExecuted || deferredReactOperations.isEmpty()) {
+        return;
+      }
+      deferredReactExecuted = true;
+      for (Runnable operation : deferredReactOperations) {
+        try {
+          operation.run();
+        } catch (Exception e) {
+          LOG.warn(
+              "Deferred react operation failed for {}:{}",
+              EntityRepository.this.entityType,
+              updated != null ? updated.getId() : null,
+              e);
+        }
+      }
+    }
+
+    /** Compare original and updated entities and persist update. */
     public final void update() {
-      boolean consolidateChanges = consolidateChanges(original, updated, operation);
-      incrementalChange();
-      if (consolidateChanges) {
-        revert();
+      try (var ignored = phase("entityUpdateFlush")) {
+        flushUpdate(false, false);
       }
+      try (var ignored = phase("entityUpdateReact")) {
+        reactUpdate();
+      }
+    }
 
-      // Now updated from previous/original to updated one
-      changeDescription = new ChangeDescription();
-      updateInternal();
-      storeUpdate();
-      postUpdate(original, updated);
+    /** Update with optimistic locking - ensures no concurrent modifications. */
+    public final void updateWithOptimisticLocking() {
+      try (var ignored = phase("entityUpdateFlushOptimistic")) {
+        flushUpdate(true, false);
+      }
+      try (var ignored = phase("entityUpdateReact")) {
+        reactUpdate();
+      }
+    }
+
+    public final void updateForImport() {
+      try (var ignored = phase("entityUpdateFlushImport")) {
+        flushUpdate(false, true);
+      }
+      try (var ignored = phase("entityUpdateReact")) {
+        reactUpdate();
+      }
     }
 
     /**
-     * Update with optimistic locking - ensures no concurrent modifications
+     * Flush phase: all canonical writes stay in one transaction (entity row, relations, tags,
+     * extensions, history).
      */
     @Transaction
-    public final void updateWithOptimisticLocking() {
-      boolean consolidateChanges = consolidateChanges(original, updated, operation);
-      incrementalChange();
-      if (consolidateChanges) {
-        revert();
+    private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
+      boolean consolidateChanges;
+      try (var ignored = phase("entityUpdateConsolidate")) {
+        consolidateChanges = consolidateChanges(original, updated, operation);
       }
 
-      // Now updated from previous/original to updated one
-      changeDescription = new ChangeDescription();
-      updateInternal();
-      storeUpdateWithOptimisticLocking();
-      postUpdate(original, updated);
+      if (consolidateChanges) {
+        // Consolidation requires request-local incremental diff before reverting to previous
+        // session state.
+        if (importMode) {
+          try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
+            incrementalChangeForImport();
+          }
+          try (var ignored = phase("entityUpdateRevertImport")) {
+            revertForImport();
+          }
+        } else {
+          try (var ignored = phase("entityUpdateIncrementalChange")) {
+            incrementalChange();
+          }
+          try (var ignored = phase("entityUpdateRevert")) {
+            revert();
+          }
+        }
+
+        // Consolidation compares previous (pre-session) to updated — must compare all fields
+        patchedFields = null;
+        // Now updated from previous/original to updated one
+        changeDescription = new ChangeDescription();
+        if (importMode) {
+          try (var ignored = phase("entityUpdateDiffImport")) {
+            updateInternalForImport();
+          }
+        } else {
+          try (var ignored = phase("entityUpdateDiff")) {
+            updateInternal();
+          }
+        }
+      } else {
+        // Common path: single diff pass. Derive incremental description from final diff to avoid
+        // duplicate side-effectful update traversal.
+        changeDescription = new ChangeDescription();
+        if (importMode) {
+          try (var ignored = phase("entityUpdateDiffImport")) {
+            updateInternalForImport();
+          }
+          try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
+            captureIncrementalFromCurrentChange();
+          }
+        } else {
+          try (var ignored = phase("entityUpdateDiff")) {
+            updateInternal();
+          }
+          try (var ignored = phase("entityUpdateIncrementalChange")) {
+            captureIncrementalFromCurrentChange();
+          }
+        }
+      }
+
+      if (useOptimisticStore) {
+        try (var ignored = phase("entityUpdateStoreOptimistic")) {
+          storeUpdateWithOptimisticLocking();
+        }
+      } else {
+        try (var ignored = phase("entityUpdateStore")) {
+          storeUpdate();
+        }
+      }
     }
 
-    @Transaction
-    public final void updateForImport() {
-      boolean consolidateChanges = consolidateChanges(original, updated, operation);
-      incrementalChangeForImport();
-      if (consolidateChanges) {
-        revertForImport();
+    /** React phase: post-commit side effects. */
+    private void reactUpdate() {
+      // No-op updates should not fan out search/RDF work.
+      // Must also check incrementalFieldsChanged() because session consolidation may net
+      // to zero change (previous == updated) while intermediate operations already modified
+      // the search index. The incremental description captures the per-request change that
+      // needs to be reconciled in ES even when the consolidated version doesn't change.
+      if (!versionChanged && !entityChanged && !incrementalFieldsChanged()) {
+        return;
       }
-      // Now updated from previous/original to updated one
-      changeDescription = new ChangeDescription();
-      updateInternalForImport();
-      storeUpdate();
-      postUpdate(original, updated);
+      try (var ignored = phase("entityUpdatePostUpdate")) {
+        postUpdate(original, updated);
+      }
+      try (var ignored = phase("entityUpdateDeferredReact")) {
+        runDeferredReactOperations();
+      }
     }
 
     /**
@@ -5033,7 +6459,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Transaction
     public final void updateWithDeferredStore() {
       changeDescription = new ChangeDescription();
-      updateInternal();
+      try (var ignored = phase("entityUpdateDiffDeferred")) {
+        updateInternal();
+      }
 
       versionChanged = updateVersion(original.getVersion());
       if (!versionChanged && entityChanged) {
@@ -5075,6 +6503,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       changeDescription = new ChangeDescription();
       updateInternalForImport(false);
       incrementalChangeDescription = changeDescription;
+      incrementalChangeDescription.setPreviousVersion(original.getVersion());
+      updated.setIncrementalChangeDescription(incrementalChangeDescription);
+    }
+
+    private void captureIncrementalFromCurrentChange() {
+      incrementalChangeDescription = JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
       updated.setIncrementalChangeDescription(incrementalChangeDescription);
     }
@@ -5196,20 +6630,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
         updateDeleted();
-        updateDescription();
-        updateDisplayName();
-        updateEntityStatus(consolidatingChanges);
-        updateOwners();
-        updateExtension(consolidatingChanges);
-        updateTags(
-            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomains();
-        updateDataProducts();
-        updateExperts();
-        updateReviewers();
-        updateStyle();
-        updateLifeCycle();
-        updateCertification();
+        compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
+        compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
+        compareAndUpdate(FIELD_ENTITY_STATUS, () -> updateEntityStatus(consolidatingChanges));
+        compareAndUpdate(FIELD_OWNERS, this::updateOwners);
+        compareAndUpdate(FIELD_EXTENSION, () -> updateExtension(consolidatingChanges));
+        compareAndUpdate(
+            FIELD_TAGS,
+            () ->
+                updateTags(
+                    updated.getFullyQualifiedName(),
+                    FIELD_TAGS,
+                    original.getTags(),
+                    updated.getTags()));
+        compareAndUpdate(FIELD_DOMAINS, this::updateDomains);
+        compareAndUpdate(FIELD_DATA_PRODUCTS, this::updateDataProducts);
+        compareAndUpdate(FIELD_EXPERTS, this::updateExperts);
+        compareAndUpdate(FIELD_REVIEWERS, this::updateReviewers);
+        compareAndUpdate(FIELD_STYLE, this::updateStyle);
+        compareAndUpdate(FIELD_LIFE_CYCLE, this::updateLifeCycle);
+        compareAndUpdate(FIELD_CERTIFICATION, this::updateCertification);
         entitySpecificUpdate(consolidatingChanges);
         updateChangeSummary();
       }
@@ -5414,12 +6854,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
         checkMutuallyExclusive(updatedTags);
       }
 
+      // Filter out certification tags — handled exclusively by updateCertification()
+      String certClassification = getCertificationClassification();
+      if (certClassification != null) {
+        addedTags.removeIf(
+            tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+        deletedTags.removeIf(
+            tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+      }
+
       // Apply differential updates - only modify what changed
       if (!deletedTags.isEmpty()) {
-        applyTagsDelete(deletedTags, fqn);
+        applyTagsDeleteInFlushAndDeferRdf(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAdd(
+        applyTagsAddInFlushAndDeferRdf(
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
@@ -5449,7 +6898,63 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> deletedTags = new ArrayList<>();
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, fqn);
+      applyTagsReplaceInFlushAndDeferRdf(origTags, updatedTags, fqn);
+    }
+
+    private List<TagLabel> getNonDerivedTags(List<TagLabel> tags) {
+      if (nullOrEmpty(tags)) {
+        return Collections.emptyList();
+      }
+      return tags.stream()
+          .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+          .toList();
+    }
+
+    protected final void applyTagsAddInFlushAndDeferRdf(
+        List<TagLabel> tagLabels, String targetFqn) {
+      List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
+      if (nonDerivedTags.isEmpty()) {
+        return;
+      }
+      daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFqn);
+      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
+      deferReactOperation(
+          () -> {
+            for (TagLabel tagLabel : tagsForRdf) {
+              org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
+            }
+          });
+    }
+
+    protected final void applyTagsDeleteInFlushAndDeferRdf(
+        List<TagLabel> tagLabels, String targetFqn) {
+      List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
+      if (nonDerivedTags.isEmpty()) {
+        return;
+      }
+      daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFqn);
+      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
+      deferReactOperation(
+          () -> {
+            for (TagLabel tagLabel : tagsForRdf) {
+              org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
+            }
+          });
+    }
+
+    private void applyTagsReplaceInFlushAndDeferRdf(
+        List<TagLabel> originalTags, List<TagLabel> updatedTags, String targetFqn) {
+      List<TagLabel> originalNonDerived = getNonDerivedTags(originalTags);
+      if (!originalNonDerived.isEmpty()) {
+        List<TagLabel> tagsToRemove = List.copyOf(originalNonDerived);
+        deferReactOperation(
+            () -> {
+              for (TagLabel tagLabel : tagsToRemove) {
+                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
+              }
+            });
+      }
+      applyTagsAddInFlushAndDeferRdf(updatedTags, targetFqn);
     }
 
     private void updateExtension(boolean consolidatingChanges) {
@@ -5816,7 +7321,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
-        recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
+        deleteCertificationTag(updated.getFullyQualifiedName());
+        recordChange(FIELD_CERTIFICATION, origCertification, null, true);
         return;
       }
 
@@ -5841,6 +7347,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
       LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
       updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+
+      applyCertification(updated);
 
       recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
     }
@@ -5922,6 +7430,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         boolean jsonValue,
         BiPredicate<K, K> typeMatch,
         boolean updateVersion) {
+      if (!shouldCompare(field)) {
+        return false;
+      }
       if (orig == updated) {
         return false;
       }
@@ -5959,6 +7470,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<K> addedItems,
         List<K> deletedItems,
         BiPredicate<K, K> typeMatch) {
+      if (!shouldCompare(field)) {
+        return false;
+      }
       origList = listOrEmpty(origList);
       updatedList = listOrEmpty(updatedList);
       List<K> updatedItems = new ArrayList<>();
@@ -6072,7 +7586,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     .relation(relationshipType.ordinal())
                     .build());
           }
-          daoCollection.relationshipDAO().bulkInsertTo(optimizedRelationships);
+          bulkInsertRelationships(optimizedRelationships);
         } else {
           // For non-bidirectional relationships, just create forward relationships
           List<UUID> addedIds =
@@ -6083,12 +7597,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
         }
       }
-      if (!nullOrEmpty(updatedToRefs)) {
-        updatedToRefs.sort(EntityUtil.compareEntityReference);
-      }
-      if (!nullOrEmpty(origToRefs)) {
-        origToRefs.sort(EntityUtil.compareEntityReference);
-      }
+      sortEntityReferencesForDeterminism(updatedToRefs);
+      sortEntityReferencesForDeterminism(origToRefs);
     }
 
     public final void updateToRelationship(
@@ -6171,10 +7681,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
                             .build())
                 .collect(Collectors.toList());
 
-        daoCollection.relationshipDAO().bulkInsertTo(relationships);
+        bulkInsertRelationships(relationships);
       }
-      updatedFromRefs.sort(EntityUtil.compareEntityReference);
-      originFromRefs.sort(EntityUtil.compareEntityReference);
+      sortEntityReferencesForDeterminism(updatedFromRefs);
+      sortEntityReferencesForDeterminism(originFromRefs);
+    }
+
+    private void sortEntityReferencesForDeterminism(List<EntityReference> refs) {
+      if (nullOrEmpty(refs) || refs.size() < 2) {
+        return;
+      }
+      List<EntityReference> sorted = new ArrayList<>(refs);
+      sorted.sort(
+          Comparator.comparing(EntityReference::getName, Comparator.nullsLast(String::compareTo))
+              .thenComparing(EntityReference::getType, Comparator.nullsLast(String::compareTo))
+              .thenComparing(EntityReference::getId, Comparator.nullsLast(UUID::compareTo)));
+      try {
+        refs.clear();
+        refs.addAll(sorted);
+      } catch (UnsupportedOperationException ignored) {
+        // Lists loaded from ReadBundle are immutable snapshots (List.copyOf). Preserve the
+        // sorted copy locally without mutating the immutable source list.
+      }
     }
 
     public final void updateFromRelationship(
@@ -6199,22 +7727,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void storeUpdate() {
-      boolean versionChanged = updateVersion(original.getVersion());
+      try (var ignored = phase("storeUpdateVersioning")) {
+        this.versionChanged = updateVersion(original.getVersion());
+      }
       LOG.info(
           "storeUpdate: versionChanged={}, entityChanged={}, entityType={}, id={}",
-          versionChanged,
+          this.versionChanged,
           entityChanged,
           entityType,
           updated.getId());
 
-      if (versionChanged) { // Update changed the entity version
-        storeEntityHistory(); // Store old version for listing previous versions of the entity
-        storeNewVersion(); // Store the update version of the entity
+      if (this.versionChanged) { // Update changed the entity version
+        try (var ignored = phase("storeUpdateHistory")) {
+          storeEntityHistory(); // Store old version for listing previous versions of the entity
+        }
+        try (var ignored = phase("storeUpdateCurrent")) {
+          storeNewVersion(); // Store the update version of the entity
+        }
       } else if (entityChanged) {
         if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
           updated.setChangeDescription(original.getChangeDescription());
         }
-        storeNewVersion();
+        try (var ignored = phase("storeUpdateCurrent")) {
+          storeNewVersion();
+        }
       } else { // Update did not change the entity version
         LOG.info("No version change and entityChanged=false, checking previous");
         updated.setChangeDescription(original.getChangeDescription());
@@ -6223,8 +7759,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
         if (previous != null && previous.getVersion().equals(updated.getVersion())) {
-          storeNewVersion();
-          removeEntityHistory(updated.getVersion());
+          try (var ignored = phase("storeUpdateCurrent")) {
+            storeNewVersion();
+          }
+          try (var ignored = phase("storeUpdateHistoryCleanup")) {
+            removeEntityHistory(updated.getVersion());
+          }
         }
       }
     }
@@ -6238,22 +7778,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
               && changeDescription.getPreviousVersion() != null
               && changeDescription.getPreviousVersion().equals(previous.getVersion());
 
-      if (updateVersion(original.getVersion())) { // Update changed the entity version
-        storeEntityHistory(); // Store old version for listing previous versions of the entity
+      try (var ignored = phase("storeUpdateVersioning")) {
+        this.versionChanged = updateVersion(original.getVersion());
+      }
+
+      if (this.versionChanged) { // Update changed the entity version
+        try (var ignored = phase("storeUpdateHistory")) {
+          storeEntityHistory(); // Store old version for listing previous versions of the entity
+        }
         if (isConsolidating) {
           // During consolidation, use regular store without version check
-          storeNewVersion();
+          try (var ignored = phase("storeUpdateCurrent")) {
+            storeNewVersion();
+          }
         } else {
-          storeNewVersionWithOptimisticLocking(); // Store with version check
+          try (var ignored = phase("storeUpdateCurrentOptimistic")) {
+            storeNewVersionWithOptimisticLocking(); // Store with version check
+          }
         }
       } else if (entityChanged) {
         if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
           updated.setChangeDescription(original.getChangeDescription());
         }
         if (isConsolidating) {
-          storeNewVersion();
+          try (var ignored = phase("storeUpdateCurrent")) {
+            storeNewVersion();
+          }
         } else {
-          storeNewVersionWithOptimisticLocking();
+          try (var ignored = phase("storeUpdateCurrentOptimistic")) {
+            storeNewVersionWithOptimisticLocking();
+          }
         }
       } else { // Update did not change the entity version
         updated.setChangeDescription(original.getChangeDescription());
@@ -6262,8 +7816,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
         if (previous != null && previous.getVersion().equals(updated.getVersion())) {
-          storeNewVersion(); // Always use regular store for this case
-          removeEntityHistory(updated.getVersion());
+          try (var ignored = phase("storeUpdateCurrent")) {
+            storeNewVersion(); // Always use regular store for this case
+          }
+          try (var ignored = phase("storeUpdateHistoryCleanup")) {
+            removeEntityHistory(updated.getVersion());
+          }
         }
       }
     }
@@ -6281,22 +7839,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
-      LOG.info(
+      LOG.debug(
           "storeNewVersion called for entity: {} {}, changeDescription={}",
           entityType,
           updated.getId(),
           updated.getChangeDescription());
       EntityRepository.this.storeEntity(updated, true);
-      // Write-through cache after update
-      EntityRepository.this.writeThroughCache(updated, true);
+      invalidateCachesAfterStore();
     }
 
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
       EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
-      // Write-through cache after update
+      invalidateCachesAfterStore();
+    }
+
+    private void invalidateCachesAfterStore() {
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, updated.getId()));
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, updated.getFullyQualifiedName()));
       EntityRepository.this.writeThroughCache(updated, true);
+      RequestEntityCache.invalidate(entityType, updated.getId(), updated.getFullyQualifiedName());
     }
 
     public final boolean updatedByBot() {
@@ -6369,9 +7932,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Also check incrementalChangeDescription - this captures the name change
       // even when renameProcessed prevents it from being in the main changeDescription
       if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
-        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
-          return true;
-        }
+        return incChangeDesc.getFieldsUpdated().stream()
+            .anyMatch(fc -> "name".equals(fc.getName()));
       }
 
       return false;
@@ -6408,14 +7970,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityType, original.getChangeDescription().getPreviousVersion());
       String json =
           daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
-      T previousVersion = JsonUtils.readValue(json, entityClass);
 
       // IMPORTANT: Do NOT call setFieldsInternal here!
       // The JSON already contains the correct historical state of all fields including experts.
       // Calling setFieldsInternal would fetch current relationships from DB which is wrong.
       // The version history JSON is a complete snapshot of the entity at that point in time.
-
-      return previousVersion;
+      return JsonUtils.readValue(json, entityClass);
     }
   }
 
@@ -6469,7 +8029,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTags(
+        applyTagsAddInFlushAndDeferRdf(
             added.getTags().stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
             added.getFullyQualifiedName());
       }
@@ -6488,23 +8048,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
 
-        updateColumnDescription(fieldName, stored, updated);
-        updateColumnDisplayName(stored, updated);
-        updateColumnDataLength(stored, updated);
-        updateColumnPrecision(stored, updated);
-        updateColumnScale(stored, updated);
+        String columnPrefix =
+            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        updateColumnDescription(columnPrefix, stored, updated);
+        updateColumnDisplayName(columnPrefix, stored, updated);
+        updateColumnDataLength(columnPrefix, stored, updated);
+        updateColumnPrecision(columnPrefix, stored, updated);
+        updateColumnScale(columnPrefix, stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+            EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
             stored.getTags(),
             updated.getTags());
-        updateColumnConstraint(stored, updated);
+        updateColumnConstraint(columnPrefix, stored, updated);
         updateColumnExtension(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
-          updateColumns(
-              childrenFieldName, stored.getChildren(), updated.getChildren(), columnMatch);
+          updateColumns(columnPrefix, stored.getChildren(), updated.getChildren(), columnMatch);
         }
       }
 
@@ -6520,30 +8080,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateColumnDescription(
-        String fieldName, Column origColumn, Column updatedColumn) {
+        String fieldPrefix, Column origColumn, Column updatedColumn) {
       if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
-        // Revert the non-empty task description if being updated by a bot
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      String columnField =
-          EntityUtil.getFieldName(fieldName, origColumn.getName(), FIELD_DESCRIPTION);
-      recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DESCRIPTION),
+          origColumn.getDescription(),
+          updatedColumn.getDescription());
     }
 
-    private void updateColumnDisplayName(Column origColumn, Column updatedColumn) {
+    private void updateColumnDisplayName(
+        String fieldPrefix, Column origColumn, Column updatedColumn) {
       if (operation.isPut() && !nullOrEmpty(origColumn.getDisplayName()) && updatedByBot()) {
-        // Revert the non-empty task display name if being updated by a bot
         updatedColumn.setDisplayName(origColumn.getDisplayName());
         return;
       }
-      String columnField = getColumnField(origColumn, FIELD_DISPLAY_NAME);
-      recordChange(columnField, origColumn.getDisplayName(), updatedColumn.getDisplayName());
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, FIELD_DISPLAY_NAME),
+          origColumn.getDisplayName(),
+          updatedColumn.getDisplayName());
     }
 
-    private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
-      String columnField = getColumnField(origColumn, "constraint");
-      recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
+    private void updateColumnConstraint(
+        String fieldPrefix, Column origColumn, Column updatedColumn) {
+      recordChange(
+          EntityUtil.getFieldName(fieldPrefix, "constraint"),
+          origColumn.getConstraint(),
+          updatedColumn.getConstraint());
     }
 
     private void updateColumnExtension(Column origColumn, Column updatedColumn) {
@@ -6559,9 +8124,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    protected void updateColumnDataLength(Column origColumn, Column updatedColumn) {
-      String columnField = getColumnField(origColumn, "dataLength");
-
+    protected void updateColumnDataLength(
+        String fieldPrefix, Column origColumn, Column updatedColumn) {
+      String columnField = EntityUtil.getFieldName(fieldPrefix, "dataLength");
       boolean updated =
           recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
 
@@ -6569,196 +8134,164 @@ public abstract class EntityRepository<T extends EntityInterface> {
         Integer origDataLength = origColumn.getDataLength();
         Integer updatedDataLength = updatedColumn.getDataLength();
 
-        // Ensure safe comparison when one of them is null
         if (origDataLength == null
             || (updatedDataLength != null && updatedDataLength < origDataLength)) {
-          // The data length of a column was reduced or added. Treat it as backward-incompatible
-          // change
           majorVersionChange = true;
         }
       }
     }
 
-    private void updateColumnPrecision(Column origColumn, Column updatedColumn) {
-      String columnField = getColumnField(origColumn, "precision");
+    private void updateColumnPrecision(
+        String fieldPrefix, Column origColumn, Column updatedColumn) {
+      String columnField = EntityUtil.getFieldName(fieldPrefix, "precision");
       boolean updated =
           recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
       if (origColumn.getPrecision() != null
           && updated
           && (updatedColumn.getPrecision() == null
               || updatedColumn.getPrecision() < origColumn.getPrecision())) {
-        // Previously set precision was reduced or removed. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
     }
 
-    private void updateColumnScale(Column origColumn, Column updatedColumn) {
-      String columnField = getColumnField(origColumn, "scale");
+    private void updateColumnScale(String fieldPrefix, Column origColumn, Column updatedColumn) {
+      String columnField = EntityUtil.getFieldName(fieldPrefix, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
       if (origColumn.getScale() != null
           && updated
           && (updatedColumn.getScale() == null
               || updatedColumn.getScale() < origColumn.getScale())) {
-        // Previously set scale was reduced or removed. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
     }
   }
 
-  static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
+  static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, String> {
     @Override
-    public @NonNull EntityInterface load(@NotNull Pair<String, String> fqnPair) {
+    public @NonNull String load(@NotNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-
-      // Skip cache for user entities to avoid authentication issues
-      if ("user".equals(entityType)) {
-        LOG.debug("Skipping cache for user entity to ensure fresh auth data: {}", fqn);
-        EntityInterface entity = repository.getDao().findEntityByName(fqn, ALL);
-        return entity;
-      }
+      EntityDAO<?> dao = repository.getDao();
 
       // Try to load from external cache first (read-through) for non-user entities
-      var cachedEntityDao = CacheBundle.getCachedEntityDao();
-      if (cachedEntityDao != null) {
-        Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
-        if (cachedJson.isPresent()) {
-          LOG.debug("CACHE HIT: Loading entity by name from Redis cache: {} {}", entityType, fqn);
-          try {
-            // Get the entity class from the repository and deserialize with proper type
-            Class<? extends EntityInterface> entityClass = repository.getEntityClass();
-            EntityInterface entity = JsonUtils.readValue(cachedJson.get(), entityClass);
-
-            // Validate the cached entity - if invalid, evict and fall back to database
-            if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
-              LOG.error(
-                  "CACHE ERROR: Cached entity from name lookup is invalid! Evicting bad cache entry. Type: {}, Name: {}",
-                  entityType,
-                  fqn);
-              // Evict the corrupted cache entry
-              cachedEntityDao.deleteByName(entityType, fqn);
-              // Fall back to database load below
-            } else {
-              // Valid cached entity, return it
-              return entity;
-            }
-          } catch (Exception e) {
-            LOG.warn(
-                "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
-                entityType,
-                fqn,
-                e);
-            // Evict the corrupted cache entry
+      if (!"user".equals(entityType)) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
+          if (cachedJson.isPresent()) {
+            LOG.debug("CACHE HIT: Loading entity by name from Redis cache: {} {}", entityType, fqn);
             try {
-              cachedEntityDao.deleteByName(entityType, fqn);
-            } catch (Exception evictError) {
-              LOG.debug(
-                  "Failed to evict bad cache entry by name: {} {}", entityType, fqn, evictError);
+              Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+              EntityInterface entity = JsonUtils.readValue(cachedJson.get(), entityClass);
+              if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
+                LOG.error(
+                    "CACHE ERROR: Cached entity from name lookup is invalid! Evicting. Type: {}, Name: {}",
+                    entityType,
+                    fqn);
+                cachedEntityDao.deleteByName(entityType, fqn);
+              } else {
+                return cachedJson.get();
+              }
+            } catch (Exception e) {
+              LOG.warn(
+                  "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
+                  entityType,
+                  fqn,
+                  e);
+              try {
+                cachedEntityDao.deleteByName(entityType, fqn);
+              } catch (Exception evictError) {
+                LOG.debug(
+                    "Failed to evict bad cache entry by name: {} {}", entityType, fqn, evictError);
+              }
             }
           }
+          LOG.debug("CACHE MISS: Entity not in Redis cache by name: {} {}", entityType, fqn);
         }
-        LOG.debug("CACHE MISS: Entity not in Redis cache by name: {} {}", entityType, fqn);
       }
 
-      // If not in cache, load from database
+      // Load raw JSON from database
       LOG.debug("Loading entity by name from database: {} {}", entityType, fqn);
-      EntityInterface entity = repository.getDao().findEntityByName(fqn, ALL);
+      String json =
+          dao.findByName(dao.getTableName(), dao.getNameHashColumn(), fqn, dao.getCondition(ALL));
+      if (json == null) {
+        throw new EntityNotFoundException(
+            String.format("Entity not found: %s %s", entityType, fqn));
+      }
 
-      // Validate entity loaded from database
+      // Validate
+      EntityInterface entity = JsonUtils.readValue(json, repository.getEntityClass());
       if (!isValidEntityForCache(entity)) {
-        if (entity == null) {
-          LOG.error("Entity not found in database by name: {} {}", entityType, fqn);
-          throw new EntityNotFoundException(
-              String.format("Entity not found: %s %s", entityType, fqn));
-        }
-        // For name lookups, we can't fix missing ID since we don't know it
         LOG.error(
             "CRITICAL: Entity loaded from database by name is invalid! Type: {}, Name: {}, ID: {}",
             entityType,
             fqn,
-            entity.getId());
+            entity == null ? "null" : entity.getId());
         throw new IllegalStateException(
             String.format("Invalid entity from database: %s %s", entityType, fqn));
       }
 
-      // Note: Do NOT write to Redis cache here - this loader is part of Guava cache
-      // Redis caching is handled separately by writeThroughCache after DB operations
-      // This maintains clean separation between Guava (local) and Redis (distributed) caching
-
-      return entity;
+      return json;
     }
   }
 
-  static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
+  static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, String> {
     @Override
-    public @NonNull EntityInterface load(@NotNull Pair<String, UUID> idPair) {
+    public @NonNull String load(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-
-      // Skip cache for user entities to avoid authentication issues
-      if ("user".equals(entityType)) {
-        LOG.debug("Skipping cache for user entity to ensure fresh auth data: {}", id);
-        EntityInterface entity = repository.getDao().findEntityById(id, ALL);
-        return entity;
-      }
+      EntityDAO<?> dao = repository.getDao();
 
       // Try to load from external cache first (read-through) for non-user entities
-      var cachedEntityDao = CacheBundle.getCachedEntityDao();
-      if (cachedEntityDao != null) {
-        String cachedJson = cachedEntityDao.getBase(id, entityType);
-        if (cachedJson != null && !cachedJson.isEmpty()) {
-          LOG.debug("CACHE HIT: Loading entity from Redis cache: {} {}", entityType, id);
-          try {
-            // Get the entity class from the repository and deserialize with proper type
-            Class<? extends EntityInterface> entityClass = repository.getEntityClass();
-            EntityInterface entity = JsonUtils.readValue(cachedJson, entityClass);
-
-            // Validate the cached entity - if invalid, evict and fall back to database
-            if (entity.getId() == null) {
-              LOG.error(
-                  "CACHE ERROR: Cached entity has null ID! Evicting bad cache entry. Type: {}, Expected ID: {}",
-                  entityType,
-                  id);
-              // Evict the corrupted cache entry
-              cachedEntityDao.deleteBase(entityType, id);
-              // Fall back to database load below
-            } else {
-              // Valid cached entity, return it
-              return entity;
-            }
-          } catch (Exception e) {
-            LOG.warn(
-                "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
-                entityType,
-                id,
-                e);
-            // Evict the corrupted cache entry
+      if (!"user".equals(entityType)) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          String cachedJson = cachedEntityDao.getBase(id, entityType);
+          if (cachedJson != null && !cachedJson.isEmpty()) {
+            LOG.debug("CACHE HIT: Loading entity from Redis cache: {} {}", entityType, id);
             try {
-              cachedEntityDao.deleteBase(entityType, id);
-            } catch (Exception evictError) {
-              LOG.debug("Failed to evict bad cache entry: {} {}", entityType, id, evictError);
+              Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+              EntityInterface entity = JsonUtils.readValue(cachedJson, entityClass);
+              if (entity.getId() == null) {
+                LOG.error(
+                    "CACHE ERROR: Cached entity has null ID! Evicting. Type: {}, Expected ID: {}",
+                    entityType,
+                    id);
+                cachedEntityDao.deleteBase(entityType, id);
+              } else {
+                return cachedJson;
+              }
+            } catch (Exception e) {
+              LOG.warn(
+                  "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
+                  entityType,
+                  id,
+                  e);
+              try {
+                cachedEntityDao.deleteBase(entityType, id);
+              } catch (Exception evictError) {
+                LOG.debug("Failed to evict bad cache entry: {} {}", entityType, id, evictError);
+              }
             }
           }
+          LOG.debug("CACHE MISS: Entity not in Redis cache: {} {}", entityType, id);
         }
-        LOG.debug("CACHE MISS: Entity not in Redis cache: {} {}", entityType, id);
       }
 
-      // If not in cache, load from database
+      // Load raw JSON from database
       LOG.debug("Loading entity from database: {} {}", entityType, id);
-      EntityInterface entity = repository.getDao().findEntityById(id, ALL);
+      String json = dao.findById(dao.getTableName(), id, dao.getCondition(ALL));
+      if (json == null) {
+        throw new EntityNotFoundException(String.format("Entity not found: %s %s", entityType, id));
+      }
 
-      // Validate entity loaded from database
+      // Validate
+      EntityInterface entity = JsonUtils.readValue(json, repository.getEntityClass());
       if (!isValidEntityForCache(entity)) {
-        if (entity == null) {
-          LOG.error("Entity not found in database: {} {}", entityType, id);
-          throw new EntityNotFoundException(
-              String.format("Entity not found: %s %s", entityType, id));
-        }
-        // Try to fix missing ID if entity exists but ID is null
         if (entity.getId() == null) {
           LOG.error(
               "CRITICAL: Entity loaded from database has null ID! Type: {}, Expected ID: {}, FQN: {}",
@@ -6766,8 +8299,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
               id,
               entity.getFullyQualifiedName());
           entity.setId(id);
+          json = JsonUtils.pojoToJson(entity);
         }
-        // If still invalid, throw exception
+        entity = JsonUtils.readValue(json, repository.getEntityClass());
         if (!isValidEntityForCache(entity)) {
           LOG.error("Entity from database is invalid for caching: {} {}", entityType, id);
           throw new IllegalStateException(
@@ -6775,11 +8309,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
 
-      // Note: Do NOT write to Redis cache here - this loader is part of Guava cache
-      // Redis caching is handled separately by writeThroughCache after DB operations
-      // This maintains clean separation between Guava (local) and Redis (distributed) caching
-
-      return entity;
+      return json;
     }
   }
 
@@ -6811,10 +8341,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Generic approval task workflow usable for any entity. Checks that the acting user is an
-   * assignee of the task (not necessarily an entity reviewer), then delegates resolution to the
-   * governance WorkflowHandler. Falls back to a direct entityStatus patch when the Flowable
-   * workflow record no longer exists (e.g. after a corrupted restart).
+   * Generic approval task workflow usable for any entity. Checks that the acting user is a
+   * reviewer of the entity, then delegates resolution to the governance WorkflowHandler. Falls
+   * back to a direct entityStatus patch when the Flowable workflow record no longer exists (e.g.
+   * after a corrupted restart).
    */
   public static class ApprovalTaskWorkflow extends TaskWorkflow {
     ApprovalTaskWorkflow(ThreadContext threadContext) {
@@ -6824,7 +8354,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       EntityInterface entity = threadContext.getAboutEntity();
-      checkUpdatedByTaskAssignee(threadContext.getThread(), user);
+      verifyReviewer(entity, user);
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
@@ -6882,6 +8412,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Checks that {@code user} is a reviewer of the given entity. Throws {@link
+   * AuthorizationException} if not.
+   */
+  public static void verifyReviewer(EntityInterface entity, String user) {
+    List<EntityReference> reviewers = entity.getReviewers();
+    if (nullOrEmpty(reviewers)) {
+      return;
+    }
+    boolean isReviewer =
+        reviewers.stream()
+            .anyMatch(
+                e -> {
+                  if (TEAM.equals(e.getType())) {
+                    org.openmetadata.schema.entity.teams.Team team =
+                        Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                    return team.getUsers().stream()
+                        .anyMatch(
+                            u ->
+                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
+                  }
+                  return e.getName().equals(user) || e.getFullyQualifiedName().equals(user);
+                });
+    if (!isReviewer) {
+      throw new AuthorizationException(notReviewer(user));
+    }
+  }
+
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
     validateColumn(table, columnName, Boolean.TRUE);
@@ -6909,18 +8467,310 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void fetchAndSetFields(List<T> entities, Fields fields) {
-    if (fieldFetchers.size() <= 1) {
-      fieldFetchers.values().forEach(fetcher -> fetcher.accept(entities, fields));
-      return;
+    Set<String> relationshipFieldsHandled = fetchAndSetRelationshipFieldsInBulk(entities, fields);
+    for (Entry<String, BiConsumer<List<T>, Fields>> entry : fieldFetchers.entrySet()) {
+      if (relationshipFieldsHandled.contains(entry.getKey())) {
+        continue;
+      }
+      entry.getValue().accept(entities, fields);
     }
-    List<CompletableFuture<Void>> futures =
-        fieldFetchers.values().stream()
-            .map(
-                fetcher ->
-                    CompletableFuture.runAsync(
-                        () -> fetcher.accept(entities, fields), FIELD_FETCH_EXECUTOR))
-            .toList();
-    CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+  }
+
+  private Set<String> fetchAndSetRelationshipFieldsInBulk(List<T> entities, Fields fields) {
+    if (nullOrEmpty(entities) || fields == null) {
+      return Collections.emptySet();
+    }
+
+    boolean loadOwners = supportsOwners && fields.contains(FIELD_OWNERS);
+    boolean loadFollowers = supportsFollower && fields.contains(FIELD_FOLLOWERS);
+    boolean loadDomains = supportsDomains && fields.contains(FIELD_DOMAINS);
+    boolean loadReviewers = supportsReviewers && fields.contains(FIELD_REVIEWERS);
+    boolean loadDataProducts = supportsDataProducts && fields.contains(FIELD_DATA_PRODUCTS);
+    boolean loadDataContract = supportsDataContract && fields.contains(FIELD_DATA_CONTRACT);
+    boolean loadVotes = supportsVotes && fields.contains(FIELD_VOTES);
+    boolean loadChildren = supportsChildren && fields.contains(FIELD_CHILDREN);
+    boolean loadExperts = supportsExperts && fields.contains(FIELD_EXPERTS);
+
+    if (!loadOwners
+        && !loadFollowers
+        && !loadDomains
+        && !loadReviewers
+        && !loadDataProducts
+        && !loadDataContract
+        && !loadVotes
+        && !loadChildren
+        && !loadExperts) {
+      return Collections.emptySet();
+    }
+
+    List<Integer> incomingRelations = new ArrayList<>();
+    if (loadOwners) {
+      incomingRelations.add(Relationship.OWNS.ordinal());
+    }
+    if (loadFollowers) {
+      incomingRelations.add(Relationship.FOLLOWS.ordinal());
+    }
+    if (loadDomains || loadDataProducts) {
+      incomingRelations.add(Relationship.HAS.ordinal());
+    }
+    if (loadReviewers) {
+      incomingRelations.add(Relationship.REVIEWS.ordinal());
+    }
+    if (loadVotes) {
+      incomingRelations.add(Relationship.VOTED.ordinal());
+    }
+
+    List<Integer> outgoingRelations = new ArrayList<>();
+    if (loadChildren || loadDataContract) {
+      outgoingRelations.add(Relationship.CONTAINS.ordinal());
+    }
+    if (loadExperts) {
+      outgoingRelations.add(Relationship.EXPERT.ordinal());
+    }
+
+    List<String> entityIds = entityListToStrings(entities);
+    List<CollectionDAO.EntityRelationshipObject> incomingRecords =
+        incomingRelations.isEmpty()
+            ? Collections.emptyList()
+            : daoCollection
+                .relationshipDAO()
+                .findFromBatchWithRelations(entityIds, entityType, incomingRelations, ALL);
+    List<CollectionDAO.EntityRelationshipObject> outgoingRecords =
+        outgoingRelations.isEmpty()
+            ? Collections.emptyList()
+            : daoCollection
+                .relationshipDAO()
+                .findToBatchWithRelations(entityIds, entityType, outgoingRelations, ALL);
+
+    Map<String, Map<UUID, EntityReference>> incomingRefsByType =
+        resolveRelationshipEntityReferencesByType(incomingRecords, true);
+    Map<String, Map<UUID, EntityReference>> outgoingRefsByType =
+        resolveRelationshipEntityReferencesByType(outgoingRecords, false);
+
+    Map<UUID, List<EntityReference>> ownersByEntity = loadOwners ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> followersByEntity = loadFollowers ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> domainsByEntity = loadDomains ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> reviewersByEntity = loadReviewers ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> dataProductsByEntity =
+        loadDataProducts ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> upVotersByEntity = loadVotes ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> downVotersByEntity = loadVotes ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> childrenByEntity = loadChildren ? new HashMap<>() : null;
+    Map<UUID, EntityReference> dataContractByEntity = loadDataContract ? new HashMap<>() : null;
+    Map<UUID, List<EntityReference>> expertsByEntity = loadExperts ? new HashMap<>() : null;
+
+    for (CollectionDAO.EntityRelationshipObject record : incomingRecords) {
+      UUID entityId = UUID.fromString(record.getToId());
+      UUID sourceId = UUID.fromString(record.getFromId());
+      String sourceType = record.getFromEntity();
+      EntityReference sourceRef = lookupRelationshipRef(incomingRefsByType, sourceType, sourceId);
+      if (sourceRef == null) {
+        continue;
+      }
+
+      Relationship relationship = relationshipFromOrdinal(record.getRelation());
+      if (relationship == null) {
+        continue;
+      }
+      switch (relationship) {
+        case OWNS -> {
+          if (loadOwners) {
+            ownersByEntity.computeIfAbsent(entityId, ignored -> new ArrayList<>()).add(sourceRef);
+          }
+        }
+        case FOLLOWS -> {
+          if (loadFollowers && USER.equals(sourceType)) {
+            followersByEntity
+                .computeIfAbsent(entityId, ignored -> new ArrayList<>())
+                .add(sourceRef);
+          }
+        }
+        case HAS -> {
+          if (loadDomains && DOMAIN.equals(sourceType)) {
+            domainsByEntity.computeIfAbsent(entityId, ignored -> new ArrayList<>()).add(sourceRef);
+          } else if (loadDataProducts && DATA_PRODUCT.equals(sourceType)) {
+            dataProductsByEntity
+                .computeIfAbsent(entityId, ignored -> new ArrayList<>())
+                .add(sourceRef);
+          }
+        }
+        case REVIEWS -> {
+          if (loadReviewers) {
+            reviewersByEntity
+                .computeIfAbsent(entityId, ignored -> new ArrayList<>())
+                .add(sourceRef);
+          }
+        }
+        case VOTED -> {
+          if (loadVotes && USER.equals(sourceType)) {
+            VoteType voteType = JsonUtils.readValue(record.getJson(), VoteType.class);
+            if (voteType == VoteType.VOTED_UP) {
+              upVotersByEntity
+                  .computeIfAbsent(entityId, ignored -> new ArrayList<>())
+                  .add(sourceRef);
+            } else if (voteType == VoteType.VOTED_DOWN) {
+              downVotersByEntity
+                  .computeIfAbsent(entityId, ignored -> new ArrayList<>())
+                  .add(sourceRef);
+            }
+          }
+        }
+        default -> {
+          // no-op
+        }
+      }
+    }
+
+    for (CollectionDAO.EntityRelationshipObject record : outgoingRecords) {
+      UUID entityId = UUID.fromString(record.getFromId());
+      UUID targetId = UUID.fromString(record.getToId());
+      String targetType = record.getToEntity();
+      EntityReference targetRef = lookupRelationshipRef(outgoingRefsByType, targetType, targetId);
+      if (targetRef == null) {
+        continue;
+      }
+
+      Relationship relationship = relationshipFromOrdinal(record.getRelation());
+      if (relationship == null) {
+        continue;
+      }
+      switch (relationship) {
+        case CONTAINS -> {
+          if (loadChildren && entityType.equals(targetType)) {
+            childrenByEntity.computeIfAbsent(entityId, ignored -> new ArrayList<>()).add(targetRef);
+          } else if (loadDataContract && DATA_CONTRACT.equals(targetType)) {
+            dataContractByEntity.putIfAbsent(entityId, targetRef);
+          }
+        }
+        case EXPERT -> {
+          if (loadExperts && USER.equals(targetType)) {
+            expertsByEntity.computeIfAbsent(entityId, ignored -> new ArrayList<>()).add(targetRef);
+          }
+        }
+        default -> {
+          // no-op
+        }
+      }
+    }
+
+    Set<String> handledFields = new HashSet<>();
+    for (T entity : entities) {
+      UUID entityId = entity.getId();
+      if (loadOwners) {
+        entity.setOwners(ownersByEntity.getOrDefault(entityId, Collections.emptyList()));
+      }
+      if (loadFollowers) {
+        entity.setFollowers(followersByEntity.getOrDefault(entityId, Collections.emptyList()));
+      }
+      if (loadDomains) {
+        entity.setDomains(domainsByEntity.getOrDefault(entityId, Collections.emptyList()));
+      }
+      if (loadReviewers) {
+        entity.setReviewers(reviewersByEntity.getOrDefault(entityId, Collections.emptyList()));
+      }
+      if (loadDataProducts) {
+        entity.setDataProducts(
+            dataProductsByEntity.getOrDefault(entityId, Collections.emptyList()));
+      }
+      if (loadVotes) {
+        List<EntityReference> upVoters =
+            upVotersByEntity.getOrDefault(entityId, Collections.emptyList());
+        List<EntityReference> downVoters =
+            downVotersByEntity.getOrDefault(entityId, Collections.emptyList());
+        entity.setVotes(
+            new Votes()
+                .withUpVotes(upVoters.size())
+                .withDownVotes(downVoters.size())
+                .withUpVoters(upVoters)
+                .withDownVoters(downVoters));
+      }
+      if (loadChildren) {
+        entity.setChildren(childrenByEntity.get(entityId));
+      }
+      if (loadDataContract) {
+        entity.setDataContract(dataContractByEntity.get(entityId));
+      }
+      if (loadExperts) {
+        entity.setExperts(expertsByEntity.getOrDefault(entityId, Collections.emptyList()));
+      }
+    }
+
+    if (loadOwners) {
+      handledFields.add(FIELD_OWNERS);
+    }
+    if (loadFollowers) {
+      handledFields.add(FIELD_FOLLOWERS);
+    }
+    if (loadDomains) {
+      handledFields.add(FIELD_DOMAINS);
+    }
+    if (loadReviewers) {
+      handledFields.add(FIELD_REVIEWERS);
+    }
+    if (loadDataProducts) {
+      handledFields.add(FIELD_DATA_PRODUCTS);
+    }
+    if (loadVotes) {
+      handledFields.add(FIELD_VOTES);
+    }
+    if (loadChildren) {
+      handledFields.add(FIELD_CHILDREN);
+    }
+    if (loadDataContract) {
+      handledFields.add(FIELD_DATA_CONTRACT);
+    }
+    if (loadExperts) {
+      handledFields.add(FIELD_EXPERTS);
+    }
+    return handledFields;
+  }
+
+  private Map<String, Map<UUID, EntityReference>> resolveRelationshipEntityReferencesByType(
+      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide) {
+    if (records == null || records.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      String entityTypeForRef = fromSide ? record.getFromEntity() : record.getToEntity();
+      String entityId = fromSide ? record.getFromId() : record.getToId();
+      if (nullOrEmpty(entityTypeForRef) || nullOrEmpty(entityId)) {
+        continue;
+      }
+      idsByType
+          .computeIfAbsent(entityTypeForRef, ignored -> new HashSet<>())
+          .add(UUID.fromString(entityId));
+    }
+
+    if (idsByType.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    Map<String, Map<UUID, EntityReference>> refsByType = new HashMap<>();
+    for (Entry<String, Set<UUID>> entry : idsByType.entrySet()) {
+      List<EntityReference> refs =
+          Entity.getEntityReferencesByIds(entry.getKey(), new ArrayList<>(entry.getValue()), ALL);
+      refsByType.put(
+          entry.getKey(),
+          refs.stream()
+              .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a)));
+    }
+    return refsByType;
+  }
+
+  private EntityReference lookupRelationshipRef(
+      Map<String, Map<UUID, EntityReference>> refsByType, String entityType, UUID id) {
+    if (refsByType == null || nullOrEmpty(entityType) || id == null) {
+      return null;
+    }
+    Map<UUID, EntityReference> refs = refsByType.get(entityType);
+    return refs == null ? null : refs.get(id);
+  }
+
+  private Relationship relationshipFromOrdinal(int relationOrdinal) {
+    Relationship[] values = Relationship.values();
+    return relationOrdinal >= 0 && relationOrdinal < values.length ? values[relationOrdinal] : null;
   }
 
   private void fetchAndSetOwners(List<T> entities, Fields fields) {
@@ -7240,68 +9090,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     long startTime = System.currentTimeMillis();
 
-    // Collect all certification tag FQNs and map to entity IDs
-    Map<String, List<UUID>> entityIdsByTagFqn = new HashMap<>();
-    Map<UUID, AssetCertification> entityCertifications = new HashMap<>();
-
-    for (T entity : entities) {
-      AssetCertification cert = entity.getCertification();
-      if (cert != null && cert.getTagLabel() != null && cert.getTagLabel().getTagFQN() != null) {
-        String tagFqn = cert.getTagLabel().getTagFQN();
-        entityIdsByTagFqn.computeIfAbsent(tagFqn, k -> new ArrayList<>()).add(entity.getId());
-        entityCertifications.put(entity.getId(), cert);
-      }
-    }
-
-    if (entityIdsByTagFqn.isEmpty()) {
-      LOG.debug(
-          "batchFetchCertification: {} entities, 0 certifications in {}ms",
-          entities.size(),
-          System.currentTimeMillis() - startTime);
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) {
       return result;
     }
 
-    // Batch fetch all certification tags at once
-    List<String> tagFqns = new ArrayList<>(entityIdsByTagFqn.keySet());
-    Map<String, Tag> tagsByFqn = new HashMap<>();
+    // Build FQN hash → entity ID map (batch query uses hashed FQNs for lookup)
+    Map<String, UUID> entityIdByFqnHash = new HashMap<>();
+    List<String> fqnList = new ArrayList<>();
+    for (T entity : entities) {
+      fqnList.add(entity.getFullyQualifiedName());
+      entityIdByFqnHash.put(
+          FullyQualifiedName.buildHash(entity.getFullyQualifiedName()), entity.getId());
+    }
 
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> certTags;
     try {
-      List<Tag> tags = TagLabelUtil.getTags(tagFqns);
-      for (Tag tag : tags) {
-        tagsByFqn.put(tag.getFullyQualifiedName(), tag);
-      }
+      certTags =
+          daoCollection.tagUsageDAO().getCertTagsInternalBatch(fqnList, certClassification + ".%");
     } catch (Exception e) {
       LOG.warn(
-          "Batch fetch of certification tags failed, falling back to individual fetch: {}",
+          "batchFetchCertification: batch query failed, falling back to individual fetch: {}",
           e.getMessage());
-      // Fallback to original behavior
       for (T entity : entities) {
         result.put(entity.getId(), getCertification(entity));
       }
       return result;
     }
 
-    // Map tags back to entities
-    for (Map.Entry<String, List<UUID>> entry : entityIdsByTagFqn.entrySet()) {
-      String tagFqn = entry.getKey();
-      Tag tag = tagsByFqn.get(tagFqn);
-
-      if (tag != null) {
-        TagLabel tagLabel = EntityUtil.toTagLabel(tag);
-        for (UUID entityId : entry.getValue()) {
-          AssetCertification cert = entityCertifications.get(entityId);
-          if (cert != null) {
-            cert.setTagLabel(tagLabel);
-            result.put(entityId, cert);
-          }
-        }
+    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagWithHash : certTags) {
+      UUID entityId = entityIdByFqnHash.get(tagWithHash.getTargetFQNHash());
+      if (entityId == null || result.containsKey(entityId)) {
+        continue;
       }
+      TagLabel tagLabel = tagWithHash.toTagLabel();
+      TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
+      result.put(
+          entityId,
+          new AssetCertification()
+              .withTagLabel(tagLabel)
+              .withAppliedDate(
+                  tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
+              .withExpiryDate(
+                  tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null));
     }
 
     LOG.debug(
-        "batchFetchCertification: {} entities, {} cert tags, 1 batch query in {}ms",
+        "batchFetchCertification: {} entities, {} certs found in {}ms",
         entities.size(),
-        tagFqns.size(),
+        result.size(),
         System.currentTimeMillis() - startTime);
 
     return result;
@@ -7329,15 +9166,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<String, List<TagLabel>> targetHashToTagLabel =
         populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
+    String certClassification = getCertificationClassification();
     return entityFQNs.stream()
         .collect(
             Collectors.toMap(
                 Function.identity(),
                 fqn -> {
                   String targetFQNHash = FullyQualifiedName.buildHash(fqn);
-                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
-                      .filter(list -> !list.isEmpty())
-                      .orElseGet(ArrayList::new);
+                  List<TagLabel> tags =
+                      Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+                          .filter(list -> !list.isEmpty())
+                          .orElseGet(ArrayList::new);
+                  if (certClassification != null) {
+                    tags.removeIf(
+                        tag ->
+                            certClassification.equals(
+                                FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+                  }
+                  return tags;
                 },
                 (a, b) -> a));
   }
@@ -7579,6 +9425,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           results.add(Either.left(entity));
         }
       } catch (Exception e) {
+        LOG.warn("setFieldsInBulk failed in serializeJsons, falling back to per-entity loading", e);
         for (T entity : entities) {
           try {
             setFieldsInternal(entity, fields);
@@ -7732,51 +9579,63 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return resultMap;
   }
 
-  /**
-   * Bulk populate entity field tags for multiple entities efficiently.
-   * This replaces individual calls to populateEntityFieldTags() to avoid N+1 queries.
-   */
+  /** Bulk populate field tags for multiple entities using chunked exact-match IN on field FQN hashes. */
   protected <F extends FieldInterface> void bulkPopulateEntityFieldTags(
-      List<T> entities,
-      String entityType,
-      java.util.function.Function<T, List<F>> fieldExtractor,
-      java.util.function.Function<T, String> fqnExtractor) {
+      List<T> entities, java.util.function.Function<T, List<F>> fieldExtractor) {
 
     if (entities == null || entities.isEmpty()) {
       return;
     }
 
-    // Collect all FQN prefixes for batch tag fetching
-    Set<String> allPrefixes = new HashSet<>();
-    for (T entity : entities) {
-      String fqnPrefix = fqnExtractor.apply(entity);
-      if (fqnPrefix != null) {
-        allPrefixes.add(fqnPrefix);
-      }
-    }
-
-    // Batch fetch all tags for all prefixes in one call
-    Map<String, List<TagLabel>> allTags = new HashMap<>();
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    for (String prefix : allPrefixes) {
-      Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(prefix, ".%");
-      if (prefixTags != null) {
-        allTags.putAll(prefixTags);
-      }
-    }
-
-    // Apply tags to all fields of all entities
+    Set<String> fieldFQNs = new LinkedHashSet<>();
+    Map<T, List<F>> flatFieldsByEntity = new HashMap<>();
     for (T entity : entities) {
       List<F> fields = fieldExtractor.apply(entity);
       if (fields != null) {
         List<F> flattenedFields = EntityUtil.getFlattenedEntityField(fields);
+        flatFieldsByEntity.put(entity, flattenedFields);
         for (F field : listOrEmpty(flattenedFields)) {
-          List<TagLabel> fieldTags =
-              allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName()));
+          if (field.getFullyQualifiedName() != null) {
+            fieldFQNs.add(field.getFullyQualifiedName());
+          }
+        }
+      }
+    }
+
+    if (fieldFQNs.isEmpty()) {
+      return;
+    }
+
+    // Fetch tags in chunked IN queries, then enrich once
+    List<String> fieldFQNList = new ArrayList<>(fieldFQNs);
+    int batchSize = 5000;
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages = new ArrayList<>();
+    for (int i = 0; i < fieldFQNList.size(); i += batchSize) {
+      List<String> chunk = fieldFQNList.subList(i, Math.min(i + batchSize, fieldFQNList.size()));
+      tagUsages.addAll(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(chunk)));
+    }
+    Map<String, List<TagLabel>> tagsByFieldHash = populateTagLabel(tagUsages);
+
+    Map<String, List<TagLabel>> derivedTagsMap;
+    try {
+      List<TagLabel> tagLabels =
+          tagsByFieldHash.values().stream().flatMap(List::stream).collect(Collectors.toList());
+      derivedTagsMap = TagLabelUtil.batchFetchDerivedTags(tagLabels);
+    } catch (Exception ex) {
+      LOG.warn("Failed to batch fetch derived tags for fields. Skipping derived tags.", ex);
+      derivedTagsMap = Collections.emptyMap();
+    }
+
+    for (T entity : entities) {
+      List<F> flattenedFields = flatFieldsByEntity.get(entity);
+      if (flattenedFields != null) {
+        for (F field : listOrEmpty(flattenedFields)) {
+          String fieldHash = FullyQualifiedName.buildHash(field.getFullyQualifiedName());
+          List<TagLabel> fieldTags = tagsByFieldHash.get(fieldHash);
           if (fieldTags == null) {
             field.setTags(new ArrayList<>());
           } else {
-            field.setTags(addDerivedTagsGracefully(fieldTags));
+            field.setTags(TagLabelUtil.addDerivedTagsWithPreFetched(fieldTags, derivedTagsMap));
           }
         }
       }
@@ -7962,12 +9821,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
     BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
-        (result, throwable) -> {
-          CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
-              .execute(() -> BULK_JOBS.remove(jobId));
-        });
+        (result, throwable) ->
+            CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
+                .execute(() -> BULK_JOBS.remove(jobId)));
 
     return mergedJob;
+  }
+
+  /**
+   * Fields used to hydrate inherited relationships for changed entities during bulk updates.
+   *
+   * <p>Use PUT-update fields as baseline and explicitly include inheritable fields so repositories
+   * with inheritance beyond owners/domains (for example retentionPeriod or reviewers) keep behavior
+   * intact without loading every allowed field.
+   */
+  protected Fields getBulkUpdateInheritanceFields() {
+    Set<String> bulkFields = new HashSet<>(putFields.getFieldList());
+    String inheritableFields = getInheritableFields();
+    if (!nullOrEmpty(inheritableFields)) {
+      for (String field : inheritableFields.split(",")) {
+        String normalized = field.trim();
+        if (!normalized.isEmpty() && allowedFields.contains(normalized)) {
+          bulkFields.add(normalized);
+        }
+      }
+    }
+    return new Fields(allowedFields, bulkFields);
   }
 
   private void bulkUpdateEntities(
@@ -7983,13 +9862,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     long batchStartTime = System.nanoTime();
 
-    // Batch load fields for originals (replaces N×11 individual queries)
-    List<T> originals =
-        updateEntities.stream()
-            .map(e -> existingByFqn.get(e.getFullyQualifiedName()))
-            .collect(Collectors.toList());
+    // Batch load fields once per unique FQN. Duplicate rows in the same bulk request
+    // should reuse a hydrated original snapshot.
+    Map<String, T> hydratedOriginalByFqn = new LinkedHashMap<>();
+    Map<String, Integer> updateFrequencyByFqn = new HashMap<>();
+    for (T entity : updateEntities) {
+      String fqn = entity.getFullyQualifiedName();
+      if (nullOrEmpty(fqn)) {
+        continue;
+      }
+      updateFrequencyByFqn.merge(fqn, 1, Integer::sum);
+      T original = existingByFqn.get(fqn);
+      if (original != null) {
+        hydratedOriginalByFqn.putIfAbsent(fqn, original);
+      }
+    }
+    List<T> originalsForHydration = new ArrayList<>(hydratedOriginalByFqn.values());
     try {
-      setFieldsInBulk(putFields, originals);
+      setFieldsInBulk(putFields, originalsForHydration);
     } catch (Exception e) {
       LOG.error("setFieldsInBulk failed, marking all updates as failed", e);
       for (T entity : updateEntities) {
@@ -8004,76 +9894,108 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Per-entity updater (relationships + change description)
     List<EntityUpdater> updaters = new ArrayList<>();
-    List<T> updatedEntities = new ArrayList<>();
 
-    for (T entity : updateEntities) {
-      try {
-        T original = existingByFqn.get(entity.getFullyQualifiedName());
-        entity.setUpdatedBy(userName);
-        entity.setUpdatedAt(System.currentTimeMillis());
+    try (var ignored = phase("entityUpdaters")) {
+      for (T entity : updateEntities) {
+        try {
+          String fqn = entity.getFullyQualifiedName();
+          T hydratedOriginal = hydratedOriginalByFqn.get(fqn);
+          if (hydratedOriginal == null) {
+            failedRequests.add(
+                new BulkResponse()
+                    .withRequest(fqn)
+                    .withStatus(Status.BAD_REQUEST.getStatusCode())
+                    .withMessage("Entity does not exist"));
+            continue;
+          }
+          T original =
+              updateFrequencyByFqn.getOrDefault(fqn, 0) > 1
+                  ? JsonUtils.deepCopy(hydratedOriginal, entityClass)
+                  : hydratedOriginal;
+          entity.setUpdatedBy(userName);
+          entity.setUpdatedAt(System.currentTimeMillis());
 
-        if (Boolean.TRUE.equals(original.getDeleted())) {
-          restoreEntity(entity.getUpdatedBy(), original.getId());
+          if (Boolean.TRUE.equals(original.getDeleted())) {
+            restoreEntity(entity.getUpdatedBy(), original.getId());
+          }
+
+          EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
+          updater.updateWithDeferredStore();
+          updaters.add(updater);
+        } catch (Exception e) {
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.BAD_REQUEST.getStatusCode())
+                  .withMessage(e.getMessage()));
         }
-
-        EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
-        updater.updateWithDeferredStore();
-        updaters.add(updater);
-        updatedEntities.add(entity);
-      } catch (Exception e) {
-        failedRequests.add(
-            new BulkResponse()
-                .withRequest(entity.getFullyQualifiedName())
-                .withStatus(Status.BAD_REQUEST.getStatusCode())
-                .withMessage(e.getMessage()));
       }
     }
 
     if (updaters.isEmpty()) return;
+    List<EntityUpdater> changedUpdaters =
+        updaters.stream()
+            .filter(updater -> updater.isVersionChanged() || updater.isEntityChanged())
+            .toList();
+    Fields bulkInheritanceFields = getBulkUpdateInheritanceFields();
 
     // Batch DB writes
     try {
-      // Batch version history inserts
-      List<UUID> historyIds = new ArrayList<>();
-      List<String> historyExtensions = new ArrayList<>();
-      List<String> historyJsons = new ArrayList<>();
-      for (EntityUpdater updater : updaters) {
-        if (updater.isVersionChanged()) {
-          historyIds.add(updater.getOriginal().getId());
-          historyExtensions.add(
-              EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()));
-          historyJsons.add(JsonUtils.pojoToJson(updater.getOriginal()));
+      try (var ignored = phase("batchDbWrites")) {
+        // Batch version history inserts
+        List<UUID> historyIds = new ArrayList<>();
+        List<String> historyExtensions = new ArrayList<>();
+        List<String> historyJsons = new ArrayList<>();
+        for (EntityUpdater updater : changedUpdaters) {
+          if (updater.isVersionChanged()) {
+            historyIds.add(updater.getOriginal().getId());
+            historyExtensions.add(
+                EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()));
+            historyJsons.add(JsonUtils.pojoToJson(updater.getOriginal()));
+          }
         }
-      }
-      if (!historyIds.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-      }
+        if (!historyIds.isEmpty()) {
+          daoCollection
+              .entityExtensionDAO()
+              .insertMany(historyIds, historyExtensions, entityType, historyJsons);
+        }
 
-      // Batch entity row updates
-      List<T> entitiesToStore = new ArrayList<>();
-      for (EntityUpdater updater : updaters) {
-        if (updater.isVersionChanged() || updater.isEntityChanged()) {
+        // Batch entity row updates
+        List<T> entitiesToStore = new ArrayList<>();
+        for (EntityUpdater updater : changedUpdaters) {
           entitiesToStore.add(updater.getUpdated());
         }
-      }
-      if (!entitiesToStore.isEmpty()) {
-        updateMany(entitiesToStore);
+        if (!entitiesToStore.isEmpty()) {
+          updateMany(entitiesToStore);
+        }
       }
 
-      // Per-entity: cache write-through + events + metrics
+      List<T> changedEntities = changedUpdaters.stream().map(EntityUpdater::getUpdated).toList();
+      if (!changedEntities.isEmpty()) {
+        try (var ignored = phase("setInheritedFields")) {
+          // Only changed entities need inheritance hydration for downstream side effects.
+          setInheritedFields(changedEntities, bulkInheritanceFields);
+        }
+        try (var ignored = phase("invalidateCacheBulk")) {
+          invalidateMany(changedEntities);
+        }
+        try (var ignored = phase("postUpdateEvents")) {
+          List<String> changeEventJsons = new ArrayList<>();
+          for (var updater : changedUpdaters) {
+            postUpdate(updater.getOriginal(), updater.getUpdated());
+            updater.runDeferredReactOperations();
+            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
+                .ifPresent(changeEventJsons::add);
+          }
+          insertChangeEventsBatch(changeEventJsons);
+        }
+      }
+
+      // Per-entity success + metrics (includes no-change updates).
       long batchDuration = System.nanoTime() - batchStartTime;
       long perEntityDuration = batchDuration / updaters.size();
-      for (EntityUpdater updater : updaters) {
-        if (updater.isVersionChanged() || updater.isEntityChanged()) {
-          writeThroughCache(updater.getUpdated(), true);
-        }
-        setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
-        postUpdate(updater.getOriginal(), updater.getUpdated());
-        EventType changeType =
-            updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
-        createChangeEventForBulkOperation(updater.getUpdated(), changeType, userName);
+      for (var updater : updaters) {
         entityLatenciesNanos.add(perEntityDuration);
         recordEntityMetrics(entityType, perEntityDuration, 0, true);
         successRequests.add(
@@ -8083,21 +10005,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     } catch (Exception batchError) {
       LOG.warn("Batch update store failed, falling back to per-entity updates", batchError);
-      for (EntityUpdater updater : updaters) {
+      List<EntityUpdater> succeededUpdaters = new ArrayList<>();
+      for (var updater : updaters) {
         try {
-          updater.storeUpdate();
           if (updater.isVersionChanged() || updater.isEntityChanged()) {
-            writeThroughCache(updater.getUpdated(), true);
+            updater.storeUpdate();
+            invalidate(updater.getUpdated());
           }
-          setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
-          postUpdate(updater.getOriginal(), updater.getUpdated());
-          EventType changeType =
-              updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
-          createChangeEventForBulkOperation(updater.getUpdated(), changeType, userName);
-          successRequests.add(
-              new BulkResponse()
-                  .withRequest(updater.getUpdated().getFullyQualifiedName())
-                  .withStatus(Status.OK.getStatusCode()));
+          succeededUpdaters.add(updater);
         } catch (Exception e) {
           failedRequests.add(
               new BulkResponse()
@@ -8105,6 +10020,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .withStatus(Status.BAD_REQUEST.getStatusCode())
                   .withMessage(e.getMessage()));
         }
+      }
+      if (!succeededUpdaters.isEmpty()) {
+        List<T> fallbackChanged =
+            succeededUpdaters.stream()
+                .filter(updater -> updater.isVersionChanged() || updater.isEntityChanged())
+                .map(EntityUpdater::getUpdated)
+                .toList();
+        if (!fallbackChanged.isEmpty()) {
+          try (var ignored = phase("invalidateCacheBulk")) {
+            invalidateMany(fallbackChanged);
+          }
+          setInheritedFields(fallbackChanged, bulkInheritanceFields);
+        }
+
+        List<String> changeEventJsons = new ArrayList<>();
+        for (var updater : succeededUpdaters) {
+          if (updater.isVersionChanged() || updater.isEntityChanged()) {
+            postUpdate(updater.getOriginal(), updater.getUpdated());
+            updater.runDeferredReactOperations();
+            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
+                .ifPresent(changeEventJsons::add);
+          }
+          successRequests.add(
+              new BulkResponse()
+                  .withRequest(updater.getUpdated().getFullyQualifiedName())
+                  .withStatus(Status.OK.getStatusCode()));
+        }
+        insertChangeEventsBatch(changeEventJsons);
       }
     }
   }
@@ -8146,6 +10090,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         createManyEntities(newEntities);
         long batchDuration = System.nanoTime() - batchStartTime;
         long perEntityDuration = batchDuration / newEntities.size();
+        List<String> createdChangeEventJsons = new ArrayList<>();
         for (T entity : newEntities) {
           entityLatenciesNanos.add(perEntityDuration);
           recordEntityMetrics(entityType, perEntityDuration, 0, true);
@@ -8153,8 +10098,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
               new BulkResponse()
                   .withRequest(entity.getFullyQualifiedName())
                   .withStatus(Status.OK.getStatusCode()));
-          createChangeEventForBulkOperation(entity, ENTITY_CREATED, userName);
+          buildChangeEventJsonForBulkOperation(entity, ENTITY_CREATED, userName)
+              .ifPresent(createdChangeEventJsons::add);
         }
+        insertChangeEventsBatch(createdChangeEventJsons);
       } catch (Exception batchError) {
         LOG.warn("Batch create failed, falling back to per-entity creates", batchError);
         for (T entity : newEntities) {
@@ -8313,9 +10260,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
+    Optional<String> changeEventJson =
+        buildChangeEventJsonForBulkOperation(entity, eventType, userName);
+    if (changeEventJson.isEmpty()) {
+      return;
+    }
+    try {
+      Entity.getCollectionDAO().changeEventDAO().insert(changeEventJson.get());
+    } catch (Exception e) {
+      LOG.error("Failed to create change event for bulk operation", e);
+    }
+  }
+
+  private Optional<String> buildChangeEventJsonForBulkOperation(
+      T entity, EventType eventType, String userName) {
     try {
       if (eventType.equals(ENTITY_NO_CHANGE)) {
-        return;
+        return Optional.empty();
       }
 
       ChangeEvent changeEvent =
@@ -8334,9 +10295,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
           changeEvent.getEventType(),
           changeEvent.getEntityType());
 
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      return Optional.of(JsonUtils.pojoToJson(changeEvent));
     } catch (Exception e) {
       LOG.error("Failed to create change event for bulk operation", e);
+      return Optional.empty();
+    }
+  }
+
+  private void insertChangeEventsBatch(List<String> changeEvents) {
+    if (changeEvents == null || changeEvents.isEmpty()) {
+      return;
+    }
+    try {
+      Entity.getCollectionDAO().changeEventDAO().insertBatch(changeEvents);
+    } catch (Exception batchError) {
+      LOG.error("Failed to insert change events batch", batchError);
     }
   }
 

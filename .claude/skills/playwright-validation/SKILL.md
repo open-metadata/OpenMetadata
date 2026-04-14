@@ -114,10 +114,11 @@ This skill guides you through validating UI changes and ensuring comprehensive P
    - UI feedback (loading states, success/error messages)
    - Permissions (disabled buttons, restricted actions)
 
-4. **Run lint check:**
+4. **Run Playwright lint check:**
    ```bash
-   yarn eslint playwright/e2e/Pages/YourTest.spec.ts
+   yarn lint:playwright
    ```
+   Error-level rules (`no-networkidle`, `no-page-pause`, `no-focused-test`) will block CI. See the handbook's **ESLint Enforcement** section for the full rule reference.
 
 ## Common Test Utilities
 
@@ -131,8 +132,9 @@ import { selectDataProduct, selectDomain } from '../../utils/domain';
 ### Waiting
 ```typescript
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-await page.waitForLoadState('networkidle');
-await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+await waitForAllLoadersToDisappear(page);
+await expect(page.getByTestId('content')).toBeVisible();
+// NEVER use: page.waitForLoadState('networkidle') — blocked by ESLint
 ```
 
 ### API Responses
@@ -156,9 +158,10 @@ await expect(page.locator('.class')).not.toBeVisible();
 - [ ] Tests cover both positive and negative scenarios
 - [ ] Tests verify visual indicators (icons, badges, states)
 - [ ] Tests validate API interactions
-- [ ] Lint check passes with no errors
+- [ ] `yarn lint:playwright` passes with zero errors
+- [ ] No `networkidle`, `page.pause()`, or `test.only()` usage (blocked by ESLint)
 - [ ] Test fixtures are properly created and cleaned up
-- [ ] Test timeouts are appropriate (300000ms for complex tests)
+- [ ] Test timeouts use `test.slow()` (preferred) or `test.setTimeout()`
 
 ## Example: Data Contract Inheritance Tests
 

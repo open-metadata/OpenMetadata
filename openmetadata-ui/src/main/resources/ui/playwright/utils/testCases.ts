@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { fillTagDetails, pressKeyXTimes } from './importUtils';
 
 export const getFailedRowsData = (table: TableClass) => {
@@ -72,6 +73,27 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await toastNotification(page, /deleted successfully!/);
 };
 
+export const submitTestCaseForm = async (page: Page) => {
+  const testCaseResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases') &&
+      response.request().method() === 'POST'
+  );
+  await page.getByTestId('create-btn').click();
+  const response = await testCaseResponse;
+
+  expect(response.status()).toBe(201);
+
+  // Wait for the drawer to close — this is the definitive signal that test
+  // case creation and any subsequent pipeline/deploy actions triggered by the
+  // form have finished. Unlike waiting for toast or specific API responses
+  // (which may or may not fire, or may be slow), the drawer closes only after
+  // the applicable submit flow completes.
+  await page.getByTestId('test-case-form-v1').waitFor({ state: 'detached' });
+
+  return response;
+};
+
 export const waitForPermissionsResponse = (page: Page) =>
   page.waitForResponse((res) => {
     const url = res.url();
@@ -114,6 +136,32 @@ export const waitForTestSuiteListResponse = (page: Page) =>
       res.request().method() === 'GET' &&
       res.status() === 200
   );
+
+/**
+ * Waits for the entity Pipeline tab / pipeline card list request that loads TestSuite
+ * ingestion pipelines (owners + pipelineStatuses, paginated).
+ */
+export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
+  page.waitForResponse((res) => {
+    const url = res.url();
+    const method = res.request().method();
+
+    return (
+      method === 'GET' &&
+      url.includes('/api/v1/services/ingestionPipelines') &&
+      url.includes('pipelineStatuses') &&
+      url.includes('pipelineType=TestSuite')
+    );
+  });
+
+export const confirmIngestionPipelineHardDelete = async (page: Page) => {
+  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/services/ingestionPipelines/*?hardDelete=true'
+  );
+  await page.getByTestId('confirm-button').click();
+  await deleteResponse;
+};
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
@@ -231,7 +279,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       await nextButton.click();
       response = await nextResponsePromise;
       data = await response.json();
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
+      await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
       });
     } else {
@@ -255,7 +303,7 @@ export const clickManageButton = async (
       .getByTestId('manage-button')
       .click();
   } else {
-    await page.waitForSelector('[data-testid="manage-button"]', {
+    await page.getByTestId('manage-button').waitFor({
       state: 'visible',
     });
     await page.getByTestId('manage-button').click();
@@ -273,10 +321,8 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   );
   await page.goto(`/test-suites/${testSuiteFqn}`);
   await testCaseListResponse;
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.waitForSelector('[data-testid="manage-button"]', {
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('manage-button').waitFor({
     state: 'visible',
   });
 };
@@ -287,7 +333,7 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
   await page.goto('/data-quality/test-cases');
-  await page.waitForSelector('[data-testid="manage-button"]');
+  await page.getByTestId('manage-button').waitFor();
 };
 
 /**
@@ -298,7 +344,7 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
 export const performTestCaseExport = async (page: Page) => {
   await expect(page.getByTestId('export-button')).toBeVisible();
   await page.getByTestId('export-button').click();
-  await page.waitForSelector('#export-form', {
+  await page.locator('#export-form').waitFor({
     state: 'visible',
   });
   await expect(page.locator('#export-form')).toBeVisible();
@@ -331,9 +377,9 @@ export const navigateToImportPage = async (
  * @param filePath - Path to CSV file
  */
 export const uploadCSVFile = async (page: Page, filePath: string) => {
-  await page.waitForSelector('[type="file"]', { state: 'attached' });
+  await page.locator('[type="file"]').waitFor({ state: 'attached' });
   await page.setInputFiles('[type="file"]', filePath);
-  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+  await page.getByTestId('upload-file-widget').waitFor({
     state: 'hidden',
   });
 };
@@ -382,7 +428,7 @@ export const verifyPageAccess = async (
   );
   await page.goto(url);
   await permissionResponse;
-  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   if (shouldHaveAccess) {
     // Verify user has access - should stay on the page
@@ -449,9 +495,7 @@ export const verifyButtonVisibility = async (
  */
 export const navigateToBulkEditPage = async (page: Page) => {
   await page.getByTestId('bulk-edit-button').click();
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   await expect(page.locator('.rdg-header-row')).toBeVisible();
 };
 
@@ -624,13 +668,12 @@ export const performE2EExportImportFlow = async (
     await clickManageButton(page, 'table');
     await navigateToImportPage(page);
 
-    const fileInput = await page.$('[type="file"]');
     const exportedFile = fs
       .readdirSync('downloads')
       .find((f: string) => f.includes(table.entity.name) && f.endsWith('.csv'));
-    await fileInput?.setInputFiles(['downloads/' + exportedFile]);
-
-    await page.waitForTimeout(500);
+    await page
+      .locator('[type="file"]')
+      .setInputFiles(['downloads/' + exportedFile]);
 
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -674,6 +717,7 @@ export const performE2EExportImportFlow = async (
         response.url().includes('recursive=true')
     );
 
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await page.click('[type="button"] >> text="Update"', { force: true });
     await updateButtonResponse;
     await page
@@ -697,7 +741,7 @@ export const performE2EExportImportFlow = async (
     await page.click('[data-testid="bulk-edit-button"]');
 
     // Wait for bulk edit grid to load
-    await page.waitForSelector('.rdg-header-row', { state: 'visible' });
+    await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
@@ -750,6 +794,7 @@ export const performE2EExportImportFlow = async (
         response.url().includes('dryRun=false')
     );
 
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await page.click('[type="button"] >> text="Update"', { force: true });
     await bulkEditUpdateResponse;
     await page

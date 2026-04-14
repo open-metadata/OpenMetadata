@@ -191,3 +191,12 @@ class TestBaseWorkflow(TestCase):
             "workflow/test_base_workflow.py"
             in self.broken_workflow.source.status.failures[0].error
         )
+
+    def test_workflow_config_supports_ingestion_runner_name(self):
+        workflow_config = OpenMetadataWorkflowConfig(
+            source=config.source,
+            workflowConfig=config.workflowConfig,
+            ingestionRunnerName="test-runner",
+        )
+
+        self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")

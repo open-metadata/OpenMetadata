@@ -27,14 +27,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 async function openEntitySummaryPanel(page: Page, entityType: EntityType) {
   await selectDataAssetFilter(page, entityType);
-  await page.waitForLoadState('networkidle');
 
   const firstEntityCard = page
     .locator('[data-testid="table-data-card"]')
     .first();
   if (await firstEntityCard.isVisible()) {
     await firstEntityCard.click();
-    await page.waitForLoadState('networkidle');
   }
 }
 

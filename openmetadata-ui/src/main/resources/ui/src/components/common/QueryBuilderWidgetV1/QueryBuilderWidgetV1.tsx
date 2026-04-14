@@ -14,7 +14,10 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Actions,
   Builder,
+  BuilderProps,
+  ButtonProps,
   Config,
+  ConfigContext,
   ImmutableTree,
   JsonTree,
   Query,
@@ -33,7 +36,15 @@ import {
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -106,7 +117,7 @@ const QueryBuilderWidgetV1: FC<{
 
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
-  const [queryActions, setQueryActions] = useState<Actions>();
+  const queryActionsRef = useRef<Actions>();
 
   const onTreeUpdate = (nTree: ImmutableTree, nConfig: Config) => {
     setTreeInternal(nTree);
@@ -125,10 +136,9 @@ const QueryBuilderWidgetV1: FC<{
         config
       ).fixedTree;
 
-      const queryFilterString = !isEmpty(tree)
-        ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
-        : '';
-
+      const queryFilterString = isEmpty(tree)
+        ? ''
+        : Qs.stringify({ queryFilter: JSON.stringify(tree) });
       setQueryURL(`${getExplorePath({})}${queryFilterString}`);
 
       try {
@@ -186,7 +196,7 @@ const QueryBuilderWidgetV1: FC<{
         );
       }
 
-      onChange?.(!isEmpty(data) ? JSON.stringify(qFilter) : '');
+      onChange?.(isEmpty(data) ? '' : JSON.stringify(qFilter));
     } else {
       const jsonTree = QbUtils.getTree(nTree);
       try {
@@ -199,10 +209,44 @@ const QueryBuilderWidgetV1: FC<{
   };
 
   useEffect(() => {
-    if (props.getQueryActions && queryActions) {
-      props.getQueryActions(queryActions);
+    if (props.getQueryActions && queryActionsRef.current) {
+      props.getQueryActions(queryActionsRef.current);
     }
-  }, [queryActions]);
+  }, [treeInternal, props.getQueryActions]);
+
+  const hasOnlyOneRule = useMemo(
+    () => (QbUtils.getTree(treeInternal).children1?.length ?? 0) <= 1,
+    [treeInternal]
+  );
+
+  const renderBuilder = useCallback(
+    (builderProps: BuilderProps) => {
+      queryActionsRef.current = builderProps.actions;
+      const builderConfig = {
+        ...builderProps.config,
+        settings: {
+          ...builderProps.config?.settings,
+          renderButton: (btnProps: ButtonProps, ctx?: ConfigContext) => {
+            if (
+              (hasOnlyOneRule && btnProps.type === 'delRule') ||
+              !builderProps.config?.settings?.renderButton
+            ) {
+              return null as unknown as ReactElement<typeof btnProps>;
+            }
+
+            return builderProps.config?.settings?.renderButton?.(btnProps, ctx);
+          },
+        },
+      };
+
+      return (
+        <div className="query-builder-container query-builder qb-lite">
+          <Builder {...builderProps} config={builderConfig} />
+        </div>
+      );
+    },
+    [hasOnlyOneRule]
+  );
 
   return (
     <div
@@ -215,7 +259,7 @@ const QueryBuilderWidgetV1: FC<{
               'p-t-sm': outputType === SearchOutputType.ElasticSearch,
             })}
             span={24}>
-            {outputType === SearchOutputType.JSONLogic && (
+            {outputType === SearchOutputType.JSONLogic && props.label && (
               <>
                 <Typography.Text className="query-filter-label text-grey-muted">
                   {props.label}
@@ -225,18 +269,7 @@ const QueryBuilderWidgetV1: FC<{
             )}
             <Query
               {...config}
-              renderBuilder={(props) => {
-                // Store the actions for external access
-                if (!queryActions) {
-                  setQueryActions(props.actions);
-                }
-
-                return (
-                  <div className="query-builder-container query-builder qb-lite">
-                    <Builder {...props} />
-                  </div>
-                );
-              }}
+              renderBuilder={renderBuilder}
               value={treeInternal}
               onChange={handleChange}
             />

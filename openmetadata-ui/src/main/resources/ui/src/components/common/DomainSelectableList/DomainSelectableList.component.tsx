@@ -97,18 +97,20 @@ const DomainSelectableList = ({
         destroyTooltipOnHide
         content={
           !disabled && (
-            <FocusTrapWithContainer active={popoverProps?.open || false}>
-              <DomainSelectablTree
-                initialDomains={initialDomains}
-                isClearable={isClearable}
-                isMultiple={multiple}
-                showAllDomains={showAllDomains}
-                value={selectedDomainsList as string[]}
-                visible={popupVisible || Boolean(popoverProps?.open)}
-                onCancel={handleCancel}
-                onSubmit={handleUpdate}
-              />
-            </FocusTrapWithContainer>
+            <div data-react-aria-top-layer>
+              <FocusTrapWithContainer active={popoverProps?.open || false}>
+                <DomainSelectablTree
+                  initialDomains={initialDomains}
+                  isClearable={isClearable}
+                  isMultiple={multiple}
+                  showAllDomains={showAllDomains}
+                  value={selectedDomainsList as string[]}
+                  visible={popupVisible || Boolean(popoverProps?.open)}
+                  onCancel={handleCancel}
+                  onSubmit={handleUpdate}
+                />
+              </FocusTrapWithContainer>
+            </div>
           )
         }
         open={popupVisible}

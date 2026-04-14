@@ -71,7 +71,7 @@ test.describe('Advanced Search Custom Property', () => {
 
       await customPropertyResponse;
 
-      await page.waitForSelector('.ant-skeleton-active', {
+      await page.locator('.ant-skeleton-active').first().waitFor({
         state: 'detached',
       });
 

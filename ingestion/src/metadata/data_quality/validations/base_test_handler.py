@@ -32,6 +32,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
@@ -187,6 +188,13 @@ class BaseTestValidator(ABC):
                 logger.debug(traceback.format_exc())
 
         return test_result
+
+    def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:
+        """Hook for failed row sampling. No-op by default.
+
+        Overridden by FailedSampleValidatorMixin to fetch and stash
+        failed row samples on the validator instance.
+        """
 
     @abstractmethod
     def _run_validation(self) -> TestCaseResult:

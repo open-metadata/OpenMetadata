@@ -17,6 +17,7 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -73,10 +74,7 @@ test.describe('TestCase Version Page', () => {
     await page.goto(
       `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
     );
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     /**
      * Step: Display name change
@@ -93,7 +91,7 @@ test.describe('TestCase Version Page', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('rename-button').click();
 
-      await page.waitForSelector('#displayName');
+      await page.locator('#displayName').waitFor();
       await page.fill('#displayName', 'test-case-version-changed');
       const updateNameRes = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*'
@@ -104,17 +102,13 @@ test.describe('TestCase Version Page', () => {
       await expect(page.getByTestId('version-button')).toHaveText('0.2');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.getByTestId('entity-header-display-name').getByTestId('diff-added')
       ).toHaveText('test-case-version-changed');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     /**
@@ -123,7 +117,7 @@ test.describe('TestCase Version Page', () => {
      */
     await test.step('Description change', async () => {
       await page.getByTestId('edit-description').click();
-      await page.waitForSelector('[data-testid="editor"]');
+      await page.getByTestId('editor').waitFor();
 
       await page.fill(descriptionBox, 'test case description changed');
       const updateDescriptionRes = page.waitForResponse(
@@ -135,7 +129,6 @@ test.describe('TestCase Version Page', () => {
       await expect(page.getByTestId('version-button')).toHaveText('0.3');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page
@@ -145,10 +138,7 @@ test.describe('TestCase Version Page', () => {
       ).toHaveText('test case description changed');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
     });
 
     /**
@@ -157,7 +147,7 @@ test.describe('TestCase Version Page', () => {
      */
     await test.step('Parameter change', async () => {
       await page.getByTestId('edit-parameter-icon').click();
-      await page.waitForSelector('#tableTestForm');
+      await page.locator('#tableTestForm').waitFor();
 
       await page.locator('#tableTestForm_params_minValue').clear();
       await page.locator('#tableTestForm_params_minValue').fill('20');
@@ -173,7 +163,6 @@ test.describe('TestCase Version Page', () => {
       await expect(page.getByTestId('version-button')).toHaveText('0.4');
 
       await page.getByTestId('version-button').click();
-      await page.waitForLoadState('networkidle');
 
       await expect(
         page.getByTestId('minValue').getByTestId('diff-removed')

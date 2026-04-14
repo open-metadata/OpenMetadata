@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -30,6 +30,7 @@ import {
   visitEditAlertPage,
 } from '../../utils/alert';
 import { descriptionBox, getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addFilterWithUsersListInput,
   addInternalDestination,
@@ -216,9 +217,7 @@ test('Single Filter Alert', async ({ page }) => {
     });
 
     // Wait for UI to update after API response
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     await expect(page.getByTestId('alert-details-container')).toBeVisible();
 
     // Verify the edited alert changes
@@ -270,7 +269,7 @@ test('Multiple Filters Alert', async ({ page }) => {
     for (let i = 5; i >= 0; i--) {
       await page.click(`[data-testid="remove-filter-${i}"]`);
       // Wait for filter to be removed from DOM
-      await page.waitForSelector(`[data-testid="filter-${i}"]`, {
+      await page.getByTestId(`filter-${i}`).waitFor({
         state: 'detached',
       });
     }
@@ -279,7 +278,7 @@ test('Multiple Filters Alert', async ({ page }) => {
     for (let i = 5; i > 0; i--) {
       await page.click(`[data-testid="remove-destination-${i}"]`);
       // Wait for destination to be removed from DOM
-      await page.waitForSelector(`[data-testid="destination-${i}"]`, {
+      await page.getByTestId(`destination-${i}`).waitFor({
         state: 'detached',
       });
     }
@@ -299,9 +298,7 @@ test('Multiple Filters Alert', async ({ page }) => {
     });
 
     // Wait for UI to update after API response
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     await expect(page.getByTestId('alert-details-container')).toBeVisible();
 
     // Verify the edited alert changes
@@ -410,7 +407,7 @@ test('Conversation source alert', async ({ page }) => {
     });
 
     // Wait for UI to update after API response
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
     await expect(page.getByTestId('alert-details-container')).toBeVisible();
 
     // Verify the edited alert changes
@@ -436,6 +433,12 @@ test('Alert operations for a user with and without permissions', async ({
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
+
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);

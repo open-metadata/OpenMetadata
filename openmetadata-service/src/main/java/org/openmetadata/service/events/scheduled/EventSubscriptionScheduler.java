@@ -86,8 +86,7 @@ public class EventSubscriptionScheduler {
       try {
         JobDetail jobDetail = bundle.getJobDetail();
         Class<? extends Job> jobClass = jobDetail.getJobClass();
-        Job job = jobClass.getDeclaredConstructor(DIContainer.class).newInstance(di);
-        return job;
+        return jobClass.getDeclaredConstructor(DIContainer.class).newInstance(di);
       } catch (Exception e) {
         throw new SchedulerException("Failed to create job instance", e);
       }

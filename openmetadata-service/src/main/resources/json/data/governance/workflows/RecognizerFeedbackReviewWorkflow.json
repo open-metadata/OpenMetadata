@@ -1,5 +1,6 @@
 {
   "name": "RecognizerFeedbackReviewWorkflow",
+  "fullyQualifiedName": "RecognizerFeedbackReviewWorkflow",
   "displayName": "Recognizer Feedback Review Workflow",
   "description": "When feedback is submitted on auto-applied tags, check if tag has reviewers and either auto-apply or create approval task",
   "config": {

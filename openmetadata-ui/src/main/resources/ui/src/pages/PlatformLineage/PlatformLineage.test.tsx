@@ -65,6 +65,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
         <span>{children}</span>
       )),
+    ButtonUtility: jest
+      .fn()
+      .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+        <button data-testid={testId} onClick={onClick}>
+          {children}
+        </button>
+      )),
   };
 });
 
@@ -231,16 +238,6 @@ jest.mock('antd', () => {
     ...actual,
     Select: jest.fn(() => <div>Select</div>),
     Card: jest.fn(({ children }) => <div>{children}</div>),
-  };
-});
-
-jest.mock('@mui/material', () => {
-  const actual = jest.requireActual('@mui/material');
-
-  return {
-    ...actual,
-    Grid: jest.fn(({ children }) => <div>{children}</div>),
-    Tooltip: jest.fn(({ children }) => <div>{children}</div>),
   };
 });
 

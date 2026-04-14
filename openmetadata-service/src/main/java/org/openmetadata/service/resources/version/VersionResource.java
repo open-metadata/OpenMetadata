@@ -24,6 +24,7 @@ import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
 import org.openmetadata.service.OpenMetadataApplication;
+import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 
 @Slf4j
@@ -31,21 +32,30 @@ import org.openmetadata.service.resources.Collection;
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "version")
+@LatencyPhase
 public class VersionResource {
   private static final OpenMetadataServerVersion OPEN_METADATA_SERVER_VERSION;
 
   static {
     OPEN_METADATA_SERVER_VERSION = new OpenMetadataServerVersion();
+    OPEN_METADATA_SERVER_VERSION.setVersion("unknown");
+    OPEN_METADATA_SERVER_VERSION.setRevision("unknown");
     try {
       InputStream fileInput = OpenMetadataApplication.class.getResourceAsStream("/catalog/VERSION");
-      Properties props = new Properties();
-      props.load(fileInput);
-      OPEN_METADATA_SERVER_VERSION.setVersion(props.getProperty("version", "unknown"));
-      OPEN_METADATA_SERVER_VERSION.setRevision(props.getProperty("revision", "unknown"));
+      if (fileInput != null) {
+        try (fileInput) {
+          Properties props = new Properties();
+          props.load(fileInput);
+          OPEN_METADATA_SERVER_VERSION.setVersion(props.getProperty("version", "unknown"));
+          OPEN_METADATA_SERVER_VERSION.setRevision(props.getProperty("revision", "unknown"));
 
-      String timestampAsString = props.getProperty("timestamp");
-      Long timestamp = timestampAsString != null ? Long.valueOf(timestampAsString) : null;
-      OPEN_METADATA_SERVER_VERSION.setTimestamp(timestamp);
+          String timestampAsString = props.getProperty("timestamp");
+          Long timestamp = timestampAsString != null ? Long.valueOf(timestampAsString) : null;
+          OPEN_METADATA_SERVER_VERSION.setTimestamp(timestamp);
+        }
+      } else {
+        LOG.warn("Catalog version file /catalog/VERSION not found. Falling back to unknown.");
+      }
     } catch (Exception ie) {
       LOG.warn("Failed to read catalog version file");
     }

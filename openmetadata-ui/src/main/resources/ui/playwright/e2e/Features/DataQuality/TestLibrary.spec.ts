@@ -36,7 +36,7 @@ test.describe(
       await page.goto('/test-library');
 
       // Wait for page to load
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
+      await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
         timeout: 30000,
       });
@@ -92,7 +92,7 @@ test.describe(
         await page.getByTestId('add-test-definition-button').click();
 
         // Wait for drawer to open
-        await page.waitForSelector('.ant-drawer', { state: 'visible' });
+        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
         // Verify drawer title
         await expect(page.locator('.ant-drawer-title')).toContainText(
@@ -142,7 +142,7 @@ test.describe(
 
       await test.step('Edit Test Definition', async () => {
         // Wait for table to load
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
+        await page.getByTestId('test-definition-table').waitFor({
           state: 'visible',
         });
 
@@ -153,7 +153,7 @@ test.describe(
         await firstEditButton.click();
 
         // Wait for drawer to open
-        await page.waitForSelector('.ant-drawer', { state: 'visible' });
+        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
         // Verify drawer title
         await expect(page.locator('.ant-drawer-title')).toContainText(
@@ -190,7 +190,7 @@ test.describe(
 
       await test.step('should enable/disable test definition', async () => {
         // Wait for table to load
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
+        await page.getByTestId('test-definition-table').waitFor({
           state: 'visible',
         });
 
@@ -225,7 +225,7 @@ test.describe(
 
       await test.step('should delete a test definition', async () => {
         // Wait for table to load
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
+        await page.getByTestId('test-definition-table').waitFor({
           state: 'visible',
         });
 
@@ -236,7 +236,7 @@ test.describe(
         await deleteButton.click();
 
         // Wait for confirmation modal
-        await page.waitForSelector('.ant-modal', { state: 'visible' });
+        await page.locator('.ant-modal').waitFor({ state: 'visible' });
 
         // Verify modal content
         await expect(
@@ -274,7 +274,7 @@ test.describe(
       await page.getByTestId('add-test-definition-button').click();
 
       // Wait for drawer to open
-      await page.waitForSelector('.ant-drawer', { state: 'visible' });
+      await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
       // Click save without filling required fields
       await page.getByTestId('save-test-definition').click();
@@ -293,7 +293,7 @@ test.describe(
       await page.getByTestId('add-test-definition-button').click();
 
       // Wait for drawer to open
-      await page.waitForSelector('.ant-drawer', { state: 'visible' });
+      await page.locator('.ant-drawer').waitFor({ state: 'visible' });
 
       // Fill in some fields
       await page.locator('#name').fill('testName');
@@ -337,7 +337,7 @@ test.describe(
       await page.goto('/test-library');
 
       // Wait for table to load
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
+      await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
       });
 
@@ -496,6 +496,10 @@ test.describe(
           page.locator('.ant-select-dropdown:visible')
         ).not.toBeVisible();
 
+        // Add a parameter to verify DQ Dimension can still be set on a subsequent edit
+        await page.getByRole('button', { name: 'Add Parameter' }).click();
+        await page.getByPlaceholder('Parameter Name').fill('threshold');
+
         const createResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -529,21 +533,55 @@ test.describe(
           page.getByLabel('Supported Service', { exact: false })
         ).toBeDisabled();
 
-        await expect(page.getByLabel('Display Name')).not.toBeDisabled();
-        await expect(page.getByLabel('Description')).not.toBeDisabled();
+        await expect(page.locator('#displayName')).not.toBeDisabled();
+        await expect(page.locator('#description')).not.toBeDisabled();
+
+        await expect(
+          page.getByLabel('Data Quality Dimension')
+        ).not.toBeDisabled();
       });
 
-      await test.step('Verify allowed fields can be edited', async () => {
-        const displayNameField = page.getByLabel('Display Name');
+      await test.step('Verify allowed fields can be edited and DQ Dimension can be added', async () => {
+        const displayNameField = page.locator('#displayName');
         await displayNameField.clear();
         const updatedDisplayName = `Updated ${EXTERNAL_TEST_DISPLAY_NAME}`;
         await displayNameField.fill(updatedDisplayName);
         createdTestDisplayName = updatedDisplayName;
+        const drawer = page.locator('.ant-drawer');
 
-        const descriptionField = page.getByLabel('Description');
+        const descriptionLabel = drawer.locator('label[for="description"]');
+        await expect(descriptionLabel).toBeVisible();
+        await expect(descriptionLabel).not.toHaveClass(
+          /ant-form-item-required/
+        );
+
+        const descriptionField = drawer.locator('#description');
+        await expect(descriptionField).not.toBeDisabled();
         await descriptionField.clear();
         await descriptionField.fill('Updated description for external test');
 
+        const parameterCard = drawer.locator('.ant-card').first();
+        await expect(parameterCard).toBeVisible();
+
+        const dataTypeLabel = parameterCard.getByLabel('Data Type');
+        await expect(dataTypeLabel).toBeVisible();
+        await expect(
+          parameterCard.locator('label[for$="_dataType"]')
+        ).not.toHaveClass(/ant-form-item-required/);
+
+        // Add a DQ Dimension — verifies that editing a test definition with existing
+        // parameters does not prevent the dimension from being saved correctly.
+        await page.locator('#dataQualityDimension').click();
+        const accuracyOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Accuracy');
+        await expect(accuracyOption).toBeVisible();
+        await accuracyOption.click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -554,6 +592,13 @@ test.describe(
 
         const updateResponse = await patchResponse;
         expect(updateResponse.status()).toBe(200);
+
+        const updatedBody = await updateResponse.json();
+        expect(updatedBody.dataQualityDimension).toBe('Accuracy');
+        // Verify the parameter is preserved with only the name set
+        expect(updatedBody.parameterDefinition[0].name).toBe('threshold');
+        expect(updatedBody.parameterDefinition[0].dataType).toBeUndefined();
+        expect(updatedBody.parameterDefinition[0].description).toBeUndefined();
 
         await expect(page.getByText(/updated successfully/i)).toBeVisible();
       });
@@ -1009,8 +1054,11 @@ test.describe(
         await expect(page.getByText(/updated successfully/i)).toBeVisible();
 
         // Verify we stayed on the same page (previous button state should be unchanged)
-        const prevDisabledAfter = await previousButton.isDisabled();
-        expect(prevDisabledAfter).toBe(prevDisabledBefore);
+        if (prevDisabledBefore) {
+          await expect(previousButton).toBeDisabled();
+        } else {
+          await expect(previousButton).toBeEnabled();
+        }
 
         // Verify the updated test definition is still visible
         await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();

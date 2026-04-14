@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { navbarSearchItems, selectOption } from '../../utils/navbar';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -29,7 +29,6 @@ for (const searchItem of navbarSearchItems) {
     async ({ page }) => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
 
       await selectOption(
         page,

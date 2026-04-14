@@ -86,6 +86,9 @@ const AppRunsHistory = forwardRef(
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
     const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
+    const [selectedRunId, setSelectedRunId] = useState<string | undefined>(
+      undefined
+    );
     const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
     const [appRunRecordConfig, setAppRunRecordConfig] = useState<
       AppRunRecord['config']
@@ -115,17 +118,41 @@ const AppRunsHistory = forwardRef(
       [appData]
     );
 
+    const tableData = useMemo<AppRunRecordWithId[]>(() => {
+      if (appRunsHistoryData.length > 0 || isExternalApp || !appData) {
+        return appRunsHistoryData;
+      }
+
+      return [
+        {
+          id: `${appData.id ?? appData.name ?? 'app'}-current-config`,
+          appId: appData.id,
+          appName: appData.name,
+          config: appData.appConfiguration ?? {},
+          isSynthetic: true,
+          runType: 'CurrentConfig',
+          startTime: appData.updatedAt,
+          timestamp: appData.updatedAt,
+        },
+      ];
+    }, [appData, appRunsHistoryData, isExternalApp]);
+
     const handleRowExpandable = useCallback(
-      (key?: string) => {
+      (key?: string, record?: AppRunRecordWithId) => {
         if (key) {
           if (isExternalApp && appData) {
-            return navigate(
-              getLogsViewerPath(
-                GlobalSettingOptions.APPLICATIONS,
-                appData.name ?? '',
-                appData.name ?? ''
-              )
+            const basePath = getLogsViewerPath(
+              GlobalSettingOptions.APPLICATIONS,
+              appData.name ?? '',
+              appData.name ?? ''
             );
+            const rawRunId = record?.properties?.pipelineRunId;
+            const runId = typeof rawRunId === 'string' ? rawRunId : undefined;
+            const path = runId
+              ? `${basePath}?runId=${encodeURIComponent(runId)}`
+              : basePath;
+
+            return navigate(path);
           }
           if (expandedRowKeys.includes(key)) {
             setExpandedRowKeys((prev) => prev.filter((item) => item !== key));
@@ -138,6 +165,10 @@ const AppRunsHistory = forwardRef(
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (record.isSynthetic) {
+        return true;
+      }
+
       if (appData?.appType === AppType.External) {
         return false;
       }
@@ -164,7 +195,7 @@ const AppRunsHistory = forwardRef(
               disabled={showLogAction(record)}
               size="small"
               type="link"
-              onClick={() => handleRowExpandable(record.id)}>
+              onClick={() => handleRowExpandable(record.id, record)}>
               {t('label.log-plural')}
             </Button>
             <Button
@@ -175,16 +206,24 @@ const AppRunsHistory = forwardRef(
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
-            {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
-            {(record.status === Status.Running ||
-              record.status === Status.ActiveError) &&
+            {record.status !== Status.Success &&
+              record.status !== Status.Failed &&
+              record.status !== Status.Stopped &&
+              record.status !== Status.Completed &&
+              record.status !== Status.StopInProgress &&
               Boolean(appData?.supportsInterrupt) && (
                 <Button
                   className="m-l-xs p-0"
                   data-testid="stop-button"
                   size="small"
                   type="link"
-                  onClick={() => setIsStopModalOpen(true)}>
+                  onClick={() => {
+                    const rawRunId = record.properties?.pipelineRunId;
+                    setSelectedRunId(
+                      typeof rawRunId === 'string' ? rawRunId : undefined
+                    );
+                    setIsStopModalOpen(true);
+                  }}>
                   {t('label.stop')}
                 </Button>
               )}
@@ -403,7 +442,7 @@ const AppRunsHistory = forwardRef(
             onShowSizeChange: handlePageSizeChange,
           }}
           data-testid="app-run-history-table"
-          dataSource={appRunsHistoryData}
+          dataSource={tableData}
           expandable={{
             expandedRowRender: (record) => (
               <AppLogsViewer
@@ -429,8 +468,10 @@ const AppRunsHistory = forwardRef(
             appName={fqn}
             displayName={appData?.displayName ?? ''}
             isModalOpen={isStopModalOpen}
+            runId={selectedRunId}
             onClose={() => {
               setIsStopModalOpen(false);
+              setSelectedRunId(undefined);
             }}
             onStopWorkflowsUpdate={() => {
               fetchAppHistory();

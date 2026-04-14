@@ -73,7 +73,7 @@ const mockSearchResponse = {
   hits: {
     hits: mockDomains.map((domain) => ({
       _source: domain,
-      _index: 'domain_search_index',
+      _index: 'domain',
       _id: domain.id,
     })),
     total: { value: mockDomains.length },
@@ -213,7 +213,7 @@ describe('DomainsWidget', () => {
         pageSize: PAGE_SIZE_MEDIUM,
         sortField: 'updatedAt',
         sortOrder: 'desc',
-        searchIndex: 'domain_search_index',
+        searchIndex: 'domain',
       });
     });
   });
@@ -332,7 +332,7 @@ describe('DomainsWidget', () => {
       hits: {
         hits: manyDomains.map((domain) => ({
           _source: domain,
-          _index: 'domain_search_index',
+          _index: 'domain',
           _id: domain.id,
         })),
         total: { value: manyDomains.length },
@@ -387,7 +387,7 @@ describe('DomainsWidget', () => {
         hits: [
           {
             _source: domainWithNoAssets,
-            _index: 'domain_search_index',
+            _index: 'domain',
             _id: domainWithNoAssets.id,
           },
         ],

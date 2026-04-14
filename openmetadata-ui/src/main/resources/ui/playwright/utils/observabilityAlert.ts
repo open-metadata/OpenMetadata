@@ -35,16 +35,17 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
-import { addMultiOwner, updateDescription } from './entity';
+import {
+  addMultiOwner,
+  updateDescription,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { addInternalDestination } from './notificationAlert';
 import { sidebarClick } from './sidebar';
 
 export const visitObservabilityAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   // Set up the response promise before navigation
   const getAlerts = page.waitForResponse(
@@ -52,9 +53,7 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   );
 
   // Set up navigation promise before clicking
-  const navigationPromise = page.waitForURL('**/observability/alerts', {
-    waitUntil: 'networkidle',
-  });
+  const navigationPromise = page.waitForURL('**/observability/alerts');
 
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
 
@@ -86,7 +85,7 @@ export const addExternalDestination = async ({
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
 
-  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
   // Select external tab
@@ -591,7 +590,7 @@ export const createCommonObservabilityAlert = async ({
       `[data-testid="${filter.inputSelector}"] [role="combobox"]`,
       filter.inputValue,
       {
-        force: true,
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
     );
 
@@ -628,13 +627,13 @@ export const createCommonObservabilityAlert = async ({
     await page.click(`[data-testid="trigger-select-${actionNumber}"]`);
 
     // Adding the dropdown visibility check to avoid flakiness here
-    await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    await page.locator('.ant-select-dropdown:visible').first().waitFor({
       state: 'visible',
     });
     await page.click(
       `.ant-select-dropdown:visible [data-testid="${action.name}-filter-option"]:visible`
     );
-    await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    await page.locator('.ant-select-dropdown:visible').first().waitFor({
       state: 'hidden',
     });
 
@@ -647,7 +646,7 @@ export const createCommonObservabilityAlert = async ({
           `[data-testid="${input.inputSelector}"] [role="combobox"]`,
           input.inputValue,
           {
-            force: true,
+            force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
           }
         );
         if (input.waitForAPI) {

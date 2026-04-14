@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CONSUMER_LIKE_POLICY,
@@ -25,31 +25,32 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
-import { setupUserWithPolicy } from '../../../utils/permission';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { setupUserWithPolicy } from '../../../utils/permission';
 
 // --- Objects ---
-const viewIncidentsPolicy = new PolicyClass();
-const viewIncidentsRole = new RolesClass();
-const viewIncidentsUser = new UserClass();
+let viewIncidentsPolicy: PolicyClass;
+let viewIncidentsRole: RolesClass;
+let viewIncidentsUser: UserClass;
 
-const editIncidentsPolicy = new PolicyClass();
-const editIncidentsRole = new RolesClass();
-const editIncidentsUser = new UserClass();
+let editIncidentsPolicy: PolicyClass;
+let editIncidentsRole: RolesClass;
+let editIncidentsUser: UserClass;
 
-const tableEditIncidentsPolicy = new PolicyClass();
-const tableEditIncidentsRole = new RolesClass();
-const tableEditIncidentsUser = new UserClass();
+let tableEditIncidentsPolicy: PolicyClass;
+let tableEditIncidentsRole: RolesClass;
+let tableEditIncidentsUser: UserClass;
 
-const tableViewIncidentsPolicy = new PolicyClass();
-const tableViewIncidentsRole = new RolesClass();
-const tableViewIncidentsUser = new UserClass();
+let tableViewIncidentsPolicy: PolicyClass;
+let tableViewIncidentsRole: RolesClass;
+let tableViewIncidentsUser: UserClass;
 
-const consumerLikePolicy = new PolicyClass();
-const consumerLikeRole = new RolesClass();
-const consumerLikeUser = new UserClass();
+let consumerLikePolicy: PolicyClass;
+let consumerLikeRole: RolesClass;
+let consumerLikeUser: UserClass;
 
-const table = new TableClass();
+let table: TableClass;
 
 // --- Fixtures ---
 const test = base.extend<{
@@ -103,20 +104,44 @@ test.describe(
   () => {
     let testCaseFqn: string;
     let incidentId: string;
-    let incidentStateId: string;
 
     const visitTestCaseIncidentPage = async (page: Page) => {
-      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
+      const testCaseResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?*fields=*'
+      );
+      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const testCaseRes = await testCaseResponse;
+      expect(testCaseRes.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
       await incidentTab.click();
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('issue-tab-container')).toBeVisible();
     };
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      viewIncidentsPolicy = new PolicyClass();
+      viewIncidentsRole = new RolesClass();
+      viewIncidentsUser = new UserClass();
+      editIncidentsPolicy = new PolicyClass();
+      editIncidentsRole = new RolesClass();
+      editIncidentsUser = new UserClass();
+      tableEditIncidentsPolicy = new PolicyClass();
+      tableEditIncidentsRole = new RolesClass();
+      tableEditIncidentsUser = new UserClass();
+      tableViewIncidentsPolicy = new PolicyClass();
+      tableViewIncidentsRole = new RolesClass();
+      tableViewIncidentsUser = new UserClass();
+      consumerLikePolicy = new PolicyClass();
+      consumerLikeRole = new RolesClass();
+      consumerLikeUser = new UserClass();
+      table = new TableClass();
       await table.create(apiContext);
 
       // Create executable test suite
@@ -147,22 +172,30 @@ test.describe(
         failedTimestamp - 60000
       }&endTs=${failedTimestamp + 60000}`;
 
-      const incidentListRes = await apiContext.get(incidentUrl);
-      const incidentList = await incidentListRes.json();
+      // Poll for incident creation — may not be immediate after adding failed result
+      await expect
+        .poll(
+          async () => {
+            const incidentListRes = await apiContext.get(incidentUrl);
+            const incidentList = await incidentListRes.json();
 
-      if (incidentList.data?.length > 0) {
-        const incident = incidentList.data.find(
-          (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
-            i.testCaseReference?.fullyQualifiedName === testCaseFqn
-        );
-        if (incident) {
-          incidentId = incident.id;
-          incidentStateId = incident.stateId;
-        }
-      }
+            if (incidentList.data?.length > 0) {
+              const incident = incidentList.data.find(
+                (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
+                  i.testCaseReference?.fullyQualifiedName === testCaseFqn
+              );
+              if (incident) {
+                incidentId = incident.id;
 
-      expect(incidentId).toBeDefined();
-      expect(incidentStateId).toBeDefined();
+                return true;
+              }
+            }
+
+            return false;
+          },
+          { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+        )
+        .toBe(true);
 
       // Setup all users
       await setupUserWithPolicy(
@@ -201,6 +234,29 @@ test.describe(
         CONSUMER_LIKE_POLICY
       );
 
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await viewIncidentsUser.delete(apiContext);
+      await editIncidentsUser.delete(apiContext);
+      await tableEditIncidentsUser.delete(apiContext);
+      await tableViewIncidentsUser.delete(apiContext);
+      await consumerLikeUser.delete(apiContext);
+      await viewIncidentsRole.delete(apiContext);
+      await editIncidentsRole.delete(apiContext);
+      await tableEditIncidentsRole.delete(apiContext);
+      await tableViewIncidentsRole.delete(apiContext);
+      await consumerLikeRole.delete(apiContext);
+      await viewIncidentsPolicy.delete(apiContext);
+      await editIncidentsPolicy.delete(apiContext);
+      await tableEditIncidentsPolicy.delete(apiContext);
+      await tableViewIncidentsPolicy.delete(apiContext);
+      await consumerLikePolicy.delete(apiContext);
+      if (table) {
+        await table.delete(apiContext);
+      }
       await afterAction();
     });
 

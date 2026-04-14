@@ -20,12 +20,19 @@ These tests cover the graph-based lineage processing used when
 """
 
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import networkx as nx
 
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityLineage import TempLineageTable
 from metadata.ingestion.lineage.sql_lineage import (
     CUTOFF_NODES,
     NODE_PROCESSING_TIMEOUT,
+    _build_table_lineage,
+    _build_temp_table_lineage,
+    _collect_temp_lineage_hops,
+    _get_lineage_for_path,
     _get_paths_from_subtree,
     _process_sequence,
     get_lineage_by_graph,
@@ -471,3 +478,604 @@ class TestEdgeCases:
 
         assert len(paths) == 1
         assert paths[0][0] == long_name
+
+
+class TestBuildTempTableLineage:
+    """Tests for _build_temp_table_lineage function"""
+
+    def test_simple_two_node_chain(self):
+        """Direct source->target with no intermediates produces single hop with FQNs"""
+        result = _build_temp_table_lineage(
+            table_chain=["source", "target"],
+            from_fqn="service.db.schema.source",
+            to_fqn="service.db.schema.target",
+        )
+
+        assert result == [
+            TempLineageTable(
+                fromEntity="service.db.schema.source",
+                toEntity="service.db.schema.target",
+            )
+        ]
+
+    def test_single_intermediate(self):
+        """source->temp->target produces two hops with FQNs at endpoints"""
+        result = _build_temp_table_lineage(
+            table_chain=["source", "temp1", "target"],
+            from_fqn="service.db.schema.source",
+            to_fqn="service.db.schema.target",
+        )
+
+        assert result == [
+            TempLineageTable(fromEntity="service.db.schema.source", toEntity="temp1"),
+            TempLineageTable(fromEntity="temp1", toEntity="service.db.schema.target"),
+        ]
+
+    def test_multiple_intermediates(self):
+        """source->temp1->temp2->target produces three hops"""
+        result = _build_temp_table_lineage(
+            table_chain=["source", "temp1", "temp2", "target"],
+            from_fqn="service.db.schema.source",
+            to_fqn="service.db.schema.target",
+        )
+
+        assert result == [
+            TempLineageTable(fromEntity="service.db.schema.source", toEntity="temp1"),
+            TempLineageTable(fromEntity="temp1", toEntity="temp2"),
+            TempLineageTable(fromEntity="temp2", toEntity="service.db.schema.target"),
+        ]
+
+    def test_many_intermediates(self):
+        """Chain with many temp tables produces correct hops"""
+        result = _build_temp_table_lineage(
+            table_chain=["src", "t1", "t2", "t3", "t4", "dst"],
+            from_fqn="svc.db.sch.src",
+            to_fqn="svc.db.sch.dst",
+        )
+
+        assert len(result) == 5
+        assert result[0] == TempLineageTable(fromEntity="svc.db.sch.src", toEntity="t1")
+        assert result[1] == TempLineageTable(fromEntity="t1", toEntity="t2")
+        assert result[2] == TempLineageTable(fromEntity="t2", toEntity="t3")
+        assert result[3] == TempLineageTable(fromEntity="t3", toEntity="t4")
+        assert result[4] == TempLineageTable(fromEntity="t4", toEntity="svc.db.sch.dst")
+
+    def test_single_node_chain(self):
+        """Single node chain (edge case) produces direct hop"""
+        result = _build_temp_table_lineage(
+            table_chain=["only_node"],
+            from_fqn="service.db.schema.source",
+            to_fqn="service.db.schema.target",
+        )
+
+        assert result == [
+            TempLineageTable(
+                fromEntity="service.db.schema.source",
+                toEntity="service.db.schema.target",
+            )
+        ]
+
+    def test_empty_chain(self):
+        """Empty chain produces direct hop"""
+        result = _build_temp_table_lineage(
+            table_chain=[],
+            from_fqn="service.db.schema.source",
+            to_fqn="service.db.schema.target",
+        )
+
+        assert result == [
+            TempLineageTable(
+                fromEntity="service.db.schema.source",
+                toEntity="service.db.schema.target",
+            )
+        ]
+
+    def test_fqn_only_at_endpoints(self):
+        """Intermediate hops use raw names, not FQNs"""
+        result = _build_temp_table_lineage(
+            table_chain=["real_table", "#temp_a", "#temp_b", "final_table"],
+            from_fqn="svc.db.public.real_table",
+            to_fqn="svc.db.public.final_table",
+        )
+
+        assert result[0].fromEntity == "svc.db.public.real_table"
+        assert result[-1].toEntity == "svc.db.public.final_table"
+        assert result[1] == TempLineageTable(fromEntity="#temp_a", toEntity="#temp_b")
+
+
+class TestBuildTableLineageWithTempField:
+    """Tests that _build_table_lineage correctly populates tempLineageTables"""
+
+    def _make_mock_table(self, table_name):
+        table = MagicMock()
+        table.id.root = str(uuid4())
+        table.name.root = table_name
+        table.fullyQualifiedName.root = f"service.db.schema.{table_name}"
+        table.columns = []
+        return table
+
+    def test_temp_lineage_tables_set_when_provided(self):
+        """tempLineageTables is populated on lineage details when provided"""
+        from_entity = self._make_mock_table("source")
+        to_entity = self._make_mock_table("target")
+        hops = [
+            TempLineageTable(fromEntity="service.db.schema.source", toEntity="temp1"),
+            TempLineageTable(fromEntity="temp1", toEntity="service.db.schema.target"),
+        ]
+
+        result = _build_table_lineage(
+            from_entity=from_entity,
+            to_entity=to_entity,
+            from_table_raw_name="source",
+            to_table_raw_name="target",
+            masked_query=None,
+            column_lineage_map={},
+            lineage_source=LineageSource.QueryLineage,
+            temp_lineage_tables=hops,
+        )
+
+        assert result.right is not None
+        details = result.right.edge.lineageDetails
+        assert details.tempLineageTables == hops
+        assert details.sqlQuery is None
+
+    def test_temp_lineage_tables_not_set_when_none(self):
+        """tempLineageTables is not set when not provided"""
+        from_entity = self._make_mock_table("source")
+        to_entity = self._make_mock_table("target")
+
+        result = _build_table_lineage(
+            from_entity=from_entity,
+            to_entity=to_entity,
+            from_table_raw_name="source",
+            to_table_raw_name="target",
+            masked_query="SELECT * FROM source",
+            column_lineage_map={},
+            lineage_source=LineageSource.QueryLineage,
+        )
+
+        assert result.right is not None
+        details = result.right.edge.lineageDetails
+        assert details.tempLineageTables is None
+        assert details.sqlQuery is not None
+
+    def test_temp_lineage_tables_not_set_when_empty_list(self):
+        """Empty list is falsy, so tempLineageTables stays None"""
+        from_entity = self._make_mock_table("source")
+        to_entity = self._make_mock_table("target")
+
+        result = _build_table_lineage(
+            from_entity=from_entity,
+            to_entity=to_entity,
+            from_table_raw_name="source",
+            to_table_raw_name="target",
+            masked_query=None,
+            column_lineage_map={},
+            temp_lineage_tables=[],
+        )
+
+        assert result.right is not None
+        assert result.right.edge.lineageDetails.tempLineageTables is None
+
+
+class TestGetLineageForPathTempLineage:
+    """Tests that _get_lineage_for_path populates tempLineageTables correctly"""
+
+    def _make_mock_table(self, table_name, fqn):
+        table = MagicMock()
+        table.id.root = str(uuid4())
+        table.name.root = table_name
+        table.fullyQualifiedName.root = fqn
+        table.columns = []
+        return table
+
+    @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
+    def test_lineage_has_temp_table_hops(self, mock_get_entity):
+        """Verify _get_lineage_for_path produces tempLineageTables with correct hops"""
+        from_table = self._make_mock_table("source", "svc.db.sch.source")
+        to_table = self._make_mock_table("target", "svc.db.sch.target")
+        mock_get_entity.side_effect = [to_table, from_table]
+
+        mock_metadata = MagicMock()
+
+        result = _get_lineage_for_path(
+            from_fqn="svc.db.sch.source",
+            to_fqn="svc.db.sch.target",
+            from_node="source",
+            current_node="target",
+            table_chain=["source", "temp1", "temp2", "target"],
+            metadata=mock_metadata,
+        )
+
+        assert result is not None
+        details = result.right.edge.lineageDetails
+        assert details.tempLineageTables == [
+            TempLineageTable(fromEntity="svc.db.sch.source", toEntity="temp1"),
+            TempLineageTable(fromEntity="temp1", toEntity="temp2"),
+            TempLineageTable(fromEntity="temp2", toEntity="svc.db.sch.target"),
+        ]
+        assert details.sqlQuery is None
+
+    @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
+    def test_lineage_direct_no_intermediates(self, mock_get_entity):
+        """Direct path with no temp tables produces single hop"""
+        from_table = self._make_mock_table("source", "svc.db.sch.source")
+        to_table = self._make_mock_table("target", "svc.db.sch.target")
+        mock_get_entity.side_effect = [to_table, from_table]
+
+        mock_metadata = MagicMock()
+
+        result = _get_lineage_for_path(
+            from_fqn="svc.db.sch.source",
+            to_fqn="svc.db.sch.target",
+            from_node="source",
+            current_node="target",
+            table_chain=["source", "target"],
+            metadata=mock_metadata,
+        )
+
+        assert result is not None
+        details = result.right.edge.lineageDetails
+        assert details.tempLineageTables == [
+            TempLineageTable(
+                fromEntity="svc.db.sch.source", toEntity="svc.db.sch.target"
+            ),
+        ]
+
+    @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
+    def test_no_lineage_when_entities_not_found(self, mock_get_entity):
+        """No lineage produced when ES returns no entities"""
+        mock_get_entity.return_value = None
+
+        mock_metadata = MagicMock()
+
+        result = _get_lineage_for_path(
+            from_fqn="svc.db.sch.source",
+            to_fqn="svc.db.sch.target",
+            from_node="source",
+            current_node="target",
+            table_chain=["source", "temp1", "target"],
+            metadata=mock_metadata,
+        )
+
+        assert result is None
+
+
+class TestCollectTempLineageHops:
+    """Tests for _collect_temp_lineage_hops merging logic"""
+
+    def test_single_path_single_pair(self):
+        """Single path produces one entry in hops_map"""
+        graph = nx.DiGraph()
+        graph.add_node("source", fqns=["svc.db.sch.source"])
+        graph.add_node("temp1", fqns=[])
+        graph.add_node("target", fqns=["svc.db.sch.target"])
+        graph.add_edges_from([("source", "temp1"), ("temp1", "target")])
+
+        paths = [["source", "temp1", "target"]]
+        hops_map = _collect_temp_lineage_hops(paths, graph)
+
+        assert ("svc.db.sch.source", "svc.db.sch.target") in hops_map
+        hops = hops_map[("svc.db.sch.source", "svc.db.sch.target")]
+        assert hops == [
+            TempLineageTable(fromEntity="svc.db.sch.source", toEntity="temp1"),
+            TempLineageTable(fromEntity="temp1", toEntity="svc.db.sch.target"),
+        ]
+
+    def test_converging_paths_merged(self):
+        """
+        Two paths through different temp tables to the same target
+        are merged into a single hops_map entry.
+        source -> t1 -> target
+        source -> t2 -> target
+        """
+        graph = nx.DiGraph()
+        graph.add_node("source", fqns=["svc.db.sch.source"])
+        graph.add_node("t1", fqns=[])
+        graph.add_node("t2", fqns=[])
+        graph.add_node("target", fqns=["svc.db.sch.target"])
+        graph.add_edges_from(
+            [("source", "t1"), ("source", "t2"), ("t1", "target"), ("t2", "target")]
+        )
+
+        paths = [
+            ["source", "t1", "target"],
+            ["source", "t2", "target"],
+        ]
+        hops_map = _collect_temp_lineage_hops(paths, graph)
+
+        key = ("svc.db.sch.source", "svc.db.sch.target")
+        assert key in hops_map
+        hops = hops_map[key]
+        assert len(hops) == 4
+        assert TempLineageTable(fromEntity="svc.db.sch.source", toEntity="t1") in hops
+        assert TempLineageTable(fromEntity="t1", toEntity="svc.db.sch.target") in hops
+        assert TempLineageTable(fromEntity="svc.db.sch.source", toEntity="t2") in hops
+        assert TempLineageTable(fromEntity="t2", toEntity="svc.db.sch.target") in hops
+
+    def test_different_pairs_stay_separate(self):
+        """
+        Paths to different targets produce separate hops_map entries.
+        source -> t1 -> target1
+        source -> t2 -> target2
+        """
+        graph = nx.DiGraph()
+        graph.add_node("source", fqns=["svc.db.sch.source"])
+        graph.add_node("t1", fqns=[])
+        graph.add_node("t2", fqns=[])
+        graph.add_node("target1", fqns=["svc.db.sch.target1"])
+        graph.add_node("target2", fqns=["svc.db.sch.target2"])
+        graph.add_edges_from(
+            [("source", "t1"), ("source", "t2"), ("t1", "target1"), ("t2", "target2")]
+        )
+
+        paths = [
+            ["source", "t1", "target1"],
+            ["source", "t2", "target2"],
+        ]
+        hops_map = _collect_temp_lineage_hops(paths, graph)
+
+        assert len(hops_map) == 2
+        assert ("svc.db.sch.source", "svc.db.sch.target1") in hops_map
+        assert ("svc.db.sch.source", "svc.db.sch.target2") in hops_map
+
+    def test_empty_paths(self):
+        """Empty paths list produces empty hops_map"""
+        graph = nx.DiGraph()
+        hops_map = _collect_temp_lineage_hops([], graph)
+        assert hops_map == {}
+
+    def test_three_converging_temp_tables(self):
+        """
+        Three paths through different temp tables to the same target.
+        source -> t1 -> target
+        source -> t2 -> target
+        source -> t3 -> target
+        """
+        graph = nx.DiGraph()
+        graph.add_node("source", fqns=["svc.db.sch.source"])
+        graph.add_node("t1", fqns=[])
+        graph.add_node("t2", fqns=[])
+        graph.add_node("t3", fqns=[])
+        graph.add_node("target", fqns=["svc.db.sch.target"])
+        graph.add_edges_from(
+            [
+                ("source", "t1"),
+                ("source", "t2"),
+                ("source", "t3"),
+                ("t1", "target"),
+                ("t2", "target"),
+                ("t3", "target"),
+            ]
+        )
+
+        paths = [
+            ["source", "t1", "target"],
+            ["source", "t2", "target"],
+            ["source", "t3", "target"],
+        ]
+        hops_map = _collect_temp_lineage_hops(paths, graph)
+
+        key = ("svc.db.sch.source", "svc.db.sch.target")
+        hops = hops_map[key]
+        # 3 paths x 2 hops each = 6 total
+        assert len(hops) == 6
+
+    def test_multi_real_entity_chain_resets_table_chain(self):
+        """
+        Path with 3 real entities: realA -> tmp1 -> realB -> tmp2 -> realC
+        The chain must reset at each real entity so that the (realB, realC) pair
+        only contains hops from realB onward, not the full accumulated chain.
+        """
+        graph = nx.DiGraph()
+        graph.add_node("realA", fqns=["svc.db.sch.realA"])
+        graph.add_node("tmp1", fqns=[])
+        graph.add_node("realB", fqns=["svc.db.sch.realB"])
+        graph.add_node("tmp2", fqns=[])
+        graph.add_node("realC", fqns=["svc.db.sch.realC"])
+        graph.add_edges_from(
+            [
+                ("realA", "tmp1"),
+                ("tmp1", "realB"),
+                ("realB", "tmp2"),
+                ("tmp2", "realC"),
+            ]
+        )
+
+        paths = [["realA", "tmp1", "realB", "tmp2", "realC"]]
+        hops_map = _collect_temp_lineage_hops(paths, graph)
+
+        # Should have two separate pairs
+        assert len(hops_map) == 2
+
+        # (realA, realB) should have hops: realA -> tmp1, tmp1 -> realB
+        key_ab = ("svc.db.sch.realA", "svc.db.sch.realB")
+        assert key_ab in hops_map
+        hops_ab = hops_map[key_ab]
+        assert len(hops_ab) == 2
+        assert (
+            TempLineageTable(fromEntity="svc.db.sch.realA", toEntity="tmp1") in hops_ab
+        )
+        assert (
+            TempLineageTable(fromEntity="tmp1", toEntity="svc.db.sch.realB") in hops_ab
+        )
+
+        # (realB, realC) should have hops: realB -> tmp2, tmp2 -> realC
+        # NOT the full chain from realA
+        key_bc = ("svc.db.sch.realB", "svc.db.sch.realC")
+        assert key_bc in hops_map
+        hops_bc = hops_map[key_bc]
+        assert len(hops_bc) == 2
+        assert (
+            TempLineageTable(fromEntity="svc.db.sch.realB", toEntity="tmp2") in hops_bc
+        )
+        assert (
+            TempLineageTable(fromEntity="tmp2", toEntity="svc.db.sch.realC") in hops_bc
+        )
+
+
+class TestMergedLineageByGraph:
+    """Tests that get_lineage_by_graph merges temp lineage across converging paths"""
+
+    def _make_mock_table(self, table_name, fqn):
+        table = MagicMock()
+        table.id.root = str(uuid4())
+        table.name.root = table_name
+        table.fullyQualifiedName.root = fqn
+        table.columns = []
+        return table
+
+    @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
+    def test_converging_paths_produce_single_merged_request(self, mock_get_entity):
+        """
+        source -> t1 -> target  and  source -> t2 -> target
+        should produce ONE lineage request with all 4 hops merged.
+        """
+        source = self._make_mock_table("source", "svc.db.sch.source")
+        target = self._make_mock_table("target", "svc.db.sch.target")
+
+        def side_effect_fn(entity_list):
+            if not entity_list:
+                return None
+            return entity_list[0]
+
+        mock_get_entity.side_effect = side_effect_fn
+
+        mock_metadata = MagicMock()
+
+        def es_search(entity_type, fqn_search_string):
+            if "source" in fqn_search_string:
+                return [source]
+            if "target" in fqn_search_string:
+                return [target]
+            return []
+
+        mock_metadata.es_search_from_fqn.side_effect = es_search
+
+        graph = nx.DiGraph()
+        graph.add_node("source", fqns=["svc.db.sch.source"])
+        graph.add_node("t1", fqns=[])
+        graph.add_node("t2", fqns=[])
+        graph.add_node("target", fqns=["svc.db.sch.target"])
+        graph.add_edges_from(
+            [("source", "t1"), ("source", "t2"), ("t1", "target"), ("t2", "target")]
+        )
+
+        results = list(get_lineage_by_graph(graph, mock_metadata))
+
+        # Should produce exactly one request (not two)
+        assert len(results) == 1
+        details = results[0].right.edge.lineageDetails
+        hops = details.tempLineageTables
+        assert len(hops) == 4
+        assert TempLineageTable(fromEntity="svc.db.sch.source", toEntity="t1") in hops
+        assert TempLineageTable(fromEntity="t1", toEntity="svc.db.sch.target") in hops
+        assert TempLineageTable(fromEntity="svc.db.sch.source", toEntity="t2") in hops
+        assert TempLineageTable(fromEntity="t2", toEntity="svc.db.sch.target") in hops
+
+    @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
+    def test_different_targets_produce_separate_requests(self, mock_get_entity):
+        """
+        source -> t1 -> target1  and  source -> t2 -> target2
+        should produce TWO separate lineage requests.
+        """
+        source = self._make_mock_table("source", "svc.db.sch.source")
+        target1 = self._make_mock_table("target1", "svc.db.sch.target1")
+        target2 = self._make_mock_table("target2", "svc.db.sch.target2")
+
+        def side_effect_fn(entity_list):
+            if not entity_list:
+                return None
+            return entity_list[0]
+
+        mock_get_entity.side_effect = side_effect_fn
+
+        mock_metadata = MagicMock()
+
+        def es_search(entity_type, fqn_search_string):
+            if "source" in fqn_search_string:
+                return [source]
+            if "target1" in fqn_search_string:
+                return [target1]
+            if "target2" in fqn_search_string:
+                return [target2]
+            return []
+
+        mock_metadata.es_search_from_fqn.side_effect = es_search
+
+        graph = nx.DiGraph()
+        graph.add_node("source", fqns=["svc.db.sch.source"])
+        graph.add_node("t1", fqns=[])
+        graph.add_node("t2", fqns=[])
+        graph.add_node("target1", fqns=["svc.db.sch.target1"])
+        graph.add_node("target2", fqns=["svc.db.sch.target2"])
+        graph.add_edges_from(
+            [("source", "t1"), ("source", "t2"), ("t1", "target1"), ("t2", "target2")]
+        )
+
+        results = list(get_lineage_by_graph(graph, mock_metadata))
+
+        assert len(results) == 2
+        fqn_pairs = set()
+        for r in results:
+            edge = r.right.edge
+            from_fqn = edge.fromEntity.id
+            to_fqn = edge.toEntity.id
+            fqn_pairs.add((str(from_fqn), str(to_fqn)))
+        # Two distinct pairs
+        assert len(fqn_pairs) == 2
+
+    @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
+    def test_snowflake_scenario_source_t1_t2_target(self, mock_get_entity):
+        """
+        Reproduces the exact Snowflake scenario:
+        source_tbl -> t1 -> target_tbl
+        source_tbl -> t2 -> target_tbl
+        Both t1 and t2 must appear in tempLineageTables.
+        """
+        source = self._make_mock_table("source_tbl", "snow.TEST_DB.SCH.SOURCE_TBL")
+        target = self._make_mock_table("target_tbl", "snow.TEST_DB.SCH.TARGET_TBL")
+
+        def side_effect_fn(entity_list):
+            if not entity_list:
+                return None
+            return entity_list[0]
+
+        mock_get_entity.side_effect = side_effect_fn
+
+        mock_metadata = MagicMock()
+
+        def es_search(entity_type, fqn_search_string):
+            if "SOURCE_TBL" in fqn_search_string:
+                return [source]
+            if "TARGET_TBL" in fqn_search_string:
+                return [target]
+            return []
+
+        mock_metadata.es_search_from_fqn.side_effect = es_search
+
+        graph = nx.DiGraph()
+        graph.add_node("source_tbl", fqns=["snow.TEST_DB.SCH.SOURCE_TBL"])
+        graph.add_node("t1", fqns=[])
+        graph.add_node("t2", fqns=[])
+        graph.add_node("target_tbl", fqns=["snow.TEST_DB.SCH.TARGET_TBL"])
+        graph.add_edges_from(
+            [
+                ("source_tbl", "t1"),
+                ("source_tbl", "t2"),
+                ("t1", "target_tbl"),
+                ("t2", "target_tbl"),
+            ]
+        )
+
+        results = list(get_lineage_by_graph(graph, mock_metadata))
+
+        assert len(results) == 1
+        hops = results[0].right.edge.lineageDetails.tempLineageTables
+        # Both temp tables must be present
+        to_entities = [h.toEntity for h in hops]
+        from_entities = [h.fromEntity for h in hops]
+        assert "t1" in to_entities
+        assert "t2" in to_entities
+        assert "t1" in from_entities
+        assert "t2" in from_entities

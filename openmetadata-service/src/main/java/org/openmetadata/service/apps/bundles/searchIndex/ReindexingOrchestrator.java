@@ -155,6 +155,7 @@ public class ReindexingOrchestrator {
     LOG.info("Running preflight fixes before reindexing");
     markStaleRunningJobsStopped();
     syncIndexTemplates();
+    ensureHybridSearchPipeline();
     cleanupOrphanedIndicesPreFlight();
   }
 
@@ -164,6 +165,15 @@ public class ReindexingOrchestrator {
       LOG.info("Preflight: synced index templates from indexMapping files");
     } catch (Exception e) {
       LOG.warn("Preflight: failed to sync index templates: {}", e.getMessage());
+    }
+  }
+
+  private void ensureHybridSearchPipeline() {
+    try {
+      searchRepository.ensureHybridSearchPipeline();
+      LOG.info("Preflight: ensured hybrid search pipeline is up to date");
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to ensure hybrid search pipeline: {}", e.getMessage());
     }
   }
 
@@ -200,7 +210,7 @@ public class ReindexingOrchestrator {
     }
   }
 
-  private void runReindexing() throws Exception {
+  private void runReindexing() {
     if (jobData.getEntities() == null || jobData.getEntities().isEmpty()) {
       LOG.info("No entities selected for reindexing, completing immediately");
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
@@ -380,8 +390,11 @@ public class ReindexingOrchestrator {
     }
 
     if (jobData.getStats() != null) {
-      SuccessContext successContext =
-          new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+      SuccessContext successContext = appRecord.getSuccessContext();
+      if (successContext == null) {
+        successContext = new SuccessContext();
+      }
+      successContext.withAdditionalProperty("stats", jobData.getStats());
 
       String distributedJobId = (String) resultMetadata.get("distributedJobId");
 
@@ -408,6 +421,11 @@ public class ReindexingOrchestrator {
 
       appRecord.setSuccessContext(successContext);
     }
+
+    // Persist before broadcasting so OmAppJobListener.jobWasExecuted() sees the correct
+    // terminal status (FAILED, STOPPED, etc.) rather than the initial RUNNING record,
+    // and so the database is consistent before the UI is notified.
+    context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
 
     if (WebSocketManager.getInstance() != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);

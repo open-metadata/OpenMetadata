@@ -48,24 +48,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('@mui/material', () => {
-  const actual = jest.requireActual('@mui/material');
-
-  return {
-    ...actual,
-    Link: jest.fn().mockImplementation(({ children, ...props }) => (
-      <a data-testid="mui-link" {...props}>
-        {children}
-      </a>
-    )),
-    Divider: jest
-      .fn()
-      .mockImplementation(({ className, ...props }) => (
-        <div className={className} data-testid="mui-divider" {...props} />
-      )),
-  };
-});
-
 jest.mock(
   '../../../DataQuality/IncidentManager/Severity/Severity.component',
   () => ({

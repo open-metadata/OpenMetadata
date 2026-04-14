@@ -112,17 +112,15 @@ describe('SearchClassBase', () => {
       SearchIndex.DATABASE_SCHEMA
     );
     expect(searchIndexMapping[EntityType.API_SERVICE]).toEqual(
-      SearchIndex.API_SERVICE_INDEX
+      SearchIndex.API_SERVICE
     );
     expect(searchIndexMapping[EntityType.API_COLLECTION]).toEqual(
-      SearchIndex.API_COLLECTION_INDEX
+      SearchIndex.API_COLLECTION
     );
     expect(searchIndexMapping[EntityType.API_ENDPOINT]).toEqual(
-      SearchIndex.API_ENDPOINT_INDEX
+      SearchIndex.API_ENDPOINT
     );
-    expect(searchIndexMapping[EntityType.METRIC]).toEqual(
-      SearchIndex.METRIC_SEARCH_INDEX
-    );
+    expect(searchIndexMapping[EntityType.METRIC]).toEqual(SearchIndex.METRIC);
   });
 
   it('should return dropdown item based on entity type', () => {
@@ -162,11 +160,11 @@ describe('SearchClassBase', () => {
       SearchIndex.DATABASE_SCHEMA
     );
     const apiEndpointItems = searchClassBase.getDropDownItems(
-      SearchIndex.API_ENDPOINT_INDEX
+      SearchIndex.API_ENDPOINT
     );
 
     const apiCollectionItems = searchClassBase.getDropDownItems(
-      SearchIndex.API_COLLECTION_INDEX
+      SearchIndex.API_COLLECTION
     );
 
     expect(tableItems).toEqual([

@@ -273,6 +273,21 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               <Typography.Text className="text-failure">{text}</Typography.Text>
             ),
           },
+          ...(successContext?.stats?.vectorStats?.totalRecords
+            ? [
+                {
+                  title: t('label.vector-embedding-plural'),
+                  dataIndex: 'vectorEmbeddings',
+                  key: 'vectorEmbeddings',
+                  render: (value: number | null) => (
+                    <Typography.Text
+                      className={value !== null ? 'text-primary' : ''}>
+                      {value !== null ? value : '-'}
+                    </Typography.Text>
+                  ),
+                },
+              ]
+            : []),
         ];
   }, [successContext, failureContext]);
 

@@ -301,14 +301,14 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
-  [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
-  [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
-  [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
-  [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
-  [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectorySearchSource;
-  [SearchIndex.FILE_SEARCH_INDEX]: FileSearchSource;
-  [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetSearchSource;
-  [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetSearchSource;
+  [SearchIndex.API_SERVICE]: APIServiceSearchSource;
+  [SearchIndex.API_COLLECTION]: APICollectionSearchSource;
+  [SearchIndex.API_ENDPOINT]: APIEndpointSearchSource;
+  [SearchIndex.METRIC]: MetricSearchSource;
+  [SearchIndex.DIRECTORY]: DirectorySearchSource;
+  [SearchIndex.FILE]: FileSearchSource;
+  [SearchIndex.SPREADSHEET]: SpreadsheetSearchSource;
+  [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
 };
 

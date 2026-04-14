@@ -29,6 +29,7 @@ import {
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryUtils';
@@ -223,6 +224,32 @@ describe('Glossary Utils', () => {
     ]);
 
     expect(filteredOptions).toEqual(expected_glossary);
+  });
+
+  it('should allow glossary review actions for task assignees even when reviewers are not hydrated', () => {
+    const result = permissionForApproveOrReject(
+      {
+        fullyQualifiedName: '"Glossary"."Term"',
+        reviewers: [],
+      } as ModifiedGlossaryTerm,
+      { id: 'user-1' } as never,
+      {
+        '<#E::glossaryTerm::"Glossary"."Term">': [
+          {
+            about: '<#E::glossaryTerm::"Glossary"."Term">',
+            task: {
+              id: 17,
+              assignees: [{ id: 'user-1' }],
+            },
+          },
+        ],
+      } as never
+    );
+
+    expect(result).toEqual({
+      permission: true,
+      taskId: 17,
+    });
   });
 });
 

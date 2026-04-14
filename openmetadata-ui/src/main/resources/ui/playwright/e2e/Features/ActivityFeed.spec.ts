@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -21,6 +20,7 @@ import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
+  removeLandingBanner,
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
@@ -63,6 +63,8 @@ test.describe('FeedWidget on landing page', () => {
         try {
           // Set persona as default
           await redirectToHomePage(adminPage);
+          await removeLandingBanner(adminPage);
+          await waitForAllLoadersToDisappear(adminPage);
           await setUserDefaultPersona(adminPage, testPersona.data.displayName);
 
           // Navigate to customize landing page
@@ -88,12 +90,12 @@ test.describe('FeedWidget on landing page', () => {
           if (await saveButton.isEnabled()) {
             const saveResponse = adminPage.waitForResponse('/api/v1/docStore*');
             await saveButton.click();
-            await adminPage.waitForLoadState('networkidle');
             await saveResponse;
           }
 
           await redirectToHomePage(adminPage);
-          await adminPage.waitForLoadState('networkidle');
+          await removeLandingBanner(adminPage);
+          await waitForAllLoadersToDisappear(adminPage);
         } finally {
           await adminPage.close();
         }
@@ -106,7 +108,8 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
+    await removeLandingBanner(page);
+    await waitForAllLoadersToDisappear(page);
   });
 
   test('renders widget wrapper and header with sort dropdown', async ({
@@ -129,7 +132,7 @@ test.describe('FeedWidget on landing page', () => {
 
     // Test dropdown options
     await sortDropdown.click();
-    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
     await expect(
       page.getByRole('menuitem', { name: 'All Activity' })
@@ -155,11 +158,10 @@ test.describe('FeedWidget on landing page', () => {
       .getByTestId('widget-header')
       .getByText('Activity Feed');
     await titleLink.click();
-    await page.waitForLoadState('networkidle');
 
     // Verify navigation to user activity feed
-    await expect(page.url()).toContain('/users/');
-    await expect(page.url()).toContain('/activity_feed/all');
+    expect(page.url()).toContain('/users/');
+    expect(page.url()).toContain('/activity_feed/all');
   });
 
   test('feed body renders content or empty state', async ({ page }) => {
@@ -197,18 +199,17 @@ test.describe('FeedWidget on landing page', () => {
 
     // Switch to My Data filter
     await sortDropdown.click();
-    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
     const myDataOption = page.getByRole('menuitem', { name: 'My Data' });
 
     const feedResponse = page.waitForResponse('/api/v1/feed*');
     await myDataOption.click();
-    await page.waitForLoadState('networkidle');
     await feedResponse;
 
     // Switch back to All Activity
     await sortDropdown.click();
-    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
     const allActivityOption = page.getByRole('menuitem', {
       name: 'All Activity',
@@ -216,7 +217,6 @@ test.describe('FeedWidget on landing page', () => {
     if (await allActivityOption.isVisible()) {
       const feedResponse = page.waitForResponse('/api/v1/feed*');
       await allActivityOption.click();
-      await page.waitForLoadState('networkidle');
       await feedResponse;
     }
   });
@@ -233,7 +233,6 @@ test.describe('FeedWidget on landing page', () => {
 
     // Click and verify navigation
     await viewMoreLink.click();
-    await page.waitForLoadState('networkidle');
 
     // Should navigate away from home page
     expect(page.url()).not.toMatch(/home|welcome/i);
@@ -334,7 +333,6 @@ test.describe('FeedWidget on landing page', () => {
 
     if (await commentInput.count()) {
       await commentInput.click();
-      await page.waitForLoadState('networkidle');
 
       // Fill in the editor
       const editorField = page.locator(
@@ -348,7 +346,6 @@ test.describe('FeedWidget on landing page', () => {
       await expect(sendButton).toBeEnabled();
 
       const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
-      await page.waitForLoadState('networkidle');
       await sendButton.click();
       await sendReply;
 
@@ -374,7 +371,7 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
-  const entity = EntityDataClass.table1;
+  const entity = new TableClass();
 
   const test = base.extend<{
     adminPage: Page;
@@ -400,6 +397,7 @@ test.describe('Mention notifications in Notification Box', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await user1.create(apiContext);
+    await entity.create(apiContext);
     await afterAction();
   });
 
@@ -422,20 +420,14 @@ test.describe('Mention notifications in Notification Box', () => {
           .textContent();
         count = Number(countText ?? '0');
         if (isNaN(count) || count <= 0) {
-          // wait for 2s before querying again
-          await adminPage.waitForTimeout(2000);
           await adminPage.reload();
-          await adminPage.waitForLoadState('networkidle');
           await waitForAllLoadersToDisappear(adminPage);
         }
       }
 
       await adminPage.getByTestId('activity_feed').click();
-      await adminPage.waitForLoadState('networkidle');
 
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(adminPage);
 
       await adminPage.getByTestId('comments-input-field').click();
 
@@ -466,11 +458,8 @@ test.describe('Mention notifications in Notification Box', () => {
       await entity.visitEntityPage(user1Page);
 
       await user1Page.getByTestId('activity_feed').click();
-      await user1Page.waitForLoadState('networkidle');
 
-      await user1Page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(user1Page);
 
       await user1Page.getByTestId('comments-input-field').click();
 
@@ -517,9 +506,7 @@ test.describe('Mention notifications in Notification Box', () => {
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
       await adminPage.reload();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(adminPage);
       const notificationBell = adminPage.getByTestId('task-notifications');
 
       await expect(notificationBell).toBeVisible();
@@ -572,7 +559,6 @@ test.describe('Mention notifications in Notification Box', () => {
       const navigationPromise = adminPage.waitForURL(/activity_feed/);
       await mentionNotificationLink.click();
       await navigationPromise;
-      await adminPage.waitForLoadState('networkidle');
 
       expect(adminPage.url()).toContain('activity_feed');
       expect(adminPage.url()).toContain('/all');
@@ -591,9 +577,7 @@ test.describe('Mention notifications in Notification Box', () => {
       await entity.visitEntityPage(user1Page);
 
       await user1Page.getByTestId('activity_feed').click();
-      await user1Page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(user1Page);
 
       // Find a message to react to.
       const message = user1Page
@@ -602,12 +586,12 @@ test.describe('Mention notifications in Notification Box', () => {
       await expect(message).toBeVisible();
 
       // Add reaction
-      await message.locator('[data-testid="add-reactions"]').click();
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/feed') &&
           response.request().method() === 'PATCH'
       );
+      await message.locator('[data-testid="add-reactions"]').click();
       await user1Page.locator('[title="rocket"]').click();
       await reactionResponse;
 
@@ -692,7 +676,20 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('comments-input-field').click();
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
+    const commentsInput = page.getByTestId('comments-input-field');
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
+    await commentsInput.click();
 
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
@@ -752,7 +749,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     );
 
     await waitForAllLoadersToDisappear(newPage);
-    expect(newPage.getByTestId('user-display-name')).toHaveText(userName);
+    await expect(newPage.getByTestId('user-display-name')).toHaveText(userName);
   });
 
   test('Should encode the chinese character while mentioning api endpoint', async ({
@@ -773,7 +770,20 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('comments-input-field').click();
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
+    const commentsInput = page.getByTestId('comments-input-field');
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
+    await commentsInput.click();
 
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'

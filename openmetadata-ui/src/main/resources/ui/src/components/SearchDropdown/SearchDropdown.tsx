@@ -74,6 +74,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   triggerButtonSize = 'small',
   hideSearchBar = false,
   singleSelect = false,
+  getPopupContainer,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -381,6 +382,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       destroyPopupOnHide
       data-testid={searchKey}
       dropdownRender={dropdownCardComponent}
+      getPopupContainer={getPopupContainer}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}

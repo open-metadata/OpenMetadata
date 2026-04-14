@@ -336,7 +336,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     sendUpdates(jobExecutionContext);
   }
 
-  private boolean warmupEntity(String entityType, EntityInterface entity) throws Exception {
+  private boolean warmupEntity(String entityType, EntityInterface entity) {
     // Skip caching user entities
     if ("user".equals(entityType)) {
       return false; // Not cached, but not an error
@@ -836,9 +836,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       } else {
         // Check if existing lock is expired (stale)
         java.util.Optional<String> existingLock = cacheProvider.get(WARMUP_LOCK_KEY);
-        if (existingLock.isPresent()) {
-          LOG.info("Cache warmup is already running with lock: {}", existingLock.get());
-        }
+        existingLock.ifPresent(s -> LOG.info("Cache warmup is already running with lock: {}", s));
         return false;
       }
     } catch (Exception e) {

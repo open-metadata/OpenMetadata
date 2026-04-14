@@ -132,10 +132,7 @@ class Burstiqsource(DatabaseServiceSource):
             f"Dictionary for table '{table_name}' not in cache, fetching from API..."
         )
         client = self._get_client()
-        dict_data = client.get_dictionary_by_name(table_name)
-        if dict_data:
-            return BurstIQDictionary(**dict_data)
-        return None
+        return client.get_dictionary_by_name(table_name)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -213,11 +210,8 @@ class Burstiqsource(DatabaseServiceSource):
 
                 # Iterate directly over dictionaries from API
                 for dict_data in client.get_dictionaries():
-                    # Clear previous dictionary cache before processing new one
                     self._current_dictionary = None
-
-                    # Parse into Pydantic model and cache it
-                    self._current_dictionary = BurstIQDictionary(**dict_data)
+                    self._current_dictionary = dict_data
                     table_name = self._current_dictionary.table_name
 
                     # Build FQN for filtering
@@ -366,19 +360,19 @@ class Burstiqsource(DatabaseServiceSource):
         """
         # BurstIQ to OpenMetadata datatype mapping
         type_mapping = {
-            "STRING": "VARCHAR",
+            "STRING": "STRING",
             "INTEGER": "INT",
             "LONG": "BIGINT",
             "DOUBLE": "DOUBLE",
             "FLOAT": "FLOAT",
             "BOOLEAN": "BOOLEAN",
-            "DATETIME": "TIMESTAMP",
+            "DATETIME": "DATETIME",
             "DATE": "DATE",
             "TIME": "TIME",
             "BINARY": "BINARY",
             "DECIMAL": "DECIMAL",
-            "UUID": "VARCHAR",  # UUID stored as string
-            "ENUM": "VARCHAR",  # Enum stored as string
+            "UUID": "UUID",
+            "ENUM": "ENUM",
             "JSON": "JSON",
             "ARRAY": "ARRAY",
             "OBJECT": "STRUCT",
@@ -410,16 +404,16 @@ class Burstiqsource(DatabaseServiceSource):
         """
         table_constraints = []
 
-        # Process indexes for primary keys and unique constraints
-        for index in dictionary.indexes:
-            if index.type == "PRIMARY" and index.attributes:
-                table_constraints.append(
-                    TableConstraint(
-                        constraintType=ConstraintType.PRIMARY_KEY,
-                        columns=index.attributes,
-                    )
+        if dictionary.has_primary_key:
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.PRIMARY_KEY,
+                    columns=dictionary.get_primary_key_columns(),
                 )
-            elif index.type == "UNIQUE" and index.attributes:
+            )
+
+        for index in dictionary.indexes:
+            if index.type == "UNIQUE" and index.attributes:
                 table_constraints.append(
                     TableConstraint(
                         constraintType=ConstraintType.UNIQUE,

@@ -60,7 +60,7 @@ const validateProfilerAccessForRole = async (
   await redirectToHomePage(page);
   await tableInstance.visitEntityPage(page);
 
-  await page.waitForSelector(`[data-testid="entity-header-name"]`);
+  await page.getByTestId('entity-header-name').waitFor();
 
   await expect(
     page.locator(`[data-testid="entity-header-name"]`)
@@ -82,7 +82,6 @@ const validateProfilerAccessForRole = async (
       name: 'Column Profile',
     })
     .click();
-  await listColumnApiCall;
   const listColumnResponse = await listColumnApiCall;
 
   expect(listColumnResponse.status()).toBe(200);
@@ -96,7 +95,6 @@ const validateProfilerAccessForRole = async (
     )
     .getByText(tableInstance.entity.columns[1].name)
     .click();
-  await getProfilerInfo;
   const getProfilerInfoResponse = await getProfilerInfo;
 
   expect(getProfilerInfoResponse.status()).toBe(200);
@@ -268,11 +266,10 @@ test.describe(
       await page.getByRole('tab', { name: 'Data Quality' }).click();
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
 
       await test.step('Update profiler setting', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await page.locator('[data-testid="slider-input"]').clear();
         await page
@@ -350,7 +347,7 @@ test.describe(
 
       await test.step('Reset profile sample type', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await expect(
           page.locator('[data-testid="profile-sample"]')
@@ -387,13 +384,13 @@ test.describe(
           })
         );
 
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]', {
+        await page.getByTestId('profiler-settings-modal').waitFor({
           state: 'detached',
         });
 
         // Validate the profiler setting is updated
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await expect(
           page.locator('[data-testid="profile-sample"]')

@@ -32,7 +32,7 @@ permissions:
   checks: write
 
 concurrency:
-  group: maven-sonar-build-${{ github.head_ref || github.run_id }}
+  group: maven-sonar-build-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
   maven-sonarcloud-ci:

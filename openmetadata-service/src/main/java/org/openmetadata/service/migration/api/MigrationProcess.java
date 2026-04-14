@@ -78,11 +78,16 @@ public interface MigrationProcess {
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
   Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration);
 
-  // This method is to run code to fix any data
+  // This method is to run code to fix any data. Implementations must be idempotent because
+  // force mode and continuous reprocessing can invoke it multiple times for the same version.
   void runDataMigration();
 
   // This method is to run SQL which can be part of the transaction post data migrations
   Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration);
+
+  boolean isReprocessing();
+
+  boolean hasNewStatements();
 
   void close();
 }

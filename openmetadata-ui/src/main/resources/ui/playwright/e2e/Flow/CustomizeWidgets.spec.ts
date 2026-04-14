@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
@@ -20,7 +20,11 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  removeLandingBanner,
+} from '../../utils/common';
 import {
   addAndVerifyWidget,
   removeAndVerifyWidget,
@@ -39,18 +43,13 @@ import {
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
-const adminUser = new UserClass();
-const persona = new PersonaClass();
+let adminUser: UserClass;
+let persona: PersonaClass;
 
 // Test domain and data products for comprehensive testing
-const testDomain = new Domain();
-const testDataProducts = [
-  new DataProduct([testDomain]),
-  new DataProduct([testDomain]),
-  new DataProduct([testDomain]),
-];
+let testDomain: Domain;
+let testDataProducts: DataProduct[] = [];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -63,6 +62,15 @@ const test = base.extend<{ page: Page }>({
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
+
+  adminUser = new UserClass();
+  persona = new PersonaClass();
+  testDomain = new Domain();
+  testDataProducts = [
+    new DataProduct([testDomain]),
+    new DataProduct([testDomain]),
+    new DataProduct([testDomain]),
+  ];
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
@@ -134,6 +142,18 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
     data: [
       {
         op: 'add',
+        path: '/personas/0',
+        value: {
+          id: persona.responseData.id,
+          type: 'persona',
+          name: persona.responseData.name,
+          fullyQualifiedName: persona.responseData.fullyQualifiedName,
+          description: persona.responseData.description,
+          displayName: persona.responseData.displayName,
+        },
+      },
+      {
+        op: 'add',
         path: '/defaultPersona',
         value: {
           id: persona.responseData.id,
@@ -155,58 +175,56 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
+  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 });
 
-test(
-  'Activity Feed Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  async ({ page }) => {
-    test.slow(true);
+test('Activity Feed Widget', async ({ page }) => {
+  test.slow(true);
 
-    const widgetKey = 'KnowledgePanel.ActivityFeed';
-    const widget = page.getByTestId(widgetKey);
+  const widgetKey = 'KnowledgePanel.ActivityFeed';
+  const widget = page.getByTestId(widgetKey);
 
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(widget).toBeVisible();
+
+  await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
+    await verifyWidgetHeaderNavigation(
+      page,
+      widgetKey,
+      'Activity Feed',
+      `/users/${adminUser.responseData.name}/activity_feed/all`
+    );
+  });
 
-    await expect(widget).toBeVisible();
+  await test.step('Test widget filters', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyActivityFeedFilters(page, widgetKey);
+  });
 
-    await test.step('Test widget header and navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await verifyWidgetHeaderNavigation(
-        page,
-        widgetKey,
-        'Activity Feed',
-        `/users/${adminUser.responseData.name}/activity_feed/all`
-      );
+  await test.step('Test widget footer navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyWidgetFooterViewMore(page, {
+      widgetKey,
+      link: `/users/${adminUser.responseData.name}/activity_feed/all`,
     });
 
-    await test.step('Test widget filters', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyActivityFeedFilters(page, widgetKey);
-    });
+    await redirectToHomePage(page);
+  });
 
-    await test.step('Test widget footer navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyWidgetFooterViewMore(page, {
-        widgetKey,
-        link: `/users/${adminUser.responseData.name}/activity_feed/all`,
-      });
+  await test.step('Test widget customization', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
 
-      await redirectToHomePage(page);
-    });
-
-    await test.step('Test widget customization', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-      await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    });
-  }
-);
-
-test('Data Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
@@ -260,7 +278,7 @@ test('Data Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test('My Data Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('My Data Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
@@ -317,7 +335,7 @@ test('My Data Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test.fixme('KPI Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test.fixme('KPI Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
@@ -423,129 +441,121 @@ test.fixme('KPI Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test(
-  'Total Data Assets Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  async ({ page }) => {
-    test.slow(true);
+test('Total Data Assets Widget', async ({ page }) => {
+  test.slow(true);
 
-    const widgetKey = 'KnowledgePanel.TotalAssets';
-    const widget = page.getByTestId(widgetKey);
+  const widgetKey = 'KnowledgePanel.TotalAssets';
+  const widget = page.getByTestId(widgetKey);
 
-    // Wait for the widgets data to appear
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+  // Wait for the widgets data to appear
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    await expect(widget).toBeVisible();
+  await expect(widget).toBeVisible();
 
-    await test.step('Test widget header and navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await verifyWidgetHeaderNavigation(
-        page,
-        widgetKey,
-        'Total Data Assets',
-        '/data-insights'
-      );
-    });
-
-    await test.step('Test widget filters', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyTotalDataAssetsFilters(page, widgetKey);
-    });
-
-    await test.step('Test widget footer navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyWidgetFooterViewMore(page, {
-        widgetKey,
-        link: 'data-insights',
-      });
-
-      await redirectToHomePage(page);
-    });
-
-    await test.step('Test widget customization', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-      await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    });
-  }
-);
-
-test(
-  'Following Assets Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  async ({ page }) => {
-    test.slow(true);
-
-    await testDomain.visitEntityPage(page);
+  await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
+    await verifyWidgetHeaderNavigation(
+      page,
+      widgetKey,
+      'Total Data Assets',
+      '/data-insights'
+    );
+  });
 
-    await followEntity(page, testDomain.endpoint);
+  await test.step('Test widget filters', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyTotalDataAssetsFilters(page, widgetKey);
+  });
+
+  await test.step('Test widget footer navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyWidgetFooterViewMore(page, {
+      widgetKey,
+      link: 'data-insights',
+    });
 
     await redirectToHomePage(page);
-    // wait for the page loader to disappear
+  });
+
+  await test.step('Test widget customization', async () => {
     await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
 
-    const widgetKey = 'KnowledgePanel.Following';
-    const widget = page.getByTestId(widgetKey);
+test('Following Assets Widget', async ({ page }) => {
+  test.slow(true);
 
-    // Wait for the widgets data to appear
+  await testDomain.visitEntityPage(page);
+  await waitForAllLoadersToDisappear(page);
+
+  await followEntity(page, testDomain.endpoint);
+
+  await redirectToHomePage(page);
+  // wait for the page loader to disappear
+  await waitForAllLoadersToDisappear(page);
+
+  const widgetKey = 'KnowledgePanel.Following';
+  const widget = page.getByTestId(widgetKey);
+
+  // Wait for the widgets data to appear
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+  await expect(widget).toBeVisible();
+
+  await test.step('Test widget header and navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await verifyWidgetHeaderNavigation(
+      page,
+      widgetKey,
+      'Following',
+      `/users/${adminUser.responseData.name}/following`
+    );
+  });
+
+  await test.step('Test widget filters', async () => {
+    await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyDataFilters(page, widgetKey);
+  });
 
-    await expect(widget).toBeVisible();
+  await test.step('Test widget displays followed entities', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    // Verify that followed entities appear in the widget
+    await verifyWidgetEntityNavigation(page, {
+      widgetKey,
+      entitySelector: '[data-testid^="Following-"]',
+      urlPattern: '/', // Following can navigate to various entity types
+      apiResponseUrl: '/api/v1/search/query',
+      searchQuery: `index=${SearchIndex.ALL}`,
+    });
+  });
 
-    await test.step('Test widget header and navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await verifyWidgetHeaderNavigation(
-        page,
-        widgetKey,
-        'Following',
-        `/users/${adminUser.responseData.name}/following`
-      );
+  await test.step('Test widget footer navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    // Following footer navigates to explore with following filter
+    await verifyWidgetFooterViewMore(page, {
+      widgetKey,
+      link: 'explore',
     });
 
-    await test.step('Test widget filters', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyDataFilters(page, widgetKey);
-    });
+    await redirectToHomePage(page);
+  });
 
-    await test.step('Test widget displays followed entities', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      // Verify that followed entities appear in the widget
-      await verifyWidgetEntityNavigation(page, {
-        widgetKey,
-        entitySelector: '[data-testid^="Following-"]',
-        urlPattern: '/', // Following can navigate to various entity types
-        apiResponseUrl: '/api/v1/search/query',
-        searchQuery: `index=${SearchIndex.ALL}`,
-      });
-    });
+  await test.step('Test widget customization', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
 
-    await test.step('Test widget footer navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      // Following footer navigates to explore with following filter
-      await verifyWidgetFooterViewMore(page, {
-        widgetKey,
-        link: 'explore',
-      });
-
-      await redirectToHomePage(page);
-    });
-
-    await test.step('Test widget customization', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-      await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    });
-  }
-);
-
-test('Domains Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('Domains Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.Domains';
@@ -598,7 +608,7 @@ test('Domains Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test('My Tasks Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+test('My Tasks Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Create a task', async () => {
@@ -677,65 +687,61 @@ test('My Tasks Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test(
-  'Data Products Widget',
-  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
-  async ({ page }) => {
-    test.slow(true);
+test('Data Products Widget', async ({ page }) => {
+  test.slow(true);
 
-    const widgetKey = 'KnowledgePanel.DataProducts';
-    const widget = page.getByTestId(widgetKey);
+  const widgetKey = 'KnowledgePanel.DataProducts';
+  const widget = page.getByTestId(widgetKey);
 
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(widget).not.toBeVisible();
+
+  await test.step('Add widget', async () => {
     await waitForAllLoadersToDisappear(page);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
 
-    await expect(widget).not.toBeVisible();
+  await test.step('Test widget header and navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await verifyWidgetHeaderNavigation(
+      page,
+      widgetKey,
+      'Data Products',
+      '/explore?tab=data_product'
+    );
+  });
 
-    await test.step('Add widget', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  await test.step('Test widget filters', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyDataProductsFilters(page, widgetKey);
+  });
+
+  await test.step('Test widget displays entities and navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyWidgetEntityNavigation(page, {
+      widgetKey,
+      entitySelector: '[data-testid^="data-product-card-"]',
+      urlPattern: '/dataProduct',
+      apiResponseUrl: '/api/v1/search/query',
+      searchQuery: `index=${SearchIndex.DATA_PRODUCT}`,
     });
+  });
 
-    await test.step('Test widget header and navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await verifyWidgetHeaderNavigation(
-        page,
-        widgetKey,
-        'Data Products',
-        '/explore?tab=data_product'
-      );
+  await test.step('Test widget footer navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyWidgetFooterViewMore(page, {
+      widgetKey,
+      link: '/explore',
     });
+  });
 
-    await test.step('Test widget filters', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyDataProductsFilters(page, widgetKey);
-    });
-
-    await test.step('Test widget displays entities and navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyWidgetEntityNavigation(page, {
-        widgetKey,
-        entitySelector: '[data-testid^="data-product-card-"]',
-        urlPattern: '/dataProduct',
-        apiResponseUrl: '/api/v1/search/query',
-        searchQuery: `index=${SearchIndex.DATA_PRODUCT}`,
-      });
-    });
-
-    await test.step('Test widget footer navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyWidgetFooterViewMore(page, {
-        widgetKey,
-        link: '/explore',
-      });
-    });
-
-    await test.step('Remove widget', async () => {
-      await redirectToHomePage(page);
-      await waitForAllLoadersToDisappear(page);
-      await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    });
-  }
-);
+  await test.step('Remove widget', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});

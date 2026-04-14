@@ -98,7 +98,8 @@ export const TestCases = () => {
   const { permissions } = usePermissionProvider();
   const { isTestCaseSummaryLoading, testCaseSummary } =
     useDataQualityProvider();
-  const { testCase: testCasePermission } = permissions;
+  const { testCase: testCasePermission, testSuite: testSuitePermission } =
+    permissions;
   const { showModal } = useEntityExportModalProvider();
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -372,10 +373,7 @@ export const TestCases = () => {
       const options = response.hits.hits.map((hit) => {
         return {
           label: (
-            <Space
-              data-testid={hit._source.fullyQualifiedName}
-              direction="vertical"
-              size={0}>
+            <Space data-testid={hit._source.name} direction="vertical" size={0}>
               <Typography.Text className="text-xs text-grey-muted">
                 {hit._source.fullyQualifiedName}
               </Typography.Text>
@@ -384,7 +382,7 @@ export const TestCases = () => {
               </Typography.Text>
             </Space>
           ),
-          value: hit._source.fullyQualifiedName,
+          value: hit._source.name,
         };
       });
       setServiceOptions(options);
@@ -743,6 +741,7 @@ export const TestCases = () => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          enableBulkActions={Boolean(testSuitePermission?.Create)}
           fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}

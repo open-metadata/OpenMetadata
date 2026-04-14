@@ -195,20 +195,20 @@ test.describe(
           page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
 
-        await page.waitForSelector(
-          '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-          { state: 'detached' }
-        );
+        await page
+          .getByTestId('select-owner-tabs')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
 
         await page
           .locator("[data-testid='select-owner-tabs']")
           .getByRole('tab', { name: 'Teams' })
           .click();
 
-        await page.waitForSelector(
-          '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-          { state: 'detached' }
-        );
+        await page
+          .getByTestId('select-owner-tabs')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'
@@ -338,9 +338,7 @@ test.describe(
         );
         await page.click('[data-testid="bulk-edit-table"]');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -349,8 +347,11 @@ test.describe(
           page.getByRole('button', { name: 'Previous' })
         ).not.toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for grid cells to be ready for interaction
+        await page
+          .locator('.rdg-cell[role="gridcell"]')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // Click on first cell and edit
 
@@ -396,8 +397,6 @@ test.describe(
 
         await page.click('[data-testid="databases"]');
 
-        await page.waitForLoadState('networkidle');
-
         // Verify Details updated
         await expect(page.getByTestId('column-name')).toHaveText(
           `${table.database.name}${databaseDetails.displayName}`
@@ -426,9 +425,17 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
+          })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByRole('link', {
+            name: 'Gold',
           })
         ).toBeVisible();
 
@@ -470,9 +477,7 @@ test.describe(
 
         await page.click('[data-testid="bulk-edit-table"]');
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -481,8 +486,11 @@ test.describe(
           page.getByRole('button', { name: 'Previous' })
         ).not.toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for grid cells to be ready for interaction
+        await page
+          .locator('.rdg-cell[role="gridcell"]')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // click on last row first cell
         await page.click('.rdg-cell[role="gridcell"]');
@@ -518,7 +526,7 @@ test.describe(
           failed: '0',
         });
 
-        await page.waitForSelector('.rdg-header-row', {
+        await page.locator('.rdg-header-row').waitFor({
           state: 'visible',
         });
         const updateButtonResponse = page.waitForResponse(
@@ -556,8 +564,7 @@ test.describe(
 
         await page.getByTestId('column-display-name').click();
 
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('loader', { state: 'hidden' });
+        await page.locator('loader').waitFor({ state: 'hidden' });
 
         // Verify Tags
         await expect(
@@ -566,9 +573,17 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
+          })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByRole('link', {
+            name: 'Gold',
           })
         ).toBeVisible();
 
@@ -622,8 +637,11 @@ test.describe(
           page.getByRole('button', { name: 'Previous' })
         ).not.toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for grid cells to be ready for interaction
+        await page
+          .locator('.rdg-cell[role="gridcell"]')
+          .first()
+          .waitFor({ state: 'visible' });
 
         // Click on first cell and edit
         await page.click('.rdg-cell[role="gridcell"]');
@@ -674,8 +692,7 @@ test.describe(
           .getByTestId('column-display-name')
           .getByTestId(table.entity.name)
           .click();
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('loader', { state: 'hidden' });
+        await page.locator('loader').waitFor({ state: 'hidden' });
 
         // Verify Domain
         await expect(page.getByTestId('domain-link')).toContainText(
@@ -702,10 +719,16 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
           })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByTestId('certification-Certification.Gold')
         ).toBeVisible();
 
         await expect(
@@ -758,9 +781,7 @@ test.describe(
 
         // Open domain selector to verify multi-select mode (checkboxes visible)
         await page.getByTestId('add-domain').click();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify checkboxes ARE visible (multi-select mode)
         await expect(
@@ -771,7 +792,7 @@ test.describe(
         await clickOutside(page);
 
         // Wait for domain selector to be fully closed
-        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'detached',
         });
 

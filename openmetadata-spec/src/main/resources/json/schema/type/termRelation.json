@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/type/termRelation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TermRelation",
+  "description": "This schema defines the TermRelation type used for establishing typed semantic relationships between glossary terms.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.TermRelation",
+  "properties": {
+    "relationType": {
+      "description": "Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to 'relatedTo' for backward compatibility.",
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+      "default": "relatedTo"
+    },
+    "term": {
+      "description": "Reference to the related glossary term.",
+      "$ref": "entityReference.json"
+    }
+  },
+  "required": ["term"],
+  "additionalProperties": false
+}

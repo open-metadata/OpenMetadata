@@ -30,6 +30,109 @@ export const EXPECTED_BUCKETS = [
   'mlmodel',
 ];
 
+export const DATA_ASSETS = [
+  {
+    key: 'table',
+    label: 'tables',
+    indexType: 'table',
+  },
+  {
+    key: 'storedProcedure',
+    label: 'stored procedures',
+    indexType: 'storedProcedure',
+  },
+  {
+    key: 'database',
+    label: 'databases',
+    indexType: 'database',
+  },
+  {
+    key: 'databaseSchema',
+    label: 'database schemas',
+    indexType: 'databaseSchema',
+  },
+  {
+    key: 'dashboard',
+    label: 'dashboards',
+    indexType: 'dashboard',
+  },
+  {
+    key: 'dashboardDataModel',
+    label: 'dashboard data models',
+    indexType: 'dashboardDataModel',
+  },
+  {
+    key: 'pipeline',
+    label: 'pipelines',
+    indexType: 'pipeline',
+  },
+  {
+    key: 'topic',
+    label: 'topics',
+    indexType: 'topic',
+  },
+  {
+    key: 'mlmodel',
+    label: 'ml models',
+    indexType: 'mlmodel',
+  },
+  {
+    key: 'container',
+    label: 'containers',
+    indexType: 'container',
+  },
+  {
+    key: 'searchIndex',
+    label: 'search indexes',
+    indexType: 'searchIndex',
+  },
+  {
+    key: 'glossaryTerm',
+    label: 'glossary terms',
+    indexType: 'glossaryTerm',
+  },
+  {
+    key: 'tag',
+    label: 'tags',
+    indexType: 'tag',
+  },
+  {
+    key: 'dataProduct',
+    label: 'data products',
+    indexType: 'dataProduct',
+  },
+  {
+    key: 'apiCollection',
+    label: 'api collections',
+    indexType: 'apiCollection',
+  },
+  {
+    key: 'apiEndpoint',
+    label: 'api endpoints',
+    indexType: 'apiEndpoint',
+  },
+  {
+    key: 'directory',
+    label: 'directories',
+    indexType: 'directory',
+  },
+  {
+    key: 'file',
+    label: 'files',
+    indexType: 'file',
+  },
+  {
+    key: 'spreadsheet',
+    label: 'spreadsheets',
+    indexType: 'spreadsheet',
+  },
+  {
+    key: 'worksheet',
+    label: 'worksheets',
+    indexType: 'worksheet',
+  },
+];
+
 export const DATA_ASSETS_SORT = [
   { name: 'Table', filter: 'table' },
   { name: 'Column', filter: 'tableColumn' },

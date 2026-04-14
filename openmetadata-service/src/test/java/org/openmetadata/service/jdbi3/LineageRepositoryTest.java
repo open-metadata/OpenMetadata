@@ -14,18 +14,47 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Tests for the validateLineageDetails logic in LineageRepository.
  * This test verifies the filtering behavior of the new implementation.
  */
 class LineageRepositoryTest {
+
+  private static MockedStatic<Entity> mockedEntity;
+
+  @BeforeAll
+  static void initMocks() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    mockedEntity = mockStatic(Entity.class);
+    mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+  }
+
+  @AfterAll
+  static void closeMocks() {
+    if (mockedEntity != null) {
+      mockedEntity.close();
+    }
+  }
 
   private EntityReference fromEntity;
   private EntityReference toEntity;
@@ -133,7 +162,7 @@ class LineageRepositoryTest {
   @Test
   void testValidateLineageDetails_AllValidColumns_NoFiltering() {
     Set<String> fromColumns = new HashSet<>(Arrays.asList("column1", "column2"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn1"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn1"));
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
@@ -169,13 +198,13 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_InvalidToColumn_FiltersOutColumnLineage() {
-    Set<String> fromColumns = new HashSet<>(Arrays.asList("column1"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("differentColumn"));
+    Set<String> fromColumns = new HashSet<>(List.of("column1"));
+    Set<String> toColumns = new HashSet<>(List.of("differentColumn"));
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
         new ColumnLineage()
-            .withFromColumns(Arrays.asList("database.schema.fromTable.column1"))
+            .withFromColumns(List.of("database.schema.fromTable.column1"))
             .withToColumn("database.schema.toTable.invalidColumn");
     columnLineages.add(columnLineage);
 
@@ -193,8 +222,8 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_InvalidFromColumns_FiltersOutInvalidColumns() {
-    Set<String> fromColumns = new HashSet<>(Arrays.asList("validColumn"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn"));
+    Set<String> fromColumns = new HashSet<>(List.of("validColumn"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn"));
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
@@ -226,8 +255,8 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_AllFromColumnsInvalid_RemovesEntireColumnLineage() {
-    Set<String> fromColumns = new HashSet<>(Arrays.asList("otherColumn"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn"));
+    Set<String> fromColumns = new HashSet<>(List.of("otherColumn"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn"));
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
@@ -261,13 +290,13 @@ class LineageRepositoryTest {
     // Valid column lineage
     ColumnLineage validLineage =
         new ColumnLineage()
-            .withFromColumns(Arrays.asList("database.schema.fromTable.column1"))
+            .withFromColumns(List.of("database.schema.fromTable.column1"))
             .withToColumn("database.schema.toTable.targetColumn1");
 
     // Invalid toColumn lineage (should be filtered out)
     ColumnLineage invalidToLineage =
         new ColumnLineage()
-            .withFromColumns(Arrays.asList("database.schema.fromTable.column2"))
+            .withFromColumns(List.of("database.schema.fromTable.column2"))
             .withToColumn("database.schema.toTable.invalidTarget");
 
     // Partially valid fromColumns lineage
@@ -315,8 +344,8 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_EmptyFromColumns_RemovesColumnLineage() {
-    Set<String> fromColumns = new HashSet<>(Arrays.asList("column1"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn"));
+    Set<String> fromColumns = new HashSet<>(List.of("column1"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn"));
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
@@ -339,8 +368,8 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_PreservesOtherLineageDetailsFields() {
-    Set<String> fromColumns = new HashSet<>(Arrays.asList("column1"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn"));
+    Set<String> fromColumns = new HashSet<>(List.of("column1"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn"));
 
     // Setup lineage details with additional fields
     LineageDetails details =
@@ -355,7 +384,7 @@ class LineageRepositoryTest {
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
         new ColumnLineage()
-            .withFromColumns(Arrays.asList("database.schema.fromTable.column1"))
+            .withFromColumns(List.of("database.schema.fromTable.column1"))
             .withToColumn("database.schema.toTable.targetColumn");
     columnLineages.add(columnLineage);
     details.setColumnsLineage(columnLineages);
@@ -375,7 +404,7 @@ class LineageRepositoryTest {
   @Test
   void testValidateLineageDetails_ColumnNamesWithoutFQNPrefix() {
     Set<String> fromColumns = new HashSet<>(Arrays.asList("column1", "column2"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn"));
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
     ColumnLineage columnLineage =
@@ -400,8 +429,8 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_ModifiesOriginalColumnLineageList() {
-    Set<String> fromColumns = new HashSet<>(Arrays.asList("validColumn"));
-    Set<String> toColumns = new HashSet<>(Arrays.asList("targetColumn"));
+    Set<String> fromColumns = new HashSet<>(List.of("validColumn"));
+    Set<String> toColumns = new HashSet<>(List.of("targetColumn"));
 
     // Create original column lineage with invalid columns
     List<String> originalFromColumns =
@@ -434,5 +463,36 @@ class LineageRepositoryTest {
     assertEquals(
         "database.schema.fromTable.validColumn",
         details.getColumnsLineage().get(0).getFromColumns().get(0));
+  }
+
+  @Test
+  void testDeleteLineageBySource_OpenLineage_UsesPipelinePath() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.findLineageBySourcePipeline(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyInt()))
+        .thenReturn(Collections.emptyList());
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    LineageRepository lineageRepository = new LineageRepository();
+    UUID entityId = UUID.randomUUID();
+    lineageRepository.deleteLineageBySource(
+        entityId, "table", LineageDetails.Source.OPEN_LINEAGE.value());
+
+    org.mockito.Mockito.verify(relationshipDAO)
+        .findLineageBySourcePipeline(
+            entityId,
+            "table",
+            LineageDetails.Source.OPEN_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+    org.mockito.Mockito.verify(relationshipDAO)
+        .deleteLineageBySourcePipeline(
+            entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
   }
 }

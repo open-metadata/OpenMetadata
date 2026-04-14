@@ -17,6 +17,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
@@ -149,11 +150,14 @@ public class GlossaryMockTest {
     expectedTerm.setId(UUID.fromString(termId));
     expectedTerm.setName("profit");
 
-    // Mock related terms
-    EntityReference relatedTerm = new EntityReference();
-    relatedTerm.setName("revenue");
-    relatedTerm.setType("glossaryTerm");
-    expectedTerm.setRelatedTerms(List.of(relatedTerm));
+    // Mock related terms using TermRelation
+    EntityReference relatedTermRef = new EntityReference();
+    relatedTermRef.setName("revenue");
+    relatedTermRef.setType("glossaryTerm");
+    TermRelation termRelation = new TermRelation();
+    termRelation.setTerm(relatedTermRef);
+    termRelation.setRelationType("relatedTo");
+    expectedTerm.setRelatedTerms(List.of(termRelation));
 
     when(mockGlossaryTermService.get(termId, fields)).thenReturn(expectedTerm);
 
@@ -164,7 +168,7 @@ public class GlossaryMockTest {
     assertNotNull(result);
     assertNotNull(result.getRelatedTerms());
     assertEquals(1, result.getRelatedTerms().size());
-    assertEquals("revenue", result.getRelatedTerms().get(0).getName());
+    assertEquals("revenue", result.getRelatedTerms().get(0).getTerm().getName());
     verify(mockGlossaryTermService).get(termId, fields);
   }
 

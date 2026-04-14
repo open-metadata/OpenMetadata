@@ -135,6 +135,7 @@ public final class Entity {
   public static final String FIELD_EXPERTS = "experts";
   public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
+  public static final String FIELD_DATA_CONTRACT = "dataContract";
   public static final String FIELD_ASSETS = "assets";
 
   public static final String FIELD_STYLE = "style";
@@ -168,6 +169,7 @@ public final class Entity {
   public static final String API_SERVICE = "apiService";
   public static final String DRIVE_SERVICE = "driveService";
   public static final String LLM_SERVICE = "llmService";
+  public static final String MCP_SERVICE = "mcpService";
   //
   // Data asset entities
   //
@@ -214,6 +216,8 @@ public final class Entity {
   public static final String PROMPT_TEMPLATE = "promptTemplate";
   public static final String AGENT_EXECUTION = "agentExecution";
   public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
+  public static final String MCP_SERVER = "mcpServer";
+  public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
   public static final String TEST_SUITE = "testSuite";
@@ -318,6 +322,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.LLM, LLM_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.MCP, MCP_SERVICE);
 
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
@@ -340,6 +345,7 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(SPREADSHEET, DRIVE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(WORKSHEET, DRIVE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(LLM_MODEL, LLM_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(MCP_SERVER, MCP_SERVICE);
 
     PARENT_ENTITY_TYPES.addAll(
         listOf(
@@ -356,6 +362,7 @@ public final class Entity {
             SECURITY_SERVICE,
             DRIVE_SERVICE,
             LLM_SERVICE,
+            MCP_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
@@ -447,6 +454,18 @@ public final class Entity {
 
   public static Set<String> getEntityList() {
     return Collections.unmodifiableSet(ENTITY_LIST);
+  }
+
+  /**
+   * Clears per-request ThreadLocal caches held by repositories.
+   *
+   * <p>This is a request-boundary safety net to avoid stale ThreadLocal state leaking when a
+   * request terminates unexpectedly before repository-level finally blocks run.
+   */
+  public static void clearRepositoryThreadLocals() {
+    for (EntityRepository<? extends EntityInterface> repository : ENTITY_REPOSITORY_MAP.values()) {
+      repository.clearParentCache();
+    }
   }
 
   public static EntityReference getEntityReference(EntityReference ref, Include include) {
@@ -599,10 +618,34 @@ public final class Entity {
     return entities;
   }
 
+  @SuppressWarnings("unchecked")
+  public static <T> T getEntityForInheritance(
+      String entityType, UUID id, String fields, Include include) {
+    EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+    return (T) repo.getForInheritance(id, repo.getFields(fields), include);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> List<T> getEntitiesForInheritance(
+      List<EntityReference> refs, String fields, Include include) {
+    if (CollectionUtils.isEmpty(refs)) return new ArrayList<>();
+    EntityRepository<?> repo = Entity.getEntityRepository(refs.get(0).getType());
+    Fields parsedFields = repo.getFields(fields);
+    List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
+    List<?> parents = repo.find(ids, include);
+    repo.fetchInheritableRelationshipsUntyped(parents, parsedFields);
+    repo.setInheritedFieldsUntyped(parents, parsedFields);
+    return (List<T>) parents;
+  }
+
   public static <T> T getEntityOrNull(
       EntityReference entityReference, String field, Include include) {
     if (entityReference == null) return null;
-    return Entity.getEntity(entityReference, field, include);
+    try {
+      return Entity.getEntity(entityReference, field, include);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
   }
 
   public static <T> T getEntity(EntityLink link, String fields, Include include) {

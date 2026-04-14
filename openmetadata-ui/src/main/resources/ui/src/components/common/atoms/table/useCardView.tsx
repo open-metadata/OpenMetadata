@@ -15,14 +15,14 @@ import { Box, Card, CardContent } from '@mui/material';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ListingData } from '../shared/types';
+import { ColumnConfig, ListingData } from '../shared/types';
 import { useCellRenderer } from './useCellRenderer';
 
 interface UseCardViewConfig<T> {
   listing: ListingData<T>;
   cardTemplate: (
     entity: T,
-    renderCell: (entity: T, column: any) => React.ReactNode
+    renderCell: (entity: T, column: ColumnConfig<T>) => React.ReactNode
   ) => React.ReactNode;
 }
 

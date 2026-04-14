@@ -129,6 +129,22 @@ public class EntityLifecycleEventDispatcher {
   }
 
   /**
+   * Dispatch bulk entity created event to all applicable handlers.
+   * Handlers that support bulk operations will receive the full list for batch processing.
+   */
+  public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+    if (entities == null || entities.isEmpty()) return;
+
+    String entityType = entities.getFirst().getEntityReference().getType();
+    LOG.debug(
+        "Dispatching bulk entity created event for {} {} entities", entityType, entities.size());
+
+    for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
+      executeHandler(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
+    }
+  }
+
+  /**
    * Dispatch entity updated event to all applicable handlers.
    */
   public void onEntityUpdated(
@@ -141,6 +157,30 @@ public class EntityLifecycleEventDispatcher {
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
           () -> handler.onEntityUpdated(entity, changeDescription, subjectContext), handler);
+    }
+  }
+
+  /**
+   * Dispatch a bulk entity updated event to all applicable handlers.
+   * Handlers can implement onEntitiesUpdated for optimized bulk handling. Fallback to
+   * per-entity onEntityUpdated if the handler does not override onEntitiesUpdated.
+   * Assumes all the entity are of the same type for efficient dispatching (i.e. no loop for validation)
+   *
+   */
+  public void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    String entityType = entities.getFirst().getEntityReference().getType();
+    LOG.debug(
+        "Dispatching bulk entity updated event for {} ({} entities)", entityType, entities.size());
+    for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
+      executeHandler(
+          () -> handler.onEntitiesUpdated(entities, changeDescription, subjectContext), handler);
     }
   }
 

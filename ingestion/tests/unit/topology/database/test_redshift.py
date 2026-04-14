@@ -59,11 +59,6 @@ mock_redshift_config = {
 }
 
 
-RAW_DIST_STYLE = ["KEY(eventid)", "EVEN", "ALL"]
-
-EXPECTED_PARTITION_COLUMNS = ["eventid", None, None]
-
-
 class RedshiftUnitTest(unittest.TestCase):
     """Test cases for Redshift Provisioned cluster"""
 
@@ -78,15 +73,6 @@ class RedshiftUnitTest(unittest.TestCase):
             mock_redshift_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-
-    def test_partition_parse_columns(self):
-        """Test parsing of partition key from distribution style"""
-        for i in range(len(RAW_DIST_STYLE)):
-            with self.subTest(i=i):
-                self.assertEqual(
-                    self.redshift_source._get_partition_key(RAW_DIST_STYLE[i]),
-                    EXPECTED_PARTITION_COLUMNS[i],
-                )
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(

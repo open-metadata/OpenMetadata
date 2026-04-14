@@ -50,8 +50,20 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -409,6 +421,10 @@
                 "type": "long"
               }
             }
+          },
+          "date": {
+            "type": "date",
+            "format": "strict_date_optional_time||yyyy-MM-dd HH:mm:ss||epoch_millis"
           }
         }
       },
@@ -644,6 +660,48 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 512
+          }
+        }
+      },
+      "customPropertiesTyped": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "propertyType": {
+            "type": "keyword"
+          },
+          "stringValue": {
+            "type": "keyword"
+          },
+          "textValue": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "longValue": {
+            "type": "long"
+          },
+          "doubleValue": {
+            "type": "double"
+          },
+          "start": {
+            "type": "long"
+          },
+          "end": {
+            "type": "long"
+          },
+          "refId": {
+            "type": "keyword"
+          },
+          "refType": {
+            "type": "keyword"
+          },
+          "refName": {
+            "type": "keyword"
+          },
+          "refFqn": {
+            "type": "keyword"
           }
         }
       },

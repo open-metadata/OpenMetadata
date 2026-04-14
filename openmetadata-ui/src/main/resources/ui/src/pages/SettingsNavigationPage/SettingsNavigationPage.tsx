@@ -136,6 +136,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
       {t(node.title as string)}
       <Switch
         checked={!hiddenKeys.includes(node.key as string)}
+        data-testid={`navigation-switch-${node.key}`}
         onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
       />
     </div>

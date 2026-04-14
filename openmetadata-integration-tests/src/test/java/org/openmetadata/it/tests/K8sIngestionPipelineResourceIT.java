@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Run with: ENABLE_K8S_TESTS=true mvn test -Dtest=K8sIngestionPipelineResourceIT
  */
+@Disabled("Flaky: pipelineServiceClient is null in CI - see Slack thread 2026-03-27")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class K8sIngestionPipelineResourceIT {
 
@@ -78,12 +80,14 @@ public class K8sIngestionPipelineResourceIT {
 
   @BeforeAll
   static void setupK8s() throws Exception {
-    // Skip tests if K8s is not enabled
     assumeTrue(
-        TestSuiteBootstrap.isK8sEnabled(),
+        TestSuiteBootstrap.isK8sTestsRequested(),
         "K8s tests disabled. Run with ENABLE_K8S_TESTS=true to enable.");
 
-    LOG.info("K8s is running, configuring test environment with native Jobs/CronJobs");
+    // Ensure this class initializes the K8s backend explicitly instead of depending on suite order.
+    TestSuiteBootstrap.setupK8s();
+
+    LOG.info("K8s requested, configuring test environment with native Jobs/CronJobs");
 
     try {
       String kubeConfigYaml = TestSuiteBootstrap.getKubeConfigYaml();

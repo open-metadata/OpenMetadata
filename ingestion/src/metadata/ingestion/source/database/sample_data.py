@@ -1622,7 +1622,7 @@ class SampleDataSource(
                 self.metadata.ingest_table_sample_data(
                     table_entity,
                     sample_data=SamplerResponse(
-                        table=table_entity,
+                        entity=table_entity,
                         sample_data=SampleData(
                             data=TableData(
                                 rows=table["sampleData"]["rows"],
@@ -1773,6 +1773,7 @@ class SampleDataSource(
                 replicationFactor=topic["replicationFactor"],
                 maximumMessageSize=topic["maximumMessageSize"],
                 cleanupPolicies=topic["cleanupPolicies"],
+                tags=topic.get("tags", []),
                 service=self.kafka_service.fullyQualifiedName,
             )
 
@@ -1856,6 +1857,7 @@ class SampleDataSource(
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
                     sourceUrl=chart["sourceUrl"],
+                    tags=chart.get("tags", []),
                     service=self.looker_service.fullyQualifiedName,
                 )
                 yield Either(right=chart_ev)
@@ -1977,6 +1979,7 @@ class SampleDataSource(
                 description=dashboard["description"],
                 sourceUrl=dashboard["sourceUrl"],
                 charts=dashboard["charts"],
+                tags=dashboard.get("tags", []),
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
             )
@@ -2012,22 +2015,54 @@ class SampleDataSource(
 
     def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         for edge in self.lineage:
-            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
-            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
-            edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
-            lineage_details = (
-                LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
-                if edge_entity_ref
-                else None
-            )
-            lineage = AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=from_entity_ref,
-                    toEntity=to_entity_ref,
-                    lineageDetails=lineage_details,
+            try:
+                from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
+                to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
+                if not from_entity_ref or not to_entity_ref:
+                    logger.warning(
+                        f"Skipping lineage edge from [{edge['from']['fqn']}] to [{edge['to']['fqn']}]: "
+                        "entity not found"
+                    )
+                    continue
+                edge_entity_ref = get_lineage_entity_ref(
+                    edge["edge_meta"], self.metadata
                 )
-            )
-            yield Either(right=lineage)
+                lineage_details = None
+                if (
+                    edge_entity_ref
+                    or edge.get("sql_query")
+                    or edge.get("temp_lineage_tables")
+                ):
+                    temp_tables = None
+                    if edge.get("temp_lineage_tables"):
+                        from metadata.generated.schema.type.entityLineage import (
+                            TempLineageTable,
+                        )
+
+                        temp_tables = [
+                            TempLineageTable(**t) for t in edge["temp_lineage_tables"]
+                        ]
+                    lineage_details = LineageDetails(
+                        pipeline=edge_entity_ref if edge_entity_ref else None,
+                        sqlQuery=edge.get("sql_query"),
+                        tempLineageTables=temp_tables,
+                    )
+                lineage = AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=from_entity_ref,
+                        toEntity=to_entity_ref,
+                        lineageDetails=lineage_details,
+                    )
+                )
+                yield Either(right=lineage)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Lineage",
+                        error=f"Error creating lineage edge: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def ingest_pipeline_status(self) -> Iterable[Either[OMetaPipelineStatus]]:
         """

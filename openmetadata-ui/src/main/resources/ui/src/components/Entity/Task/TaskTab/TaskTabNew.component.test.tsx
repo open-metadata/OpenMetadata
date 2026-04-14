@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
+  APPROVAL_TASK_FEED,
   TASK_FEED,
   TASK_FEED_RECOGNIZER_FEEDBACK,
 } from '../../../../mocks/Task.mock';
+import { TaskTabProps } from './TaskTab.interface';
 import { TaskTabNew } from './TaskTabNew.component';
 
 jest.mock('react-router-dom', () => ({
@@ -162,7 +165,7 @@ jest.mock(
   }
 );
 
-const mockProps = {
+const mockProps: TaskTabProps = {
   taskThread: TASK_FEED,
   owners: [],
   entityType: EntityType.TABLE,
@@ -517,5 +520,27 @@ describe('TaskTabNew Component', () => {
     });
 
     expect(screen.getByTestId('feed-replies')).toBeInTheDocument();
+  });
+
+  it('should display the task information for approval tasks with suggestion data', async () => {
+    const {
+      isTagsTask,
+      isDescriptionTask,
+    } = require('../../../../utils/TasksUtils');
+    isTagsTask.mockReturnValue(false);
+    isDescriptionTask.mockReturnValue(false);
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} taskThread={APPROVAL_TASK_FEED} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      screen.getByText('message.request-approval-message')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('entityName');
+    expect(screen.getByText('label.created-by')).toBeInTheDocument();
+    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
   });
 });

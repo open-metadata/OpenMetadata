@@ -369,22 +369,18 @@ const handlePropertyValueInput = async (
   const inputElement = ruleLocator.locator('.rule--widget input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
-  let apiResponsePromise;
-
   // Fill the input only if it's visible
   if (await inputElement.isVisible()) {
     // Convert object values to JSON strings
     const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
 
-    if (isEntityRefProperty) {
-      apiResponsePromise = page.waitForResponse(
-        '/api/v1/search/aggregate?*value=.%2A*'
-      );
-    }
+    const apiResponsePromise = isEntityRefProperty
+      ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
+      : undefined;
 
     await inputElement.click();
 
-    if (isEntityRefProperty) {
+    if (apiResponsePromise) {
       await apiResponsePromise;
     }
 

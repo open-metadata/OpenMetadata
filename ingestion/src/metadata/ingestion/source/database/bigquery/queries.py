@@ -107,6 +107,19 @@ WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
     """
 )
 
+BIGQUERY_GET_STORED_PROCEDURES_BY_REGION = textwrap.dedent(
+    """
+SELECT
+  routine_name as name,
+  routine_definition as definition,
+  external_language as language
+FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.ROUTINES
+WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
+  AND routine_catalog = '{database_name}'
+  AND routine_schema = '{schema_name}'
+    """
+)
+
 BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
@@ -182,8 +195,9 @@ AND (
     (protoPayload.methodName = "google.cloud.bigquery.v2.JobService.InsertJob" AND (protoPayload.metadata.tableCreation:* OR protoPayload.metadata.tableChange:* OR protoPayload.metadata.tableDeletion:*))
 )
 AND resource.labels.project_id = "{project}"
-AND resource.labels.dataset_id = "{dataset}"
 AND timestamp >= "{start_date}"
+AND timestamp < "{end_date}"
+{dataset_filter}
 """
 
 BIGQUERY_GET_SCHEMA_NAMES = """
@@ -202,6 +216,16 @@ BIGQUERY_GET_TABLE_DDLS = textwrap.dedent(
     """
     SELECT table_name, ddl
     FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
+    WHERE table_schema = '{schema_name}'
+      AND table_catalog = '{database_name}'
+      AND table_type IN ('BASE TABLE', 'EXTERNAL')
+    """
+)
+
+BIGQUERY_GET_TABLE_DDLS_BY_REGION = textwrap.dedent(
+    """
+    SELECT table_name, ddl
+    FROM `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES
     WHERE table_schema = '{schema_name}'
       AND table_catalog = '{database_name}'
       AND table_type IN ('BASE TABLE', 'EXTERNAL')

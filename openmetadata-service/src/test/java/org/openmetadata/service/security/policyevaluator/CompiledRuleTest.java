@@ -5,9 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -28,17 +26,7 @@ class CompiledRuleTest {
 
   @Test
   void testResourceMatch() {
-    // Create a random list of resources
-    Random random = new Random();
-    Set<String> ruleResources = new HashSet<>();
-    for (int i = 0; i < 3; i++) {
-      String res = RESOURCE_LIST.get(random.nextInt(4));
-      if (!res.equalsIgnoreCase(ALL_RESOURCES)) {
-        ruleResources.add(res);
-      }
-    }
-
-    assertTrue(ruleResources.size() > 0); // Ensure we are setting at least one resource in a rule
+    Set<String> ruleResources = Set.of("table", "topic", "database");
 
     CompiledRule rule =
         new CompiledRule(new Rule().withName("test").withResources(new ArrayList<>(ruleResources)));

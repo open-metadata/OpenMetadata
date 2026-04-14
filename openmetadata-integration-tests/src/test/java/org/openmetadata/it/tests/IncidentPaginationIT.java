@@ -9,6 +9,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -31,6 +33,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
+@Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IncidentPaginationIT {
 
@@ -83,10 +86,20 @@ public class IncidentPaginationIT {
   private void waitForDataIndexed() throws Exception {
     String firstFqn = testCases.get(0).getFullyQualifiedName();
     final Instant[] lastRecreation = {Instant.MIN};
+    AtomicReference<String> lastError = new AtomicReference<>("no attempts yet");
 
     await()
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(5))
+        .conditionEvaluationListener(
+            condition -> {
+              if (!condition.isSatisfied()) {
+                log.warn(
+                    "waitForDataIndexed not satisfied after {} (last error: {})",
+                    condition.getElapsedTimeInMS() + "ms",
+                    lastError.get());
+              }
+            })
         .until(
             () -> {
               try {
@@ -105,6 +118,8 @@ public class IncidentPaginationIT {
                       client.testCaseResolutionStatuses().searchList(globalParams);
                   return globalResponse.getPaging().getTotal() >= TEST_DATA_SIZE;
                 }
+                lastError.set(
+                    "filtered size=" + filteredResponse.getData().size() + " (expected 1)");
                 // Data not found — may have been lost during a concurrent search index rebuild.
                 // Re-create incident statuses at most once per minute to trigger re-indexing.
                 if (Duration.between(lastRecreation[0], Instant.now()).toSeconds() > 60) {
@@ -113,6 +128,7 @@ public class IncidentPaginationIT {
                 }
                 return false;
               } catch (Exception e) {
+                lastError.set(e.getClass().getSimpleName() + ": " + e.getMessage());
                 return false;
               }
             });

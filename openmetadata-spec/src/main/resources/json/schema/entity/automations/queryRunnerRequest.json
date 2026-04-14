@@ -60,6 +60,12 @@
       "minimum": 1,
       "maximum": 1000,
       "default": null
+    },
+    "credentialSourceType": {
+      "description": "Source type of the resolved credentials. Indicates whether the credentials come from a user-level config or a team-level config. Set by the backend during credential resolution.",
+      "type": "string",
+      "enum": ["user", "team"],
+      "default": "user"
     }
   },
   "additionalProperties": false

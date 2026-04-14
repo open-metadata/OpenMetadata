@@ -12,14 +12,13 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -128,6 +127,15 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+test.afterAll('Cleanup shared entities', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await tableEntity.delete(apiContext);
+  await user.delete(apiContext);
+  await dataConsumerUser.delete(apiContext);
+  await adminUser.delete(apiContext);
+  await afterAction();
+});
+
 Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
@@ -141,6 +149,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await entity.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup entity', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
       await afterAction();
     });
 
@@ -474,7 +488,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')
@@ -524,16 +538,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .locator('[data-testid="selectable-list"]')
             .waitFor({ state: 'visible' });
 
-          const searchTagCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
-          );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PersonalData.SpecialCategory');
-          await searchTagCleanup;
-          await waitForAllLoadersToDisappear(page);
-
-          await page.getByTitle('SpecialCategory', { exact: true }).click();
+          await page.getByTestId('clear-all-button').click();
           const removeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
@@ -575,7 +580,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnNameTestId,
             entityType: entity.type as EntityType,
           });
-
+          await waitForAllLoadersToDisappear(page);
           // Step 1: Add a glossary term first
           const glossaryEditButton = panelContainer.getByTestId(
             'edit-glossary-terms'
@@ -596,7 +601,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const glossarySearchResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('glossary_term_search_index') &&
+              response.url().includes('glossaryTerm') &&
               response.request().method() === 'GET'
           );
           await searchBar.fill(
@@ -651,7 +656,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await expect(tagSearchBar).toBeVisible();
 
           const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await tagSearchBar.fill('PII.Sensitive');
           await searchTag;
@@ -723,7 +728,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchGlossaryCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=glossary_term_search_index*'
+            '/api/v1/search/query?q=*index=glossaryTerm*'
           );
           await page
             .locator('[data-testid="glossary-term-select-search-bar"]')
@@ -753,7 +758,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .waitFor({ state: 'visible' });
 
           const searchTagCleanup2 = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag_search_index*'
+            '/api/v1/search/query?q=*index=tag*'
           );
           await page
             .locator('[data-testid="tag-select-search-bar"]')
@@ -801,10 +806,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (hasDataType) {
               // If data type chip exists, it should have content
-              const dataTypeText = await dataTypeChip.textContent();
-
-              expect(dataTypeText).toBeTruthy();
-              expect(dataTypeText?.trim().length).toBeGreaterThan(0);
+              await expect(dataTypeChip).not.toHaveText('');
             }
           }
           // Verify pagination shows correct count (including nested columns)
@@ -835,7 +837,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               if (await nextButton.isEnabled()) {
                 // Navigate to next column
                 await nextButton.click();
-                await page.waitForLoadState('networkidle');
 
                 // Verify pagination updated
                 const updatedPagination = await paginationText.textContent();
@@ -856,12 +857,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                   .nth(0);
 
                 await prevButton.click();
-                await page.waitForLoadState('networkidle');
 
                 // Verify we're back
-                const finalPagination = await paginationText.textContent();
-
-                expect(finalPagination).toBe(paginationContent);
+                await expect(paginationText).toHaveText(
+                  paginationContent ?? ''
+                );
               }
             }
           }
@@ -880,11 +880,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         // Only run for entities that have nested columns (like Table)
         if (entity.type !== 'Table') {
+          // eslint-disable-next-line playwright/no-skipped-test -- conditional skip: only Table entities have nested columns
           test.skip();
         }
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
-        await page.waitForLoadState('networkidle');
 
         await test.step('Verify nested column has expand icon in main table', async () => {
           // Get the third column which is the nested parent column (name column)
@@ -932,9 +932,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           });
 
           // Wait for any loaders to disappear
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
         });
 
         await test.step('Verify NestedColumnsSection renders with correct structure', async () => {
@@ -1037,9 +1035,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await clickResponse;
 
           // Wait for loader to disappear after navigation
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           // Verify panel is still visible (navigated to nested column)
           await expect(page.locator('.column-detail-panel')).toBeVisible();
@@ -1058,9 +1054,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (await prevButton.isEnabled()) {
             await prevButton.click();
             // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
           }
 
           const allNestedLinks = panelContainer.locator('.nested-column-name');
@@ -1090,9 +1084,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await intermediateClickResponse;
 
             // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Verify panel updated correctly
             await expect(page.locator('.column-detail-panel')).toBeVisible();
@@ -1176,11 +1168,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         test.slow(true);
 
         if (entity.type !== 'Table') {
+          // eslint-disable-next-line playwright/no-skipped-test -- conditional skip: only Table entities have nested columns
           test.skip();
         }
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
-        await page.waitForLoadState('networkidle');
 
         await test.step('Verify array column with nested children renders correctly', async () => {
           const tableResponse = entity.entityResponseData as Table;
@@ -1215,7 +1207,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const parentRow = page.locator(`[data-row-key="${nestedParentFQN}"]`);
 
           await parentRow.waitFor({ state: 'visible' });
-          await page.waitForLoadState('networkidle');
 
           const arrayColumnRow = page.locator(
             `[data-row-key="${arrayColumnFQN}"]`
@@ -1257,11 +1248,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         test.slow(true);
 
         if (entity.type !== 'Table') {
+          // eslint-disable-next-line playwright/no-skipped-test -- conditional skip: only Table entities have nested columns
           test.skip();
         }
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
-        await page.waitForLoadState('networkidle');
 
         await test.step('Verify mixed siblings have consistent indentation', async () => {
           // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
@@ -1276,9 +1267,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (await nestedColumnRow.getByTestId('expand-icon').isVisible()) {
             await nestedColumnRow.getByTestId('expand-icon').click();
             // Wait for expansion to complete
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Open detail panel
             const nestedColumnId = await nestedColumnRow.getAttribute(
@@ -1381,9 +1370,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           );
 
           // Wait for loader to disappear after search
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
           const termOption = page.locator('.ant-list-item').filter({
@@ -1405,9 +1392,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await updateResponse;
 
           // CRITICAL: Wait for UI to update after API response
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
 
           await expect(
             panelContainer.getByTestId(
@@ -1513,9 +1498,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 .getByTestId('alert-message')
             ).toContainText('Description updated successfully');
 
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             await expect(
               panelContainer
@@ -1557,15 +1540,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await nextButton.click();
 
             // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Verify entity link is visible after navigation
             await expect(page.getByTestId('entity-link')).toBeVisible();
 
             const updatedText = await paginationText.textContent();
 
+            // eslint-disable-next-line playwright/prefer-web-first-assertions
             expect(updatedText).not.toBe(initialText);
             // Verify pagination still shows correct format after navigation
             expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
@@ -1581,16 +1563,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await prevButton.click();
 
             // Wait for loader to disappear after navigation
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             await expect(page.getByTestId('entity-link')).toBeVisible();
 
             // Verify we're back to the original column
-            const finalText = await paginationText.textContent();
-
-            expect(finalText).toBe(initialText);
+            await expect(paginationText).toHaveText(initialText ?? '');
           }
 
           // Close panel
@@ -1651,6 +1629,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               // Verify that the chip has content (metric value)
               const chipContent = await metricChip.textContent();
 
+              // eslint-disable-next-line playwright/prefer-web-first-assertions
               expect(chipContent).toBeTruthy();
               // Value should match one of these patterns: percentage (e.g., "75%"), number (e.g., "1,000"), or placeholder ("--")
               expect(chipContent).toMatch(/(\d+%|\d{1,3}(,\d{3})*|--)/);
@@ -2067,7 +2046,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         // Since the test iterates through all 17 types of custom property and
         // performs multiple actions for each, we need to increase the timeout
         // to avoid premature test failure
-        test.setTimeout(240000);
+        test.setTimeout(600000);
         const { apiContext, afterAction } = await getApiContext(page);
 
         await prepareCustomProperty(apiContext);
@@ -2075,12 +2054,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const columnFqn =
           (entity as TableClass).entityResponseData.columns[0]
             .fullyQualifiedName ?? '';
+        const tableFqn =
+          (entity as TableClass).entityResponseData.fullyQualifiedName ?? '';
 
         for (const type of properties) {
           await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
             await verifyTableColumnCustomPropertyPersistence({
               page,
               columnFqn,
+              tableFqn,
               propertyName: customPropertyValue[type].property.name,
               propertyType: type,
               users,
@@ -2174,10 +2156,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         // Navigate to the table entity page
         await entity.visitEntityPage(page);
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Step 1: Navigate to Data Observability tab and verify profiler tab is selected by default
         await test.step('Navigate to Data Observability tab', async () => {
@@ -2195,19 +2174,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await profilerTab.click();
           await profilerResponse;
 
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
         });
 
         // Step 2: Verify tabs UI component is rendered in Data Observability tab
         await test.step('Verify tabs UI component is rendered in Data Observability tab', async () => {
           // Verify that the profiler sub-tabs are visible
           // (Table Profile, Column Profile, Data Quality, or Incidents)
-          expect(page.getByTestId('table-profile')).toBeVisible();
-          expect(page.getByTestId('column-profile')).toBeVisible();
-          expect(page.getByTestId('data-quality')).toBeVisible();
+          await expect(page.getByTestId('table-profile')).toBeVisible();
+          await expect(page.getByTestId('column-profile')).toBeVisible();
+          await expect(page.getByTestId('data-quality')).toBeVisible();
         });
 
         // Step 3: Switch to Activity Feed tab (all tab is selected by default)
@@ -2226,10 +2202,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await activityFeedTab.click();
           await activityFeedResponse;
 
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await waitForAllLoadersToDisappear(page);
         });
 
         // Step 4: Verify tabs or left component is rendered in Activity Feed tab
@@ -2396,7 +2369,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
    * @description Tests soft deleting an entity and then hard deleting it to completely remove it from the system
 
    */
-  test(`Delete ${key}`, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
+  test(`Delete ${key}`, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
     test.slow(true);
 

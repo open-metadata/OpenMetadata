@@ -1,7 +1,6 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import io.dropwizard.core.setup.Bootstrap;
@@ -69,7 +68,7 @@ public class MicrometerBundleTest {
 
     // The bundle creates real objects, not mocks, so we can't verify mock calls
     // Instead, verify that the objects were created correctly
-    assertTrue(bundle.getPrometheusMeterRegistry().getMeters().size() > 0);
+    assertFalse(bundle.getPrometheusMeterRegistry().getMeters().isEmpty());
     verify(jerseyEnv, times(1))
         .register(any(org.glassfish.jersey.internal.inject.AbstractBinder.class));
   }
@@ -119,7 +118,7 @@ public class MicrometerBundleTest {
 
     // Verify the registry has meters registered
     assertTrue(
-        bundle.getPrometheusMeterRegistry().getMeters().size() > 0,
+        !bundle.getPrometheusMeterRegistry().getMeters().isEmpty(),
         "Should have registered meters");
     assertTrue(metrics.length() > 1000, "Should have substantial metrics output");
   }

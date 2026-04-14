@@ -533,6 +533,11 @@ class CommonDbSourceService(
         by default there will be no location path
         """
 
+    def get_table_extensions(self, table_name: str):
+        """
+        Method to fetch the extensions of the table
+        """
+
     @calculate_execution_time_generator()
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -570,6 +575,9 @@ class CommonDbSourceService(
                 table_constraints=table_constraints,
                 foreign_columns=foreign_columns,
                 columns=columns,
+            )
+            table_constraints = self.normalize_table_constraints(
+                table_constraints, columns
             )
 
             description = (
@@ -613,6 +621,7 @@ class CommonDbSourceService(
                 locationPath=self.get_location_path(
                     table_name=table_name, schema_name=schema_name
                 ),
+                extension=self.get_table_extensions(table_name=table_name),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
@@ -657,8 +666,12 @@ class CommonDbSourceService(
         else:
             database_name = self.context.get().database
 
-        referred_table_fqn = f"{self.context.get().database_service}.{database_name}.{column.get('referred_schema')}.{column.get('referred_table')}"
-
+        referred_schema = column.get("referred_schema") or schema_name
+        referred_table_fqn = (
+            f"{self.context.get().database_service}."
+            f"{database_name}.{referred_schema}."
+            f"{column.get('referred_table')}"
+        )
         referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
         if referred_table:
             for referred_column in column.get("referred_columns"):

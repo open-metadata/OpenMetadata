@@ -92,6 +92,14 @@
       "description": "Asset count in case of child assets lineage.",
       "type": "integer",
       "default": null
+    },
+    "tempLineageTables": {
+      "description": "Lineage path through temporary/intermediate tables. Each element represents a hop with fromEntity and toEntity fields.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityLineage.json#/definitions/tempLineageTable"
+      },
+      "default": null
     }
   },
   "additionalProperties": false
