@@ -254,6 +254,23 @@ public interface SearchIndex {
     return data;
   }
 
+  /**
+   * Populates upstreamLineage and lineageSqlQueries in the given search doc map.
+   *
+   * <p>Identical SQL queries across edges are deduplicated: the full text is stored once in
+   * lineageSqlQueries keyed by a sequential integer, and each edge carries only the key via
+   * sqlQueryKey. Edges with unique SQL still get their SQL stored (and keyed). The authoritative
+   * per-edge SQL remains in the database; this deduplication is search-doc-local.
+   */
+  static void populateLineageData(Map<String, Object> doc, EntityReference entity) {
+    List<EsLineageData> edges = getLineageData(entity);
+    Map<String, String> sqlQueries = SearchIndexUtils.deduplicateSqlAcrossEdges(edges);
+    doc.put("upstreamLineage", edges);
+    if (!sqlQueries.isEmpty()) {
+      doc.put("lineageSqlQueries", sqlQueries);
+    }
+  }
+
   static List<Map<String, Object>> populateUpstreamEntityRelationshipData(Table entity) {
     List<Map<String, Object>> upstreamRelationships = new ArrayList<>();
 
