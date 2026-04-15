@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import ServiceEntityTable from '../../components/Service/ServiceEntityTable/ServiceEntityTable';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';

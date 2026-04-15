@@ -35,17 +35,18 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import { ServicePageData } from '../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { buildSchemaQueryFilter } from '../../../utils/DatabaseSchemaDetailsUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
 } from '../../../utils/ServiceMainTabContentUtils';
-import { buildSchemaQueryFilter } from '../../../utils/DatabaseSchemaDetailsUtils';
-import { t } from '../../../utils/i18next/LocalUtil';
 import {
   getCountLabel,
   getSearchIndexForService,
 } from '../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -155,9 +156,7 @@ const ServiceEntityTable = ({
           jsonPatch
         );
         setEntities((prevData) =>
-          prevData.map((data) =>
-            data.id === id && response ? response : data
-          )
+          prevData.map((data) => (data.id === id && response ? response : data))
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -171,7 +170,10 @@ const ServiceEntityTable = ({
       return false;
     }
 
-    const servicePermissions: Record<string, { EditAll?: boolean; EditDisplayName?: boolean } | undefined> = {
+    const servicePermissions: Record<
+      string,
+      { EditAll?: boolean; EditDisplayName?: boolean } | undefined
+    > = {
       databaseServices: permissions.databaseService,
       messagingServices: permissions.messagingService,
       dashboardServices: permissions.dashboardService,
@@ -181,6 +183,7 @@ const ServiceEntityTable = ({
       searchServices: permissions.searchService,
       apiServices: permissions.apiService,
       driveServices: permissions.driveService,
+      metadataServices: permissions.metadataService,
     };
 
     const currentPermission = servicePermissions[serviceCategory];
@@ -287,6 +290,9 @@ const ServiceEntityTable = ({
         </span>
       }
       loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+      }}
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}

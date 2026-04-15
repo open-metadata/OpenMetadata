@@ -37,13 +37,13 @@ import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable';
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
-import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
-import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
@@ -89,9 +89,9 @@ import { Operation as PermissionOperation } from '../../generated/entity/policie
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
+import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { PageType } from '../../generated/system/ui/page';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -1464,9 +1464,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   useEffect(() => {
-    // ServiceEntityTable handles its own data fetching for the DETAILS tab
-    // (child entities like Databases, Topics, etc.), so skip the legacy
-    // REST API call when activeTab is EntityTabs.DETAILS.
+    // ServiceEntityTable widget handles its own data fetching for the
+    // DETAILS tab (the tab showing child entities: Databases, Topics,
+    // Pipelines, etc.), so skip the legacy REST API call on that tab.
     if (searchValue || activeTab === EntityTabs.DETAILS) {
       return;
     }
