@@ -15,7 +15,7 @@ Datalake GCS Client
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Set
+from typing import Callable, Iterable, List, Optional, Set, Tuple
 
 from google.cloud import storage
 
@@ -117,7 +117,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         bucket_name: str,
         prefix: Optional[str],
         skip_cold_storage: bool = False,
-    ) -> Iterable[str]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:
         bucket = self._client.get_bucket(bucket_name)
 
         for key in bucket.list_blobs(prefix=prefix):
@@ -129,7 +129,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
                         f"(storage_class: {storage_class})"
                     )
                     continue
-            yield key.name
+            yield key.name, key.size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")

@@ -150,6 +150,7 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
+import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -1056,6 +1057,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
+
+    CspNonceHandler cspNonceHandler = new CspNonceHandler();
+    cspNonceHandler.setHandler(environment.getApplicationContext().getHandler());
+    environment.getApplicationContext().setHandler(cspNonceHandler);
   }
 
   private void initializeWebsockets(

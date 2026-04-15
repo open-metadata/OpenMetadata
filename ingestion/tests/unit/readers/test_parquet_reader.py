@@ -14,7 +14,7 @@ Tests for ParquetDataFrameReader S3, GCS, and Local
 """
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
 
@@ -87,72 +87,93 @@ class TestParquetReader(unittest.TestCase):
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
-    @patch("pyarrow.fs.S3FileSystem")
-    @patch("pyarrow.parquet.ParquetDataset")
-    def test_s3_small_parquet_file(self, mock_dataset, mock_s3fs):
-        mock_fs = Mock()
-        mock_s3fs.return_value = mock_fs
-
-        mock_file_info = Mock()
-        mock_file_info.size = 1000
-        mock_fs.get_file_info.return_value = mock_file_info
-
-        mock_table = Mock()
-        mock_df = pd.DataFrame({"id": [1], "name": ["Test"]})
-        mock_table.to_pandas.return_value = mock_df
-
-        mock_ds = Mock()
-        mock_ds.read_pandas.return_value = mock_table
-        mock_dataset.return_value = mock_ds
+    def _create_s3_reader(self):
+        """Helper to create an S3 ParquetDataFrameReader with a mocked session."""
+        from collections import namedtuple
 
         config = S3Config(
             securityConfig=AWSCredentials(
                 awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
             )
         )
-        reader = ParquetDataFrameReader(config, None)
+        mock_client = Mock()
+        mock_session = Mock()
+
+        FrozenCreds = namedtuple("FrozenCreds", ["access_key", "secret_key", "token"])
+        mock_session.get_credentials.return_value.get_frozen_credentials.return_value = FrozenCreds(
+            access_key="test", secret_key="test", token=None
+        )
+
+        reader = ParquetDataFrameReader(config, mock_client, session=mock_session)
+        return reader, mock_client
+
+    @patch("s3fs.S3FileSystem")
+    @patch("pyarrow.parquet.ParquetFile")
+    def test_s3_small_parquet_file(self, mock_parquet_file_cls, mock_s3fs):
+        """Test S3 parquet reading uses credentials extracted from boto3 client."""
+        reader, _ = self._create_s3_reader()
+
+        mock_fs = MagicMock()
+        mock_s3fs.return_value = mock_fs
+        mock_fs.info.return_value = {"size": 1000}
+
+        mock_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]})
+        mock_table = Mock()
+        mock_table.to_pandas.return_value = mock_df
+        mock_pf = Mock()
+        mock_pf.read.return_value = mock_table
+        mock_parquet_file_cls.return_value = mock_pf
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
-        dataframes = result.dataframes()
-        self.assertIsNotNone(dataframes)
-        chunks = list(dataframes)
-        self.assertTrue(len(chunks) > 0)
+        chunks = list(result.dataframes())
+        total_rows = sum(len(chunk) for chunk in chunks)
+        self.assertEqual(total_rows, 3)
 
-    @patch("pyarrow.fs.S3FileSystem")
+        mock_s3fs.assert_called_once_with(
+            key="test",
+            secret="test",
+            token=None,
+            client_kwargs={"region_name": "us-east-1"},
+        )
+        mock_fs.open.assert_called_once_with("test-bucket/test.parquet")
+
+    @patch("s3fs.S3FileSystem")
     @patch("pyarrow.parquet.ParquetFile")
-    def test_s3_large_parquet_file_chunking(self, mock_parquet_file, mock_s3fs):
-        mock_fs = Mock()
-        mock_s3fs.return_value = mock_fs
+    def test_s3_large_parquet_file_chunking(self, mock_parquet_file_cls, mock_s3fs):
+        """Test S3 large parquet file triggers batched reading."""
+        reader, _ = self._create_s3_reader()
 
-        mock_file_info = Mock()
-        mock_file_info.size = MAX_FILE_SIZE_FOR_PREVIEW + 1000
-        mock_fs.get_file_info.return_value = mock_file_info
+        mock_fs = MagicMock()
+        mock_s3fs.return_value = mock_fs
+        mock_fs.info.return_value = {"size": MAX_FILE_SIZE_FOR_PREVIEW + 1000}
 
         mock_pf = Mock()
-        mock_parquet_file.return_value = mock_pf
-
+        mock_parquet_file_cls.return_value = mock_pf
         batch_data = pd.DataFrame({"id": [1], "name": ["Test"]})
         mock_batch = Mock()
         mock_batch.to_pandas.return_value = batch_data
-
         mock_pf.iter_batches = Mock(return_value=iter([mock_batch]))
-
-        config = S3Config(
-            securityConfig=AWSCredentials(
-                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-            )
-        )
-        reader = ParquetDataFrameReader(config, None)
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
-        dataframes = result.dataframes()
-        self.assertIsNotNone(dataframes)
-        chunks = list(dataframes)
+        chunks = list(result.dataframes())
         self.assertTrue(len(chunks) > 0)
+
+    @patch("s3fs.S3FileSystem")
+    def test_s3_file_size_error_falls_back_to_chunking(self, mock_s3fs):
+        """Test that file size check failure falls back to chunked reading."""
+        reader, _ = self._create_s3_reader()
+
+        mock_fs = MagicMock()
+        mock_s3fs.return_value = mock_fs
+        mock_fs.info.side_effect = Exception("HeadObject failed")
+
+        result = reader._read(key="test.parquet", bucket_name="test-bucket")
+
+        self.assertIsNotNone(result.dataframes)
 
     @patch("gcsfs.GCSFileSystem")
     @patch("pyarrow.parquet.ParquetFile")
