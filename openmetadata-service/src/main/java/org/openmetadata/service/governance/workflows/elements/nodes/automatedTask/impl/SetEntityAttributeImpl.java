@@ -1,8 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
-import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -57,9 +55,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       throws Exception {
     Map<String, Object> inputNamespaceMap =
         JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-    List<String> entityLinks =
-        resolveEntityList(
-            varHandler, inputNamespaceMap, (String) inputNamespaceMap.get(ENTITY_LIST_VARIABLE));
+    List<String> entityLinks = WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler);
     if (entityLinks.isEmpty()) {
       return;
     }
@@ -96,7 +92,13 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       @SuppressWarnings("unchecked")
       EntityInterface copy = JsonUtils.deepCopy(entity, (Class<EntityInterface>) entity.getClass());
       EntityFieldUtils.setEntityField(
-          copy, ctx.entityType(), ctx.userName(), ctx.fieldName(), ctx.fieldValue(), false, null);
+          copy,
+          ctx.entityType(),
+          ctx.userName(),
+          ctx.fieldName(),
+          ctx.fieldValue(),
+          false,
+          ctx.impersonatedBy());
       modified.add(copy);
     }
     repo.bulkUpdateEntities(modified, existingByFqn, ctx.userName(), true);
@@ -119,31 +121,5 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       return value.toString();
     }
     return null;
-  }
-
-  private List<String> resolveEntityList(
-      WorkflowVariableHandler varHandler,
-      Map<String, Object> inputNamespaceMap,
-      String entityListNamespace) {
-    if (entityListNamespace != null) {
-      Object raw = varHandler.getNamespacedVariable(entityListNamespace, ENTITY_LIST_VARIABLE);
-      if (raw instanceof List) {
-        @SuppressWarnings("unchecked")
-        List<String> list = (List<String>) raw;
-        if (!list.isEmpty()) {
-          return list;
-        }
-      }
-    }
-    String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
-    if (relatedEntityNamespace != null) {
-      String singleLink =
-          (String)
-              varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
-      if (singleLink != null && !singleLink.isEmpty()) {
-        return List.of(singleLink);
-      }
-    }
-    return List.of();
   }
 }

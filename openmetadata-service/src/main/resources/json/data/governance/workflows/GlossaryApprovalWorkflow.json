@@ -22,7 +22,6 @@
     },
     "output": [
       "entityList",
-      "relatedEntity",
       "updatedBy"
     ]
   },
@@ -154,7 +153,7 @@
         "rejectionThreshold": 1
       },
       "inputNamespaceMap": {
-        "relatedEntity": "global"
+        "entityList": "global"
       }
     },
     {
@@ -198,7 +197,7 @@
         "rejectionThreshold": 1
       },
       "inputNamespaceMap": {
-        "relatedEntity": "global"
+        "entityList": "global"
       },
       "output": [
         "updatedBy"
