@@ -12,7 +12,6 @@
  */
 
 import { Popover, Space, Typography } from 'antd';
-import i18next, { t } from 'i18next';
 import { isEmpty, isUndefined, lowerCase, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import { Fragment } from 'react';
@@ -99,6 +98,7 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
   getBotsPagePath,
@@ -127,6 +127,8 @@ import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getDataTypeString, getTagsWithoutTier } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+
+const { t } = i18n;
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -745,7 +747,7 @@ export function getBreadcrumbForEntityWithParent<
 
 export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   {
-    name: i18next.t('label.data-quality'),
+    name: i18n.t('label.data-quality'),
     url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
   },
   {
@@ -758,7 +760,7 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
       state: {
         breadcrumbData: [
           {
-            name: i18next.t('label.data-quality'),
+            name: i18n.t('label.data-quality'),
             url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
           },
         ],
@@ -797,7 +799,7 @@ export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
 export const getBreadCrumbForKpi = (entity: Kpi) => {
   return [
     {
-      name: i18next.t('label.kpi-uppercase'),
+      name: i18n.t('label.kpi-uppercase'),
       url: getDataInsightPathWithFqn(DataInsightTabs.KPIS),
     },
     {
@@ -1125,7 +1127,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.DOMAIN:
       return [
         {
-          name: i18next.t('label.domain-plural'),
+          name: i18n.t('label.domain-plural'),
           url: getDomainPath(),
         },
       ];
@@ -1202,7 +1204,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.APPLICATION: {
       return [
         {
-          name: i18next.t('label.application-plural'),
+          name: i18n.t('label.application-plural'),
           url: getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS),
         },
         {
@@ -1215,7 +1217,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.PERSONA: {
       return [
         {
-          name: i18next.t('label.persona-plural'),
+          name: i18n.t('label.persona-plural'),
           url: getSettingPath(
             GlobalSettingsMenuCategory.MEMBERS,
             GlobalSettingOptions.PERSONA
@@ -1231,7 +1233,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.ROLE: {
       return [
         {
-          name: i18next.t('label.role-plural'),
+          name: i18n.t('label.role-plural'),
           url: getSettingPath(
             GlobalSettingsMenuCategory.ACCESS,
             GlobalSettingOptions.ROLES
@@ -1247,7 +1249,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.POLICY: {
       return [
         {
-          name: i18next.t('label.policy-plural'),
+          name: i18n.t('label.policy-plural'),
           url: getSettingPath(
             GlobalSettingsMenuCategory.ACCESS,
             GlobalSettingOptions.POLICIES
