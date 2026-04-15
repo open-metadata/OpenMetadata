@@ -454,10 +454,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
-      <Route
-        element={<DataMarketplacePage />}
-        path={ROUTES.DATA_MARKETPLACE}
-      />
+      <Route element={<DataMarketplacePage />} path={ROUTES.DATA_MARKETPLACE} />
       <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
       <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />
