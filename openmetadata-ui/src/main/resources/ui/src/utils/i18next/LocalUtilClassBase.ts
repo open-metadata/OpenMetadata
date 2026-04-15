@@ -16,6 +16,16 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 import { getInitOptions } from './i18nextUtil';
 
+i18next
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init(getInitOptions())
+  .then(async () => {
+    if (i18next.language !== i18next.resolvedLanguage) {
+      await i18next.changeLanguage(i18next.language);
+    }
+  });
+
 class LocalUtilClassBase {
   private static _instance: LocalUtilClassBase;
   loadedLocales: Set<string> = new Set<string>(['en-US']);
@@ -52,18 +62,6 @@ class LocalUtilClassBase {
     i18next.on('languageChanged', async (lng) => {
       await this.loadLocales(lng);
     });
-
-    setTimeout(() => {
-      i18next
-        .use(LanguageDetector)
-        .use(initReactI18next)
-        .init(getInitOptions())
-        .then(async () => {
-          if (i18next.language !== i18next.resolvedLanguage) {
-            await i18next.changeLanguage(i18next.language);
-          }
-        });
-    }, 0);
   }
 
   async loadLocales(locale: string): Promise<void> {

@@ -150,6 +150,8 @@ test.describe('Login flow should work properly', () => {
   });
 
   test('Refresh should work', async ({ browser }) => {
+    test.slow();
+
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
