@@ -34,12 +34,12 @@ const AddSubDomainModal = ({
   });
 
   const handleFormSubmit = useCallback(
-    (data: DomainFormValues) => {
+    async (data: DomainFormValues) => {
       const payload = transformDomainFormData(
         data,
         DomainFormType.SUBDOMAIN
       ) as CreateDomain;
-      onSubmit(payload);
+      await onSubmit(payload);
       form.reset();
     },
     [form, onSubmit]
