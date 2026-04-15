@@ -99,18 +99,14 @@ export const openEntitySummaryPanel = async ({
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
-    return;
   }
 
-  const entityCard = page
-    .locator('[data-testid="table-data-card"]')
-    .filter({ hasText: entityName })
-    .first();
-
-  const isCardVisible = await entityCard.isVisible().catch(() => false);
-  if (isCardVisible) {
-    await entityCard.click();
-  }
+  page
+    .locator('[data-testid^="table-data-card"]')
+    .filter({
+      has: page.getByTestId('entity-link').filter({ hasText: entityName }),
+    })
+    .click();
 };
 // ... (lines 48-468 unchanged)
 export async function navigateToExploreAndSelectTable(
