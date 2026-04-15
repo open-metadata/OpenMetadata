@@ -144,6 +144,7 @@ export interface FilterToolbarProps {
 export interface GraphSettingsPanelProps {
   settings: GraphSettings;
   onSettingsChange: (settings: GraphSettings) => void;
+  isDataMode?: boolean;
 }
 
 export interface NodeContextMenuProps {
@@ -172,7 +173,7 @@ export interface MergedEdge {
 }
 
 export interface LayoutConfig {
-  type: 'antv-dagre' | 'dagre' | 'radial' | 'circular';
+  type: 'antv-dagre' | 'dagre' | 'radial' | 'circular' | 'preset';
   [key: string]: unknown;
 }
 
