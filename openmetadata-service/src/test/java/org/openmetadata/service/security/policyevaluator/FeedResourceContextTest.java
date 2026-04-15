@@ -86,6 +86,42 @@ class FeedResourceContextTest {
   }
 
   @Test
+  void threadResourceContextStillResolvesDomainsWhenCreatorIsMissing() {
+    UUID domainId = UUID.randomUUID();
+    EntityReference domainRef =
+        new EntityReference()
+            .withId(domainId)
+            .withType(Entity.DOMAIN)
+            .withFullyQualifiedName("finance");
+    EntityLink about = new EntityLink(Entity.TABLE, "service.sales.orders");
+    Thread thread =
+        new Thread()
+            .withId(UUID.randomUUID())
+            .withCreatedBy("deleted-user")
+            .withAbout(about.getLinkString())
+            .withDomains(List.of(domainId));
+
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+                () -> Entity.getEntityReferenceByName(Entity.USER, "deleted-user", NON_DELETED))
+          .thenThrow(EntityNotFoundException.byMessage("missing creator"));
+      mockedEntity
+          .when(() -> Entity.getEntity(about, Entity.FIELD_DOMAINS, ALL))
+          .thenThrow(EntityNotFoundException.byMessage("missing about entity"));
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(Entity.DOMAIN, domainId, NON_DELETED))
+          .thenReturn(domainRef);
+
+      ThreadResourceContext resourceContext = new ThreadResourceContext(thread);
+
+      assertNull(resourceContext.getOwners());
+      assertNull(resourceContext.getEntity());
+      assertEquals(List.of(domainRef), resourceContext.getDomains());
+    }
+  }
+
+  @Test
   void threadAndPostContextsUseThreadDomainsInDomainRules() {
     UUID domainId = UUID.randomUUID();
     EntityReference resourceDomain =

@@ -60,10 +60,15 @@ public class ThreadResourceContext implements ResourceContextInterface {
     if (thread == null || thread.getCreatedBy() == null) {
       return null;
     }
-    List<EntityReference> owners = new ArrayList<>();
-    owners.add(
-        Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), Include.NON_DELETED));
-    return owners;
+    try {
+      List<EntityReference> owners = new ArrayList<>();
+      owners.add(
+          Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), Include.NON_DELETED));
+      return owners;
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Thread creator '{}' not found", thread.getCreatedBy());
+      return null;
+    }
   }
 
   static List<EntityReference> resolveDomains(Thread thread, EntityInterface aboutEntity) {
