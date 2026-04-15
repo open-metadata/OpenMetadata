@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import java.time.Instant;
@@ -37,7 +36,6 @@ import org.openmetadata.operator.model.OMJobSpec;
 class CronOMJobReconcilerTest {
 
   @Mock private Context<CronOMJobResource> context;
-  @Mock private KubernetesClient client;
 
   private CronOMJobReconciler reconciler;
   private CronOMJobResource cronOMJob;
@@ -46,7 +44,6 @@ class CronOMJobReconcilerTest {
   void setUp() {
     reconciler = new CronOMJobReconciler();
     cronOMJob = createTestCronOMJob("test-cronjob", "0 * * * *");
-    when(context.getClient()).thenReturn(client);
   }
 
   @Test
