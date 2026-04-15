@@ -39,6 +39,7 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.TokenUtil;
@@ -431,7 +432,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
           Entity.getEntityByName(
               Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(username);
+      boolean shouldBeAdmin = SecurityUtil.isAdminPrincipal(getAdminPrincipals(), username, email);
       boolean needsUpdate = false;
 
       LOG.info(
@@ -475,7 +476,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       LOG.info("User not found, creating new user: {}", username);
       if (authConfig.getEnableSelfSignup()) {
-        boolean isAdmin = getAdminPrincipals().contains(username);
+        boolean isAdmin = SecurityUtil.isAdminPrincipal(getAdminPrincipals(), username, email);
         LOG.info(
             "Creating new user - Username: {}, DisplayName: {}, Should be admin: {}",
             username,

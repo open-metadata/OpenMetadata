@@ -1360,7 +1360,8 @@ public class SystemRepository {
   }
 
   private static final Pattern AZURE_TENANT_PATTERN =
-      Pattern.compile("login\\.(?:microsoftonline|partner\\.microsoftonline)\\.(?:com|us|cn)/([^/]+)/");
+      Pattern.compile(
+          "login\\.(?:microsoftonline|partner\\.microsoftonline)\\.(?:com|us|cn)/([^/]+)/");
 
   private static final String DEFAULT_CALLBACK_PATH = "/callback";
 
@@ -1382,8 +1383,7 @@ public class SystemRepository {
 
     String discoveryUri =
         firstNonEmpty(
-            authConfig.getDiscoveryUri(),
-            oidcConfig != null ? oidcConfig.getDiscoveryUri() : null);
+            authConfig.getDiscoveryUri(), oidcConfig != null ? oidcConfig.getDiscoveryUri() : null);
     if (!nullOrEmpty(discoveryUri)) {
       authConfig.setDiscoveryUri(discoveryUri);
       if (oidcConfig != null) {
@@ -1392,8 +1392,7 @@ public class SystemRepository {
     }
 
     String clientId =
-        firstNonEmpty(
-            oidcConfig != null ? oidcConfig.getId() : null, authConfig.getClientId());
+        firstNonEmpty(oidcConfig != null ? oidcConfig.getId() : null, authConfig.getClientId());
     if (!nullOrEmpty(clientId)) {
       authConfig.setClientId(clientId);
       if (oidcConfig != null) {

@@ -40,6 +40,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
@@ -146,7 +147,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                 .generateJWTToken(
                     username,
                     new HashSet<>(),
-                    getAdmins().contains(username),
+                    SecurityUtil.isAdminPrincipal(getAdmins(), username, email),
                     email,
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,
