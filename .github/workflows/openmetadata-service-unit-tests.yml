@@ -151,7 +151,7 @@ jobs:
 
       - name: Run k8s-operator unit tests
         run: |
-          mvn -B clean test -pl openmetadata-k8s-operator -am
+          mvn -B clean test -pl openmetadata-k8s-operator
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
