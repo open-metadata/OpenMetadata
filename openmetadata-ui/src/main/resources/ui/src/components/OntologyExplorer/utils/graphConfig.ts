@@ -108,8 +108,7 @@ export function getLayoutConfig(
   nodeCount: number,
   options: GetOntologyLayoutConfigOptions
 ): LayoutConfig {
-  const { hasCombos, isDataMode, isModelView, isHierarchyMode } =
-    options;
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
 
   const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
 

@@ -581,155 +581,154 @@ export function useOntologyGraph({
     }
   }, []);
 
-  const applyBakedPositions = useCallback(
-    (graph: Graph, nodes: NodeData[]) => {
-      const bakedUpdates = nodes
-        .filter((n) => typeof (n.style as Record<string, unknown> | undefined)?.x === 'number')
-        .map((n) => {
-          const s = n.style as Record<string, unknown>;
+  const applyBakedPositions = useCallback((graph: Graph, nodes: NodeData[]) => {
+    const bakedUpdates = nodes
+      .filter(
+        (n) =>
+          typeof (n.style as Record<string, unknown> | undefined)?.x ===
+          'number'
+      )
+      .map((n) => {
+        const s = n.style as Record<string, unknown>;
 
-          return { id: n.id, style: { x: s.x as number, y: s.y as number } };
-        });
-      if (bakedUpdates.length > 0) {
-        graph.updateNodeData(bakedUpdates);
-      }
-    },
-    []
-  );
+        return { id: n.id, style: { x: s.x as number, y: s.y as number } };
+      });
+    if (bakedUpdates.length > 0) {
+      graph.updateNodeData(bakedUpdates);
+    }
+  }, []);
 
   /**
    * Shared helper: builds per-combo node positions using circular inner layout
    * and arranges combo blocks in an outer grid.
    * Returns a flat array of node updates ready for graph.updateNodeData().
    */
-  const buildIntraComboLayout = useCallback(
-    (graph: Graph, innerLayout: 'circular'): NodeData[] => {
-      const totalNodes = graph.getNodeData().length;
-      const adaptedNodeSep = adaptiveSpacing(60, totalNodes);
-      const adaptedGap = adaptiveSpacing(280, totalNodes);
+  const buildIntraComboLayout = useCallback((graph: Graph): NodeData[] => {
+    const totalNodes = graph.getNodeData().length;
+    const adaptedNodeSep = adaptiveSpacing(60, totalNodes);
+    const adaptedGap = adaptiveSpacing(280, totalNodes);
 
-      const NODE_H_SEP = adaptedNodeSep;
-      const COMBO_H_GAP = adaptedGap;
-      const COMBO_V_GAP = adaptedGap;
-      const MAX_RING_RADIUS_MODEL = Math.max(120, adaptiveSpacing(360, totalNodes));
-      const MIN_RING_RADIUS = 80;
-      const GRID_COLS = Math.max(
-        1,
-        Math.ceil(Math.sqrt(graph.getComboData().length * 2))
-      );
+    const NODE_H_SEP = adaptedNodeSep;
+    const COMBO_H_GAP = adaptedGap;
+    const COMBO_V_GAP = adaptedGap;
+    const MAX_RING_RADIUS_MODEL = Math.max(
+      120,
+      adaptiveSpacing(360, totalNodes)
+    );
+    const MIN_RING_RADIUS = 80;
+    const GRID_COLS = Math.max(
+      1,
+      Math.ceil(Math.sqrt(graph.getComboData().length * 2))
+    );
 
-      const nodesByCombo = new Map<string, NodeData[]>();
-      graph.getNodeData().forEach((node) => {
-        const comboId =
-          typeof node.combo === 'string'
-            ? node.combo
-            : String(node.combo ?? '');
-        if (!comboId) {
-          return;
-        }
-        if (!nodesByCombo.has(comboId)) {
-          nodesByCombo.set(comboId, []);
-        }
-        nodesByCombo.get(comboId)!.push(node);
-      });
+    const nodesByCombo = new Map<string, NodeData[]>();
+    graph.getNodeData().forEach((node) => {
+      const comboId =
+        typeof node.combo === 'string' ? node.combo : String(node.combo ?? '');
+      if (!comboId) {
+        return;
+      }
+      if (!nodesByCombo.has(comboId)) {
+        nodesByCombo.set(comboId, []);
+      }
+      nodesByCombo.get(comboId)!.push(node);
+    });
 
-      const updates: NodeData[] = [];
-      let curX = 0;
-      let curY = 0;
-      let rowMaxH = 0;
+    const updates: NodeData[] = [];
+    let curX = 0;
+    let curY = 0;
+    let rowMaxH = 0;
 
-      graph.getComboData().forEach((combo, idx) => {
-        const col = idx % GRID_COLS;
-        if (col === 0 && idx > 0) {
-          curX = 0;
-          curY += rowMaxH + COMBO_V_GAP;
-          rowMaxH = 0;
-        }
-
-        const nodes = nodesByCombo.get(String(combo.id)) ?? [];
-        const k = nodes.length;
-        if (k === 0) {
-          return;
-        }
-
-        const maxNodeW = nodes.reduce((m, n) => {
-          const s = n.data?.size;
-          const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-          return Math.max(m, w);
-        }, NODE_WIDTH);
-
-        // Ring radius large enough so node borders don't overlap, capped so
-        // large groups (50-200 nodes) don't create unbounded layouts.
-        const ringRadius =
-          k <= 1
-            ? 0
-            : Math.min(
-                MAX_RING_RADIUS_MODEL,
-                Math.max(
-                  MIN_RING_RADIUS,
-                  (k * (maxNodeW + NODE_H_SEP)) / (2 * Math.PI)
-                )
-              );
-
-        const diameter = ringRadius === 0 ? maxNodeW : 2 * ringRadius;
-        const comboW = diameter + COMBO_INTERIOR_PADDING_SIDES * 2;
-        const comboH =
-          diameter + COMBO_INTERIOR_PADDING_TOP + COMBO_INTERIOR_PADDING_SIDES;
-
-        const centerX = curX + comboW / 2;
-        const centerY =
-          curY + COMBO_INTERIOR_PADDING_TOP + ringRadius + NODE_HEIGHT / 2;
-
-        // Circular: all nodes evenly on the ring
-        nodes.forEach((node, i) => {
-          const angle = k === 1 ? 0 : (2 * Math.PI * i) / k - Math.PI / 2;
-          updates.push({
-            id: node.id,
-            style: {
-              ...(node.style ?? {}),
-              x: centerX + (k === 1 ? 0 : ringRadius * Math.cos(angle)),
-              y: centerY + (k === 1 ? 0 : ringRadius * Math.sin(angle)),
-            },
-          });
-        });
-
-        curX += comboW + COMBO_H_GAP;
-        rowMaxH = Math.max(rowMaxH, comboH);
-      });
-
-      // Orphan nodes (no combo) placed in a row below all combo blocks
-      const orphanNodes = graph.getNodeData().filter((n) => !n.combo);
-      if (orphanNodes.length > 0) {
-        const bottomY = curY + rowMaxH + COMBO_V_GAP;
-        const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
-        orphanNodes.forEach((node, i) => {
-          updates.push({
-            id: node.id,
-            style: {
-              ...(node.style ?? {}),
-              x:
-                COMBO_INTERIOR_PADDING_SIDES +
-                (i % orphanCols) * (NODE_WIDTH + NODE_H_SEP) +
-                NODE_WIDTH / 2,
-              y:
-                bottomY +
-                Math.floor(i / orphanCols) * (NODE_HEIGHT + 40) +
-                NODE_HEIGHT / 2,
-            },
-          });
-        });
+    graph.getComboData().forEach((combo, idx) => {
+      const col = idx % GRID_COLS;
+      if (col === 0 && idx > 0) {
+        curX = 0;
+        curY += rowMaxH + COMBO_V_GAP;
+        rowMaxH = 0;
       }
 
-      return updates;
-    },
-    []
-  );
+      const nodes = nodesByCombo.get(String(combo.id)) ?? [];
+      const k = nodes.length;
+      if (k === 0) {
+        return;
+      }
+
+      const maxNodeW = nodes.reduce((m, n) => {
+        const s = n.data?.size;
+        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
+
+        return Math.max(m, w);
+      }, NODE_WIDTH);
+
+      // Ring radius large enough so node borders don't overlap, capped so
+      // large groups (50-200 nodes) don't create unbounded layouts.
+      const ringRadius =
+        k <= 1
+          ? 0
+          : Math.min(
+              MAX_RING_RADIUS_MODEL,
+              Math.max(
+                MIN_RING_RADIUS,
+                (k * (maxNodeW + NODE_H_SEP)) / (2 * Math.PI)
+              )
+            );
+
+      const diameter = ringRadius === 0 ? maxNodeW : 2 * ringRadius;
+      const comboW = diameter + COMBO_INTERIOR_PADDING_SIDES * 2;
+      const comboH =
+        diameter + COMBO_INTERIOR_PADDING_TOP + COMBO_INTERIOR_PADDING_SIDES;
+
+      const centerX = curX + comboW / 2;
+      const centerY =
+        curY + COMBO_INTERIOR_PADDING_TOP + ringRadius + NODE_HEIGHT / 2;
+
+      // Circular: all nodes evenly on the ring
+      nodes.forEach((node, i) => {
+        const angle = k === 1 ? 0 : (2 * Math.PI * i) / k - Math.PI / 2;
+        updates.push({
+          id: node.id,
+          style: {
+            ...(node.style ?? {}),
+            x: centerX + (k === 1 ? 0 : ringRadius * Math.cos(angle)),
+            y: centerY + (k === 1 ? 0 : ringRadius * Math.sin(angle)),
+          },
+        });
+      });
+
+      curX += comboW + COMBO_H_GAP;
+      rowMaxH = Math.max(rowMaxH, comboH);
+    });
+
+    // Orphan nodes (no combo) placed in a row below all combo blocks
+    const orphanNodes = graph.getNodeData().filter((n) => !n.combo);
+    if (orphanNodes.length > 0) {
+      const bottomY = curY + rowMaxH + COMBO_V_GAP;
+      const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      orphanNodes.forEach((node, i) => {
+        updates.push({
+          id: node.id,
+          style: {
+            ...(node.style ?? {}),
+            x:
+              COMBO_INTERIOR_PADDING_SIDES +
+              (i % orphanCols) * (NODE_WIDTH + NODE_H_SEP) +
+              NODE_WIDTH / 2,
+            y:
+              bottomY +
+              Math.floor(i / orphanCols) * (NODE_HEIGHT + 40) +
+              NODE_HEIGHT / 2,
+          },
+        });
+      });
+    }
+
+    return updates;
+  }, []);
 
   /** Circular layout within each combo box, combo boxes arranged in a grid. */
   const positionCircularNodes = useCallback(
     (graph: Graph) => {
-      const updates = buildIntraComboLayout(graph, 'circular');
+      const updates = buildIntraComboLayout(graph);
       if (updates.length > 0) {
         graph.updateNodeData(updates);
       }
