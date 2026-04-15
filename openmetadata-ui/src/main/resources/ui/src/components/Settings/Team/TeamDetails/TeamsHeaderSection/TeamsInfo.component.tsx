@@ -45,7 +45,10 @@ import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
 import { useTheme } from '@mui/material';
-import { showErrorToast, showSuccessToast } from '../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../utils/ToastUtils';
 import { AxiosError } from 'axios';
 
 const TeamsInfo = ({
@@ -142,8 +145,8 @@ const TeamsInfo = ({
           subscription: isEmpty(data)
             ? undefined
             : {
-              [data?.webhook ?? '']: { endpoint: data?.endpoint },
-            },
+                [data?.webhook ?? '']: { endpoint: data?.endpoint },
+              },
         },
       };
 
@@ -173,7 +176,7 @@ const TeamsInfo = ({
     () => (
       <Space align="start" className="d-flex flex-col gap-2">
         <div className="d-flex gap-1">
-          <Typography.Text className="text-sm font-medium teams-info-heading">{`${t(
+          <Typography.Text className="text-primary text-sm font-medium">{`${t(
             'label.email'
           )}`}</Typography.Text>
           {hasEditPermission && (
@@ -352,7 +355,9 @@ const TeamsInfo = ({
               isDefaultPersona
               hasPermission={hasEditPermission}
               multiSelect={false}
-              selectedPersonas={currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []}
+              selectedPersonas={
+                currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []
+              }
               onUpdate={handleDefaultPersonaUpdate}
             />
           </div>
@@ -367,7 +372,9 @@ const TeamsInfo = ({
                 {getEntityName(currentTeam.defaultPersona)}
               </Link>
             ) : (
-              <Typography.Text className="text-sm font-medium" color={theme.palette.grey['700']}>
+              <Typography.Text
+                className="text-sm font-medium"
+                color={theme.palette.grey['700']}>
                 {t('message.no-persona-assigned')}
               </Typography.Text>
             )}
@@ -375,7 +382,13 @@ const TeamsInfo = ({
         </Space>
       </>
     );
-  }, [isGroupType, currentTeam.defaultPersona, hasEditPermission, handleDefaultPersonaUpdate, t]);
+  }, [
+    isGroupType,
+    currentTeam.defaultPersona,
+    hasEditPermission,
+    handleDefaultPersonaUpdate,
+    t,
+  ]);
 
   return (
     <Space
