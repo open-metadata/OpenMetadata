@@ -253,6 +253,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -672,6 +675,10 @@
             "format": "strict_date_optional_time||epoch_millis"
           }
         }
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

@@ -685,6 +685,10 @@
             "type": "keyword"
           }
         }
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

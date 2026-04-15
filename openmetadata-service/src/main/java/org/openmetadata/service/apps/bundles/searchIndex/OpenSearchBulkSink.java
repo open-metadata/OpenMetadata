@@ -41,6 +41,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
@@ -108,6 +109,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
+  private final long maxPayloadSizeBytes;
   private final CustomBulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
 
@@ -147,6 +149,7 @@ public class OpenSearchBulkSink implements BulkSink {
     this.searchClient = (OpenSearchClient) searchRepository.getSearchClient();
     this.batchSize = batchSize;
     this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxPayloadSizeBytes = maxPayloadSizeBytes;
     this.vectorExecutor =
         Executors.newFixedThreadPool(MAX_VECTOR_THREADS, Thread.ofVirtual().factory());
     this.phaser = new Phaser(1);
@@ -289,7 +292,7 @@ public class OpenSearchBulkSink implements BulkSink {
     return null;
   }
 
-  private static final int BULK_OPERATION_METADATA_OVERHEAD = 50;
+  private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
       EntityInterface entity,
@@ -301,17 +304,55 @@ public class OpenSearchBulkSink implements BulkSink {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
+      String finalJson = json;
       String docId = entity.getId().toString();
-      long estimatedSize =
-          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
+      long rawDocSize = (long) finalJson.getBytes(StandardCharsets.UTF_8).length;
+      long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
+      if (rawDocSize > 1024 * 1024) {
+        LOG.warn(
+            "Large indexed doc: entityType={}, docId={}, size={}MB",
+            entityType,
+            docId,
+            rawDocSize / (1024 * 1024));
+      }
+
+      if (estimatedSize > maxPayloadSizeBytes) {
+        long sizeLimit = maxPayloadSizeBytes - BULK_OPERATION_METADATA_OVERHEAD;
+        finalJson = SearchIndexUtils.stripLineageForSize(finalJson, sizeLimit, docId, entityType);
+        rawDocSize = finalJson.getBytes(StandardCharsets.UTF_8).length;
+        estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+      }
+
+      if (estimatedSize > maxPayloadSizeBytes) {
+        LOG.warn(
+            "Document {} of type {} is too large for bulk ({} bytes), sending directly",
+            docId,
+            entityType,
+            rawDocSize);
+        totalSubmitted.incrementAndGet();
+        if (tracker != null) {
+          tracker.incrementPendingSink();
+        }
+        indexDocumentDirectly(indexName, docId, finalJson, entityType, tracker);
+        processSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordProcess(StatsResult.SUCCESS);
+        }
+        return;
+      }
+
+      final String indexableJson = finalJson;
       BulkOperation operation;
       if (recreateIndex) {
         operation =
             BulkOperation.of(
                 op ->
                     op.index(
-                        idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json))));
+                        idx ->
+                            idx.index(indexName)
+                                .id(docId)
+                                .document(OsUtils.toJsonData(indexableJson))));
       } else {
         operation =
             BulkOperation.of(
@@ -320,7 +361,7 @@ public class OpenSearchBulkSink implements BulkSink {
                         upd ->
                             upd.index(indexName)
                                 .id(docId)
-                                .document(OsUtils.toJsonData(json))
+                                .document(OsUtils.toJsonData(indexableJson))
                                 .docAsUpsert(true)));
       }
       if (tracker != null) {
@@ -365,6 +406,42 @@ public class OpenSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
+      }
+    }
+  }
+
+  private void indexDocumentDirectly(
+      String indexName, String docId, String json, String entityType, StageStatsTracker tracker) {
+    try {
+      searchClient
+          .getNewClient()
+          .index(idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json)));
+      totalSuccess.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.SUCCESS);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Direct index failed for document {} of type {}: {}",
+          docId,
+          entityType,
+          e.getMessage(),
+          e);
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            docId,
+            null,
+            String.format(
+                "Document too large for bulk (%d bytes); direct index failed: %s",
+                json.getBytes(StandardCharsets.UTF_8).length, e.getMessage()),
+            IndexingFailureRecorder.FailureStage.SINK);
       }
     }
   }
@@ -831,6 +908,8 @@ public class OpenSearchBulkSink implements BulkSink {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
+        totalSubmitted.incrementAndGet();
+
         if (docId != null) {
           if (entityType != null) {
             docIdToEntityType.put(docId, entityType);
@@ -842,6 +921,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
         long operationSize =
             estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
+
+        if (!buffer.isEmpty() && currentBufferSize + operationSize >= maxPayloadSizeBytes) {
+          flushInternal();
+        }
         buffer.add(operation);
         currentBufferSize += operationSize;
 
@@ -933,8 +1016,6 @@ public class OpenSearchBulkSink implements BulkSink {
 
       long executionId = executionIdCounter.incrementAndGet();
       int numberOfActions = toFlush.size();
-      totalSubmitted.addAndGet(numberOfActions);
-
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
       try {

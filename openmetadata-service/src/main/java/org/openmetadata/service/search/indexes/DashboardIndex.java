@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -15,6 +16,11 @@ public class DashboardIndex implements SearchIndex {
   @Override
   public Object getEntity() {
     return dashboard;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return Set.of("dataModels");
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
