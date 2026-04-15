@@ -33,17 +33,27 @@ const ClaimSelector: React.FC<ClaimSelectorProps> = ({
     result.suggestedEmailClaim ?? ''
   );
 
+  const formatClaimValue = (value: unknown): string => {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    return String(value ?? '');
+  };
+
   const claimRows: ClaimRow[] = useMemo(
     () =>
       Object.entries(result.claims).map(([claimName, value]) => ({
         key: claimName,
         claimName,
-        value: String(value),
+        value: formatClaimValue(value),
       })),
     [result.claims]
   );
 
-  const selectedEmail = result.claims[selectedClaim] ?? '';
+  const selectedEmailRaw = result.claims[selectedClaim] ?? '';
+  const selectedEmail = Array.isArray(selectedEmailRaw)
+    ? selectedEmailRaw[0] ?? ''
+    : String(selectedEmailRaw);
   const derivedDomain = selectedEmail.includes('@')
     ? selectedEmail.split('@')[1]
     : result.derivedPrincipalDomain ?? '';

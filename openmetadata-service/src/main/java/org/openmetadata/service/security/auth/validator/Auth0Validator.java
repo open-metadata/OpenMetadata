@@ -108,41 +108,35 @@ public class Auth0Validator {
   }
 
   private FieldError validateAuth0Domain(String auth0Domain, String fieldPath) {
+    // Reachability + JSON structure are validated upstream in
+    // SystemRepository.validateDiscoveryUriReachable. Here we run only the
+    // Auth0-specific semantic checks (required endpoints, HTTPS issuer).
     try {
       String discoveryUrl = auth0Domain + AUTH0_WELL_KNOWN_PATH;
-      testAuth0DiscoveryEndpoint(discoveryUrl);
-
-      return null; // Success - Auth0 domain validated
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
+      if (response.getStatusCode() != 200) {
+        return ValidationErrorBuilder.createFieldError(
+            fieldPath,
+            "Auth0 domain could not be verified. Ensure the Discovery URI points to a reachable"
+                + " Auth0 tenant. HTTP "
+                + response.getStatusCode());
+      }
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+      if (!discoveryDoc.has("authorization_endpoint")
+          || !discoveryDoc.has("token_endpoint")
+          || !discoveryDoc.has("userinfo_endpoint")) {
+        return ValidationErrorBuilder.createFieldError(
+            fieldPath, "Missing required Auth0 endpoints in discovery document");
+      }
+      String issuer = discoveryDoc.get("issuer").asText();
+      if (!issuer.startsWith("https://")) {
+        return ValidationErrorBuilder.createFieldError(fieldPath, "Auth0 issuer must use HTTPS");
+      }
+      return null;
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
-          fieldPath, "Domain validation failed: " + e.getMessage());
-    }
-  }
-
-  private void testAuth0DiscoveryEndpoint(String discoveryUrl) throws Exception {
-    LOG.debug("Testing Auth0 discovery endpoint: {}", discoveryUrl);
-
-    ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
-
-    if (response.getStatusCode() != 200) {
-      String errorMsg =
-          String.format(
-              "Failed to access Auth0 discovery endpoint. HTTP response: %d for URL: %s",
-              response.getStatusCode(), discoveryUrl);
-      LOG.error(errorMsg);
-      throw new IllegalArgumentException(errorMsg);
-    }
-    JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
-    if (!discoveryDoc.has("issuer") || !discoveryDoc.has("authorization_endpoint")) {
-      throw new IllegalArgumentException("Invalid Auth0 discovery document format");
-    }
-
-    if (!discoveryDoc.has("token_endpoint") || !discoveryDoc.has("userinfo_endpoint")) {
-      throw new IllegalArgumentException("Missing required Auth0 endpoints in discovery document");
-    }
-    String issuer = discoveryDoc.get("issuer").asText();
-    if (!issuer.startsWith("https://")) {
-      throw new IllegalArgumentException("Auth0 issuer must use HTTPS");
+          fieldPath,
+          "Auth0 domain could not be verified: " + e.getMessage());
     }
   }
 

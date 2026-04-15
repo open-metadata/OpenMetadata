@@ -208,11 +208,23 @@ const SSOConfigurationFormRJSF = ({
   const [validationStatus, setValidationStatus] =
     useState<ValidationGateStatus>('idle');
 
-  const areConfidentialOidcMainFieldsFilled = (
-    data: FormData | undefined
-  ): boolean => {
+  const areMainFieldsFilled = (data: FormData | undefined): boolean => {
     const auth = data?.authenticationConfiguration;
-    if (!auth || auth.clientType !== ClientType.Confidential) {
+    if (!auth) {
+      return false;
+    }
+
+    if (auth.provider === AuthProvider.Saml) {
+      const idp = (auth.samlConfiguration as Record<string, unknown> | undefined)
+        ?.idp as Record<string, unknown> | undefined;
+      return (
+        !!(idp?.entityId as string) &&
+        !!(idp?.ssoLoginUrl as string) &&
+        !!(idp?.idpX509Certificate as string)
+      );
+    }
+
+    if (auth.clientType !== ClientType.Confidential) {
       return true;
     }
     const oidc = auth.oidcConfiguration as Record<string, unknown> | undefined;
@@ -232,11 +244,24 @@ const SSOConfigurationFormRJSF = ({
     if (!p || !n) {
       return true;
     }
-    if (
-      p.provider !== n.provider ||
-      p.clientType !== n.clientType ||
-      p.discoveryUri !== n.discoveryUri
-    ) {
+    if (p.provider !== n.provider || p.clientType !== n.clientType) {
+      return true;
+    }
+
+    if (n.provider === AuthProvider.Saml) {
+      const pIdp = (p.samlConfiguration as Record<string, unknown> | undefined)
+        ?.idp as Record<string, unknown> | undefined;
+      const nIdp = (n.samlConfiguration as Record<string, unknown> | undefined)
+        ?.idp as Record<string, unknown> | undefined;
+      return (
+        pIdp?.entityId !== nIdp?.entityId ||
+        pIdp?.ssoLoginUrl !== nIdp?.ssoLoginUrl ||
+        pIdp?.idpX509Certificate !== nIdp?.idpX509Certificate ||
+        pIdp?.nameId !== nIdp?.nameId
+      );
+    }
+
+    if (p.discoveryUri !== n.discoveryUri) {
       return true;
     }
     const pOidc = p.oidcConfiguration as Record<string, unknown> | undefined;
@@ -1232,6 +1257,39 @@ const SSOConfigurationFormRJSF = ({
           )}
         </div>
       )}
+      {isEditMode && showForm && isSamlProvider && !hasExistingConfig && (
+        <div
+          className="m-b-md p-md"
+          style={{
+            background: '#F5F8FF',
+            border: '1px solid #B8D0FF',
+            borderRadius: 6,
+          }}>
+          <Typography.Text strong>
+            Before running Test Login, register these with your SAML IdP:
+          </Typography.Text>
+          <ul className="m-t-xs m-b-0" style={{ paddingLeft: 20 }}>
+            <li>
+              <Typography.Text>ACS / Reply URL: </Typography.Text>
+              <Typography.Text code copyable>
+                {`${window.location.origin}/callback`}
+              </Typography.Text>
+            </li>
+            <li>
+              <Typography.Text>SP Entity ID: </Typography.Text>
+              <Typography.Text code copyable>
+                {window.location.origin}
+              </Typography.Text>
+            </li>
+            <li>
+              <Typography.Text>SP Metadata (optional): </Typography.Text>
+              <Typography.Text code copyable>
+                {`${window.location.origin}/api/v1/saml/metadata`}
+              </Typography.Text>
+            </li>
+          </ul>
+        </div>
+      )}
       {isEditMode && showForm && isSamlProvider && (
         <div className="m-b-md">
           {metadataUploadStatus === null && (
@@ -1346,7 +1404,9 @@ const SSOConfigurationFormRJSF = ({
             children: (
               <>
                 {formContent}
-                {isEditMode && isOidcProvider && !testLoginResult && (
+                {isEditMode &&
+                  (isOidcProvider || isSamlProvider) &&
+                  !testLoginResult && (
                   <div className="m-t-md m-b-md p-x-md">
                     {validationStatus !== 'validated' ? (
                       <Button
@@ -1354,7 +1414,7 @@ const SSOConfigurationFormRJSF = ({
                         disabled={
                           !showForm ||
                           validationStatus === 'validating' ||
-                          !areConfidentialOidcMainFieldsFilled(internalData)
+                          !areMainFieldsFilled(internalData)
                         }
                         loading={validationStatus === 'validating'}
                         type="primary"
@@ -1364,6 +1424,8 @@ const SSOConfigurationFormRJSF = ({
                     ) : (
                       <TestLoginButton
                         disabled={!showForm}
+                        formData={internalData?.authenticationConfiguration}
+                        securityConfig={internalData}
                         onSuccess={handleTestLoginSuccess}
                       />
                     )}
@@ -1392,7 +1454,7 @@ const SSOConfigurationFormRJSF = ({
                       data-testid="save-sso-configuration"
                       disabled={
                         isLoading ||
-                        (isOidcProvider &&
+                        ((isOidcProvider || isSamlProvider) &&
                           !hasExistingConfig &&
                           validationStatus !== 'tested')
                       }
@@ -1483,7 +1545,9 @@ const SSOConfigurationFormRJSF = ({
             <>
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
-              {isEditMode && isOidcProvider && !testLoginResult && (
+              {isEditMode &&
+                (isOidcProvider || isSamlProvider) &&
+                !testLoginResult && (
                 <div className="m-t-md m-b-md">
                   {validationStatus !== 'validated' ? (
                     <Button
@@ -1491,7 +1555,7 @@ const SSOConfigurationFormRJSF = ({
                       disabled={
                         !showForm ||
                         validationStatus === 'validating' ||
-                        !areConfidentialOidcMainFieldsFilled(internalData)
+                        !areMainFieldsFilled(internalData)
                       }
                       loading={validationStatus === 'validating'}
                       type="primary"
@@ -1531,7 +1595,7 @@ const SSOConfigurationFormRJSF = ({
                     data-testid="save-sso-configuration"
                     disabled={
                       isLoading ||
-                      (isOidcProvider &&
+                      ((isOidcProvider || isSamlProvider) &&
                         !hasExistingConfig &&
                         validationStatus !== 'tested')
                     }

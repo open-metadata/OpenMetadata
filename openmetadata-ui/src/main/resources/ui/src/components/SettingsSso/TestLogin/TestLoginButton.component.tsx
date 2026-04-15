@@ -101,10 +101,100 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     };
   }, [processTestLoginResult]);
 
+  const openPopup = useCallback((name = 'sso-test-login'): Window | null => {
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    return window.open(
+      '',
+      name,
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+    );
+  }, []);
+
+  const handleSamlTestLogin = useCallback(() => {
+    const idp = formData?.samlConfiguration?.idp;
+    const sp = formData?.samlConfiguration?.sp;
+
+    const idpEntityId = idp?.entityId ?? '';
+    const idpSsoLoginUrl = idp?.ssoLoginUrl ?? '';
+    const idpX509Certificate = idp?.idpX509Certificate ?? '';
+
+    if (!idpEntityId || !idpSsoLoginUrl || !idpX509Certificate) {
+      setIsLoading(false);
+      setStatus('error');
+      const msg =
+        'IdP Entity ID, SSO Login URL and X.509 Certificate are required for SAML Test Login';
+      setErrorMessage(msg);
+      showErrorToast(msg);
+
+      return;
+    }
+
+    const spAcsUrl = sp?.acs ?? sp?.callback ?? `${window.location.origin}/callback`;
+    const spEntityId = sp?.entityId ?? window.location.origin;
+    const nameIdFormat =
+      idp?.nameId ?? 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress';
+
+    const popup = openPopup();
+    if (!popup) {
+      setIsLoading(false);
+      setStatus('error');
+      setErrorMessage(t('message.popup-blocked'));
+      showErrorToast(t('message.popup-blocked'));
+
+      return;
+    }
+    popupRef.current = popup;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${window.location.origin}/api/v1/system/config/auth/test-login/saml-initiate`;
+    form.target = 'sso-test-login';
+    form.style.display = 'none';
+
+    const fields: Record<string, string> = {
+      idpEntityId,
+      idpSsoLoginUrl,
+      idpX509Certificate,
+      spEntityId,
+      spAcsUrl,
+      nameIdFormat,
+    };
+    Object.entries(fields).forEach(([k, v]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = k;
+      input.value = v;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    timerRef.current = setTimeout(() => {
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.close();
+      }
+      setIsLoading(false);
+      setStatus('error');
+      setErrorMessage(t('message.test-login-timeout'));
+    }, 300000);
+  }, [formData, openPopup, t]);
+
   const handleTestLogin = useCallback(async () => {
     setIsLoading(true);
     setStatus('idle');
     setErrorMessage('');
+
+    if (formData?.provider === 'saml') {
+      handleSamlTestLogin();
+
+      return;
+    }
 
     const discoveryUri =
       formData?.discoveryUri ?? formData?.oidcConfiguration?.discoveryUri ?? '';

@@ -3,10 +3,13 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+
+import org.openmetadata.schema.system.FieldError;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -295,5 +298,134 @@ class SystemRepositoryNormalizeTest {
     repository.normalizeForPersistence(authConfig);
 
     assertEquals(ClientType.CONFIDENTIAL, authConfig.getClientType());
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_unreachable_returnsError() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.CUSTOM_OIDC);
+    authConfig.setDiscoveryUri(DISCOVERY_URI);
+
+    FieldError error;
+    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
+      httpMock
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(503, "Service Unavailable"));
+      error = repository.validateDiscoveryUriReachable(authConfig);
+    }
+
+    assertNotNull(error);
+    assertEquals("authenticationConfiguration.discoveryUri", error.getField());
+    assertTrue(error.getError().contains("Could not reach Discovery URI"));
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_invalidJson_returnsError() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.CUSTOM_OIDC);
+    authConfig.setDiscoveryUri(DISCOVERY_URI);
+
+    FieldError error;
+    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
+      httpMock
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, "not-valid-json{"));
+      error = repository.validateDiscoveryUriReachable(authConfig);
+    }
+
+    assertNotNull(error);
+    assertTrue(error.getError().contains("Failed to fetch Discovery URI"));
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_missingIssuer_returnsError() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.CUSTOM_OIDC);
+    authConfig.setDiscoveryUri(DISCOVERY_URI);
+
+    FieldError error;
+    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
+      httpMock
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(
+              new ValidationHttpUtil.HttpResponseData(
+                  200, "{\"jwks_uri\": \"https://example.com/keys\"}"));
+      error = repository.validateDiscoveryUriReachable(authConfig);
+    }
+
+    assertNotNull(error);
+    assertTrue(error.getError().contains("missing required fields"));
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_azureNonAzureUri_returnsShapeError() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.AZURE);
+    authConfig.setDiscoveryUri(
+        "https://dev-123456.okta.com/oauth2/default/.well-known/openid-configuration");
+
+    FieldError error;
+    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
+      httpMock
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, DISCOVERY_RESPONSE));
+      error = repository.validateDiscoveryUriReachable(authConfig);
+    }
+
+    assertNotNull(error);
+    assertTrue(error.getError().contains("Azure AD format"));
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_legacyConfigNoDiscoveryUri_returnsNull() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.CUSTOM_OIDC);
+    authConfig.setAuthority("https://legacy-authority.example.com");
+
+    FieldError error = repository.validateDiscoveryUriReachable(authConfig);
+
+    assertNull(error);
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_ldapProvider_noCheckRuns() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.LDAP);
+    authConfig.setDiscoveryUri("https://should-not-be-fetched");
+
+    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
+      FieldError error = repository.validateDiscoveryUriReachable(authConfig);
+      assertNull(error);
+      httpMock.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_validAzureUri_returnsNull() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.AZURE);
+    authConfig.setDiscoveryUri(DISCOVERY_URI);
+
+    FieldError error;
+    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
+      httpMock
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, DISCOVERY_RESPONSE));
+      error = repository.validateDiscoveryUriReachable(authConfig);
+    }
+
+    assertNull(error);
+  }
+
+  @Test
+  void validateDiscoveryUriReachable_invalidUrlFormat_returnsError() {
+    AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
+    authConfig.setProvider(AuthProvider.CUSTOM_OIDC);
+    authConfig.setDiscoveryUri("not-a-url");
+
+    FieldError error = repository.validateDiscoveryUriReachable(authConfig);
+
+    assertNotNull(error);
+    assertTrue(error.getError().contains("not a valid HTTP(S) URL"));
   }
 }

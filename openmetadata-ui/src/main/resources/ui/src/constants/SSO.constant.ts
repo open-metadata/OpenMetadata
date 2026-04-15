@@ -286,6 +286,10 @@ export const LDAP_UI_SCHEMA = {
 };
 
 // SAML Configuration UI Schema
+// Main form shows only IdP fields (entityId, ssoLoginUrl, idpX509Certificate,
+// nameId). SP fields are hidden (derived from server URL and surfaced in the
+// banner). Signing/security fields land in the Advanced accordion (wired up in
+// SSOGroupedFieldTemplate via SSO_ADVANCED_SAML_FIELDS).
 export const SAML_UI_SCHEMA = {
   samlConfiguration: {
     'ui:title': 'SAML Configuration',
@@ -294,10 +298,7 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Identity Provider (IdP)',
       entityId: { 'ui:title': 'IdP Entity ID' },
       ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
-      authorityUrl: {
-        'ui:widget': 'hidden',
-        'ui:hideError': true,
-      },
+      authorityUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
       idpX509Certificate: {
         'ui:title': 'IdP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -306,18 +307,10 @@ export const SAML_UI_SCHEMA = {
     },
     sp: {
       'ui:title': 'Service Provider (SP)',
-      entityId: {
-        'ui:title': 'SP Entity ID',
-        'ui:readonly': true,
-        'ui:help':
-          'Auto-generated Service Provider Entity ID. Copy this value and paste it as Entity ID in your SAML Identity Provider configuration.',
-      },
-      acs: {
-        'ui:title': 'Assertion Consumer Service URL',
-        'ui:readonly': true,
-        'ui:help':
-          'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
-      },
+      // SP Entity ID and ACS URL are shown in the "Register with your SAML IdP"
+      // banner above the form; the backend derives them from the server URL.
+      entityId: { 'ui:widget': 'hidden', 'ui:hideError': true },
+      acs: { 'ui:widget': 'hidden', 'ui:hideError': true },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
       spX509Certificate: {
         'ui:title': 'SP X.509 Certificate',
@@ -335,7 +328,6 @@ export const SAML_UI_SCHEMA = {
       wantAssertionsSigned: { 'ui:title': 'Want Assertions Signed' },
       wantMessagesSigned: { 'ui:title': 'Want Messages Signed' },
       sendSignedAuthRequest: { 'ui:title': 'Send Signed Auth Request' },
-      // Hide unwanted security fields
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -345,25 +337,21 @@ export const SAML_UI_SCHEMA = {
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
     },
   },
-  // Hide LDAP/OIDC specific fields for SAML
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Hide jwtPrincipalClaims for SAML - default value auto-filled to prevent lockouts
   jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Hide jwtPrincipalClaimsMapping for SAML - not used in SAML flow
   jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Hide jwtTeamClaimMapping for SAML - not used in SAML flow
   jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
-  // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Hide root level authority and callbackUrl for SAML - will be managed via IDP/SP sections
   authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  clientId: COMMON_UI_FIELDS.clientId,
+  clientId: { 'ui:widget': 'hidden', 'ui:hideError': true },
   callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Hide publicKeyUrls for SAML - uses internal LocalJwkProvider
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // discoveryUri is an OIDC-only concept — hide for SAML.
+  discoveryUri: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  emailClaim: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // OIDC Configuration UI Schema
@@ -586,6 +574,11 @@ export const SSO_ADVANCED_AUTH_FIELDS = [
   'emailClaim',
   'enableAutoRedirect',
 ];
+
+// For SAML, main form shows only idp.entityId, idp.ssoLoginUrl,
+// idp.idpX509Certificate, idp.nameId. All other groups (sp, security) and
+// debugMode move to the Advanced Configuration accordion.
+export const SSO_ADVANCED_SAML_FIELDS = ['sp', 'security', 'debugMode'];
 
 // Common field titles
 export const COMMON_FIELD_TITLES = {

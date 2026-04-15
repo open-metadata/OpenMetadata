@@ -106,7 +106,8 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/login",
           "v1/users/refresh",
           "v1/collate/apps/support/login",
-          "v1/system/config/auth/test-login/initiate");
+          "v1/system/config/auth/test-login/initiate",
+          "v1/system/config/auth/test-login/saml-initiate");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
