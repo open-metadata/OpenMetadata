@@ -183,9 +183,8 @@ class HiveSource(CommonDbSourceService):
         )
 
     def _get_partition_keys_from_metastore(
-        self, table_name: str, schema_name: str
+        self, table_name: str, schema_name: str, drivername: str
     ) -> List[str]:
-        drivername = getattr(getattr(self.engine, "url", None), "drivername", "")
         query = self._build_metastore_partition_query(drivername)
         result = self.connection.execute(
             text(query),
@@ -235,7 +234,7 @@ class HiveSource(CommonDbSourceService):
             drivername = getattr(getattr(self.engine, "url", None), "drivername", "")
             if drivername in {"hive+mysql", "hive+postgres"}:
                 partition_keys = self._get_partition_keys_from_metastore(
-                    table_name, schema_name
+                    table_name, schema_name, drivername
                 )
             else:
                 partition_keys = self._get_partition_keys_from_describe(
