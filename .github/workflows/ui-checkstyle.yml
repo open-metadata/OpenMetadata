@@ -12,6 +12,7 @@
 name: UI Checkstyle
 
 on:
+  merge_group:
   pull_request_target:
     types:
       - opened
@@ -44,20 +45,23 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   authorize:
     if: |
-      github.event_name == 'pull_request_target' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request_target' &&
+      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 90
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
@@ -83,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -150,7 +154,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -207,7 +211,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -247,7 +251,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -290,7 +294,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -333,7 +337,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -396,7 +400,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -452,7 +456,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -503,7 +507,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   report:
     needs: [authorize, lint-src, license-header, i18n-sync, app-docs, lint-playwright, lint-core-components]
-    if: always() && needs.authorize.result == 'success'
+    if: ${{ always() && needs.authorize.result == 'success' && github.event_name == 'pull_request_target' }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
