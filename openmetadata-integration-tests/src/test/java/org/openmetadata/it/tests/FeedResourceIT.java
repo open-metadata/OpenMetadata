@@ -70,6 +70,7 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
+            .withFrom(ADMIN_USER)
             .withMessage("Test conversation thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -82,7 +83,7 @@ public class FeedResourceIT {
     assertEquals(about, thread.getAbout());
     assertEquals(ThreadType.Conversation, thread.getType());
 
-    CreatePost createPost = new CreatePost().withMessage("This is a reply");
+    CreatePost createPost = new CreatePost().withFrom(ADMIN_USER).withMessage("This is a reply");
 
     Thread updatedThread = addPost(thread.getId(), createPost);
 
@@ -1067,6 +1068,7 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
+            .withFrom(ADMIN_USER)
             .withMessage("Task from bot")
             .withAbout(about)
             .withType(ThreadType.Task)
