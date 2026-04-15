@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { ColumnsType } from 'antd/lib/table';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ColumnProfile } from '../../../../../generated/entity/data/table';
@@ -351,7 +351,9 @@ describe('ColumnProfileTable proportion column renders', () => {
         profile: ColumnProfile | undefined
       ) => string;
 
-      expect(renderFn({ [field]: 0.5 } as unknown as ColumnProfile)).toBe('50%');
+      expect(renderFn({ [field]: 0.5 } as unknown as ColumnProfile)).toBe(
+        '50%'
+      );
     }
   );
 
@@ -364,7 +366,9 @@ describe('ColumnProfileTable proportion column renders', () => {
       ) => string;
 
       // 0.001 * 100 = 0.1 → rounds to 0.1%, not 0%
-      expect(renderFn({ [field]: 0.001 } as unknown as ColumnProfile)).toBe('0.1%');
+      expect(renderFn({ [field]: 0.001 } as unknown as ColumnProfile)).toBe(
+        '0.1%'
+      );
     }
   );
 });
