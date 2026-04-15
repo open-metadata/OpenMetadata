@@ -52,9 +52,10 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
+  getListTestCaseIncidentByStateId,
   getListTestCaseIncidentStatusFromSearch,
-  postTestCaseIncidentStatus,
   TestCaseIncidentStatusParams,
+  transitionIncident,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
@@ -341,31 +342,47 @@ const IncidentManager = ({
 
   const handleAssigneeUpdate = useCallback(
     async (record: TestCaseResolutionStatus, assignee?: EntityReference[]) => {
-      const assigneeData = assignee?.[0];
+      const taskId = record.stateId;
+      if (!taskId) {
+        return;
+      }
 
-      const updatedData: TestCaseResolutionStatus = {
-        ...record,
-        testCaseResolutionStatusDetails: {
-          ...record?.testCaseResolutionStatusDetails,
-          assignee: assigneeData,
-        },
-        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-      };
+      const assigneeData = assignee?.[0];
+      const transitionId =
+        record.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned
+          ? 'reassign'
+          : 'assign';
 
       try {
-        await postTestCaseIncidentStatus({
-          severity: record.severity,
-          testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-          testCaseResolutionStatusDetails: {
-            assignee: assigneeData,
-          },
+        await transitionIncident(taskId, {
+          transitionId,
+          payload: assigneeData
+            ? {
+                assignees: [
+                  {
+                    id: assigneeData.id,
+                    type: assigneeData.type ?? 'user',
+                    name: assigneeData.name,
+                    fullyQualifiedName:
+                      assigneeData.fullyQualifiedName ?? assigneeData.name,
+                    displayName: assigneeData.displayName,
+                  },
+                ],
+              }
+            : undefined,
         });
+
+        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const latest = refreshed?.data?.[0];
+        if (!latest) {
+          return;
+        }
 
         setTestCaseListData((prev) => {
           const testCaseList = prev.data.map((item) => {
-            if (item.stateId === updatedData.stateId) {
-              return updatedData;
+            if (item.stateId === latest.stateId) {
+              return latest;
             }
 
             return item;

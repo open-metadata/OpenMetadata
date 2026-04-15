@@ -517,6 +517,18 @@ public interface CollectionDAO {
   SearchIndexServerStatsDAO searchIndexServerStatsDAO();
 
   @CreateSqlObject
+  RdfIndexJobDAO rdfIndexJobDAO();
+
+  @CreateSqlObject
+  RdfIndexPartitionDAO rdfIndexPartitionDAO();
+
+  @CreateSqlObject
+  RdfReindexLockDAO rdfReindexLockDAO();
+
+  @CreateSqlObject
+  RdfIndexServerStatsDAO rdfIndexServerStatsDAO();
+
+  @CreateSqlObject
   AuditLogDAO auditLogDAO();
 
   @CreateSqlObject

@@ -1426,6 +1426,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   original.getComputePassedFailedRowCount(),
                   updated.getComputePassedFailedRowCount()));
       compareAndUpdate(
+          "autoCloseIncident",
+          () ->
+              recordChange(
+                  "autoCloseIncident",
+                  original.getAutoCloseIncident(),
+                  updated.getAutoCloseIncident()));
+      compareAndUpdate(
           "useDynamicAssertion",
           () ->
               recordChange(

@@ -17,6 +17,7 @@ import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { waitForTaskResolveResponse } from './task';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await page.goto(
@@ -49,9 +50,7 @@ export const acknowledgeTask = async (data: {
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
   await page.click('[title="Ack"]');
-  const statusChangeResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-  );
+  const statusChangeResponse = waitForTaskResolveResponse(page);
   await page.click('#update-status-button');
   await statusChangeResponse;
   await page
@@ -110,15 +109,26 @@ export const addAssigneeFromPopoverWidget = async (data: {
       await normalizedAssigneeOption.click();
     }
 
-    const updateIncident = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-    );
+    const updateIncident = waitForTaskResolveResponse(page);
     await assigneeModal.getByRole('button', { name: 'Save' }).click();
     await updateIncident;
 
     await waitForAllLoadersToDisappear(page);
     await expect(assigneeModal).not.toBeVisible();
-    await expect(page.getByTestId('assignee')).toContainText(user.displayName, {
+    const taskHeaderAssignee = page.getByTestId(
+      'incident-manager-task-header-container'
+    );
+    const incidentAssignee = page
+      .getByTestId('incident-manager-details-page-container')
+      .getByTestId('assignee');
+
+    await expect(
+      (await taskHeaderAssignee.isVisible().catch(() => false))
+        ? taskHeaderAssignee
+        : (await incidentAssignee.isVisible().catch(() => false))
+        ? incidentAssignee
+        : page.getByTestId('assignee').first()
+    ).toContainText(user.displayName, {
       timeout: 30_000,
     });
 
@@ -141,9 +151,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
   );
   await searchUserResponse;
 
-  const updateIncident = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-  );
+  const updateIncident = waitForTaskResolveResponse(page);
   await page.click(`.ant-popover [title="${user.displayName}"]`);
   await updateIncident;
 
@@ -153,7 +161,15 @@ export const addAssigneeFromPopoverWidget = async (data: {
     .first()
     .waitFor();
 
-  await expect(page.locator(`[data-testid=${user.displayName}]`)).toBeVisible();
+  const taskHeaderAssignee = page.getByTestId(
+    'incident-manager-task-header-container'
+  );
+
+  await expect(
+    (await taskHeaderAssignee.isVisible().catch(() => false))
+      ? taskHeaderAssignee
+      : page.getByTestId('assignee').first()
+  ).toContainText(user.displayName);
 };
 
 export const assignIncident = async (data: {
@@ -207,9 +223,7 @@ export const assignIncident = async (data: {
     );
     await searchUserResponse;
     await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
-    const updateIncident = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-    );
+    const updateIncident = waitForTaskResolveResponse(page);
     await page.click('[data-testid="submit-assignee-popover-button"]');
     await updateIncident;
   }

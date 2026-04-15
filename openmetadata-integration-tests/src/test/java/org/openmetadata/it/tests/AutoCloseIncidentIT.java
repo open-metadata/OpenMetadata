@@ -34,16 +34,20 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.tasks.Payload;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -62,7 +66,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 @ExtendWith(TestNamespaceExtension.class)
 public class AutoCloseIncidentIT {
 
-  private static final String WORKFLOW_NAME = "IncidentLifecycleWorkflow";
+  private static final String WORKFLOW_NAME = "TestCaseResolutionTaskWorkflow";
   private static final Duration PIPELINE_TIMEOUT = Duration.ofSeconds(120);
 
   @Test
@@ -239,8 +243,20 @@ public class AutoCloseIncidentIT {
     Map<String, Object> instance = getWorkflowInstance(client, workflowInstanceId);
     assertEquals("RUNNING", instance.get("status"), "Workflow should still be running");
 
-    // Cleanup: manually complete the task so the workflow ends
-    patchTaskStatus(client, taskRef.get().getId().toString(), "Completed");
+    // Cleanup through the workflow path used by the migrated incident task model.
+    client
+        .tasks()
+        .resolve(
+            taskRef.get().getId().toString(),
+            new ResolveTask()
+                .withTransitionId("resolve")
+                .withResolutionType(TaskResolutionType.Completed)
+                .withComment("cleanup")
+                .withPayload(
+                    new Payload()
+                        .withAdditionalProperty("resolution", "cleanup")
+                        .withAdditionalProperty(
+                            "testCaseFailureReason", TestCaseFailureReasonType.Other.value())));
     await()
         .atMost(PIPELINE_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
@@ -276,24 +292,9 @@ public class AutoCloseIncidentIT {
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
   }
 
-  private void patchTaskStatus(OpenMetadataClient client, String taskId, String status) {
-    String patchJson =
-        String.format("[{\"op\": \"replace\", \"path\": \"/status\", \"value\": \"%s\"}]", status);
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            "/v1/tasks/" + taskId,
-            patchJson,
-            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
-  }
-
   private Task findIncidentTaskForTestCase(OpenMetadataClient client, TestCase testCase) {
     ListParams params =
-        new ListParams()
-            .addFilter("category", "Incident")
-            .setFields("payload,about,aboutEntityLink")
-            .setLimit(100);
+        new ListParams().addFilter("category", "Incident").setFields("payload,about").setLimit(100);
     ListResponse<Task> tasks = client.tasks().list(params);
 
     for (Task task : tasks.getData()) {

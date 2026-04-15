@@ -41,6 +41,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 public class ActivityStreamRepository {
+  private static final int MAX_STORED_SUMMARY_LENGTH = 500;
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -161,7 +162,7 @@ public class ActivityStreamRepository {
         event.getActor().getId().toString(),
         event.getActor().getName(),
         event.getTimestamp(),
-        event.getSummary(),
+        truncateSummaryForStorage(event.getSummary()),
         event.getFieldName(),
         event.getOldValue(),
         event.getNewValue(),
@@ -415,7 +416,7 @@ public class ActivityStreamRepository {
     EntityReference entityRef = entity.getEntityReference();
     EntityReference actorRef = buildActorReference(changeEvent.getUserName());
 
-    String summary = buildSummary(changeEvent, eventType, fieldChange);
+    String summary = buildSummary(changeEvent, entityRef, eventType, fieldChange);
     String fieldName = fieldChange != null ? fieldChange.getName() : null;
     String oldValue = fieldChange != null ? truncateValue(fieldChange.getOldValue()) : null;
     String newValue = fieldChange != null ? truncateValue(fieldChange.getNewValue()) : null;
@@ -451,9 +452,12 @@ public class ActivityStreamRepository {
   }
 
   private String buildSummary(
-      ChangeEvent changeEvent, ActivityEventType eventType, FieldChange fieldChange) {
+      ChangeEvent changeEvent,
+      EntityReference entityRef,
+      ActivityEventType eventType,
+      FieldChange fieldChange) {
     String entityType = changeEvent.getEntityType();
-    String entityName = changeEvent.getEntityFullyQualifiedName();
+    String entityName = getReadableEntityName(entityRef, changeEvent.getEntityFullyQualifiedName());
 
     return switch (eventType) {
       case ENTITY_CREATED -> String.format("Created %s: %s", entityType, entityName);
@@ -472,6 +476,43 @@ public class ActivityStreamRepository {
           : String.format("Custom property updated on %s", entityName);
       default -> String.format("Updated %s: %s", entityType, entityName);
     };
+  }
+
+  private String getReadableEntityName(EntityReference entityRef, String fallbackFqn) {
+    if (entityRef != null) {
+      if (!nullOrEmpty(entityRef.getDisplayName())) {
+        return entityRef.getDisplayName();
+      }
+      if (!nullOrEmpty(entityRef.getName())) {
+        return entityRef.getName();
+      }
+      if (!nullOrEmpty(entityRef.getFullyQualifiedName())) {
+        return getLeafName(entityRef.getFullyQualifiedName());
+      }
+    }
+
+    return getLeafName(fallbackFqn);
+  }
+
+  private String getLeafName(String fullyQualifiedName) {
+    if (nullOrEmpty(fullyQualifiedName)) {
+      return "entity";
+    }
+
+    String[] parts = FullyQualifiedName.split(fullyQualifiedName);
+    if (parts.length == 0) {
+      return fullyQualifiedName;
+    }
+
+    return FullyQualifiedName.unquoteName(parts[parts.length - 1]);
+  }
+
+  private String truncateSummaryForStorage(String summary) {
+    if (summary == null || summary.length() <= MAX_STORED_SUMMARY_LENGTH) {
+      return summary;
+    }
+
+    return summary.substring(0, MAX_STORED_SUMMARY_LENGTH - 3) + "...";
   }
 
   private ActivityEventType mapChangeEventType(org.openmetadata.schema.type.EventType eventType) {

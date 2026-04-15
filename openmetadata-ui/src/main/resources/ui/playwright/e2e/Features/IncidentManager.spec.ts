@@ -29,6 +29,7 @@ import {
 } from '../../utils/incidentManager';
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForTaskResolveResponse } from '../../utils/task';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -265,17 +266,25 @@ const reassignIncidentTask = async (
 
   await assigneeOption.click();
 
-  const updateAssignee = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-  );
+  const updateAssignee = waitForTaskResolveResponse(page);
 
   await reassignModal.getByRole('button', { name: 'Save' }).click();
 
   await updateAssignee;
   await waitForAllLoadersToDisappear(page);
 
-  if (await isVisible(reassignModal)) {
-    await reassignModal.getByRole('button', { name: 'Cancel' }).click();
+  try {
+    await expect(reassignModal).not.toBeVisible({ timeout: 10_000 });
+
+    return;
+  } catch {
+    // Fall through and close the modal explicitly only if it remains open.
+  }
+
+  const cancelButton = reassignModal.getByRole('button', { name: 'Cancel' });
+
+  if (await isVisible(cancelButton)) {
+    await cancelButton.click();
   }
   await expect(reassignModal).not.toBeVisible();
 };
@@ -303,9 +312,27 @@ const openIncidentResolveDialog = async (
 
   const primaryActionText =
     (await primaryActionButton.textContent())?.trim() ?? '';
+  const canAdvanceWorkflowFromPrimaryAction =
+    allowProgressTransition &&
+    /move to pending|start progress/i.test(primaryActionText);
 
   if (primaryActionText.includes('Resolve')) {
     await primaryActionButton.click();
+  } else if (canAdvanceWorkflowFromPrimaryAction) {
+    const advanceIncident = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/resolve')
+    );
+
+    await primaryActionButton.click();
+    const response = await advanceIncident;
+    expect(response.ok()).toBeTruthy();
+
+    await waitForAllLoadersToDisappear(page);
+
+    return openIncidentResolveDialog(page, false);
   } else {
     await expect(actionTrigger).toBeVisible();
     await actionTrigger.scrollIntoViewIfNeeded();
@@ -581,96 +608,24 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         name: user2.data.email.split('@')[0],
         displayName: user2.getUserDisplayName(),
       };
+      const testCasePageUrl = `/test-case/${encodeURIComponent(
+        testCase.fullyQualifiedName
+      )}/test-case-results`;
       actorPage = await browser.newPage();
       await user1.login(actorPage);
+      const testCaseResponse = actorPage.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?fields=*'
+      );
+      await actorPage.goto(testCasePageUrl);
+
+      await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        const currentIncidentResponse = await apiContext.get(
-          '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
-          {
-            params: {
-              testCaseId: testCase.id,
-              latest: true,
-              limit: 1,
-            },
-          }
-        );
-
-        expect(currentIncidentResponse.ok()).toBe(true);
-
-        const currentIncidentPayload = await currentIncidentResponse.json();
-        const currentIncident = currentIncidentPayload.data?.[0] as
-          | { severity?: string }
-          | undefined;
-
-        const reassignResponse = await apiContext.post(
-          '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
-          {
-            data: {
-              severity: currentIncident?.severity,
-              testCaseReference: testCase.fullyQualifiedName,
-              testCaseResolutionStatusType: 'Assigned',
-              testCaseResolutionStatusDetails: {
-                assignee: {
-                  id: user2.responseData.id,
-                  type: 'user',
-                  name: user2.responseData.name,
-                  displayName: user2.responseData.displayName,
-                  fullyQualifiedName: user2.responseData.fullyQualifiedName,
-                },
-              },
-            },
-          }
-        );
-
-        expect(reassignResponse.ok(), await reassignResponse.text()).toBe(true);
-
-        await expect
-          .poll(
-            async () => {
-              const incidentResponse = await apiContext.get(
-                '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
-                {
-                  params: {
-                    testCaseId: testCase.id,
-                    latest: true,
-                    limit: 10,
-                  },
-                }
-              );
-
-              if (!incidentResponse.ok()) {
-                return false;
-              }
-
-              const payload = await incidentResponse.json();
-
-              const latestIncident = payload.data?.[0] as
-                | {
-                    testCaseResolutionStatusDetails?: {
-                      assignee?: { id?: string; name?: string };
-                    };
-                  }
-                | undefined;
-
-              return (
-                latestIncident?.testCaseResolutionStatusDetails?.assignee?.id ===
-                  user2.responseData.id ||
-                latestIncident?.testCaseResolutionStatusDetails?.assignee
-                  ?.name === assignee1.name
-              );
-            },
-            {
-              timeout: 30_000,
-              intervals: [1_000, 2_000, 5_000],
-            }
-          )
-          .toBe(true);
-      } finally {
-        await afterAction();
-      }
+      await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
+      await openIncidentTaskTab(actorPage, true);
+      await reassignIncidentTask(actorPage, assignee1);
+      await expect(
+        actorPage.getByTestId('incident-manager-task-header-container')
+      ).toContainText(assignee1.displayName);
     });
 
     /**
@@ -797,13 +752,26 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
-      await resolveModal.locator('textarea').nth(0).fill('Missing Data');
-      await resolveModal.locator('textarea').nth(1).fill('test');
+      const resolveTextareas = resolveModal.locator('textarea');
+      const resolveReasonSelect = resolveModal
+        .locator('.ant-select-selector')
+        .first();
+      const textareaCount = await resolveTextareas.count();
 
-      const updateIncident = actorPage.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-      );
-      await resolveModal.getByRole('button', { name: 'Save' }).click();
+      if (await resolveReasonSelect.isVisible().catch(() => false)) {
+        await resolveReasonSelect.click();
+        await actorPage.keyboard.press('ArrowDown');
+        await actorPage.keyboard.press('Enter');
+        await resolveTextareas.first().fill('test');
+      } else if (textareaCount >= 2) {
+        await resolveTextareas.nth(0).fill('Missing Data');
+        await resolveTextareas.nth(1).fill('test');
+      } else {
+        await resolveTextareas.first().fill('test');
+      }
+
+      const updateIncident = waitForTaskResolveResponse(actorPage);
+      await resolveModal.getByRole('button', { name: /Save|Ok/i }).click();
       await updateIncident;
     });
   });

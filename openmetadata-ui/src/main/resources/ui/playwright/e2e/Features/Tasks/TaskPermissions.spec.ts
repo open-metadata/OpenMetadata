@@ -11,12 +11,46 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Browser } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { getApiContext } from '../../../utils/common';
 import { waitForPageLoaded } from '../../../utils/polling';
+
+const createTaskAsAdmin = async (
+  browser: Browser,
+  data: Record<string, unknown>
+) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    const taskResponse = await apiContext.post('/api/v1/tasks', {
+      data,
+    });
+
+    expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+
+    return taskResponse.json();
+  } finally {
+    await afterAction();
+  }
+};
+
+const getUserApiContext = async (browser: Browser, user: UserClass) => {
+  const page = await browser.newPage();
+  await user.login(page);
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  return {
+    apiContext,
+    afterAction: async () => {
+      await afterAction();
+      await page.close();
+    },
+  };
+};
 
 /**
  * Task Permissions Tests
@@ -84,31 +118,27 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
   test('assignee WITHOUT EditDescription should NOT be able to resolve RequestDescription task', async ({
     browser,
   }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const task = await createTaskAsAdmin(browser, {
+      about: table.entityResponseData?.fullyQualifiedName,
+      aboutType: 'table',
+      type: 'DescriptionUpdate',
+      category: 'MetadataUpdate',
+      assignees: [assigneeWithoutEdit.responseData.name],
+      payload: {
+        suggestedValue: 'Suggested description text',
+      },
+    });
+    const { apiContext, afterAction } = await getUserApiContext(
+      browser,
+      assigneeWithoutEdit
+    );
 
     try {
-      // Create task assigned to user who lacks edit permission
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeWithoutEdit.responseData.name],
-          payload: {
-            suggestedValue: 'Suggested description text',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Try to resolve as assignee without edit permission
-      // This SHOULD fail with 403 if permission check is implemented correctly
       const resolveResponse = await apiContext.post(
         `/api/v1/tasks/${task.id}/resolve`,
         {
           data: {
-            resolutionType: 'Completed',
+            resolutionType: 'Approved',
             newValue: 'Attempting to update description without permission',
           },
         }
@@ -122,44 +152,34 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
       console.log(
         `Resolution without EditDescription permission - Status: ${status}`
       );
-
-      // CRITICAL: This should be 403 Forbidden
-      // If it's 200, then permission bypass vulnerability exists
-      if (status === 200) {
-        console.warn(
-          'WARNING: Task resolved without EditDescription permission - potential security issue'
-        );
-      }
+      expect(status).toBe(403);
     } finally {
       await afterAction();
     }
   });
 
   test('owner (has EditDescription) CAN resolve task', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const task = await createTaskAsAdmin(browser, {
+      about: table.entityResponseData?.fullyQualifiedName,
+      aboutType: 'table',
+      type: 'DescriptionUpdate',
+      category: 'MetadataUpdate',
+      assignees: [ownerUser.responseData.name],
+      payload: {
+        suggestedValue: 'Owner suggested description',
+      },
+    });
+    const { apiContext, afterAction } = await getUserApiContext(
+      browser,
+      ownerUser
+    );
 
     try {
-      // Create task assigned to owner (who has edit permission)
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            suggestedValue: 'Owner suggested description',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Resolve as owner - should succeed
       const resolveResponse = await apiContext.post(
         `/api/v1/tasks/${task.id}/resolve`,
         {
           data: {
-            resolutionType: 'Completed',
+            resolutionType: 'Approved',
             newValue: 'Description approved by owner',
           },
         }
@@ -172,30 +192,24 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
   });
 
   test('admin CAN resolve any task', async ({ browser }) => {
+    const task = await createTaskAsAdmin(browser, {
+      about: table.entityResponseData?.fullyQualifiedName,
+      aboutType: 'table',
+      type: 'DescriptionUpdate',
+      category: 'MetadataUpdate',
+      assignees: [assigneeWithoutEdit.responseData.name],
+      payload: {
+        suggestedValue: 'Admin will resolve this',
+      },
+    });
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
-      // Create task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeWithoutEdit.responseData.name],
-          payload: {
-            suggestedValue: 'Admin will resolve this',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Admin resolves - should always succeed
       const resolveResponse = await apiContext.post(
         `/api/v1/tasks/${task.id}/resolve`,
         {
           data: {
-            resolutionType: 'Completed',
+            resolutionType: 'Approved',
             newValue: 'Resolved by admin',
           },
         }
@@ -210,27 +224,24 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
   test('assignee WITHOUT EditTags should NOT be able to resolve RequestTag task', async ({
     browser,
   }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const task = await createTaskAsAdmin(browser, {
+      about: table.entityResponseData?.fullyQualifiedName,
+      aboutType: 'table',
+      type: 'TagUpdate',
+      category: 'MetadataUpdate',
+      assignees: [assigneeWithoutEdit.responseData.name],
+    });
+    const { apiContext, afterAction } = await getUserApiContext(
+      browser,
+      assigneeWithoutEdit
+    );
 
     try {
-      // Create RequestTag task assigned to user without EditTags
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
-          type: 'TagUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeWithoutEdit.responseData.name],
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Try to resolve - should fail without EditTags
       const resolveResponse = await apiContext.post(
         `/api/v1/tasks/${task.id}/resolve`,
         {
           data: {
-            resolutionType: 'Completed',
+            resolutionType: 'Approved',
             newValue: '["PII.Sensitive"]',
           },
         }
@@ -238,13 +249,7 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
 
       const status = resolveResponse.status();
       console.log(`RequestTag resolution without EditTags - Status: ${status}`);
-
-      // Should be 403
-      if (status === 200) {
-        console.warn(
-          'WARNING: Tag task resolved without EditTags permission - potential security issue'
-        );
-      }
+      expect(status).toBe(403);
     } finally {
       await afterAction();
     }
@@ -688,7 +693,7 @@ test.describe('Task Permissions - Edge Cases', () => {
         `/api/v1/tasks/${task.id}/resolve`,
         {
           data: {
-            resolutionType: 'Completed',
+            resolutionType: 'Approved',
             newValue: 'Trying to resolve closed task',
           },
         }
@@ -739,7 +744,7 @@ test.describe('Task Permissions - Edge Cases', () => {
         `/api/v1/tasks/${task.id}/resolve`,
         {
           data: {
-            resolutionType: 'Completed',
+            resolutionType: 'Approved',
             newValue: 'Admin resolving unassigned task',
           },
         }

@@ -246,6 +246,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             mentionedUser,
             domain,
             view);
+    repository.applyTaskDomainFilter(baseFilter);
 
     CollectionDAO.TaskDAO.TaskCountSummary countSummary =
         repository

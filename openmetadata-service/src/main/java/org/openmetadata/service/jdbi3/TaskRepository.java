@@ -44,7 +44,9 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionPayload;
@@ -69,6 +71,8 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskFormSchemaValidator;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
@@ -871,9 +875,79 @@ public class TaskRepository extends EntityRepository<Task> {
       }
     }
 
+    if (isIncidentTask(task) && hasIncidentEditPermission(authorizer, securityContext, task)) {
+      return;
+    }
+
     throw new AuthorizationException(
         CatalogExceptionMessage.taskOperationNotAllowed(
             userName, closeTask ? "closeTask" : "resolveTask"));
+  }
+
+  private boolean isIncidentTask(Task task) {
+    TaskEntityType taskType = task.getType();
+    return taskType == TaskEntityType.TestCaseResolution
+        || taskType == TaskEntityType.IncidentResolution;
+  }
+
+  private boolean hasIncidentEditPermission(
+      Authorizer authorizer, SecurityContext securityContext, Task task) {
+    EntityReference about = task.getAbout();
+    if (about == null || about.getId() == null || !Entity.TEST_CASE.equals(about.getType())) {
+      return false;
+    }
+
+    try {
+      TestCase testCase =
+          Entity.getEntity(Entity.TEST_CASE, about.getId(), "entityLink", Include.ALL);
+      if (testCase == null) {
+        return false;
+      }
+
+      ResourceContextInterface testCaseResourceContext =
+          TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+      EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+      ResourceContextInterface entityResourceContext =
+          entityLink != null
+              ? TestCaseResourceContext.builder().entityLink(entityLink).build()
+              : TestCaseResourceContext.builder().build();
+
+      List<AuthRequest> requests = new ArrayList<>();
+      if (entityLink != null) {
+        requests.add(
+            new AuthRequest(
+                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
+                entityResourceContext));
+        requests.add(
+            new AuthRequest(
+                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+                entityResourceContext));
+      }
+      requests.add(
+          new AuthRequest(
+              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+              testCaseResourceContext));
+      requests.add(
+          new AuthRequest(
+              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+              testCaseResourceContext));
+
+      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+      return true;
+    } catch (AuthorizationException e) {
+      LOG.debug(
+          "[TaskRepository] Incident permission fallback denied for task '{}' and user '{}': {}",
+          task.getId(),
+          securityContext.getUserPrincipal().getName(),
+          e.getMessage());
+      return false;
+    } catch (Exception e) {
+      LOG.warn(
+          "[TaskRepository] Failed incident permission fallback for task '{}': {}",
+          task.getId(),
+          e.getMessage());
+      return false;
+    }
   }
 
   private void validateUnderlyingEntityPermission(

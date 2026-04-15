@@ -779,7 +779,7 @@ export const TaskTabNew = ({
         : 'assign';
     const assignee = updatedAssignees[0];
     try {
-      await transitionIncident(taskId, {
+      const updatedTask = await transitionIncident(taskId, {
         transitionId,
         payload: {
           assignees: [
@@ -793,6 +793,8 @@ export const TaskTabNew = ({
           ],
         },
       });
+      setActiveTask(updatedTask);
+      updateTask(updatedTask);
       const refreshed = await getListTestCaseIncidentByStateId(taskId);
       const latest = refreshed?.data?.[0];
       if (latest) {

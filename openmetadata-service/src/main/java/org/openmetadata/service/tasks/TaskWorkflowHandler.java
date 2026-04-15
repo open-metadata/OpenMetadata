@@ -160,6 +160,12 @@ public class TaskWorkflowHandler {
       String user) {
     UUID taskId = task.getId();
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+
+    if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
+      task = persistWorkflowAssignees(taskRepository, task, payloadAssignees, user);
+    }
 
     Map<String, Object> variables = new HashMap<>();
     variables.put(RESULT_VARIABLE, resolveWorkflowResult(task, transitionId, resolutionType));
@@ -184,7 +190,6 @@ public class TaskWorkflowHandler {
     //
     // Known limitation: a single global variable works for the current
     // sequential incident workflow but would collide with parallel tasks.
-    List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
     if (payloadAssignees != null) {
       workflowHandler.setProcessVariable(
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
@@ -241,6 +246,25 @@ public class TaskWorkflowHandler {
     // Task threshold met, apply resolution
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private Task persistWorkflowAssignees(
+      TaskRepository taskRepository, Task task, List<EntityReference> assignees, String user) {
+    try {
+      Task currentTask = taskRepository.get(null, task.getId(), taskRepository.getFields("*"));
+      Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
+      updatedTask.setAssignees(assignees);
+      updatedTask.setUpdatedBy(user);
+      updatedTask.setUpdatedAt(System.currentTimeMillis());
+
+      return taskRepository.update(null, currentTask, updatedTask, user).getEntity();
+    } catch (Exception e) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Failed to persist assignees for workflow task '{}': {}",
+          task.getId(),
+          e.getMessage());
+      return task;
+    }
   }
 
   /**

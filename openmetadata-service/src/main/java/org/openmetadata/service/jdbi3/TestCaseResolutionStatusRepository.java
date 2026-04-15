@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -315,10 +316,11 @@ public class TestCaseResolutionStatusRepository
 
     List<EntityReference> assignees =
         !nullOrEmpty(fullTestCase.getOwners()) ? fullTestCase.getOwners() : List.of();
+    UUID taskId = UUID.randomUUID();
 
     Task task =
         new Task()
-            .withId(UUID.randomUUID())
+            .withId(taskId)
             .withName("Incident: " + fullTestCase.getName())
             .withDisplayName("Test Case Incident - " + fullTestCase.getDisplayName())
             .withDescription("New incident for test case: " + fullTestCase.getFullyQualifiedName())
@@ -326,6 +328,7 @@ public class TestCaseResolutionStatusRepository
             .withType(TaskEntityType.TestCaseResolution)
             .withStatus(TaskEntityStatus.Open)
             .withAbout(fullTestCase.getEntityReference())
+            .withPayload(new TestCaseResolutionPayload().withTestCaseResolutionStatusId(taskId))
             .withCreatedBy(updatedByRef)
             .withAssignees(assignees)
             .withCreatedAt(System.currentTimeMillis())
