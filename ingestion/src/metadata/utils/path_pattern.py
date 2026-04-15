@@ -114,19 +114,35 @@ def pattern_to_regex(pattern: str) -> re.Pattern:
     escaped = ""
     for char in pattern:
         if char == "*":
-            escaped += "[^/]+"
+            escaped += "[^/]*"
         elif char == "?":
             escaped += "[^/]"
         else:
             escaped += re.escape(char)
 
     # Replace placeholder with recursive match (zero or more path segments)
-    # Strip adjacent / to avoid double slashes: /DOUBLESTAR/ -> match
+    escaped_placeholder = re.escape(placeholder)
+    escaped_slash = re.escape("/")
+
+    # /DOUBLESTAR/ in the middle: match / or /any/path/
     escaped = re.sub(
-        re.escape("/") + re.escape(placeholder) + re.escape("/"),
+        escaped_slash + escaped_placeholder + escaped_slash,
         "(?:/|/.+/)",
         escaped,
     )
+    # DOUBLESTAR/ at the start: match empty or any/path/
+    escaped = re.sub(
+        "^" + escaped_placeholder + escaped_slash,
+        "(?:|.+/)",
+        escaped,
+    )
+    # /DOUBLESTAR at the end: match empty or /any/path
+    escaped = re.sub(
+        escaped_slash + escaped_placeholder + "$",
+        "(?:|/.+)",
+        escaped,
+    )
+    # Any remaining (standalone **): match anything
     escaped = escaped.replace(re.escape(placeholder), ".*")
 
     return re.compile(f"^{escaped}$")

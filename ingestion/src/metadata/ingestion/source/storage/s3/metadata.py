@@ -908,7 +908,7 @@ class S3Source(StorageServiceSource):
                 f"Found bucket-level metadata file at "
                 f"s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}. "
                 f"Bucket-level manifest files are deprecated and will be "
-                f"removed in a future release. Use 'manifest' in the"
+                f"removed in a future release. Use 'manifest' in the "
                 f"pipeline config instead for auto-discovery."
             )
             return metadata_config

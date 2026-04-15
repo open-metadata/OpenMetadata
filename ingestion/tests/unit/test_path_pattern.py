@@ -90,6 +90,36 @@ class TestPatternToRegex:
         assert regex.match("data/events.v2/file.parquet")
         assert not regex.match("data/eventsXv2/file.parquet")
 
+    # --- Edge cases from code review ---
+
+    def test_star_matches_zero_chars(self):
+        """Bug fix: * should match zero or more chars (not one or more).
+        data*.parquet should match data.parquet."""
+        regex = pattern_to_regex("data*.parquet")
+        assert regex.match("data.parquet")
+        assert regex.match("data_v2.parquet")
+
+    def test_double_star_at_start_matches_root(self):
+        """Bug fix: **/*.parquet at start should match file.parquet
+        (zero-depth path with no directory)."""
+        regex = pattern_to_regex("**/*.parquet")
+        assert regex.match("file.parquet")
+        assert regex.match("data/file.parquet")
+        assert regex.match("a/b/c/file.parquet")
+
+    def test_double_star_at_end(self):
+        """** at end should match zero or more trailing segments."""
+        regex = pattern_to_regex("data/**")
+        assert regex.match("data/file.parquet")
+        assert regex.match("data/a/b/file.parquet")
+        # data/ alone is a directory marker, filtered by list_keys before matching
+
+    def test_star_matches_empty_segment_in_prefix(self):
+        """prefix*suffix should match when wildcard portion is empty."""
+        regex = pattern_to_regex("logs/*.csv")
+        assert regex.match("logs/file.csv")
+        assert regex.match("logs/.csv")  # empty name before .csv
+
 
 class TestExtractTableRoot:
     def test_with_hive_partitions(self):
