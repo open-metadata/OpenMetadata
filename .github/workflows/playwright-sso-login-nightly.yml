@@ -126,6 +126,16 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
+      - name: Send Slack Notification
+        if: always()
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          RUN_TITLE: "SSO Login Nightly: ${{ matrix.provider.name }} (${{ github.ref_name }})"
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+        run: |
+          npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
+
       - name: Clean Up
         if: always()
         run: |
