@@ -84,6 +84,7 @@ import {
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -365,12 +366,7 @@ const DomainDetails = ({
           createEntity: addDataProducts,
           patchEntity: patchDataProduct,
           onSuccess: () => {
-            fetchDataProducts();
-            dataProductsTabRef.current?.refreshDataProducts();
-            handleTabChange(EntityTabs.DATA_PRODUCTS);
-            onUpdate?.(domain);
             dataProductForm.reset();
-            closeDataProductDrawer();
           },
           enqueueSnackbar,
           closeSnackbar,
@@ -380,8 +376,15 @@ const DomainDetails = ({
         setIsDataProductLoading(false);
       }
     },
-    [domain, dataProductForm, enqueueSnackbar, closeSnackbar, t, onUpdate]
+    [domain, dataProductForm, enqueueSnackbar, closeSnackbar, t]
   );
+
+  const onDataProductCreateSuccess = useCallback(() => {
+    fetchDataProducts();
+    dataProductsTabRef.current?.refreshDataProducts();
+    handleTabChange(EntityTabs.DATA_PRODUCTS);
+    onUpdate?.(domain);
+  }, [handleTabChange, onUpdate, domain]);
 
   const {
     formDrawer: dataProductDrawer,
@@ -403,10 +406,23 @@ const DomainDetails = ({
         onCancel={() => {
           // No-op: Drawer close and form reset handled by useFormDrawerWithHook
         }}
-        onSubmit={handleDataProductSubmit}
+        onSubmit={(data: DomainFormValues): Promise<void> =>
+          submitAndClose(
+            data,
+            handleDataProductSubmit,
+            closeDataProductDrawer,
+            onDataProductCreateSuccess
+          )
+        }
       />
     ),
-    onSubmit: handleDataProductSubmit,
+    onSubmit: (data: DomainFormValues): Promise<void> =>
+      submitAndClose(
+        data,
+        handleDataProductSubmit,
+        closeDataProductDrawer,
+        onDataProductCreateSuccess
+      ),
     loading: isDataProductLoading,
   });
 
@@ -518,11 +534,7 @@ const DomainDetails = ({
           createEntity: addDomains,
           patchEntity: patchDomains,
           onSuccess: () => {
-            fetchSubDomainsCount();
-            refreshDomains?.();
-            handleTabChange(EntityTabs.SUBDOMAINS);
             subDomainForm.reset();
-            closeSubDomainDrawer();
           },
           enqueueSnackbar,
           closeSnackbar,
@@ -538,9 +550,14 @@ const DomainDetails = ({
       enqueueSnackbar,
       closeSnackbar,
       t,
-      refreshDomains,
     ]
   );
+
+  const onSubDomainCreateSuccess = useCallback(() => {
+    fetchSubDomainsCount();
+    refreshDomains?.();
+    handleTabChange(EntityTabs.SUBDOMAINS);
+  }, [fetchSubDomainsCount, refreshDomains, handleTabChange]);
 
   const {
     formDrawer: subDomainDrawer,
@@ -561,10 +578,23 @@ const DomainDetails = ({
         onCancel={() => {
           // No-op: Drawer close and form reset handled by useFormDrawerWithHook
         }}
-        onSubmit={handleSubDomainSubmit}
+        onSubmit={(data: DomainFormValues): Promise<void> =>
+          submitAndClose(
+            data,
+            handleSubDomainSubmit,
+            closeSubDomainDrawer,
+            onSubDomainCreateSuccess
+          )
+        }
       />
     ),
-    onSubmit: handleSubDomainSubmit,
+    onSubmit: (data: DomainFormValues): Promise<void> =>
+      submitAndClose(
+        data,
+        handleSubDomainSubmit,
+        closeSubDomainDrawer,
+        onSubDomainCreateSuccess
+      ),
     loading: isSubDomainLoading,
   });
 

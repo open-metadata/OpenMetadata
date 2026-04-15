@@ -31,6 +31,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getDomainIcon } from '../../../utils/DomainUtils';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
@@ -110,8 +111,6 @@ const MarketplaceDomainsWidget = ({
           patchEntity: patchDomains,
           onSuccess: () => {
             form.reset();
-            closeDrawer();
-            fetchDomains();
           },
           enqueueSnackbar,
           closeSnackbar,
@@ -121,7 +120,7 @@ const MarketplaceDomainsWidget = ({
         setIsFormLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t, fetchDomains]
+    [form, enqueueSnackbar, closeSnackbar, t]
   );
 
   const { formDrawer, openDrawer, closeDrawer } =
@@ -140,10 +139,13 @@ const MarketplaceDomainsWidget = ({
           onCancel={() => {
             // No-op: handled by useFormDrawerWithHook
           }}
-          onSubmit={handleDomainSubmit}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(data, handleDomainSubmit, closeDrawer, fetchDomains)
+          }
         />
       ),
-      onSubmit: handleDomainSubmit,
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(data, handleDomainSubmit, closeDrawer, fetchDomains),
     });
 
   const handleClick = useCallback(

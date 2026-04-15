@@ -36,6 +36,7 @@ import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { getClassificationTags, getGlossaryTags } from '../../utils/TagsUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -105,8 +106,6 @@ const DataProductListPage = () => {
           patchEntity: patchDataProduct,
           onSuccess: () => {
             form.reset();
-            closeDrawer();
-            dataProductListing.refetch();
           },
           enqueueSnackbar,
           closeSnackbar,
@@ -116,8 +115,12 @@ const DataProductListPage = () => {
         setIsLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t, dataProductListing]
+    [form, enqueueSnackbar, closeSnackbar, t]
   );
+
+  const refreshDataProducts = useCallback(() => {
+    dataProductListing.refetch();
+  }, [dataProductListing]);
 
   const { formDrawer, openDrawer, closeDrawer } =
     useFormDrawerWithHook<DomainFormValues>({
@@ -133,10 +136,23 @@ const DataProductListPage = () => {
           loading={isLoading}
           type={DomainFormType.DATA_PRODUCT}
           onCancel={() => {}}
-          onSubmit={handleDataProductSubmit}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(
+              data,
+              handleDataProductSubmit,
+              closeDrawer,
+              refreshDataProducts
+            )
+          }
         />
       ),
-      onSubmit: handleDataProductSubmit,
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(
+          data,
+          handleDataProductSubmit,
+          closeDrawer,
+          refreshDataProducts
+        ),
       loading: isLoading,
     });
 

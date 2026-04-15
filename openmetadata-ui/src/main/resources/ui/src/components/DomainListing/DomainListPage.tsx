@@ -28,6 +28,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDomains, patchDomains } from '../../rest/domainAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
+import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -95,8 +96,6 @@ const DomainListPage = () => {
           patchEntity: patchDomains,
           onSuccess: () => {
             form.reset();
-            closeDrawer();
-            refreshAllDomains();
           },
           enqueueSnackbar,
           closeSnackbar,
@@ -109,6 +108,13 @@ const DomainListPage = () => {
 
     [form, enqueueSnackbar, closeSnackbar, t]
   );
+
+  const { refetch: refetchDomainListing } = domainListing;
+
+  const refreshAllDomains = useCallback(() => {
+    refetchDomainListing();
+    setTreeRefreshToken((prev) => prev + 1);
+  }, [refetchDomainListing]);
 
   const { formDrawer, openDrawer, closeDrawer } =
     useFormDrawerWithHook<DomainFormValues>({
@@ -124,10 +130,23 @@ const DomainListPage = () => {
           loading={isLoading}
           type={DomainFormType.DOMAIN}
           onCancel={() => {}}
-          onSubmit={handleDomainSubmit}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(
+              data,
+              handleDomainSubmit,
+              closeDrawer,
+              refreshAllDomains
+            )
+          }
         />
       ),
-      onSubmit: handleDomainSubmit,
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(
+          data,
+          handleDomainSubmit,
+          closeDrawer,
+          refreshAllDomains
+        ),
       loading: isLoading,
     });
 
@@ -189,13 +208,6 @@ const DomainListPage = () => {
     onPageChange: domainListing.handlePageChange,
     loading: domainListing.loading,
   });
-
-  const { refetch: refetchDomainListing } = domainListing;
-
-  const refreshAllDomains = useCallback(() => {
-    refetchDomainListing();
-    setTreeRefreshToken((prev) => prev + 1);
-  }, [refetchDomainListing]);
 
   const selectedDomainEntities = useMemo(
     () =>

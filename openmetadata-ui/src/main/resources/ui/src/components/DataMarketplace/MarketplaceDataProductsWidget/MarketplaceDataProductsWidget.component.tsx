@@ -35,6 +35,7 @@ import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
@@ -117,8 +118,6 @@ const MarketplaceDataProductsWidget = ({
           patchEntity: patchDataProduct,
           onSuccess: () => {
             form.reset();
-            closeDrawer();
-            fetchDataProducts();
           },
           enqueueSnackbar,
           closeSnackbar,
@@ -128,7 +127,7 @@ const MarketplaceDataProductsWidget = ({
         setIsFormLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t, fetchDataProducts]
+    [form, enqueueSnackbar, closeSnackbar, t]
   );
 
   const { formDrawer, openDrawer, closeDrawer } =
@@ -147,10 +146,23 @@ const MarketplaceDataProductsWidget = ({
           onCancel={() => {
             // No-op: handled by useFormDrawerWithHook
           }}
-          onSubmit={handleDataProductSubmit}
+          onSubmit={(data: DomainFormValues): Promise<void> =>
+            submitAndClose(
+              data,
+              handleDataProductSubmit,
+              closeDrawer,
+              fetchDataProducts
+            )
+          }
         />
       ),
-      onSubmit: handleDataProductSubmit,
+      onSubmit: (data: DomainFormValues): Promise<void> =>
+        submitAndClose(
+          data,
+          handleDataProductSubmit,
+          closeDrawer,
+          fetchDataProducts
+        ),
     });
 
   const handleClick = useCallback(
