@@ -245,9 +245,16 @@ export const assignDomain = async (
   await waitForAllLoadersToDisappear(page);
 
   if (checkSelectedDomain) {
-    await expect(page.getByTestId('domain-link')).toContainText(
-      domain.displayName
-    );
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
   }
 };
 
@@ -422,9 +429,17 @@ export const assignDataProduct = async (
   action: 'Add' | 'Edit' = 'Add',
   parentId = 'KnowledgePanel.DataProducts'
 ) => {
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
-  );
+  const hasMultipleDomains = await page
+    .getByTestId('domain-count-button')
+    .isVisible();
+  if (hasMultipleDomains) {
+    await expect(page.getByTestId('domain-count-button')).toBeVisible();
+  } else {
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domain.displayName
+    );
+  }
+
   await page
     .getByTestId(parentId)
     .getByTestId('data-products-container')

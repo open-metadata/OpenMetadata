@@ -1746,12 +1746,20 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, []);
 
   const handleExportPng = useCallback(async () => {
-    await graphRef.current?.exportAsPng();
-  }, []);
+    try {
+      await graphRef.current?.exportAsPng();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   const handleExportSvg = useCallback(async () => {
-    await graphRef.current?.exportAsSvg();
-  }, []);
+    try {
+      await graphRef.current?.exportAsSvg();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   // Resolve the single glossary ID applicable in the current scope so we know
   // which glossary to export as an ontology file.

@@ -4,17 +4,19 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.service.Entity;
 
-public record APICollectionIndex(APICollection apiCollection) implements SearchIndex {
+public record APICollectionIndex(APICollection apiCollection) implements TaggableIndex {
 
   @Override
   public Object getEntity() {
     return apiCollection;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.API_COLLECTION;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(apiCollection, Entity.API_COLLECTION);
-    doc.putAll(commonAttributes);
     return doc;
   }
 }
