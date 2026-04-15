@@ -33,7 +33,6 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import return_azure_storage_options
-from metadata.readers.file.s3 import return_s3_storage_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -109,19 +108,18 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from S3 without loading entire file into memory."""
-        from s3fs import S3FileSystem
-
-        storage_options = return_s3_storage_options(self.config_source)
-        s3 = S3FileSystem(**storage_options)
-        file_path = f"s3://{bucket_name}/{key}"
-
-        with s3.open(file_path, "rb") as f:
-            columns = self._get_avro_columns(f)
+        schema_response = self.client.get_object(Bucket=bucket_name, Key=key)
+        try:
+            columns = self._get_avro_columns(schema_response["Body"])
+        finally:
+            schema_response["Body"].close()
 
         def chunk_generator():
             response = self.client.get_object(Bucket=bucket_name, Key=key)
-            file_stream = response["Body"]
-            yield from self._stream_avro_records(file_stream)
+            try:
+                yield from self._stream_avro_records(response["Body"])
+            finally:
+                response["Body"].close()
 
         return DatalakeColumnWrapper(
             columns=columns,
