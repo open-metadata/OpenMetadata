@@ -13,7 +13,7 @@
 Datalake S3 Client
 """
 from functools import partial
-from typing import Callable, Iterable, Optional, Set
+from typing import Callable, Iterable, Optional, Set, Tuple
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -59,7 +59,7 @@ class DatalakeS3Client(DatalakeBaseClient):
         bucket_name: str,
         prefix: Optional[str],
         skip_cold_storage: bool = False,
-    ) -> Iterable[str]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:
         kwargs = {"Bucket": bucket_name}
 
         if prefix:
