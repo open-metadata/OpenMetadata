@@ -712,10 +712,11 @@ public class SearchRepository {
       } else {
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
+        doc =
+            SearchIndexUtils.stripDocMapIfOversized(
+                doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
       }
 
-      // Use synchronous update to ensure tests pass
-      // TODO: Consider using async updates with proper wait mechanisms in tests
       searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
 
       long updateTime = System.currentTimeMillis() - startTime;
@@ -830,7 +831,7 @@ public class SearchRepository {
 
     int batchSize = 100;
     int maxConcurrentRequests = 5;
-    long maxPayloadSizeBytes = 10 * 1024 * 1024; // 10MB
+    long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
 
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {

@@ -16,6 +16,7 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -26,11 +27,14 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +50,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -556,5 +561,86 @@ class DistributedJobParticipantTest {
           .untilAsserted(
               () -> verify(constructedMock, atLeastOnce()).claimNextPartition(eq(jobId)));
     }
+  }
+
+  @Test
+  void testProcessJobPartitionsUsesDefaultBulkSinkSettingsAndHandlesInterruptedWait()
+      throws Exception {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob config = new EventPublisherJob();
+    config.setEntities(Set.of("table"));
+
+    SearchIndexJob runningJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .status(IndexJobStatus.RUNNING)
+            .jobConfiguration(config)
+            .build();
+    SearchIndexPartition pendingPartition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType("table")
+            .status(PartitionStatus.PENDING)
+            .build();
+
+    CollectionDAO.SearchIndexFailureDAO failureDao =
+        mock(CollectionDAO.SearchIndexFailureDAO.class);
+    when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
+    when(searchRepository.createBulkSink(
+            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+        .thenReturn(bulkSink);
+    when(bulkSink.flushAndAwait(60)).thenReturn(false);
+
+    try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
+        mockConstruction(
+            DistributedSearchIndexCoordinator.class,
+            (mock, context) -> {
+              when(mock.getJob(eq(jobId))).thenReturn(Optional.of(runningJob));
+              when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
+                  .thenReturn(List.of(pendingPartition));
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
+                  .thenReturn(List.of());
+            })) {
+
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", testNotifier);
+      setParticipantRunning(true);
+      Thread.currentThread().interrupt();
+
+      invokeParticipantMethod(
+          "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
+
+      verify(searchRepository)
+          .createBulkSink(100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
+      verify(bulkSink).flushAndAwait(60);
+      assertTrue(Thread.currentThread().isInterrupted());
+      verify(coordinatorMocked.constructed().get(0)).claimNextPartition(jobId);
+    }
+  }
+
+  private void setParticipantField(String fieldName, Object value) throws Exception {
+    Field field = DistributedJobParticipant.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(participant, value);
+  }
+
+  private Object getParticipantField(String fieldName) throws Exception {
+    Field field = DistributedJobParticipant.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(participant);
+  }
+
+  private void setParticipantRunning(boolean running) throws Exception {
+    ((AtomicBoolean) getParticipantField("running")).set(running);
+  }
+
+  private Object invokeParticipantMethod(
+      String methodName, Class<?>[] parameterTypes, Object... args) throws Exception {
+    Method method = DistributedJobParticipant.class.getDeclaredMethod(methodName, parameterTypes);
+    method.setAccessible(true);
+    return method.invoke(participant, args);
   }
 }

@@ -561,6 +561,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -643,6 +646,10 @@
             "ignore_above": 512
           }
         }
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }
