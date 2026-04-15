@@ -1,14 +1,14 @@
-import { isValidElement, useContext } from 'react';
+import { Avatar } from '@/components/base/avatar/avatar';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
+import { fontSizeClass } from '@/utils/tailwindClasses';
 import { Check } from '@untitledui/icons';
+import { isValidElement, useContext } from 'react';
 import type { ListBoxItemProps as AriaListBoxItemProps } from 'react-aria-components';
 import {
   ListBoxItem as AriaListBoxItem,
   Text as AriaText,
 } from 'react-aria-components';
-import { Avatar } from '@/components/base/avatar/avatar';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
-import { fontSizeClass } from '@/utils/tailwindClasses';
 import type { SelectItemType } from './select';
 import { SelectContext } from './select';
 
@@ -33,7 +33,7 @@ export const SelectItem = ({
   children,
   ...props
 }: SelectItemProps) => {
-  const { size, fontSize } = useContext(SelectContext);
+  const { fontSize, size } = useContext(SelectContext);
 
   const labelOrChildren =
     label || (typeof children === 'string' ? children : '');
