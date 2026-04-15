@@ -157,6 +157,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          // G6 only supports raster image export here; keep the SVG wrapper explicit.
           const dataUrl = await graph.toDataURL({
             mode: 'overall',
             type: 'image/png',
@@ -169,7 +170,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'ontology-graph.svg';
+          a.download = 'ontology-graph-raster.svg';
           a.click();
           URL.revokeObjectURL(url);
         },

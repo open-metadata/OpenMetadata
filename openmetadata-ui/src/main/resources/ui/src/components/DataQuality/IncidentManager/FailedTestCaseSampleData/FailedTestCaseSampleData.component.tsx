@@ -49,6 +49,7 @@ import './failed-test-case-sample-data.less';
 import { FailedTestCaseSampleDataProps } from './FailedTestCaseSampleData.interface';
 
 const DIFF_TYPE = 'diffType';
+const ROW_KEY = '__rowKey';
 const DIFF_TYPE_VALUES = {
   ADD: '+',
   REMOVE: '-',
@@ -143,11 +144,12 @@ const FailedTestCaseSampleData = ({
       };
     });
 
-    const data = (sampleData?.rows ?? []).map((item) => {
+    const data = (sampleData?.rows ?? []).map((item, index) => {
       const dataObject: Record<string, SampleDataType> = {};
       (sampleData?.columns ?? []).forEach((col, index) => {
         dataObject[col] = item[index];
       });
+      dataObject[ROW_KEY] = index;
 
       return dataObject;
     });
@@ -271,7 +273,7 @@ const FailedTestCaseSampleData = ({
             'not-equal-sample-data': type === DIFF_TYPE_VALUES.NOT_EQUAL,
           });
         }}
-        rowKey="name"
+        rowKey={ROW_KEY}
         scroll={{ x: 'max-content' }}
         size="small"
       />
