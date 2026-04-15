@@ -77,44 +77,42 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         Create connection.
 
         When instantClientDirectory is configured, initialize thick mode
-        directly (the user/image intends thick mode for NNE support).
-        Otherwise try thin mode first, and fall back to thick mode only
-        if the thin connection fails.
+        directly (required for NNE). Otherwise connect in thin mode.
         """
         if self.service_connection.instantClientDirectory:
             return self._get_client_thick_mode()
-        return self._get_client_with_fallback()
+        return self._get_client_thin_mode()
 
     def _get_client_thick_mode(self) -> Engine:
-        """Initialize thick mode and create the engine."""
-        self._init_thick_mode()
+        """Initialize thick mode and create the engine.
+
+        Raises SourceConnectionException if thick mode init fails, since
+        the user explicitly configured instantClientDirectory.
+        """
+        if not self._init_thick_mode():
+            raise SourceConnectionException(
+                "Could not initialize Oracle thick client at "
+                f"'{self.service_connection.instantClientDirectory}'. "
+                "Verify the Instant Client libraries exist and match "
+                "your platform architecture."
+            )
         return self._create_engine()
 
-    def _get_client_with_fallback(self) -> Engine:
-        """Try thin mode first; fall back to thick mode if it fails."""
+    def _get_client_thin_mode(self) -> Engine:
+        """Connect in thin mode (no Instant Client required)."""
         engine = self._create_engine()
 
         if self._can_connect(engine):
             logger.info("Connected to Oracle in thin mode")
             return engine
 
-        logger.info(
-            "Thin mode connection failed. Attempting thick mode with"
-            " Oracle Instant Client for NNE support."
-        )
-        if self._init_thick_mode():
-            engine = self._create_engine()
-            if self._can_connect(engine):
-                logger.info("Connected to Oracle in thick mode (NNE enabled)")
-                return engine
-
         raise SourceConnectionException(
-            "Could not connect to Oracle in thin or thick mode. "
+            "Could not connect to Oracle in thin mode. "
             "Check the connection settings (host, port, service name, "
             "credentials) and verify network connectivity. If your Oracle "
             "server requires NNE (SQLNET.ENCRYPTION_SERVER=required), "
-            "ensure Oracle Instant Client is installed and "
-            "instantClientDirectory is configured."
+            "set instantClientDirectory to enable thick mode with Oracle "
+            "Instant Client (default: /instantclient)."
         )
 
     def _create_engine(self) -> Engine:
@@ -131,7 +129,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 conn.execute(text("SELECT 1 FROM DUAL"))
             return True
         except Exception as exc:
-            logger.debug(f"Connectivity check failed: {exc}")
+            logger.debug("Connectivity check failed: %s", exc)
             return False
 
     def _init_thick_mode(self) -> bool:
@@ -140,18 +138,18 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         if not lib_dir:
             return False
         try:
-            os.environ[LD_LIB_ENV] = lib_dir
             oracledb.init_oracle_client(lib_dir=lib_dir)
-            logger.info(f"Oracle thick client initialized at {lib_dir}")
+            os.environ[LD_LIB_ENV] = lib_dir
+            logger.info("Oracle thick client initialized at %s", lib_dir)
             return True
         except ProgrammingError:
             logger.debug("Oracle thick client already initialized")
             return True
         except DatabaseError as err:
             logger.warning(
-                f"Could not initialize Oracle thick client at {lib_dir}:"
-                f" {err}. If your Oracle server requires NNE, verify the"
-                " Instant Client libraries match your platform architecture."
+                "Could not initialize Oracle thick client at %s: %s",
+                lib_dir,
+                err,
             )
             return False
 

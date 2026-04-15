@@ -41,7 +41,7 @@ def oracle_container():
         yield oracle_config
 
 
-def _grant_oracle_privileges(config: OracleContainerConfigs):
+def _grant_oracle_privileges(config: OracleContainerConfigs) -> None:
     """Grant DBA-level privileges needed by test_connection steps."""
     dsn = oracledb.makedsn("localhost", config.exposed_port, service_name=config.dbname)
     with oracledb.connect(
