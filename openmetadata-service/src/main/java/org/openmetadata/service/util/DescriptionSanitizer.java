@@ -106,8 +106,7 @@ public final class DescriptionSanitizer {
           .allowElements("dl", "dt", "dd")
           .toFactory();
 
-  private static final Pattern ENTITY_LINK_PATTERN =
-      Pattern.compile("<#E::[^<>]+>");
+  private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^<>]+>");
 
   private static final String ENTITY_LINK_PLACEHOLDER_PREFIX = "__OM_ENTITY_LINK_";
 
@@ -142,8 +141,7 @@ public final class DescriptionSanitizer {
 
     for (int i = 0; i < entityLinks.size(); i++) {
       sanitized =
-          sanitized.replace(
-              ENTITY_LINK_PLACEHOLDER_PREFIX + (i + 1) + "__", entityLinks.get(i));
+          sanitized.replace(ENTITY_LINK_PLACEHOLDER_PREFIX + (i + 1) + "__", entityLinks.get(i));
     }
     return sanitized;
   }

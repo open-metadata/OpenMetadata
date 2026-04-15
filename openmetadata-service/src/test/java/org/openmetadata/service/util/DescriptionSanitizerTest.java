@@ -195,8 +195,7 @@ class DescriptionSanitizerTest {
 
   @Test
   void multipleEntityLinksArePreserved() {
-    String input =
-        "<p><#E::table::db.schema.t1> and <#E::table::db.schema.t2> are related</p>";
+    String input = "<p><#E::table::db.schema.t1> and <#E::table::db.schema.t2> are related</p>";
     String result = DescriptionSanitizer.sanitize(input);
 
     assertTrue(result.contains("<#E::table::db.schema.t1>"));
@@ -205,8 +204,7 @@ class DescriptionSanitizerTest {
 
   @Test
   void entityLinkWithScriptInjectionIsStillSafe() {
-    String input =
-        "<p><#E::table::clean.fqn> and <script>alert(1)</script></p>";
+    String input = "<p><#E::table::clean.fqn> and <script>alert(1)</script></p>";
     String result = DescriptionSanitizer.sanitize(input);
 
     assertTrue(result.contains("<#E::table::clean.fqn>"));
