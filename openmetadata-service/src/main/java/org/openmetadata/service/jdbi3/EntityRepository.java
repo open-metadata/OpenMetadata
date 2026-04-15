@@ -3323,7 +3323,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
-            .withEntity(createLightweightEntityRef(entity))
+            .withEntity(entity)
             .withChangeDescription(change)
             .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -3376,7 +3376,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
-            .withEntity(createLightweightEntityRef(originalEntity))
+            .withEntity(originalEntity)
             .withChangeDescription(change)
             .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -3813,7 +3813,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
-            .withEntity(createLightweightEntityRef(entity))
+            .withEntity(entity)
             .withChangeDescription(change)
             .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -5808,7 +5808,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
-        .withEntity(createLightweightEntityRef(updated))
+        .withEntity(updated)
         .withChangeDescription(change)
         .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
@@ -5818,15 +5818,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withTimestamp(System.currentTimeMillis())
         .withCurrentVersion(updated.getVersion())
         .withPreviousVersion(prevVersion);
-  }
-
-  protected static Map<String, Object> createLightweightEntityRef(EntityInterface entity) {
-    Map<String, Object> ref = new HashMap<>();
-    ref.put("id", entity.getId());
-    ref.put("name", entity.getName());
-    ref.put("fullyQualifiedName", entity.getFullyQualifiedName());
-    ref.put("version", entity.getVersion());
-    return ref;
   }
 
   protected void createAndInsertChangeEvent(
@@ -5851,9 +5842,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
             .withChangeDescription(changeDescription)
-            .withEntity(createLightweightEntityRef(updated));
+            .withEntity(updated);
 
-    daoCollection.changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+    daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     LOG.debug(
         "Inserted incremental ChangeEvent for {} version {}", entityType, updated.getVersion());
   }
