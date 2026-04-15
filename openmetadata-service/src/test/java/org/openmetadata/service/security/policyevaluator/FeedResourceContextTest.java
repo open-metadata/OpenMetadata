@@ -103,8 +103,7 @@ class FeedResourceContextTest {
 
     try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
       mockedEntity
-          .when(
-                () -> Entity.getEntityReferenceByName(Entity.USER, "deleted-user", NON_DELETED))
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "deleted-user", NON_DELETED))
           .thenThrow(EntityNotFoundException.byMessage("missing creator"));
       mockedEntity
           .when(() -> Entity.getEntity(about, Entity.FIELD_DOMAINS, ALL))
