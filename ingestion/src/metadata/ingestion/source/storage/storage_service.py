@@ -11,8 +11,9 @@
 """
 Base class for ingesting Object Storage services
 """
+import secrets
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from pydantic import Field
 from typing_extensions import Annotated
@@ -29,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
     ManifestMetadataConfig,
 )
+from metadata.generated.schema.metadataIngestion.storage.pathSpec import PathSpec
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     NoMetadataConfigurationSource,
     StorageServiceMetadataPipeline,
@@ -61,6 +63,13 @@ from metadata.utils.datalake.datalake_utils import (
 )
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.path_pattern import (
+    detect_hive_partitions,
+    extract_static_prefix,
+    group_files_by_table,
+    infer_structure_format,
+    pattern_to_regex,
+)
 from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
     get_manifest,
@@ -338,3 +347,104 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             container_name, sample_key, config_source, client, metadata_entry
         )
         return (metadata_entry.partitionColumns or []) + (extracted_cols or [])
+
+    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
+        """List (key, size_bytes) pairs for files under prefix.
+
+        Override per provider (S3, GCS, Azure). Default returns empty.
+        """
+        return []
+
+    def discover_containers_from_path_specs(
+        self,
+        bucket_name: str,
+        path_specs: List[PathSpec],
+        already_discovered: Set[str],
+        config_source: Any,
+        client: Any,
+    ) -> Iterable[Dict[str, Any]]:
+        """Auto-discover containers from pathSpecs glob patterns.
+
+        Yields dicts with keys: name, prefix, metadata_entry, sample_key, files.
+        The caller (S3/GCS/Azure source) converts these into provider-specific
+        ContainerDetails objects.
+
+        Args:
+            bucket_name: The bucket to scan.
+            path_specs: List of PathSpec from pipeline config.
+            already_discovered: Set of container names already found via manifest
+                (skipped to avoid duplicates).
+            config_source: Cloud config for schema extraction.
+            client: Cloud client for schema extraction.
+        """
+        for path_spec in path_specs:
+            static_prefix = extract_static_prefix(path_spec.pathPattern)
+            compiled_regex = pattern_to_regex(path_spec.pathPattern)
+
+            matched_keys = [
+                (key, size)
+                for key, size in self.list_keys(bucket_name, static_prefix)
+                if compiled_regex.match(key)
+            ]
+
+            if not matched_keys:
+                logger.info(
+                    f"No files matched pattern '{path_spec.pathPattern}' "
+                    f"in bucket '{bucket_name}'"
+                )
+                continue
+
+            table_groups = group_files_by_table(matched_keys)
+
+            for table_root, files in table_groups.items():
+                container_name = table_root.strip(KEY_SEPARATOR)
+                if not container_name:
+                    continue
+
+                if container_name in already_discovered:
+                    logger.debug(
+                        f"Skipping auto-discovered '{container_name}' "
+                        f"— already registered via manifest"
+                    )
+                    continue
+
+                partition_columns = None
+                is_partitioned = False
+                if path_spec.autoPartitionDetection:
+                    partition_columns = detect_hive_partitions(
+                        [k for k, _ in files], table_root
+                    )
+                    is_partitioned = bool(partition_columns)
+
+                sample_key = secrets.choice([k for k, _ in files])
+                structure_format = path_spec.structureFormat or infer_structure_format(
+                    sample_key
+                )
+                if not structure_format:
+                    logger.warning(
+                        f"Could not determine file format for '{container_name}'. "
+                        f"Skipping. Set structureFormat in pathSpec or use a "
+                        f"recognized file extension."
+                    )
+                    continue
+                metadata_entry = MetadataEntry(
+                    dataPath=container_name,
+                    structureFormat=structure_format,
+                    isPartitioned=is_partitioned,
+                    partitionColumns=partition_columns,
+                    separator=path_spec.separator,
+                )
+
+                logger.info(
+                    f"Auto-discovered container '{container_name}' "
+                    f"({len(files)} files, partitioned={is_partitioned}) "
+                    f"from pattern '{path_spec.pathPattern}'"
+                )
+
+                yield {
+                    "name": container_name,
+                    "prefix": f"{KEY_SEPARATOR}{container_name}",
+                    "metadata_entry": metadata_entry,
+                    "sample_key": sample_key,
+                    "files": files,
+                }

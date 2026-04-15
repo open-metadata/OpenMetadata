@@ -130,40 +130,96 @@ class S3Source(StorageServiceSource):
                 parent_entity: EntityReference = EntityReference(
                     id=self._bucket_cache[bucket_name].id.root, type="container"
                 )
+                manifest_entries = []
                 if self.global_manifest:
-                    manifest_entries_for_current_bucket = (
+                    manifest_entries = (
                         self._manifest_entries_to_metadata_entries_by_container(
                             container_name=bucket_name, manifest=self.global_manifest
                         )
                     )
-                    # Check if we have entries in the manifest file belonging to this bucket
-                    if manifest_entries_for_current_bucket:
-                        # ingest all the relevant valid paths from it
+                    if manifest_entries:
                         yield from self._generate_structured_containers(
                             bucket_response=bucket_response,
-                            entries=manifest_entries_for_current_bucket,
+                            entries=manifest_entries,
                             parent=parent_entity,
                         )
                         yield from self._generate_unstructured_containers(
                             bucket_response=bucket_response,
-                            entries=manifest_entries_for_current_bucket,
+                            entries=manifest_entries,
                             parent=parent_entity,
                         )
-                        # nothing else do to for the current bucket, skipping to the next
-                        continue
-                # If no global file, or no valid entries in the manifest, check for bucket level metadata file
-                metadata_config = self._load_metadata_file(bucket_name=bucket_name)
-                if metadata_config:
-                    yield from self._generate_structured_containers(
-                        bucket_response=bucket_response,
-                        entries=metadata_config.entries,
-                        parent=parent_entity,
-                    )
-                    yield from self._generate_unstructured_containers(
-                        bucket_response=bucket_response,
-                        entries=metadata_config.entries,
-                        parent=parent_entity,
-                    )
+
+                # Only check bucket-level metadata file if no pathSpecs configured
+                # (pathSpecs replaces the bucket-level manifest approach)
+                if not manifest_entries and not self.source_config.pathSpecs:
+                    metadata_config = self._load_metadata_file(bucket_name=bucket_name)
+                    if metadata_config:
+                        manifest_entries = metadata_config.entries
+                        yield from self._generate_structured_containers(
+                            bucket_response=bucket_response,
+                            entries=manifest_entries,
+                            parent=parent_entity,
+                        )
+                        yield from self._generate_unstructured_containers(
+                            bucket_response=bucket_response,
+                            entries=manifest_entries,
+                            parent=parent_entity,
+                        )
+
+                # Auto-discover from pathSpecs — fills gaps not covered by manifest
+                if self.source_config.pathSpecs:
+                    already_discovered = {
+                        e.dataPath.strip(KEY_SEPARATOR) for e in manifest_entries
+                    }
+                    for discovery in self.discover_containers_from_path_specs(
+                        bucket_name=bucket_name,
+                        path_specs=self.source_config.pathSpecs,
+                        already_discovered=already_discovered,
+                        config_source=S3Config(
+                            securityConfig=self.service_connection.awsConfig
+                        ),
+                        client=self.s3_client,
+                    ):
+                        columns = self._get_columns(
+                            container_name=bucket_name,
+                            sample_key=discovery["sample_key"],
+                            metadata_entry=discovery["metadata_entry"],
+                            config_source=S3Config(
+                                securityConfig=self.service_connection.awsConfig
+                            ),
+                            client=self.s3_client,
+                        )
+                        if columns:
+                            yield S3ContainerDetails(
+                                name=discovery["name"],
+                                prefix=discovery["prefix"],
+                                creation_date=(
+                                    bucket_response.creation_date.isoformat()
+                                    if bucket_response.creation_date
+                                    else None
+                                ),
+                                number_of_objects=len(discovery["files"]),
+                                size=sum(s for _, s in discovery["files"]),
+                                file_formats=[
+                                    container.FileFormat(
+                                        discovery["metadata_entry"].structureFormat
+                                    )
+                                ],
+                                data_model=ContainerDataModel(
+                                    isPartitioned=discovery[
+                                        "metadata_entry"
+                                    ].isPartitioned,
+                                    columns=columns,
+                                ),
+                                sourceUrl=self._get_object_source_url(
+                                    bucket_name=bucket_name,
+                                    prefix=discovery["name"],
+                                ),
+                                fullPath=self._get_full_path(
+                                    bucket_name, discovery["name"]
+                                ),
+                                parent=parent_entity,
+                            )
 
                 # clean up the cache after each bucket
                 self._unstructured_container_cache.clear()
@@ -562,6 +618,13 @@ class S3Source(StorageServiceSource):
                         prefix=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     ),
                 )
+
+    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
+        """List (key, size_bytes) for all files under prefix."""
+        for obj in list_s3_objects(self.s3_client, Bucket=bucket_name, Prefix=prefix):
+            key = obj.get("Key", "")
+            if key and not key.endswith("/") and "/_delta_log/" not in key:
+                yield key, obj.get("Size", 0)
 
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []

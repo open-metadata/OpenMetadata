@@ -69,6 +69,15 @@
       "type": "boolean",
       "default": false,
       "title": "Include Tags"
+    },
+    "pathSpecs": {
+      "title": "Path Specifications for Auto-Discovery",
+      "description": "List of glob path patterns to auto-discover structured data without a manifest file. When set, the connector scans matching paths and creates containers with auto-detected partitions. Works alongside or instead of the manifest.",
+      "type": "array",
+      "items": {
+        "$ref": "./storage/pathSpec.json"
+      },
+      "default": null
     }
   },
   "additionalProperties": false
