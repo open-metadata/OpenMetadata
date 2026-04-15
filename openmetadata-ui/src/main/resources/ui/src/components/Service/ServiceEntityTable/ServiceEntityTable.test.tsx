@@ -19,6 +19,27 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     serviceCategory: 'databaseServices',
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: {
+      id: 'service-1',
+      name: 'test-service',
+      fullyQualifiedName: 'test-service',
+      deleted: false,
+    },
+    permissions: { EditAll: true },
+  }),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Toggle: jest
+    .fn()
+    .mockImplementation(({ 'data-testid': testId }) => (
+      <div data-testid={testId} />
+    )),
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -109,6 +130,16 @@ jest.mock('../../../utils/ServiceUtils', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
+  getBulkEditButton: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityBulkEditPath: jest
+    .fn()
+    .mockReturnValue('/bulk-edit/databaseService/test-service'),
 }));
 
 jest.mock('../../../utils/i18next/LocalUtil', () => ({

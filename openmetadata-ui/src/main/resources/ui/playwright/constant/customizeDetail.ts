@@ -80,6 +80,8 @@ export enum EntityTabs {
   SUBDOMAINS = 'subdomains',
   CONTRACT = 'contract',
   ER_DIAGRAM = 'erDiagram',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
 }
 
 export const TABLE_DEFAULT_TABS = [
@@ -245,4 +247,14 @@ export const GLOSSARY_TERM_DEFAULT_TABS = [
   EntityTabs.ASSETS,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.CUSTOM_PROPERTIES,
+];
+
+export const SERVICE_DEFAULT_TABS = [
+  EntityTabs.INSIGHTS,
+  EntityTabs.DETAILS,
+  EntityTabs.DATA_Model,
+  EntityTabs.FILES,
+  EntityTabs.SPREADSHEETS,
+  EntityTabs.AGENTS,
+  EntityTabs.CONNECTION,
 ];

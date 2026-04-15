@@ -1448,6 +1448,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             'service.fullyQualifiedName.keyword',
             decodedServiceFQN
           ),
+          includeDeleted: showDeleted,
           trackTotalHits: true,
         });
         setServiceEntityCount(res.hits.total.value);
@@ -1461,6 +1462,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     decodedServiceFQN,
     isMetadataService,
     isSecurityService,
+    showDeleted,
   ]);
 
   useEffect(() => {

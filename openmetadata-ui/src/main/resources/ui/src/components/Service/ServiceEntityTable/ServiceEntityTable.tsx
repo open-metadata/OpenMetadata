@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Typography } from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -18,7 +18,7 @@ import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -29,13 +29,17 @@ import {
   DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../../enums/entity.enum';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useTableFilters } from '../../../hooks/useTableFilters';
+import { ServicesType } from '../../../interface/service.interface';
 import { ServicePageData } from '../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../utils/DatabaseSchemaDetailsUtils';
+import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   callServicePatchAPI,
@@ -49,6 +53,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 
 interface ServiceEntityTableProps {
@@ -63,6 +68,9 @@ const ServiceEntityTable = ({
   const { fqn: decodedServiceFQN } = useFqn();
   const { permissions } = usePermissionProvider();
   const location = useCustomLocation();
+  const navigate = useNavigate();
+  const { data: serviceData, permissions: servicePermission } =
+    useGenericContext<ServicesType>();
 
   const [entities, setEntities] = useState<ServicePageData[]>([]);
   const entitiesRef = useRef<ServicePageData[]>(entities);
@@ -238,6 +246,17 @@ const ServiceEntityTable = ({
     [handlePageChange]
   );
 
+  const isDatabaseService = serviceCategory === 'databaseServices';
+
+  const handleEditTable = useCallback(() => {
+    navigate({
+      pathname: getEntityBulkEditPath(
+        EntityType.DATABASE_SERVICE,
+        decodedServiceFQN
+      ),
+    });
+  }, [navigate, decodedServiceFQN]);
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('label.search-for-type', {
@@ -278,16 +297,21 @@ const ServiceEntityTable = ({
       defaultVisibleColumns={DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS}
       entityType={serviceCategory}
       extraTableFilters={
-        <span>
-          <Switch
-            checked={showDeleted}
+        <>
+          <Toggle
             data-testid="show-deleted"
-            onClick={handleShowDeleted}
+            isSelected={showDeleted}
+            label={t('label.deleted')}
+            onChange={handleShowDeleted}
           />
-          <Typography.Text className="m-l-xs">
-            {t('label.deleted')}
-          </Typography.Text>
-        </span>
+          {isDatabaseService &&
+            !isCustomizationPage &&
+            getBulkEditButton(
+              (servicePermission?.EditAll ?? false) &&
+                !serviceData?.deleted,
+              handleEditTable
+            )}
+        </>
       }
       loading={isLoading}
       locale={{
