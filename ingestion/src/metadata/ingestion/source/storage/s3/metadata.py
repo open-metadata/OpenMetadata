@@ -149,9 +149,9 @@ class S3Source(StorageServiceSource):
                             parent=parent_entity,
                         )
 
-                # Only check bucket-level metadata file if no pathSpecs configured
-                # (pathSpecs replaces the bucket-level manifest approach)
-                if not manifest_entries and not self.source_config.pathSpecs:
+                # Only check bucket-level metadata file if no inline manifest configured
+                # (inline manifest replaces the bucket-level file approach)
+                if not manifest_entries and not self.source_config.manifest:
                     metadata_config = self._load_metadata_file(bucket_name=bucket_name)
                     if metadata_config:
                         manifest_entries = metadata_config.entries
@@ -166,20 +166,48 @@ class S3Source(StorageServiceSource):
                             parent=parent_entity,
                         )
 
-                # Auto-discover from pathSpecs — fills gaps not covered by manifest
-                if self.source_config.pathSpecs:
+                # Auto-discover from inline manifest — fills gaps not covered by legacy manifest
+                if self.source_config.manifest:
                     already_discovered = {
                         e.dataPath.strip(KEY_SEPARATOR) for e in manifest_entries
                     }
-                    for discovery in self.discover_containers_from_path_specs(
+                    for discovery in self.discover_containers_from_manifest_entries(
                         bucket_name=bucket_name,
-                        path_specs=self.source_config.pathSpecs,
+                        manifest_entries=self.source_config.manifest,
                         already_discovered=already_discovered,
                         config_source=S3Config(
                             securityConfig=self.service_connection.awsConfig
                         ),
                         client=self.s3_client,
                     ):
+                        if discovery.get("unstructured"):
+                            # Unstructured file — no schema, just catalog it
+                            yield S3ContainerDetails(
+                                name=discovery["name"],
+                                prefix=discovery["prefix"],
+                                creation_date=(
+                                    bucket_response.creation_date.isoformat()
+                                    if bucket_response.creation_date
+                                    else None
+                                ),
+                                number_of_objects=1,
+                                size=discovery["files"][0][1]
+                                if discovery["files"]
+                                else 0,
+                                file_formats=[],
+                                data_model=None,
+                                fullPath=self._get_full_path(
+                                    bucket_name, discovery["name"]
+                                ),
+                                sourceUrl=self._get_object_source_url(
+                                    bucket_name=bucket_name,
+                                    prefix=discovery["name"],
+                                ),
+                                parent=parent_entity,
+                                leaf_container=True,
+                            )
+                            continue
+
                         columns = self._get_columns(
                             container_name=bucket_name,
                             sample_key=discovery["sample_key"],
@@ -620,11 +648,21 @@ class S3Source(StorageServiceSource):
                 )
 
     def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
-        """List (key, size_bytes) for all files under prefix."""
+        """List (key, size_bytes) for all files under prefix.
+
+        Filters out directories and cold storage objects. Path-based
+        exclusions (Delta log, Spark temp, etc.) are handled by the
+        caller via ManifestEntry.excludePaths.
+        """
+        cold_classes = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}
         for obj in list_s3_objects(self.s3_client, Bucket=bucket_name, Prefix=prefix):
             key = obj.get("Key", "")
-            if key and not key.endswith("/") and "/_delta_log/" not in key:
-                yield key, obj.get("Size", 0)
+            if not key or key.endswith("/"):
+                continue
+            storage_class = obj.get("StorageClass", "STANDARD")
+            if storage_class in cold_classes:
+                continue
+            yield key, obj.get("Size", 0)
 
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []
@@ -866,6 +904,13 @@ class S3Source(StorageServiceSource):
             )
             content = json.loads(response_object)
             metadata_config = StorageContainerConfig.model_validate(content)
+            logger.warning(
+                f"Found bucket-level metadata file at "
+                f"s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}. "
+                f"Bucket-level manifest files are deprecated and will be "
+                f"removed in a future release. Use 'manifest' in the"
+                f"pipeline config instead for auto-discovery."
+            )
             return metadata_config
         except ReadException:
             logger.warning(

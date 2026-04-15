@@ -10,12 +10,14 @@
 #  limitations under the License.
 
 """
-Tests for S3 storage connector auto-discovery via pathSpecs.
+Tests for S3 storage connector auto-discovery via manifest_entries.
 """
 from unittest.mock import Mock
 
 from metadata.generated.schema.entity.data.table import DataType
-from metadata.generated.schema.metadataIngestion.storage.pathSpec import PathSpec
+from metadata.generated.schema.metadataIngestion.storage.manifestEntry import (
+    ManifestEntry,
+)
 from metadata.ingestion.source.storage.storage_service import StorageServiceSource
 
 
@@ -24,14 +26,14 @@ def _make_source_with_list_keys(keys):
     source = Mock(spec=StorageServiceSource)
     source.list_keys = Mock(return_value=iter(keys))
     source.source_config = Mock()
-    source.discover_containers_from_path_specs = (
-        StorageServiceSource.discover_containers_from_path_specs.__get__(source)
+    source.discover_containers_from_manifest_entries = (
+        StorageServiceSource.discover_containers_from_manifest_entries.__get__(source)
     )
     return source
 
 
 class TestAutoDiscoveryBasic:
-    """Basic auto-discovery from pathSpecs."""
+    """Basic auto-discovery from manifest_entries."""
 
     def test_discovers_containers_from_pattern(self):
         keys = [
@@ -41,13 +43,13 @@ class TestAutoDiscoveryBasic:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="data/*/*.parquet", structureFormat="parquet")
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.parquet", structureFormat="parquet")
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -65,13 +67,13 @@ class TestAutoDiscoveryBasic:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="data/*/*.parquet", structureFormat="parquet")
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.parquet", structureFormat="parquet")
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -82,11 +84,13 @@ class TestAutoDiscoveryBasic:
     def test_empty_bucket_yields_nothing(self):
         source = _make_source_with_list_keys([])
 
-        path_specs = [PathSpec(pathPattern="**/*.parquet", structureFormat="parquet")]
+        manifest_entries = [
+            ManifestEntry(pathPattern="**/*.parquet", structureFormat="parquet")
+        ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -105,13 +109,13 @@ class TestAutoDiscoveryManifestPriority:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="data/*/*.parquet", structureFormat="parquet")
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.parquet", structureFormat="parquet")
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered={"data/events"},
                 config_source=Mock(),
                 client=Mock(),
@@ -133,17 +137,17 @@ class TestAutoDiscoveryPartitions:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(
+        manifest_entries = [
+            ManifestEntry(
                 pathPattern="data/**/*.parquet",
                 structureFormat="parquet",
                 autoPartitionDetection=True,
             )
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -166,17 +170,17 @@ class TestAutoDiscoveryPartitions:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(
+        manifest_entries = [
+            ManifestEntry(
                 pathPattern="data/**/*.parquet",
                 structureFormat="parquet",
                 autoPartitionDetection=False,
             )
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -194,13 +198,13 @@ class TestAutoDiscoveryPartitions:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="data/*/*.parquet", structureFormat="parquet")
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.parquet", structureFormat="parquet")
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -223,13 +227,13 @@ class TestAutoDiscoveryTableGrouping:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="lake/**/*.parquet", structureFormat="parquet")
+        manifest_entries = [
+            ManifestEntry(pathPattern="lake/**/*.parquet", structureFormat="parquet")
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -252,13 +256,13 @@ class TestAutoDiscoveryTableGrouping:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="data/**/*.parquet", structureFormat="parquet")
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/**/*.parquet", structureFormat="parquet")
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -269,8 +273,8 @@ class TestAutoDiscoveryTableGrouping:
         assert results[0]["name"] == "data/events"
 
 
-class TestAutoDiscoveryMultiplePathSpecs:
-    """Multiple pathSpecs in the same config."""
+class TestAutoDiscoveryMultipleManifestEntrys:
+    """Multiple manifest_entries in the same config."""
 
     def test_multiple_patterns_different_formats(self):
         all_keys = [
@@ -278,17 +282,17 @@ class TestAutoDiscoveryMultiplePathSpecs:
             ("data/logs/f.csv", 500),
         ]
         source = _make_source_with_list_keys([])
-        # list_keys is called once per pathSpec; return all keys each time
+        # list_keys is called once per manifestEntry; return all keys each time
         source.list_keys = Mock(side_effect=lambda *a, **kw: iter(all_keys))
 
-        path_specs = [
-            PathSpec(pathPattern="data/*/*.parquet", structureFormat="parquet"),
-            PathSpec(pathPattern="data/*/*.csv", structureFormat="csv"),
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.parquet", structureFormat="parquet"),
+            ManifestEntry(pathPattern="data/*/*.csv", structureFormat="csv"),
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -316,11 +320,13 @@ class TestAutoDiscoveryFormatDetection:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [PathSpec(pathPattern="data/*/*.parquet")]  # No structureFormat
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.parquet")
+        ]  # No structureFormat
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -337,11 +343,13 @@ class TestAutoDiscoveryFormatDetection:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [PathSpec(pathPattern="data/*/*.pq", structureFormat="parquet")]
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.pq", structureFormat="parquet")
+        ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -358,13 +366,13 @@ class TestAutoDiscoveryFormatDetection:
         ]
         source = _make_source_with_list_keys(keys)
 
-        path_specs = [
-            PathSpec(pathPattern="data/*/*.xyz")  # No structureFormat, unknown ext
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/*/*.xyz")  # No structureFormat, unknown ext
         ]
         results = list(
-            source.discover_containers_from_path_specs(
+            source.discover_containers_from_manifest_entries(
                 bucket_name="bucket",
-                path_specs=path_specs,
+                manifest_entries=manifest_entries,
                 already_discovered=set(),
                 config_source=Mock(),
                 client=Mock(),
@@ -372,3 +380,210 @@ class TestAutoDiscoveryFormatDetection:
         )
 
         assert results == []
+
+
+class TestExcludePaths:
+    """Configurable path exclusions via ManifestEntry.excludePaths."""
+
+    def test_default_excludes_delta_log(self):
+        """Default excludePaths skips _delta_log and _temporary files."""
+        keys = [
+            ("data/events/file.parquet", 1000),
+            ("data/events/_delta_log/00001.json", 500),
+            ("data/events/_temporary/staging.parquet", 300),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [ManifestEntry(pathPattern="data/**/*.*")]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert "data/events" in names
+        assert not any("_delta_log" in n for n in names)
+        assert not any("_temporary" in n for n in names)
+
+    def test_custom_exclude_paths(self):
+        """User-configured excludePaths replaces defaults."""
+        keys = [
+            ("data/events/file.parquet", 1000),
+            ("data/staging/file.parquet", 500),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [
+            ManifestEntry(
+                pathPattern="data/*/*.parquet",
+                excludePaths=["staging"],
+            )
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert "data/events" in names
+        assert "data/staging" not in names
+
+    def test_empty_exclude_paths_disables_filtering(self):
+        """Empty excludePaths list disables all exclusions."""
+        keys = [
+            ("data/events/file.parquet", 1000),
+            ("data/events/_temporary/file.parquet", 500),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [
+            ManifestEntry(
+                pathPattern="data/**/*.parquet",
+                excludePaths=[],
+            )
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert "data/events" in names
+        assert "data/events/_temporary" in names
+
+
+class TestExcludePatterns:
+    """Glob-based exclude patterns to skip entire path trees."""
+
+    def test_exclude_entire_directory_tree(self):
+        """excludePatterns can skip an entire directory."""
+        keys = [
+            ("data/events/file.parquet", 1000),
+            ("data/archive/old.parquet", 500),
+            ("data/archive/older.parquet", 300),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [
+            ManifestEntry(
+                pathPattern="data/**/*.parquet",
+                excludePatterns=["data/archive/**"],
+            )
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert "data/events" in names
+        assert "data/archive" not in names
+
+    def test_exclude_pattern_with_wildcard_prefix(self):
+        """Exclude any directory starting with tmp_."""
+        keys = [
+            ("data/sales/file.parquet", 1000),
+            ("data/tmp_staging/file.parquet", 500),
+            ("data/tmp_test/file.parquet", 300),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [
+            ManifestEntry(
+                pathPattern="data/*/*.parquet",
+                excludePatterns=["data/tmp_*/*.parquet"],
+            )
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert "data/sales" in names
+        assert "data/tmp_staging" not in names
+        assert "data/tmp_test" not in names
+
+    def test_multiple_exclude_patterns(self):
+        """Multiple exclude patterns all applied."""
+        keys = [
+            ("data/prod/file.parquet", 1000),
+            ("data/staging/file.parquet", 500),
+            ("data/test/file.parquet", 300),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [
+            ManifestEntry(
+                pathPattern="data/*/*.parquet",
+                excludePatterns=["data/staging/*", "data/test/*"],
+            )
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert names == {"data/prod"}
+
+    def test_exclude_patterns_with_exclude_paths_combined(self):
+        """Both excludePatterns and excludePaths applied together."""
+        keys = [
+            ("data/events/file.parquet", 1000),
+            ("data/events/_delta_log/log.json", 200),
+            ("data/archive/old.parquet", 500),
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [
+            ManifestEntry(
+                pathPattern="data/**/*.*",
+                excludePaths=["_delta_log"],
+                excludePatterns=["data/archive/**"],
+            )
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = {r["name"] for r in results}
+        assert "data/events" in names
+        assert "data/archive" not in names
+        assert not any("_delta_log" in n for n in names)

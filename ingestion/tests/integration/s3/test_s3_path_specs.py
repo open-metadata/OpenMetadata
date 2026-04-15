@@ -10,15 +10,15 @@
 #  limitations under the License.
 
 """
-S3 integration tests for pathSpecs auto-discovery.
+S3 integration tests for manifest auto-discovery.
 
 Uses the same MinIO test data as test_s3_storage.py but configures
-pathSpecs instead of a manifest file, verifying:
+manifest instead of a manifest file, verifying:
 - Containers auto-discovered from glob patterns
 - Hive partitions auto-detected with correct types
 - Multiple file formats (parquet, csv)
 - Format auto-detection from extension
-- Manifest + pathSpecs coexistence
+- Manifest + manifest coexistence
 - Migration FQN compatibility
 - File count and size propagation
 """
@@ -39,7 +39,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def path_specs_service_name():
+def manifest_service_name():
     return f"path-specs-{uuid.uuid4()}"
 
 
@@ -56,7 +56,7 @@ def _run_workflow(config_yaml: str):
     workflow.stop()
 
 
-def _make_config(minio_container, service_name, path_specs_yaml, manifest_source="{}"):
+def _make_config(minio_container, service_name, manifest_yaml, manifest_source="{}"):
     """Build a storage ingestion config string."""
     return f"""
         source:
@@ -74,8 +74,8 @@ def _make_config(minio_container, service_name, path_specs_yaml, manifest_source
             config:
               type: StorageMetadata
               storageMetadataConfigSource: {manifest_source}
-              pathSpecs:
-{path_specs_yaml}
+              manifest:
+{manifest_yaml}
         sink:
           type: metadata-rest
           config: {{}}
@@ -90,19 +90,19 @@ def _make_config(minio_container, service_name, path_specs_yaml, manifest_source
 
 
 @pytest.fixture(scope="module")
-def ingest_with_path_specs(minio, metadata, path_specs_service_name, create_data):
-    """Run ingestion with pathSpecs — covers all test data."""
+def ingest_with_manifest(minio, metadata, manifest_service_name, create_data):
+    """Run ingestion with manifest — covers all test data."""
     minio_container, _ = minio
-    path_specs = """
+    manifest = """
                 - pathPattern: "**/*.parquet"
                 - pathPattern: "**/*.csv"
     """
-    config = _make_config(minio_container, path_specs_service_name, path_specs)
+    config = _make_config(minio_container, manifest_service_name, manifest)
     _run_workflow(config)
 
     yield
 
-    service = metadata.get_by_name(entity=StorageService, fqn=path_specs_service_name)
+    service = metadata.get_by_name(entity=StorageService, fqn=manifest_service_name)
     if service:
         metadata.delete(
             entity=StorageService,
@@ -121,32 +121,30 @@ class TestAutoDiscovery:
     """Containers discovered from glob patterns without manifest.
 
     The openmetadata.json manifest file exists in MinIO (uploaded by
-    create_data) but is NOT used because pathSpecs is configured.
+    create_data) but is NOT used because manifest is configured.
     Proof: the manifest defines cities with isPartitioned=true but NO
     partitionColumns. Auto-discovery detects State as a partition column.
-    If State appears in columns, the container came from pathSpecs.
+    If State appears in columns, the container came from manifest.
     """
 
     def test_service_created(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
-        service = metadata.get_by_name(
-            entity=StorageService, fqn=path_specs_service_name
-        )
+        service = metadata.get_by_name(entity=StorageService, fqn=manifest_service_name)
         assert service is not None
 
     def test_bucket_container_created(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         bucket = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket",
+            fqn=f"{manifest_service_name}.test-bucket",
             fields=["*"],
         )
         assert bucket is not None
 
-    def test_path_specs_only_no_manifest_used(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+    def test_manifest_only_no_manifest_used(
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """Verify containers came from auto-discovery, not the manifest.
 
@@ -154,19 +152,19 @@ class TestAutoDiscovery:
         isPartitioned=true but NO partitionColumns. If the manifest were
         used, 'State' would NOT appear as a column. But auto-discovery
         detects it from the path structure. So 'State' in columns proves
-        pathSpecs was the source.
+        manifest was the source.
         """
         cities = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities",
+            fqn=f"{manifest_service_name}.test-bucket.cities",
             fields=["*"],
         )
         assert cities is not None
         col_names = [c.name.root for c in cities.dataModel.columns]
-        # State is auto-detected by pathSpecs — manifest doesn't have it
+        # State is auto-detected by manifest — manifest doesn't have it
         assert "State" in col_names, (
             "Partition column 'State' missing — manifest may have been used "
-            "instead of pathSpecs auto-discovery"
+            "instead of manifest auto-discovery"
         )
 
 
@@ -179,12 +177,12 @@ class TestPartitionDetection:
     """Hive-style partitions auto-detected from directory names."""
 
     def test_single_partition_key(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """cities/State=AL/ → one partition column 'State' (VARCHAR)."""
         cities = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities",
+            fqn=f"{manifest_service_name}.test-bucket.cities",
             fields=["*"],
         )
         assert cities is not None
@@ -195,12 +193,12 @@ class TestPartitionDetection:
         assert "State" in col_names
 
     def test_multiple_partition_keys(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """cities_multiple/Year=2023/State=AL/ → two partition columns."""
         container = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities_multiple",
+            fqn=f"{manifest_service_name}.test-bucket.cities_multiple",
             fields=["*"],
         )
         assert container is not None
@@ -211,12 +209,12 @@ class TestPartitionDetection:
         assert "State" in col_names
 
     def test_partition_column_types(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """Year=2023 should be INT, State=AL should be VARCHAR."""
         container = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities_multiple",
+            fqn=f"{manifest_service_name}.test-bucket.cities_multiple",
             fields=["*"],
         )
         col_map = {c.name.root: c for c in container.dataModel.columns}
@@ -227,18 +225,49 @@ class TestPartitionDetection:
             assert col_map["State"].dataType == DataType.VARCHAR
 
     def test_mixed_partition_style(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """cities_multiple_simple/20230412/State=AL/ → mixed non-Hive + Hive."""
         container = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities_multiple_simple",
+            fqn=f"{manifest_service_name}.test-bucket.cities_multiple_simple",
             fields=["*"],
         )
         # Should still detect State as partition even with non-Hive parent dir
         if container and container.dataModel:
             col_names = [c.name.root for c in container.dataModel.columns]
             assert "State" in col_names
+
+
+# ============================================================================
+# Exclude patterns
+# ============================================================================
+
+
+class TestExcludePatterns:
+    """excludePatterns and excludePaths work in integration."""
+
+    def test_exclude_pattern_does_not_interfere_with_discovery(
+        self, metadata, ingest_with_manifest, manifest_service_name
+    ):
+        """When no excludePatterns are set, all matching paths are
+        discovered. Verifies the exclude machinery doesn't break
+        normal discovery."""
+        # cities should exist — basic parquet discovery
+        cities = metadata.get_by_name(
+            entity=Container,
+            fqn=f"{manifest_service_name}.test-bucket.cities",
+            fields=["*"],
+        )
+        assert cities is not None
+
+        # transactions should exist — CSV discovery
+        transactions = metadata.get_by_name(
+            entity=Container,
+            fqn=f"{manifest_service_name}.test-bucket.transactions",
+            fields=["*"],
+        )
+        assert transactions is not None
 
 
 # ============================================================================
@@ -250,22 +279,22 @@ class TestFormatDetection:
     """Structure format auto-detected from file extension."""
 
     def test_parquet_format_detected(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         cities = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities",
+            fqn=f"{manifest_service_name}.test-bucket.cities",
             fields=["*"],
         )
         assert cities is not None
         assert FileFormat.parquet in cities.fileFormats
 
     def test_csv_format_detected(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         transactions = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.transactions",
+            fqn=f"{manifest_service_name}.test-bucket.transactions",
             fields=["*"],
         )
         assert transactions is not None
@@ -281,11 +310,11 @@ class TestSchemaExtraction:
     """Column schemas extracted from sample files."""
 
     def test_csv_columns_extracted(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         transactions = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.transactions",
+            fqn=f"{manifest_service_name}.test-bucket.transactions",
             fields=["*"],
         )
         assert transactions.dataModel is not None
@@ -293,12 +322,12 @@ class TestSchemaExtraction:
         assert len(transactions.dataModel.columns) >= 2
 
     def test_parquet_columns_extracted(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """Parquet schema should include both data columns and partition columns."""
         cities = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities",
+            fqn=f"{manifest_service_name}.test-bucket.cities",
             fields=["*"],
         )
         # Should have data columns from parquet + partition column
@@ -314,12 +343,12 @@ class TestContainerMetadata:
     """File count and size propagated to container."""
 
     def test_file_count_populated(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         """Discovered containers should have numberOfObjects set."""
         cities = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities",
+            fqn=f"{manifest_service_name}.test-bucket.cities",
             fields=["*"],
         )
         # cities/ has 2 parquet files (State=AL + State=AZ)
@@ -327,11 +356,11 @@ class TestContainerMetadata:
             assert cities.numberOfObjects >= 2
 
     def test_size_populated(
-        self, metadata, ingest_with_path_specs, path_specs_service_name
+        self, metadata, ingest_with_manifest, manifest_service_name
     ):
         cities = metadata.get_by_name(
             entity=Container,
-            fqn=f"{path_specs_service_name}.test-bucket.cities",
+            fqn=f"{manifest_service_name}.test-bucket.cities",
             fields=["*"],
         )
         if cities and cities.size:
@@ -339,19 +368,19 @@ class TestContainerMetadata:
 
 
 # ============================================================================
-# Migration: manifest → pathSpecs FQN compatibility
+# Migration: manifest → manifest FQN compatibility
 # ============================================================================
 
 
 class TestMigrationCompat:
-    """Containers created by manifest and pathSpecs should have the same FQN."""
+    """Containers created by manifest and manifest should have the same FQN."""
 
-    def test_manifest_then_path_specs_same_entity(
+    def test_manifest_then_manifest_same_entity(
         self, minio, metadata, migration_service_name, create_data
     ):
         """
         1. Ingest with manifest → creates container with FQN
-        2. Re-ingest with pathSpecs → should update same entity, not create duplicate
+        2. Re-ingest with manifest → should update same entity, not create duplicate
         """
         minio_container, _ = minio
 
@@ -392,19 +421,19 @@ class TestMigrationCompat:
         assert manifest_cities is not None
         manifest_id = manifest_cities.id.root
 
-        # Step 2: Re-ingest with pathSpecs
-        path_specs = """
+        # Step 2: Re-ingest with manifest
+        manifest = """
                 - pathPattern: "cities/**/*.parquet"
         """
         config_pathspecs = _make_config(
             minio_container,
             migration_service_name,
-            path_specs,
+            manifest,
             manifest_source="{}",
         )
         _run_workflow(config_pathspecs)
 
-        # Get entity after pathSpecs ingestion
+        # Get entity after manifest ingestion
         pathspec_cities = metadata.get_by_name(
             entity=Container,
             fqn=f"{migration_service_name}.test-bucket.cities",

@@ -27,10 +27,12 @@ from metadata.generated.schema.entity.services.storageService import (
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
+from metadata.generated.schema.metadataIngestion.storage.manifestEntry import (
+    ManifestEntry,
+)
 from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
     ManifestMetadataConfig,
 )
-from metadata.generated.schema.metadataIngestion.storage.pathSpec import PathSpec
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     NoMetadataConfigurationSource,
     StorageServiceMetadataPipeline,
@@ -79,6 +81,16 @@ logger = ingestion_logger()
 
 KEY_SEPARATOR = "/"
 OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
+MAX_KEYS_PER_PATH_SPEC = 100_000  # Safety limit to prevent runaway scans
+
+# Paths to exclude from auto-discovery (Spark/Delta Lake internals)
+DEFAULT_EXCLUDE_PATHS = {
+    "_delta_log",
+    "_temporary",
+    "_spark_metadata",
+    ".tmp",
+    "_SUCCESS",
+}
 
 
 class StorageServiceTopology(ServiceTopology):
@@ -181,7 +193,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             NoMetadataConfigurationSource,
         ):
             try:
-                return get_manifest(self.source_config.storageMetadataConfigSource)
+                manifest = get_manifest(self.source_config.storageMetadataConfigSource)
+                if manifest:
+                    logger.warning(
+                        "The global manifest file (storageMetadataConfigSource) is "
+                        "deprecated and will be removed in a future release. "
+                        "Use 'manifest' in the pipeline config instead for "
+                        "auto-discovery with glob patterns and partition detection. "
+                        "See https://docs.open-metadata.org/connectors/storage/s3"
+                    )
+                return manifest
             except StorageMetadataConfigException as exc:
                 logger.warning(f"Could no get global manifest due to [{exc}]")
         return None
@@ -355,15 +376,15 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return []
 
-    def discover_containers_from_path_specs(
+    def discover_containers_from_manifest_entries(
         self,
         bucket_name: str,
-        path_specs: List[PathSpec],
+        manifest_entries: List[ManifestEntry],
         already_discovered: Set[str],
         config_source: Any,
         client: Any,
     ) -> Iterable[Dict[str, Any]]:
-        """Auto-discover containers from pathSpecs glob patterns.
+        """Auto-discover containers from inline manifest entries.
 
         Yields dicts with keys: name, prefix, metadata_entry, sample_key, files.
         The caller (S3/GCS/Azure source) converts these into provider-specific
@@ -371,29 +392,82 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
         Args:
             bucket_name: The bucket to scan.
-            path_specs: List of PathSpec from pipeline config.
+            manifest_entries: List of ManifestEntry from pipeline config.
             already_discovered: Set of container names already found via manifest
                 (skipped to avoid duplicates).
             config_source: Cloud config for schema extraction.
             client: Cloud client for schema extraction.
         """
-        for path_spec in path_specs:
-            static_prefix = extract_static_prefix(path_spec.pathPattern)
-            compiled_regex = pattern_to_regex(path_spec.pathPattern)
+        for entry in manifest_entries:
+            pattern = entry.pathPattern
+            wildcard_count = pattern.count("*") + pattern.count("?")
+            if wildcard_count > 10:
+                logger.warning(
+                    f"ManifestEntry pattern '{pattern}' has {wildcard_count} "
+                    f"wildcards. Consider simplifying to avoid performance "
+                    f"issues."
+                )
 
-            matched_keys = [
-                (key, size)
-                for key, size in self.list_keys(bucket_name, static_prefix)
-                if compiled_regex.match(key)
+            static_prefix = extract_static_prefix(pattern)
+            compiled_regex = pattern_to_regex(pattern)
+            exclude_paths = (
+                set(entry.excludePaths)
+                if entry.excludePaths is not None
+                else DEFAULT_EXCLUDE_PATHS
+            )
+            exclude_regexes = [
+                pattern_to_regex(ep) for ep in (entry.excludePatterns or [])
             ]
+
+            matched_keys = []
+            keys_scanned = 0
+            for key, size in self.list_keys(bucket_name, static_prefix):
+                keys_scanned += 1
+                if keys_scanned > MAX_KEYS_PER_PATH_SPEC:
+                    logger.warning(
+                        f"ManifestEntry '{pattern}' scanned "
+                        f"{MAX_KEYS_PER_PATH_SPEC:,} keys in bucket "
+                        f"'{bucket_name}'. Stopping to avoid excessive "
+                        f"API usage. Narrow the pattern or increase the limit."
+                    )
+                    break
+                if any(
+                    f"/{excl}/" in key or key.endswith(f"/{excl}")
+                    for excl in exclude_paths
+                ):
+                    continue
+                if any(er.match(key) for er in exclude_regexes):
+                    continue
+                if compiled_regex.match(key):
+                    matched_keys.append((key, size))
 
             if not matched_keys:
                 logger.info(
-                    f"No files matched pattern '{path_spec.pathPattern}' "
+                    f"No files matched pattern '{entry.pathPattern}' "
                     f"in bucket '{bucket_name}'"
                 )
                 continue
 
+            # Unstructured file cataloging (images, documents, etc.)
+            if entry.unstructuredData:
+                for key, size in matched_keys:
+                    if key in already_discovered:
+                        continue
+                    logger.info(
+                        f"Auto-discovered unstructured file '{key}' "
+                        f"from pattern '{pattern}'"
+                    )
+                    yield {
+                        "name": key,
+                        "prefix": f"{KEY_SEPARATOR}{key}",
+                        "metadata_entry": MetadataEntry(dataPath=key),
+                        "sample_key": key,
+                        "files": [(key, size)],
+                        "unstructured": True,
+                    }
+                continue
+
+            # Structured data — group files by logical table
             table_groups = group_files_by_table(matched_keys)
 
             for table_root, files in table_groups.items():
@@ -410,20 +484,24 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
                 partition_columns = None
                 is_partitioned = False
-                if path_spec.autoPartitionDetection:
+                if entry.partitionColumns:
+                    # Explicit partition columns override auto-detection
+                    partition_columns = entry.partitionColumns
+                    is_partitioned = True
+                elif entry.autoPartitionDetection:
                     partition_columns = detect_hive_partitions(
                         [k for k, _ in files], table_root
                     )
                     is_partitioned = bool(partition_columns)
 
                 sample_key = secrets.choice([k for k, _ in files])
-                structure_format = path_spec.structureFormat or infer_structure_format(
+                structure_format = entry.structureFormat or infer_structure_format(
                     sample_key
                 )
                 if not structure_format:
                     logger.warning(
                         f"Could not determine file format for '{container_name}'. "
-                        f"Skipping. Set structureFormat in pathSpec or use a "
+                        f"Skipping. Set structureFormat in manifest entry or use a "
                         f"recognized file extension."
                     )
                     continue
@@ -432,13 +510,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     structureFormat=structure_format,
                     isPartitioned=is_partitioned,
                     partitionColumns=partition_columns,
-                    separator=path_spec.separator,
+                    separator=entry.separator,
                 )
 
                 logger.info(
                     f"Auto-discovered container '{container_name}' "
                     f"({len(files)} files, partitioned={is_partitioned}) "
-                    f"from pattern '{path_spec.pathPattern}'"
+                    f"from pattern '{entry.pathPattern}'"
                 )
 
                 yield {

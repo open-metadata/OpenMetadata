@@ -121,12 +121,43 @@ class TestExtractTableRoot:
 
     def test_matches_manifest_datapath(self):
         """Table root must match what users put in manifest dataPath."""
-        # Manifest: dataPath: "data/events"
-        # Auto-discovery finds: data/events/year=2024/month=01/part-00000.parquet
         assert (
             extract_table_root("data/events/year=2024/month=01/part-00000.parquet")
             == "data/events"
         )
+
+    def test_date_prefix_partition(self):
+        """Non-Hive date prefix like 20230412 should be treated as partition."""
+        assert (
+            extract_table_root("cities_multiple_simple/20230412/State=AL/file.parquet")
+            == "cities_multiple_simple"
+        )
+
+    def test_date_with_dashes_partition(self):
+        """Date with dashes like 2024-01-15 should be treated as partition."""
+        assert (
+            extract_table_root("data/events/2024-01-15/file.parquet") == "data/events"
+        )
+
+    def test_timestamp_partition(self):
+        """Timestamp like 20240115T000000Z should be treated as partition."""
+        assert extract_table_root("data/logs/20240115T120000Z/file.json") == "data/logs"
+
+    def test_mixed_non_hive_and_hive(self):
+        """Date prefix followed by Hive partition."""
+        assert (
+            extract_table_root("data/events/20230412/State=AL/file.parquet")
+            == "data/events"
+        )
+
+    def test_short_number_not_treated_as_partition(self):
+        """Short numbers like 'v2' or directory names should NOT be partitions."""
+        assert extract_table_root("data/v2/file.parquet") == "data/v2"
+
+    def test_four_digit_year_alone_not_partition(self):
+        """Four digits alone like '2024' is ambiguous — could be year partition."""
+        # We treat 8+ digits as partition but not 4 digits alone
+        assert extract_table_root("data/2024/file.parquet") == "data/2024"
 
 
 class TestDetectHivePartitions:

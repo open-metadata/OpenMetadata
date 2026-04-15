@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storage/manifestEntry.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ManifestEntry",
+  "description": "A manifest entry for auto-discovering structured or unstructured data in object storage. Supports glob patterns, auto-partition detection, and explicit partition column definitions.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestEntry",
+  "type": "object",
+  "properties": {
+    "pathPattern": {
+      "title": "Path Pattern",
+      "description": "Glob-style path pattern relative to bucket root. Use * for single-level wildcard and ** for recursive matching. Examples: data/*/events/*.parquet, logs/**/*.json",
+      "type": "string"
+    },
+    "structureFormat": {
+      "title": "Structure Format",
+      "description": "Expected file format for schema inference (e.g., parquet, csv, avro, json). If omitted, auto-detected from file extension.",
+      "type": "string",
+      "default": null
+    },
+    "separator": {
+      "title": "Separator",
+      "description": "For delimited files such as CSV, the separator character.",
+      "type": "string",
+      "default": null
+    },
+    "autoPartitionDetection": {
+      "title": "Auto Partition Detection",
+      "description": "When enabled, automatically detects Hive-style partition columns from directory names (e.g., year=2024/month=01/).",
+      "type": "boolean",
+      "default": true
+    },
+    "containerFilterPattern": {
+      "title": "Container Filter Pattern",
+      "description": "Regex filter to include/exclude discovered containers by name.",
+      "$ref": "../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "excludePaths": {
+      "title": "Exclude Path Segments",
+      "description": "Path segments to exclude from discovery. Any file path containing these segments will be skipped. Defaults to common internal paths like _delta_log, _temporary, _spark_metadata, .tmp, _SUCCESS.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "excludePatterns": {
+      "title": "Exclude Patterns",
+      "description": "Glob patterns to exclude from discovery. Any file matching these patterns will be skipped. Example: data/archive/**, data/tmp_*/**",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "partitionColumns": {
+      "title": "Partition Columns",
+      "description": "Explicit partition column definitions. Overrides auto-detection when provided. Use when auto-detection cannot determine partition structure (e.g., non-standard directory naming).",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "unstructuredData": {
+      "title": "Unstructured Data",
+      "description": "When true, files matching the path pattern are cataloged as individual containers without schema extraction. Use for images, documents, and other non-tabular files.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["pathPattern"],
+  "additionalProperties": false
+}

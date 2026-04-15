@@ -30,7 +30,8 @@
     },
     "storageMetadataConfigSource": {
       "mask": true,
-      "title": "Storage Metadata Configuration Source",
+      "title": "Storage Metadata Configuration Source (Deprecated)",
+      "description": "Deprecated: Use pathSpecs instead for auto-discovery. This manifest-based approach requires manually listing each data path. It will be removed in a future release.",
       "oneOf": [
         {
           "$ref": "#/definitions/noMetadataConfigurationSource"
@@ -70,12 +71,12 @@
       "default": false,
       "title": "Include Tags"
     },
-    "pathSpecs": {
-      "title": "Path Specifications for Auto-Discovery",
-      "description": "List of glob path patterns to auto-discover structured data without a manifest file. When set, the connector scans matching paths and creates containers with auto-detected partitions. Works alongside or instead of the manifest.",
+    "manifest": {
+      "title": "Manifest",
+      "description": "Inline manifest entries for auto-discovering data in object storage. Supports glob patterns, auto-partition detection, and unstructured file cataloging. Replaces the external manifest file approach.",
       "type": "array",
       "items": {
-        "$ref": "./storage/pathSpec.json"
+        "$ref": "./storage/manifestEntry.json"
       },
       "default": null
     }

@@ -24,6 +24,11 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 HIVE_PARTITION_PATTERN = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)=(.+)$")
+# Non-Hive partition-like segments: pure digits (20230412), dates (2024-01-15),
+# timestamps (20240115T000000Z), or digit-only names that look like partition values
+NON_HIVE_PARTITION_PATTERN = re.compile(
+    r"^(\d{4}[-/]?\d{2}[-/]?\d{2}(T\d+Z?)?|\d{8,})$"
+)
 
 # Map file extensions to structure formats (matching SupportedTypes enum values)
 EXTENSION_TO_FORMAT = {
@@ -127,35 +132,48 @@ def pattern_to_regex(pattern: str) -> re.Pattern:
     return re.compile(f"^{escaped}$")
 
 
+def _is_partition_segment(segment: str) -> bool:
+    """Check if a path segment looks like a partition value.
+
+    Matches:
+    - Hive-style: year=2024, State=AL
+    - Date prefixes: 20230412, 2024-01-15
+    - Timestamps: 20240115T000000Z
+    """
+    return bool(
+        HIVE_PARTITION_PATTERN.match(segment)
+        or NON_HIVE_PARTITION_PATTERN.match(segment)
+    )
+
+
 def extract_table_root(key: str) -> str:
     """Extract the logical table root from a file path.
 
-    The table root is the deepest directory before any Hive-style
-    partition segments (key=value). If no partitions exist, returns
-    the immediate parent directory of the file.
+    The table root is the deepest directory before any partition-like
+    segments. Detects both Hive-style (key=value) and non-Hive
+    partitions (date prefixes like 20230412, 2024-01-15).
 
     This MUST produce the same name as manifest dataPath to ensure
     FQN compatibility during migration.
 
     Examples:
-        "data/events/year=2024/month=01/file.parquet" -> "data/events"
-        "data/events/file.parquet"                    -> "data/events"
-        "file.parquet"                                -> ""
+        "data/events/year=2024/month=01/file.parquet"       -> "data/events"
+        "data/events/20230412/State=AL/file.parquet"        -> "data/events"
+        "data/events/file.parquet"                          -> "data/events"
+        "file.parquet"                                      -> ""
     """
     parts = key.split("/")
 
-    # Find the first partition segment
+    # Find the first partition-like segment (Hive or non-Hive)
     partition_start = None
-    for i, part in enumerate(parts):
-        if HIVE_PARTITION_PATTERN.match(part):
+    for i, part in enumerate(parts[:-1]):  # Exclude filename
+        if _is_partition_segment(part):
             partition_start = i
             break
 
     if partition_start is not None:
-        # Table root is everything before the first partition
         root_parts = parts[:partition_start]
     else:
-        # No partitions — table root is the parent directory
         root_parts = parts[:-1]
 
     return "/".join(root_parts)
