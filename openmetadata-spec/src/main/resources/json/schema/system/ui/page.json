@@ -37,7 +37,8 @@
         "Directory",
         "File",
         "Spreadsheet",
-        "Worksheet"
+        "Worksheet",
+        "Service"
       ]
     }
   },

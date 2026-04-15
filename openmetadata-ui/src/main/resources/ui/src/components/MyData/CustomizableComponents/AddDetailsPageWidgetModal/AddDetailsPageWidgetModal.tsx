@@ -23,9 +23,13 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPageUtils';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { WidgetSizeInfo } from '../AddWidgetModal/AddWidgetModal.interface';
 import AddWidgetTabContent from '../AddWidgetModal/AddWidgetTabContent';
+
+const LANDING_PAGE_MAX_GRID_SIZE =
+  customizeMyDataPageClassBase.landingPageMaxGridSize;
 
 interface Props {
   open: boolean;
@@ -63,6 +67,7 @@ function AddDetailsPageWidgetModal({
   const tabItems: TabsProps['items'] = useMemo(
     () =>
       sortBy(widgetsList, 'name')?.map((widget) => {
+        const scaleFactor = maxGridSizeSupport / LANDING_PAGE_MAX_GRID_SIZE;
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: GridSizes) => ({
             label: (
@@ -70,7 +75,7 @@ function AddDetailsPageWidgetModal({
                 {getWidgetWidthLabelFromKey(toString(size))}
               </span>
             ),
-            value: WidgetWidths[size],
+            value: Math.round(WidgetWidths[size] * scaleFactor),
           }));
 
         return {

@@ -221,6 +221,10 @@ jest.mock('../../rest/applicationAPI', () => ({
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
+      hits: {
+        total: { value: 0 },
+        hits: [],
+      },
       paging: {
         total: 0,
       },
@@ -250,6 +254,9 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useParams: jest.fn().mockReturnValue({
+    serviceCategory: 'databaseServices',
+  }),
   useLocation: () => ({
     pathname: '/mock-path',
     search: '',
@@ -404,6 +411,35 @@ jest.mock('./ServiceMainTabContent', () =>
       <div data-testid="service-main-tab-content">ServiceMainTabContent</div>
     ))
 );
+
+jest.mock('../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    isLoading: false,
+  }),
+}));
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="generic-provider">{children}</div>
+      )),
+    useGenericContext: jest.fn().mockReturnValue({
+      type: 'databaseService',
+    }),
+  })
+);
+
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest
+    .fn()
+    .mockImplementation(({ type }) => (
+      <div data-testid="generic-tab">Generic Tab - {type}</div>
+    )),
+}));
 
 jest.mock(
   '../../components/Dashboard/DataModel/DataModels/DataModelsTable',

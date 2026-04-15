@@ -264,6 +264,7 @@ export enum PageType {
     Tag = "Tag",
     Topic = "Topic",
     Worksheet = "Worksheet",
+    Service = "Service",
 }
 
 /**

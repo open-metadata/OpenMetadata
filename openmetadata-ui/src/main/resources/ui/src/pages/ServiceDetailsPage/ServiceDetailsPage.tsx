@@ -42,6 +42,8 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable';
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
@@ -55,6 +57,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
@@ -88,9 +91,11 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { PageType } from '../../generated/system/ui/page';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -125,6 +130,7 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -156,6 +162,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getSearchIndexForService,
   getServiceDisplayNameQueryFilter,
   getServiceRouteFromServiceType,
   shouldTestConnection,
@@ -169,7 +176,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
-import ServiceMainTabContent from './ServiceMainTabContent';
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -185,6 +191,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     tab: string;
   }>();
   const { fqn: decodedServiceFQN } = useFqn();
+  const { customizedPage } = useCustomPages(PageType.Service);
   const { isMetadataService, isSecurityService } = useMemo(
     () => ({
       isMetadataService: serviceCategory === ServiceCategory.METADATA_SERVICES,
@@ -301,6 +308,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const isInitialLoadRef = useRef(true);
   const isInitialPaginationLoadRef = useRef(true);
+  const [serviceEntityCount, setServiceEntityCount] = useState<number>(0);
 
   const { isFollowing, followers = [] } = useMemo(
     () => ({
@@ -354,6 +362,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const activeTab = useMemo(() => {
     if (tab) {
+      const countLabel = getCountLabel(serviceCategory).toLowerCase();
+      if (tab === countLabel) {
+        return EntityTabs.DETAILS;
+      }
+
       return tab;
     }
     if (isMetadataService) {
@@ -366,6 +379,20 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     return EntityTabs.INSIGHTS;
   }, [tab, serviceCategory, isMetadataService, isSecurityService]);
+
+  useEffect(() => {
+    const countLabel = getCountLabel(serviceCategory).toLowerCase();
+    if (tab === countLabel && tab !== EntityTabs.DETAILS) {
+      navigate(
+        getServiceDetailsPath(
+          decodedServiceFQN,
+          serviceCategory,
+          EntityTabs.DETAILS
+        ),
+        { replace: true }
+      );
+    }
+  }, [tab, serviceCategory, decodedServiceFQN, navigate]);
 
   const handleSearchChange = useCallback(
     (searchValue: string) => {
@@ -444,7 +471,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         if (isAgentTab) {
           subTab = ServiceAgentSubTabs.METADATA;
         }
-        if (key === getCountLabel(serviceCategory).toLowerCase()) {
+        if (key === EntityTabs.DETAILS) {
           handlePageChange(INITIAL_PAGING_VALUE, {
             cursorType: null,
             cursorValue: undefined,
@@ -1399,18 +1426,48 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (
       !searchValue &&
       isInitialPaginationLoadRef.current &&
-      activeTab !== getCountLabel(serviceCategory).toLowerCase()
+      activeTab !== EntityTabs.DETAILS
     ) {
       getOtherDetails({ limit: pageSize });
       isInitialPaginationLoadRef.current = false;
     }
-  }, [searchValue, activeTab, serviceCategory, pageSize, getOtherDetails]);
+  }, [searchValue, pageSize, activeTab, getOtherDetails]);
 
   useEffect(() => {
-    if (
-      searchValue ||
-      activeTab !== getCountLabel(serviceCategory).toLowerCase()
-    ) {
+    if (isMetadataService || isSecurityService) {
+      return;
+    }
+    const fetchEntityCount = async () => {
+      try {
+        const res = await searchQuery({
+          pageNumber: 1,
+          pageSize: 0,
+          searchIndex: getSearchIndexForService(serviceCategory),
+          query: '',
+          queryFilter: buildSchemaQueryFilter(
+            'service.fullyQualifiedName.keyword',
+            decodedServiceFQN
+          ),
+          trackTotalHits: true,
+        });
+        setServiceEntityCount(res.hits.total.value);
+      } catch {
+        // count fetch is best-effort
+      }
+    };
+    fetchEntityCount();
+  }, [
+    serviceCategory,
+    decodedServiceFQN,
+    isMetadataService,
+    isSecurityService,
+  ]);
+
+  useEffect(() => {
+    // ServiceEntityTable handles its own data fetching for the DETAILS tab
+    // (child entities like Databases, Topics, etc.), so skip the legacy
+    // REST API call when activeTab is EntityTabs.DETAILS.
+    if (searchValue || activeTab === EntityTabs.DETAILS) {
       return;
     }
     const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
@@ -1753,27 +1810,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         },
         {
           name: getCountLabel(serviceCategory),
-          key: getCountLabel(serviceCategory).toLowerCase(),
-          count: paging.total,
-          children: (
-            <ServiceMainTabContent
-              currentPage={currentPage}
-              data={data}
-              isServiceLoading={isServiceLoading}
-              paging={paging}
-              pagingInfo={pagingInfo}
-              saveUpdatedServiceData={saveUpdatedServiceData}
-              serviceDetails={serviceDetails}
-              serviceName={serviceCategory}
-              servicePermission={servicePermission}
-              setFilters={setFilters}
-              setIsServiceLoading={setIsServiceLoading}
-              showDeleted={showDeleted}
-              onDataProductUpdate={handleDataProductUpdate}
-              onDescriptionUpdate={handleDescriptionUpdate}
-              onShowDeletedChange={handleShowDeleted}
-            />
-          ),
+          key: EntityTabs.DETAILS,
+          count: serviceEntityCount,
+          children: <GenericTab type={PageType.Service} />,
         }
       );
     }
@@ -1994,15 +2033,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
             />
           </Col>
 
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <GenericProvider<ServicesType>
+            customizedPage={customizedPage}
+            data={serviceDetails}
+            permissions={servicePermission}
+            type={entityType as CustomizeEntityType}
+            onUpdate={saveUpdatedServiceData}>
+            <Col className="entity-details-page-tabs" span={24}>
+              <Tabs
+                activeKey={activeTab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
+              />
+            </Col>
+          </GenericProvider>
         </Row>
       )}
     </PageLayoutV1>

@@ -33,6 +33,7 @@ import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-models-colore
 import { ReactComponent as NavigationIcon } from '../../assets/svg/navigation.svg';
 import { ReactComponent as PipelineIcon } from '../../assets/svg/pipelines-colored-new.svg';
 import { ReactComponent as SearchIndexIcon } from '../../assets/svg/search-index-colored-new.svg';
+import { ReactComponent as ServiceIcon } from '../../assets/svg/setting-services-omd.svg';
 import { ReactComponent as SpreadsheetIcon } from '../../assets/svg/spreadsheet-colored-new.svg';
 import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored-new.svg';
 import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedures-colored-new.svg';
@@ -80,6 +81,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Tag]: TagIcon,
   [PageType.DataProduct]: DataProductIcon,
   [PageType.DataMarketplace]: DataProductIcon,
+  [PageType.Service]: ServiceIcon,
 };
 
 export const getCustomizePageCategories = (): SettingMenuItem[] => {
@@ -111,6 +113,14 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
       isBeta: true,
       description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS['govern'],
+    },
+    {
+      key: PageType.Service,
+      label: i18n.t('label.service'),
+      description: i18n.t('message.entity-customize-description', {
+        entity: i18n.t('label.service'),
+      }),
+      icon: ENTITY_ICONS[PageType.Service],
     },
     {
       key: 'data-assets',
@@ -165,6 +175,7 @@ export const getCustomizePageOptions = (
             PageType.Tag,
             PageType.Classification,
             PageType.DataMarketplace,
+            PageType.Service,
           ].includes(item)
         ) {
           acc.push(generateSettingItems(item));

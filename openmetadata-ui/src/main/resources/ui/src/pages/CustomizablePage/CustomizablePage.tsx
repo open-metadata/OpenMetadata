@@ -387,6 +387,7 @@ export const CustomizablePage = () => {
     case PageType.File:
     case PageType.Spreadsheet:
     case PageType.Worksheet:
+    case PageType.Service:
       return (
         <CustomizeDetailsPage
           initialPageData={currentPage}

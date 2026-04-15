@@ -31,6 +31,7 @@ import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import MlModelFeaturesList from '../../components/MlModel/MlModelDetail/MlModelFeaturesList';
 import { PipelineTaskTab } from '../../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
+import ServiceEntityTable from '../../components/Service/ServiceEntityTable/ServiceEntityTable';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import TopicSchemaFields from '../../components/Topic/TopicSchema/TopicSchema';
@@ -200,5 +201,8 @@ export const WIDGET_COMPONENTS = {
     <MarketplaceDomainsWidget
       widgetKey={DetailPageWidgetKeys.MARKETPLACE_DOMAINS}
     />
+  ),
+  [DetailPageWidgetKeys.SERVICE_ENTITY_TABLE]: () => (
+    <ServiceEntityTable isCustomizationPage />
   ),
 } as const;

@@ -37,4 +37,5 @@ export const PageTypeToEntityTypeMap = {
   [PageType.File]: EntityType.FILE,
   [PageType.Spreadsheet]: EntityType.SPREADSHEET,
   [PageType.Worksheet]: EntityType.WORKSHEET,
+  [PageType.Service]: EntityType.DATABASE_SERVICE,
 };
