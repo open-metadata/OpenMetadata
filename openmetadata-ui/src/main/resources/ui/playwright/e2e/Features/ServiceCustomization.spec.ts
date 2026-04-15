@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, test as base } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SERVICE_DEFAULT_TABS } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -260,23 +260,8 @@ test.describe(
         );
         await expect(visibleDescriptionWidget.first()).toBeVisible();
       });
-    });
 
-    test('Service customization for different service types', async ({
-      adminPage,
-      userPage,
-    }) => {
-      test.slow();
-
-      let messagingService:
-        | {
-            create: (context: unknown) => Promise<unknown>;
-            visitEntityPage: (page: Page) => Promise<unknown>;
-            delete: (context: unknown) => Promise<unknown>;
-          }
-        | undefined = undefined;
-
-      await test.step('pre-requisite - create messaging service', async () => {
+      await test.step('Validate customization applies to different service types', async () => {
         const { apiContext } = await getApiContext(adminPage);
 
         const response = await apiContext.post(
@@ -295,37 +280,25 @@ test.describe(
           }
         );
         const serviceData = await response.json();
-        messagingService = {
-          create: async () => serviceData,
-          visitEntityPage: async (page: Page) => {
-            await settingClick(page, GlobalSettingOptions.MESSAGING);
-            await page.getByTestId(`service-name-${serviceData.name}`).click();
-            await waitForAllLoadersToDisappear(page);
-          },
-          delete: async (ctx: unknown) => {
-            await (ctx as { delete: (url: string) => Promise<unknown> }).delete(
-              `/api/v1/services/messagingServices/name/${encodeURIComponent(
-                serviceData.fullyQualifiedName
-              )}?recursive=true&hardDelete=true`
-            );
-          },
-        };
-      });
 
-      await test.step('Validate customization applies to messaging service too', async () => {
-        await redirectToHomePage(userPage);
+        try {
+          await redirectToHomePage(userPage);
+          await settingClick(userPage, GlobalSettingOptions.MESSAGING);
+          await userPage
+            .getByTestId(`service-name-${serviceData.name}`)
+            .click();
+          await waitForAllLoadersToDisappear(userPage);
 
-        await messagingService?.visitEntityPage(userPage);
-        await waitForAllLoadersToDisappear(userPage);
-
-        await expect(
-          userPage.getByRole('tab', { name: 'Custom Tab' })
-        ).toBeVisible();
-      });
-
-      await test.step('cleanup messaging service', async () => {
-        const { apiContext } = await getApiContext(adminPage);
-        await messagingService?.delete(apiContext);
+          await expect(
+            userPage.getByRole('tab', { name: 'Custom Tab' })
+          ).toBeVisible();
+        } finally {
+          await apiContext.delete(
+            `/api/v1/services/messagingServices/name/${encodeURIComponent(
+              serviceData.fullyQualifiedName
+            )}?recursive=true&hardDelete=true`
+          );
+        }
       });
     });
   }
