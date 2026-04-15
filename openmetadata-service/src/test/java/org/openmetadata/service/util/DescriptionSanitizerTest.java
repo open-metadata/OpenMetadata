@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -173,5 +174,42 @@ class DescriptionSanitizerTest {
 
     assertTrue(result.contains("<ul>"));
     assertTrue(result.contains("<li>item</li>"));
+  }
+
+  @Test
+  void entityLinkTokensArePreserved() {
+    String input = "<p>See <#E::table::bigquery.shopify.product> for details</p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("<#E::table::bigquery.shopify.product>"));
+    assertTrue(result.contains("for details"));
+  }
+
+  @Test
+  void entityLinkWithFallbackTextIsPreserved() {
+    String input = "<#E::user::admin|[@Admin](/user/admin)>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertEquals("<#E::user::admin|[@Admin](/user/admin)>", result);
+  }
+
+  @Test
+  void multipleEntityLinksArePreserved() {
+    String input =
+        "<p><#E::table::db.schema.t1> and <#E::table::db.schema.t2> are related</p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("<#E::table::db.schema.t1>"));
+    assertTrue(result.contains("<#E::table::db.schema.t2>"));
+  }
+
+  @Test
+  void entityLinkWithScriptInjectionIsStillSafe() {
+    String input =
+        "<p><#E::table::clean.fqn> and <script>alert(1)</script></p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("<#E::table::clean.fqn>"));
+    assertFalse(result.contains("<script"));
   }
 }

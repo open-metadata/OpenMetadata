@@ -90,6 +90,12 @@ export type FormatContentFor = 'server' | 'client';
 // This avoids HTML encoding of < and > characters in entity links
 const ENTITY_LINK_MARKER_PREFIX = '__ENTITY_LINK_MARKER_';
 
+const escapeMarkdownLinkText = (text: string): string =>
+  text.replace(/[[\]()\\]/g, '\\$&');
+
+const sanitizeEntityLinkField = (value: string): string =>
+  value.replace(/[<>|]/g, '');
+
 export const formatContent = (
   htmlString: string,
   formatFor: FormatContentFor
@@ -130,7 +136,10 @@ export const formatContent = (
           ? rawHref
           : '';
 
-      const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${fqn}|[${text}](${href})>`;
+      const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
+      const safeFqn = sanitizeEntityLinkField(fqn ?? '');
+      const safeText = escapeMarkdownLinkText(text ?? '');
+      const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${safeEntityType}${ENTITY_LINK_SEPARATOR}${safeFqn}|[${safeText}](${href})>`;
       const marker = `${ENTITY_LINK_MARKER_PREFIX}${index}__`;
 
       entityLinkMap.set(marker, entityLink);

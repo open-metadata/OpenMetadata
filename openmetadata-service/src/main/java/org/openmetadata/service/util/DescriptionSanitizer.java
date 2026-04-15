@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.util;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
 
@@ -102,11 +106,20 @@ public final class DescriptionSanitizer {
           .allowElements("dl", "dt", "dd")
           .toFactory();
 
+  private static final Pattern ENTITY_LINK_PATTERN =
+      Pattern.compile("<#E::[^<>]+>");
+
+  private static final String ENTITY_LINK_PLACEHOLDER_PREFIX = "__OM_ENTITY_LINK_";
+
   private DescriptionSanitizer() {}
 
   /**
    * Sanitizes a markdown/HTML description string by removing dangerous elements (script, iframe,
    * event handlers like onerror/onclick) while preserving safe markdown-generated HTML.
+   *
+   * <p>Entity-link tokens ({@code <#E::...>}) are preserved via placeholder replacement before
+   * sanitization and restored afterward, since the OWASP sanitizer would otherwise strip them as
+   * unknown HTML tags.
    *
    * @param description the raw description from user input
    * @return sanitized description safe for storage and rendering, or null if input is null
@@ -115,6 +128,23 @@ public final class DescriptionSanitizer {
     if (description == null) {
       return null;
     }
-    return MARKDOWN_POLICY.sanitize(description);
+    Matcher matcher = ENTITY_LINK_PATTERN.matcher(description);
+    List<String> entityLinks = new ArrayList<>();
+    StringBuilder replaced = new StringBuilder();
+    while (matcher.find()) {
+      entityLinks.add(matcher.group());
+      matcher.appendReplacement(
+          replaced, ENTITY_LINK_PLACEHOLDER_PREFIX + entityLinks.size() + "__");
+    }
+    matcher.appendTail(replaced);
+
+    String sanitized = MARKDOWN_POLICY.sanitize(replaced.toString());
+
+    for (int i = 0; i < entityLinks.size(); i++) {
+      sanitized =
+          sanitized.replace(
+              ENTITY_LINK_PLACEHOLDER_PREFIX + (i + 1) + "__", entityLinks.get(i));
+    }
+    return sanitized;
   }
 }
