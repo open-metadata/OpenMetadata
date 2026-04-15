@@ -1,14 +1,13 @@
-import { Avatar } from '@/components/base/avatar/avatar';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
-import { fontSizeClass } from '@/utils/tailwindClasses';
-import { Check } from '@untitledui/icons';
 import { isValidElement, useContext } from 'react';
+import { Check } from '@untitledui/icons';
 import type { ListBoxItemProps as AriaListBoxItemProps } from 'react-aria-components';
 import {
   ListBoxItem as AriaListBoxItem,
   Text as AriaText,
 } from 'react-aria-components';
+import { Avatar } from '@/components/base/avatar/avatar';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type { SelectItemType } from './select';
 import { SelectContext } from './select';
 
@@ -33,7 +32,7 @@ export const SelectItem = ({
   children,
   ...props
 }: SelectItemProps) => {
-  const { fontSize, size } = useContext(SelectContext);
+  const { size } = useContext(SelectContext);
 
   const labelOrChildren =
     label || (typeof children === 'string' ? children : '');
@@ -90,8 +89,7 @@ export const SelectItem = ({
           <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
             <AriaText
               className={cx(
-                'tw:truncate tw:whitespace-nowrap tw:text-primary',
-                fontSizeClass[fontSize],
+                'tw:truncate tw:text-md tw:font-medium tw:whitespace-nowrap tw:text-primary',
                 state.isDisabled && 'tw:text-disabled'
               )}
               slot="label">
@@ -102,8 +100,7 @@ export const SelectItem = ({
             {supportingText && (
               <AriaText
                 className={cx(
-                  'tw:whitespace-nowrap tw:text-tertiary',
-                  fontSizeClass[fontSize],
+                  'tw:text-md tw:whitespace-nowrap tw:text-tertiary',
                   state.isDisabled && 'tw:text-disabled'
                 )}
                 slot="description">

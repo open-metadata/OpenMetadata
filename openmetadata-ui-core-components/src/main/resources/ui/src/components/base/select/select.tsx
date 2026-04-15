@@ -152,11 +152,7 @@ const SelectValue = ({
   );
 };
 
-export const SelectContext = createContext<{
-  size: 'sm' | 'md';
-  fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-}>({
-  fontSize: 'md',
+export const SelectContext = createContext<{ size: 'sm' | 'md' }>({
   size: 'sm',
 });
 
@@ -174,7 +170,7 @@ const Select = ({
   ...rest
 }: SelectProps) => {
   return (
-    <SelectContext.Provider value={{ fontSize, size }}>
+    <SelectContext.Provider value={{ size }}>
       <AriaSelect
         {...rest}
         className={(state) =>
