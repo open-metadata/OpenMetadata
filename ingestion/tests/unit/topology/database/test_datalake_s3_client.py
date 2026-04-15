@@ -50,7 +50,10 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["data/standard.csv", "data/ia.csv"])
+        self.assertEqual(
+            result,
+            [("data/standard.csv", None), ("data/ia.csv", None)],
+        )
 
     @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
     def test_skip_cold_storage_false_returns_all(self, mock_list_s3):
@@ -70,7 +73,10 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["data/standard.csv", "data/glacier.csv"])
+        self.assertEqual(
+            result,
+            [("data/standard.csv", None), ("data/glacier.csv", None)],
+        )
 
     @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
     def test_default_skip_cold_storage_is_false(self, mock_list_s3):
@@ -85,7 +91,7 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
 
         result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None))
 
-        self.assertEqual(result, ["data/glacier.csv"])
+        self.assertEqual(result, [("data/glacier.csv", None)])
 
     @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
     def test_skip_cold_storage_handles_missing_storage_class(self, mock_list_s3):
@@ -104,7 +110,7 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["data/no_class.csv"])
+        self.assertEqual(result, [("data/no_class.csv", None)])
 
     @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
     def test_skip_cold_storage_filters_each_cold_class(self, mock_list_s3):
@@ -153,7 +159,7 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
 
         self.assertEqual(
             result,
-            [f"data/{cls.lower()}.csv" for cls in non_cold_classes],
+            [(f"data/{cls.lower()}.csv", None) for cls in non_cold_classes],
         )
 
 
