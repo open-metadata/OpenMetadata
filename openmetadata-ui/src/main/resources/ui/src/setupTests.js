@@ -216,7 +216,7 @@ jest.mock('./utils/i18next/LocalUtil', () => {
       .mockImplementation(({ i18nKey, renderElement, values }) => {
         const valueArr = Object.values(values ?? {});
 
-        return React.createElement('div', { dataTestid: i18nKey }, [
+        return React.createElement('div', { 'data-testid': i18nKey }, [
           i18nKey,
           renderElement,
           valueArr,
