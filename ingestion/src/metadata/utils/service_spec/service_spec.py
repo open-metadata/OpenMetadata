@@ -124,6 +124,18 @@ def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
     source_class_type = source_type.split(TYPE_SEPARATOR)[-1]
+    if source_class_type == "policy":
+        base_source_type = source_type.split(TYPE_SEPARATOR)[0]
+        return cast(
+            Type[Source],
+            import_from_module(
+                "metadata.{}.source.{}.{}.policy.PolicyAgentSource".format(  # pylint: disable=C0209
+                    from_,
+                    service_type.name.lower(),
+                    get_module_dir(base_source_type),
+                )
+            ),
+        )
     if source_class_type in ["usage", "lineage"]:
         field = f"{source_class_type}_source_class"
     else:

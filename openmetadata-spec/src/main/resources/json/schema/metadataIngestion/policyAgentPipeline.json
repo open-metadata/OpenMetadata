@@ -1,0 +1,81 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/policyAgentPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PolicyAgentPipeline",
+  "description": "Policy Agent Pipeline Configuration. Applies access grants against the source system for database services.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.PolicyAgentPipeline",
+  "definitions": {
+    "policyAgentConfigType": {
+      "description": "Policy Agent Pipeline type",
+      "type": "string",
+      "enum": ["PolicyAgent"],
+      "default": "PolicyAgent"
+    },
+    "principalType": {
+      "description": "Type of principal the grant is issued to.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.PrincipalType",
+      "enum": ["USER", "ROLE"],
+      "default": "USER"
+    },
+    "privilege": {
+      "description": "Privilege to grant.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.Privilege",
+      "enum": ["USAGE", "SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]
+    },
+    "policy": {
+      "description": "A single access grant to apply on the source.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyAgent.Policy",
+      "properties": {
+        "id": {
+          "description": "Unique id of the policy entry.",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "principalType": {
+          "$ref": "#/definitions/principalType",
+          "default": "USER"
+        },
+        "principal": {
+          "description": "Grantee identifier. For USER this is typically the email/username; for ROLE the role name.",
+          "type": "string"
+        },
+        "databaseName": {
+          "description": "Database on which the grant is applied.",
+          "type": "string"
+        },
+        "schemaName": {
+          "description": "Schema on which the grant is applied. If omitted, the grant is scoped to the database.",
+          "type": "string"
+        },
+        "tableName": {
+          "description": "Table on which the grant is applied. Requires schemaName.",
+          "type": "string"
+        },
+        "privilege": {
+          "$ref": "#/definitions/privilege"
+        }
+      },
+      "required": ["id", "principal", "databaseName", "privilege"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/policyAgentConfigType",
+      "default": "PolicyAgent"
+    },
+    "policies": {
+      "description": "List of access grants to apply on the source.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/policy"
+      }
+    }
+  },
+  "required": ["type", "policies"],
+  "additionalProperties": false
+}

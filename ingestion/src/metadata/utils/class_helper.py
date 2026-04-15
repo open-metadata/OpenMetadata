@@ -59,6 +59,9 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
     PipelineServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.policyAgentPipeline import (
+    PolicyAgentPipeline,
+)
 from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
     SearchServiceMetadataPipeline,
 )
@@ -102,6 +105,7 @@ SOURCE_CONFIG_TYPE_INGESTION = {
     StorageServiceMetadataPipeline.__name__: PipelineType.metadata,
     SearchServiceMetadataPipeline.__name__: PipelineType.metadata,
     McpServiceMetadataPipeline.__name__: PipelineType.metadata,
+    PolicyAgentPipeline.__name__: PipelineType.policyAgent,
     TestSuitePipeline.__name__: PipelineType.TestSuite,
     MetadataToElasticSearchPipeline.__name__: PipelineType.elasticSearchReindex,
     DataInsightPipeline.__name__: PipelineType.dataInsight,
