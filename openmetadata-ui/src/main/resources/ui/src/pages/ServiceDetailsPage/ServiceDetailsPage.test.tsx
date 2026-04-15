@@ -404,14 +404,6 @@ jest.mock('../../components/ServiceInsights/ServiceInsightsTab', () =>
     ))
 );
 
-jest.mock('./ServiceMainTabContent', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="service-main-tab-content">ServiceMainTabContent</div>
-    ))
-);
-
 jest.mock('../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({
     customizedPage: null,
