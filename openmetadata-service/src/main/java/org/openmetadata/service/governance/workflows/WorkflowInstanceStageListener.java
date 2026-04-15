@@ -178,7 +178,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
 
     String stage =
         Optional.ofNullable(execution.getCurrentActivityId()).orElse(workflowDefinitionName);
-    List<String> entityList = resolveStageEntityList(workflowDefinitionName, stage, varHandler);
+    WorkflowDefinition workflowDefinition = fetchWorkflowDefinition(workflowDefinitionName);
+    List<String> entityList = resolveStageEntityList(workflowDefinition, stage, varHandler);
     UUID workflowInstanceStateId =
         workflowInstanceStateRepository.addNewStageToInstance(
             new NewStageRequest(
@@ -188,7 +189,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
                 workflowDefinitionName,
                 System.currentTimeMillis(),
                 WorkflowScheduleRunIdReader.readFrom(execution),
-                entityList));
+                entityList),
+            workflowDefinition);
     varHandler.setNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
     LOG.debug(
         "[STAGE_CREATED] Workflow: {}, ProcessInstance: {}, Stage: {}, StageId: {} - Stage record created successfully",
@@ -198,13 +200,18 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
         workflowInstanceStateId);
   }
 
-  @SuppressWarnings("unchecked")
-  private Map<String, String> getStageInputNamespaceMap(
-      String workflowDefinitionName, String stageName) {
+  private WorkflowDefinition fetchWorkflowDefinition(String workflowDefinitionName) {
     WorkflowDefinitionRepository workflowDefinitionRepository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.getByNameForStageProcessing(workflowDefinitionName);
+    return workflowDefinitionRepository.getByNameForStageProcessing(workflowDefinitionName);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, String> extractInputNamespaceMap(
+      WorkflowDefinition workflowDefinition, String stageName) {
+    if (workflowDefinition.getNodes() == null) {
+      return null;
+    }
     return workflowDefinition.getNodes().stream()
         .filter(n -> stageName.equals(n.getName()))
         .findFirst()
@@ -214,10 +221,10 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   }
 
   private List<String> resolveStageEntityList(
-      String workflowDefinitionName, String stageName, WorkflowVariableHandler varHandler) {
+      WorkflowDefinition workflowDefinition, String stageName, WorkflowVariableHandler varHandler) {
     try {
       Map<String, String> inputNamespaceMap =
-          getStageInputNamespaceMap(workflowDefinitionName, stageName);
+          extractInputNamespaceMap(workflowDefinition, stageName);
       if (inputNamespaceMap == null) {
         return null;
       }
@@ -229,10 +236,10 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   }
 
   private String resolveStageUpdatedBy(
-      String workflowDefinitionName, String stageName, Map<String, Object> variables) {
+      WorkflowDefinition workflowDefinition, String stageName, Map<String, Object> variables) {
     try {
       Map<String, String> inputNamespaceMap =
-          getStageInputNamespaceMap(workflowDefinitionName, stageName);
+          extractInputNamespaceMap(workflowDefinition, stageName);
       if (inputNamespaceMap == null) {
         return null;
       }
@@ -266,7 +273,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     }
 
     Map<String, Object> variables = execution.getVariables();
-    String updatedBy = resolveStageUpdatedBy(workflowDefinitionName, stage, variables);
+    WorkflowDefinition workflowDefinition = fetchWorkflowDefinition(workflowDefinitionName);
+    String updatedBy = resolveStageUpdatedBy(workflowDefinition, stage, variables);
     workflowInstanceStateRepository.updateStage(
         workflowInstanceStateId, System.currentTimeMillis(), updatedBy, variables);
 

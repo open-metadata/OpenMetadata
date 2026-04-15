@@ -98,6 +98,11 @@ public class WorkflowInstanceStateRepository
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     WorkflowDefinition workflowDefinition =
         workflowDefinitionRepository.getByNameForStageProcessing(request.workflowDefinitionName());
+    return addNewStageToInstance(request, workflowDefinition);
+  }
+
+  public UUID addNewStageToInstance(
+      NewStageRequest request, WorkflowDefinition workflowDefinition) {
     String displayName = getStageDisplayName(workflowDefinition, request.workflowInstanceStage());
     WorkflowInstanceState entityRecord = buildStateRecord(request, workflowDefinition, displayName);
     UUID stateId = getStateId(request.workflowInstanceId(), request.workflowInstanceStage());
