@@ -160,7 +160,8 @@ class TestFileSizePassthrough:
 
     @patch("s3fs.S3FileSystem")
     def test_parquet_reader_works_without_session(self, mock_s3fs_cls):
-        """Parquet reader should not crash when session is None (profiler path)."""
+        """Parquet reader should not crash when session is None (profiler/storage path).
+        Falls back to credentials from config."""
         mock_client = Mock()
 
         mock_fs = MagicMock()
@@ -171,10 +172,10 @@ class TestFileSizePassthrough:
 
         reader._read(key="data/test.parquet", bucket_name="bucket")
 
-        # Without session, s3fs is created with default credential chain
+        # Without session, s3fs falls back to config credentials
         mock_s3fs_cls.assert_called_once()
-        call_kwargs = mock_s3fs_cls.call_args
-        assert "key" not in (call_kwargs.kwargs or {})
+        call_kwargs = mock_s3fs_cls.call_args.kwargs
+        assert call_kwargs["key"] == "test"
 
     def test_get_table_names_yields_key_and_size(self):
         """S3 client get_table_names should yield (key, size) tuples."""
