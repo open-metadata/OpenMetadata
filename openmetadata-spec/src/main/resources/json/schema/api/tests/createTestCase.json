@@ -72,6 +72,15 @@
       "minimum": 1,
       "maximum": 50,
       "default": 5
+    },
+    "testSuites": {
+      "description": "Fully qualified names of logical test suites to attach this test case to on creation. Only non-basic (logical) test suites are accepted. Ignored on PUT/PATCH.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "uniqueItems": true,
+      "default": []
     }
   },
   "required": ["name", "testDefinition", "entityLink"],

@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.awaitility.Awaitility;
@@ -4458,5 +4459,115 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Verify the displayName was actually set
     TestCase updated = getEntity(created.getId().toString());
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  // ===================================================================
+  // LOGICAL TEST SUITE ATTACHMENT DURING CREATION (Issue #21203)
+  // ===================================================================
+
+  @Test
+  void test_createTestCaseWithLogicalTestSuites_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a logical test suite
+    CreateTestSuite logicalSuiteReq = new CreateTestSuite();
+    logicalSuiteReq.setName(ns.prefix("logical_for_create"));
+    logicalSuiteReq.setDescription("Logical suite for create test");
+    TestSuite logicalSuite = client.testSuites().create(logicalSuiteReq);
+    assertFalse(logicalSuite.getBasic());
+
+    // Create a test case with testSuites pointing to the logical suite
+    CreateTestCase request =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tc_with_logical"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    request.setTestSuites(Set.of(logicalSuite.getFullyQualifiedName()));
+
+    TestCase created = createEntity(request);
+    assertNotNull(created);
+    assertNotNull(created.getId());
+
+    // Verify the test case appears in the logical suite's tests
+    TestSuite fetchedSuite = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(fetchedSuite.getTests());
+    assertTrue(
+        fetchedSuite.getTests().stream().anyMatch(ref -> ref.getId().equals(created.getId())),
+        "Test case should be in the logical suite");
+  }
+
+  @Test
+  void test_createTestCaseWithBasicTestSuite_400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a test case first to ensure a basic test suite exists for this table
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("seed_for_basic"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+    // The basic suite FQN is the table FQN + ".testSuite"
+    String basicSuiteFQN = table.getFullyQualifiedName() + ".testSuite";
+
+    // Attempt to create a test case pointing to the basic suite — should fail
+    CreateTestCase request =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tc_basic_reject"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .build();
+    request.setTestSuites(Set.of(basicSuiteFQN));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Should fail when attaching to a basic test suite");
+  }
+
+  @Test
+  void test_createTestCaseWithNonExistentSuite_400(TestNamespace ns) {
+    Table table = createTable(ns);
+
+    CreateTestCase request =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("tc_nonexist_suite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    request.setTestSuites(Set.of("non.existent.suite.fqn"));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Should fail when attaching to a non-existent test suite");
+  }
+
+  @Test
+  void test_patchTestCaseDoesNotTriggerSuiteValidation_200(TestNamespace ns) {
+    // This test PROVES we fix the regression in competing PR #26960.
+    // The exact scenario: create a test case normally, then PATCH it.
+    // PR #26960 would fail here with "basic test suite" error.
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("tc_patch_safe"))
+            .description("Original description")
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // PATCH to update the description — must NOT trigger suite validation
+    testCase.setDescription("Updated description after patch");
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+    assertEquals("Updated description after patch", updated.getDescription());
   }
 }

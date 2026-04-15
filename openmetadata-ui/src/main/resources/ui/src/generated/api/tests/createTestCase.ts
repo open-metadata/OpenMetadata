@@ -56,6 +56,10 @@ export interface CreateTestCase {
      */
     testDefinition: string;
     /**
+     * Fully qualified names of logical test suites to attach this test case to on creation. Only non-basic (logical) test suites are accepted. Ignored on PUT/PATCH.
+     */
+    testSuites?: string[];
+    /**
      * Number of top dimension values to show before grouping the rest as Others. Controls the
      * cardinality of dimensional test results. Defaults to 5 when not specified.
      */
