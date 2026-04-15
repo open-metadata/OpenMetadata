@@ -101,7 +101,7 @@ export const openEntitySummaryPanel = async ({
     await cardByFqn.waitFor({ state: 'visible' });
   }
 
-  page
+  await page
     .locator('[data-testid^="table-data-card"]')
     .filter({
       has: page.getByTestId('entity-link').filter({ hasText: entityName }),
