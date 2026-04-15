@@ -99,6 +99,8 @@ export const openEntitySummaryPanel = async ({
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
+    await cardByFqn.click();
+    return;
   }
 
   await page
