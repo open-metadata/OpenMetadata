@@ -51,7 +51,12 @@ class AddUpdateLineageScriptTest {
         }
       }
       if (sqlKey == null) {
-        sqlKey = String.valueOf(sqlMap.size() + 1);
+        int maxKey = 0;
+        for (String k : sqlMap.keySet()) {
+          int kInt = Integer.parseInt(k);
+          if (kInt > maxKey) maxKey = kInt;
+        }
+        sqlKey = String.valueOf(maxKey + 1);
         sqlMap.put(sqlKey, rawSql);
       }
       edgeData = new HashMap<>(lineageData);

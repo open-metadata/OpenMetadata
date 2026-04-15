@@ -263,28 +263,7 @@ public interface SearchIndex {
    * per-edge SQL remains in the database; this deduplication is search-doc-local.
    */
   static void populateLineageData(Map<String, Object> doc, EntityReference entity) {
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
-
-    List<EsLineageData> edges = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      try {
-        EntityReference ref =
-            Entity.getEntityReferenceById(record.getType(), record.getId(), Include.ALL);
-        LineageDetails lineageDetails = JsonUtils.readValue(record.getJson(), LineageDetails.class);
-        edges.add(buildEntityLineageData(ref, entity, lineageDetails));
-      } catch (EntityNotFoundException ex) {
-        LOG.warn(
-            "Upstream entity '{}' (ID: {}) not found for entity '{}'. Skipping lineage edge. Error: {}",
-            record.getType(),
-            record.getId(),
-            entity.getFullyQualifiedName(),
-            ex.getMessage());
-      }
-    }
-
+    List<EsLineageData> edges = getLineageData(entity);
     Map<String, String> sqlQueries = SearchIndexUtils.deduplicateSqlAcrossEdges(edges);
     doc.put("upstreamLineage", edges);
     if (!sqlQueries.isEmpty()) {

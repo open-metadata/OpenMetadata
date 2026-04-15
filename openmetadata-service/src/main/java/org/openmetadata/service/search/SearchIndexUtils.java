@@ -98,20 +98,20 @@ public final class SearchIndexUtils {
     if (doc.remove("lineageSqlQueries") != null) {
       stripSqlQueryKeysFromEdges(doc);
       json = JsonUtils.pojoToJson(doc);
-      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
+      int sizeAfterStrip = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
-          "Document {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
+          "Document {} ({}) too large, stripped lineageSqlQueries (size now {} bytes)",
           docId,
           entityType,
-          strippedSize);
-      if (strippedSize <= maxBytes) {
+          sizeAfterStrip);
+      if (sizeAfterStrip <= maxBytes) {
         return json;
       }
     }
     doc.remove("upstreamLineage");
     json = JsonUtils.pojoToJson(doc);
     LOG.warn(
-        "Document {} ({}) still too large, stripped upstreamLineage ({} bytes)",
+        "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
         docId,
         entityType,
         json.getBytes(StandardCharsets.UTF_8).length);
