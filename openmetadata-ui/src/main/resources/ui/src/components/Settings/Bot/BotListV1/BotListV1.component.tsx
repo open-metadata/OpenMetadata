@@ -27,21 +27,28 @@ import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
+import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { getBots } from '../../../../rest/botsAPI';
+import { getBotByName, getBots } from '../../../../rest/botsAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
   getEntityName,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
-import { filterBotsBySearchTerm } from '../../../../utils/BotsUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
+import {
+  escapeESReservedCharacters,
+  stringToHTML,
+} from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -81,10 +88,65 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  const getBotIncludeFilter = useCallback(
+    () => (showDeleted ? Include.Deleted : Include.NonDeleted),
+    [showDeleted]
+  );
+
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
     []
   );
+
+  const enrichBotsWithBotUsers = async (bots: Bot[]) => {
+    if (!bots.length) {
+      return bots;
+    }
+
+    try {
+      const response = await searchQuery({
+        query: '',
+        pageNumber: 1,
+        pageSize: bots.length,
+        searchIndex: SearchIndex.USER,
+        queryFilter: {
+          bool: {
+            must: [{ term: { isBot: true } }],
+            should: bots.map((bot) => ({
+              term: { name: bot.name },
+            })),
+            minimum_should_match: 1,
+          },
+        },
+      });
+      const botUsers = formatUsersResponse(response.hits.hits);
+      const botUsersByName = new Map<string, User>(
+        botUsers.map((botUser) => [botUser.name, botUser])
+      );
+
+      return bots.map((bot) => {
+        const botUser = botUsersByName.get(bot.name);
+
+        if (!botUser) {
+          return bot;
+        }
+
+        return {
+          ...bot,
+          botUser: {
+            ...(bot.botUser ?? {}),
+            id: botUser.id,
+            name: botUser.name,
+            displayName: botUser.displayName,
+            fullyQualifiedName: botUser.fullyQualifiedName,
+            email: botUser.email,
+          } as Bot['botUser'],
+        };
+      });
+    } catch {
+      return bots;
+    }
+  };
 
   /**
    *
@@ -102,10 +164,12 @@ const BotListV1 = ({
         limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
+      const botsWithUsers = await enrichBotsWithBotUsers(data);
+
       handlePagingChange(paging);
-      setBotUsers(data);
-      setSearchedData(data);
-      if (!showDeleted && isEmpty(data)) {
+      setBotUsers(botsWithUsers);
+      setSearchedData(botsWithUsers);
+      if (!showDeleted && isEmpty(botsWithUsers)) {
         setHandleErrorPlaceholder(true);
       } else {
         setHandleErrorPlaceholder(false);
@@ -221,17 +285,126 @@ const BotListV1 = ({
     fetchBots(showDeleted);
   }, [selectedUser]);
 
-  const handleSearch = (text: string) => {
-    setSearchTerm(text);
-    if (text) {
-      setSearchedData(filterBotsBySearchTerm(botUsers, text));
-    } else {
-      setSearchedData(botUsers);
+  const searchBots = async (text: string) => {
+    const include = getBotIncludeFilter();
+    const getMatchedBots = async (matchedBotUsers: User[]) => {
+      const matchedBotUserNames = Array.from(
+        new Set(
+          matchedBotUsers
+            .map((botUser) => botUser.name)
+            .filter((name): name is string => Boolean(name))
+        )
+      );
+
+      if (!matchedBotUserNames.length) {
+        return [];
+      }
+
+      const matchedBotsResponse = await Promise.allSettled(
+        matchedBotUserNames.map((name) =>
+          getBotByName(name, {
+            include,
+          })
+        )
+      );
+      const matchedBotUsersByName = new Map(
+        matchedBotUsers.map((botUser) => [botUser.name, botUser])
+      );
+
+      return matchedBotsResponse.flatMap((result) => {
+        if (result.status !== 'fulfilled') {
+          return [];
+        }
+
+        const botUserName = result.value.botUser?.name;
+        const matchedBotUser = botUserName
+          ? matchedBotUsersByName.get(botUserName)
+          : undefined;
+
+        if (!matchedBotUser) {
+          return [result.value];
+        }
+
+        return [
+          {
+            ...result.value,
+            botUser: {
+              ...(result.value.botUser ?? {}),
+              id: matchedBotUser.id,
+              name: matchedBotUser.name,
+              displayName: matchedBotUser.displayName,
+              fullyQualifiedName: matchedBotUser.fullyQualifiedName,
+              email: matchedBotUser.email,
+            } as Bot['botUser'],
+          },
+        ];
+      });
+    };
+
+    const matchedUsersBySearchQuery = await searchQuery({
+      query: text,
+      pageNumber: 1,
+      pageSize: 100,
+      queryFilter: getTermQuery({ isBot: 'true' }),
+      searchIndex: SearchIndex.USER,
+    });
+    const matchedBotUsers = formatUsersResponse(
+      matchedUsersBySearchQuery.hits.hits
+    );
+    const matchedBots = await getMatchedBots(matchedBotUsers);
+
+    if (matchedBots.length) {
+      return matchedBots;
     }
+
+    const escapedText = escapeESReservedCharacters(text.toLowerCase());
+    const wildcardPattern = `*${escapedText}*`;
+    const matchedUsersByWildcardFilter = await searchQuery({
+      query: '*',
+      pageNumber: 1,
+      pageSize: 100,
+      queryFilter: getTermQuery({ isBot: 'true' }, 'must', undefined, {
+        wildcardShouldQueries: {
+          'name.keyword': wildcardPattern,
+          'displayName.keyword': wildcardPattern,
+          'fullyQualifiedName.keyword': wildcardPattern,
+          'email.keyword': wildcardPattern,
+        },
+      }),
+      searchIndex: SearchIndex.USER,
+    });
+    const fallbackMatchedBotUsers = formatUsersResponse(
+      matchedUsersByWildcardFilter.hits.hits
+    );
+
+    return getMatchedBots(fallbackMatchedBotUsers);
+  };
+
+  const handleSearch = async (text: string) => {
+    setSearchTerm(text);
+
     handlePageChange(INITIAL_PAGING_VALUE, {
       cursorType: null,
       cursorValue: undefined,
     });
+
+    if (!text) {
+      setSearchedData(botUsers);
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const matchedBots = await searchBots(text);
+
+      setSearchedData(matchedBots);
+    } catch (error) {
+      showErrorToast((error as AxiosError).message);
+      setSearchedData([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleShowDeletedBots = (checked: boolean) => {

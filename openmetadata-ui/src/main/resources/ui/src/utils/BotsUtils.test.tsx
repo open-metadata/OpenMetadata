@@ -12,8 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { Bot } from '../generated/entity/bot';
-import { getJWTTokenExpiryOptions, filterBotsBySearchTerm } from './BotsUtils';
+import { getJWTTokenExpiryOptions } from './BotsUtils';
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
@@ -103,58 +102,5 @@ describe('getJWTTokenExpiryOptions', () => {
       'label.number-day-plural',
       'label.unlimited',
     ]);
-  });
-});
-
-describe('filterBotsBySearchTerm', () => {
-  const createBot = (overrides: Partial<Bot> = {}): Bot =>
-    ({
-      id: 'bot-id',
-      name: 'ingestion-bot@example.com',
-      botUser: {
-        id: 'bot-user-id',
-        type: 'user',
-        name: 'ingestion-bot@example.com',
-        displayName: 'Ingestion Bot User',
-      },
-      displayName: 'Ingestion Bot',
-      description: 'Handles ingestion workflows',
-      ...overrides,
-    }) as Bot;
-
-  it('matches bot display names case-insensitively', () => {
-    const bots = [createBot()];
-
-    expect(filterBotsBySearchTerm(bots, 'ingestion bot')).toHaveLength(1);
-    expect(filterBotsBySearchTerm(bots, 'Ingestion Bot')).toHaveLength(1);
-  });
-
-  it('matches bot identifiers containing email-style values', () => {
-    const bots = [createBot()];
-
-    expect(filterBotsBySearchTerm(bots, 'example.com')).toHaveLength(1);
-    expect(filterBotsBySearchTerm(bots, 'ingestion-bot@example.com')).toHaveLength(
-      1
-    );
-  });
-
-  it('returns only bots matching the normalized search text', () => {
-    const bots = [
-      createBot(),
-      createBot({
-        id: 'second-bot-id',
-        name: 'quality-bot@example.com',
-        displayName: 'Quality Bot',
-        description: 'Profiles datasets',
-        botUser: {
-          id: 'quality-bot-user-id',
-          type: 'user',
-          name: 'quality-bot@example.com',
-          displayName: 'Quality Bot User',
-        },
-      }),
-    ];
-
-    expect(filterBotsBySearchTerm(bots, 'quality bot')).toEqual([bots[1]]);
   });
 });

@@ -154,6 +154,23 @@ export const updateBotDetails = async (page: Page) => {
   ).toContainText(BOT_DETAILS.updatedDescription);
 };
 
+export const verifyBotSearch = async (page: Page) => {
+  const searchInput = page.getByTestId('searchbar');
+  const createdBotLink = page.getByTestId(
+    `bot-link-${BOT_DETAILS.updatedBotName}`
+  );
+
+  await searchInput.fill(BOT_DETAILS.updatedBotName);
+  await expect(createdBotLink).toBeVisible();
+
+  await searchInput.clear();
+  await searchInput.fill(BOT_DETAILS.botEmail);
+  await expect(createdBotLink).toBeVisible();
+
+  await searchInput.clear();
+  await expect(createdBotLink).toBeVisible();
+};
+
 export const tokenExpirationForDays = async (page: Page) => {
   await getCreatedBot(page, {
     botName,

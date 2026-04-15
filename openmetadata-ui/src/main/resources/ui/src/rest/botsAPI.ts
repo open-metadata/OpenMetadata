@@ -27,9 +27,27 @@ interface GetBotParams {
   include?: Include;
 }
 
+interface GetBotByNameParams {
+  include?: Include;
+}
+
 export const getBots = async (params: GetBotParams) => {
   const response = await axiosClient.get<{ data: Bot[]; paging: Paging }>(
     BASE_URL,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getBotByName = async (
+  name: string,
+  params: GetBotByNameParams = {}
+) => {
+  const response = await axiosClient.get<Bot>(
+    `${BASE_URL}/name/${encodeURIComponent(name)}`,
     {
       params,
     }

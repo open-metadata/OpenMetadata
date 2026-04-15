@@ -12,9 +12,7 @@
  */
 
 import { Select } from 'antd';
-import { lowerCase } from 'lodash';
 import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
-import { Bot } from '../generated/entity/bot';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {
   DATE_TIME_WEEKDAY_WITH_ORDINAL,
@@ -85,27 +83,4 @@ export const getTokenExpiry = (expiry: number) => {
     tokenExpiryDate: formatDateTimeLong(expiry, DATE_TIME_WEEKDAY_WITH_ORDINAL),
     isTokenExpired,
   };
-};
-
-const normalizeBotSearchValue = (value?: string) => lowerCase(value ?? '');
-
-export const filterBotsBySearchTerm = (bots: Bot[], searchText: string) => {
-  const normalizedSearchText = normalizeBotSearchValue(searchText);
-
-  if (!normalizedSearchText) {
-    return bots;
-  }
-
-  return bots.filter((bot) =>
-    [
-      bot.name,
-      bot.displayName,
-      bot.description,
-      bot.fullyQualifiedName,
-      bot.botUser?.name,
-      bot.botUser?.displayName,
-    ].some((value) =>
-      normalizeBotSearchValue(value).includes(normalizedSearchText)
-    )
-  );
 };
