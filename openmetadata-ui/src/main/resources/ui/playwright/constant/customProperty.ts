@@ -434,9 +434,5 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
   },
 };
 
-export const CUSTOM_PROPERTY_INVALID_NAMES = {
-  WITH_DOUBLE_COLON: 'my::property',
-};
-
 export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
   "Name must not contain '::'.";

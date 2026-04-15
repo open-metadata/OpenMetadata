@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { INVALID_NAMES } from '../constant/common';
 import {
-  CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
@@ -642,7 +642,7 @@ export const addCustomPropertiesForEntity = async ({
   // Validation check — only '::' is blocked
   await page.fill(
     '[data-testid="name"] input',
-    CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOUBLE_COLON
+    INVALID_NAMES.WITH_SPECIAL_CHARS
   );
 
   await expect(page.locator('#name_help')).toContainText(

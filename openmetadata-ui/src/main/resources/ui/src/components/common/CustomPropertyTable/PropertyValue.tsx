@@ -30,7 +30,6 @@ import {
   isNil,
   isUndefined,
   noop,
-  omit,
   omitBy,
   toNumber,
 } from 'lodash';
@@ -97,22 +96,28 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
-    // Backend may wrap names in double-quotes when they contain special chars.
-    // Normalise to the raw name (without surrounding quotes) for consistent lookups.
-    const propertyName = property.name.replaceAll(/^"|"$/g, '');
-    const propertyType = property.propertyType;
-    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
-    // Extension key may be stored as the raw name OR as the quoted form — try both.
-    const value = extension?.[propertyName] ?? extension?.[`"${propertyName}"`];
+  const { propertyName, extensionKey, propertyType, value, isTableType } =
+    useMemo(() => {
+      // Backend may wrap names in double-quotes when they contain special chars.
+      // Normalise to the raw name (without surrounding quotes) for consistent lookups.
+      const rawName = property.name;
+      const propertyType = property.propertyType;
+      const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
+      // Extension key may be the raw name or the quoted form (e.g. "custom.test").
+      // Detect which form the backend used so we write back with the exact same key.
+      const quotedName = `"${rawName}"`;
+      const extensionKey =
+        extension && quotedName in extension ? quotedName : rawName;
+      const value = extension?.[extensionKey];
 
-    return {
-      propertyName,
-      propertyType,
-      value,
-      isTableType,
-    };
-  }, [property, extension]);
+      return {
+        propertyName: rawName,
+        extensionKey,
+        propertyType,
+        value,
+        isTableType,
+      };
+    }, [property, extension]);
 
   const { t } = useTranslation();
   const [showInput, setShowInput] = useState<boolean>(false);
@@ -162,8 +167,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const updatedExtension = omitBy(
         omitBy(
           {
-            ...omit(extension, [propertyName, `"${propertyName}"`]),
-            [propertyName]: resolvedValue,
+            ...extension,
+            [extensionKey]: resolvedValue,
           },
           isUndefined
         ),
