@@ -13,7 +13,6 @@
 
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import i18next from 'i18next';
 import { Bucket } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
@@ -40,6 +39,7 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import i18n from './i18next/LocalUtil';
 import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
@@ -49,119 +49,119 @@ export const getGroupLabel = (index: string) => {
   let GroupIcon;
   switch (index) {
     case SearchIndex.TOPIC:
-      label = i18next.t('label.topic-plural');
+      label = i18n.t('label.topic-plural');
       GroupIcon = IconTopic;
 
       break;
     case SearchIndex.DATABASE:
-      label = i18next.t('label.database-plural');
+      label = i18n.t('label.database-plural');
       GroupIcon = IconDatabase;
 
       break;
     case SearchIndex.DATABASE_SCHEMA:
-      label = i18next.t('label.database-schema-plural');
+      label = i18n.t('label.database-schema-plural');
       GroupIcon = IconDatabaseSchema;
 
       break;
     case SearchIndex.DASHBOARD:
-      label = i18next.t('label.dashboard-plural');
+      label = i18n.t('label.dashboard-plural');
       GroupIcon = IconDashboard;
 
       break;
     case SearchIndex.PIPELINE:
-      label = i18next.t('label.pipeline-plural');
+      label = i18n.t('label.pipeline-plural');
       GroupIcon = IconPipeline;
 
       break;
     case SearchIndex.MLMODEL:
-      label = i18next.t('label.ml-model-plural');
+      label = i18n.t('label.ml-model-plural');
       GroupIcon = IconMlModal;
 
       break;
     case SearchIndex.GLOSSARY_TERM:
-      label = i18next.t('label.glossary-term-plural');
+      label = i18n.t('label.glossary-term-plural');
       GroupIcon = GlossaryTermIcon;
 
       break;
     case SearchIndex.TAG:
-      label = i18next.t('label.tag-plural');
+      label = i18n.t('label.tag-plural');
       GroupIcon = IconTag;
 
       break;
     case SearchIndex.CONTAINER:
-      label = i18next.t('label.container-plural');
+      label = i18n.t('label.container-plural');
       GroupIcon = IconContainer;
 
       break;
 
     case SearchIndex.STORED_PROCEDURE:
-      label = i18next.t('label.stored-procedure-plural');
+      label = i18n.t('label.stored-procedure-plural');
       GroupIcon = IconStoredProcedure;
 
       break;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
-      label = i18next.t('label.data-model-plural');
+      label = i18n.t('label.data-model-plural');
       GroupIcon = IconDashboard;
 
       break;
 
     case SearchIndex.SEARCH_INDEX:
-      label = i18next.t('label.search-index-plural');
+      label = i18n.t('label.search-index-plural');
       GroupIcon = SearchOutlined;
 
       break;
 
     case SearchIndex.DATA_PRODUCT:
-      label = i18next.t('label.data-product-plural');
+      label = i18n.t('label.data-product-plural');
       GroupIcon = DataProductIcon;
 
       break;
 
     case SearchIndex.CHART:
-      label = i18next.t('label.chart-plural');
+      label = i18n.t('label.chart-plural');
       GroupIcon = IconChart;
 
       break;
     case SearchIndex.API_COLLECTION:
-      label = i18next.t('label.api-collection-plural');
+      label = i18n.t('label.api-collection-plural');
       GroupIcon = IconApiCollection;
 
       break;
 
     case SearchIndex.API_ENDPOINT:
-      label = i18next.t('label.api-endpoint-plural');
+      label = i18n.t('label.api-endpoint-plural');
       GroupIcon = IconApiEndpoint;
 
       break;
     case SearchIndex.METRIC:
-      label = i18next.t('label.metric-plural');
+      label = i18n.t('label.metric-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.DIRECTORY:
-      label = i18next.t('label.directory-plural');
+      label = i18n.t('label.directory-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.FILE:
-      label = i18next.t('label.file-plural');
+      label = i18n.t('label.file-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.SPREADSHEET:
-      label = i18next.t('label.spreadsheet-plural');
+      label = i18n.t('label.spreadsheet-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.WORKSHEET:
-      label = i18next.t('label.worksheet-plural');
+      label = i18n.t('label.worksheet-plural');
       GroupIcon = MetricIcon;
 
       break;
 
     case SearchIndex.COLUMN:
-      label = i18next.t('label.column-plural');
+      label = i18n.t('label.column-plural');
       GroupIcon = ColumnIcon;
 
       break;

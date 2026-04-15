@@ -24,7 +24,6 @@ import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -73,6 +72,7 @@ import {
   prepareFeedLink,
 } from '../../utils/FeedUtils';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
@@ -440,12 +440,12 @@ const NavBar = () => {
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
     await localUtilClassBase.loadLocales(key);
-    i18next.changeLanguage(key);
+    i18n.changeLanguage(key);
     navigate(0);
   }, []);
 
-  const currentLanguage = i18next.language
-    ? upperCase(i18next.language.split('-')[0])
+  const currentLanguage = i18n.language
+    ? upperCase(i18n.language.split('-')[0])
     : '';
 
   return (
