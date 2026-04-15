@@ -34,6 +34,7 @@ jest.mock('../../../rest/miscAPI', () => ({
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   getActiveFieldNameForAppDocs: jest.fn(),
+  processDocMarkdown: jest.fn((content: string) => content),
 }));
 
 jest.mock('react-i18next', () => ({
