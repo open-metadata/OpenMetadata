@@ -198,39 +198,35 @@ class TestDSVReader(unittest.TestCase):
         self.assertEqual(len(chunks), 1)
         pd.testing.assert_frame_equal(chunks[0], mock_df)
 
-    @patch("pandas.read_csv")
-    @patch("metadata.readers.dataframe.dsv.return_s3_storage_options")
-    def test_s3_csv_reading(self, mock_storage_opts, mock_read_csv):
-        """Test S3 CSV reading with mocked pandas."""
-        mock_storage_opts.return_value = {}
-        mock_df = pd.DataFrame({"id": [1], "name": ["Test"]})
+    def test_s3_csv_reading(self):
+        """Test S3 CSV reading uses boto3 client.get_object."""
+        import io
+        from unittest.mock import Mock
 
-        def mock_read_csv_impl(*args, **kwargs):
-            class ChunkReader:
-                def __enter__(self):
-                    return iter([mock_df])
+        csv_content = b"id,name\n1,Test\n2,Hello\n"
 
-                def __exit__(self, *args):
-                    pass
-
-            return ChunkReader()
-
-        mock_read_csv.side_effect = mock_read_csv_impl
+        mock_client = Mock()
+        mock_client.get_object.return_value = {
+            "Body": io.BytesIO(csv_content),
+        }
 
         config = S3Config(
             securityConfig=AWSCredentials(
                 awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
             )
         )
-        reader = CSVDataFrameReader(config, None)
+        reader = CSVDataFrameReader(config, mock_client)
 
         result = reader._read(key="test.csv", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
-        dataframes = result.dataframes()
-        self.assertIsNotNone(dataframes)
-        chunks = list(dataframes)
+        chunks = list(result.dataframes())
         self.assertEqual(len(chunks), 1)
+        self.assertEqual(chunks[0].shape, (2, 2))
+
+        mock_client.get_object.assert_called_once_with(
+            Bucket="test-bucket", Key="test.csv"
+        )
 
     @patch("pandas.read_csv")
     @patch("metadata.readers.dataframe.dsv.return_azure_storage_options")
