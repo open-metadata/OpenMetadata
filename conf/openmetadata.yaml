@@ -162,7 +162,7 @@ qos:
   maxSuspendedRequestCount: ${QOS_MAX_SUSPENDED_REQUEST_COUNT:-1000}
   maxSuspendSeconds: ${QOS_MAX_SUSPEND_SECONDS:-30}
 
-cache:
+cacheMemory:
   # Default limits for caches without specific overrides
   defaultMaxSizeBytes: ${CACHE_DEFAULT_MAX_SIZE_BYTES:-52428800}      # 50 MB
   defaultTTLSeconds: ${CACHE_DEFAULT_TTL_SECONDS:-300}                # 5 minutes

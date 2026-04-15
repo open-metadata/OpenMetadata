@@ -197,8 +197,8 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
-  @JsonProperty("cache")
-  private CacheConfiguration cacheConfiguration;
+  @JsonProperty("cacheMemory")
+  private CacheConfiguration cacheMemoryConfiguration;
 
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {
@@ -207,11 +207,11 @@ public class OpenMetadataApplicationConfig extends Configuration {
     return qosConfiguration;
   }
 
-  public CacheConfiguration getCacheConfiguration() {
-    if (cacheConfiguration == null) {
-      cacheConfiguration = new CacheConfiguration();
+  public CacheConfiguration getCacheMemoryConfiguration() {
+    if (cacheMemoryConfiguration == null) {
+      cacheMemoryConfiguration = new CacheConfiguration();
     }
-    return cacheConfiguration;
+    return cacheMemoryConfiguration;
   }
 
   public String getApiRootPath() {
