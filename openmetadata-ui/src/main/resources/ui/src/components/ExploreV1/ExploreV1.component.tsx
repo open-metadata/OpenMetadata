@@ -31,7 +31,7 @@ import {
   Modal,
   Radio,
   Row,
-  Spin,
+  Skeleton,
   Switch,
   Typography,
 } from 'antd';
@@ -476,7 +476,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const visibleCardCount =
     isSearchMode && isCountLoading ? (
-      <Spin className="m-l-xs" size="small" />
+      <Skeleton.Input active size="small" style={{ width: 60, height: 16 }} />
     ) : (
       <CoreTypography
         className="tw:text-tertiary"
@@ -494,7 +494,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     );
 
   const allAssetsCountDisplay = isCountLoading ? (
-    <Spin className="m-l-xs" size="small" />
+    <Skeleton.Input active size="small" style={{ width: 60, height: 16 }} />
   ) : (
     allAssetsCount !== undefined && (
       <CoreTypography
