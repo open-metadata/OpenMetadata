@@ -45,7 +45,10 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_db_common,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.queries import (
     CHECK_ACCESS_TO_ALL,
@@ -105,7 +108,14 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 logger.info("Connected to Oracle in thick mode (NNE enabled)")
                 return engine
 
-        return engine
+        raise SourceConnectionException(
+            "Could not connect to Oracle in thin or thick mode. "
+            "Check the connection settings (host, port, service name, "
+            "credentials) and verify network connectivity. If your Oracle "
+            "server requires NNE (SQLNET.ENCRYPTION_SERVER=required), "
+            "ensure Oracle Instant Client is installed and "
+            "instantClientDirectory is configured."
+        )
 
     def _create_engine(self) -> Engine:
         return create_generic_db_connection(
