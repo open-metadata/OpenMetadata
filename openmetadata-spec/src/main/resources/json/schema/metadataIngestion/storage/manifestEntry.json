@@ -29,11 +29,6 @@
       "type": "boolean",
       "default": true
     },
-    "containerFilterPattern": {
-      "title": "Container Filter Pattern",
-      "description": "Regex filter to include/exclude discovered containers by name.",
-      "$ref": "../../type/filterPattern.json#/definitions/filterPattern"
-    },
     "excludePaths": {
       "title": "Exclude Path Segments",
       "description": "Path segments to exclude from discovery. Any file path containing these segments will be skipped. Defaults to common internal paths like _delta_log, _temporary, _spark_metadata, .tmp, _SUCCESS.",

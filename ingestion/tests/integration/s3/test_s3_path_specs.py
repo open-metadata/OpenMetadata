@@ -118,13 +118,14 @@ def ingest_with_manifest(minio, metadata, manifest_service_name, create_data):
 
 
 class TestAutoDiscovery:
-    """Containers discovered from glob patterns without manifest.
+    """Containers discovered via inline manifest config (glob patterns).
 
-    The openmetadata.json manifest file exists in MinIO (uploaded by
-    create_data) but is NOT used because manifest is configured.
-    Proof: the manifest defines cities with isPartitioned=true but NO
-    partitionColumns. Auto-discovery detects State as a partition column.
-    If State appears in columns, the container came from manifest.
+    The legacy manifest file (openmetadata.json) exists in MinIO
+    (uploaded by create_data) but is NOT used because inline manifest
+    config is set. Proof: the legacy file defines cities with
+    isPartitioned=true but NO partitionColumns. Inline manifest
+    auto-detection finds State as a partition column. If State
+    appears in columns, the container came from inline manifest.
     """
 
     def test_service_created(

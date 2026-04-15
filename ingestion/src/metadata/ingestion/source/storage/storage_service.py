@@ -199,12 +199,11 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                         "The global manifest file (storageMetadataConfigSource) is "
                         "deprecated and will be removed in a future release. "
                         "Use 'manifest' in the pipeline config instead for "
-                        "auto-discovery with glob patterns and partition detection. "
-                        "See https://docs.open-metadata.org/connectors/storage/s3"
+                        "auto-discovery with glob patterns and partition detection."
                     )
                 return manifest
             except StorageMetadataConfigException as exc:
-                logger.warning(f"Could no get global manifest due to [{exc}]")
+                logger.warning(f"Could not get global manifest due to [{exc}]")
         return None
 
     @abstractmethod
@@ -431,10 +430,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                         f"API usage. Narrow the pattern or increase the limit."
                     )
                     break
-                if any(
-                    f"/{excl}/" in key or key.endswith(f"/{excl}")
-                    for excl in exclude_paths
-                ):
+                key_segments = set(key.split("/"))
+                if key_segments & exclude_paths:
                     continue
                 if any(er.match(key) for er in exclude_regexes):
                     continue

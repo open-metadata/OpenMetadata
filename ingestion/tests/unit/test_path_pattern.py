@@ -51,8 +51,9 @@ class TestExtractStaticPrefix:
     def test_question_mark_wildcard(self):
         assert extract_static_prefix("data/202?/*.parquet") == "data/"
 
-    def test_bracket_wildcard(self):
-        assert extract_static_prefix("data/[abc]/*.parquet") == "data/"
+    def test_bracket_not_treated_as_wildcard(self):
+        """Bracket character classes are not supported in patterns."""
+        assert extract_static_prefix("data/[abc]/*.parquet") == "data/[abc]/"
 
 
 class TestPatternToRegex:
@@ -364,7 +365,10 @@ class TestInferStructureFormat:
     def test_case_insensitive(self):
         assert infer_structure_format("Data.PARQUET") == "parquet"
 
-    def test_parquet_snappy(self):
+    def test_parquet_snappy_compound(self):
+        assert infer_structure_format("data.parquet.snappy") == "parquet"
+
+    def test_parquet_plain(self):
         assert infer_structure_format("data.parquet") == "parquet"
 
 

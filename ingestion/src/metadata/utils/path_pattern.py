@@ -51,12 +51,14 @@ def infer_structure_format(key: str) -> Optional[str]:
     Handles compound extensions like .csv.gz and .parquet.snappy.
     """
     lower_key = key.lower()
-    # Check compound extensions first (e.g., .csv.gz, .json.gz)
-    if lower_key.endswith(".gz") or lower_key.endswith(".zip"):
-        base = lower_key.rsplit(".", 1)[0]
-        for ext, fmt in EXTENSION_TO_FORMAT.items():
-            if base.endswith(ext):
-                return fmt
+    # Check compound extensions first (e.g., .csv.gz, .json.zip, .parquet.snappy)
+    for suffix in (".gz", ".zip", ".snappy"):
+        if lower_key.endswith(suffix):
+            base = lower_key[: -len(suffix)]
+            for ext, fmt in EXTENSION_TO_FORMAT.items():
+                if base.endswith(ext):
+                    return fmt
+            break
 
     for ext, fmt in EXTENSION_TO_FORMAT.items():
         if lower_key.endswith(ext):
@@ -79,7 +81,7 @@ def extract_static_prefix(pattern: str) -> str:
     parts = pattern.split("/")
     static_parts = []
     for part in parts:
-        if "*" in part or "?" in part or "[" in part:
+        if "*" in part or "?" in part:
             break
         static_parts.append(part)
 
@@ -219,6 +221,7 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
     root_prefix = table_root.rstrip("/") + "/" if table_root else ""
     partition_structures: List[List[str]] = []
     partition_values: Dict[str, List[str]] = {}
+    has_flat_files = False
 
     for key in keys:
         if not key.startswith(root_prefix):
@@ -237,13 +240,22 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
                 current_partitions.append(col_name)
                 partition_values.setdefault(col_name, []).append(col_value)
             elif current_partitions:
-                # Non-partition segment after partition segments — inconsistent
                 break
 
         if current_partitions:
             partition_structures.append(current_partitions)
+        else:
+            has_flat_files = True
 
     if not partition_structures:
+        return None
+
+    # Mixed partitioned + flat files = inconsistent
+    if has_flat_files:
+        logger.warning(
+            f"Table root '{table_root}' has a mix of partitioned and "
+            f"flat files. Skipping partition detection."
+        )
         return None
 
     # Check consistency — all files must have the same partition columns in the same order

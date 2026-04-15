@@ -31,7 +31,7 @@
     "storageMetadataConfigSource": {
       "mask": true,
       "title": "Storage Metadata Configuration Source (Deprecated)",
-      "description": "Deprecated: Use pathSpecs instead for auto-discovery. This manifest-based approach requires manually listing each data path. It will be removed in a future release.",
+      "description": "Deprecated: Use manifest instead for auto-discovery. This external manifest-based approach requires manually listing each data path. It will be removed in a future release.",
       "oneOf": [
         {
           "$ref": "#/definitions/noMetadataConfigurationSource"
