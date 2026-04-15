@@ -219,10 +219,14 @@ class ParquetDataFrameReader(DataFrameReader):
             kwargs["token"] = creds.token
         elif self.config_source.securityConfig.awsAccessKeyId:
             kwargs["key"] = self.config_source.securityConfig.awsAccessKeyId
-            kwargs[
-                "secret"
-            ] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
-            kwargs["token"] = self.config_source.securityConfig.awsSessionToken
+            if self.config_source.securityConfig.awsSecretAccessKey:
+                kwargs[
+                    "secret"
+                ] = (
+                    self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
+                )
+            if self.config_source.securityConfig.awsSessionToken:
+                kwargs["token"] = self.config_source.securityConfig.awsSessionToken
 
         client_kwargs = {}
         if self.config_source.securityConfig.endPointURL:
