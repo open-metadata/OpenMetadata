@@ -63,27 +63,31 @@ public class SubjectCache {
 
   private static volatile LoadingCache<String, User> USER_CONTEXT_CACHE =
       CacheBuilder.newBuilder()
-          .maximumSize(5000)
+          .maximumSize(10000)
           .expireAfterWrite(15, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserContextLoader());
 
   private SubjectCache() {}
 
-  public static void initCaches(int maxEntries, int ttlSeconds) {
+  /**
+   * Rebuild auth caches with configured max entries. TTLs are kept at their original values
+   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
+   */
+  public static void initCaches(int maxEntries) {
     USER_POLICIES_CACHE =
         CacheBuilder.newBuilder()
             .maximumSize(maxEntries)
-            .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+            .expireAfterWrite(2, TimeUnit.MINUTES)
             .recordStats()
             .build(new UserPoliciesLoader());
     USER_CONTEXT_CACHE =
         CacheBuilder.newBuilder()
             .maximumSize(maxEntries)
-            .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+            .expireAfterWrite(15, TimeUnit.MINUTES)
             .recordStats()
             .build(new UserContextLoader());
-    LOG.info("Auth caches initialized: maxEntries={}, ttl={}s", maxEntries, ttlSeconds);
+    LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
   }
 
   public static List<PolicyContext> getPolicies(String userName) {

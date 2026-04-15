@@ -278,8 +278,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Rebuild caches with configured limits
     CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
     EntityRepository.initCaches(cacheConfig);
-    SubjectCache.initCaches(
-        cacheConfig.getAuthCacheMaxEntries(), cacheConfig.getAuthCacheTTLSeconds());
+    SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(

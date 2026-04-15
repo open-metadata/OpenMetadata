@@ -173,9 +173,8 @@ cacheMemory:
   # Lineage graph cache — count-based (put() rejects graphs above mediumGraphThreshold)
   lineageCacheMaxEntries: ${LINEAGE_CACHE_MAX_ENTRIES:-50}
   lineageCacheTTLSeconds: ${LINEAGE_CACHE_TTL_SECONDS:-300}
-  # Auth caches (user context + policies)
+  # Auth caches (user context + policies) — TTLs hardcoded (2min policies, 15min user context)
   authCacheMaxEntries: ${AUTH_CACHE_MAX_ENTRIES:-5000}
-  authCacheTTLSeconds: ${AUTH_CACHE_TTL_SECONDS:-120}
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord

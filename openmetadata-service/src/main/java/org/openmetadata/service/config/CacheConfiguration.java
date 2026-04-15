@@ -63,12 +63,10 @@ public class CacheConfiguration {
   private int lineageCacheTTLSeconds = 300;
 
   // --- Auth caches (SubjectCache: user context + policies) ---
+  // TTLs are hardcoded (2 min for policies, 15 min for user context) because they serve
+  // different freshness needs. Only max entries is configurable.
 
   @JsonProperty
   @Min(1)
   private int authCacheMaxEntries = 5000;
-
-  @JsonProperty
-  @Min(1)
-  private int authCacheTTLSeconds = 120;
 }
