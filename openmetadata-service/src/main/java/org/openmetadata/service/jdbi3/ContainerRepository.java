@@ -85,10 +85,6 @@ public class ContainerRepository extends EntityRepository<Container> {
         fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
     container.setChildren(
         fields.contains("children") ? getChildren(container) : container.getChildren());
-    container.setSampleData(
-        fields.contains("sampleData")
-            ? getSampleDataInternal(container.getId())
-            : container.getSampleData());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS),
@@ -512,26 +508,27 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   private TableData getSampleDataInternal(UUID containerId) {
-    try {
-      String json =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtension(containerId, CONTAINER_SAMPLE_DATA_EXTENSION);
-      return json != null ? JsonUtils.readValue(json, TableData.class) : null;
-    } catch (Exception e) {
-      LOG.warn("Failed to read sample data for container {}", containerId, e);
-      return null;
-    }
+    String json =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtension(containerId, CONTAINER_SAMPLE_DATA_EXTENSION);
+    return json != null ? JsonUtils.readValue(json, TableData.class) : null;
   }
 
   @Transaction
   public Container addSampleData(UUID containerId, TableData tableData) {
     Container container = find(containerId, NON_DELETED);
 
-    if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
-      for (String columnName : tableData.getColumns()) {
-        validateColumn(container.getDataModel().getColumns(), columnName);
-      }
+    if (container.getDataModel() == null || container.getDataModel().getColumns() == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Cannot add sample data to container '%s' without a dataModel. "
+                  + "Container must have a dataModel with columns defined before sample data can be stored.",
+              container.getFullyQualifiedName()));
+    }
+
+    for (String columnName : tableData.getColumns()) {
+      validateColumn(container.getDataModel().getColumns(), columnName);
     }
 
     for (List<Object> row : tableData.getRows()) {

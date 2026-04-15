@@ -480,7 +480,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     ) -> Optional[Container]:
         """Prepare Container destination with updated column tags"""
         if container.dataModel is None or instance.dataModel is None:
-            logger.debug(
+            logger.warning(
                 f"Container {container.fullyQualifiedName.root} has no dataModel, skipping column tag patch"
             )
             return None

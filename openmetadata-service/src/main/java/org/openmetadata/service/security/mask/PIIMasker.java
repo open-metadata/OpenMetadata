@@ -51,24 +51,23 @@ public class PIIMasker {
     /* Private constructor for Utility class */
   }
 
+  public static TableData maskSampleData(TableData sampleData, Table table, List<Column> columns) {
+    return maskSampleDataInternal(sampleData, columns, hasPiiSensitiveTag(table));
+  }
+
   public static TableData maskSampleData(
-      TableData sampleData, Object entity, List<Column> columns) {
+      TableData sampleData, Container container, List<Column> columns) {
+    return maskSampleDataInternal(sampleData, columns, hasPiiSensitiveTag(container));
+  }
+
+  private static TableData maskSampleDataInternal(
+      TableData sampleData, List<Column> columns, boolean entityHasPiiTag) {
     // If we don't have sample data, there's nothing to do
     if (sampleData == null) {
       return null;
     }
 
     List<Integer> columnsPositionToBeMasked;
-
-    // Check if the entity itself is marked as PII
-    boolean entityHasPiiTag = false;
-    if (entity instanceof Table) {
-      entityHasPiiTag = hasPiiSensitiveTag((Table) entity);
-    } else if (entity instanceof Container) {
-      entityHasPiiTag = hasPiiSensitiveTag((Container) entity);
-    } else {
-      LOG.warn("Unsupported entity type for PII masking: {}", entity.getClass().getName());
-    }
 
     // If the entity itself is marked as PII, mask all the sample data
     if (entityHasPiiTag) {

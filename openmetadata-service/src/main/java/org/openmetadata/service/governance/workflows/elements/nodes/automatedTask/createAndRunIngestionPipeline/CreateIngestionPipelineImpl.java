@@ -330,7 +330,14 @@ public class CreateIngestionPipelineImpl {
     if (entityType.equals(DATABASE_SERVICE)) {
       return DATABASE_PIPELINE_MAP.get(pipelineType).apply(serviceDefaultFilters);
     } else if (entityType.equals(STORAGE_SERVICE)) {
-      return STORAGE_PIPELINE_MAP.get(pipelineType).apply(serviceDefaultFilters);
+      Function<Map<String, FilterPattern>, Object> mapper = STORAGE_PIPELINE_MAP.get(pipelineType);
+      if (mapper == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Storage service does not support pipeline type '%s'. Supported types: %s",
+                pipelineType, STORAGE_PIPELINE_MAP.keySet()));
+      }
+      return mapper.apply(serviceDefaultFilters);
     } else if (pipelineType.equals(PipelineType.METADATA)) {
       return SERVICE_TO_PIPELINE_MAP.get(entityType).apply(serviceDefaultFilters);
     } else {
