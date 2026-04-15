@@ -149,9 +149,13 @@ jobs:
           java-version: "21"
           distribution: "temurin"
 
+      - name: Build k8s-operator dependencies
+        run: |
+          mvn -B clean install -pl openmetadata-k8s-operator -am -DskipTests
+
       - name: Run k8s-operator unit tests
         run: |
-          mvn -B clean test -pl openmetadata-k8s-operator
+          mvn -B test -pl openmetadata-k8s-operator
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
