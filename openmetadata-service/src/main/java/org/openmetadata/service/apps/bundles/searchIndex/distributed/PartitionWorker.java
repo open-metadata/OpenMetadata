@@ -51,6 +51,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesS
  */
 @Slf4j
 public class PartitionWorker {
+  private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
   /** Time series entity types that need special handling */
   private static final Set<String> TIME_SERIES_ENTITIES =
@@ -575,7 +576,7 @@ public class PartitionWorker {
       return null;
     }
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      int cursorOffset = (int) offset - 1;
+      int cursorOffset = toCursorOffset(entityType, offset);
       ListFilter filter = new ListFilter(Include.ALL);
       String cursor =
           Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
@@ -590,6 +591,17 @@ public class PartitionWorker {
     } else {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
+  }
+
+  private int toCursorOffset(String entityType, long offset) {
+    long cursorOffset = offset - 1L;
+    if (cursorOffset > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Keyset cursor initialization for entityType %s does not support offsets above %d",
+              entityType, MAX_CURSOR_INITIALIZATION_OFFSET));
+    }
+    return Math.toIntExact(cursorOffset);
   }
 
   /**
