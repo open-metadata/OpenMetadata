@@ -13,7 +13,7 @@ name: UI Checkstyle
 
 on:
   merge_group:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - synchronize
@@ -46,13 +46,13 @@ jobs:
   authorize:
     if: |
       github.event_name == 'merge_group' ||
-      (github.event_name == 'pull_request_target' &&
+      (github.event_name == 'pull_request' &&
       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -61,7 +61,7 @@ jobs:
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
@@ -507,7 +507,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   report:
     needs: [authorize, lint-src, license-header, i18n-sync, app-docs, lint-playwright, lint-core-components]
-    if: ${{ always() && needs.authorize.result == 'success' && github.event_name == 'pull_request_target' }}
+    if: ${{ always() && needs.authorize.result == 'success' && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
