@@ -70,10 +70,7 @@ export const getJSONFromString = (data: string): string | null => {
   try {
     // Format string if possible and return valid JSON
     return JSON.parse(data);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Invalid JSON string:', error);
-
+  } catch (_error) {
     return null;
   }
 };
@@ -248,10 +245,7 @@ export const formatJsonString = (jsonString: string, indent = '') => {
     }
 
     return formattedJson;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Invalid JSON string:', error);
-
+  } catch (_error) {
     // Return the original JSON string if parsing fails
     return jsonString;
   }

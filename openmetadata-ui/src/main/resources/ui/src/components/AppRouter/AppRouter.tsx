@@ -19,16 +19,18 @@ import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
-import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AuthenticatedApp = withSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
 );
 
-const AppContainer = withSuspenseFallback(
-  lazy(() => import('../AppContainer/AppContainer'))
+const AuthenticatedRoutes = withSuspenseFallback(
+  lazy(() =>
+    import('./AuthenticatedRoutes').then((m) => ({
+      default: m.AuthenticatedRoutes,
+    }))
+  )
 );
 
 // Lazy-load infrequently-visited unauthenticated pages
@@ -74,8 +76,6 @@ const AppRouter = () => {
     }))
   );
 
-  const { plugins = [] } = useApplicationsProvider() ?? {};
-
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
@@ -91,46 +91,7 @@ const AppRouter = () => {
   if (isAuthenticated) {
     return (
       <AuthenticatedApp>
-        <Routes>
-          <Route
-            element={<PageNotFound />}
-            path={APP_ROUTER_ROUTES.NOT_FOUND}
-          />
-          <Route element={<LogoutPage />} path={APP_ROUTER_ROUTES.LOGOUT} />
-          <Route
-            element={<AccessNotAllowedPage />}
-            path={APP_ROUTER_ROUTES.UNAUTHORISED}
-          />
-          <Route
-            element={
-              isEmpty(currentUser) ? (
-                <SignUpPage />
-              ) : (
-                <Navigate replace to={APP_ROUTER_ROUTES.HOME} />
-              )
-            }
-            path={APP_ROUTER_ROUTES.SIGNUP}
-          />
-          <Route
-            element={<SamlCallback />}
-            path={APP_ROUTER_ROUTES.AUTH_CALLBACK}
-          />
-
-          {/* Render APP position plugin routes (they handle their own layouts) */}
-          {plugins?.flatMap((plugin) => {
-            const routes = plugin.getRoutes?.() || [];
-            // Filter routes with APP position
-            const appRoutes = routes.filter(
-              (route) => route.position === RoutePosition.APP
-            );
-
-            return appRoutes.map((route, idx) => (
-              <Route key={`${plugin.name}-app-${idx}`} {...route} />
-            ));
-          })}
-
-          <Route element={<AppContainer />} path="*" />
-        </Routes>
+        <AuthenticatedRoutes />
       </AuthenticatedApp>
     );
   }
