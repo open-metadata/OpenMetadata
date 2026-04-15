@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.service.util.CacheWeighers;
 
 /**
  * Guava-based implementation of LineageGraphCache.
@@ -48,7 +49,8 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
     // Build cache with TTL, max size, and removal listener
     this.cache =
         CacheBuilder.newBuilder()
-            .maximumSize(config.getMaxCachedGraphs())
+            .maximumWeight(100_000_000L) // ~100 MB cap based on estimated node size
+            .weigher(CacheWeighers.<LineageCacheKey>lineageResultWeigher())
             .expireAfterWrite(config.getCacheTTLSeconds(), TimeUnit.SECONDS)
             .recordStats() // Enable statistics collection
             .removalListener(

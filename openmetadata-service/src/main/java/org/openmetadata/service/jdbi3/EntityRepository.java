@@ -244,6 +244,7 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CacheWeighers;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -302,13 +303,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static final LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
-          .maximumSize(20000)
+          .maximumWeight(200_000_000L) // ~200 MB cap based on JSON string length
+          .weigher(CacheWeighers.<Pair<String, String>>stringWeigher())
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithName());
   public static final LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
       CacheBuilder.newBuilder()
-          .maximumSize(20000)
+          .maximumWeight(200_000_000L) // ~200 MB cap based on JSON string length
+          .weigher(CacheWeighers.<Pair<String, UUID>>stringWeigher())
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
@@ -3320,7 +3323,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
-            .withEntity(entity)
+            .withEntity(createLightweightEntityRef(entity))
             .withChangeDescription(change)
             .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -3373,7 +3376,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
-            .withEntity(originalEntity)
+            .withEntity(createLightweightEntityRef(originalEntity))
             .withChangeDescription(change)
             .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -3810,7 +3813,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
-            .withEntity(entity)
+            .withEntity(createLightweightEntityRef(entity))
             .withChangeDescription(change)
             .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
@@ -5805,7 +5808,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
-        .withEntity(updated)
+        .withEntity(createLightweightEntityRef(updated))
         .withChangeDescription(change)
         .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
@@ -5815,6 +5818,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withTimestamp(System.currentTimeMillis())
         .withCurrentVersion(updated.getVersion())
         .withPreviousVersion(prevVersion);
+  }
+
+  protected static Map<String, Object> createLightweightEntityRef(EntityInterface entity) {
+    Map<String, Object> ref = new HashMap<>();
+    ref.put("id", entity.getId());
+    ref.put("name", entity.getName());
+    ref.put("fullyQualifiedName", entity.getFullyQualifiedName());
+    ref.put("version", entity.getVersion());
+    return ref;
   }
 
   protected void createAndInsertChangeEvent(
@@ -5839,9 +5851,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
             .withChangeDescription(changeDescription)
-            .withEntity(updated);
+            .withEntity(createLightweightEntityRef(updated));
 
-    daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    daoCollection.changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     LOG.debug(
         "Inserted incremental ChangeEvent for {} version {}", entityType, updated.getVersion());
   }
@@ -9818,11 +9830,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
               return result;
             });
 
+    if (BULK_JOBS.size() >= 100) {
+      throw new RuntimeException("Too many concurrent bulk jobs (max 100). Try again later.");
+    }
     BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
         (result, throwable) ->
-            CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
+            CompletableFuture.delayedExecutor(5, TimeUnit.MINUTES)
                 .execute(() -> BULK_JOBS.remove(jobId)));
 
     return mergedJob;

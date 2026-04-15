@@ -227,7 +227,7 @@ public class UsageRepository {
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
-        .withEntity(updated)
+        .withEntity(EntityRepository.createLightweightEntityRef(updated))
         .withChangeDescription(change)
         .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)

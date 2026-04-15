@@ -6795,7 +6795,8 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
 
-    @SqlQuery("SELECT json FROM change_event ce where ce.offset > :offset")
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.offset ASC LIMIT 1000")
     List<String> listUnprocessedEvents(@Bind("offset") long offset);
 
     @SqlQuery(

@@ -84,6 +84,9 @@ public class WebSocketManager {
                   Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
                   if (allUserConnection != null) {
                     allUserConnection.remove(socket.getId());
+                    if (allUserConnection.isEmpty()) {
+                      activityFeedEndpoints.remove(id);
+                    }
                   }
                 });
 

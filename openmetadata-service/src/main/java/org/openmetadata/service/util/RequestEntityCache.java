@@ -3,7 +3,7 @@ package org.openmetadata.service.util;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -16,10 +16,22 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 /**
  * Request-scoped entity cache used to avoid duplicate loads of the same entity shape
  * (entity + include + field set + relation include set) within one HTTP request.
+ * Bounded to {@value MAX_ENTRIES_PER_REQUEST} entries using LRU eviction to prevent
+ * memory amplification from deep-copy operations on large entities.
  */
 public final class RequestEntityCache {
+  private static final int MAX_ENTRIES_PER_REQUEST = 50;
+
   private static final ThreadLocal<Map<EntityCacheKey, EntityInterface>> REQUEST_CACHE =
-      ThreadLocal.withInitial(HashMap::new);
+      ThreadLocal.withInitial(
+          () ->
+              new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(
+                    Map.Entry<EntityCacheKey, EntityInterface> eldest) {
+                  return size() > MAX_ENTRIES_PER_REQUEST;
+                }
+              });
 
   private RequestEntityCache() {}
 
