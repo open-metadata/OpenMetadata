@@ -115,10 +115,7 @@ export const TestCaseStatusModal = ({
       aboutType: 'testCase',
     });
 
-    if (
-      targetStatus !== TestCaseResolutionStatusTypes.New &&
-      newTask?.id
-    ) {
+    if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
       const transitionMap: Partial<
         Record<TestCaseResolutionStatusTypes, string>
       > = {
@@ -200,8 +197,7 @@ export const TestCaseStatusModal = ({
         resolutionType: TaskResolutionType.Completed,
         comment:
           formData.testCaseResolutionStatusDetails?.testCaseFailureComment,
-        payload: formData.testCaseResolutionStatusDetails
-            ?.testCaseFailureReason
+        payload: formData.testCaseResolutionStatusDetails?.testCaseFailureReason
           ? {
               testCaseFailureReason:
                 formData.testCaseResolutionStatusDetails.testCaseFailureReason,

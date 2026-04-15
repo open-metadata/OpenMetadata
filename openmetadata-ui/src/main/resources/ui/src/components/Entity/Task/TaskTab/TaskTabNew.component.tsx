@@ -484,7 +484,9 @@ export const TaskTabNew = ({
       });
       const taskRemainsOpen = isTaskPendingFurtherApproval(updatedTask);
       showSuccessToast(
-        taskRemainsOpen ? 'Vote recorded.' : t('server.task-resolved-successfully')
+        taskRemainsOpen
+          ? 'Vote recorded.'
+          : t('server.task-resolved-successfully')
       );
 
       setActiveTask(updatedTask);
@@ -516,8 +518,7 @@ export const TaskTabNew = ({
   // a terminal resolution and would immediately close the task.
   const getTransitionResolutionType = (
     transition?: TaskAvailableTransition
-  ): TaskResolutionType | undefined =>
-    transition?.resolutionType;
+  ): TaskResolutionType | undefined => transition?.resolutionType;
 
   const getTransitionForResolution = useCallback(
     (resolutionType: TaskResolutionType) =>
@@ -637,9 +638,7 @@ export const TaskTabNew = ({
 
     updateTaskData(
       {
-        newValue: isApprovalWorkflowTask
-          ? taskHandler.approvedValue
-          : newValue,
+        newValue: isApprovalWorkflowTask ? taskHandler.approvedValue : newValue,
         payload: initialTaskPayload,
       },
       TaskResolutionType.Approved
@@ -653,9 +652,11 @@ export const TaskTabNew = ({
         Array.isArray(requiredFields) &&
         requiredFields.some((field) => !payload?.[field])
       ) {
-        showErrorToast(t('message.field-text-is-required', {
-          fieldText: t('label.required-field-plural'),
-        }));
+        showErrorToast(
+          t('message.field-text-is-required', {
+            fieldText: t('label.required-field-plural'),
+          })
+        );
 
         return;
       }
@@ -827,9 +828,7 @@ export const TaskTabNew = ({
         transitionId: 'resolve',
         resolutionType: TaskResolutionType.Completed,
         comment: testCaseFailureComment || undefined,
-        payload: testCaseFailureReason
-          ? { testCaseFailureReason }
-          : undefined,
+        payload: testCaseFailureReason ? { testCaseFailureReason } : undefined,
       });
       const refreshed = await getListTestCaseIncidentByStateId(taskId);
       const latest = refreshed?.data?.[0];

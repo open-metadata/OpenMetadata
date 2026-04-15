@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, type Browser, type Locator, type Page } from '@playwright/test';
+import {
+  expect,
+  type Browser,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
@@ -372,9 +377,7 @@ const openIncidentResolveDialog = async (
             response.url().includes('/resolve')
         );
 
-        await resolveModal
-          .getByRole('button', { name: /ok|save/i })
-          .click();
+        await resolveModal.getByRole('button', { name: /ok|save/i }).click();
         await advanceIncident;
       } else {
         await expect

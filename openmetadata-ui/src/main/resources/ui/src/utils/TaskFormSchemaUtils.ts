@@ -583,8 +583,7 @@ const getTransitionRequiresComment = (
 ): boolean =>
   Boolean(
     transition?.requiresComment ||
-      (transitionConfig as Record<string, unknown> | undefined)
-        ?.requiresComment
+      (transitionConfig as Record<string, unknown> | undefined)?.requiresComment
   );
 
 export const getTaskTransitionFormSchema = (

@@ -59,9 +59,7 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import {
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { RequiredLabel } from '../../../common/MuiComponents/RequiredLabel/RequiredLabel.styled';
@@ -222,10 +220,7 @@ const InlineTestCaseIncidentStatus = ({
           aboutType: 'testCase',
         });
 
-        if (
-          targetStatus !== TestCaseResolutionStatusTypes.New &&
-          newTask?.id
-        ) {
+        if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
           const transitionMap: Partial<
             Record<TestCaseResolutionStatusTypes, string>
           > = {
@@ -266,7 +261,11 @@ const InlineTestCaseIncidentStatus = ({
         setIsLoading(false);
       }
     },
-    [data.testCaseReference?.fullyQualifiedName, data.testCaseReference?.name, onSubmit]
+    [
+      data.testCaseReference?.fullyQualifiedName,
+      data.testCaseReference?.name,
+      onSubmit,
+    ]
   );
 
   const submitStatusChange = useCallback(

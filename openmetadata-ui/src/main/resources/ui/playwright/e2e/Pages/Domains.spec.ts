@@ -76,7 +76,6 @@ import {
   editAnnouncement,
   followEntity,
   getEncodedFqn,
-  replyAnnouncement,
   unFollowEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';

@@ -284,14 +284,15 @@ export const assignSingleSelectDomain = async (
   const saveAssociatedTag = page
     .getByTestId('domain-selectable-tree')
     .getByTestId('saveAssociatedTag');
-  const hasExplicitSave = await saveAssociatedTag.isVisible().catch(() => false);
+  const hasExplicitSave = await saveAssociatedTag
+    .isVisible()
+    .catch(() => false);
   const waitForDomainUpdate = () =>
     page.waitForResponse((response) => {
       const method = response.request().method();
 
       return (
-        ['PATCH', 'PUT'].includes(method) &&
-        response.url().includes('/api/v1/')
+        ['PATCH', 'PUT'].includes(method) && response.url().includes('/api/v1/')
       );
     });
 
@@ -423,14 +424,15 @@ export const removeSingleSelectDomain = async (
   const saveAssociatedTag = page
     .getByTestId('domain-selectable-tree')
     .getByTestId('saveAssociatedTag');
-  const hasExplicitSave = await saveAssociatedTag.isVisible().catch(() => false);
+  const hasExplicitSave = await saveAssociatedTag
+    .isVisible()
+    .catch(() => false);
   const waitForDomainUpdate = () =>
     page.waitForResponse((response) => {
       const method = response.request().method();
 
       return (
-        ['PATCH', 'PUT'].includes(method) &&
-        response.url().includes('/api/v1/')
+        ['PATCH', 'PUT'].includes(method) && response.url().includes('/api/v1/')
       );
     });
 

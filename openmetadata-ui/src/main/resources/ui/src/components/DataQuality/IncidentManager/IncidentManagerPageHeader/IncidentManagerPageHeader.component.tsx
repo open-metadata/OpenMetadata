@@ -195,10 +195,7 @@ const IncidentManagerPageHeader = ({
   // IncidentTcrsSyncHandler). The pre-task-first code read from
   // payload.testCaseResolutionStatusId, but that field doesn't exist
   // in the new task system.
-  const incidentStateId = useMemo(
-    () => incidentTask?.id,
-    [incidentTask]
-  );
+  const incidentStateId = useMemo(() => incidentTask?.id, [incidentTask]);
 
   useEffect(() => {
     const status = last(testCaseResolutionStatus);

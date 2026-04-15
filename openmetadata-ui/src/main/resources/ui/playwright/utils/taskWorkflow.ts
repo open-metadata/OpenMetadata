@@ -754,7 +754,7 @@ export const approveTaskFromDetails = async (page: Page) => {
     await button.scrollIntoViewIfNeeded().catch(() => undefined);
     await button.click({ force: true });
 
-     await visibleTaskModal
+    await visibleTaskModal
       .waitFor({ state: 'visible', timeout: 3000 })
       .catch(() => undefined);
 

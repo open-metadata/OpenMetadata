@@ -23,9 +23,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { APIRequestContext, expect, Page, request } from '@playwright/test';
 import { readFileSync } from 'fs';
 import path from 'path';
-import { APIRequestContext, expect, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../../../constant/user';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
@@ -177,9 +177,11 @@ const fetchOpenApprovalTask = async (
 
   return (
     payload.data?.find(
-      (task: CreatedTask & {
-        about?: { fullyQualifiedName?: string; name?: string };
-      }) =>
+      (
+        task: CreatedTask & {
+          about?: { fullyQualifiedName?: string; name?: string };
+        }
+      ) =>
         task.about?.fullyQualifiedName === aboutEntity ||
         task.about?.name === aboutEntity
     ) ?? null
@@ -203,7 +205,10 @@ const fetchTaskById = async (
 
 const getStoredAdminAccessToken = (): string | undefined => {
   try {
-    const authStatePath = path.join(process.cwd(), 'playwright/.auth/admin.json');
+    const authStatePath = path.join(
+      process.cwd(),
+      'playwright/.auth/admin.json'
+    );
     const authState = JSON.parse(readFileSync(authStatePath, 'utf-8')) as {
       origins?: Array<{
         indexedDB?: Array<{
@@ -469,7 +474,11 @@ test.describe.serial('Task Workflow Approval', () => {
 
       await reviewer1User.login(reviewer1Page);
       await reviewer2User.login(reviewer2Page);
-      logWorkflowDebug('assignee-reviewers:ready', reviewer1.name, reviewer2.name);
+      logWorkflowDebug(
+        'assignee-reviewers:ready',
+        reviewer1.name,
+        reviewer2.name
+      );
 
       logWorkflowDebug('reviewer1:approve:start', createdTask.taskId);
       await approveTaskFromEntityPage(reviewer1Page, createdTask);

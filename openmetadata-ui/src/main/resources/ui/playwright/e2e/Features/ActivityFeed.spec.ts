@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test as base } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
+} from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';

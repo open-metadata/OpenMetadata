@@ -22,7 +22,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { getTaskCounts, Task, TaskEntityStatus } from '../../../../rest/tasksAPI';
+import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
