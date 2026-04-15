@@ -237,23 +237,77 @@ public interface SearchClient
                   """;
 
   String REMOVE_LINEAGE_SCRIPT =
-      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
+      """
+      def removedKeys = new HashSet();
+      for (def lineage : ctx._source.upstreamLineage) {
+        if (lineage.docUniqueId == params.docUniqueId && lineage.containsKey('sqlQueryKey')) {
+          removedKeys.add(lineage.sqlQueryKey);
+        }
+      }
+      ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId);
+      if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+        def sqlMap = ctx._source.lineageSqlQueries;
+        def usedKeys = new HashSet();
+        for (def lineage : ctx._source.upstreamLineage) {
+          if (lineage.containsKey('sqlQueryKey')) {
+            usedKeys.add(lineage.sqlQueryKey);
+          }
+        }
+        removedKeys.removeAll(usedKeys);
+        for (def key : removedKeys) {
+          sqlMap.remove(key);
+        }
+      }
+      """;
 
   String REMOVE_ENTITY_RELATIONSHIP =
       "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
 
   String ADD_UPDATE_LINEAGE =
       """
+      // Dedup sqlQuery into the doc-level lineageSqlQueries map.
+      // If the incoming edge carries a sqlQuery, store it once in lineageSqlQueries
+      // keyed by a sequential integer, then replace sqlQuery with sqlQueryKey on the edge.
+      def rawSql = params.lineageData['sqlQuery'];
+      Map edgeData;
+      if (rawSql != null && !rawSql.isEmpty()) {
+        if (!ctx._source.containsKey('lineageSqlQueries') || ctx._source['lineageSqlQueries'] == null) {
+          ctx._source['lineageSqlQueries'] = new HashMap();
+        }
+        def sqlMap = ctx._source['lineageSqlQueries'];
+        def sqlKey = null;
+        for (def entry : sqlMap.entrySet()) {
+          if (entry.getValue().equals(rawSql)) {
+            sqlKey = entry.getKey();
+            break;
+          }
+        }
+        if (sqlKey == null) {
+          def maxKey = 0;
+          for (def k : sqlMap.keySet()) {
+            def kInt = Integer.parseInt(k);
+            if (kInt > maxKey) maxKey = kInt;
+          }
+          sqlKey = String.valueOf(maxKey + 1);
+          sqlMap.put(sqlKey, rawSql);
+        }
+        edgeData = new HashMap();
+        edgeData.putAll(params.lineageData);
+        edgeData.put('sqlQueryKey', sqlKey);
+        edgeData.remove('sqlQuery');
+      } else {
+        edgeData = params.lineageData;
+      }
       boolean docIdExists = false;
       for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) {
         if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) {
-          ctx._source.upstreamLineage[i] = params.lineageData;
+          ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;
         }
       }
       if (!docIdExists) {
-        ctx._source.upstreamLineage.add(params.lineageData);
+        ctx._source.upstreamLineage.add(edgeData);
       }
       """;
 

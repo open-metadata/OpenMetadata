@@ -14,6 +14,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
 public record ContainerIndex(Container container) implements ColumnIndex, DataAssetIndex {
+
   @Override
   public Object getEntity() {
     return container;
@@ -27,6 +28,11 @@ public record ContainerIndex(Container container) implements ColumnIndex, DataAs
   @Override
   public Object getIndexServiceType() {
     return container.getServiceType();
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return Set.of("children");
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
