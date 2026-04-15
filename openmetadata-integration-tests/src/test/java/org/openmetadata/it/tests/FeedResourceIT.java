@@ -54,7 +54,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class FeedResourceIT {
 
   private static final String ADMIN_USER = "admin";
-  private static final String TEST_USER = "test";
+
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -70,7 +70,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test conversation thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -83,7 +82,7 @@ public class FeedResourceIT {
     assertEquals(about, thread.getAbout());
     assertEquals(ThreadType.Conversation, thread.getType());
 
-    CreatePost createPost = new CreatePost().withFrom(ADMIN_USER).withMessage("This is a reply");
+    CreatePost createPost = new CreatePost().withMessage("This is a reply");
 
     Thread updatedThread = addPost(thread.getId(), createPost);
 
@@ -93,6 +92,7 @@ public class FeedResourceIT {
 
     Post lastPost = updatedThread.getPosts().get(updatedThread.getPosts().size() - 1);
     assertEquals("This is a reply", lastPost.getMessage());
+    // Server derives 'from' from JWT identity, not client-supplied field
     assertEquals(ADMIN_USER, lastPost.getFrom());
 
     deleteThread(thread.getId());
@@ -1068,16 +1068,17 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Task from bot")
             .withAbout(about)
             .withType(ThreadType.Task)
             .withTaskDetails(taskDetails);
 
-    // The server now derives the creator from the JWT identity, ignoring the client-supplied
-    // 'from' field. Since we authenticate as admin (not a bot), the task creation succeeds.
+    // The 'from' field was removed from the schema — server derives identity from JWT.
+    // Since we authenticate as admin (not a bot), the bot check doesn't trigger and
+    // task creation succeeds.
     Thread thread = createThread(createThread);
     assertNotNull(thread);
+    assertEquals(ADMIN_USER, thread.getCreatedBy());
     deleteThread(thread.getId());
   }
 
