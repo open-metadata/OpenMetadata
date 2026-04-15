@@ -43,6 +43,11 @@ describe('PersonaUtils', () => {
           icon: 'svg-mock',
         }),
         expect.objectContaining({
+          key: PageType.Service,
+          label: 'label.service',
+          icon: 'svg-mock',
+        }),
+        expect.objectContaining({
           key: 'data-assets',
           label: 'label.data-asset-plural',
           icon: 'svg-mock',
@@ -139,6 +144,7 @@ describe('PersonaUtils', () => {
       expect(keys).not.toContain(PageType.LandingPage);
       expect(keys).not.toContain(PageType.Tag);
       expect(keys).not.toContain(PageType.Classification);
+      expect(keys).not.toContain(PageType.Service);
     });
 
     it('should include all other entities in data-assets category', () => {
