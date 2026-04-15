@@ -163,7 +163,7 @@ export const OntologyNodeRelationsContent: React.FC<
                         <TooltipTrigger className="tw:block tw:w-full">
                           <Typography
                             as="span"
-                            className="tw:block tw:truncate tw:text-primary"
+                            className="tw:block tw:truncate tw:text-left tw:text-primary"
                             size="text-sm"
                             weight="regular">
                             {labelText}
