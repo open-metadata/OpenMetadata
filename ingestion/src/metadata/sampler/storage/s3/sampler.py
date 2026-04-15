@@ -50,6 +50,33 @@ class S3Sampler(StorageSampler):
         """Get S3 config source"""
         return S3Config(securityConfig=self.service_connection_config.awsConfig)
 
+    def _is_valid_sample_file(self, key: str) -> bool:
+        """
+        Check if an S3 key is a valid candidate for sampling.
+
+        Filters out:
+        - Directories (keys ending with /)
+        - Delta Lake metadata (_delta_log/)
+        - Success markers (_SUCCESS)
+        """
+        if not key:
+            return False
+        return (
+            not key.endswith("/")
+            and "/_delta_log/" not in key
+            and not key.endswith("/_SUCCESS")
+        )
+
+    def _filter_candidate_keys(self, response: dict) -> list[str]:
+        """Extract and filter candidate keys from S3 list_objects_v2 response"""
+        return [
+            entry["Key"]
+            for entry in response.get(S3_CLIENT_ROOT_RESPONSE, [])
+            if entry
+            and entry.get("Key")
+            and self._is_valid_sample_file(entry.get("Key"))
+        ]
+
     def _get_sample_file_path(self) -> Optional[str]:
         """Get a sample file path from the container"""
         bucket_name = self._get_bucket_name()
@@ -74,15 +101,7 @@ class S3Sampler(StorageSampler):
                 )
                 return None
 
-            candidate_keys = [
-                entry["Key"]
-                for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                if entry
-                and entry.get("Key")
-                and not entry.get("Key").endswith("/")
-                and "/_delta_log/" not in entry.get("Key")
-                and not entry.get("Key").endswith("/_SUCCESS")
-            ]
+            candidate_keys = self._filter_candidate_keys(response)
 
             if candidate_keys:
                 result_key = secrets.choice(candidate_keys)

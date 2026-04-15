@@ -80,6 +80,14 @@ class GCSSampler(StorageSampler):
         """Get GCS config source"""
         return GCSConfig(securityConfig=self.service_connection_config.credentials)
 
+    def _filter_candidate_blobs(self, blobs, file_format: str) -> list[str]:
+        """
+        Extract and filter candidate blob names from GCS list_blobs response.
+
+        Filters blobs that match the specified file format.
+        """
+        return [entry.name for entry in blobs if entry.name.endswith(file_format)]
+
     def _get_sample_file_path(self) -> Optional[str]:
         """Get a sample file path from the container"""
         bucket_name, project_id = self._get_bucket_and_project()
@@ -108,11 +116,7 @@ class GCSSampler(StorageSampler):
                 bucket_name, prefix=prefix_without_leading_slash, max_results=1000
             )
 
-            candidate_keys = [
-                entry.name
-                for entry in response
-                if entry.name.endswith(file_format.value)
-            ]
+            candidate_keys = self._filter_candidate_blobs(response, file_format.value)
 
             if candidate_keys:
                 result_key = secrets.choice(candidate_keys)
