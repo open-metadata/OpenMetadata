@@ -10,5 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export { default } from './MUISwitch';
-export type { MUISwitchProps } from './MUISwitch.interface';
+
+export interface GraphEdge {
+  from: string;
+  to: string;
+  label: string;
+  relationType?: string;
+  arrows?: string;
+}
+
+export interface GraphFilterOption {
+  id: string;
+  label: string;
+  count: number;
+}
+
+export interface GraphFilterOptions {
+  entityTypes: GraphFilterOption[];
+  relationshipTypes: GraphFilterOption[];
+}

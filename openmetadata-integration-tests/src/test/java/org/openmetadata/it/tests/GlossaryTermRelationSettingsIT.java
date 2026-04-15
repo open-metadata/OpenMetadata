@@ -14,7 +14,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -462,6 +464,54 @@ public class GlossaryTermRelationSettingsIT {
           status >= 400,
           "Should not be able to remove system-defined relation type 'relatedTo'. Got: " + status);
     }
+  }
+
+  @Test
+  void test_systemDefinedRelationTypesHaveCorrectDesignSystemColors() throws Exception {
+    JsonNode settings = getSettings();
+    JsonNode relationTypes = settings.get("config_value").get("relationTypes");
+
+    Map<String, String> expectedColors =
+        Map.of(
+            "relatedTo", "#1570ef",
+            "synonym", "#b42318",
+            "antonym", "#b54708",
+            "broader", "#067647",
+            "narrower", "#4e5ba6",
+            "partOf", "#026aa2",
+            "hasPart", "#155eef",
+            "calculatedFrom", "#6938ef",
+            "usedToCalculate", "#ba24d5",
+            "seeAlso", "#c11574");
+
+    Set<String> verified = new HashSet<>();
+    for (JsonNode type : relationTypes) {
+      String name = type.get("name").asText();
+      if (!expectedColors.containsKey(name)) {
+        continue;
+      }
+      verified.add(name);
+      JsonNode colorNode = type.get("color");
+      assertNotNull(colorNode, "color should exist for system-defined type: " + name);
+      String actualColor = colorNode.asText().toLowerCase();
+      String expected = expectedColors.get(name);
+      assertEquals(
+          expected,
+          actualColor,
+          "System-defined type '"
+              + name
+              + "' should use design-system color "
+              + expected
+              + " but got "
+              + actualColor
+              + ". Old Ant Design colors (e.g. #1890ff, #722ed1) indicate the 2.0.0 migration did not run.");
+    }
+
+    Set<String> missing = new HashSet<>(expectedColors.keySet());
+    missing.removeAll(verified);
+    assertTrue(
+        missing.isEmpty(),
+        "All 10 system-defined relation types must be present. Missing: " + missing);
   }
 
   @Test

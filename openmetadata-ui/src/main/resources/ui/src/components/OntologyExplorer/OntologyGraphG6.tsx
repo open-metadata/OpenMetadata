@@ -14,7 +14,6 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -48,6 +47,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
       nodePositions,
     },
     ref
@@ -61,16 +61,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     }, [settings.layout]);
 
     const layoutType = getLayoutType();
-
-    const termCountForFit = useMemo(() => {
-      if (explorationMode === 'data') {
-        return inputNodes.filter(
-          (n) => n.type !== 'dataAsset' && n.type !== 'metric'
-        ).length;
-      }
-
-      return inputNodes.length;
-    }, [explorationMode, inputNodes]);
 
     const {
       graphData,
@@ -93,28 +83,30 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodePositions,
     });
 
-    const { graphRef, extractNodePositions } = useOntologyGraph({
-      containerRef,
-      graphData,
-      inputNodes,
-      mergedEdgesList,
-      explorationMode,
-      settings,
-      layoutType,
-      focusNodeId,
-      selectedNodeId,
-      expandedTermIds,
-      dataSignature,
-      onNodeClick,
-      onNodeDoubleClick,
-      onNodeContextMenu,
-      onPaneClick,
-      setClickedEdgeId,
-      neighborSet,
-      glossaryColorMap,
-      computeNodeColor,
-      assetToTermMap,
-    });
+    const { graphRef, extractNodePositions, suppressEdgeCheck } =
+      useOntologyGraph({
+        containerRef,
+        graphData,
+        inputNodes,
+        mergedEdgesList,
+        explorationMode,
+        settings,
+        layoutType,
+        focusNodeId,
+        selectedNodeId,
+        expandedTermIds,
+        dataSignature,
+        onNodeClick,
+        onNodeDoubleClick,
+        onNodeContextMenu,
+        onPaneClick,
+        onScrollNearEdge,
+        setClickedEdgeId,
+        neighborSet,
+        glossaryColorMap,
+        computeNodeColor,
+        assetToTermMap,
+      });
 
     useImperativeHandle(
       ref,
@@ -124,14 +116,16 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
-          const isDataMode = explorationMode === 'data';
-          await fitViewWithMinZoom(graph, termCountForFit, isDataMode, 300);
+          suppressEdgeCheck(800);
+          await fitViewWithMinZoom(graph, 300);
         },
         zoomIn: () => {
-          graphRef.current?.zoomBy(1.2);
+          suppressEdgeCheck();
+          graphRef.current?.zoomBy(1.2, { duration: 100 });
         },
         zoomOut: () => {
-          graphRef.current?.zoomBy(0.8);
+          suppressEdgeCheck();
+          graphRef.current?.zoomBy(0.8, { duration: 100 });
         },
         runLayout: () => {
           const graph = graphRef.current;
@@ -163,6 +157,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          // G6 only supports raster image export here; keep the SVG wrapper explicit.
           const dataUrl = await graph.toDataURL({
             mode: 'overall',
             type: 'image/png',
@@ -175,12 +170,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'ontology-graph.svg';
+          a.download = 'ontology-graph-raster.svg';
           a.click();
           URL.revokeObjectURL(url);
         },
       }),
-      [explorationMode, extractNodePositions, graphRef, termCountForFit]
+      [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
 
     return (

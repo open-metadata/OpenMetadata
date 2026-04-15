@@ -62,7 +62,8 @@ export const getLogsFromResponse = (
 export const fetchLogsRecursively = async (
   ingestionId: string,
   pipelineType: string,
-  after?: string
+  after?: string,
+  runId?: string
 ) => {
   let logs = '';
 
@@ -70,7 +71,7 @@ export const fetchLogsRecursively = async (
     data: { total, after: afterCursor, ...rest },
   } =
     pipelineType === PipelineType.Application
-      ? await getApplicationLogs(ingestionId, after)
+      ? await getApplicationLogs(ingestionId, after, runId)
       : await getIngestionPipelineLogById(ingestionId, after);
   logs = logs.concat(getLogsFromResponse(rest, pipelineType));
   if (afterCursor && total) {
@@ -78,7 +79,7 @@ export const fetchLogsRecursively = async (
     useDownloadProgressStore.getState().updateProgress(progress);
 
     logs = logs.concat(
-      await fetchLogsRecursively(ingestionId, pipelineType, afterCursor)
+      await fetchLogsRecursively(ingestionId, pipelineType, afterCursor, runId)
     );
   }
 
@@ -101,13 +102,18 @@ export const downloadIngestionLog = async (ingestionId?: string) => {
   }
 };
 
-export const downloadAppLogs = async (appName?: string) => {
+export const downloadAppLogs = async (appName?: string, runId?: string) => {
   if (!appName) {
     return '';
   }
 
   try {
-    return await fetchLogsRecursively(appName, PipelineType.Application);
+    return await fetchLogsRecursively(
+      appName,
+      PipelineType.Application,
+      undefined,
+      runId
+    );
   } catch (err) {
     showErrorToast(err as AxiosError);
 

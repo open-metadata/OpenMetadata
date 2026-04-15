@@ -1714,6 +1714,16 @@ class DbtSource(DbtServiceSource):
                     )
                     return
 
+                # Skip compiled-only entries: `dbt run` includes test nodes in
+                # run_results.json with status="success" but message=null since
+                # no test SQL was executed. Real results always have a message.
+                if not dbt_test_result.message:
+                    logger.debug(
+                        "Skipping compiled-only test result for '%s' (message is null).",
+                        manifest_node.name,
+                    )
+                    return
+
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
                 if dbt_test_result.status.value in [

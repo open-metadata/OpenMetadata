@@ -361,3 +361,60 @@ class LookerUtilsTest(TestCase):
         # Should not raise an exception, but should log an error and not call clone_from
         _clone_repo("owner/repo", "/test/path", no_git_creds)
         mock_clone_from.assert_not_called()
+
+    @patch.object(Repo, "clone_from")
+    @patch.object(os.path, "isdir")
+    def test_clone_repo_error_does_not_leak_credentials(
+        self, mock_isdir, mock_clone_from
+    ):
+        """
+        When git clone fails, the error log must not expose the PAT or token.
+        """
+        mock_isdir.return_value = False
+        mock_clone_from.side_effect = Exception(
+            "fatal: could not read Password for "
+            "'https://my_secret_pat@dev.azure.com': No such device or address"
+        )
+
+        azure_creds = GitHubCredentials(
+            repositoryOwner="org/project",
+            repositoryName="repo",
+            token="my_secret_pat",
+            gitHostURL="https://dev.azure.com",
+        )
+
+        with patch(
+            "metadata.ingestion.source.dashboard.looker.utils.logger"
+        ) as mock_logger:
+            _clone_repo("org/project/repo", "/test/path", azure_creds)
+            error_call_args = mock_logger.error.call_args[0][0]
+            assert "my_secret_pat" not in error_call_args
+            assert "****" in error_call_args
+
+    @patch.object(Repo, "clone_from")
+    @patch.object(os.path, "isdir")
+    def test_clone_repo_error_sanitizes_all_credential_formats(
+        self, mock_isdir, mock_clone_from
+    ):
+        """
+        Credential sanitization should work for all URL formats
+        (PAT@host, x-oauth-basic:token@host, x-token-auth:token@host).
+        """
+        mock_isdir.return_value = False
+        mock_clone_from.side_effect = Exception(
+            "stderr: 'https://x-oauth-basic:secret_token@github.com/owner/repo.git'"
+        )
+
+        github_creds = GitHubCredentials(
+            repositoryOwner="owner",
+            repositoryName="repo",
+            token="secret_token",
+        )
+
+        with patch(
+            "metadata.ingestion.source.dashboard.looker.utils.logger"
+        ) as mock_logger:
+            _clone_repo("owner/repo", "/test/path", github_creds)
+            error_call_args = mock_logger.error.call_args[0][0]
+            assert "secret_token" not in error_call_args
+            assert "****" in error_call_args
