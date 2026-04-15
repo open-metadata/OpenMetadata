@@ -168,7 +168,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 session_query = session_query.where(
                     rnd.c.random <= static.profileSample
                 )
-                if self.sample_config.randomizedSample is True:
+                if (
+                    static.profileSample == 100
+                    and self.sample_config.randomizedSample is True
+                ):
                     session_query = session_query.order_by(rnd.c.random)
                 return session_query.cte(f"{self.get_sampler_table_name()}_sample")
 
