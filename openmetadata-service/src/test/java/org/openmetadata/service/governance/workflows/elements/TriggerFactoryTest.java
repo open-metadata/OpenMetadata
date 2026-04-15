@@ -16,13 +16,13 @@ package org.openmetadata.service.governance.workflows.elements;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.MultiInstanceLoopCharacteristics;
 import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -60,7 +60,7 @@ class TriggerFactoryTest {
   }
 
   @Test
-  void testPeriodicBatchTrigger_NoMultiInstanceLoop() {
+  void testPeriodicBatchTrigger_MultiInstanceLoop_WhenNoSinkTask() {
     WorkflowDefinition workflow = createWorkflow();
 
     TriggerInterface trigger = TriggerFactory.createTrigger(workflow);
@@ -70,9 +70,13 @@ class TriggerFactoryTest {
 
     CallActivity callActivity = findCallActivity(model);
     assertNotNull(callActivity, "CallActivity should exist");
-    assertNull(
-        callActivity.getLoopCharacteristics(),
-        "CallActivity must not have multi-instance loop in batch mode");
+    MultiInstanceLoopCharacteristics loopChars =
+        (MultiInstanceLoopCharacteristics) callActivity.getLoopCharacteristics();
+    assertNotNull(loopChars, "CallActivity should have multi-instance loop when no SinkTask");
+    assertEquals(
+        "${numberOfEntities}",
+        loopChars.getLoopCardinality(),
+        "Cardinality should be ${numberOfEntities} when no SinkTask batch mode");
   }
 
   private CallActivity findCallActivity(BpmnModel model) {
