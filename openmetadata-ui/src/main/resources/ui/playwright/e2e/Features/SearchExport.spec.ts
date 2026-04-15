@@ -88,43 +88,6 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  // TODO: Currently skipping this test as the count of the rows from backend is limited to 1000 only, will uncomment until backend fix is in.
-  test.fixme(
-    'All assets export downloads CSV with correct row count',
-    async ({ page }) => {
-      test.slow();
-
-      const countApiPromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
-      );
-
-      await openExportScopeModal(page);
-      await countApiPromise;
-
-      const modalContent = getExportModalContent(page);
-
-      const expectedCount =
-        await test.step('Read displayed count from All Assets card', () =>
-          getExportCount(page, 'export-scope-all-count'));
-
-      const exportResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/export') &&
-          response.status() === 200
-      );
-
-      await modalContent.getByRole('button', { name: 'Export' }).click();
-
-      await test.step('CSV row count matches the displayed count', async () => {
-        const csvText = await (await exportResponsePromise).text();
-
-        expect(countCsvResponseRows(csvText)).toBe(expectedCount);
-      });
-    }
-  );
-
   test('Search mode visible export downloads CSV with tab-specific row count', async ({
     page,
   }) => {
