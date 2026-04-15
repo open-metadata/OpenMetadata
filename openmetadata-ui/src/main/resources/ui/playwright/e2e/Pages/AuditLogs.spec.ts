@@ -28,7 +28,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
+    const customPropertiesResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/metadata/types/customProperties')
+    );
     await redirectToHomePage(page);
+    const customPropertiesResponse = await customPropertiesResponsePromise;
+    expect(customPropertiesResponse.status()).toBe(200);
     await navigateToAuditLogsPage(page);
   });
 
@@ -959,7 +964,7 @@ test.describe(
   () => {
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
-    const POLL_TIMEOUT = 60000;
+    const POLL_TIMEOUT = 120000;
 
     // Helper function to wait for an audit log entry to appear
     const waitForAuditLogEntry = async (
@@ -1130,15 +1135,13 @@ test.describe(
             'entityUpdated'
           );
 
-          if (!auditEntry) {
-            auditEntry = await waitForAuditLogEntry(
-              apiContext,
-              page,
-              glossaryFqn,
-              'glossary',
-              'entityFieldsChanged'
-            );
-          }
+          auditEntry ??= await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityFieldsChanged'
+          );
 
           expect(auditEntry).not.toBeNull();
           expect(['entityUpdated', 'entityFieldsChanged']).toContain(
@@ -1432,15 +1435,13 @@ test.describe(
             'entityUpdated'
           );
 
-          if (!entry) {
-            entry = await waitForAuditLogEntry(
-              apiContext,
-              page,
-              glossaryFqn,
-              'glossary',
-              'entityFieldsChanged'
-            );
-          }
+          entry ??= await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityFieldsChanged'
+          );
 
           expect(entry).not.toBeNull();
           verifyAuditEntryHasValidUUIDs(

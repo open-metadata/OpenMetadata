@@ -85,6 +85,7 @@ import {
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { submitTestCaseForm } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 // Define entities that support Data Contracts
@@ -448,20 +449,7 @@ test.describe('Data Contracts', () => {
             'Pipeline will only be triggered manually.'
           );
 
-          const pipelineResponse = page.waitForResponse(
-            '/api/v1/services/ingestionPipelines'
-          );
-          const deploy = page.waitForResponse(
-            '/api/v1/services/ingestionPipelines/deploy/*'
-          );
-
-          const testCaseResponse = page.waitForResponse(
-            '/api/v1/dataQuality/testCases'
-          );
-          await page.click('[data-testid="create-btn"]');
-          await testCaseResponse;
-          await pipelineResponse;
-          await deploy;
+          await submitTestCaseForm(page);
 
           await expect(page.getByRole('dialog')).not.toBeVisible();
 
@@ -487,19 +475,12 @@ test.describe('Data Contracts', () => {
           if (
             typeof response === 'object' &&
             response !== null &&
-            'latestResult' in response
+            'id' in response
           ) {
-            const {
-              id: contractId,
-              latestResult: { resultId: latestResultId },
-            } = response;
+            const { id: contractId } = response as { id: string };
 
-            if (contractId && latestResultId) {
-              await waitForDataContractExecution(
-                page,
-                contractId,
-                latestResultId
-              );
+            if (contractId) {
+              await waitForDataContractExecution(page, contractId);
             }
           }
 

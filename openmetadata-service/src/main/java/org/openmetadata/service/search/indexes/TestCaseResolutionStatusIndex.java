@@ -28,6 +28,11 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     return testCaseResolutionStatus;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.TEST_CASE_RESOLUTION_STATUS;
+  }
+
   private void setParentRelationships(Map<String, Object> doc) {
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
