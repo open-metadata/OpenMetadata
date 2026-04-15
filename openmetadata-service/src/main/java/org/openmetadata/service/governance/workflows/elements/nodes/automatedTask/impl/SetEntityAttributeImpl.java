@@ -12,11 +12,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -34,8 +29,6 @@ import org.openmetadata.service.util.EntityFieldUtils;
 
 @Slf4j
 public class SetEntityAttributeImpl implements JavaDelegate {
-  private static final int PARALLELISM = 4;
-
   private Expression fieldNameExpr;
   private Expression fieldValueExpr;
   private Expression inputNamespaceMapExpr;
@@ -52,17 +45,6 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       executeInternal(execution, varHandler);
-    } catch (ExecutionException e) {
-      Throwable cause = e.getCause() != null ? e.getCause() : e;
-      LOG.error(
-          "[{}] Failure: ",
-          getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
-          cause);
-      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(cause));
-      throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, cause.getMessage());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, e.getMessage());
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -82,7 +64,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       return;
     }
     BatchContext ctx = buildBatchContext(execution, varHandler, inputNamespaceMap, entityLinks);
-    runBatchesConcurrently(partition(entityLinks, PARALLELISM), ctx);
+    processBatch(entityLinks, ctx);
   }
 
   private BatchContext buildBatchContext(
@@ -99,63 +81,25 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     return new BatchContext(entityType, fieldName, fieldValue, userName, impersonatedBy);
   }
 
-  private void runBatchesConcurrently(List<List<String>> partitions, BatchContext ctx)
-      throws InterruptedException, ExecutionException {
-    try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
-      List<Future<Void>> futures = new ArrayList<>();
-      for (List<String> batch : partitions) {
-        Callable<Void> task =
-            () -> {
-              processBatch(batch, ctx);
-              return null;
-            };
-        futures.add(pool.submit(task));
-      }
-      for (Future<Void> future : futures) {
-        future.get();
-      }
-    }
-  }
-
   private void processBatch(List<String> entityLinks, BatchContext ctx) throws Exception {
-    Map<String, EntityInterface> existingByFqn = new LinkedHashMap<>();
-    for (String linkStr : entityLinks) {
-      MessageParser.EntityLink link = MessageParser.EntityLink.parse(linkStr);
-      EntityInterface entity = Entity.getEntity(link, "*", Include.ALL);
-      existingByFqn.put(entity.getFullyQualifiedName(), entity);
-    }
-    List<EntityInterface> modifiedEntities = buildModifiedEntities(existingByFqn, ctx);
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repo =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(ctx.entityType());
-    repo.bulkUpdateEntities(modifiedEntities, existingByFqn, ctx.userName());
-  }
-
-  private List<EntityInterface> buildModifiedEntities(
-      Map<String, EntityInterface> existingByFqn, BatchContext ctx) {
+    Map<String, EntityInterface> loadedByLink =
+        Entity.getEntitiesByLinks(entityLinks, "*", Include.ALL);
+    Map<String, EntityInterface> existingByFqn = new LinkedHashMap<>();
+    for (EntityInterface entity : loadedByLink.values()) {
+      existingByFqn.put(entity.getFullyQualifiedName(), entity);
+    }
     List<EntityInterface> modified = new ArrayList<>();
-    for (EntityInterface original : existingByFqn.values()) {
+    for (EntityInterface entity : existingByFqn.values()) {
       @SuppressWarnings("unchecked")
-      EntityInterface copy =
-          (EntityInterface) JsonUtils.deepCopy(original, (Class) original.getClass());
+      EntityInterface copy = JsonUtils.deepCopy(entity, (Class<EntityInterface>) entity.getClass());
       EntityFieldUtils.setEntityField(
           copy, ctx.entityType(), ctx.userName(), ctx.fieldName(), ctx.fieldValue(), false, null);
-      copy.setImpersonatedBy(ctx.impersonatedBy());
       modified.add(copy);
     }
-    return modified;
-  }
-
-  private static List<List<String>> partition(List<String> list, int parts) {
-    if (list.isEmpty()) {
-      return List.of();
-    }
-    int size = (int) Math.ceil((double) list.size() / parts);
-    List<List<String>> result = new ArrayList<>();
-    for (int i = 0; i < list.size(); i += size) {
-      result.add(list.subList(i, Math.min(i + size, list.size())));
-    }
-    return result;
+    repo.bulkUpdateEntities(modified, existingByFqn, ctx.userName(), true);
   }
 
   private String resolveActualUser(

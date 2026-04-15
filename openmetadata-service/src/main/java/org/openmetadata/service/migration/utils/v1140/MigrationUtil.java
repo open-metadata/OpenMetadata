@@ -7,11 +7,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.runtime.ProcessInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.Workflow;
@@ -31,24 +34,35 @@ public class MigrationUtil {
           "setEntityAttributeTask",
           "rollbackEntityTask",
           "sinkTask",
-          "dataCompletenessTask");
+          "dataCompletenessTask",
+          "setEntityCertificationTask",
+          "setGlossaryTermStatusTask",
+          "runAppTask",
+          "createAndRunIngestionPipelineTask",
+          "applyRecognizerFeedbackTask",
+          "rejectRecognizerFeedbackTask",
+          "userApprovalTask",
+          "createRecognizerFeedbackApprovalTask");
 
   private static final Set<String> CHECK_NODE_SUBTYPES =
       Set.of("checkEntityAttributesTask", "checkChangeDescriptionTask", "dataCompletenessTask");
+
+  private static final String PERIODIC_BATCH_ENTITY = "periodicBatchEntity";
 
   /**
    * Migrates all workflow definitions to support batch entity processing:
    *
    * <ol>
-   *   <li>Adds {@code entityList} to the trigger's output so validation passes.
+   *   <li>Rebuilds the trigger {@code output} array to contain exactly {@code ["entityList", …,
+   *       "updatedBy"]}, stripping legacy {@code relatedEntity} entries.
+   *   <li>Ensures {@code config.storeStageStatus} is {@code true} for periodic-batch workflows.
    *   <li>Adds {@code entityList} to each batch-capable automated task node's
    *       {@code inputNamespaceMap}, using the same namespace as {@code relatedEntity} (or
    *       {@code "global"} if absent).
    * </ol>
    *
-   * <p>Phase 2 reloads all workflow definitions and redeploys them via {@link
-   * WorkflowHandler#deploy}, ensuring BPMN processes are redeployed with the new {@code
-   * loopCardinality("1")} structure even when no JSON changes were needed.
+   * <p>Phase 2 deletes stuck EXCEPTION-state Flowable instances and redeploys the fixed workflows,
+   * ensuring the new inclusive-gateway BPMN expression is active.
    *
    * <p>The migration is idempotent — safe to run multiple times.
    */
@@ -58,10 +72,6 @@ public class MigrationUtil {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Phase 1: Fix raw JSON in the DB without going through POJO deserialization.
-    // Stored workflows may contain fields (e.g. "relatedEntity" in setEntityAttributeTask
-    // inputNamespaceMap) that now fail schema validation, preventing listAll() from working.
-    // Reading and writing raw JSON strings bypasses that issue entirely.
     int fixedCount = 0;
     int offset = 0;
     final int PAGE_SIZE = 100;
@@ -95,10 +105,12 @@ public class MigrationUtil {
       return;
     }
 
-    // Phase 2: Reload and redeploy only the workflows whose JSON was changed in Phase 1.
+    // Phase 2: Clean up stuck EXCEPTION-state Flowable instances and redeploy migrated workflows.
     int totalRedeployed = 0;
+    List<String> failures = new ArrayList<>();
     for (String fqn : migratedFqns) {
       try {
+        forceCleanBrokenInstancesForFqn(fqn);
         WorkflowDefinition workflow =
             repository.getByName(null, fqn, EntityUtil.Fields.EMPTY_FIELDS);
         WorkflowHandler.getInstance().deploy(new Workflow(workflow));
@@ -106,12 +118,50 @@ public class MigrationUtil {
         LOG.info("Redeployed workflow to Flowable: {}", fqn);
       } catch (Exception e) {
         LOG.error("Error redeploying workflow '{}': {}", fqn, e.getMessage(), e);
+        failures.add(fqn);
       }
     }
 
     LOG.info(
         "Completed v1140 migration: {} workflow definitions redeployed with entityList support",
         totalRedeployed);
+
+    if (!failures.isEmpty()) {
+      throw new RuntimeException("v1140 migration failed to redeploy workflows: " + failures);
+    }
+  }
+
+  private static void forceCleanBrokenInstancesForFqn(String fqn) {
+    if (!WorkflowHandler.isInitialized()) {
+      LOG.warn("WorkflowHandler not initialized, skipping broken-instance cleanup for '{}'", fqn);
+      return;
+    }
+    RuntimeService runtimeService = WorkflowHandler.getInstance().getRuntimeService();
+
+    List<ProcessInstance> mainInstances =
+        runtimeService.createProcessInstanceQuery().processDefinitionKey(fqn).list();
+    for (ProcessInstance pi : mainInstances) {
+      LOG.info(
+          "Deleting stuck process instance {} for workflow {} (pre-fix EXCEPTION state)",
+          pi.getId(),
+          fqn);
+      runtimeService.deleteProcessInstance(
+          pi.getId(), "v1140 reprocessing — cleaning up pre-fix EXCEPTION state");
+    }
+
+    List<ProcessInstance> triggerInstances =
+        runtimeService
+            .createProcessInstanceQuery()
+            .processDefinitionKeyLike(fqn + "Trigger%")
+            .list();
+    for (ProcessInstance pi : triggerInstances) {
+      LOG.info(
+          "Deleting stuck trigger instance {} for workflow {} (pre-fix EXCEPTION state)",
+          pi.getId(),
+          fqn);
+      runtimeService.deleteProcessInstance(
+          pi.getId(), "v1140 reprocessing — cleaning up pre-fix EXCEPTION state");
+    }
   }
 
   static JsonNode migrateWorkflowJson(JsonNode root) {
@@ -124,24 +174,50 @@ public class MigrationUtil {
 
     JsonNode triggerNode = result.get("trigger");
     if (triggerNode != null && triggerNode.isObject()) {
-      JsonNode outputNode = triggerNode.get("output");
+      ObjectNode triggerObj = (ObjectNode) triggerNode;
+
+      // Rebuild the trigger output array: always ["entityList", ...custom..., "updatedBy"]
+      // This replaces the old guard `if (!hasEntityList)` which left half-migrated rows intact.
+      JsonNode outputNode = triggerObj.get("output");
       if (outputNode != null && outputNode.isArray()) {
-        boolean hasEntityList = false;
+        LinkedHashSet<String> canonical = new LinkedHashSet<>();
+        canonical.add("entityList");
         for (JsonNode item : outputNode) {
-          if ("entityList".equals(item.asText())) {
-            hasEntityList = true;
-            break;
+          String val = item.asText();
+          if (!"entityList".equals(val)
+              && !"relatedEntity".equals(val)
+              && !"updatedBy".equals(val)) {
+            canonical.add(val);
           }
         }
-        if (!hasEntityList) {
-          ObjectNode newTrigger = ((ObjectNode) triggerNode).deepCopy();
+        canonical.add("updatedBy");
+
+        List<String> existing = new ArrayList<>();
+        for (JsonNode item : outputNode) {
+          existing.add(item.asText());
+        }
+        if (!existing.equals(new ArrayList<>(canonical))) {
           ArrayNode newOutput = MAPPER.createArrayNode();
-          newOutput.add("entityList");
-          for (JsonNode item : outputNode) {
-            newOutput.add(item);
+          for (String val : canonical) {
+            newOutput.add(val);
           }
-          newTrigger.set("output", newOutput);
-          result.set("trigger", newTrigger);
+          triggerObj.set("output", newOutput);
+          changed = true;
+        }
+      }
+
+      // Ensure storeStageStatus=true for periodicBatchEntity triggers
+      JsonNode typeNode = triggerObj.get("type");
+      if (typeNode != null && PERIODIC_BATCH_ENTITY.equals(typeNode.asText())) {
+        JsonNode configNode = result.get("config");
+        if (configNode == null || !configNode.isObject()) {
+          ObjectNode newConfig = MAPPER.createObjectNode();
+          newConfig.put("storeStageStatus", true);
+          result.set("config", newConfig);
+          changed = true;
+        } else if (!configNode.has("storeStageStatus")
+            || !configNode.get("storeStageStatus").asBoolean()) {
+          ((ObjectNode) configNode).put("storeStageStatus", true);
           changed = true;
         }
       }
@@ -221,7 +297,6 @@ public class MigrationUtil {
     boolean hasFalseEntityList = inputNamespaceMap.has("false_entityList");
     boolean hasRelatedEntity = inputNamespaceMap.has("relatedEntity");
 
-    // Already correctly set with no legacy relatedEntity — nothing to do
     if ((hasEntityList || hasTrueEntityList || hasFalseEntityList) && !hasRelatedEntity) {
       return nodeObj;
     }
@@ -229,7 +304,6 @@ public class MigrationUtil {
     ObjectNode newInputNamespaceMap = inputNamespaceMap.deepCopy();
     newInputNamespaceMap.remove("relatedEntity");
 
-    // Only compute entityList keys when none are already present — preserves correct mappings
     if (!hasEntityList && !hasTrueEntityList && !hasFalseEntityList) {
       if (incomingEdges != null && !incomingEdges.isEmpty()) {
         for (String[] incoming : incomingEdges) {
@@ -238,7 +312,6 @@ public class MigrationUtil {
           String sourceSubType = nodeSubType.getOrDefault(sourceNode, "");
           if (CHECK_NODE_SUBTYPES.contains(sourceSubType)) {
             if (condition != null && !condition.isEmpty()) {
-              // "true"/"false" for checkEntity/checkChangeDesc, band name for dataCompleteness
               newInputNamespaceMap.put(condition + "_entityList", sourceNode);
             } else {
               newInputNamespaceMap.put("entityList", sourceNode);

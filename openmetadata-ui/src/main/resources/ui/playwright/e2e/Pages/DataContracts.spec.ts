@@ -142,7 +142,8 @@ test.describe('Data Contracts', () => {
     test(`Create Data Contract and validate for ${entityType}`, async ({
       page,
     }) => {
-      test.slow(true);
+      // 12-min timeout so waitForDataContractExecution completes first.
+      test.setTimeout(720_000);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
