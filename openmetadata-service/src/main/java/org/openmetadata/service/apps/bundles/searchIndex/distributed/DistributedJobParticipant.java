@@ -28,6 +28,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 
 /**
@@ -333,7 +334,7 @@ public class DistributedJobParticipant implements Managed {
                   : 100,
               job.getJobConfiguration().getPayLoadSize() != null
                   ? job.getJobConfiguration().getPayLoadSize()
-                  : 104857600L);
+                  : SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
 
       int batchSize =
           job.getJobConfiguration().getBatchSize() != null

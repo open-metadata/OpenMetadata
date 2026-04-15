@@ -14,6 +14,7 @@
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import type { LayoutEngineType } from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 
@@ -22,8 +23,9 @@ export interface OntologyExplorerProps {
   entityId?: string;
   glossaryId?: string;
   className?: string;
-  showHeader?: boolean;
   height?: string | number;
+  onStatsChange?: (stats: string[]) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export interface OntologyNode {
@@ -142,6 +144,7 @@ export interface FilterToolbarProps {
 export interface GraphSettingsPanelProps {
   settings: GraphSettings;
   onSettingsChange: (settings: GraphSettings) => void;
+  isDataMode?: boolean;
 }
 
 export interface NodeContextMenuProps {
@@ -170,7 +173,7 @@ export interface MergedEdge {
 }
 
 export interface LayoutConfig {
-  type: 'antv-dagre' | 'dagre' | 'radial' | 'circular';
+  type: 'antv-dagre' | 'dagre' | 'radial' | 'circular' | 'preset';
   [key: string]: unknown;
 }
 
