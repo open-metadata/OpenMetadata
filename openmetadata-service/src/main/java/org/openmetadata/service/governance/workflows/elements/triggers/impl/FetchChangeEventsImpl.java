@@ -2,8 +2,11 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.PROCESSED_FQNS_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TASK_RETRY_CONFIG;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.HAS_FINISHED_VARIABLE;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -149,6 +152,10 @@ public class FetchChangeEventsImpl implements JavaDelegate {
       CommitChangeEventOffsetImpl.commitOffset(workflowFqn, entityType, batchMaxOffset);
     }
 
+    String updatedByVar = getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+    if (execution.getVariable(updatedByVar) == null) {
+      execution.setVariable(updatedByVar, "governance-bot");
+    }
     execution.setVariable(CARDINALITY_VARIABLE, entityList.size());
     execution.setVariable(HAS_FINISHED_VARIABLE, records.isEmpty());
     execution.setVariable(ENTITY_LIST_VARIABLE, entityList);
