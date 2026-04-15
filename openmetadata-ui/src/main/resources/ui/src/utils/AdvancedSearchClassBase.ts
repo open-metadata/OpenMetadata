@@ -1235,6 +1235,12 @@ class AdvancedSearchClassBase {
         entitySearchIndex.includes(index)
       );
 
+    console.log(
+      'shouldAddServiceField',
+      shouldAddServiceField,
+      entitySearchIndex
+    );
+
     return {
       ...this.getInitialConfigWithoutFields(isExplorePage),
       fields: {
