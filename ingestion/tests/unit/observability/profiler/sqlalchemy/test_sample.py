@@ -21,7 +21,12 @@ from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataType,
+    ProfileSampleType,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -360,6 +365,114 @@ class SampleTest(TestCase):
         assert len(sample_data.columns) == 2
         names = [col.root for col in sample_data.columns]
         assert names == ["id", "name"]
+
+    def test_full_percentage_randomized_uses_sample_query(self, sampler_mock):
+        """100% PERCENTAGE + randomizedSample=True should go through
+        get_sample_query which adds ORDER BY on the random column."""
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=True,
+                ),
+                sample_data_count=5,
+            )
+
+        with patch.object(
+            sampler, "get_sample_query", wraps=sampler.get_sample_query
+        ) as mock_gsq:
+            sampler.fetch_sample_data()
+            assert mock_gsq.called
+
+    def test_full_percentage_not_randomized_skips_sample_query(self, sampler_mock):
+        """100% PERCENTAGE + randomizedSample=False should short-circuit
+        to raw dataset and NOT call get_sample_query."""
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=False,
+                ),
+                sample_data_count=5,
+            )
+
+        with patch.object(
+            sampler, "get_sample_query", wraps=sampler.get_sample_query
+        ) as mock_gsq:
+            sampler.fetch_sample_data()
+            assert not mock_gsq.called
+
+    def test_full_percentage_none_randomized_skips_sample_query(self, sampler_mock):
+        """100% PERCENTAGE + randomizedSample=None should short-circuit
+        (only explicit True enables randomization)."""
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=None,
+                ),
+                sample_data_count=5,
+            )
+
+        with patch.object(
+            sampler, "get_sample_query", wraps=sampler.get_sample_query
+        ) as mock_gsq:
+            sampler.fetch_sample_data()
+            assert not mock_gsq.called
+
+    def test_randomized_true_produces_non_deterministic_rows(self, sampler_mock):
+        """With randomizedSample=True at 100% PERCENTAGE, multiple
+        fetch_sample_data calls should return rows in different orders."""
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=True,
+                ),
+                sample_data_count=5,
+            )
+
+        results = [sampler.fetch_sample_data().rows for _ in range(20)]
+        assert any(
+            results[i] != results[0] for i in range(1, len(results))
+        ), "Expected non-deterministic row ordering with randomizedSample=True"
+
+    def test_randomized_false_produces_deterministic_rows(self, sampler_mock):
+        """With randomizedSample=False at 100% PERCENTAGE, multiple
+        fetch_sample_data calls should return rows in the same order."""
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=100,
+                    randomizedSample=False,
+                ),
+                sample_data_count=5,
+            )
+
+        results = [sampler.fetch_sample_data().rows for _ in range(5)]
+        assert all(
+            results[i] == results[0] for i in range(1, len(results))
+        ), "Expected deterministic row ordering with randomizedSample=False"
 
     @classmethod
     def tearDownClass(cls) -> None:

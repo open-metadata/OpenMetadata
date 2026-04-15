@@ -64,43 +64,44 @@ class DataFrameReader(ABC):
     config_source: ConfigSource
     reader: Reader
 
-    def __init__(self, config_source: ConfigSource, client: Optional[Any]):
+    def __init__(
+        self,
+        config_source: ConfigSource,
+        client: Optional[Any],
+        session: Optional[Any] = None,
+    ):
         self.config_source = config_source
         self.client = client
+        self.session = session
 
         self.reader = get_reader(config_source=config_source, client=client)
 
-    def _get_file_size_mb(self, key: str, bucket_name: str) -> float:
+    def _get_file_size_mb(
+        self, key: str, bucket_name: str, file_size: Optional[int] = None
+    ) -> float:
         """
         Get file size in MB. Returns 0 if unable to determine.
-        Uses efficient HEAD operations from cloud providers.
+        If file_size (bytes) is provided from listing metadata, uses that
+        to avoid a redundant HEAD/info API call.
         """
+        if file_size is not None:
+            return file_size / (1024 * 1024)
         try:
             if isinstance(self.config_source, S3Config):
                 response = self.client.head_object(Bucket=bucket_name, Key=key)
                 return response.get("ContentLength", 0) / (1024 * 1024)
 
             elif isinstance(self.config_source, GCSConfig):
-                from gcsfs import GCSFileSystem
-
-                gcs = GCSFileSystem()
-                file_path = f"gs://{bucket_name}/{key}"
-                file_info = gcs.info(file_path)
-                return file_info.get("size", 0) / (1024 * 1024)
+                bucket = self.client.get_bucket(bucket_name)
+                blob = bucket.get_blob(key)
+                return (blob.size or 0) / (1024 * 1024) if blob else 0
 
             elif isinstance(self.config_source, AzureConfig):
-                from adlfs import AzureBlobFileSystem
-
-                from metadata.readers.file.adls import return_azure_storage_options
-
-                storage_options = return_azure_storage_options(self.config_source)
-                adlfs_fs = AzureBlobFileSystem(
-                    account_name=self.config_source.securityConfig.accountName,
-                    **storage_options,
+                blob_client = self.client.get_blob_client(
+                    container=bucket_name, blob=key
                 )
-                file_path = f"{bucket_name}/{key}"
-                file_info = adlfs_fs.info(file_path)
-                return file_info.get("size", 0) / (1024 * 1024)
+                props = blob_client.get_blob_properties()
+                return (props.size or 0) / (1024 * 1024)
 
             elif isinstance(self.config_source, LocalConfig):
                 import os

@@ -13,6 +13,7 @@ Module centralising logger configs
 """
 
 import logging
+import re
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
@@ -352,6 +353,11 @@ class StatusWarningHandler(logging.Handler):
             )
         except Exception:  # pylint: disable=broad-except
             self.handleError(record)
+
+
+def sanitize_url_credentials(message: str) -> str:
+    """Mask credentials embedded in URLs (e.g., https://token@host)"""
+    return re.sub(r"https://[^@]+@", "https://****@", message)
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
