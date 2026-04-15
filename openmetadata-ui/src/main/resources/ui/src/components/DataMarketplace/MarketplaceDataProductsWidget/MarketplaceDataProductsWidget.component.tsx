@@ -148,7 +148,8 @@ const MarketplaceDataProductsWidget = ({
         return;
       }
       navigate(
-        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`
+        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`,
+        { state: { fromMarketplace: true } }
       );
     },
     [navigate, isEditView, dataProductBasePath]

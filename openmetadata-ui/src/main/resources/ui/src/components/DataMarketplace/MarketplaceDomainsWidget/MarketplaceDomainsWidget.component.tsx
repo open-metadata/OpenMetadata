@@ -140,7 +140,9 @@ const MarketplaceDomainsWidget = ({
       if (isEditView) {
         return;
       }
-      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''), {
+        state: { fromMarketplace: true },
+      });
     },
     [navigate, isEditView]
   );

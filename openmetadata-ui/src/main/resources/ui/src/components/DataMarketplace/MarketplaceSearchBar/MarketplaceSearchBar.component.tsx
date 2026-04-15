@@ -126,7 +126,8 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
     (dp: DataProduct) => {
       setIsOpen(false);
       navigate(
-        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`
+        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`,
+        { state: { fromMarketplace: true } }
       );
     },
     [navigate, dataProductBasePath]
@@ -135,7 +136,9 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const handleDomainClick = useCallback(
     (domain: Domain) => {
       setIsOpen(false);
-      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''), {
+        state: { fromMarketplace: true },
+      });
     },
     [navigate]
   );
