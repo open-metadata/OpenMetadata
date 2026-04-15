@@ -691,8 +691,6 @@ def generate_entity_link(dbt_test):
     test_metadata.kwargs['model'] for generic tests. Using this explicit reference
     is more reliable than guessing based on upstream order (fixes issue #24636).
     """
-    import re
-
     manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
     upstream_list = dbt_test.get(DbtCommonEnum.UPSTREAM.value, [])
 
@@ -708,8 +706,12 @@ def generate_entity_link(dbt_test):
         if isinstance(kwargs, dict):
             model_str = kwargs.get("model", "")
             if model_str:
-                # Extract table name from ref('table_name') pattern
-                match = re.search(r"ref\('([^']+)'\)", str(model_str))
+                # Extract table name from ref() pattern
+                # Handles: ref('table'), ref("table"), ref('pkg', 'table'), ref("pkg", "table")
+                match = re.search(
+                    r"ref\(['\"](?:[^'\"]+['\"],\s*['\"])?([^'\"]+)['\"]\)",
+                    str(model_str),
+                )
                 if match:
                     primary_table_name = match.group(1)
                     # Find the matching FQN in upstream_list
