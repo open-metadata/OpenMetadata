@@ -198,21 +198,20 @@ class HiveSource(CommonDbSourceService):
     ) -> List[str]:
         partition_keys: List[str] = []
         in_partition_section = False
-        with self.engine.connect() as conn:
-            rows = conn.execute(
-                text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
-            )
-            for row in rows:
-                col_name = row[0].strip() if row[0] else ""
-                if col_name == "# Partition Information":
-                    in_partition_section = True
+        rows = self.connection.execute(
+            text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
+        )
+        for row in rows:
+            col_name = row[0].strip() if row[0] else ""
+            if col_name == "# Partition Information":
+                in_partition_section = True
+                continue
+            if in_partition_section:
+                if not col_name or col_name.startswith("# Detailed"):
+                    break
+                if col_name.startswith("#"):
                     continue
-                if in_partition_section:
-                    if not col_name or col_name.startswith("# Detailed"):
-                        break
-                    if col_name.startswith("#"):
-                        continue
-                    partition_keys.append(col_name)
+                partition_keys.append(col_name)
         return partition_keys
 
     def get_table_partition_details(  # pylint: disable=unused-argument
