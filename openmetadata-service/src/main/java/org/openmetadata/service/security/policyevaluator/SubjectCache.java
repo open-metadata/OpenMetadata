@@ -54,22 +54,37 @@ public class SubjectCache {
     }
   }
 
-  private static final LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
+  private static volatile LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(2, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserPoliciesLoader());
 
-  // Cache for user context to avoid expensive database lookups on every authorization
-  private static final LoadingCache<String, User> USER_CONTEXT_CACHE =
+  private static volatile LoadingCache<String, User> USER_CONTEXT_CACHE =
       CacheBuilder.newBuilder()
-          .maximumSize(5000) // Reduced from 10K — User objects are moderate size
+          .maximumSize(5000)
           .expireAfterWrite(15, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserContextLoader());
 
   private SubjectCache() {}
+
+  public static void initCaches(int maxEntries, int ttlSeconds) {
+    USER_POLICIES_CACHE =
+        CacheBuilder.newBuilder()
+            .maximumSize(maxEntries)
+            .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+            .recordStats()
+            .build(new UserPoliciesLoader());
+    USER_CONTEXT_CACHE =
+        CacheBuilder.newBuilder()
+            .maximumSize(maxEntries)
+            .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+            .recordStats()
+            .build(new UserContextLoader());
+    LOG.info("Auth caches initialized: maxEntries={}, ttl={}s", maxEntries, ttlSeconds);
+  }
 
   public static List<PolicyContext> getPolicies(String userName) {
     try {

@@ -162,6 +162,21 @@ qos:
   maxSuspendedRequestCount: ${QOS_MAX_SUSPENDED_REQUEST_COUNT:-1000}
   maxSuspendSeconds: ${QOS_MAX_SUSPEND_SECONDS:-30}
 
+cache:
+  # Default limits for caches without specific overrides
+  defaultMaxSizeBytes: ${CACHE_DEFAULT_MAX_SIZE_BYTES:-52428800}      # 50 MB
+  defaultTTLSeconds: ${CACHE_DEFAULT_TTL_SECONDS:-300}                # 5 minutes
+  # Entity JSON caches (CACHE_WITH_ID, CACHE_WITH_NAME) — weight-based eviction.
+  # Entity JSON can range from 1KB to 2MB+. Increase on high-memory deployments for better hit rates.
+  entityCacheMaxSizeBytes: ${ENTITY_CACHE_MAX_SIZE_BYTES:-104857600}  # 100 MB
+  entityCacheTTLSeconds: ${ENTITY_CACHE_TTL_SECONDS:-30}
+  # Lineage graph cache — count-based (put() rejects graphs above mediumGraphThreshold)
+  lineageCacheMaxEntries: ${LINEAGE_CACHE_MAX_ENTRIES:-50}
+  lineageCacheTTLSeconds: ${LINEAGE_CACHE_TTL_SECONDS:-300}
+  # Auth caches (user context + policies)
+  authCacheMaxEntries: ${AUTH_CACHE_MAX_ENTRIES:-5000}
+  authCacheTTLSeconds: ${AUTH_CACHE_TTL_SECONDS:-120}
+
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 # Set LOG_FORMAT=json for structured logs. The default text format preserves legacy output.

@@ -217,6 +217,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -301,29 +302,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
 
-  private static final long ENTITY_CACHE_MAX_WEIGHT_BYTES = 100 * 1024 * 1024L; // 100 MB hard cap
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
   // String.length() * 2 + 40 is the exact Java heap cost of a String (UTF-16 encoding + header).
   // This is not an estimate — it's how java.lang.String is laid out in memory.
-  public static final LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
-      CacheBuilder.newBuilder()
-          .maximumWeight(ENTITY_CACHE_MAX_WEIGHT_BYTES)
-          .weigher(
-              (Weigher<Pair<String, String>, String>)
-                  (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
-          .expireAfterWrite(30, TimeUnit.SECONDS)
-          .recordStats()
-          .build(new EntityLoaderWithName());
-  public static final LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
-      CacheBuilder.newBuilder()
-          .maximumWeight(ENTITY_CACHE_MAX_WEIGHT_BYTES)
-          .weigher(
-              (Weigher<Pair<String, UUID>, String>)
-                  (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
-          .expireAfterWrite(30, TimeUnit.SECONDS)
-          .recordStats()
-          .build(new EntityLoaderWithId());
+  // These caches are rebuilt via initCaches() once CacheConfiguration is available at startup.
+  public static volatile LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
+      buildEntityNameCache(100 * 1024 * 1024L, 30);
+  public static volatile LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
+      buildEntityIdCache(100 * 1024 * 1024L, 30);
+
+  /**
+   * Rebuild entity caches with values from {@link CacheConfiguration}. Called once during app
+   * startup after the configuration is loaded. Safe to call multiple times — subsequent calls
+   * replace the caches (old entries are lost, which is fine during initialization).
+   */
+  public static void initCaches(CacheConfiguration config) {
+    CACHE_WITH_NAME =
+        buildEntityNameCache(
+            config.getEntityCacheMaxSizeBytes(), config.getEntityCacheTTLSeconds());
+    CACHE_WITH_ID =
+        buildEntityIdCache(config.getEntityCacheMaxSizeBytes(), config.getEntityCacheTTLSeconds());
+    LOG.info(
+        "Entity caches initialized: maxWeight={}MB, ttl={}s",
+        config.getEntityCacheMaxSizeBytes() / (1024 * 1024),
+        config.getEntityCacheTTLSeconds());
+  }
+
+  private static LoadingCache<Pair<String, String>, String> buildEntityNameCache(
+      long maxWeightBytes, int ttlSeconds) {
+    return CacheBuilder.newBuilder()
+        .maximumWeight(maxWeightBytes)
+        .weigher(
+            (Weigher<Pair<String, String>, String>)
+                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+        .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+        .recordStats()
+        .build(new EntityLoaderWithName());
+  }
+
+  private static LoadingCache<Pair<String, UUID>, String> buildEntityIdCache(
+      long maxWeightBytes, int ttlSeconds) {
+    return CacheBuilder.newBuilder()
+        .maximumWeight(maxWeightBytes)
+        .weigher(
+            (Weigher<Pair<String, UUID>, String>)
+                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+        .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+        .recordStats()
+        .build(new EntityLoaderWithId());
+  }
 
   private static final int DEFAULT_FIELD_FETCH_POOL_SIZE =
       Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
