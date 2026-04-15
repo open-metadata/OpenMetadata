@@ -523,10 +523,7 @@ class HiveUnitTest(TestCase):
             url=types.SimpleNamespace(drivername="hive+mysql")
         )
         mock_connection = Mock()
-        mock_connection.execute.return_value.fetchall.return_value = [
-            ("dt",),
-            ("region",),
-        ]
+        mock_connection.execute.return_value = [("dt",), ("region",)]
         self.hive._connection_map[self.thread_id] = mock_connection
 
         is_partitioned, partition = self.hive.get_table_partition_details(
@@ -542,7 +539,7 @@ class HiveUnitTest(TestCase):
             url=types.SimpleNamespace(drivername="hive+postgres")
         )
         mock_connection = Mock()
-        mock_connection.execute.return_value.fetchall.return_value = [("dt",)]
+        mock_connection.execute.return_value = [("dt",)]
         self.hive._connection_map[self.thread_id] = mock_connection
 
         is_partitioned, partition = self.hive.get_table_partition_details(
@@ -552,6 +549,50 @@ class HiveUnitTest(TestCase):
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition)
         self.assertEqual([c.columnName for c in partition.columns], ["dt"])
+
+    def test_get_table_partition_details_non_partitioned_metastore(self):
+        self.hive.engine = types.SimpleNamespace(
+            url=types.SimpleNamespace(drivername="hive+mysql")
+        )
+        mock_connection = Mock()
+        mock_connection.execute.return_value = []
+        self.hive._connection_map[self.thread_id] = mock_connection
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="non_partitioned", schema_name="sample_schema", inspector=Mock()
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)
+
+    def test_get_table_partition_details_non_partitioned_describe(self):
+        class ConnectionContextManager:
+            def __init__(self, connection):
+                self._connection = connection
+
+            def __enter__(self):
+                return self._connection
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        mock_connection = Mock()
+        mock_connection.execute.return_value = [
+            ("id", "int", None),
+            ("name", "string", None),
+        ]
+
+        self.hive.engine = types.SimpleNamespace(
+            url=types.SimpleNamespace(drivername="hive"),
+            connect=lambda: ConnectionContextManager(mock_connection),
+        )
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="non_partitioned", schema_name="sample_schema", inspector=Mock()
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)
 
     def test_get_table_partition_details_from_describe_formatted(self):
         class ConnectionContextManager:

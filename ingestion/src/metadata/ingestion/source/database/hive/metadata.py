@@ -171,7 +171,51 @@ class HiveSource(CommonDbSourceService):
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
-    def get_table_partition_details(
+    def _build_metastore_partition_query(self, drivername: str) -> str:
+        q = lambda name: f'"{name}"' if drivername == "hive+postgres" else name  # noqa: E731
+        return (
+            f"SELECT pk.{q('PKEY_NAME')}"
+            f" FROM {q('PARTITION_KEYS')} pk"
+            f" JOIN {q('TBLS')} tbl ON pk.{q('TBL_ID')} = tbl.{q('TBL_ID')}"
+            f" JOIN {q('DBS')} db ON tbl.{q('DB_ID')} = db.{q('DB_ID')}"
+            f" WHERE db.{q('NAME')} = :schema AND tbl.{q('TBL_NAME')} = :table_name"
+            f" ORDER BY pk.{q('INTEGER_IDX')}"
+        )
+
+    def _get_partition_keys_from_metastore(
+        self, table_name: str, schema_name: str
+    ) -> List[str]:
+        drivername = getattr(getattr(self.engine, "url", None), "drivername", "")
+        query = self._build_metastore_partition_query(drivername)
+        result = self.connection.execute(
+            text(query),
+            {"table_name": table_name, "schema": schema_name},
+        )
+        return [row[0] for row in result if row and row[0]]
+
+    def _get_partition_keys_from_describe(
+        self, table_name: str, schema_name: str
+    ) -> List[str]:
+        partition_keys: List[str] = []
+        in_partition_section = False
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
+            )
+            for row in rows:
+                col_name = row[0].strip() if row[0] else ""
+                if col_name == "# Partition Information":
+                    in_partition_section = True
+                    continue
+                if in_partition_section:
+                    if not col_name or col_name.startswith("# Detailed"):
+                        break
+                    if col_name.startswith("#"):
+                        continue
+                    partition_keys.append(col_name)
+        return partition_keys
+
+    def get_table_partition_details(  # pylint: disable=unused-argument
         self,
         table_name: str,
         schema_name: str,
@@ -188,51 +232,16 @@ class HiveSource(CommonDbSourceService):
         Returns ``(is_partitioned, TablePartition)`` where ``TablePartition``
         lists all partition key columns with ``COLUMN_VALUE`` interval type.
         """
-        partition_keys: List[str] = []
-        in_partition_section = False
         try:
             drivername = getattr(getattr(self.engine, "url", None), "drivername", "")
             if drivername in {"hive+mysql", "hive+postgres"}:
-                query = (
-                    """
-                    SELECT pk.PKEY_NAME
-                    FROM PARTITION_KEYS pk
-                    JOIN TBLS tbl ON pk.TBL_ID = tbl.TBL_ID
-                    JOIN DBS db ON tbl.DB_ID = db.DB_ID
-                    WHERE db.NAME = :schema AND tbl.TBL_NAME = :table_name
-                    ORDER BY pk.INTEGER_IDX
-                    """
-                    if drivername == "hive+mysql"
-                    else """
-                    SELECT pk."PKEY_NAME"
-                    FROM "PARTITION_KEYS" pk
-                    JOIN "TBLS" tbl ON pk."TBL_ID" = tbl."TBL_ID"
-                    JOIN "DBS" db ON tbl."DB_ID" = db."DB_ID"
-                    WHERE db."NAME" = :schema AND tbl."TBL_NAME" = :table_name
-                    ORDER BY pk."INTEGER_IDX"
-                    """
+                partition_keys = self._get_partition_keys_from_metastore(
+                    table_name, schema_name
                 )
-                rows = self.connection.execute(
-                    text(query),
-                    {"table_name": table_name, "schema": schema_name},
-                ).fetchall()
-                partition_keys = [row[0] for row in rows if row and row[0]]
             else:
-                with self.engine.connect() as conn:
-                    rows = conn.execute(
-                        text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
-                    )
-                    for row in rows:
-                        col_name = row[0].strip() if row[0] else ""
-                        if col_name == "# Partition Information":
-                            in_partition_section = True
-                            continue
-                        if in_partition_section:
-                            if not col_name or col_name.startswith("# Detailed"):
-                                break
-                            if col_name.startswith("#"):
-                                continue
-                            partition_keys.append(col_name)
+                partition_keys = self._get_partition_keys_from_describe(
+                    table_name, schema_name
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
