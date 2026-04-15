@@ -307,8 +307,7 @@ const ServiceEntityTable = ({
           {isDatabaseService &&
             !isCustomizationPage &&
             getBulkEditButton(
-              (servicePermission?.EditAll ?? false) &&
-                !serviceData?.deleted,
+              (servicePermission?.EditAll ?? false) && !serviceData?.deleted,
               handleEditTable
             )}
         </>

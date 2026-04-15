@@ -51,66 +51,58 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(
-  'Setup Service Customization tests',
-  async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+test.beforeAll('Setup Service Customization tests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-    await user.create(apiContext);
-    await user.setAdminRole(apiContext);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await user.create(apiContext);
+  await user.setAdminRole(apiContext);
 
-    await persona.create(apiContext);
-    await databaseService.create(apiContext);
+  await persona.create(apiContext);
+  await databaseService.create(apiContext);
 
-    await user.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/personas/0',
-          value: {
-            id: persona.responseData.id,
-            name: persona.responseData.name,
-            displayName: persona.responseData.displayName,
-            fullyQualifiedName:
-              persona.responseData.fullyQualifiedName,
-            type: 'persona',
-          },
+  await user.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/personas/0',
+        value: {
+          id: persona.responseData.id,
+          name: persona.responseData.name,
+          displayName: persona.responseData.displayName,
+          fullyQualifiedName: persona.responseData.fullyQualifiedName,
+          type: 'persona',
         },
-        {
-          op: 'add',
-          path: '/defaultPersona',
-          value: {
-            id: persona.responseData.id,
-            name: persona.responseData.name,
-            displayName: persona.responseData.displayName,
-            fullyQualifiedName:
-              persona.responseData.fullyQualifiedName,
-            type: 'persona',
-          },
+      },
+      {
+        op: 'add',
+        path: '/defaultPersona',
+        value: {
+          id: persona.responseData.id,
+          name: persona.responseData.name,
+          displayName: persona.responseData.displayName,
+          fullyQualifiedName: persona.responseData.fullyQualifiedName,
+          type: 'persona',
         },
-      ],
-    });
+      },
+    ],
+  });
 
-    await afterAction();
-  }
-);
+  await afterAction();
+});
 
-test.afterAll(
-  'Cleanup Service Customization tests',
-  async ({ browser }) => {
-    test.slow();
+test.afterAll('Cleanup Service Customization tests', async ({ browser }) => {
+  test.slow();
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await databaseService.delete(apiContext);
-    await adminUser.delete(apiContext);
-    await user.delete(apiContext);
-    await persona.delete(apiContext);
-    await afterAction();
-  }
-);
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await databaseService.delete(apiContext);
+  await adminUser.delete(apiContext);
+  await user.delete(apiContext);
+  await persona.delete(apiContext);
+  await afterAction();
+});
 
 test.describe(
   'Service persona customization',
@@ -124,11 +116,7 @@ test.describe(
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
       await personaListResponse;
 
-      await navigateToPersonaWithPagination(
-        adminPage,
-        persona.data.name,
-        true
-      );
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await expect(adminPage.getByText('Service')).toBeVisible();
@@ -310,13 +298,8 @@ test.describe(
         messagingService = {
           create: async () => serviceData,
           visitEntityPage: async (page: Page) => {
-            await settingClick(
-              page,
-              GlobalSettingOptions.MESSAGING
-            );
-            await page
-              .getByTestId(`service-name-${serviceData.name}`)
-              .click();
+            await settingClick(page, GlobalSettingOptions.MESSAGING);
+            await page.getByTestId(`service-name-${serviceData.name}`).click();
             await waitForAllLoadersToDisappear(page);
           },
           delete: async (ctx: unknown) => {
