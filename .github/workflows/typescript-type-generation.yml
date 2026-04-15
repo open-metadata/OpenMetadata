@@ -1,6 +1,7 @@
 name: TypeScript Type Generation
 
 on:
+  merge_group:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
@@ -101,8 +102,11 @@ jobs:
           PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
           INPUT_BRANCH: ${{ github.event.inputs.branch }}
           GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA_VAL: ${{ github.sha }}
         run: |
-          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+          if [ "$EVENT_NAME" == "merge_group" ]; then
+            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
+          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
