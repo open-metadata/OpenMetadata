@@ -24,6 +24,8 @@ public final class DescriptionSanitizer {
 
   private static final PolicyFactory MARKDOWN_POLICY =
       new HtmlPolicyBuilder()
+          // Protocols must be explicitly allowed for URL attributes to work
+          .allowUrlProtocols("http", "https", "mailto", "data")
           // Formatting
           .allowElements(
               "p", "br", "hr", "em", "strong", "b", "i", "u", "s", "del", "ins", "sub", "sup",
