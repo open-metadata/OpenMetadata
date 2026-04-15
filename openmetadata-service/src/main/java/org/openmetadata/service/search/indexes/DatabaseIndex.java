@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.service.Entity;
 
 public record DatabaseIndex(Database database) implements TaggableIndex {
+
   @Override
   public Object getEntity() {
     return database;
@@ -13,6 +15,11 @@ public record DatabaseIndex(Database database) implements TaggableIndex {
   @Override
   public String getEntityTypeName() {
     return Entity.DATABASE;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return Set.of("databaseSchemas");
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
