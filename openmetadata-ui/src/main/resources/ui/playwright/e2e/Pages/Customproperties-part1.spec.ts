@@ -71,9 +71,7 @@ test.describe(
         .serial(`Add update and delete custom properties for ${entity.name}`, () => {
         propertiesList.forEach((property) => {
           test(property, async ({ page }) => {
-            const propertyName = `pw. ${uuid()}_CP-${uuid()} . ${
-              entity.name
-            }:/&^%$#@!`;
+            const propertyName = `pw._CP-${uuid()} . ${entity.name}:/&^%$#@!`;
             await settingClick(
               page,
               entity.entityApiType as SettingOptionsType,
