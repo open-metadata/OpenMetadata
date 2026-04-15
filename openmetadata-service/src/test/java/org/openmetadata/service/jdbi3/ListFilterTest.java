@@ -119,4 +119,15 @@ class ListFilterTest {
     assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
     assertNull(filter.getQueryParams().get("agentType_1"));
   }
+
+  @Test
+  void test_serverIdConditionOnlyAppliesToMcpExecutionTable() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("serverId", "mcp-server-1");
+
+    assertFalse(filter.getCondition("table_entity").contains("serverId = :serverId"));
+    assertEquals(
+        "WHERE mcp_execution_entity.deleted = FALSE AND serverId = :serverId",
+        filter.getCondition("mcp_execution_entity"));
+  }
 }
