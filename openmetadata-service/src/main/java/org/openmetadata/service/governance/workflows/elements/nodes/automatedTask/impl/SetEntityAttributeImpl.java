@@ -51,8 +51,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     }
   }
 
-  private void executeInternal(DelegateExecution execution, WorkflowVariableHandler varHandler)
-      throws Exception {
+  private void executeInternal(DelegateExecution execution, WorkflowVariableHandler varHandler) {
     Map<String, Object> inputNamespaceMap =
         JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
     List<String> entityLinks = WorkflowVariableHandler.getEntityList(inputNamespaceMap, varHandler);
@@ -77,31 +76,53 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     return new BatchContext(entityType, fieldName, fieldValue, userName, impersonatedBy);
   }
 
-  private void processBatch(List<String> entityLinks, BatchContext ctx) throws Exception {
+  private void processBatch(List<String> entityLinks, BatchContext ctx) {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repo =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(ctx.entityType());
     Map<String, EntityInterface> loadedByLink =
         Entity.getEntitiesByLinks(entityLinks, "*", Include.ALL);
+
+    for (String link : entityLinks) {
+      if (!loadedByLink.containsKey(link)) {
+        LOG.warn("[SetEntityAttribute] Entity not found for link: {}", link);
+      }
+    }
+
     Map<String, EntityInterface> existingByFqn = new LinkedHashMap<>();
     for (EntityInterface entity : loadedByLink.values()) {
       existingByFqn.put(entity.getFullyQualifiedName(), entity);
     }
+
     List<EntityInterface> modified = new ArrayList<>();
+    Map<String, EntityInterface> existingForModified = new LinkedHashMap<>();
     for (EntityInterface entity : existingByFqn.values()) {
-      @SuppressWarnings("unchecked")
-      EntityInterface copy = JsonUtils.deepCopy(entity, (Class<EntityInterface>) entity.getClass());
-      EntityFieldUtils.setEntityField(
-          copy,
-          ctx.entityType(),
-          ctx.userName(),
-          ctx.fieldName(),
-          ctx.fieldValue(),
-          false,
-          ctx.impersonatedBy());
-      modified.add(copy);
+      try {
+        @SuppressWarnings("unchecked")
+        EntityInterface copy =
+            JsonUtils.deepCopy(entity, (Class<EntityInterface>) entity.getClass());
+        EntityFieldUtils.setEntityField(
+            copy,
+            ctx.entityType(),
+            ctx.userName(),
+            ctx.fieldName(),
+            ctx.fieldValue(),
+            false,
+            ctx.impersonatedBy());
+        modified.add(copy);
+        existingForModified.put(entity.getFullyQualifiedName(), entity);
+      } catch (Exception e) {
+        LOG.warn(
+            "[SetEntityAttribute] Failed to apply field '{}' to entity '{}': {}",
+            ctx.fieldName(),
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
     }
-    repo.bulkUpdateEntities(modified, existingByFqn, ctx.userName(), true);
+
+    if (!modified.isEmpty()) {
+      repo.bulkUpdateEntitiesForGovernanceWorkflow(modified, existingForModified, ctx.userName());
+    }
   }
 
   private String resolveActualUser(

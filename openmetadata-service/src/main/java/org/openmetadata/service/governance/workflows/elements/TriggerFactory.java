@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements;
 
 import java.util.Map;
+import java.util.Optional;
 import org.openmetadata.schema.governance.workflows.TriggerType;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
@@ -16,7 +17,8 @@ import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicB
 
 public class TriggerFactory {
   public static TriggerInterface createTrigger(WorkflowDefinition workflow) {
-    String triggerWorkflowId = getTriggerWorkflowId(workflow.getFullyQualifiedName());
+    String fqnOrName = resolveWorkflowFqn(workflow);
+    String triggerWorkflowId = getTriggerWorkflowId(fqnOrName);
 
     return switch (TriggerType.fromValue(workflow.getTrigger().getType())) {
       case EVENT_BASED_ENTITY -> new EventBasedEntityTrigger(
@@ -30,17 +32,16 @@ public class TriggerFactory {
           triggerWorkflowId,
           (PeriodicBatchEntityTriggerDefinition) workflow.getTrigger(),
           hasBatchModeNodes(workflow),
-          workflow.getFullyQualifiedName());
+          fqnOrName);
     };
   }
 
-  /**
-   * Check if the workflow contains any nodes with batchMode enabled. When batch mode is detected,
-   * the trigger creates a single workflow execution per batch instead of N parallel executions (one
-   * per entity), preventing race conditions from parallel commits in batch sinks (e.g., Git sync).
-   *
-   * <p>Per the schema, batchMode defaults to true when not explicitly set.
-   */
+  private static String resolveWorkflowFqn(WorkflowDefinition workflow) {
+    return Optional.ofNullable(workflow.getFullyQualifiedName())
+        .filter(s -> !s.isBlank())
+        .orElse(workflow.getName());
+  }
+
   private static boolean hasBatchModeNodes(WorkflowDefinition workflow) {
     if (workflow.getNodes() == null) {
       return false;
