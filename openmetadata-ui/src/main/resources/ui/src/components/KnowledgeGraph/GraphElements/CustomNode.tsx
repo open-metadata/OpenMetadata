@@ -12,6 +12,7 @@
  */
 
 import { NodeData } from '@antv/g6';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import './custom-node.less';
 
@@ -31,30 +32,34 @@ function CustomNode({ nodeData }: Readonly<CustomNodeProps>) {
       }`}
       data-node-id={nodeData.id}
       data-testid={`node-${nodeData.data?.label as string}`}>
-      <div className="entity-name-container">
-        <div className="icon-container">
+      <Box align="center" className="tw:overflow-hidden" gap={2}>
+        <Box align="center" className="tw:text-tertiary" justify="center">
           {getEntityIcon(nodeData.data?.type as string, '', {
             width: 12,
             height: 12,
           })}
-        </div>
-        <div
-          className="asset-name"
+        </Box>
+        <Typography
           data-testid="label"
-          title={nodeData.data?.label as string}>
+          ellipsis={{
+            tooltip: nodeData.data?.label as string,
+            rows: 1,
+          }}
+          weight="semibold">
           {nodeData.data?.label as string}
-        </div>
-      </div>
-      <div
+        </Typography>
+      </Box>
+      <Typography
         className="asset-type-tag"
         data-testid="type-tag"
+        size="text-xs"
         style={
           colorMain && colorLight
             ? { color: colorMain, backgroundColor: colorLight, border: 'none' }
             : undefined
         }>
         {nodeData.data?.type as string}
-      </div>
+      </Typography>
     </div>
   );
 }

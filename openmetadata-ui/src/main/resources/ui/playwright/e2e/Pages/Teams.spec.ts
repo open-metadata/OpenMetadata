@@ -387,7 +387,7 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page);
+      await hardDeleteTeam(page, teamDetails?.updatedName ?? teamDetails.name);
     });
   });
 
@@ -501,7 +501,10 @@ test.describe('Teams Page', () => {
       team.responseData?.['displayName']
     );
 
-    await hardDeleteTeam(page);
+    await hardDeleteTeam(
+      page,
+      team.responseData?.['displayName'] ?? team.data.name
+    );
     await afterAction();
   });
 
@@ -765,7 +768,7 @@ test.describe('Teams Page', () => {
       page.getByTestId('team-hierarchy-table').getByRole('link')
     ).toContainText(team2Details.displayName);
 
-    await hardDeleteTeam(page);
+    await hardDeleteTeam(page, team1Details.name);
   });
 
   test('Total User Count should be rendered', async ({ page }) => {
