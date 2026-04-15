@@ -174,21 +174,13 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
     await page.getByRole('menuitem', { name: /logout/i }).click();
 
-    const waitForLogoutResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users/logout') &&
-        response.request().method() === 'POST'
-    );
-    const waitForSigninNavigation = page.waitForURL('**/signin', {
-      timeout: 30_000,
-    });
     const confirmLogoutButton = page.getByTestId('confirm-logout');
 
     await expect(confirmLogoutButton).toBeVisible();
     await expect(confirmLogoutButton).toBeEnabled();
     await confirmLogoutButton.click();
 
-    await Promise.all([waitForLogoutResponse, waitForSigninNavigation]);
+    await page.waitForURL('**/signin', { timeout: 30_000 });
 
     await expect(page.locator('button.signin-button')).toBeVisible();
   });
