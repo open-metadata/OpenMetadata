@@ -144,11 +144,13 @@ export const renderFieldElement = (
     renderItem,
     onChange,
     onBlur,
+    onFocus,
     onSelectionChange,
     onItemInserted,
     onItemCleared,
     onSearchChange,
     onSelect,
+    size: _size,
     selectedItems: _selectedItems,
     options: _options,
     items: _items,
@@ -199,6 +201,7 @@ export const renderFieldElement = (
         placeholder={placeholder}
         selectedItems={selectedAutocompleteItems}
         {...rest}
+        onFocus={onFocus}
         onItemCleared={handleClear}
         onItemInserted={handleInsert}
         onSearchChange={onSearchChange}>

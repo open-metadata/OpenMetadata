@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { FC, ReactNode } from 'react';
+import type { FC, FocusEventHandler, ReactNode } from 'react';
 import type { Key } from 'react-aria-components';
 import type { RegisterOptions } from 'react-hook-form';
 import type { SelectItemType } from '@/components/base/select/select';
@@ -86,7 +86,7 @@ export interface FieldPropsMap {
   labels?: IconPickerFieldLabels;
   multiple?: boolean;
   onBlur?: () => void;
-  onFocus?: () => void;
+  onFocus?: FocusEventHandler;
   onChange?: (value: string) => void;
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;

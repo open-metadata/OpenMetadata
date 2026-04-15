@@ -92,6 +92,7 @@ export interface AutocompleteProps
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemInserted?: (key: Key) => void;
   onItemCleared?: (key: Key) => void;
+  onFocus?: FocusEventHandler;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
@@ -471,11 +472,7 @@ export const AutocompleteBase = ({
                   size="sm"
                   onFocus={(event) => {
                     onResize();
-                    (
-                      onFocus as
-                        | ((focusEvent: typeof event) => void)
-                        | undefined
-                    )?.(event);
+                    onFocus?.(event);
                   }}
                   onPointerEnter={onResize}
                 />
