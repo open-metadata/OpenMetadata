@@ -12,6 +12,7 @@
 name: OpenMetadata Service Unit Tests
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
     branches:
