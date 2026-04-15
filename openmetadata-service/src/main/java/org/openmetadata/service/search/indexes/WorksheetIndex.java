@@ -8,11 +8,10 @@ import java.util.Set;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex {
+public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex, DataAssetIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
@@ -27,54 +26,47 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.WORKSHEET;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
-    List<String> columnsWithChildrenName = new ArrayList<>();
+  @Override
+  public Object getIndexServiceType() {
+    return worksheet.getServiceType();
+  }
 
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (worksheet.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
       parseColumns(worksheet.getColumns(), cols, null);
 
+      List<String> columnsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenColumn col : cols) {
         columnsWithChildrenName.add(col.getName());
         if (col.getTags() != null) {
-          tagsWithChildren.add(col.getTags());
+          childTags.add(col.getTags());
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
-      // Add flat column names field for fuzzy search to avoid array-based clause multiplication
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
       doc.put("columnDescriptionStatus", getColumnDescriptionStatus(worksheet));
+      mergeChildTags(doc, childTags);
 
-      // Transform column extensions to typed custom properties
       SearchIndexUtils.transformColumnExtensions(doc, Entity.TABLE_COLUMN);
     }
 
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.WORKSHEET, worksheet));
-    tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream()
-            .flatMap(List::stream)
-            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    Map<String, Object> commonAttributes = getCommonAttributesMap(worksheet, Entity.WORKSHEET);
-    doc.putAll(commonAttributes);
-    doc.put("tags", flattenedTagList);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", worksheet.getServiceType());
-    doc.put("service", getEntityWithDisplayName(worksheet.getService()));
     doc.put("spreadsheet", getEntityWithDisplayName(worksheet.getSpreadsheet()));
     doc.put("worksheetId", worksheet.getWorksheetId());
     doc.put("index", worksheet.getIndex());
     doc.put("rowCount", worksheet.getRowCount());
     doc.put("columnCount", worksheet.getColumnCount());
     doc.put("isHidden", worksheet.getIsHidden());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(worksheet.getEntityReference()));
     return doc;
   }
 

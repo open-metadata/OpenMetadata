@@ -33,9 +33,19 @@ interface GraphApiEdge {
   label: string;
 }
 
+interface GraphFilterOption {
+  id: string;
+  label: string;
+  count: number;
+}
+
 interface GraphApiResponse {
   nodes: GraphApiNode[];
   edges: GraphApiEdge[];
+  filterOptions?: {
+    entityTypes: GraphFilterOption[];
+    relationshipTypes: GraphFilterOption[];
+  };
 }
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -59,31 +69,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
             id: EntityDataClass.user1.responseData.id,
           },
           path: '/owners/0',
-        },
-        {
-          op: 'add',
-          value: {
-            tagFQN: 'PersonalData.Personal',
-          },
-          path: '/tags/0',
-        },
-        {
-          op: 'add',
-          value: {
-            tagFQN: 'Tier.Tier1',
-          },
-          path: '/tags/1',
-        },
-        {
-          op: 'add',
-          value: {
-            appliedDate: Date.now(),
-            expiryDate: Date.now() + 1000 * 60 * 60 * 24 * 30, // 30 days from now
-            tagLabel: {
-              tagFQN: 'Certification.Gold',
-            },
-          },
-          path: '/certification',
         },
         {
           op: 'add',
@@ -218,54 +203,47 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       page.locator('[data-testid="knowledge-graph-canvas"]')
     ).toBeVisible();
 
-    // The controls toolbar (position:absolute, z-index:1000) covers the top of the
-    // canvas. We must pick a node whose center is below it; otherwise page.mouse.move
-    // delivers the pointer event to the toolbar, not the G6 node, and no highlight fires.
-    const controlsBox = await page
-      .locator('[data-testid="knowledge-graph-controls"]')
-      .boundingBox();
-    const controlsBottom = controlsBox ? controlsBox.y + controlsBox.height : 0;
+    // Wait for some time to ensure G6 has applied the fit-screen transformation and nodes are in their final positions
+    // eslint-disable-next-line playwright/no-wait-for-timeout
+    await page.waitForTimeout(2000);
 
-    let targetNode: GraphApiNode | undefined;
+    let targetNode = graphData.nodes.find((n) => n.type === 'databaseSchema');
     let targetBox: {
       x: number;
       y: number;
       width: number;
       height: number;
-    } | null = null;
-
-    for (const node of graphData.nodes.filter((n) => n.type !== 'table')) {
-      const box = await page
-        .locator(`[data-testid="node-${node.label}"]`)
-        .boundingBox();
-      if (box && box.y + box.height / 2 > controlsBottom) {
-        targetNode = node;
-        targetBox = box;
-        break;
-      }
-    }
+    } | null = await page
+      .locator(`[data-testid="node-${targetNode?.label}"]`)
+      .boundingBox();
 
     if (!targetNode || !targetBox) {
-      throw new Error('No non-table node found below the controls bar');
+      throw new Error('No databaseSchema node found below the controls bar');
     }
 
-    const nodeLocator = page.locator(
-      `[data-testid="node-${targetNode.label}"]`
-    );
-
-    await expect(nodeLocator).not.toHaveClass(/highlighted/);
+    await expect(
+      page.locator(`[data-testid="node-${targetNode.label}"]`)
+    ).not.toHaveClass(/highlighted/);
 
     await page.mouse.move(
       targetBox.x + targetBox.width / 2,
       targetBox.y + targetBox.height / 2
     );
 
-    await expect(nodeLocator).toHaveClass(/highlighted/);
+    await expect(
+      page.locator(`[data-testid="node-${targetNode.label}"]`)
+    ).toHaveClass(/highlighted/);
+
+    const canvasBox = await page
+      .locator('[data-testid="knowledge-graph-canvas"]')
+      .boundingBox();
 
     // Move mouse away; G6 fires node:pointerleave → clearAllHighlights()
-    await page.mouse.move(0, 0);
+    await page.mouse.move(canvasBox?.x ?? 0, canvasBox?.y ?? 0);
 
-    await expect(nodeLocator).not.toHaveClass(/highlighted/);
+    await expect(
+      page.locator(`[data-testid="node-${targetNode.label}"]`)
+    ).not.toHaveClass(/highlighted/);
   });
 
   test('Verify entity summary panel opens when a node is clicked', async ({
@@ -479,6 +457,363 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       await expect(
         page.locator('[data-testid^="node-"]').first()
       ).toBeInViewport();
+    });
+  });
+
+  test('Verify entity type filter dropdown filters graph data and triggers API call', async ({
+    page,
+  }) => {
+    const graphDataResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response.url().includes(`entityId=${table.entityResponseData.id}`)
+    );
+
+    await page.goto(
+      `/table/${getEncodedFqn(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      )}/knowledge_graph`
+    );
+
+    const graphResponse = await graphDataResponse;
+    const graphData = (await graphResponse.json()) as GraphApiResponse;
+
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+
+    if (!graphData.filterOptions?.entityTypes.length) {
+      throw new Error('No entity type filter options returned by API');
+    }
+
+    const controls = page.locator('[data-testid="knowledge-graph-controls"]');
+
+    await test.step('Verify entity type dropdown opens and lists all options', async () => {
+      await controls.getByRole('button', { name: 'Entity Type' }).click();
+
+      for (const option of graphData.filterOptions!.entityTypes) {
+        await expect(
+          page.getByRole('menuitemcheckbox', {
+            name: `${option.label} (${option.count})`,
+            exact: true,
+          })
+        ).toBeVisible();
+      }
+
+      await page.keyboard.press('Escape');
+    });
+
+    await test.step('Verify selecting an entity type triggers a filtered API call', async () => {
+      const firstOption = graphData.filterOptions!.entityTypes[0];
+
+      const filteredResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/rdf/graph/explore') &&
+          response.url().includes('entityTypes=')
+      );
+
+      await controls.getByRole('button', { name: 'Entity Type' }).click();
+
+      await page
+        .getByRole('menuitemcheckbox', {
+          name: `${firstOption.label} (${firstOption.count})`,
+          exact: true,
+        })
+        .click();
+
+      await page.keyboard.press('Escape');
+
+      const response = await filteredResponse;
+
+      expect(response.url()).toContain('entityTypes=');
+
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify entity type button label shows selection count', async () => {
+      await expect(
+        controls.getByRole('button', { name: 'Entity Type (1)' })
+      ).toBeVisible();
+    });
+  });
+
+  test('Verify relationship type filter dropdown filters graph data and triggers API call', async ({
+    page,
+  }) => {
+    const graphDataResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response.url().includes(`entityId=${table.entityResponseData.id}`)
+    );
+
+    await page.goto(
+      `/table/${getEncodedFqn(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      )}/knowledge_graph`
+    );
+
+    const graphResponse = await graphDataResponse;
+    const graphData = (await graphResponse.json()) as GraphApiResponse;
+
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+
+    if (!graphData.filterOptions?.relationshipTypes.length) {
+      throw new Error('No relationship type filter options returned by API');
+    }
+
+    const controls = page.locator('[data-testid="knowledge-graph-controls"]');
+
+    await test.step('Verify relationship type dropdown opens and lists all options', async () => {
+      await controls.getByRole('button', { name: 'Relationship Type' }).click();
+
+      for (const option of graphData.filterOptions!.relationshipTypes) {
+        await expect(
+          page.getByRole('menuitemcheckbox', {
+            name: `${option.label} (${option.count})`,
+            exact: true,
+          })
+        ).toBeVisible();
+      }
+
+      await page.keyboard.press('Escape');
+    });
+
+    await test.step('Verify selecting a relationship type triggers a filtered API call', async () => {
+      const firstOption = graphData.filterOptions!.relationshipTypes[0];
+
+      const filteredResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/rdf/graph/explore') &&
+          response.url().includes('relationshipTypes=')
+      );
+
+      await controls.getByRole('button', { name: 'Relationship Type' }).click();
+
+      await page
+        .getByRole('menuitemcheckbox', {
+          name: `${firstOption.label} (${firstOption.count})`,
+          exact: true,
+        })
+        .click();
+
+      await page.keyboard.press('Escape');
+
+      const response = await filteredResponse;
+
+      expect(response.url()).toContain('relationshipTypes=');
+
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify relationship type button label shows selection count', async () => {
+      await expect(
+        controls.getByRole('button', { name: 'Relationship Type (1)' })
+      ).toBeVisible();
+    });
+  });
+
+  test('Verify Clear All button resets all active filters', async ({
+    page,
+  }) => {
+    const graphDataResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response.url().includes(`entityId=${table.entityResponseData.id}`)
+    );
+
+    await page.goto(
+      `/table/${getEncodedFqn(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      )}/knowledge_graph`
+    );
+
+    await graphDataResponse;
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+
+    const controls = page.locator('[data-testid="knowledge-graph-controls"]');
+    const layoutTabs = page.locator('[data-testid="layout-tabs"]');
+
+    await test.step('Verify Clear All is not visible at default filter state', async () => {
+      await expect(
+        controls.getByRole('button', { name: 'Clear All' })
+      ).not.toBeVisible();
+    });
+
+    await test.step('Activate filters by switching to Radial layout and increasing depth', async () => {
+      await layoutTabs.getByRole('tab', { name: 'Radial' }).click();
+
+      await expect(
+        controls.getByRole('button', { name: 'Clear All' })
+      ).toBeVisible();
+
+      const depth2Response = page.waitForResponse(
+        (response) =>
+          response.url().includes('/rdf/graph/explore') &&
+          response.url().includes('depth=2')
+      );
+
+      await page
+        .locator('[data-testid="depth-slider"] input[type="range"]')
+        .press('ArrowRight');
+
+      await depth2Response;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify Clear All resets layout to Hierarchical and hides the button', async () => {
+      const resetResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/rdf/graph/explore') &&
+          response.url().includes(`entityId=${table.entityResponseData.id}`)
+      );
+
+      await controls.getByRole('button', { name: 'Clear All' }).click();
+
+      await resetResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        layoutTabs.getByRole('tab', { name: 'Hierarchical' })
+      ).toHaveAttribute('aria-selected', 'true');
+
+      await expect(
+        controls.getByRole('button', { name: 'Clear All' })
+      ).not.toBeVisible();
+    });
+  });
+
+  test('Verify Export Graph panel shows all format options and triggers export API calls', async ({
+    page,
+  }) => {
+    const graphDataResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response.url().includes(`entityId=${table.entityResponseData.id}`)
+    );
+
+    await page.goto(
+      `/table/${getEncodedFqn(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      )}/knowledge_graph`
+    );
+
+    await graphDataResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await test.step('Verify export button is visible', async () => {
+      await expect(
+        page.locator('[data-testid="knowledge-graph-export"]')
+      ).toBeVisible();
+    });
+
+    await test.step('Verify export dropdown shows only supported export format options', async () => {
+      await page.locator('[data-testid="knowledge-graph-export"]').click();
+
+      await expect(
+        page.getByRole('menuitemradio', { name: 'PNG' })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('menuitemradio', { name: 'JSON-LD' })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('menuitemradio', { name: 'Turtle (.ttl)' })
+      ).toBeVisible();
+      await expect(
+        page.getByRole('menuitemradio', { name: 'SVG' })
+      ).toHaveCount(0);
+
+      await page.keyboard.press('Escape');
+    });
+
+    await test.step('Verify JSON-LD export sends a request to the export API endpoint', async () => {
+      const exportRequest = page.waitForRequest(
+        (request) =>
+          request.url().includes('/rdf/graph/explore/export') &&
+          request.url().includes('format=jsonld')
+      );
+
+      await page.locator('[data-testid="knowledge-graph-export"]').click();
+      await page.getByRole('menuitemradio', { name: 'JSON-LD' }).click();
+
+      const request = await exportRequest;
+
+      expect(request.url()).toContain('format=jsonld');
+    });
+
+    await test.step('Verify Turtle RDF export sends a request to the export API endpoint', async () => {
+      const exportRequest = page.waitForRequest(
+        (request) =>
+          request.url().includes('/rdf/graph/explore/export') &&
+          request.url().includes('format=turtle')
+      );
+
+      await page.locator('[data-testid="knowledge-graph-export"]').click();
+      await page.getByRole('menuitemradio', { name: 'Turtle (.ttl)' }).click();
+
+      const request = await exportRequest;
+
+      expect(request.url()).toContain('format=turtle');
+    });
+  });
+
+  test('Verify clicking canvas background deselects node and closes entity summary panel', async ({
+    page,
+  }) => {
+    const graphDataResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response.url().includes(`entityId=${table.entityResponseData.id}`)
+    );
+
+    await page.goto(
+      `/table/${getEncodedFqn(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      )}/knowledge_graph`
+    );
+
+    const graphResponse = await graphDataResponse;
+    const graphData = (await graphResponse.json()) as GraphApiResponse;
+
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+
+    await page.locator('[data-testid="fit-screen"]').click();
+
+    const clickableNode = graphData.nodes.find((n) => n.fullyQualifiedName);
+
+    if (!clickableNode) {
+      throw new Error('Expected at least one node with fullyQualifiedName');
+    }
+
+    await test.step('Click a node to open the entity summary panel', async () => {
+      await page.locator(`[data-testid="node-${clickableNode.label}"]`).click();
+
+      await expect(
+        page.locator('[data-testid="entity-summary-panel-container"]')
+      ).toBeVisible();
+    });
+
+    await test.step('Click canvas background to close the entity summary panel', async () => {
+      const canvasBox = await page
+        .locator('[data-testid="knowledge-graph-canvas"]')
+        .boundingBox();
+
+      expect(canvasBox).not.toBeNull();
+
+      await page.mouse.click(canvasBox!.x + 5, canvasBox!.y + 5);
+
+      await expect(
+        page.locator('[data-testid="entity-summary-panel-container"]')
+      ).not.toBeVisible();
+    });
+
+    await test.step('Verify the entity summary panel can be reopened after deselection', async () => {
+      await page.locator(`[data-testid="node-${clickableNode.label}"]`).click();
+
+      await expect(
+        page.locator('[data-testid="entity-summary-panel-container"]')
+      ).toBeVisible();
     });
   });
 });

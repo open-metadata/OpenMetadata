@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script nonce="${cspNonce}">
+      window.BASE_PATH = '${basePath}';
+    </script>
+    <link rel="shortcut icon" href="${basePath}favicon.png" type="image/png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="${basePath}favicons/favicon-32x32.png" />
+    <link rel="manifest" href="${basePath}manifest.json" />
+    <script nonce="${cspNonce}">
+      let images = [
+        '${basePath}images/governance.png',
+        '${basePath}images/data-collaboration.png',
+      ];
+      images.forEach((image) => {
+        let img = new Image();
+        img.loading = 'eager';
+        img.src = image;
+      });
+    </script>
+    <script id="google-tag-manager" nonce="${cspNonce}">
+      let isSandbox = location.host === 'sandbox.open-metadata.org';
+      if (isSandbox) {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          'gtm.start': new Date().getTime(),
+          event: 'gtm.js'
+        });
+        const gtmScript = document.createElement('script');
+        gtmScript.async = true;
+        gtmScript.setAttribute('nonce', '${cspNonce}');
+        gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
+        document.head.appendChild(gtmScript);
+      }
+    </script>
+    <title>OpenMetadata</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
