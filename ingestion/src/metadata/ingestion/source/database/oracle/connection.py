@@ -19,7 +19,7 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 import oracledb
-from oracledb.exceptions import DatabaseError
+from oracledb.exceptions import DatabaseError, ProgrammingError
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
@@ -75,14 +75,24 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         try:
             if self.service_connection.instantClientDirectory:
                 logger.info(
-                    f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}"
+                    "Initializing Oracle thick client at"
+                    f" {self.service_connection.instantClientDirectory}"
                 )
                 os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
                 oracledb.init_oracle_client(
                     lib_dir=self.service_connection.instantClientDirectory
                 )
+        except ProgrammingError:
+            logger.debug("Oracle thick client already initialized")
         except DatabaseError as err:
-            logger.info(f"Could not initialize Oracle thick client: {err}")
+            logger.warning(
+                f"Could not initialize Oracle thick client: {err}. "
+                "Falling back to thin mode. If your Oracle server requires "
+                "Native Network Encryption (NNE), thick mode with Oracle "
+                "Instant Client is required — thin mode cannot negotiate NNE. "
+                "Ensure the Instant Client libraries are installed at the "
+                "configured path."
+            )
 
         return create_generic_db_connection(
             connection=self.service_connection,

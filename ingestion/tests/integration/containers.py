@@ -15,6 +15,7 @@ from typing import Optional
 from testcontainers.core.network import Network
 from testcontainers.minio import MinioContainer
 from testcontainers.mysql import MySqlContainer
+from testcontainers.oracle import OracleDbContainer
 
 
 # ------------------------------------------------------------
@@ -30,6 +31,23 @@ class MySqlContainerConfigs:
     dbname: str = "db"
     port: int = 3306
     container_name: str = "test-db"
+    exposed_port: Optional[int] = None
+
+    def with_exposed_port(self, container):
+        self.exposed_port = container.get_exposed_port(self.port)
+
+
+@dataclass
+class OracleContainerConfigs:
+    """Oracle Configurations"""
+
+    image: str = "gvenzl/oracle-free:23-slim-faststart"
+    oracle_password: str = "test"
+    username: str = "test"
+    password: str = "test"
+    port: int = 1521
+    dbname: str = "test"
+    container_name: str = "test-oracle"
     exposed_port: Optional[int] = None
 
     def with_exposed_port(self, container):
@@ -68,6 +86,20 @@ def get_mysql_container(mysql_config: MySqlContainerConfigs):
         }
     )
     container.with_name(mysql_config.container_name)
+
+    return container
+
+
+def get_oracle_container(oracle_config: OracleContainerConfigs):
+    container = OracleDbContainer(
+        image=oracle_config.image,
+        oracle_password=oracle_config.oracle_password,
+        username=oracle_config.username,
+        password=oracle_config.password,
+        port=oracle_config.port,
+        dbname=oracle_config.dbname,
+    )
+    container.with_name(oracle_config.container_name)
 
     return container
 
