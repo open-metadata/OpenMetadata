@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,9 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
@@ -194,7 +198,7 @@ class MigrationUtilTest {
           "nodes": [
             {
               "type": "userTask",
-              "subType": "userApprovalTask",
+              "subType": "unknownCustomTask",
               "name": "ApproveIt",
               "inputNamespaceMap": {
                 "relatedEntity": "global"
@@ -220,7 +224,15 @@ class MigrationUtilTest {
       "setEntityAttributeTask",
       "rollbackEntityTask",
       "sinkTask",
-      "dataCompletenessTask"
+      "dataCompletenessTask",
+      "setEntityCertificationTask",
+      "setGlossaryTermStatusTask",
+      "runAppTask",
+      "createAndRunIngestionPipelineTask",
+      "applyRecognizerFeedbackTask",
+      "rejectRecognizerFeedbackTask",
+      "userApprovalTask",
+      "createRecognizerFeedbackApprovalTask"
     };
 
     for (String subtype : subtypes) {
@@ -856,10 +868,17 @@ class MigrationUtilTest {
     doNothing().when(mockDao).update(eq(workflowId), eq("wf1"), anyString());
     when(repository.getByName(isNull(), eq("wf1"), any())).thenReturn(wf1);
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+    WorkflowHandler mockWorkflowHandler = mock(WorkflowHandler.class);
+    doNothing().when(mockWorkflowHandler).deploy(any());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> wfhMock = mockStatic(WorkflowHandler.class);
+        MockedConstruction<Workflow> ignored = mockConstruction(Workflow.class)) {
       entityMock
           .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
           .thenReturn(repository);
+      wfhMock.when(() -> WorkflowHandler.isInitialized()).thenReturn(false);
+      wfhMock.when(() -> WorkflowHandler.getInstance()).thenReturn(mockWorkflowHandler);
 
       MigrationUtil.migrateWorkflowInputNamespaceMap();
     }

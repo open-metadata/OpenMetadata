@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
@@ -148,20 +149,24 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
     outputParameter.setTarget(EXCEPTION_VARIABLE);
 
+    IOParameter updatedByParameter = new IOParameter();
+    updatedByParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
+    updatedByParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
+
     List<IOParameter> inParameters;
     if (singleExecution) {
       IOParameter entityListParameter = new IOParameter();
       entityListParameter.setSource(ENTITY_LIST_VARIABLE);
       entityListParameter.setTarget(
           getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
-      inParameters = List.of(relatedEntityParameter, entityListParameter);
+      inParameters = List.of(relatedEntityParameter, entityListParameter, updatedByParameter);
     } else {
       IOParameter entityListParameter = new IOParameter();
       entityListParameter.setSourceExpression(
           String.format("${entityToListMap[%s]}", RELATED_ENTITY_VARIABLE));
       entityListParameter.setTarget(
           getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
-      inParameters = List.of(relatedEntityParameter, entityListParameter);
+      inParameters = List.of(relatedEntityParameter, entityListParameter, updatedByParameter);
     }
 
     workflowTrigger.setInParameters(inParameters);
