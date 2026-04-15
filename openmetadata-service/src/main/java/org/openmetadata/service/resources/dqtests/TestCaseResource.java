@@ -713,9 +713,22 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestSuite> logicalSuites =
         resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
     test = addHref(uriInfo, repository.create(uriInfo, test));
-    // Attach the created test case to the requested logical test suites
+    // Attach the created test case to the requested logical test suites.
+    // This is best-effort because the test case has already been persisted at this point.
+    // If suite attachment fails, return the created test case and log the failure.
     for (TestSuite suite : logicalSuites) {
-      repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+      try {
+        repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to attach created test case '{}' ({}) to logical test suite '{}' ({}). "
+                + "Returning the created test case because creation already succeeded.",
+            test.getName(),
+            test.getId(),
+            suite.getFullyQualifiedName() != null ? suite.getFullyQualifiedName() : suite.getName(),
+            suite.getId(),
+            e);
+      }
     }
     return Response.created(test.getHref()).entity(test).build();
   }
@@ -803,7 +816,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       for (TestSuite suite : validatedSuites) {
         List<UUID> ids = suiteToTestCaseIds.get(suite.getFullyQualifiedName());
         if (ids != null) {
-          repository.addTestCasesToLogicalTestSuite(suite, ids);
+          try {
+            repository.addTestCasesToLogicalTestSuite(suite, ids);
+          } catch (Exception e) {
+            LOG.warn(
+                "Best-effort suite attachment failed for logical test suite '{}' ({}) during bulk creation.",
+                suite.getFullyQualifiedName() != null ? suite.getFullyQualifiedName() : suite.getName(),
+                suite.getId(),
+                e);
+          }
         }
       }
     }
@@ -905,7 +926,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     if (response.getStatus() == Response.Status.CREATED) {
       for (TestSuite suite : logicalSuites) {
-        repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+        try {
+          repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to attach created test case '{}' ({}) to logical test suite '{}' ({}). "
+                  + "Returning the created test case because creation already succeeded.",
+              test.getName(),
+              test.getId(),
+              suite.getFullyQualifiedName() != null ? suite.getFullyQualifiedName() : suite.getName(),
+              suite.getId(),
+              e);
+        }
       }
     }
     addHref(uriInfo, response.getEntity());
@@ -1627,28 +1659,36 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           suites.stream().map(TestSuite::getFullyQualifiedName).collect(Collectors.toSet());
       List<String> missingFQNs =
           suiteFQNs.stream().filter(fqn -> !foundFQNs.contains(fqn)).toList();
-      throw new IllegalArgumentException("Logical test suites not found: " + missingFQNs);
+      LOG.warn("Best-effort suite attachment: Logical test suites not found: {}", missingFQNs);
     }
+    List<TestSuite> validSuites = new ArrayList<>();
     for (TestSuite suite : suites) {
       if (Boolean.TRUE.equals(suite.getBasic())) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Cannot attach test case to basic test suite '%s'. "
-                    + "Only logical test suites are accepted.",
-                suite.getFullyQualifiedName()));
+        LOG.warn(
+            "Best-effort suite attachment: Cannot attach test case to basic test suite '{}'. Ignored.",
+            suite.getFullyQualifiedName());
+        continue;
       }
-      // Authorize EDIT_TESTS or EDIT_ALL on each logical suite
-      OperationContext editTestsOp =
-          new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
-      ResourceContextInterface suiteRC = TestCaseResourceContext.builder().entity(suite).build();
-      OperationContext editAllOp =
-          new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
-      authorizer.authorizeRequests(
-          securityContext,
-          List.of(new AuthRequest(editTestsOp, suiteRC), new AuthRequest(editAllOp, suiteRC)),
-          AuthorizationLogic.ANY);
+      try {
+        // Authorize EDIT_TESTS or EDIT_ALL on each logical suite
+        OperationContext editTestsOp =
+            new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+        ResourceContextInterface suiteRC = TestCaseResourceContext.builder().entity(suite).build();
+        OperationContext editAllOp =
+            new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+        authorizer.authorizeRequests(
+            securityContext,
+            List.of(new AuthRequest(editTestsOp, suiteRC), new AuthRequest(editAllOp, suiteRC)),
+            AuthorizationLogic.ANY);
+        validSuites.add(suite);
+      } catch (Exception e) {
+        LOG.warn(
+            "Best-effort suite attachment: Authorization failed for logical test suite '{}'. Ignored.",
+            suite.getFullyQualifiedName(),
+            e);
+      }
     }
-    return suites;
+    return validSuites;
   }
 
   private void validateTestSuiteOps(TestSuite testSuite, SecurityContext securityContext) {
