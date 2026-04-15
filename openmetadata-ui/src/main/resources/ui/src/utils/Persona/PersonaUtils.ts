@@ -86,7 +86,7 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
-      isBeta: true,
+      isBeta: false,
       description: 'Customize left sidebar ',
       icon: ENTITY_ICONS['navigation'],
     },
@@ -99,14 +99,14 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'governance',
       label: i18n.t('label.governance'),
-      isBeta: true,
+      isBeta: false,
       description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS['govern'],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
-      isBeta: true,
+      isBeta: false,
       description:
         'Customize the entity detail page with widget of your preference',
       icon: ENTITY_ICONS['dataAssets'],
