@@ -632,7 +632,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
-    validateLogicalTestSuites(test);
+    validateLogicalTestSuites(test, update);
 
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
@@ -669,18 +669,43 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestSuite(testSuite);
   }
 
-  private void validateLogicalTestSuites(TestCase test) {
+  private void validateLogicalTestSuites(TestCase test, boolean update) {
     List<TestSuite> testSuites = test.getTestSuites();
     if (testSuites == null || testSuites.isEmpty()) return;
 
-    Set<UUID> suiteIds =
+    Set<UUID> existingSuiteIds = new HashSet<>();
+    if (update && test.getId() != null) {
+      existingSuiteIds =
+          findFromRecords(test.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE).stream()
+              .map(CollectionDAO.EntityRelationshipRecord::getId)
+              .collect(Collectors.toSet());
+    }
+
+    List<UUID> newSuiteIds =
         testSuites.stream()
             .filter(ts -> ts != null && ts.getId() != null)
             .map(TestSuite::getId)
-            .collect(Collectors.toSet());
+            .filter(id -> !existingSuiteIds.contains(id))
+            .distinct()
+            .toList();
 
-    for (UUID suiteId : suiteIds) {
-      TestSuite testSuite = Entity.getEntity(TEST_SUITE, suiteId, "basic", NON_DELETED);
+    if (newSuiteIds.isEmpty()) {
+      return;
+    }
+
+    List<EntityReference> suiteReferences =
+        newSuiteIds.stream()
+            .map(id -> new EntityReference().withId(id).withType(TEST_SUITE))
+            .toList();
+    List<TestSuite> fetchedSuites = Entity.getEntities(suiteReferences, "basic", NON_DELETED);
+    Map<UUID, TestSuite> testSuiteById =
+        fetchedSuites.stream().collect(Collectors.toMap(TestSuite::getId, Function.identity()));
+
+    for (UUID suiteId : newSuiteIds) {
+      TestSuite testSuite = testSuiteById.get(suiteId);
+      if (testSuite == null) {
+        throw new EntityNotFoundException(entityNotFound(TEST_SUITE, suiteId));
+      }
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
         throw new IllegalArgumentException(
             "You are trying to add test cases to a basic test suite.");
