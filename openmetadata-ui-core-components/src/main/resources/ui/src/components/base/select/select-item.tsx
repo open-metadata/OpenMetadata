@@ -90,7 +90,7 @@ export const SelectItem = ({
           <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
             <AriaText
               className={cx(
-                'tw:truncate tw:whitespace-nowrap tw:text-primary',
+                'tw:truncate tw:font-medium tw:whitespace-nowrap tw:text-primary',
                 fontSizeClass[fontSize],
                 state.isDisabled && 'tw:text-disabled'
               )}
