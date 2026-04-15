@@ -35,7 +35,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -788,15 +790,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     repository.createMany(uriInfo, testCases);
     // Attach test cases to their requested logical suites
     if (!validatedSuites.isEmpty()) {
+      Map<String, List<UUID>> suiteToTestCaseIds = new HashMap<>();
       for (int i = 0; i < createTestCases.size(); i++) {
-        Set<String> suiteFQNs = createTestCases.get(i).getTestSuites();
-        if (!nullOrEmpty(suiteFQNs)) {
+        Set<String> fqns = createTestCases.get(i).getTestSuites();
+        if (!nullOrEmpty(fqns)) {
           TestCase tc = testCases.get(i);
-          for (TestSuite suite : validatedSuites) {
-            if (suiteFQNs.contains(suite.getFullyQualifiedName())) {
-              repository.addTestCasesToLogicalTestSuite(suite, List.of(tc.getId()));
-            }
+          for (String fqn : fqns) {
+            suiteToTestCaseIds.computeIfAbsent(fqn, k -> new ArrayList<>()).add(tc.getId());
           }
+        }
+      }
+      for (TestSuite suite : validatedSuites) {
+        List<UUID> ids = suiteToTestCaseIds.get(suite.getFullyQualifiedName());
+        if (ids != null) {
+          repository.addTestCasesToLogicalTestSuite(suite, ids);
         }
       }
     }
@@ -894,10 +901,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
-    List<TestSuite> logicalSuites =
-        resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
-    for (TestSuite suite : logicalSuites) {
-      repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+    if (response.getStatus() == Response.Status.CREATED) {
+      List<TestSuite> logicalSuites =
+          resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
+      for (TestSuite suite : logicalSuites) {
+        repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
+      }
     }
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
