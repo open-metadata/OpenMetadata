@@ -713,7 +713,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestSuite> logicalSuites =
         resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
     test = addHref(uriInfo, repository.create(uriInfo, test));
-    // Attach to logical test suites (only on POST create)
+    // Attach the created test case to the requested logical test suites
     for (TestSuite suite : logicalSuites) {
       repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
     }
@@ -899,11 +899,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(test, true);
+    List<TestSuite> logicalSuites =
+        resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     if (response.getStatus() == Response.Status.CREATED) {
-      List<TestSuite> logicalSuites =
-          resolveAndValidateLogicalSuites(create.getTestSuites(), securityContext);
       for (TestSuite suite : logicalSuites) {
         repository.addTestCasesToLogicalTestSuite(suite, List.of(test.getId()));
       }
@@ -1622,6 +1622,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestSuite> suites =
         Entity.getEntityByNames(
             Entity.TEST_SUITE, new ArrayList<>(suiteFQNs), "owners,domains", Include.NON_DELETED);
+    if (suites.size() != suiteFQNs.size()) {
+      Set<String> foundFQNs =
+          suites.stream().map(TestSuite::getFullyQualifiedName).collect(Collectors.toSet());
+      List<String> missingFQNs =
+          suiteFQNs.stream().filter(fqn -> !foundFQNs.contains(fqn)).toList();
+      throw new IllegalArgumentException("Logical test suites not found: " + missingFQNs);
+    }
     for (TestSuite suite : suites) {
       if (Boolean.TRUE.equals(suite.getBasic())) {
         throw new IllegalArgumentException(

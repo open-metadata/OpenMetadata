@@ -74,7 +74,7 @@
       "default": 5
     },
     "testSuites": {
-      "description": "Fully qualified names of logical test suites to attach this test case to on creation. Only non-basic (logical) test suites are accepted. Ignored on PUT/PATCH.",
+      "description": "Fully qualified names of logical test suites to attach this test case to on creation. Only non-basic (logical) test suites are accepted. Ignored on PATCH. Note: Test suite attachment is performed as a best-effort operation after test case creation.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"

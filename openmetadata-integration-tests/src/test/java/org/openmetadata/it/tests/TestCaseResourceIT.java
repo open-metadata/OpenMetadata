@@ -4500,7 +4500,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void test_createTestCaseWithBasicTestSuite_400(TestNamespace ns) {
+  void test_createTestCaseWithBasicTestSuite_rejected(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
@@ -4531,7 +4531,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void test_createTestCaseWithNonExistentSuite_400(TestNamespace ns) {
+  void test_createTestCaseWithNonExistentSuite_rejected(TestNamespace ns) {
     Table table = createTable(ns);
 
     CreateTestCase request =
