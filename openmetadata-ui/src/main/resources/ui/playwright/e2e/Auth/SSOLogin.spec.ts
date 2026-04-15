@@ -47,7 +47,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   test.beforeAll(
     'Swap OpenMetadata server to target SSO provider',
     async ({ browser }) => {
-      test.slow();
+      
       helper = getProviderHelper(providerType);
       const { apiContext, afterAction, page } = await performAdminLogin(
         browser
