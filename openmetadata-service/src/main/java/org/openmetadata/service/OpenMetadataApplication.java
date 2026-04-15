@@ -83,6 +83,7 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -379,6 +380,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
+    registerDistributedRdfJobParticipant(environment, jdbi);
 
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -1125,7 +1127,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           "Registered DistributedJobParticipant for distributed search indexing using {}",
           notifierType);
     } catch (Exception e) {
-      LOG.warn("Failed to register DistributedJobParticipant: {}", e.getMessage());
+      LOG.warn("Failed to register DistributedJobParticipant", e);
+    }
+  }
+
+  protected void registerDistributedRdfJobParticipant(Environment environment, Jdbi jdbi) {
+    try {
+      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+      RdfDistributedJobParticipant participant = new RdfDistributedJobParticipant(collectionDAO);
+      environment.lifecycle().manage(participant);
+      LOG.info("Registered RdfDistributedJobParticipant for distributed RDF indexing");
+    } catch (Exception e) {
+      LOG.warn("Failed to register RdfDistributedJobParticipant", e);
     }
   }
 

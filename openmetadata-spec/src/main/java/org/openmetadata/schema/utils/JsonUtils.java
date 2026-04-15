@@ -377,7 +377,8 @@ public final class JsonUtils {
     }
     String parentPath = path.substring(0, path.lastIndexOf('/'));
     if (parentPath.isEmpty()) {
-      parentPath = "/";
+      // Top-level field (e.g., /displayName) — the root object always exists
+      return true;
     }
     return jsonPointerExists(targetJson, parentPath);
   }
