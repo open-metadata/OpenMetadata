@@ -1242,7 +1242,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
               + request.getSortOrder().substring(1).toLowerCase();
       SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {        
+      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
         equestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
       } else {
         requestBuilder.sort(sortField, sortOrder, null);
