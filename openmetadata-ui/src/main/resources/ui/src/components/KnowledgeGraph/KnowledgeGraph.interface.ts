@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { EntityReference } from '../../generated/entity/type';
+import {
+  GraphEdge,
+  GraphFilterOptions,
+} from '../../types/knowledgeGraph.types';
 
 export interface KnowledgeGraphProps {
   entity?: EntityReference;
@@ -31,14 +35,12 @@ export interface GraphNode {
   fullyQualifiedName?: string;
 }
 
-export interface GraphEdge {
-  from: string;
-  to: string;
-  label: string;
-  arrows?: string;
-}
-
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+  filterOptions?: GraphFilterOptions;
+  totalNodes?: number;
+  totalEdges?: number;
+  source?: string;
+  error?: string;
 }

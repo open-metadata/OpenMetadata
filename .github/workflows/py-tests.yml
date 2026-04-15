@@ -232,6 +232,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          filter: blob:none
 
       - name: Setup Python
         uses: actions/setup-python@v5

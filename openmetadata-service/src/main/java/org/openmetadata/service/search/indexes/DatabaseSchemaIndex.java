@@ -4,17 +4,19 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.service.Entity;
 
-public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements SearchIndex {
+public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements TaggableIndex {
 
   @Override
   public Object getEntity() {
     return databaseSchema;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.DATABASE_SCHEMA;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(databaseSchema, Entity.DATABASE_SCHEMA);
-    doc.putAll(commonAttributes);
     return doc;
   }
 }
