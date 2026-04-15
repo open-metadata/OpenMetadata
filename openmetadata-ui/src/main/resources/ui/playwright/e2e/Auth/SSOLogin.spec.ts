@@ -29,6 +29,7 @@ const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
 test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
+  test.slow()
   // eslint-disable-next-line playwright/no-skipped-test -- conditional skip on required env vars; the suite only runs when SSO credentials are provided by CI or the developer
   test.skip(
     !providerType || !username || !password,
@@ -108,7 +109,6 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should complete full SSO login and verify user session', async () => {
-    test.slow();
     const page = userPage!;
 
     await test.step('Click SSO button and redirect to IdP', async () => {
