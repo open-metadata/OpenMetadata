@@ -42,7 +42,6 @@ public class TriggerFactory {
         .orElse(workflow.getName());
   }
 
-
   private static boolean hasBatchModeNodes(WorkflowDefinition workflow) {
     if (workflow.getNodes() == null) {
       return false;
