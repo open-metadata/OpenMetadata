@@ -213,10 +213,12 @@ class ParquetDataFrameReader(DataFrameReader):
 
         kwargs = {}
         if self.session:
-            creds = self.session.get_credentials().get_frozen_credentials()
-            kwargs["key"] = creds.access_key
-            kwargs["secret"] = creds.secret_key
-            kwargs["token"] = creds.token
+            credentials = self.session.get_credentials()
+            if credentials is not None:
+                creds = credentials.get_frozen_credentials()
+                kwargs["key"] = creds.access_key
+                kwargs["secret"] = creds.secret_key
+                kwargs["token"] = creds.token
         elif self.config_source.securityConfig.awsAccessKeyId:
             kwargs["key"] = self.config_source.securityConfig.awsAccessKeyId
             if self.config_source.securityConfig.awsSecretAccessKey:

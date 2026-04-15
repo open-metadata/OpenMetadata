@@ -37,7 +37,13 @@ class DatalakeS3Client(DatalakeBaseClient):
 
         aws_client = AWSClient(config.securityConfig)
         session = aws_client.create_session()
-        s3_client = aws_client.get_client(service_name="s3")
+        if config.securityConfig.endPointURL:
+            s3_client = session.client(
+                service_name="s3",
+                endpoint_url=str(config.securityConfig.endPointURL),
+            )
+        else:
+            s3_client = session.client(service_name="s3")
         return cls(client=s3_client, session=session)
 
     def update_client_database(self, config, database_name: str):

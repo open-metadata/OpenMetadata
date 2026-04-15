@@ -285,7 +285,7 @@ class DatalakeSource(DatabaseServiceSource):
             table_constraints = None
             data_frame, raw_data = fetch_dataframe_first_chunk(
                 config_source=self.config_source,
-                client=self.client._client,
+                client=self.client.client,
                 file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
@@ -293,7 +293,7 @@ class DatalakeSource(DatabaseServiceSource):
                     file_size=file_size,
                 ),
                 fetch_raw_data=True,
-                session=getattr(self.client, "_session", None),
+                session=getattr(self.client, "session", None),
             )
             if data_frame:
                 data_frame = next(data_frame)
