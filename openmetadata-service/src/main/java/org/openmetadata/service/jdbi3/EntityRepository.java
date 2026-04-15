@@ -9871,18 +9871,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, bulkFields);
   }
 
-  public void bulkUpdateEntities(
+  public void bulkUpdateEntitiesForGovernanceWorkflow(
       List<T> updateEntities, Map<String, T> existingByFqn, String userName) {
-    bulkUpdateEntities(updateEntities, existingByFqn, userName, false);
-  }
-
-  public void bulkUpdateEntities(
-      List<T> updateEntities, Map<String, T> existingByFqn, String userName, boolean skipBotGuard) {
     List<BulkResponse> success = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
     List<Long> latencies = new ArrayList<>();
     bulkUpdateEntities(
-        null, updateEntities, existingByFqn, userName, skipBotGuard, success, failed, latencies);
+        null, updateEntities, existingByFqn, userName, true, success, failed, latencies);
     if (!failed.isEmpty()) {
       LOG.warn("Bulk update: {} succeeded, {} failed", success.size(), failed.size());
     }

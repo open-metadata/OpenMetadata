@@ -51,6 +51,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   @Getter private final String triggerWorkflowId;
   private final boolean singleExecutionMode;
+  private final String resolvedWorkflowFqn;
   public static final String HAS_FINISHED_VARIABLE = "hasFinished";
   private static final String NUMBER_OF_ENTITIES_VARIABLE = "numberOfEntities";
 
@@ -62,6 +63,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       String workflowFqn) {
     this.triggerWorkflowId = triggerWorkflowId;
     this.singleExecutionMode = singleExecutionMode;
+    this.resolvedWorkflowFqn =
+        (workflowFqn != null && !workflowFqn.isBlank()) ? workflowFqn : mainWorkflowName;
     List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
 
     for (String entityType : entityTypes) {
@@ -89,10 +92,10 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       process.addFlowElement(endEvent);
 
       ServiceTask fetchTask =
-          getFetchChangeEventsTask(processId, entityType, triggerDefinition, workflowFqn);
+          getFetchChangeEventsTask(processId, entityType, triggerDefinition, resolvedWorkflowFqn);
       process.addFlowElement(fetchTask);
 
-      ServiceTask commitTask = getCommitOffsetTask(processId, entityType, workflowFqn);
+      ServiceTask commitTask = getCommitOffsetTask(processId, entityType, resolvedWorkflowFqn);
       process.addFlowElement(commitTask);
 
       SequenceFlow finished = new SequenceFlow(fetchTask.getId(), commitTask.getId());
@@ -217,10 +220,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
 
     FieldExtension workflowFqnExpr =
-        new FieldExtensionBuilder()
-            .fieldName("workflowFqnExpr")
-            .fieldValue(workflowFqn != null ? workflowFqn : "")
-            .build();
+        new FieldExtensionBuilder().fieldName("workflowFqnExpr").fieldValue(workflowFqn).build();
 
     ServiceTask serviceTask =
         new ServiceTaskBuilder()
@@ -249,10 +249,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private ServiceTask getCommitOffsetTask(
       String workflowTriggerId, String entityType, String workflowFqn) {
     FieldExtension workflowFqnExpr =
-        new FieldExtensionBuilder()
-            .fieldName("workflowFqnExpr")
-            .fieldValue(workflowFqn != null ? workflowFqn : "")
-            .build();
+        new FieldExtensionBuilder().fieldName("workflowFqnExpr").fieldValue(workflowFqn).build();
 
     FieldExtension entityTypeExpr =
         new FieldExtensionBuilder().fieldName("entityTypeExpr").fieldValue(entityType).build();

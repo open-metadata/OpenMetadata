@@ -98,7 +98,8 @@ class SetEntityAttributeImplTest {
                   eq("Gold"),
                   eq(false),
                   eq(null)));
-      verify(mockRepo).bulkUpdateEntities(anyList(), anyMap(), eq("governance-bot"), eq(true));
+      verify(mockRepo)
+          .bulkUpdateEntitiesForGovernanceWorkflow(anyList(), anyMap(), eq("governance-bot"));
     }
   }
 
@@ -143,7 +144,8 @@ class SetEntityAttributeImplTest {
                   eq("admin"),
                   eq(false),
                   eq("governance-bot")));
-      verify(mockRepo).bulkUpdateEntities(anyList(), anyMap(), eq("actualUser"), eq(true));
+      verify(mockRepo)
+          .bulkUpdateEntitiesForGovernanceWorkflow(anyList(), anyMap(), eq("actualUser"));
     }
   }
 
