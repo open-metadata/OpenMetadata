@@ -577,10 +577,10 @@ describe('EntityUtils unit tests', () => {
       expect(result).toBe('Engineering');
     });
 
-    it('should return translated "All Domains" when activeDomain is DEFAULT_DOMAIN_VALUE', () => {
+    it('should return translated "label.all-domain-plural" when activeDomain is DEFAULT_DOMAIN_VALUE', () => {
       const result = getDomainDisplayName(undefined, DEFAULT_DOMAIN_VALUE);
 
-      expect(result).toBe('All Domains');
+      expect(result).toBe('label.all-domain-plural');
     });
 
     it('should return custom domain name when activeDomain is a custom value', () => {

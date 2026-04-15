@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Tag as AntdTag, Space, Tooltip, Typography } from 'antd';
+import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
