@@ -45,6 +45,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+SCHEMA_INFERENCE_SAMPLE_SIZE = 100
+
 
 class JSONDataFrameReader(DataFrameReader):
     """
@@ -168,6 +170,12 @@ class JSONDataFrameReader(DataFrameReader):
         Smart JSON reading with automatic format detection and streaming.
         Handles JSON Lines, arrays, and objects efficiently.
         """
+        batch_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
+
         with file_obj_getter() as f:
             with self._decompress(f, key) as decompressed:
                 is_json_lines = self._is_json_lines(decompressed)
@@ -177,7 +185,9 @@ class JSONDataFrameReader(DataFrameReader):
             def chunk_generator():
                 with file_obj_getter() as f:
                     with self._decompress(f, key) as decompressed:
-                        yield from self._stream_json_lines(decompressed)
+                        yield from self._stream_json_lines(
+                            decompressed, batch_size=batch_size
+                        )
 
             return DatalakeColumnWrapper(
                 dataframes=chunk_generator, raw_data=None, columns=None
@@ -193,7 +203,9 @@ class JSONDataFrameReader(DataFrameReader):
                 def ijson_chunk_generator():
                     with file_obj_getter() as f:
                         with self._decompress(f, key) as decompressed:
-                            yield from self._stream_json_array(decompressed)
+                            yield from self._stream_json_array(
+                                decompressed, batch_size=batch_size
+                            )
 
                 return DatalakeColumnWrapper(
                     dataframes=ijson_chunk_generator, raw_data=None, columns=None
@@ -278,9 +290,16 @@ class JSONDataFrameReader(DataFrameReader):
         return self._read_json_smart(get_stream, key, bucket_name)
 
     def _read(
-        self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__
+        self,
+        *,
+        key: str,
+        bucket_name: str,
+        file_size: Optional[int] = None,
+        schema_inference: bool = False,
+        **__,
     ) -> DatalakeColumnWrapper:
         self._file_size = file_size
+        self._schema_inference = schema_inference
         return self._read_json_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

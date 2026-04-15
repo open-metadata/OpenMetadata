@@ -269,5 +269,78 @@ class TestJSONReader(unittest.TestCase):
         self.assertEqual(total_rows, 2)
 
 
+class TestSchemaInferenceEfficiency(unittest.TestCase):
+    """read_first_chunk should not read the entire file for schema inference."""
+
+    def test_read_first_chunk_reads_minimal_records(self):
+        """For schema inference, read_first_chunk should read far fewer
+        than CHUNKSIZE (100K) records — only enough to determine the schema."""
+        # Create a JSON Lines file with 1000 records
+        records = [
+            json.dumps({"id": i, "name": f"user_{i}", "score": i * 1.1})
+            for i in range(1000)
+        ]
+        content = "\n".join(records)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".jsonl", delete=False
+        ) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        try:
+            config = LocalConfig()
+            reader = JSONDataFrameReader(config, None)
+
+            result = reader.read_first_chunk(key=tmp_path, bucket_name="")
+
+            assert result.dataframes is not None
+            chunk = next(result.dataframes())
+
+            # Schema inference only needs a small sample, not all 1000 records.
+            # Currently reads min(CHUNKSIZE, total_records) = 1000.
+            # After fix, should read a small sample (e.g., 100).
+            assert len(chunk) <= 200, (
+                f"read_first_chunk read {len(chunk)} records for schema inference. "
+                f"Expected <= 200 — only need a few records for column names/types."
+            )
+        finally:
+            import os
+
+            os.unlink(tmp_path)
+
+    def test_full_read_still_uses_large_chunksize(self):
+        """Full read() (not schema inference) should still use CHUNKSIZE
+        to avoid yielding too many small DataFrames."""
+        records = [json.dumps({"id": i, "name": f"user_{i}"}) for i in range(500)]
+        content = "\n".join(records)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".jsonl", delete=False
+        ) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        try:
+            config = LocalConfig()
+            reader = JSONDataFrameReader(config, None)
+
+            result = reader.read(key=tmp_path, bucket_name="")
+
+            dataframes = result.dataframes
+            if callable(dataframes):
+                dataframes = dataframes()
+            chunks = list(dataframes)
+
+            # Full read should batch all 500 records into one chunk
+            # (since 500 < CHUNKSIZE=100K), not 5 chunks of 100
+            assert len(chunks) == 1
+            assert len(chunks[0]) == 500
+        finally:
+            import os
+
+            os.unlink(tmp_path)
+
+
 if __name__ == "__main__":
     unittest.main()

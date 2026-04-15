@@ -137,6 +137,7 @@ class DataFrameReader(ABC):
         Properly closes the generator to release file handles and connections.
         """
         try:
+            kwargs["schema_inference"] = True
             wrapper = self._read(key=key, bucket_name=bucket_name, **kwargs)
             first_chunk = None
             dataframes_gen = wrapper.dataframes

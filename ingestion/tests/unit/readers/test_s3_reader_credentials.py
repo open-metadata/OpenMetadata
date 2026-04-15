@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.dsv import CSVDataFrameReader
+from metadata.readers.dataframe.json import JSONDataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 
 BUCKET = "test-bucket"
@@ -77,6 +78,19 @@ def s3_bucket(aws_env):
         avro_buf = io.BytesIO()
         fastavro.writer(avro_buf, avro_schema, [{"id": 1, "name": "Alice"}])
         s3.put_object(Bucket=BUCKET, Key="data/test.avro", Body=avro_buf.getvalue())
+
+        # Upload JSON Lines (500 records — more than SCHEMA_INFERENCE_SAMPLE_SIZE)
+        import json
+
+        jsonl_records = [
+            json.dumps({"id": i, "name": f"user_{i}", "score": i * 1.5})
+            for i in range(500)
+        ]
+        s3.put_object(
+            Bucket=BUCKET,
+            Key="data/test.jsonl",
+            Body="\n".join(jsonl_records).encode(),
+        )
 
         session = boto3.Session(region_name=REGION)
         client = session.client("s3", region_name=REGION)
@@ -131,6 +145,22 @@ class TestS3ReaderWithBoto3:
         assert result.dataframes is not None
         chunk = next(result.dataframes())
         assert len(chunk) == 2
+
+    def test_json_schema_inference_reads_minimal_records_from_s3(self, s3_bucket):
+        """read_first_chunk on a JSON Lines file from S3 should read
+        only a small sample, not the entire file."""
+        client, session = s3_bucket
+
+        reader = JSONDataFrameReader(_config(), client, session=session)
+        result = reader.read_first_chunk(key="data/test.jsonl", bucket_name=BUCKET)
+
+        assert result.dataframes is not None
+        chunk = next(result.dataframes())
+        assert len(chunk) <= 100, (
+            f"Schema inference read {len(chunk)} records from S3. "
+            f"Expected <= 100 — only need a small sample."
+        )
+        assert list(chunk.columns) == ["id", "name", "score"]
 
 
 class TestParquetSessionCredentialExtraction:
