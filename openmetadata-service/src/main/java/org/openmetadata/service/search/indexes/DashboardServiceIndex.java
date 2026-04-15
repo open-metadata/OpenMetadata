@@ -4,18 +4,20 @@ import java.util.Map;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.service.Entity;
 
-public record DashboardServiceIndex(DashboardService dashboardService) implements SearchIndex {
+public record DashboardServiceIndex(DashboardService dashboardService)
+    implements TaggableIndex, LineageIndex {
 
   @Override
   public Object getEntity() {
     return dashboardService;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.DASHBOARD_SERVICE;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(dashboardService, Entity.DASHBOARD_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardService.getEntityReference()));
     return doc;
   }
 }

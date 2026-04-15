@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -542,7 +543,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       + "If not provided, returns logs for the latest run.",
               schema = @Schema(type = "string"))
           @QueryParam("runId")
-          String runId) {
+          String runId,
+      @Parameter(
+              description = "Maximum number of lines to return (only applies to streamable logs)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("1000")
+          int limit) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
@@ -557,14 +564,61 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
-        return Response.ok(
-                pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId),
-                MediaType.APPLICATION_JSON_TYPE)
-            .build();
+                uriInfo,
+                pipelineRef.getId(),
+                ingestionPipelineRepository.getFields(
+                    FIELD_OWNERS + ",pipelineStatuses,ingestionRunner"));
+        Map<String, String> lastLogs =
+            getAppLastLogs(ingestionPipelineRepository, ingestionPipeline, after, runId, limit);
+        return Response.ok(lastLogs, MediaType.APPLICATION_JSON_TYPE).build();
       }
     }
     throw new BadRequestException("Failed to Get Logs for the Installation.");
+  }
+
+  private Map<String, String> getAppLastLogs(
+      IngestionPipelineRepository ingestionPipelineRepository,
+      IngestionPipeline ingestionPipeline,
+      String after,
+      String runId,
+      int limit) {
+    boolean useStreamableLogs =
+        Boolean.TRUE.equals(ingestionPipeline.getEnableStreamableLogs())
+            || (ingestionPipeline.getIngestionRunner() != null
+                && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
+    if (useStreamableLogs) {
+      String effectiveRunId =
+          !nullOrEmpty(runId)
+              ? runId
+              : (ingestionPipeline.getPipelineStatuses() != null
+                  ? ingestionPipeline.getPipelineStatuses().getRunId()
+                  : null);
+      if (!nullOrEmpty(effectiveRunId)) {
+        UUID runUuid;
+        try {
+          runUuid = UUID.fromString(effectiveRunId);
+        } catch (IllegalArgumentException e) {
+          throw new BadRequestException("Invalid runId format: " + effectiveRunId);
+        }
+        Map<String, Object> raw =
+            ingestionPipelineRepository.getLogs(
+                ingestionPipeline.getFullyQualifiedName(), runUuid, after, limit);
+        Map<String, String> lastLogs =
+            raw.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString()));
+        Object logs = lastLogs.remove("logs");
+        if (logs != null) {
+          lastLogs.put(
+              PipelineServiceClientInterface.TYPE_TO_TASK.get(
+                  ingestionPipeline.getPipelineType().toString()),
+              logs.toString());
+        }
+        return lastLogs;
+      }
+    }
+    return pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId);
   }
 
   @GET

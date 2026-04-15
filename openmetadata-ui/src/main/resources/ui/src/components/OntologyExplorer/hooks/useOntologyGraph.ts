@@ -227,7 +227,7 @@ interface UseOntologyGraphProps {
   neighborSet: Set<string>;
   glossaryColorMap: Record<string, string>;
   computeNodeColor: (node: OntologyNode) => string;
-  assetToTermMap: Record<string, string>;
+  assetToTermMap: Record<string, string[]>;
 }
 
 export function useOntologyGraph({
@@ -356,33 +356,89 @@ export function useOntologyGraph({
 
   const positionAssetNodes = useCallback((graph: Graph) => {
     const map = assetToTermMapRef.current;
-    const assetsByTerm = new Map<string, string[]>();
-    Object.entries(map).forEach(([assetId, termId]) => {
-      const list = assetsByTerm.get(termId) ?? [];
-      list.push(assetId);
-      assetsByTerm.set(termId, list);
+    const updates: NodeData[] = [];
+    const assignRingPositions = (
+      anchorX: number,
+      anchorY: number,
+      assetIds: string[]
+    ) => {
+      const ringPositions = computeAssetRingPositions(
+        anchorX,
+        anchorY,
+        assetIds
+      );
+      Object.entries(ringPositions).forEach(([assetId, pos]) => {
+        const nodeData = graph.getNodeData(assetId);
+        if (nodeData) {
+          updates.push({
+            id: assetId,
+            style: { ...(nodeData.style ?? {}), x: pos.x, y: pos.y },
+          });
+        }
+      });
+    };
+
+    const singleTermAssets = new Map<string, string[]>();
+    const multiTermAssets = new Map<
+      string,
+      { termIds: string[]; assetIds: string[] }
+    >();
+
+    Object.entries(map).forEach(([assetId, connectedTermIds]) => {
+      const uniqueTermIds = [...new Set(connectedTermIds)];
+      if (uniqueTermIds.length <= 1) {
+        const termId = uniqueTermIds[0];
+        if (!termId) {
+          return;
+        }
+        const assetIds = singleTermAssets.get(termId) ?? [];
+        assetIds.push(assetId);
+        singleTermAssets.set(termId, assetIds);
+
+        return;
+      }
+
+      const sortedTermIds = [...uniqueTermIds].sort();
+      const key = sortedTermIds.join('|');
+      const group = multiTermAssets.get(key) ?? {
+        termIds: sortedTermIds,
+        assetIds: [],
+      };
+      group.assetIds.push(assetId);
+      multiTermAssets.set(key, group);
     });
 
-    const updates: NodeData[] = [];
-    assetsByTerm.forEach((assetIds, termId) => {
+    singleTermAssets.forEach((assetIds, termId) => {
       try {
         const termPos = graph.getElementPosition(termId);
         if (!termPos) {
           return;
         }
-        const [termX, termY] = termPos;
-        const ringPositions = computeAssetRingPositions(termX, termY, assetIds);
-        Object.entries(ringPositions).forEach(([assetId, pos]) => {
-          const nodeData = graph.getNodeData(assetId);
-          if (nodeData) {
-            updates.push({
-              id: assetId,
-              style: { ...(nodeData.style ?? {}), x: pos.x, y: pos.y },
-            });
-          }
-        });
+        assignRingPositions(termPos[0], termPos[1], assetIds);
       } catch {
         // Term not yet in graph.
+      }
+    });
+
+    multiTermAssets.forEach(({ termIds, assetIds }) => {
+      try {
+        const termPositions = termIds
+          .map((termId) => graph.getElementPosition(termId))
+          .filter((position): position is [number, number] =>
+            Array.isArray(position)
+          );
+        if (termPositions.length === 0) {
+          return;
+        }
+
+        const centerX =
+          termPositions.reduce((sum, [x]) => sum + x, 0) / termPositions.length;
+        const centerY =
+          termPositions.reduce((sum, [, y]) => sum + y, 0) /
+          termPositions.length;
+        assignRingPositions(centerX, centerY, assetIds);
+      } catch {
+        // one or more terms are not yet in the graph
       }
     });
 
@@ -477,6 +533,33 @@ export function useOntologyGraph({
       curX += comboW + COMBO_H_GAP;
       rowMaxH = Math.max(rowMaxH, comboH);
     });
+
+    // Position orphan nodes (e.g. metric nodes) that have no combo.
+    // Without this they stack at the origin, causing overlap.
+    const orphanNodes = graph.getNodeData().filter((n) => !n.combo);
+    if (orphanNodes.length > 0) {
+      const bottomY = curY + rowMaxH;
+      const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      orphanNodes.forEach((node, i) => {
+        const col = i % orphanCols;
+        const row = Math.floor(i / orphanCols);
+        updates.push({
+          id: node.id,
+          style: {
+            ...(node.style ?? {}),
+            x:
+              COMBO_INTERIOR_PADDING_SIDES +
+              col * (NODE_WIDTH + NODE_H_SEP) +
+              NODE_WIDTH / 2,
+            y:
+              bottomY +
+              COMBO_V_GAP +
+              row * (NODE_HEIGHT + NODE_V_SEP) +
+              NODE_HEIGHT / 2,
+          },
+        });
+      });
+    }
 
     if (updates.length > 0) {
       graph.updateNodeData(updates);
@@ -1290,8 +1373,47 @@ export function useOntologyGraph({
         termFingerprintRef.current = newTermFingerprint;
       }
 
-      graph.setData(bakedData);
+      const addedNodeIds = new Set(addedNodes.map((n) => String(n.id)));
+      const currentEdgeIds = new Set(
+        graph.getEdgeData().map((e) => String(e.id))
+      );
+      const newEdges = (bakedData.edges ?? []).filter(
+        (e) => !currentEdgeIds.has(String(e.id))
+      );
+
+      const existingNodesToUpdate = (bakedData.nodes ?? []).filter(
+        (n) => !addedNodeIds.has(String(n.id))
+      );
+      const newNodesToAdd = (bakedData.nodes ?? []).filter((n) =>
+        addedNodeIds.has(String(n.id))
+      );
+
+      // Use incremental updates instead of setData so the viewport is never
+      // reset — adding/updating individual elements does not shift the camera.
+      if (existingNodesToUpdate.length > 0) {
+        graph.updateNodeData(existingNodesToUpdate);
+      }
+      graph.addNodeData(newNodesToAdd);
+      if (newEdges.length > 0) {
+        graph.addEdgeData(newEdges);
+      }
       graph.draw();
+
+      return;
+    }
+
+    // expandedTermIds toggled but asset fetch not yet complete — topology is
+    // already in sync (same nodes/edges), so update in-place to avoid the
+    // graph.setData() path which resets the camera.
+    if (assetFingerprintChanged && !termFingerprintChanged && topologySynced) {
+      assetFingerprintRef.current = newAssetFingerprint;
+      try {
+        graph.updateNodeData(graphData.nodes ?? []);
+        graph.updateEdgeData(graphData.edges ?? []);
+        graph.draw();
+      } catch {
+        // ignore
+      }
 
       return;
     }
