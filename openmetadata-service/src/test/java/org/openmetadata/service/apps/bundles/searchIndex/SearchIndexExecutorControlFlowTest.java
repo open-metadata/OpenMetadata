@@ -61,6 +61,7 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.DefaultRecreateHandler;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
@@ -893,7 +894,7 @@ class SearchIndexExecutorControlFlowTest {
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(0);
-    when(searchRepository.createBulkSink(100, 100, 104857600L)).thenReturn(sink);
+    when(searchRepository.createBulkSink(100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES)).thenReturn(sink);
     when(searchRepository.createReindexHandler()).thenReturn(handler);
     when(handler.reCreateIndexes(Set.of(Entity.TABLE))).thenReturn(recreateContext);
     executor.addListener(listener);
@@ -931,7 +932,7 @@ class SearchIndexExecutorControlFlowTest {
     when(jobContext.getJobId()).thenReturn(UUID.randomUUID());
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(0);
-    when(searchRepository.createBulkSink(100, 100, 104857600L))
+    when(searchRepository.createBulkSink(100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
         .thenThrow(new IllegalStateException("sink init failed"));
     executor.addListener(listener);
 

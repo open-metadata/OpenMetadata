@@ -29,7 +29,7 @@ public class DashboardIndex implements DataAssetIndex {
 
   @Override
   public Set<String> getExcludedFields() {
-    return Set.of("dataModels", "charts");
+    return Set.of("dataModels");
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
