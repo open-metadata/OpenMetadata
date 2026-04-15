@@ -59,6 +59,13 @@ class DatalakeTableSchemaWrapper(BaseModel):
         Optional[str],
         Field(None, description="Used for DSV readers to identify the separator"),
     ]
+    file_size: Annotated[
+        Optional[int],
+        Field(
+            None,
+            description="File size in bytes from listing. Avoids redundant HEAD requests.",
+        ),
+    ]
 
 
 class DatalakeTableMetadata(BaseModel):

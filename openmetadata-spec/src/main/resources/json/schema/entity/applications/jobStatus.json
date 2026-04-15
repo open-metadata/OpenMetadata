@@ -11,6 +11,9 @@
       "oneOf": [
         {
           "$ref": "configuration/internal/searchIndexingAppConfig.json"
+        },
+        {
+          "$ref": "configuration/internal/rdfIndexingAppConfig.json"
         }
       ]
     }

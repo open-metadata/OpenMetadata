@@ -32,8 +32,8 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
             client=self.mock_gcs_client, temp_credentials_file_path_list=[]
         )
 
-    def _make_blob(self, name, storage_class=None):
-        blob = SimpleNamespace(name=name, storage_class=storage_class)
+    def _make_blob(self, name, storage_class=None, size=None):
+        blob = SimpleNamespace(name=name, storage_class=storage_class, size=size)
         return blob
 
     def test_skip_cold_storage_filters_cold_classes(self):
@@ -57,7 +57,10 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["standard.csv", "nearline.csv"])
+        self.assertEqual(
+            result,
+            [("standard.csv", None), ("nearline.csv", None)],
+        )
 
     def test_skip_cold_storage_false_returns_all(self):
         """
@@ -78,7 +81,10 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["standard.csv", "archive.csv"])
+        self.assertEqual(
+            result,
+            [("standard.csv", None), ("archive.csv", None)],
+        )
 
     def test_default_skip_cold_storage_is_false(self):
         """
@@ -94,7 +100,7 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
 
         result = list(self.client.get_table_names(bucket_name="my-bucket", prefix=None))
 
-        self.assertEqual(result, ["archive.csv"])
+        self.assertEqual(result, [("archive.csv", None)])
 
     def test_skip_cold_storage_handles_no_storage_class(self):
         """
@@ -114,7 +120,7 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["no_class.csv"])
+        self.assertEqual(result, [("no_class.csv", None)])
 
     def test_skip_cold_storage_filters_each_cold_class(self):
         """
@@ -159,7 +165,7 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
 
         self.assertEqual(
             result,
-            [f"{cls.lower()}.csv" for cls in non_cold_classes],
+            [(f"{cls.lower()}.csv", None) for cls in non_cold_classes],
         )
 
 
