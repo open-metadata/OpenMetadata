@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Grid,
+  Input,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Card, Col, InputNumber, Row, Select, Typography } from 'antd';
+import { Plus, Trash01 } from '@untitledui/icons';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,21 +32,19 @@ import {
   Threshold,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 
-const { Text } = Typography;
-
 const SAMPLE_CONFIG_TYPE_OPTIONS = [
-  { label: 'STATIC', value: SampleConfigType.Static },
-  { label: 'DYNAMIC', value: SampleConfigType.Dynamic },
+  { id: SampleConfigType.Static, label: 'STATIC' },
+  { id: SampleConfigType.Dynamic, label: 'DYNAMIC' },
 ];
 
 const PROFILE_SAMPLE_TYPE_OPTIONS = [
-  { label: 'PERCENTAGE', value: ProfileSampleType.Percentage },
-  { label: 'ROWS', value: ProfileSampleType.Rows },
+  { id: ProfileSampleType.Percentage, label: 'PERCENTAGE' },
+  { id: ProfileSampleType.Rows, label: 'ROWS' },
 ];
 
 const SAMPLING_METHOD_TYPE_OPTIONS = [
-  { label: 'BERNOULLI', value: SamplingMethodType.Bernoulli },
-  { label: 'SYSTEM', value: SamplingMethodType.System },
+  { id: SamplingMethodType.Bernoulli, label: 'BERNOULLI' },
+  { id: SamplingMethodType.System, label: 'SYSTEM' },
 ];
 
 const DEFAULT_THRESHOLD: Threshold = {
@@ -56,10 +61,13 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const config: ICSamplingConfig = formData?.config ?? {};
 
   const handleConfigTypeChange = useCallback(
-    (type: SampleConfigType) => {
+    (type: string | number | null) => {
       const newConfig: ICSamplingConfig =
         type === SampleConfigType.Dynamic ? { thresholds: [] } : {};
-      onChange({ sampleConfigType: type, config: newConfig });
+      onChange({
+        sampleConfigType: type as SampleConfigType,
+        config: newConfig,
+      });
     },
     [onChange]
   );
@@ -104,213 +112,222 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
 
   return (
     <div className="profile-sample-config-field">
-      <Row gutter={[0, 8]}>
-        <Col span={24}>
-          <Text className="text-sm">{t('label.sample-config-type')}</Text>
-        </Col>
-        <Col span={24}>
-          <Select
-            className="w-full"
-            data-testid="sample-config-type-select"
-            options={SAMPLE_CONFIG_TYPE_OPTIONS}
-            value={sampleConfigType}
-            onChange={handleConfigTypeChange}
-          />
-        </Col>
-      </Row>
+      <div className="tw:flex tw:flex-col tw:gap-2">
+        <Typography size="text-sm">{t('label.sample-config-type')}</Typography>
+        <Select
+          className="w-full"
+          data-testid="sample-config-type-select"
+          fontSize="sm"
+          items={SAMPLE_CONFIG_TYPE_OPTIONS}
+          value={sampleConfigType}
+          onChange={handleConfigTypeChange}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id}>
+              <Typography size="text-sm">{item.label}</Typography>
+            </Select.Item>
+          )}
+        </Select>
+      </div>
 
       {sampleConfigType === SampleConfigType.Static && (
-        <Row className="m-t-sm" gutter={[16, 8]}>
-          <Col span={12}>
-            <Row gutter={[0, 4]}>
-              <Col span={24}>
-                <Text className="text-sm">{t('label.profile-sample')}</Text>
-              </Col>
-              <Col span={24}>
-                <InputNumber
-                  className="w-full"
-                  data-testid="profile-sample-input"
-                  min={0}
-                  value={config.profileSample ?? undefined}
-                  onChange={(value) =>
-                    handleStaticFieldChange('profileSample', value ?? undefined)
-                  }
-                />
-              </Col>
-            </Row>
-          </Col>
-          <Col span={12}>
-            <Row gutter={[0, 4]}>
-              <Col span={24}>
-                <Text className="text-sm">
-                  {t('label.profile-sample-type')}
-                </Text>
-              </Col>
-              <Col span={24}>
-                <Select
-                  className="w-full"
-                  data-testid="profile-sample-type-select"
-                  options={PROFILE_SAMPLE_TYPE_OPTIONS}
-                  value={config.profileSampleType}
-                  onChange={(value) =>
-                    handleStaticFieldChange('profileSampleType', value)
-                  }
-                />
-              </Col>
-            </Row>
-          </Col>
-          <Col span={12}>
-            <Row gutter={[0, 4]}>
-              <Col span={24}>
-                <Text className="text-sm">
-                  {t('label.sampling-method-type')}
-                </Text>
-              </Col>
-              <Col span={24}>
-                <Select
-                  className="w-full"
-                  data-testid="sampling-method-type-select"
-                  options={SAMPLING_METHOD_TYPE_OPTIONS}
-                  value={config.samplingMethodType}
-                  onChange={(value) =>
-                    handleStaticFieldChange('samplingMethodType', value)
-                  }
-                />
-              </Col>
-            </Row>
-          </Col>
-        </Row>
+        <Grid className="m-t-sm" colGap="4" rowGap="2">
+          <Grid.Item span={12}>
+            <div className="tw:flex tw:flex-col tw:gap-1">
+              <Typography size="text-sm">
+                {t('label.profile-sample')}
+              </Typography>
+              <Input
+                className="w-full"
+                data-testid="profile-sample-input"
+                type="number"
+                value={config.profileSample?.toString() ?? ''}
+                onChange={(value) =>
+                  handleStaticFieldChange(
+                    'profileSample',
+                    value !== '' ? Number(value) : undefined
+                  )
+                }
+              />
+            </div>
+          </Grid.Item>
+          <Grid.Item span={12}>
+            <div className="tw:flex tw:flex-col tw:gap-1">
+              <Typography size="text-sm">
+                {t('label.profile-sample-type')}
+              </Typography>
+              <Select
+                className="w-full"
+                data-testid="profile-sample-type-select"
+                fontSize="sm"
+                items={PROFILE_SAMPLE_TYPE_OPTIONS}
+                value={config.profileSampleType ?? null}
+                onChange={(value) =>
+                  handleStaticFieldChange(
+                    'profileSampleType',
+                    value as ProfileSampleType
+                  )
+                }>
+                {(item) => (
+                  <Select.Item id={item.id} key={item.id}>
+                    <Typography size="text-sm">{item.label}</Typography>
+                  </Select.Item>
+                )}
+              </Select>
+            </div>
+          </Grid.Item>
+          <Grid.Item span={12}>
+            <div className="tw:flex tw:flex-col tw:gap-1">
+              <Typography size="text-sm">
+                {t('label.sampling-method-type')}
+              </Typography>
+              <Select
+                className="w-full"
+                data-testid="sampling-method-type-select"
+                fontSize="sm"
+                items={SAMPLING_METHOD_TYPE_OPTIONS}
+                value={config.samplingMethodType ?? null}
+                onChange={(value) =>
+                  handleStaticFieldChange(
+                    'samplingMethodType',
+                    value as SamplingMethodType
+                  )
+                }>
+                {(item) => (
+                  <Select.Item id={item.id} key={item.id}>
+                    <Typography size="text-sm">{item.label}</Typography>
+                  </Select.Item>
+                )}
+              </Select>
+            </div>
+          </Grid.Item>
+        </Grid>
       )}
 
       {sampleConfigType === SampleConfigType.Dynamic && (
         <div className="m-t-sm">
-          <Row className="m-b-xs" gutter={[0, 4]}>
-            <Col span={24}>
-              <Text className="text-sm font-medium">
-                {t('label.threshold-plural')}
-              </Text>
-            </Col>
-          </Row>
+          <Typography
+            className="m-b-xs tw:block"
+            size="text-sm"
+            weight="medium">
+            {t('label.threshold-plural')}
+          </Typography>
           {(config.thresholds ?? []).map((threshold, index) => (
-            <Card
-              className="m-b-sm"
-              extra={
-                <Button
-                  data-testid={`remove-threshold-${index}`}
-                  icon={<DeleteOutlined />}
-                  size="small"
-                  type="text"
-                  onClick={() => handleRemoveThreshold(index)}
-                />
-              }
-              key={index}
-              size="small"
-              title={`${t('label.threshold')} ${index + 1}`}>
-              <Row gutter={[16, 8]}>
-                <Col span={12}>
-                  <Row gutter={[0, 4]}>
-                    <Col span={24}>
-                      <Text className="text-sm">
+            <Card className="m-b-sm" key={index} size="sm">
+              <Card.Header
+                extra={
+                  <Button
+                    color="tertiary-destructive"
+                    data-testid={`remove-threshold-${index}`}
+                    iconLeading={Trash01}
+                    size="sm"
+                    onClick={() => handleRemoveThreshold(index)}
+                  />
+                }
+                title={`${t('label.threshold')} ${index + 1}`}
+              />
+              <Card.Content>
+                <Grid colGap="4" rowGap="2">
+                  <Grid.Item span={12}>
+                    <div className="tw:flex tw:flex-col tw:gap-1">
+                      <Typography size="text-sm">
                         {t('label.row-count-threshold')}
-                      </Text>
-                    </Col>
-                    <Col span={24}>
-                      <InputNumber
+                      </Typography>
+                      <Input
                         className="w-full"
                         data-testid={`row-count-threshold-${index}`}
-                        min={1}
-                        value={threshold.rowCountThreshold}
+                        type="number"
+                        value={threshold.rowCountThreshold.toString()}
                         onChange={(value) =>
                           handleThresholdChange(
                             index,
                             'rowCountThreshold',
-                            value ?? 1
+                            Number(value) || 1
                           )
                         }
                       />
-                    </Col>
-                  </Row>
-                </Col>
-                <Col span={12}>
-                  <Row gutter={[0, 4]}>
-                    <Col span={24}>
-                      <Text className="text-sm">
+                    </div>
+                  </Grid.Item>
+                  <Grid.Item span={12}>
+                    <div className="tw:flex tw:flex-col tw:gap-1">
+                      <Typography size="text-sm">
                         {t('label.profile-sample')}
-                      </Text>
-                    </Col>
-                    <Col span={24}>
-                      <InputNumber
+                      </Typography>
+                      <Input
                         className="w-full"
                         data-testid={`profile-sample-${index}`}
-                        min={0}
-                        value={threshold.profileSample}
+                        type="number"
+                        value={threshold.profileSample.toString()}
                         onChange={(value) =>
                           handleThresholdChange(
                             index,
                             'profileSample',
-                            value ?? 0
+                            Number(value) || 0
                           )
                         }
                       />
-                    </Col>
-                  </Row>
-                </Col>
-                <Col span={12}>
-                  <Row gutter={[0, 4]}>
-                    <Col span={24}>
-                      <Text className="text-sm">
+                    </div>
+                  </Grid.Item>
+                  <Grid.Item span={12}>
+                    <div className="tw:flex tw:flex-col tw:gap-1">
+                      <Typography size="text-sm">
                         {t('label.profile-sample-type')}
-                      </Text>
-                    </Col>
-                    <Col span={24}>
+                      </Typography>
                       <Select
                         className="w-full"
                         data-testid={`profile-sample-type-${index}`}
-                        options={PROFILE_SAMPLE_TYPE_OPTIONS}
-                        value={threshold.profileSampleType}
+                        fontSize="sm"
+                        items={PROFILE_SAMPLE_TYPE_OPTIONS}
+                        value={threshold.profileSampleType ?? null}
                         onChange={(value) =>
                           handleThresholdChange(
                             index,
                             'profileSampleType',
-                            value
+                            value as ProfileSampleType
                           )
-                        }
-                      />
-                    </Col>
-                  </Row>
-                </Col>
-                <Col span={12}>
-                  <Row gutter={[0, 4]}>
-                    <Col span={24}>
-                      <Text className="text-sm">
+                        }>
+                        {(item) => (
+                          <Select.Item id={item.id} key={item.id}>
+                            <Typography size="text-sm">{item.label}</Typography>
+                          </Select.Item>
+                        )}
+                      </Select>
+                    </div>
+                  </Grid.Item>
+                  <Grid.Item span={12}>
+                    <div className="tw:flex tw:flex-col tw:gap-1">
+                      <Typography size="text-sm">
                         {t('label.sampling-method-type')}
-                      </Text>
-                    </Col>
-                    <Col span={24}>
+                      </Typography>
                       <Select
                         className="w-full"
                         data-testid={`sampling-method-type-${index}`}
-                        options={SAMPLING_METHOD_TYPE_OPTIONS}
-                        value={threshold.samplingMethodType}
+                        fontSize="sm"
+                        items={SAMPLING_METHOD_TYPE_OPTIONS}
+                        value={threshold.samplingMethodType ?? null}
                         onChange={(value) =>
                           handleThresholdChange(
                             index,
                             'samplingMethodType',
-                            value
+                            value as SamplingMethodType
                           )
-                        }
-                      />
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+                        }>
+                        {(item) => (
+                          <Select.Item id={item.id} key={item.id}>
+                            <Typography size="text-sm">{item.label}</Typography>
+                          </Select.Item>
+                        )}
+                      </Select>
+                    </div>
+                  </Grid.Item>
+                </Grid>
+              </Card.Content>
             </Card>
           ))}
           <Button
+            color="secondary"
             data-testid="add-threshold-btn"
-            icon={<PlusOutlined />}
-            size="small"
-            type="dashed"
+            iconLeading={Plus}
+            size="sm"
             onClick={handleAddThreshold}>
             {t('label.add-entity', { entity: t('label.threshold') })}
           </Button>

@@ -21,6 +21,114 @@ import {
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
+jest.mock('@untitledui/icons', () => ({
+  Plus: () => null,
+  Trash01: () => null,
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const CardHeader = ({
+    title,
+    extra,
+  }: {
+    title?: React.ReactNode;
+    extra?: React.ReactNode;
+  }) => (
+    <div>
+      <span>{title}</span>
+      {extra}
+    </div>
+  );
+  const CardContent = ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  const CardMock = Object.assign(
+    ({
+      children,
+      className,
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    { Content: CardContent, Header: CardHeader }
+  );
+
+  const GridItem = ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  const GridMock = Object.assign(
+    ({
+      children,
+      className,
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    { Item: GridItem }
+  );
+
+  const SelectItem = ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  const SelectMock = Object.assign(
+    ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+      <div data-testid={testId} />
+    ),
+    { Item: SelectItem }
+  );
+
+  return {
+    Button: ({
+      children,
+      onClick,
+      'data-testid': testId,
+    }: {
+      children?: React.ReactNode;
+      onClick?: () => void;
+      'data-testid'?: string;
+      iconLeading?: React.ComponentType;
+      color?: string;
+      size?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    ),
+    Card: CardMock,
+    Grid: GridMock,
+    Input: ({
+      'data-testid': testId,
+      value,
+      onChange,
+      type,
+    }: {
+      'data-testid'?: string;
+      value?: string;
+      onChange?: (value: string) => void;
+      type?: string;
+      className?: string;
+    }) => (
+      <input
+        data-testid={testId}
+        type={type}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    ),
+    Select: SelectMock,
+    Typography: ({
+      children,
+      className,
+    }: {
+      children?: React.ReactNode;
+      size?: string;
+      weight?: string;
+      className?: string;
+      as?: React.ElementType;
+    }) => <span className={className}>{children}</span>,
+  };
+});
+
 const mockOnChange = jest.fn();
 
 const baseFieldProps: FieldProps<ProfileSampleConfig> = {
