@@ -513,6 +513,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getResourceEntityFromServiceCategory: jest
     .fn()
     .mockReturnValue('databaseService'),
+  getSearchIndexForService: jest.fn().mockReturnValue('database_search_index'),
   getServiceDisplayNameQueryFilter: jest.fn().mockReturnValue(''),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('database'),
   shouldTestConnection: jest.fn().mockReturnValue(true),
@@ -587,6 +588,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 jest.mock('../../utils/StringsUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
   getEncodedFqn: jest.fn().mockImplementation((text) => text),
+}));
+
+jest.mock('../../utils/DatabaseSchemaDetailsUtils', () => ({
+  buildSchemaQueryFilter: jest.fn().mockReturnValue(''),
 }));
 
 const mockSetFilters = jest.fn();

@@ -252,7 +252,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   } = ingestionPagingInfo;
 
   const {
-    paging,
+    paging: _paging,
     pageSize,
     currentPage,
     handlePageChange,
@@ -276,13 +276,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
-  const [data, setData] = useState<Array<ServicePageData>>([]);
+  const [_data, setData] = useState<Array<ServicePageData>>([]);
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
     useState(false);
-  const [isServiceLoading, setIsServiceLoading] = useState(true);
+  const [_isServiceLoading, setIsServiceLoading] = useState(true);
   const [isFilesLoading, setIsFilesLoading] = useState(true);
   const [isSpreadsheetsLoading, setIsSpreadsheetsLoading] = useState(true);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
@@ -1423,17 +1423,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
-    if (
-      !searchValue &&
-      isInitialPaginationLoadRef.current &&
-      activeTab !== EntityTabs.DETAILS
-    ) {
-      getOtherDetails({ limit: pageSize });
-      isInitialPaginationLoadRef.current = false;
-    }
-  }, [searchValue, pageSize, activeTab, getOtherDetails]);
-
-  useEffect(() => {
     if (isMetadataService || isSecurityService) {
       return;
     }
@@ -1933,14 +1922,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceDetails,
     isAdminUser,
     serviceCategory,
-    paging,
     servicePermission,
     handleDescriptionUpdate,
     showDeleted,
     handleShowDeleted,
-    data,
-    isServiceLoading,
-    getOtherDetails,
     saveUpdatedServiceData,
     dataModelPaging,
     ingestionPaging,
