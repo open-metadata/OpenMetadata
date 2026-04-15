@@ -24,6 +24,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
+  private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -81,7 +82,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskTypeCondition(tableName));
     conditions.add(getTaskPriorityCondition(tableName));
     conditions.add(getEntityStatusCondition(tableName));
-    conditions.add(getServerIdCondition());
+    conditions.add(getServerIdCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -577,9 +578,11 @@ public class ListFilter extends Filter<ListFilter> {
         : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
-  private String getServerIdCondition() {
+  private String getServerIdCondition(String tableName) {
     String serverId = queryParams.get("serverId");
-    return serverId == null ? "" : "serverId = :serverId";
+    return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
+        ? ""
+        : "serverId = :serverId";
   }
 
   private String getEntityFQNHashCondition() {
