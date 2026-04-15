@@ -199,6 +199,9 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
+const KnowledgeGraph = lazy(
+  () => import('../components/KnowledgeGraph/KnowledgeGraph')
+);
 
 const SampleDataTableComponent = withSuspenseFallback(
   lazy(
@@ -1018,18 +1021,20 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <KnowledgeGraph
-          depth={1}
-          entity={
-            tableDetails
-              ? {
-                  ...tableDetails,
-                  type: EntityType.TABLE,
-                }
-              : undefined
-          }
-          entityType={EntityType.TABLE}
-        />
+        <Suspense fallback={<Loader />}>
+          <KnowledgeGraph
+            depth={1}
+            entity={
+              tableDetails
+                ? {
+                    ...tableDetails,
+                    type: EntityType.TABLE,
+                  }
+                : undefined
+            }
+            entityType={EntityType.TABLE}
+          />
+        </Suspense>
       ),
       isHidden: !useApplicationStore.getState().rdfEnabled,
     },

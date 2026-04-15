@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
+import org.openmetadata.service.security.CspNonceHandler;
 
 @Slf4j
 public class OpenMetadataAssetServlet extends AssetServlet {
@@ -63,9 +64,9 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String requestUri = req.getRequestURI();
 
     if (requestUri.endsWith("/")) {
-      // Serve index.html for directory requests
+      final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
       resp.setContentType("text/html");
-      resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
+      resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
       return;
     }
 
@@ -109,10 +110,10 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     // For SPA routing: serve index.html for 404s that don't look like static asset requests
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
       if (isSpaRoute(requestUri)) {
-        // Serve index file for SPA routes instead of 404
+        final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
         resp.setStatus(200);
         resp.setContentType("text/html");
-        resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
+        resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
       } else {
         resp.sendError(404);
       }

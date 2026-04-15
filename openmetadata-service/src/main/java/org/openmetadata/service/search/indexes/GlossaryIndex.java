@@ -4,7 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.service.Entity;
 
-public class GlossaryIndex implements SearchIndex {
+public class GlossaryIndex implements TaggableIndex {
   final Glossary glossary;
 
   public GlossaryIndex(Glossary glossary) {
@@ -16,9 +16,12 @@ public class GlossaryIndex implements SearchIndex {
     return glossary;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.GLOSSARY;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(glossary, Entity.GLOSSARY);
-    doc.putAll(commonAttributes);
     return doc;
   }
 }
