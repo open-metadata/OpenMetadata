@@ -30,6 +30,7 @@ import {
   isNil,
   isUndefined,
   noop,
+  omit,
   omitBy,
   toNumber,
 } from 'lodash';
@@ -97,11 +98,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   isRenderedInRightPanel = false,
 }) => {
   const { propertyName, propertyType, value, isTableType } = useMemo(() => {
-    const propertyName = property.name;
+    // Backend may wrap names in double-quotes when they contain special chars.
+    // Normalise to the raw name (without surrounding quotes) for consistent lookups.
+    const propertyName = property.name.replaceAll(/^"|"$/g, '');
     const propertyType = property.propertyType;
     const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
-
-    const value = extension?.[propertyName];
+    // Extension key may be stored as the raw name OR as the quoted form — try both.
+    const value = extension?.[propertyName] ?? extension?.[`"${propertyName}"`];
 
     return {
       propertyName,
@@ -159,7 +162,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const updatedExtension = omitBy(
         omitBy(
           {
-            ...extension,
+            ...omit(extension, [propertyName, `"${propertyName}"`]),
             [propertyName]: resolvedValue,
           },
           isUndefined

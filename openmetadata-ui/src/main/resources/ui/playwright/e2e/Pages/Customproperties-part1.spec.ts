@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
@@ -20,6 +21,8 @@ import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
   editCreatedProperty,
+  setValueForProperty,
+  validateValueForProperty,
   verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -68,7 +71,9 @@ test.describe(
         .serial(`Add update and delete custom properties for ${entity.name}`, () => {
         propertiesList.forEach((property) => {
           test(property, async ({ page }) => {
-            const propertyName = `pwcp${uuid()}${uuid()}test${entity.name}`;
+            const propertyName = `pw. ${uuid()}_CP-${uuid()} . ${
+              entity.name
+            }:/&^%$#@!`;
             await settingClick(
               page,
               entity.entityApiType as SettingOptionsType,
@@ -99,6 +104,93 @@ test.describe(
 
             await deleteCreatedProperty(page, propertyName);
           });
+        });
+      });
+    });
+
+    test.describe('Updating value of a special-character-name property does not duplicate the key', () => {
+      const entity = CUSTOM_PROPERTIES_ENTITIES['entity_table'];
+
+      test('no duplicate card after update', async ({ page }) => {
+        test.slow();
+
+        const propertyName = `\\ pw.edge.update.${uuid()} \\`;
+
+        await test.step('Create property', async () => {
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
+          await addCustomPropertiesForEntity({
+            page,
+            propertyName,
+            customPropertyData: entity,
+            customType: 'String',
+          });
+        });
+
+        await test.step('Set initial value', async () => {
+          await adminTestEntity.visitEntityPage(page);
+          await waitForAllLoadersToDisappear(page);
+
+          await setValueForProperty({
+            page,
+            propertyName,
+            value: 'initial value',
+            propertyType: 'string',
+            endpoint: EntityTypeEndpoint.Table,
+          });
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'initial value',
+            propertyType: 'string',
+          });
+        });
+
+        await test.step('Update value and verify only one card exists', async () => {
+          await setValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+            endpoint: EntityTypeEndpoint.Table,
+          });
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+          });
+
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toHaveCount(1);
+          await expect(
+            page.getByTestId(`custom-property-"${propertyName}"-card`)
+          ).toHaveCount(0);
+        });
+
+        await test.step('Value persists after reload', async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+          });
+
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toHaveCount(1);
+          await expect(
+            page.getByTestId(`custom-property-"${propertyName}"-card`)
+          ).toHaveCount(0);
         });
       });
     });
