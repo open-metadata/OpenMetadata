@@ -44,21 +44,18 @@ def oracle_container():
 def _grant_oracle_privileges(config: OracleContainerConfigs):
     """Grant DBA-level privileges needed by test_connection steps."""
     dsn = oracledb.makedsn("localhost", config.exposed_port, service_name=config.dbname)
-    connection = oracledb.connect(
+    with oracledb.connect(
         user="sys",
         password=config.oracle_password,
         dsn=dsn,
         mode=oracledb.AUTH_MODE_SYSDBA,
-    )
-    cursor = connection.cursor()
-    grants = [
-        f"GRANT SELECT ANY DICTIONARY TO {config.username}",
-        f"GRANT SELECT ON gv_$sql TO {config.username}",
-        f"GRANT SELECT ON v_$sql TO {config.username}",
-        f"GRANT CREATE TABLE TO {config.username}",
-    ]
-    for grant in grants:
-        cursor.execute(grant)
-    connection.commit()
-    cursor.close()
-    connection.close()
+    ) as connection:
+        with connection.cursor() as cursor:
+            for grant in [
+                f"GRANT SELECT ANY DICTIONARY TO {config.username}",
+                f"GRANT SELECT ON gv_$sql TO {config.username}",
+                f"GRANT SELECT ON v_$sql TO {config.username}",
+                f"GRANT CREATE TABLE TO {config.username}",
+            ]:
+                cursor.execute(grant)
+        connection.commit()

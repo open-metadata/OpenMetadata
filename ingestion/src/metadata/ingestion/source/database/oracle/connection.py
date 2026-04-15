@@ -21,6 +21,7 @@ from urllib.parse import quote_plus
 import oracledb
 from oracledb.exceptions import DatabaseError, ProgrammingError
 from pydantic import SecretStr
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -70,35 +71,72 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
     def _get_client(self) -> Engine:
         """
-        Create connection
-        """
-        try:
-            if self.service_connection.instantClientDirectory:
-                logger.info(
-                    "Initializing Oracle thick client at"
-                    f" {self.service_connection.instantClientDirectory}"
-                )
-                os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
-                oracledb.init_oracle_client(
-                    lib_dir=self.service_connection.instantClientDirectory
-                )
-        except ProgrammingError:
-            logger.debug("Oracle thick client already initialized")
-        except DatabaseError as err:
-            logger.warning(
-                f"Could not initialize Oracle thick client: {err}. "
-                "Falling back to thin mode. If your Oracle server requires "
-                "Native Network Encryption (NNE), thick mode with Oracle "
-                "Instant Client is required — thin mode cannot negotiate NNE. "
-                "Ensure the Instant Client libraries are installed at the "
-                "configured path."
-            )
+        Create connection.
 
+        Strategy: try thin mode first (no external deps). If the connection
+        fails, retry with thick mode (Oracle Instant Client) which supports
+        Oracle Native Network Encryption (NNE).
+        """
+        engine = self._create_engine()
+
+        if self._can_connect(engine):
+            logger.info("Connected to Oracle in thin mode")
+            return engine
+
+        logger.info(
+            "Thin mode connection failed. Attempting thick mode with"
+            " Oracle Instant Client for NNE support."
+        )
+        if self._init_thick_mode():
+            engine = self._create_engine()
+            if self._can_connect(engine):
+                logger.info("Connected to Oracle in thick mode (NNE enabled)")
+                return engine
+
+        return engine
+
+    def _create_engine(self) -> Engine:
         return create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+
+    @staticmethod
+    def _can_connect(engine: Engine) -> bool:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM DUAL"))
+            return True
+        except Exception:
+            return False
+
+    def _init_thick_mode(self) -> bool:
+        """Initialize Oracle thick mode. Returns True if successful."""
+        lib_dir = self.service_connection.instantClientDirectory
+        if not lib_dir:
+            logger.warning(
+                "No instantClientDirectory configured. Cannot enable thick"
+                " mode. If your Oracle server requires Native Network"
+                " Encryption (NNE), set instantClientDirectory to the Oracle"
+                " Instant Client path (default: /instantclient)."
+            )
+            return False
+        try:
+            os.environ[LD_LIB_ENV] = lib_dir
+            oracledb.init_oracle_client(lib_dir=lib_dir)
+            logger.info(f"Oracle thick client initialized at {lib_dir}")
+            return True
+        except ProgrammingError:
+            logger.debug("Oracle thick client already initialized")
+            return True
+        except DatabaseError as err:
+            logger.warning(
+                f"Could not initialize Oracle thick client at {lib_dir}:"
+                f" {err}. If your Oracle server requires NNE, verify the"
+                " Instant Client libraries match your platform architecture."
+            )
+            return False
 
     def test_connection(
         self,

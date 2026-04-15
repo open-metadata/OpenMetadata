@@ -49,6 +49,7 @@ class OracleContainerConfigs:
     dbname: str = "test"
     container_name: str = "test-oracle"
     exposed_port: Optional[int] = None
+    docker_container: Optional[OracleDbContainer] = None
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
