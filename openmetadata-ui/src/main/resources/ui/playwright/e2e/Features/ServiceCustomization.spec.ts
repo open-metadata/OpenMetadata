@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, type Page, test as base } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SERVICE_DEFAULT_TABS } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
