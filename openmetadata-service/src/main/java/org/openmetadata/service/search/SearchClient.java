@@ -240,11 +240,11 @@ public interface SearchClient
       """
       def removedKeys = new HashSet();
       for (def lineage : ctx._source.upstreamLineage) {
-        if (lineage.docUniqueId == params.docUniqueId && lineage.containsKey('sqlQueryKey')) {
+        if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
           removedKeys.add(lineage.sqlQueryKey);
         }
       }
-      ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId);
+      ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
       if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
         def sqlMap = ctx._source.lineageSqlQueries;
         def usedKeys = new HashSet();
@@ -298,9 +298,14 @@ public interface SearchClient
       } else {
         edgeData = params.lineageData;
       }
+      // Replace or add the edge, capturing the old sqlQueryKey for cleanup.
+      def oldSqlQueryKey = null;
       boolean docIdExists = false;
       for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) {
         if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) {
+          if (ctx._source.upstreamLineage[i].containsKey('sqlQueryKey')) {
+            oldSqlQueryKey = ctx._source.upstreamLineage[i].sqlQueryKey;
+          }
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;
@@ -308,6 +313,19 @@ public interface SearchClient
       }
       if (!docIdExists) {
         ctx._source.upstreamLineage.add(edgeData);
+      }
+      // Prune the old SQL key if it changed and is no longer used by any edge.
+      if (oldSqlQueryKey != null && !oldSqlQueryKey.equals(edgeData.containsKey('sqlQueryKey') ? edgeData.get('sqlQueryKey') : null)) {
+        boolean stillUsed = false;
+        for (def lineage : ctx._source.upstreamLineage) {
+          if (lineage.containsKey('sqlQueryKey') && oldSqlQueryKey.equals(lineage.sqlQueryKey)) {
+            stillUsed = true;
+            break;
+          }
+        }
+        if (!stillUsed && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+          ctx._source.lineageSqlQueries.remove(oldSqlQueryKey);
+        }
       }
       """;
 

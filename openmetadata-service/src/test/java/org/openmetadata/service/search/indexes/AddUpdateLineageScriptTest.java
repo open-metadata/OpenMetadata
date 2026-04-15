@@ -68,11 +68,13 @@ class AddUpdateLineageScriptTest {
 
     List<Map<String, Object>> upstreamLineage =
         (List<Map<String, Object>>) doc.get("upstreamLineage");
+    String oldSqlQueryKey = null;
     boolean found = false;
     for (int i = 0; i < upstreamLineage.size(); i++) {
       String existingId = (String) upstreamLineage.get(i).get("docUniqueId");
       String incomingId = (String) lineageData.get("docUniqueId");
       if (existingId != null && existingId.equalsIgnoreCase(incomingId)) {
+        oldSqlQueryKey = (String) upstreamLineage.get(i).get("sqlQueryKey");
         upstreamLineage.set(i, edgeData);
         found = true;
         break;
@@ -80,6 +82,22 @@ class AddUpdateLineageScriptTest {
     }
     if (!found) {
       upstreamLineage.add(edgeData);
+    }
+    // Prune old SQL key if it changed and is no longer used by any edge
+    String newSqlQueryKey = (String) edgeData.get("sqlQueryKey");
+    if (oldSqlQueryKey != null && !oldSqlQueryKey.equals(newSqlQueryKey)) {
+      boolean stillUsed = false;
+      for (Map<String, Object> lineage : upstreamLineage) {
+        if (oldSqlQueryKey.equals(lineage.get("sqlQueryKey"))) {
+          stillUsed = true;
+          break;
+        }
+      }
+      @SuppressWarnings("unchecked")
+      Map<String, String> sqlMap = (Map<String, String>) doc.get("lineageSqlQueries");
+      if (!stillUsed && sqlMap != null) {
+        sqlMap.remove(oldSqlQueryKey);
+      }
     }
   }
 
@@ -188,8 +206,9 @@ class AddUpdateLineageScriptTest {
     Map<String, String> sqlMap = (Map<String, String>) doc.get("lineageSqlQueries");
 
     assertEquals(1, edges.size(), "update must not add a second entry");
-    assertEquals(2, sqlMap.size(), "both old and new SQL texts are in the map");
+    assertEquals(1, sqlMap.size(), "old unused SQL key is pruned");
     assertEquals("2", edges.get(0).get("sqlQueryKey"), "updated edge points to new SQL key");
+    assertEquals("SELECT new FROM t", sqlMap.get("2"), "map contains only the new SQL");
   }
 
   @Test

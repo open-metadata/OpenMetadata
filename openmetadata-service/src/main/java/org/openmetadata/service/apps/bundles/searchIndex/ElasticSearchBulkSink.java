@@ -854,7 +854,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         buffer.add(operation);
         currentBufferSize += operationSize;
 
-        if (buffer.size() >= bulkActions) {
+        if (buffer.size() >= bulkActions || currentBufferSize >= maxPayloadSizeBytes) {
           flushInternal();
         }
       } finally {
