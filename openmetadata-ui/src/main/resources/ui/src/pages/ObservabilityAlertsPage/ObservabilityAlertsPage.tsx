@@ -221,7 +221,7 @@ const ObservabilityAlertsPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      ...descriptionTableObject<EventSubscription>(),
+      ...descriptionTableObject(),
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',

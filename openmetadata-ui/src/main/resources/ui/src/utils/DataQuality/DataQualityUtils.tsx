@@ -67,7 +67,7 @@ import { formatDate } from '../date-time/DateTimeUtils';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityUtils';
 import { getEntityFQN } from '../FeedUtils';
-import observabilityRouterClassBase from '../ObservabilityRouterClassBase';
+import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -711,9 +711,7 @@ export function getColumnNameFromColumnFilterKey(
 
 /** Returns path and search for navigating to the Test Cases tab with a status filter. */
 export const getTestCaseTabPath = (testCaseStatus: TestCaseStatus) => ({
-  pathname: observabilityRouterClassBase.getDataQualityPagePath(
-    DataQualityPageTabs.TEST_CASES
-  ),
+  pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
   search: QueryString.stringify({ testCaseStatus }),
 });
 

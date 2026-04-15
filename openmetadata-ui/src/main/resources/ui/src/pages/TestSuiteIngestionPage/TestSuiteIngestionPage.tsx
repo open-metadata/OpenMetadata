@@ -30,7 +30,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { getTestSuiteDetailsPath } from '../../utils/TestSuiteUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -71,7 +71,7 @@ const TestSuiteIngestionPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: observabilityRouterClassBase.getDataQualityPagePath(),
+          url: getDataQualityPagePath(),
         },
         {
           name: getEntityName(

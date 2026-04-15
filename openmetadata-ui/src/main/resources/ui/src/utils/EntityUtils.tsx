@@ -130,13 +130,13 @@ import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
-import observabilityRouterClassBase from './ObservabilityRouterClassBase';
 import {
   getApplicationDetailsPath,
   getBotsPagePath,
   getBotsPath,
   getClassificationTagPath,
   getDataProductDetailsPath,
+  getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
   getEntityDetailsPath,
@@ -2185,9 +2185,7 @@ export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
     : [
         {
           name: t('label.test-suite-plural'),
-          url: observabilityRouterClassBase.getDataQualityPagePath(
-            DataQualityPageTabs.TEST_SUITES
-          ),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
         },
         {
           name: getEntityName(entity),

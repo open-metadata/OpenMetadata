@@ -68,11 +68,11 @@ import {
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import tagClassBase from '../../../utils/TagClassBase';
 import { ExtraTestCaseDropdownOptions } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -738,9 +738,7 @@ export const TestCases = () => {
           breadcrumbData={[
             {
               name: t('label.data-quality'),
-              url: observabilityRouterClassBase.getDataQualityPagePath(
-                DataQualityPageTabs.TEST_CASES
-              ),
+              url: observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
           enableBulkActions={Boolean(testSuitePermission?.Create)}

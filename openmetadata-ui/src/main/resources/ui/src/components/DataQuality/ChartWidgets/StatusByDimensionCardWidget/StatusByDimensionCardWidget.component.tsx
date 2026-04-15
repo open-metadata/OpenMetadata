@@ -81,9 +81,7 @@ const StatusByDimensionCardWidget = ({
             isLoading={isDqByDimensionLoading}
             key={dimension.title}
             redirectPath={{
-              pathname: observabilityRouterClassBase.getDataQualityPagePath(
-                DataQualityPageTabs.TEST_CASES
-              ),
+              pathname: observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
               search: QueryString.stringify({
                 dataQualityDimension: dimension.title,
               }),

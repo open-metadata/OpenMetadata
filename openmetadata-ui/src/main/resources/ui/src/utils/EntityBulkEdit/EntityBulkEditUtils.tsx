@@ -31,7 +31,7 @@ import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { exportTestCasesInCSV } from '../../rest/testAPI';
 import entityUtilClassBase from '../EntityUtilClassBase';
 import { t } from '../i18next/LocalUtil';
-import observabilityRouterClassBase from '../ObservabilityRouterClassBase';
+import { getDataQualityPagePath } from '../RouterUtils';
 
 export const isBulkEditRoute = (pathname: string) => {
   return pathname.includes(ROUTES.BULK_EDIT_ENTITY);
@@ -88,9 +88,7 @@ export const getBulkEntityNavigationPath = (
 ): string => {
   if (entityType === EntityType.TEST_CASE) {
     if (fqn === WILD_CARD_CHAR) {
-      return observabilityRouterClassBase.getDataQualityPagePath(
-        DataQualityPageTabs.TEST_CASES
-      );
+      return getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);
     } else if (sourceEntityType === EntityType.TABLE) {
       return entityUtilClassBase.getEntityLink(
         EntityType.TABLE,
@@ -101,9 +99,7 @@ export const getBulkEntityNavigationPath = (
     } else if (sourceEntityType === EntityType.TEST_SUITE) {
       return entityUtilClassBase.getEntityLink(EntityType.TEST_SUITE, fqn);
     } else {
-      return observabilityRouterClassBase.getDataQualityPagePath(
-        DataQualityPageTabs.TEST_CASES
-      );
+      return getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);
     }
   }
 

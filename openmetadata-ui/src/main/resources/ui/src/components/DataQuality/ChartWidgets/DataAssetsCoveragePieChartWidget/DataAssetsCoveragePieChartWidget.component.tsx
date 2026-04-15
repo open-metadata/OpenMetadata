@@ -47,11 +47,7 @@ const DataAssetsCoveragePieChartWidget = ({
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
       if (index === 0) {
-        navigate(
-          observabilityRouterClassBase.getDataQualityPagePath(
-            DataQualityPageTabs.TEST_SUITES
-          )
-        );
+        navigate(observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
       } else if (index === 1) {
         navigate(ROUTES.EXPLORE);
       }
