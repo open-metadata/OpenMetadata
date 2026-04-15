@@ -39,7 +39,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
-      k8s-operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s-operator }}
+      k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,8 +60,8 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
-            k8s-operator:
-              - 'openmetadata-k8s-operator/**'
+            k8s_operator:
+              - 'openmetadata-k8s_operator/**'
 
   openmetadata-service-unit-tests:
     runs-on: ubuntu-latest
@@ -124,11 +124,11 @@ jobs:
           report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
           check_name: "Test Report (${{ matrix.database }})"
 
-  k8s-operator-unit-tests:
+  k8s_operator-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: changes
-    if: ${{ needs.changes.outputs.k8s-operator == 'true' }}
+    if: ${{ needs.changes.outputs.k8s_operator == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -149,24 +149,24 @@ jobs:
           java-version: "21"
           distribution: "temurin"
 
-      - name: Run k8s-operator unit tests
+      - name: Run k8s_operator unit tests
         run: |
-          mvn -B clean test -pl openmetadata-k8s-operator -am
+          mvn -B clean test -pl openmetadata-k8s_operator -am
 
       - name: Upload surefire reports
-        if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        if: ${{ failure() && hashFiles('openmetadata-k8s_operator/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: k8s-operator-surefire-reports
-          path: openmetadata-k8s-operator/target/surefire-reports/
+          name: k8s_operator-surefire-reports
+          path: openmetadata-k8s_operator/target/surefire-reports/
 
       - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s_operator/target/surefire-reports/TEST-*.xml') != '' }}
         uses: scacap/action-surefire-report@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
+          report_paths: "openmetadata-k8s_operator/target/surefire-reports/TEST-*.xml"
           check_name: "K8s Operator Test Report"
 
   # Single required-check gate for branch protection.
@@ -175,7 +175,7 @@ jobs:
   # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
   openmetadata-service-unit-tests-status:
     name: openmetadata-service-unit-tests-status
-    needs: [changes, openmetadata-service-unit-tests, k8s-operator-unit-tests]
+    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests]
     if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-latest
     steps:
