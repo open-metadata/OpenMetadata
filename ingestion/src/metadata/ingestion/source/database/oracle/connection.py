@@ -73,10 +73,22 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         """
         Create connection.
 
-        Strategy: try thin mode first (no external deps). If the connection
-        fails, retry with thick mode (Oracle Instant Client) which supports
-        Oracle Native Network Encryption (NNE).
+        When instantClientDirectory is configured, initialize thick mode
+        directly (the user/image intends thick mode for NNE support).
+        Otherwise try thin mode first, and fall back to thick mode only
+        if the thin connection fails.
         """
+        if self.service_connection.instantClientDirectory:
+            return self._get_client_thick_mode()
+        return self._get_client_with_fallback()
+
+    def _get_client_thick_mode(self) -> Engine:
+        """Initialize thick mode and create the engine."""
+        self._init_thick_mode()
+        return self._create_engine()
+
+    def _get_client_with_fallback(self) -> Engine:
+        """Try thin mode first; fall back to thick mode if it fails."""
         engine = self._create_engine()
 
         if self._can_connect(engine):
@@ -108,19 +120,14 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1 FROM DUAL"))
             return True
-        except Exception:
+        except Exception as exc:
+            logger.debug(f"Connectivity check failed: {exc}")
             return False
 
     def _init_thick_mode(self) -> bool:
         """Initialize Oracle thick mode. Returns True if successful."""
         lib_dir = self.service_connection.instantClientDirectory
         if not lib_dir:
-            logger.warning(
-                "No instantClientDirectory configured. Cannot enable thick"
-                " mode. If your Oracle server requires Native Network"
-                " Encryption (NNE), set instantClientDirectory to the Oracle"
-                " Instant Client path (default: /instantclient)."
-            )
             return False
         try:
             os.environ[LD_LIB_ENV] = lib_dir
