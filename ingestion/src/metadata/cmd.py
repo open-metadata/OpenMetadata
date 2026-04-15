@@ -29,6 +29,7 @@ from metadata.cli.ingest import run_ingest
 from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
+from metadata.cli.reverse_metadata import run_reverse_metadata
 from metadata.cli.scaffold import (
     AUTH_CHOICES,
     CAPABILITY_CHOICES,
@@ -66,6 +67,7 @@ RUN_PATH_METHODS = {
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
     MetadataCommands.AUTO_CLASSIFICATION.value: run_classification,
+    MetadataCommands.REVERSE_METADATA.value: run_reverse_metadata,
 }
 
 
