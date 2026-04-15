@@ -78,6 +78,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      changed_files: ${{ steps.lint.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -143,6 +145,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      changed_files: ${{ steps.license.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -238,6 +242,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      changed_files: ${{ steps.i18n.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -279,6 +285,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      changed_files: ${{ steps.docs.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -320,6 +328,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      changed_files: ${{ steps.lint.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -437,6 +447,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      changed_files: ${{ steps.lint.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -509,12 +521,42 @@ jobs:
         with:
           script: |
             const checks = [
-              { name: 'ESLint + Prettier + Organise Imports (src)',        result: '${{ needs.lint-src.result }}'             },
-              { name: 'Licence Header',                                     result: '${{ needs.license-header.result }}'       },
-              { name: 'I18n Sync',                                          result: '${{ needs.i18n-sync.result }}'            },
-              { name: 'App Docs',                                           result: '${{ needs.app-docs.result }}'             },
-              { name: 'Playwright — ESLint + Prettier + Organise Imports', result: '${{ needs.lint-playwright.result }}'      },
-              { name: 'Core Components — ESLint + Prettier',               result: '${{ needs.lint-core-components.result }}' },
+              {
+                name:    'ESLint + Prettier + Organise Imports (src)',
+                reason:  'One or more source files have linting or formatting issues.',
+                result:  '${{ needs.lint-src.result }}',
+                files:   `${{ needs.lint-src.outputs.changed_files }}`,
+              },
+              {
+                name:    'Licence Header',
+                reason:  'One or more files are missing or have an outdated Apache 2.0 licence header.',
+                result:  '${{ needs.license-header.result }}',
+                files:   `${{ needs.license-header.outputs.changed_files }}`,
+              },
+              {
+                name:    'I18n Sync',
+                reason:  'Translation locale files are out of sync with `en-us.json`.',
+                result:  '${{ needs.i18n-sync.result }}',
+                files:   `${{ needs.i18n-sync.outputs.changed_files }}`,
+              },
+              {
+                name:    'App Docs',
+                reason:  'Generated application docs are stale and need to be regenerated.',
+                result:  '${{ needs.app-docs.result }}',
+                files:   `${{ needs.app-docs.outputs.changed_files }}`,
+              },
+              {
+                name:    'Playwright — ESLint + Prettier + Organise Imports',
+                reason:  'One or more Playwright test files have linting or formatting issues.',
+                result:  '${{ needs.lint-playwright.result }}',
+                files:   `${{ needs.lint-playwright.outputs.changed_files }}`,
+              },
+              {
+                name:    'Core Components — ESLint + Prettier',
+                reason:  'One or more core-component files have linting or formatting issues.',
+                result:  '${{ needs.lint-core-components.result }}',
+                files:   `${{ needs.lint-core-components.outputs.changed_files }}`,
+              },
             ];
 
             const failures = checks.filter(c => c.result === 'failure');
@@ -531,14 +573,20 @@ jobs:
               return;
             }
 
-            const lines = failures.map(c => `  - ❌ **${c.name}**`).join('\n');
+            const sections = failures.map(c => {
+              const lines = [`#### ❌ ${c.name}`, c.reason];
+              if (c.files && c.files.trim()) {
+                lines.push('', '<details><summary>Affected files</summary>', '', c.files.trim(), '', '</details>');
+              }
+              return lines.join('\n');
+            });
+
             const body = [
               '<!-- check:ui-checkstyle-summary -->',
               '### ❌ UI Checkstyle Failed',
               '',
-              'The following checks need to be fixed:',
-              lines,
-              '',
+              ...sections.flatMap(s => [s, '']),
+              '---',
               '**Fix locally (fast — only checks files changed in this branch):**',
               '```bash',
               'make ui-checkstyle-changed',
