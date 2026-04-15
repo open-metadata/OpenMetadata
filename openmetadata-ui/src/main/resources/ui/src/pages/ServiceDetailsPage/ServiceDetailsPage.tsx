@@ -1436,7 +1436,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           queryFilter: buildSchemaQueryFilter(
             'service.fullyQualifiedName.keyword',
             decodedServiceFQN,
-            searchValue as string | undefined
+            searchValue ? toString(searchValue) : undefined
           ),
           includeDeleted: showDeleted,
           trackTotalHits: true,
