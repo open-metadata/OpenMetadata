@@ -13,7 +13,7 @@
 Datalake Base Client
 """
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 
 class DatalakeBaseClient(ABC):
@@ -64,3 +64,10 @@ class DatalakeBaseClient(ABC):
     @abstractmethod
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
         """Returns a Callable used to test the ListBuckets condition."""
+
+    def get_object_tags(
+        self, bucket_name: str, key: str
+    ) -> Optional[Dict[str, List[str]]]:
+        """Returns object tags as {classification_name: [tag_values]}.
+        Override per provider. Returns None if tags not supported."""
+        return None

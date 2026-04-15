@@ -13,7 +13,7 @@
 Datalake Azure Blob Client
 """
 from functools import partial
-from typing import Callable, Iterable, Optional, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 from azure.storage.blob import BlobServiceClient
 
@@ -78,6 +78,22 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
 
     def close(self, service_connection):
         self._client.close()
+
+    def get_object_tags(
+        self, bucket_name: str, key: str
+    ) -> Optional[Dict[str, List[str]]]:
+        try:
+            blob_client = self._client.get_blob_client(container=bucket_name, blob=key)
+            blob_tags = blob_client.get_blob_tags()
+            if not blob_tags:
+                return None
+            tags: Dict[str, List[str]] = {}
+            for tag_key, tag_value in blob_tags.items():
+                tags.setdefault(tag_key, []).append(str(tag_value))
+            return tags if tags else None
+        except Exception as exc:
+            logger.debug(f"Could not fetch tags for {bucket_name}/{key}: {exc}")
+            return None
 
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
         if bucket_name:

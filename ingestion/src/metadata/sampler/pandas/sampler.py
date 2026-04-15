@@ -49,6 +49,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 service_connection_config=self.service_connection_config,
                 client=self.client.client,
                 table=self.entity,
+                session=getattr(self.client, "session", None),
             )
         return self._table.dataframes
 

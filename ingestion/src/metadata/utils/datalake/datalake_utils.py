@@ -139,6 +139,7 @@ def fetch_dataframe_first_chunk(
                     f"Error fetching first chunk of file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
+                raise err
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(

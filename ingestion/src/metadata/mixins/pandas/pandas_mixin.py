@@ -185,7 +185,7 @@ class PandasInterfaceMixin:
         return yield_sampled_dfs
 
     def get_dataframes(
-        self, service_connection_config, client, table
+        self, service_connection_config, client, table, session=None
     ) -> DatalakeColumnWrapper:
         """
         Return the datalake column wrapper. The object has a dataframes argument which gives access
@@ -196,6 +196,7 @@ class PandasInterfaceMixin:
             service_connection_config: Datalake connection config
             client: Datalake client
             table: Table entity
+            session: boto3 session for credential resolution
         Returns:
             DatalakeColumnWrapper
         """
@@ -208,6 +209,7 @@ class PandasInterfaceMixin:
                 file_extension=table.fileFormat,
                 separator=None,
             ),
+            session=session,
         )
         if data:
             return data

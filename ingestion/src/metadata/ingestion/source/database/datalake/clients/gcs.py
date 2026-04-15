@@ -15,7 +15,7 @@ Datalake GCS Client
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 from google.cloud import storage
 
@@ -143,16 +143,24 @@ class DatalakeGcsClient(DatalakeBaseClient):
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
 
+    def get_object_tags(
+        self, bucket_name: str, key: str
+    ) -> Optional[Dict[str, List[str]]]:
+        try:
+            bucket = self._client.get_bucket(bucket_name)
+            blob = bucket.get_blob(key)
+            if not blob or not blob.metadata:
+                return None
+            tags: Dict[str, List[str]] = {}
+            for tag_key, tag_value in blob.metadata.items():
+                tags.setdefault(tag_key, []).append(str(tag_value))
+            return tags if tags else None
+        except Exception as exc:
+            logger.debug(f"Could not fetch tags for {bucket_name}/{key}: {exc}")
+            return None
+
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
 
         if bucket_name:
-            fn = partial(self._client.get_bucket, bucket_name)
-        else:
-            fn = self._client.list_buckets
-
-        os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
-        if GOOGLE_CREDENTIALS in os.environ:
-            os.remove(os.environ[GOOGLE_CREDENTIALS])
-            del os.environ[GOOGLE_CREDENTIALS]
-
-        return fn
+            return partial(self._client.get_bucket, bucket_name)
+        return self._client.list_buckets
