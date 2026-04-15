@@ -182,8 +182,11 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const waitForSigninNavigation = page.waitForURL('**/signin', {
       timeout: 30_000,
     });
+    const confirmLogoutButton = page.getByTestId('confirm-logout');
 
-    await page.getByTestId('confirm-logout').click();
+    await expect(confirmLogoutButton).toBeVisible();
+    await expect(confirmLogoutButton).toBeEnabled();
+    await confirmLogoutButton.click();
 
     await Promise.all([waitForLogoutResponse, waitForSigninNavigation]);
 
