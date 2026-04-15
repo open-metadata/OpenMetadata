@@ -85,6 +85,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
             <Button
               className="tw:w-full tw:justify-between"
               color="secondary"
+              data-testid="graph-settings-layout-button"
               iconTrailing={ChevronDown}
               size="sm">
               {layoutItems.find((i) => i.id === settings.layout)?.label ??
@@ -109,6 +110,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         </div>
         <div className="tw:flex tw:flex-col tw:gap-3 tw:py-4">
           <Toggle
+            data-testid="graph-settings-edge-labels-toggle"
             isSelected={settings.showEdgeLabels}
             label={t('label.edge-labels')}
             size="sm"

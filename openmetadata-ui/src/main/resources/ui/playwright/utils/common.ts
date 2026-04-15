@@ -60,8 +60,12 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await page.goto('/');
-  await page.waitForURL('**/my-data');
+  await page.goto('/', {
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForURL('**/my-data', {
+    waitUntil: 'domcontentloaded',
+  });
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -176,11 +180,10 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').waitFor({
+  await page.getByTestId('alert-bar').getByText(message).waitFor({
     state: 'visible',
+    timeout,
   });
-
-  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 };
