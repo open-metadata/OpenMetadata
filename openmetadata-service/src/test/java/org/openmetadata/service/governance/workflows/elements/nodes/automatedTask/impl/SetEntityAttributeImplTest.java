@@ -3,9 +3,11 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -26,6 +28,7 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityFieldUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +39,10 @@ class SetEntityAttributeImplTest {
   @Mock private Expression fieldNameExpr;
   @Mock private Expression fieldValueExpr;
   @Mock private Expression inputNamespaceMapExpr;
+
+  @SuppressWarnings("rawtypes")
+  @Mock
+  private EntityRepository mockRepo;
 
   private SetEntityAttributeImpl impl;
 
@@ -70,6 +77,7 @@ class SetEntityAttributeImplTest {
       entityMock
           .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
           .thenReturn(Map.of("<#E::table::test.db.table>", table));
+      entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(mockRepo);
 
       fieldUtilsMock
           .when(
@@ -83,13 +91,14 @@ class SetEntityAttributeImplTest {
       fieldUtilsMock.verify(
           () ->
               EntityFieldUtils.setEntityField(
-                  eq(table),
+                  any(),
                   eq("table"),
                   eq("governance-bot"),
                   eq("tier"),
                   eq("Gold"),
-                  eq(true),
+                  eq(false),
                   eq(null)));
+      verify(mockRepo).bulkUpdateEntities(anyList(), anyMap(), eq("governance-bot"), eq(true));
     }
   }
 
@@ -113,6 +122,7 @@ class SetEntityAttributeImplTest {
       entityMock
           .when(() -> Entity.getEntitiesByLinks(anyList(), eq("*"), eq(Include.ALL)))
           .thenReturn(Map.of("<#E::table::test.db.table>", table));
+      entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(mockRepo);
 
       fieldUtilsMock
           .when(
@@ -126,13 +136,14 @@ class SetEntityAttributeImplTest {
       fieldUtilsMock.verify(
           () ->
               EntityFieldUtils.setEntityField(
-                  eq(table),
+                  any(),
                   eq("table"),
                   eq("actualUser"),
                   eq("owner"),
                   eq("admin"),
-                  eq(true),
-                  eq("governance-bot")));
+                  eq(false),
+                  eq(null)));
+      verify(mockRepo).bulkUpdateEntities(anyList(), anyMap(), eq("actualUser"), eq(true));
     }
   }
 
