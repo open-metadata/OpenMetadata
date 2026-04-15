@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+export type ClaimValue = string | number | boolean | string[];
+
 export interface TestLoginResult {
-  claims: Record<string, string>;
+  claims: Record<string, ClaimValue>;
   suggestedEmailClaim: string | null;
   derivedPrincipalDomain: string | null;
   suggestedAdminPrincipal: string | null;
@@ -26,6 +28,7 @@ export interface ClaimSelectorProps {
 }
 
 export interface TestLoginFormData {
+  provider?: string;
   discoveryUri?: string;
   clientId?: string;
   clientSecret?: string;
@@ -41,6 +44,19 @@ export interface TestLoginFormData {
     disablePkce?: boolean;
     clientAuthenticationMethod?: string;
     maxAge?: string;
+  };
+  samlConfiguration?: {
+    idp?: {
+      entityId?: string;
+      ssoLoginUrl?: string;
+      idpX509Certificate?: string;
+      nameId?: string;
+    };
+    sp?: {
+      entityId?: string;
+      acs?: string;
+      callback?: string;
+    };
   };
 }
 

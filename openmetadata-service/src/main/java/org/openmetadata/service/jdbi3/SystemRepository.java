@@ -1048,6 +1048,17 @@ public class SystemRepository {
       if (securityConfig.getAuthenticationConfiguration() != null) {
         AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
+        // Upstream: if discoveryUri is provided for OIDC, verify it's reachable and valid
+        // BEFORE downstream validators run. This surfaces the root cause ("Could not reach
+        // Discovery URI") rather than cascading misleading errors about derived fields.
+        FieldError discoveryError = validateDiscoveryUriReachable(authConfig);
+        if (discoveryError != null) {
+          SecurityValidationResponse response = new SecurityValidationResponse();
+          response.setStatus(SecurityValidationResponse.Status.FAILED);
+          response.setErrors(List.of(discoveryError));
+          return response;
+        }
+
         // First validate all required fields from AuthenticationConfiguration schema
         FieldError baseError = validateAuthenticationConfigurationBaseFields(authConfig);
         if (baseError != null) {
@@ -1364,6 +1375,80 @@ public class SystemRepository {
           "login\\.(?:microsoftonline|partner\\.microsoftonline)\\.(?:com|us|cn)/([^/]+)/");
 
   private static final String DEFAULT_CALLBACK_PATH = "/callback";
+
+  /**
+   * Upstream validation: verifies the OIDC discoveryUri is reachable and returns a
+   * valid discovery document before downstream validators run. Short-circuits with
+   * a clear root-cause error ("Could not reach Discovery URI"), preventing cascading
+   * misleading errors about fields (authority, tenant, publicKeyUrls) that would
+   * otherwise have been derived from the document.
+   * Returns null for non-OIDC providers and when discoveryUri is absent (legacy mode).
+   */
+  public FieldError validateDiscoveryUriReachable(AuthenticationConfiguration authConfig) {
+    if (authConfig == null || !isOidcAuthProvider(authConfig.getProvider())) {
+      return null;
+    }
+    String uri = authConfig.getDiscoveryUri();
+    if (nullOrEmpty(uri)) {
+      return null;
+    }
+
+    if (!isValidHttpUrl(uri)) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+          "Discovery URI is not a valid HTTP(S) URL: " + uri);
+    }
+
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(uri);
+      if (response.getStatusCode() != 200) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+            String.format(
+                "Could not reach Discovery URI (HTTP %d): %s", response.getStatusCode(), uri));
+      }
+      JsonNode doc = JsonUtils.readTree(response.getBody());
+      if (!doc.has("issuer") || !doc.has("jwks_uri")) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+            "Discovery document is missing required fields (issuer, jwks_uri)");
+      }
+    } catch (Exception e) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+          "Failed to fetch Discovery URI: " + e.getMessage());
+    }
+
+    if (authConfig.getProvider() == AuthProvider.AZURE
+        && !AZURE_TENANT_PATTERN.matcher(uri).find()) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_DISCOVERY_URI,
+          "Discovery URI does not match Azure AD format. Expected: "
+              + "https://login.microsoftonline.com/<tenant>/v2.0/.well-known/openid-configuration");
+    }
+
+    return null;
+  }
+
+  private boolean isOidcAuthProvider(AuthProvider provider) {
+    return provider == AuthProvider.CUSTOM_OIDC
+        || provider == AuthProvider.GOOGLE
+        || provider == AuthProvider.AZURE
+        || provider == AuthProvider.OKTA
+        || provider == AuthProvider.AUTH_0
+        || provider == AuthProvider.AWS_COGNITO;
+  }
+
+  private boolean isValidHttpUrl(String uri) {
+    try {
+      java.net.URI parsed = java.net.URI.create(uri);
+      String scheme = parsed.getScheme();
+      return ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+          && !nullOrEmpty(parsed.getHost());
+    } catch (Exception e) {
+      return false;
+    }
+  }
 
   /**
    * Normalizes authentication configuration for persistence.

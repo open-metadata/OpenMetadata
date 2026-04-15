@@ -20,7 +20,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -43,6 +46,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginHandler;
+import org.openmetadata.service.security.auth.TestSamlHandler;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -235,6 +239,38 @@ public class ConfigResource {
               + "Opens in a popup window. After authentication, redirects to the callback endpoint.")
   public Response testLoginInitiate(@Context HttpServletRequest request) {
     return TestLoginHandler.handleInitiate(request);
+  }
+
+  @POST
+  @Path("/auth/test-login/saml-initiate")
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+  @Operation(
+      operationId = "samlTestLoginInitiate",
+      summary = "Initiate SAML Test Login",
+      description =
+          "Initiates a SAML Test Login flow by redirecting the browser to the IdP SSO URL "
+              + "with a SAML AuthnRequest. Expects form-encoded body with idpEntityId, "
+              + "idpSsoLoginUrl, idpX509Certificate, spEntityId, spAcsUrl, nameIdFormat. "
+              + "Browser is typically navigated to this endpoint via a hidden form POST "
+              + "with target=_blank so the response 302 loads inside the popup.")
+  public Response samlTestLoginInitiate(
+      @Context HttpServletRequest request,
+      @Context HttpServletResponse response,
+      @FormParam("idpEntityId") String idpEntityId,
+      @FormParam("idpSsoLoginUrl") String idpSsoLoginUrl,
+      @FormParam("idpX509Certificate") String idpX509Certificate,
+      @FormParam("spEntityId") String spEntityId,
+      @FormParam("spAcsUrl") String spAcsUrl,
+      @FormParam("nameIdFormat") String nameIdFormat) {
+    return TestSamlHandler.handleInitiate(
+        request,
+        response,
+        idpEntityId,
+        idpSsoLoginUrl,
+        idpX509Certificate,
+        spEntityId,
+        spAcsUrl,
+        nameIdFormat);
   }
 
   @POST

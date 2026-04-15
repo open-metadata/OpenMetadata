@@ -344,53 +344,10 @@ public class TestLoginHandler {
 
   private static Response buildPostMessageResponse(
       boolean success, String error, Map<String, Object> data) {
-    Map<String, Object> message = new LinkedHashMap<>();
-    message.put("type", "sso-test-login");
-    message.put("success", success);
-    if (error != null) {
-      message.put("error", error);
-    }
-    if (data != null) {
-      message.putAll(data);
-    }
-
-    String json = JsonUtils.pojoToJson(message);
-
-    String html =
-        "<!DOCTYPE html><html><body>"
-            + "<p>"
-            + (success ? "Authentication successful. This window will close." : "Error: " + error)
-            + "</p>"
-            + "<script>"
-            + "try {"
-            + "  localStorage.setItem('sso-test-login-result', JSON.stringify("
-            + json
-            + "));"
-            + "} catch(e) { console.error('Failed to store test login result', e); }"
-            + "setTimeout(function() { window.close(); }, 1000);"
-            + "</script>"
-            + "</body></html>";
-
-    return Response.ok(html, "text/html").build();
+    return TestLoginResponses.buildPostMessageResponse(success, error, data);
   }
 
   private static Response buildHtmlErrorResponse(String message) {
-    String html =
-        "<!DOCTYPE html><html><body>"
-            + "<p>Test Login Error: "
-            + message
-            + "</p>"
-            + "<script>"
-            + "try {"
-            + "  localStorage.setItem('sso-test-login-result', JSON.stringify("
-            + "{type: 'sso-test-login', success: false, error: '"
-            + message.replace("'", "\\'").replace("\n", " ")
-            + "'}));"
-            + "} catch(e) { console.error('Failed to store test login error', e); }"
-            + "setTimeout(function() { window.close(); }, 2000);"
-            + "</script>"
-            + "</body></html>";
-
-    return Response.status(Response.Status.BAD_REQUEST).entity(html).type("text/html").build();
+    return TestLoginResponses.buildHtmlErrorResponse(message);
   }
 }

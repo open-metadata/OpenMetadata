@@ -55,7 +55,9 @@ public class CustomOidcValidator {
       if (endpoints == null) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Failed to extract required endpoints from discovery document");
+            "Discovery document is missing required endpoints (authorization_endpoint,"
+                + " token_endpoint, jwks_uri). Verify the Discovery URI points to a compliant"
+                + " OIDC provider.");
       }
 
       FieldError jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
@@ -94,7 +96,9 @@ public class CustomOidcValidator {
       if (endpoints == null) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-            "Failed to extract required endpoints from discovery document");
+            "Discovery document is missing required endpoints (authorization_endpoint,"
+                + " token_endpoint, jwks_uri). Verify the Discovery URI points to a compliant"
+                + " OIDC provider.");
       }
 
       FieldError jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);

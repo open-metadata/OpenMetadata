@@ -317,41 +317,36 @@ public class OktaAuthValidator {
   }
 
   private FieldError validateOktaDomain(String oktaDomain, String fieldPath) {
+    // Discovery URI reachability and basic structure are validated upstream in
+    // SystemRepository.validateDiscoveryUriReachable. This method now runs only
+    // the Okta-specific semantic checks (issuer format, required endpoints).
     try {
       String discoveryUrl = oktaDomain + OKTA_WELL_KNOWN_PATH;
-      testOktaDiscoveryEndpoint(discoveryUrl);
-
-      return null; // Success - Okta domain validated
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
+      if (response.getStatusCode() != 200) {
+        return ValidationErrorBuilder.createFieldError(
+            fieldPath,
+            "Okta domain/Discovery URI is unreachable or invalid. HTTP "
+                + response.getStatusCode());
+      }
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+      if (!discoveryDoc.has("authorization_endpoint")
+          || !discoveryDoc.has("token_endpoint")
+          || !discoveryDoc.has("userinfo_endpoint")) {
+        return ValidationErrorBuilder.createFieldError(
+            fieldPath, "Missing required Okta endpoints in discovery document");
+      }
+      String issuer = discoveryDoc.get("issuer").asText();
+      if (!issuer.contains("okta")) {
+        LOG.warn("Discovery document issuer doesn't contain 'okta': {}", issuer);
+      }
+      return null;
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
-          fieldPath, "Domain validation failed: " + e.getMessage());
-    }
-  }
-
-  private void testOktaDiscoveryEndpoint(String discoveryUrl) throws Exception {
-    ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
-
-    if (response.getStatusCode() != 200) {
-      throw new IllegalArgumentException(
-          "Failed to access Okta discovery endpoint. HTTP response: " + response.getStatusCode());
-    }
-
-    // Parse and validate the discovery document
-    JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
-
-    // Validate Okta-specific fields
-    if (!discoveryDoc.has("issuer") || !discoveryDoc.has("authorization_endpoint")) {
-      throw new IllegalArgumentException("Invalid Okta discovery document format");
-    }
-
-    String issuer = discoveryDoc.get("issuer").asText();
-    if (!issuer.contains("okta")) {
-      LOG.warn("Discovery document issuer doesn't contain 'okta': {}", issuer);
-    }
-
-    // Check for required Okta endpoints
-    if (!discoveryDoc.has("token_endpoint") || !discoveryDoc.has("userinfo_endpoint")) {
-      throw new IllegalArgumentException("Missing required Okta endpoints in discovery document");
+          fieldPath,
+          "Okta domain could not be verified. Ensure the Discovery URI points to a reachable"
+              + " Okta org: "
+              + e.getMessage());
     }
   }
 
