@@ -107,7 +107,6 @@ export const Typography = (props: TypographyProps) => {
 
   const sizeClass = size ? sizeClasses[size] : undefined;
   const weightClass = weight ? weightClasses[weight] : undefined;
-  console.log('sizeClass', sizeClass, 'weightClass', weightClass);
 
   const ellipsisConfig = typeof ellipsis === 'object' ? ellipsis : undefined;
   const isEllipsis = !!ellipsis;
