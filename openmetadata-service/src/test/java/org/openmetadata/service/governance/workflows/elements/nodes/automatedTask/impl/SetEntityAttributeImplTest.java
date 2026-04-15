@@ -142,7 +142,7 @@ class SetEntityAttributeImplTest {
                   eq("owner"),
                   eq("admin"),
                   eq(false),
-                  eq(null)));
+                  eq("governance-bot")));
       verify(mockRepo).bulkUpdateEntities(anyList(), anyMap(), eq("actualUser"), eq(true));
     }
   }
