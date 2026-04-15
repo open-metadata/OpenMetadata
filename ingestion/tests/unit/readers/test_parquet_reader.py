@@ -178,7 +178,7 @@ class TestParquetReader(unittest.TestCase):
     @patch("gcsfs.GCSFileSystem")
     @patch("pyarrow.parquet.ParquetFile")
     def test_gcs_small_parquet_file(self, mock_parquet_file, mock_gcsfs):
-        mock_gcs = Mock()
+        mock_gcs = MagicMock()
         mock_gcsfs.return_value = mock_gcs
 
         mock_gcs.info.return_value = {"size": 1000}
@@ -205,7 +205,7 @@ class TestParquetReader(unittest.TestCase):
     @patch("gcsfs.GCSFileSystem")
     @patch("pyarrow.parquet.ParquetFile")
     def test_gcs_large_parquet_file_chunking(self, mock_parquet_file, mock_gcsfs):
-        mock_gcs = Mock()
+        mock_gcs = MagicMock()
         mock_gcsfs.return_value = mock_gcs
 
         mock_gcs.info.return_value = {"size": MAX_FILE_SIZE_FOR_PREVIEW + 1000}

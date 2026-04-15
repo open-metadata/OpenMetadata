@@ -39,6 +39,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+SCHEMA_INFERENCE_SAMPLE_SIZE = 100
+
 PD_AVRO_FIELD_MAP = {
     DataTypeTopic.BOOLEAN.value: "bool",
     DataTypeTopic.INT.value: "int",
@@ -108,18 +110,25 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from S3 without loading entire file into memory."""
-        schema_response = self.client.get_object(Bucket=bucket_name, Key=key)
+        import io
+
+        response = self.client.get_object(Bucket=bucket_name, Key=key)
         try:
-            columns = self._get_avro_columns(schema_response["Body"])
+            avro_bytes = io.BytesIO(response["Body"].read())
         finally:
-            schema_response["Body"].close()
+            response["Body"].close()
+
+        columns = self._get_avro_columns(avro_bytes)
+        avro_bytes.seek(0)
+
+        batch_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
 
         def chunk_generator():
-            response = self.client.get_object(Bucket=bucket_name, Key=key)
-            try:
-                yield from self._stream_avro_records(response["Body"])
-            finally:
-                response["Body"].close()
+            yield from self._stream_avro_records(avro_bytes, batch_size=batch_size)
 
         return DatalakeColumnWrapper(
             columns=columns,
@@ -137,9 +146,15 @@ class AvroDataFrameReader(DataFrameReader):
         with gcs.open(file_path, "rb") as f:
             columns = self._get_avro_columns(f)
 
+        batch_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
+
         def chunk_generator():
             with gcs.open(file_path, "rb") as f:
-                yield from self._stream_avro_records(f)
+                yield from self._stream_avro_records(f, batch_size=batch_size)
 
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
@@ -158,9 +173,15 @@ class AvroDataFrameReader(DataFrameReader):
         with adlfs_fs.open(file_path, "rb") as f:
             columns = self._get_avro_columns(f)
 
+        batch_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
+
         def chunk_generator():
             with adlfs_fs.open(file_path, "rb") as f:
-                yield from self._stream_avro_records(f)
+                yield from self._stream_avro_records(f, batch_size=batch_size)
 
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
@@ -175,13 +196,27 @@ class AvroDataFrameReader(DataFrameReader):
         with open(key, "rb") as f:
             columns = self._get_avro_columns(f)
 
+        batch_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
+
         def chunk_generator():
             with open(key, "rb") as f:
-                yield from self._stream_avro_records(f)
+                yield from self._stream_avro_records(f, batch_size=batch_size)
 
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
-    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
+    def _read(
+        self,
+        *,
+        key: str,
+        bucket_name: str,
+        schema_inference: bool = False,
+        **__,
+    ) -> DatalakeColumnWrapper:
+        self._schema_inference = schema_inference
         return self._read_avro_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

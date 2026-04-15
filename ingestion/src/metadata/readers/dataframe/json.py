@@ -255,7 +255,9 @@ class JSONDataFrameReader(DataFrameReader):
             with gcs.open(file_path, "rb") as f:
                 yield f
 
-        return self._read_json_smart(get_stream, key, bucket_name)
+        return self._read_json_smart(
+            get_stream, key, bucket_name, file_size=self._file_size
+        )
 
     @_read_json_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -273,7 +275,9 @@ class JSONDataFrameReader(DataFrameReader):
             with adlfs_fs.open(file_path, "rb") as f:
                 yield f
 
-        return self._read_json_smart(get_stream, key, bucket_name)
+        return self._read_json_smart(
+            get_stream, key, bucket_name, file_size=self._file_size
+        )
 
     @_read_json_dispatch.register
     def _(
@@ -287,7 +291,9 @@ class JSONDataFrameReader(DataFrameReader):
             with open(key, "rb") as f:
                 yield f
 
-        return self._read_json_smart(get_stream, key, bucket_name)
+        return self._read_json_smart(
+            get_stream, key, bucket_name, file_size=self._file_size
+        )
 
     def _read(
         self,

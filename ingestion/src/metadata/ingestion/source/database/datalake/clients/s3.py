@@ -13,7 +13,7 @@
 Datalake S3 Client
 """
 from functools import partial
-from typing import Callable, Iterable, Optional, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -98,6 +98,25 @@ class DatalakeS3Client(DatalakeBaseClient):
     def close(self, service_connection):
         # For the S3 Client we don't need to do anything when closing the connection
         pass
+
+    def get_object_tags(
+        self, bucket_name: str, key: str
+    ) -> Optional[Dict[str, List[str]]]:
+        try:
+            response = self._client.get_object_tagging(Bucket=bucket_name, Key=key)
+            tag_set = response.get("TagSet", [])
+            if not tag_set:
+                return None
+            tags: Dict[str, List[str]] = {}
+            for tag in tag_set:
+                tag_key = tag.get("Key", "")
+                tag_value = tag.get("Value", "")
+                if tag_key:
+                    tags.setdefault(tag_key, []).append(tag_value)
+            return tags if tags else None
+        except Exception as exc:
+            logger.debug(f"Could not fetch tags for {bucket_name}/{key}: {exc}")
+            return None
 
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
 

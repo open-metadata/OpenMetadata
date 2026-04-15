@@ -40,6 +40,7 @@ from metadata.utils.logger import ingestion_logger
 
 TSV_SEPARATOR = "\t"
 CSV_SEPARATOR = ","
+SCHEMA_INFERENCE_SAMPLE_SIZE = 100
 logger = ingestion_logger()
 
 
@@ -132,11 +133,17 @@ class DSVDataFrameReader(DataFrameReader):
         if compression is None and path.endswith(".gz"):
             compression = "gzip"
 
+        chunk_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
+
         def chunk_generator():
             with pd.read_csv(
                 path,
                 sep=self.separator,
-                chunksize=CHUNKSIZE,
+                chunksize=chunk_size,
                 storage_options=storage_options,
                 compression=compression,
                 encoding_errors="ignore",
@@ -176,6 +183,11 @@ class DSVDataFrameReader(DataFrameReader):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         compression = "gzip" if key.endswith(".gz") else None
+        chunk_size = (
+            SCHEMA_INFERENCE_SAMPLE_SIZE
+            if getattr(self, "_schema_inference", False)
+            else CHUNKSIZE
+        )
 
         def chunk_generator():
             response = self.client.get_object(Bucket=bucket_name, Key=key)
@@ -183,7 +195,7 @@ class DSVDataFrameReader(DataFrameReader):
                 with pd.read_csv(
                     response["Body"],
                     sep=self.separator,
-                    chunksize=CHUNKSIZE,
+                    chunksize=chunk_size,
                     compression=compression,
                     encoding_errors="ignore",
                     escapechar="\\",
@@ -231,7 +243,15 @@ class DSVDataFrameReader(DataFrameReader):
 
         return self.read_from_pandas(path=key, compression=compression)
 
-    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
+    def _read(
+        self,
+        *,
+        key: str,
+        bucket_name: str,
+        schema_inference: bool = False,
+        **__,
+    ) -> DatalakeColumnWrapper:
+        self._schema_inference = schema_inference
         return self._read_dsv_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

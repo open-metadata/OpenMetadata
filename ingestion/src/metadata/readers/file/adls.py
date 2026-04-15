@@ -33,13 +33,17 @@ def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:
     We are not adding the `account_name` since it is added in the path.
     If we pass it here as well we'll get an error reading the data:
       "got multiple values for argument 'account_name'"
+    Returns only fields that are set, allowing DefaultAzureCredential fallback.
     """
     connection_args = config_source.securityConfig
-    return {
-        "tenant_id": connection_args.tenantId,
-        "client_id": connection_args.clientId,
-        "client_secret": connection_args.clientSecret.get_secret_value(),
-    }
+    options = {}
+    if connection_args.tenantId:
+        options["tenant_id"] = connection_args.tenantId
+    if connection_args.clientId:
+        options["client_id"] = connection_args.clientId
+    if connection_args.clientSecret:
+        options["client_secret"] = connection_args.clientSecret.get_secret_value()
+    return options
 
 
 class ADLSReader(Reader):

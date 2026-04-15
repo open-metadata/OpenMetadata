@@ -204,6 +204,10 @@ def set_google_credentials(
         logger.info(
             "Using External account credentials to authenticate with GCP services."
         )
+        credentials_dict = gcp_credentials.gcpConfig.model_dump()
+        credentials_dict["type"] = "external_account"
+        tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
+        os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
 
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues):

@@ -69,6 +69,7 @@ from metadata.utils.datalake.datalake_utils import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 logger = ingestion_logger()
 
@@ -341,10 +342,58 @@ class DatalakeSource(DatabaseServiceSource):
                 )
             )
 
+    def yield_table_tag_details(
+        self, table_name_and_type
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Override base class to make tag ingestion opt-in for datalake.
+
+        Fetching tags requires one API call per file (S3 get_object_tagging,
+        GCS get_blob, Azure get_blob_tags). For buckets with many files this
+        is expensive, so we only fetch when the user explicitly enables
+        includeTags in the source config.
+        """
+        if not self.source_config.includeTags:
+            return
+        yield from self._fetch_table_tags(table_name_and_type)
+
+    def _fetch_table_tags(
+        self, table_name_and_type
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Fetch cloud object tags (S3 tags, GCS metadata, Azure blob tags)."""
+        try:
+            table_name, *_ = table_name_and_type
+        except (TypeError, ValueError):
+            return
+        if not table_name:
+            return
+        bucket_name = self.context.get().database_schema
+
+        tags = self.client.get_object_tags(bucket_name=bucket_name, key=table_name)
+        if not tags:
+            return
+
+        table_fqn = fqn.build(
+            self.metadata,
+            Table,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=bucket_name,
+            table_name=table_name,
+        )
+
+        for classification_name, tag_values in tags.items():
+            yield from get_ometa_tag_and_classification(
+                tag_fqn=table_fqn,
+                tags=tag_values,
+                classification_name=classification_name,
+                tag_description=f"Cloud object tag: {classification_name}",
+                classification_description="Tags from cloud storage objects",
+            )
+
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """We don't bring tag information"""
+        """No schema-level tags for datalake"""
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
