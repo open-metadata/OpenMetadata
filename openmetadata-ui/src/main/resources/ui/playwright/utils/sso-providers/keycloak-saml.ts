@@ -22,8 +22,6 @@ const KEYCLOAK_SAML = {
   baseUrl:
     process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL] ?? 'http://localhost:8080',
   azureRealm: process.env[SSO_ENV.KEYCLOAK_SAML_AZURE_REALM] ?? 'om-azure-saml',
-  googleRealm:
-    process.env[SSO_ENV.KEYCLOAK_SAML_GOOGLE_REALM] ?? 'om-google-saml',
   principalDomain:
     process.env[SSO_ENV.KEYCLOAK_SAML_PRINCIPAL_DOMAIN] ?? 'openmetadata.local',
 } as const;
@@ -137,9 +135,3 @@ export const keycloakAzureSamlProviderHelper = createKeycloakSamlProviderHelper(
     providerName: 'Azure AD',
   }
 );
-
-export const keycloakGoogleSamlProviderHelper =
-  createKeycloakSamlProviderHelper({
-    realm: KEYCLOAK_SAML.googleRealm,
-    providerName: 'Google',
-  });

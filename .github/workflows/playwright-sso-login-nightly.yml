@@ -24,7 +24,6 @@ on:
         options:
           - okta
           - keycloak-azure-saml
-          - keycloak-google-saml
           - all
 
 permissions:
@@ -36,10 +35,14 @@ concurrency:
 
 jobs:
   # To onboard a new provider:
-  #   1. Add its lowercase name to the matrix array below AND to the
-  #      dispatch `options:` list above.
-  #   2. Add <PROVIDER>_SSO_USERNAME (variable) and <PROVIDER>_SSO_PASSWORD
-  #      (secret) to the `test` environment, unless the provider uses a local fixture.
+  #   1. Add a matrix entry below (`name` is the lowercase provider id used by
+  #      the Playwright helper; `env_prefix` is the uppercase/underscore form
+  #      used to look up credentials). Also add `name` to the dispatch
+  #      `options:` list above.
+  #   2. Add <ENV_PREFIX>_SSO_USERNAME (variable) and <ENV_PREFIX>_SSO_PASSWORD
+  #      (variable) to the `test` environment. Use a secret instead of a
+  #      variable for the password if the provider uses a real (non-fixture)
+  #      credential.
   #   3. Register the helper in playwright/utils/sso-providers/index.ts.
   sso-login:
     runs-on: ubuntu-latest
@@ -50,8 +53,10 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-          && fromJSON('["okta","keycloak-azure-saml","keycloak-google-saml"]')
-          || fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) }}
+          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+          || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
+              && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+              || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]')) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -95,17 +100,17 @@ jobs:
         run: npx playwright@1.57.0 install chromium --with-deps
 
       - name: Start Keycloak SAML IdP
-        if: startsWith(matrix.provider, 'keycloak-')
+        if: startsWith(matrix.provider.name, 'keycloak-')
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
-          timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null && curl -fsS http://localhost:8080/realms/om-google-saml >/dev/null; do sleep 2; done'
+          timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 
       - name: Run SSO Login Spec
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
-          SSO_PROVIDER_TYPE: ${{ matrix.provider }}
-          SSO_USERNAME: ${{ matrix.provider == 'keycloak-azure-saml' && 'azure.saml@openmetadata.local' || matrix.provider == 'keycloak-google-saml' && 'google.saml@openmetadata.local' || vars[format('{0}_SSO_USERNAME', matrix.provider)] }}
-          SSO_PASSWORD: ${{ startsWith(matrix.provider, 'keycloak-') && 'OpenMetadata@123' || secrets[format('{0}_SSO_PASSWORD', matrix.provider)] }}
+          SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
+          SSO_USERNAME: ${{ vars[format('{0}_SSO_USERNAME', matrix.provider.env_prefix)] }}
+          SSO_PASSWORD: ${{ vars[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] || secrets[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] }}
           KEYCLOAK_SAML_BASE_URL: http://localhost:8080
           PLAYWRIGHT_IS_OSS: true
         run: |
@@ -117,7 +122,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sso-login-html-report-${{ matrix.provider }}
+          name: sso-login-html-report-${{ matrix.provider.name }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
