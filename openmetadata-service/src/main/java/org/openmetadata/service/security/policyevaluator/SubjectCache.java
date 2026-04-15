@@ -34,7 +34,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
-import org.openmetadata.service.util.CacheWeighers;
 
 /**
  * Cache for user policies to improve authorization performance. Caches the compiled policies for
@@ -65,8 +64,7 @@ public class SubjectCache {
   // Cache for user context to avoid expensive database lookups on every authorization
   private static final LoadingCache<String, User> USER_CONTEXT_CACHE =
       CacheBuilder.newBuilder()
-          .maximumWeight(50_000_000L) // ~50 MB cap based on serialized User size
-          .weigher(CacheWeighers.<String, User>toStringWeigher())
+          .maximumSize(5000) // Reduced from 10K — User objects are moderate size
           .expireAfterWrite(15, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserContextLoader());

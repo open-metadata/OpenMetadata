@@ -108,13 +108,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           "field_suggest");
 
   // RBAC cache for new Java API
-  @SuppressWarnings("NullableProblems")
-  private static final LoadingCache<String, Query> RBAC_CACHE_V2 =
+  private static final LoadingCache<@NotNull String, @NotNull Query> RBAC_CACHE_V2 =
       CacheBuilder.newBuilder()
-          .maximumWeight(50_000_000L) // ~50 MB cap based on Query.toString() size
-          .weigher(
-              (com.google.common.cache.Weigher<String, Query>)
-                  (key, value) -> value != null ? value.toString().length() : 0)
+          .maximumSize(5000) // Reduced from 10K
           .expireAfterWrite(5, TimeUnit.MINUTES)
           .build(
               new CacheLoader<>() {

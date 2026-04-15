@@ -76,7 +76,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.util.CacheWeighers;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -84,8 +83,7 @@ public class SettingsCache {
   private static volatile boolean initialized = false;
   protected static final LoadingCache<String, Settings> CACHE =
       CacheBuilder.newBuilder()
-          .maximumWeight(20_000_000L) // ~20 MB cap based on serialized Settings size
-          .weigher(CacheWeighers.<String, Settings>toStringWeigher())
+          .maximumSize(1000)
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new SettingsLoader());
 

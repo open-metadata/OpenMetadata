@@ -94,6 +94,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
@@ -244,7 +245,6 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
-import org.openmetadata.service.util.CacheWeighers;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -301,17 +301,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
 
+  private static final long ENTITY_CACHE_MAX_WEIGHT_BYTES = 100 * 1024 * 1024L; // 100 MB hard cap
+  private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
+
+  // String.length() * 2 + 40 is the exact Java heap cost of a String (UTF-16 encoding + header).
+  // This is not an estimate — it's how java.lang.String is laid out in memory.
   public static final LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
-          .maximumWeight(200_000_000L) // ~200 MB cap based on JSON string length
-          .weigher(CacheWeighers.<Pair<String, String>>stringWeigher())
+          .maximumWeight(ENTITY_CACHE_MAX_WEIGHT_BYTES)
+          .weigher(
+              (Weigher<Pair<String, String>, String>)
+                  (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithName());
   public static final LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
       CacheBuilder.newBuilder()
-          .maximumWeight(200_000_000L) // ~200 MB cap based on JSON string length
-          .weigher(CacheWeighers.<Pair<String, UUID>>stringWeigher())
+          .maximumWeight(ENTITY_CACHE_MAX_WEIGHT_BYTES)
+          .weigher(
+              (Weigher<Pair<String, UUID>, String>)
+                  (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
