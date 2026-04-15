@@ -127,25 +127,38 @@ export function computeGlossaryGroupPositions(
     if (n === 0) {
       return { nodes, localPositions, width: 0, height: 0 };
     }
-    const radius =
-      n <= 1
-        ? NODE_WIDTH / 2
-        : Math.min(
-            MAX_RING_RADIUS,
-            Math.max(CIRCLE_MIN_RADIUS, (n * circleArcSpacing) / (2 * Math.PI))
-          );
-    const cx = radius + COMBO_PADDING;
-    const cy = radius + COMBO_HEADER_HEIGHT;
+
+    if (n === 1) {
+      localPositions.set(nodes[0].id, {
+        x: NODE_WIDTH / 2,
+        y: NODE_HEIGHT / 2 + COMBO_HEADER_HEIGHT,
+      });
+
+      return {
+        nodes,
+        localPositions,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT + COMBO_HEADER_HEIGHT,
+      };
+    }
+
+    const radius = Math.min(
+      MAX_RING_RADIUS,
+      Math.max(CIRCLE_MIN_RADIUS, (n * circleArcSpacing) / (2 * Math.PI))
+    );
+    const cx = radius + NODE_WIDTH / 2;
+    const cy = radius + NODE_HEIGHT / 2 + COMBO_HEADER_HEIGHT;
 
     nodes.forEach((node, i) => {
-      const angle = n === 1 ? 0 : (i / n) * 2 * Math.PI - Math.PI / 2;
-      const x = cx + radius * Math.cos(angle);
-      const y = cy + radius * Math.sin(angle);
-      localPositions.set(node.id, { x, y });
+      const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+      localPositions.set(node.id, {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle),
+      });
     });
 
-    const width = 2 * radius + COMBO_PADDING * 2;
-    const height = 2 * radius + COMBO_HEADER_HEIGHT + COMBO_PADDING;
+    const width = 2 * (radius + NODE_WIDTH / 2);
+    const height = 2 * (radius + NODE_HEIGHT / 2) + COMBO_HEADER_HEIGHT;
 
     return { nodes, localPositions, width, height };
   };

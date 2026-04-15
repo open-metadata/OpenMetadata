@@ -606,7 +606,7 @@ export function useOntologyGraph({
   const buildIntraComboLayout = useCallback((graph: Graph): NodeData[] => {
     const totalNodes = graph.getNodeData().length;
     const adaptedNodeSep = adaptiveSpacing(60, totalNodes);
-    const adaptedGap = adaptiveSpacing(280, totalNodes);
+    const adaptedGap = Math.max(48, adaptiveSpacing(280, totalNodes));
 
     const NODE_H_SEP = adaptedNodeSep;
     const COMBO_H_GAP = adaptedGap;
@@ -673,10 +673,13 @@ export function useOntologyGraph({
               )
             );
 
-      const diameter = ringRadius === 0 ? maxNodeW : 2 * ringRadius;
-      const comboW = diameter + COMBO_INTERIOR_PADDING_SIDES * 2;
+      // Visual span = ring diameter + one node half-width on each side
+      const visualW = ringRadius === 0 ? maxNodeW : 2 * ringRadius + maxNodeW;
+      const visualH =
+        ringRadius === 0 ? NODE_HEIGHT : 2 * ringRadius + NODE_HEIGHT;
+      const comboW = visualW + COMBO_INTERIOR_PADDING_SIDES * 2;
       const comboH =
-        diameter + COMBO_INTERIOR_PADDING_TOP + COMBO_INTERIOR_PADDING_SIDES;
+        visualH + COMBO_INTERIOR_PADDING_TOP + COMBO_INTERIOR_PADDING_SIDES;
 
       const centerX = curX + comboW / 2;
       const centerY =
