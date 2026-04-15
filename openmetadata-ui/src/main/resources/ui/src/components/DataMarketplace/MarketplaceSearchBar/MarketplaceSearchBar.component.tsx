@@ -261,7 +261,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
             t('label.data-product-plural') + ', ' + t('label.domain-plural'),
         })}
         value={searchValue}
-        wrapperClassName="marketplace-search-input tw:!items-center"
+        wrapperClassName="marketplace-search-input tw:!rounded-xl tw:!items-center tw:!py-1"
         onChange={(value) => handleChange(value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
