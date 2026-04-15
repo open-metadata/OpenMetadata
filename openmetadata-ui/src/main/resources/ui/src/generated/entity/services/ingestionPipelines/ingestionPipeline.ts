@@ -536,8 +536,6 @@ export enum AuthProvider {
  *
  * Regex to only fetch containers that matches the pattern.
  *
- * Regex filter to include/exclude discovered containers by name.
- *
  * Regex to only include/exclude directories that matches the pattern.
  *
  * Regex to only include/exclude files that matches the pattern.
@@ -1360,8 +1358,8 @@ export interface Pipeline {
      */
     markDeletedContainers?: boolean;
     /**
-     * Deprecated: Use pathSpecs instead for auto-discovery. This manifest-based approach
-     * requires manually listing each data path. It will be removed in a future release.
+     * Deprecated: Use manifest instead for auto-discovery. This external manifest-based
+     * approach requires manually listing each data path. It will be removed in a future release.
      */
     storageMetadataConfigSource?: StorageMetadataConfigurationSourceDeprecated;
     /**
@@ -3126,10 +3124,6 @@ export interface ManifestEntry {
      * (e.g., year=2024/month=01/).
      */
     autoPartitionDetection?: boolean;
-    /**
-     * Regex filter to include/exclude discovered containers by name.
-     */
-    containerFilterPattern?: FilterPattern;
     /**
      * Path segments to exclude from discovery. Any file path containing these segments will be
      * skipped. Defaults to common internal paths like _delta_log, _temporary, _spark_metadata,
@@ -8371,8 +8365,9 @@ export enum PurpleType {
 }
 
 /**
- * Deprecated: Use pathSpecs instead for auto-discovery. This manifest-based approach
- * requires manually listing each data path. It will be removed in a future release.
+ * Deprecated: Use manifest instead for auto-discovery. This external manifest-based
+ * approach requires manually listing each data path. It will be removed in a future
+ * release.
  *
  * No manifest file available. Ingestion would look for bucket-level metadata file instead
  *
