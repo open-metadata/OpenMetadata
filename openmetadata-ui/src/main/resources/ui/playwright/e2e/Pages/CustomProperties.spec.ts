@@ -2912,6 +2912,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.fill(dashboardPropertyValue);
           await searchInput.press('Enter');
 
+          await page.getByTestId('dashboards-tab').click();
+
           await waitForAllLoadersToDisappear(page);
 
           const searchResults = page.getByTestId('search-results');
@@ -3036,6 +3038,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.clear();
           await searchInput.fill(pipelinePropertyValue);
           await searchInput.press('Enter');
+
+          await page.getByTestId('pipelines-tab').click();
 
           await waitForAllLoadersToDisappear(page);
 
