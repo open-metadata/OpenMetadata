@@ -93,7 +93,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
 
     LOG.info("exception ", ex);
     logUnhandledException(ex);
-    return new UnhandledServerException("An unexpected error occurred").getResponse();
+    return new UnhandledServerException(ex.getMessage()).getResponse();
   }
 
   public Response getResponse(Response response, Throwable ex) {
