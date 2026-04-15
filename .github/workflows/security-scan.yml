@@ -56,7 +56,7 @@ jobs:
           fi
 
       - name: Upload Retire.js Report
-        if: steps.retire-scan.outcome == 'success'
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: retire-js-report
@@ -64,7 +64,7 @@ jobs:
           retention-days: 30
 
       - name: Publish Retire.js Summary
-        if: steps.retire-scan.outcome == 'success'
+        if: success()
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           python3 - << 'EOF' >> $GITHUB_STEP_SUMMARY
