@@ -892,7 +892,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       User user =
           Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+      boolean shouldBeAdmin = SecurityUtil.isAdminPrincipal(getAdminPrincipals(), userName, email);
       boolean needsUpdate = false;
 
       LOG.debug(
@@ -922,7 +922,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
 
     if (authenticationConfiguration.getEnableSelfSignup()) {
-      boolean isAdmin = getAdminPrincipals().contains(userName);
+      boolean isAdmin = SecurityUtil.isAdminPrincipal(getAdminPrincipals(), userName, email);
       LOG.debug("Creating new OIDC user - Username: {}, isAdmin: {}", userName, isAdmin);
 
       String domain = email.split("@")[1];

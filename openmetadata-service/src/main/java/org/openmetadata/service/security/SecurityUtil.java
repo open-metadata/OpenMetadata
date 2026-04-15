@@ -49,6 +49,24 @@ public final class SecurityUtil {
 
   private SecurityUtil() {}
 
+  /**
+   * Returns true if adminPrincipals contains either the userName or the email.
+   * Admins are often configured by email (e.g. "alice@company.com") while the
+   * derived userName is typically the email local part ("alice"). Matching
+   * either form avoids surprising failures where the user set their admin
+   * entry as an email but the login identifier is a username.
+   */
+  public static boolean isAdminPrincipal(
+      Set<String> adminPrincipals, String userName, String email) {
+    if (adminPrincipals == null || adminPrincipals.isEmpty()) {
+      return false;
+    }
+    if (!nullOrEmpty(userName) && adminPrincipals.contains(userName)) {
+      return true;
+    }
+    return !nullOrEmpty(email) && adminPrincipals.contains(email);
+  }
+
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
