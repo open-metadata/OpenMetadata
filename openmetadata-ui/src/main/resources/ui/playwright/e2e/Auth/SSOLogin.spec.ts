@@ -100,7 +100,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
     await expect(page.getByTestId('login-form-container')).toBeVisible();
 
-    const signInButton = page.locator('.signin-button');
+    const signInButton = page.locator('button.signin-button');
 
     await expect(signInButton).toBeVisible();
     await expect(signInButton).toContainText(helper.expectedButtonText);
@@ -113,7 +113,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await test.step('Click SSO button and redirect to IdP', async () => {
       await page.goto('/signin');
 
-      const signInButton = page.locator('.signin-button');
+      const signInButton = page.locator('button.signin-button');
 
       await expect(signInButton).toBeVisible();
       await signInButton.click();
@@ -173,9 +173,21 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const page = userPage!;
 
     await page.getByRole('menuitem', { name: /logout/i }).click();
+
+    const waitForLogoutResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/logout') &&
+        response.request().method() === 'POST'
+    );
+    const waitForSigninNavigation = page.waitForURL('**/signin', {
+      timeout: 30_000,
+    });
+
     await page.getByTestId('confirm-logout').click();
-    await page.waitForURL('**/signin', { timeout: 30_000 });
-    await expect(page.locator('.signin-button')).toBeVisible();
+
+    await Promise.all([waitForLogoutResponse, waitForSigninNavigation]);
+
+    await expect(page.locator('button.signin-button')).toBeVisible();
   });
 
   test('should stay signed-out after refreshing', async () => {
@@ -183,7 +195,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
     await page.reload();
     await page.waitForURL('**/signin', { timeout: 30_000 });
-    await expect(page.locator('.signin-button')).toBeVisible();
+    await expect(page.locator('button.signin-button')).toBeVisible();
     await expect(page.getByTestId('dropdown-profile')).toHaveCount(0);
   });
 });
