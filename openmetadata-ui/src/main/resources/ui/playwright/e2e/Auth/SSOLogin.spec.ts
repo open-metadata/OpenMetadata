@@ -29,7 +29,7 @@ const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
 test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
-  test.slow()
+  test.slow();
   // eslint-disable-next-line playwright/no-skipped-test -- conditional skip on required env vars; the suite only runs when SSO credentials are provided by CI or the developer
   test.skip(
     !providerType || !username || !password,
@@ -47,7 +47,6 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   test.beforeAll(
     'Swap OpenMetadata server to target SSO provider',
     async ({ browser }) => {
-      
       helper = getProviderHelper(providerType);
       const { apiContext, afterAction, page } = await performAdminLogin(
         browser
