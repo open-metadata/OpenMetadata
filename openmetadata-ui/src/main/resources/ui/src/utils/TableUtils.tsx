@@ -199,9 +199,6 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
-const KnowledgeGraph = lazy(
-  () => import('../components/KnowledgeGraph/KnowledgeGraph')
-);
 
 const SampleDataTableComponent = withSuspenseFallback(
   lazy(
