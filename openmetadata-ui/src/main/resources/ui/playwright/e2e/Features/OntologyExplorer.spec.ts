@@ -386,7 +386,9 @@ test.describe('Ontology Explorer', () => {
 
       const layoutSelect = page.getByTestId('graph-settings-layout-select');
       await layoutSelect.click();
-      await expect(page.getByRole('option', { name: 'Circular' })).toBeVisible();
+      await expect(
+        page.getByRole('option', { name: 'Circular' })
+      ).toBeVisible();
       await page.getByRole('option', { name: 'Circular' }).click();
       await expect(layoutSelect).toContainText('Circular');
       await waitForGraphLoaded(page);
