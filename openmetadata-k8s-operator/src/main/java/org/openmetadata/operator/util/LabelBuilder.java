@@ -26,7 +26,6 @@ import org.openmetadata.operator.model.OMJobResource;
 public class LabelBuilder {
 
   private static final int MAX_LABEL_VALUE_LENGTH = 63;
-  private static final int LABEL_HASH_LENGTH = 6;
 
   // Standard Kubernetes labels
   public static final String LABEL_APP_NAME = "app.kubernetes.io/name";
@@ -166,7 +165,7 @@ public class LabelBuilder {
 
     // For long values, preserve uniqueness by appending a short hash while
     // keeping the overall value within the 63-character limit.
-    String hash = HashUtils.hash(value).substring(0, LABEL_HASH_LENGTH);
+    String hash = HashUtils.hash(value);
     int maxPrefixLength = MAX_LABEL_VALUE_LENGTH - hash.length() - 1;
     String prefix = sanitized.substring(0, maxPrefixLength);
 
@@ -191,7 +190,8 @@ public class LabelBuilder {
     // original input. This guarantees the output is non-empty, starts/ends
     // with an alphanumeric character, and fits within the label limit.
     int maxHashLength = Math.max(1, MAX_LABEL_VALUE_LENGTH - 3); // Reserve for "om-"
-    String hash = HashUtils.hash(original).substring(0, maxHashLength);
+    String fullHash = HashUtils.hash(original);
+    String hash = fullHash.substring(0, Math.min(maxHashLength, fullHash.length()));
     String fallback = "om-" + hash;
 
     if (fallback.length() > MAX_LABEL_VALUE_LENGTH) {

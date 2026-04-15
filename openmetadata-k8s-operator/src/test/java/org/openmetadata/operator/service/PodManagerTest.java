@@ -250,7 +250,7 @@ class PodManagerTest {
 
   @Test
   void testCreateMainPodWithLongOMJobNameUsesSafePodNameAndLabels() {
-    OMJobResource omJob = createOMJobWithEmptyValueFrom("a".repeat(260));
+    OMJobResource omJob = createOMJobWithEmptyValueFrom("a".repeat(253));
 
     when(podOperations.inNamespace(anyString())).thenReturn(podOperations);
     when(podOperations.resource(any(Pod.class))).thenReturn(podResource);

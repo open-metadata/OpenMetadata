@@ -109,6 +109,24 @@ class LabelBuilderTest {
   }
 
   @Test
+  void testSanitizeLabelValueUsesFallbackForSeparatorOnlyInputs() {
+    String dashed = LabelBuilder.sanitizeLabelValue("----");
+    String dotted = LabelBuilder.sanitizeLabelValue("...");
+    String underscored = LabelBuilder.sanitizeLabelValue("__");
+
+    assertAll(
+        () -> assertFalse(dashed.isEmpty()),
+        () -> assertTrue(dashed.length() <= 63),
+        () -> assertTrue(dashed.matches("^[a-zA-Z0-9].*[a-zA-Z0-9]$")),
+        () -> assertFalse(dotted.isEmpty()),
+        () -> assertTrue(dotted.length() <= 63),
+        () -> assertTrue(dotted.matches("^[a-zA-Z0-9].*[a-zA-Z0-9]$")),
+        () -> assertFalse(underscored.isEmpty()),
+        () -> assertTrue(underscored.length() <= 63),
+        () -> assertTrue(underscored.matches("^[a-zA-Z0-9].*[a-zA-Z0-9]$")));
+  }
+
+  @Test
   void testLabelUniqueness() {
     String sharedPrefix = "job-run-" + "1234567890".repeat(6);
     String v1 = sharedPrefix + "-abcdef";
