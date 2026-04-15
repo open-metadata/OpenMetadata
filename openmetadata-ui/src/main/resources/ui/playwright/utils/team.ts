@@ -21,7 +21,6 @@ import {
   assignDomain,
   descriptionBox,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from './common';
 import {
@@ -133,12 +132,11 @@ export const softDeleteTeam = async (page: Page) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
-
-  await toastNotification(page, /deleted successfully!/);
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page) => {
+export const hardDeleteTeam = async (page: Page, teamName: string) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
@@ -159,9 +157,10 @@ export const hardDeleteTeam = async (page: Page) => {
 
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
+  const response = await deleteResponse;
+  expect(response.status()).toBe(200);
 
-  await toastNotification(page, /deleted successfully!/);
+  await searchTeam(page, teamName, { expectEmptyResults: true });
 };
 
 export const getNewTeamDetails = (teamName: string) => {

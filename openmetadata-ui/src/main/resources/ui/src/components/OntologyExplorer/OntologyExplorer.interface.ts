@@ -14,6 +14,7 @@
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import type { LayoutEngineType } from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 
@@ -22,8 +23,9 @@ export interface OntologyExplorerProps {
   entityId?: string;
   glossaryId?: string;
   className?: string;
-  showHeader?: boolean;
   height?: string | number;
+  onStatsChange?: (stats: string[]) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export interface OntologyNode {
