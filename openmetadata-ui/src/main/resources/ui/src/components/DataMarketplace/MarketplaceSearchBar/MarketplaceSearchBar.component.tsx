@@ -251,7 +251,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
       <Input
         autoComplete="off"
         data-testid="marketplace-search-input"
-        fontSize="xs"
+        fontSize="sm"
         icon={SearchLg}
         iconClassName="tw:!size-4"
         inputClassName="tw:!pl-9"
