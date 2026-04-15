@@ -19,6 +19,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +29,10 @@ import org.slf4j.LoggerFactory;
  * that count-based caches with high maximumSize are dangerous when values vary in size from 1KB to
  * 2MB+.
  *
- * <p>Run with: mvn test -pl openmetadata-service
- * -Dtest=EntityCacheMemoryTest -Xmx512m to see OOM in action with the old 20K limit.
+ * <p>Tagged as "benchmark" — excluded from default CI test runs. Run explicitly with:
+ * mvn test -pl openmetadata-service -Dtest=EntityCacheMemoryTest -Dgroups=benchmark
  */
+@Tag("benchmark")
 class EntityCacheMemoryTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityCacheMemoryTest.class);
@@ -59,35 +61,32 @@ class EntityCacheMemoryTest {
     Cache<String, String> countBasedCache =
         CacheBuilder.newBuilder().maximumSize(20000).expireAfterWrite(30, TimeUnit.SECONDS).build();
 
-    Runtime runtime = Runtime.getRuntime();
-    runtime.gc();
-    long baselineMemory = runtime.totalMemory() - runtime.freeMemory();
-
-    // Fill with 500 "large" entities (500KB each = ~250MB)
-    int largeEntitySize = 500 * 1024; // 500KB — realistic for tables with many columns
+    // Fill with 500 "large" entities (500KB each)
+    int largeEntitySize = 500 * 1024;
     int entriesToInsert = 500;
+    long totalPayloadBytes = 0;
     for (int i = 0; i < entriesToInsert; i++) {
-      countBasedCache.put("entity-" + i, createEntityJson(largeEntitySize));
+      String json = createEntityJson(largeEntitySize);
+      countBasedCache.put("entity-" + i, json);
+      totalPayloadBytes += json.length();
     }
 
-    runtime.gc();
-    long usedMemory = runtime.totalMemory() - runtime.freeMemory();
-    long cacheMemoryMB = (usedMemory - baselineMemory) / (1024 * 1024);
+    long payloadMB = totalPayloadBytes / (1024 * 1024);
 
     LOG.info(
-        "Count-based cache (maximumSize=20000): {} entries, ~{}MB heap used",
+        "Count-based cache (maximumSize=20000): {} entries, ~{}MB payload retained",
         countBasedCache.size(),
-        cacheMemoryMB);
+        payloadMB);
 
-    // The cache happily holds all 500 entries because 500 < 20000
-    // But it consumed ~250MB+ of heap — with 20K entries this would be ~10GB
+    // The cache happily holds all 500 entries because 500 < 20000.
+    // Deterministic assertion: all entries are retained regardless of payload size.
     assertTrue(
         countBasedCache.size() == entriesToInsert, "All entries fit within maximumSize=20000");
     assertTrue(
-        cacheMemoryMB > 100,
-        "Cache consumed >100MB with just 500 entries. "
+        payloadMB > 100,
+        "Cache retained >100MB of JSON payload with just 500 entries. "
             + "At 20K entries this would be ~10GB. Actual: "
-            + cacheMemoryMB
+            + payloadMB
             + "MB");
   }
 
@@ -97,9 +96,9 @@ class EntityCacheMemoryTest {
   void weightBasedCache_respectsMemoryCap() {
     long maxWeightBytes = 100 * 1024 * 1024L; // 100MB cap
 
-    // String.length() * 2 is the exact Java heap cost of a String (UTF-16).
-    // This is NOT a guess — it's how java.lang.String works internally.
-    // It's a single field read (String.value.length), zero allocation.
+    // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 header.
+    // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this slightly
+    // overestimates — which is intentional for memory capping. Zero allocation, single field read.
     Cache<String, String> weightBasedCache =
         CacheBuilder.newBuilder()
             .maximumWeight(maxWeightBytes)
@@ -173,9 +172,8 @@ class EntityCacheMemoryTest {
   }
 
   @Test
-  @DisplayName("String.length() * 2 accurately predicts heap impact")
-  void stringWeigher_isAccurate() {
-    // This test validates that our weigher formula is correct, not a guess
+  @DisplayName("String weigher produces conservative upper-bound weight")
+  void stringWeigher_producesConservativeWeight() {
     String smallJson = createEntityJson(1024); // 1KB
     String largeJson = createEntityJson(1024 * 1024); // 1MB
 

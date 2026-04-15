@@ -28,16 +28,6 @@ import lombok.Setter;
 @Setter
 public class CacheConfiguration {
 
-  // --- Defaults (fallback for caches without specific config) ---
-
-  @JsonProperty
-  @Min(1)
-  private long defaultMaxSizeBytes = 50 * 1024 * 1024L; // 50 MB
-
-  @JsonProperty
-  @Min(1)
-  private int defaultTTLSeconds = 300; // 5 minutes
-
   // --- Entity JSON caches (CACHE_WITH_ID, CACHE_WITH_NAME) ---
   // These cache serialized entity JSON strings. Sizes vary from 1KB (simple entities)
   // to 2MB+ (tables with hundreds of columns). Weight-based eviction is required.
@@ -49,18 +39,6 @@ public class CacheConfiguration {
   @JsonProperty
   @Min(1)
   private int entityCacheTTLSeconds = 30;
-
-  // --- Lineage graph cache ---
-  // Caches SearchLineageResult objects. Count-based because the put() already
-  // rejects graphs above the mediumGraphThreshold.
-
-  @JsonProperty
-  @Min(1)
-  private int lineageCacheMaxEntries = 50;
-
-  @JsonProperty
-  @Min(1)
-  private int lineageCacheTTLSeconds = 300;
 
   // --- Auth caches (SubjectCache: user context + policies) ---
   // TTLs are hardcoded (2 min for policies, 15 min for user context) because they serve

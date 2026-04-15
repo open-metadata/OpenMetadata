@@ -304,8 +304,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
-  // String.length() * 2 + 40 is the exact Java heap cost of a String (UTF-16 encoding + header).
-  // This is not an estimate — it's how java.lang.String is laid out in memory.
+  // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
+  // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this overestimates
+  // slightly — which is intentional for memory capping. Zero allocation, single field read.
   // These caches are rebuilt via initCaches() once CacheConfiguration is available at startup.
   public static volatile LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
       buildEntityNameCache(100 * 1024 * 1024L, 30);
@@ -9807,6 +9808,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final ConcurrentHashMap<String, DistributionSummary> SUCCESS_RATE_SUMMARIES =
       new ConcurrentHashMap<>();
 
+  private static final int MAX_CONCURRENT_BULK_JOBS = 100;
+
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
       UriInfo uriInfo,
       List<T> entities,
@@ -9814,6 +9817,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Map<String, T> existingByFqn,
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
+
+    // Check capacity before scheduling any async work
+    synchronized (BULK_JOBS) {
+      if (BULK_JOBS.size() >= MAX_CONCURRENT_BULK_JOBS) {
+        throw new jakarta.ws.rs.WebApplicationException(
+            "Too many concurrent bulk jobs (max " + MAX_CONCURRENT_BULK_JOBS + "). Retry later.",
+            jakarta.ws.rs.core.Response.Status.TOO_MANY_REQUESTS);
+      }
+    }
 
     String jobId = UUID.randomUUID().toString();
     LOG.info(
@@ -9858,12 +9870,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               return result;
             });
 
-    synchronized (BULK_JOBS) {
-      if (BULK_JOBS.size() >= 100) {
-        throw new RuntimeException("Too many concurrent bulk jobs (max 100). Try again later.");
-      }
-      BULK_JOBS.put(jobId, mergedJob);
-    }
+    BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
         (result, throwable) ->

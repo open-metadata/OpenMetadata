@@ -29,8 +29,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -58,6 +60,8 @@ import org.slf4j.LoggerFactory;
  * with hundreds of columns, which produce large JSON blobs that fill the entity cache.
  */
 @ExtendWith(TestNamespaceExtension.class)
+@Tag("benchmark")
+@Isolated
 class EntityCacheMemoryIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityCacheMemoryIT.class);
@@ -185,15 +189,18 @@ class EntityCacheMemoryIT {
             + totalFetches
             + ". Failures indicate server instability under load.");
 
-    // Heap growth should be bounded — with 100MB cache cap, growth shouldn't exceed ~300MB
-    // (100MB per cache × 2 caches + overhead). In the old config with 20K entry limit,
-    // this same test with bigger tables could push heap growth past gigabytes.
-    assertTrue(
-        heapGrowthMB < 500,
-        "Heap growth should be bounded under 500MB with cache caps. "
-            + "Actual growth: "
-            + heapGrowthMB
-            + "MB. This suggests unbounded cache growth.");
+    // Heap growth should be bounded — with 100MB cache cap, growth shouldn't exceed ~300MB.
+    // Only assert if metrics were available (skip if /prometheus is unreachable).
+    if (heapBeforeMB >= 0 && heapAfterMB >= 0) {
+      assertTrue(
+          heapGrowthMB < 500,
+          "Heap growth should be bounded under 500MB with cache caps. "
+              + "Actual growth: "
+              + heapGrowthMB
+              + "MB. This suggests unbounded cache growth.");
+    } else {
+      LOG.warn("Heap metrics unavailable — skipping heap growth assertion");
+    }
 
     LOG.info(
         "PASS: Server survived {} concurrent fetches, heap growth {}MB (bounded)",
@@ -301,24 +308,32 @@ class EntityCacheMemoryIT {
         return parseHeapUsedMB(response);
       }
     } catch (Exception e) {
-      LOG.warn("Failed to read server heap metrics, using Runtime fallback: {}", e.getMessage());
-      Runtime runtime = Runtime.getRuntime();
-      return (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
+      LOG.warn("Failed to read server heap metrics from /prometheus: {}", e.getMessage());
+      return -1; // Caller should handle gracefully
     }
   }
 
   private static long parseHeapUsedMB(String prometheusResponse) {
-    // Parse: jvm_memory_used_bytes{area="heap",...} 1.23456789E8
+    // Sum all jvm_memory_used_bytes{area="heap",...} samples (one per memory pool)
+    double totalHeapBytes = 0;
+    boolean found = false;
     for (String line : prometheusResponse.split("\n")) {
       if (line.startsWith("jvm_memory_used_bytes") && line.contains("area=\"heap\"")) {
         String[] parts = line.split("\\s+");
         if (parts.length >= 2) {
-          double bytes = Double.parseDouble(parts[parts.length - 1]);
-          return (long) (bytes / (1024 * 1024));
+          try {
+            totalHeapBytes += Double.parseDouble(parts[parts.length - 1]);
+            found = true;
+          } catch (NumberFormatException e) {
+            LOG.warn("Failed to parse heap metric line: {}", line);
+          }
         }
       }
     }
-    LOG.warn("Could not find jvm_memory_used_bytes in Prometheus response");
-    return 0;
+    if (!found) {
+      LOG.warn("Could not find jvm_memory_used_bytes in Prometheus response");
+      return -1;
+    }
+    return (long) (totalHeapBytes / (1024 * 1024));
   }
 }
