@@ -632,6 +632,9 @@ public class SystemResource {
     String configJson = JsonUtils.pojoToJson(originalConfig);
     SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
 
+    // Hydrate canonical fields from legacy locations so UI sees a consistent shape
+    systemRepository.hydrateForResponse(config.getAuthenticationConfiguration());
+
     // Apply password masking if needed - only to the copy
     if (authorizer.shouldMaskPasswords(securityContext)) {
       // Mask OIDC configuration if present
@@ -679,11 +682,9 @@ public class SystemResource {
     try {
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
-      // Sync fields between top-level and oidcConfiguration, derive authority from discoveryUri
-      systemRepository.syncFieldsFromDiscoveryUri(authConfig);
-
-      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+      // Normalize authentication configuration for persistence: mirror canonical and legacy
+      // field locations, derive authority/publicKeyUrls from discoveryUri, default callbackUrl.
+      systemRepository.normalizeForPersistence(authConfig);
 
       // Update both configurations in a transaction
       Settings authSettings =
@@ -822,12 +823,11 @@ public class SystemResource {
       SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
-    // Auto-derive fields from discoveryUri before validation
-    // so authority, publicKeyUrls etc. are populated
+    // Normalize configuration before validation so authority, publicKeyUrls,
+    // and mirrored fields are populated from discoveryUri.
     AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
     if (authConfig != null) {
-      systemRepository.syncFieldsFromDiscoveryUri(authConfig);
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+      systemRepository.normalizeForPersistence(authConfig);
     }
 
     String currentUsername = SecurityUtil.getUserName(securityContext);

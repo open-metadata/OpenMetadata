@@ -70,6 +70,7 @@ import {
   handleClientTypeChange,
   hasFieldValidationErrors,
   isValidNonBasicProvider,
+  mirrorConfidentialOidcFields,
   OIDC_PROVIDER_OPTIONS,
   parseSamlMetadataXml,
   parseValidationErrors,
@@ -198,6 +199,51 @@ const SSOConfigurationFormRJSF = ({
     TestLoginResult | undefined
   >();
 
+  type ValidationGateStatus =
+    | 'idle'
+    | 'validating'
+    | 'validated'
+    | 'testing'
+    | 'tested';
+  const [validationStatus, setValidationStatus] =
+    useState<ValidationGateStatus>('idle');
+
+  const areConfidentialOidcMainFieldsFilled = (
+    data: FormData | undefined
+  ): boolean => {
+    const auth = data?.authenticationConfiguration;
+    if (!auth || auth.clientType !== ClientType.Confidential) {
+      return true;
+    }
+    const oidc = auth.oidcConfiguration as Record<string, unknown> | undefined;
+    return (
+      !!auth.discoveryUri &&
+      !!(oidc?.id as string) &&
+      !!(oidc?.secret as string)
+    );
+  };
+
+  const didValidationInputsChange = (
+    prev: FormData | undefined,
+    next: FormData | undefined
+  ): boolean => {
+    const p = prev?.authenticationConfiguration;
+    const n = next?.authenticationConfiguration;
+    if (!p || !n) {
+      return true;
+    }
+    if (
+      p.provider !== n.provider ||
+      p.clientType !== n.clientType ||
+      p.discoveryUri !== n.discoveryUri
+    ) {
+      return true;
+    }
+    const pOidc = p.oidcConfiguration as Record<string, unknown> | undefined;
+    const nOidc = n.oidcConfiguration as Record<string, unknown> | undefined;
+    return pOidc?.id !== nOidc?.id || pOidc?.secret !== nOidc?.secret;
+  };
+
   const handleTestLoginSuccess = useCallback(
     (result: TestLoginResult) => {
       setTestLoginResult(result);
@@ -231,6 +277,7 @@ const SSOConfigurationFormRJSF = ({
         };
       });
       setTestLoginResult(undefined);
+      setValidationStatus('tested');
       showSuccessToast(t('message.test-login-success'));
     },
     [t]
@@ -776,6 +823,15 @@ const SSOConfigurationFormRJSF = ({
       authConfig?.clientType
     );
 
+    mirrorConfidentialOidcFields(authConfig);
+
+    if (
+      validationStatus !== 'idle' &&
+      didValidationInputsChange(internalData, newFormData)
+    ) {
+      setValidationStatus('idle');
+    }
+
     setInternalData(newFormData);
     handleProviderChange(newFormData);
   };
@@ -870,6 +926,63 @@ const SSOConfigurationFormRJSF = ({
     },
     [handleValidationError, handleApiError]
   );
+
+  // Helper: Run validate?context=testLogin to gate Test Login button enablement.
+  const handleValidate = useCallback(async () => {
+    if (!internalData) {
+      return;
+    }
+    setValidationStatus('validating');
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
+
+    try {
+      const cleanedFormData = cleanupProviderSpecificFields(
+        internalData,
+        internalData?.authenticationConfiguration?.provider as string
+      );
+      if (!cleanedFormData) {
+        setValidationStatus('idle');
+
+        return;
+      }
+
+      const payload: SecurityConfiguration = {
+        authenticationConfiguration: cleanedFormData.authenticationConfiguration,
+        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
+      };
+
+      const response = await validateSecurityConfiguration(payload, 'testLogin');
+      const result = response.data;
+
+      if (
+        'errors' in result &&
+        Array.isArray(result.errors) &&
+        result.errors.length > 0
+      ) {
+        handleValidationError(result);
+        setValidationStatus('idle');
+
+        return;
+      }
+
+      if (
+        result.status === 'failed' ||
+        result.status !== VALIDATION_STATUS.SUCCESS
+      ) {
+        handleValidationError(result);
+        setValidationStatus('idle');
+
+        return;
+      }
+
+      showSuccessToast(t('message.configuration-validated-successfully'));
+      setValidationStatus('validated');
+    } catch (error) {
+      handleApiError(error);
+      setValidationStatus('idle');
+    }
+  }, [internalData, handleValidationError, handleApiError, t]);
 
   // Helper: Save existing configuration using PATCH
   const saveExistingConfiguration = useCallback(
@@ -1235,10 +1348,25 @@ const SSOConfigurationFormRJSF = ({
                 {formContent}
                 {isEditMode && isOidcProvider && !testLoginResult && (
                   <div className="m-t-md m-b-md p-x-md">
-                    <TestLoginButton
-                      disabled={!showForm}
-                      onSuccess={handleTestLoginSuccess}
-                    />
+                    {validationStatus !== 'validated' ? (
+                      <Button
+                        data-testid="validate-sso-configuration"
+                        disabled={
+                          !showForm ||
+                          validationStatus === 'validating' ||
+                          !areConfidentialOidcMainFieldsFilled(internalData)
+                        }
+                        loading={validationStatus === 'validating'}
+                        type="primary"
+                        onClick={handleValidate}>
+                        {t('label.validate')}
+                      </Button>
+                    ) : (
+                      <TestLoginButton
+                        disabled={!showForm}
+                        onSuccess={handleTestLoginSuccess}
+                      />
+                    )}
                   </div>
                 )}
                 {testLoginResult && (
@@ -1266,7 +1394,7 @@ const SSOConfigurationFormRJSF = ({
                         isLoading ||
                         (isOidcProvider &&
                           !hasExistingConfig &&
-                          !internalData?.authenticationConfiguration?.emailClaim)
+                          validationStatus !== 'tested')
                       }
                       loading={isLoading}
                       type="primary"
@@ -1356,12 +1484,27 @@ const SSOConfigurationFormRJSF = ({
               {wrappedFormContent}
               {isEditMode && isOidcProvider && !testLoginResult && (
                 <div className="m-t-md m-b-md">
-                  <TestLoginButton
-                    disabled={!showForm}
-                    formData={internalData?.authenticationConfiguration}
-                    securityConfig={internalData}
-                    onSuccess={handleTestLoginSuccess}
-                  />
+                  {validationStatus !== 'validated' ? (
+                    <Button
+                      data-testid="validate-sso-configuration"
+                      disabled={
+                        !showForm ||
+                        validationStatus === 'validating' ||
+                        !areConfidentialOidcMainFieldsFilled(internalData)
+                      }
+                      loading={validationStatus === 'validating'}
+                      type="primary"
+                      onClick={handleValidate}>
+                      {t('label.validate')}
+                    </Button>
+                  ) : (
+                    <TestLoginButton
+                      disabled={!showForm}
+                      formData={internalData?.authenticationConfiguration}
+                      securityConfig={internalData}
+                      onSuccess={handleTestLoginSuccess}
+                    />
+                  )}
                 </div>
               )}
               {testLoginResult && (
@@ -1385,7 +1528,12 @@ const SSOConfigurationFormRJSF = ({
                   <Button
                     className="save-sso-configuration text-md"
                     data-testid="save-sso-configuration"
-                    disabled={isLoading}
+                    disabled={
+                      isLoading ||
+                      (isOidcProvider &&
+                        !hasExistingConfig &&
+                        validationStatus !== 'tested')
+                    }
                     loading={isLoading}
                     type="primary"
                     onClick={handleSave}>
