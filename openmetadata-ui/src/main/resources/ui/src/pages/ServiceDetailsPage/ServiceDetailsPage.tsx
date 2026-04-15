@@ -1435,7 +1435,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
           query: '',
           queryFilter: buildSchemaQueryFilter(
             'service.fullyQualifiedName.keyword',
-            decodedServiceFQN
+            decodedServiceFQN,
+            searchValue as string | undefined
           ),
           includeDeleted: showDeleted,
           trackTotalHits: true,
@@ -1452,6 +1453,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     isMetadataService,
     isSecurityService,
     showDeleted,
+    searchValue,
   ]);
 
   useEffect(() => {

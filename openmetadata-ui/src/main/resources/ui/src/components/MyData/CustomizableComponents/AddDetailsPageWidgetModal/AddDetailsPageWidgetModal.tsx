@@ -75,7 +75,10 @@ function AddDetailsPageWidgetModal({
                 {getWidgetWidthLabelFromKey(toString(size))}
               </span>
             ),
-            value: Math.round(WidgetWidths[size] * scaleFactor),
+            value: Math.min(
+              maxGridSizeSupport,
+              Math.max(1, Math.round(WidgetWidths[size] * scaleFactor))
+            ),
           }));
 
         return {

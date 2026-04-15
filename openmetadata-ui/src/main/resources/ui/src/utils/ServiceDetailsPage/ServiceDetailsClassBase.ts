@@ -228,3 +228,4 @@ class ServiceDetailsClassBase {
 const serviceDetailsClassBase = new ServiceDetailsClassBase();
 
 export default serviceDetailsClassBase;
+export { ServiceDetailsClassBase };
