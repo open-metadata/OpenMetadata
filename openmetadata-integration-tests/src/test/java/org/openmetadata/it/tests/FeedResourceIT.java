@@ -92,7 +92,7 @@ public class FeedResourceIT {
 
     Post lastPost = updatedThread.getPosts().get(updatedThread.getPosts().size() - 1);
     assertEquals("This is a reply", lastPost.getMessage());
-    assertEquals(TEST_USER, lastPost.getFrom());
+    assertEquals(ADMIN_USER, lastPost.getFrom());
 
     deleteThread(thread.getId());
   }
@@ -1072,10 +1072,11 @@ public class FeedResourceIT {
             .withType(ThreadType.Task)
             .withTaskDetails(taskDetails);
 
-    assertThrows(
-        Exception.class,
-        () -> createThread(createThread),
-        "Task cannot be created by bot only by user or teams");
+    // The server now derives the creator from the JWT identity, ignoring the client-supplied
+    // 'from' field. Since we authenticate as admin (not a bot), the task creation succeeds.
+    Thread thread = createThread(createThread);
+    assertNotNull(thread);
+    deleteThread(thread.getId());
   }
 
   @Test

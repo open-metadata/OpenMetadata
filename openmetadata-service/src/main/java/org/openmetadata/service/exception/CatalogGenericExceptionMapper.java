@@ -47,9 +47,9 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     LOG.debug(ex.getMessage());
     if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
-    } else if (ex instanceof BadRequestException) {
+    } else if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
       return getResponse(BAD_REQUEST, ex.getMessage());
-    } else if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
+    } else if (ex instanceof ProcessingException) {
       return getResponse(BAD_REQUEST, "Invalid request parameter");
     } else if (ex instanceof UnableToExecuteStatementException) {
       if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
