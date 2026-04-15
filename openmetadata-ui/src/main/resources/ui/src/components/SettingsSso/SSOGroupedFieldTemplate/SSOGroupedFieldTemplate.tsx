@@ -22,6 +22,10 @@ import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
+import {
+  SSO_ADVANCED_AUTH_FIELDS,
+  SSO_ADVANCED_OIDC_FIELDS,
+} from '../../../constants/SSO.constant';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
@@ -33,11 +37,23 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   const { formContext, idSchema, title, onAddClick, schema, properties } =
     props;
 
+  const currentId = idSchema.$id;
+  const isOIDCConfigContext =
+    currentId === 'root/authenticationConfiguration/oidcConfiguration';
+  const isAuthConfigRootContext =
+    currentId === 'root/authenticationConfiguration';
+
+  const contextAdvancedFields = isOIDCConfigContext
+    ? SSO_ADVANCED_OIDC_FIELDS
+    : isAuthConfigRootContext
+      ? SSO_ADVANCED_AUTH_FIELDS
+      : [];
+
   const { advancedProperties, normalProperties } = properties.reduce(
     (propertyMap, currentProperty) => {
-      const isAdvancedProperty = ADVANCED_PROPERTIES.includes(
-        currentProperty.name
-      );
+      const isAdvancedProperty =
+        ADVANCED_PROPERTIES.includes(currentProperty.name) ||
+        contextAdvancedFields.includes(currentProperty.name);
 
       let advancedProperties = [...propertyMap.advancedProperties];
       let normalProperties = [...propertyMap.normalProperties];

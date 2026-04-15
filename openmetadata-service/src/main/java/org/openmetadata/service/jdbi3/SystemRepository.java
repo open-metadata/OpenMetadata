@@ -1365,86 +1365,144 @@ public class SystemRepository {
     }
   }
 
+  private static final Pattern AZURE_TENANT_PATTERN =
+      Pattern.compile("login\\.(?:microsoftonline|partner\\.microsoftonline)\\.(?:com|us|cn)/([^/]+)/");
+
+  private static final String DEFAULT_CALLBACK_PATH = "/callback";
+
   /**
-   * Syncs fields between top-level authenticationConfiguration and nested oidcConfiguration.
-   * Also auto-derives authority from discovery document's issuer field.
-   * Called during save to ensure both public and confidential flows have correct values.
+   * Normalizes authentication configuration for persistence.
+   * Accepts any partial payload and produces a complete, runtime-ready config:
+   *   - Mirrors canonical and legacy field locations using explicit priority (firstNonEmpty).
+   *   - Derives authority and publicKeyUrls from discoveryUri (discovery doc is authoritative).
+   *   - Extracts Azure tenant from discoveryUri when applicable.
+   *   - Defaults callbackUrl when missing.
+   * Safe for all callers: UI, CLI, SDK, Postman.
    */
-  public void syncFieldsFromDiscoveryUri(AuthenticationConfiguration authConfig) {
+  public void normalizeForPersistence(AuthenticationConfiguration authConfig) {
     if (authConfig == null) {
       return;
     }
 
-    syncDiscoveryUri(authConfig);
-    syncClientId(authConfig);
-    syncCallbackUrl(authConfig);
-    deriveAuthorityFromDiscoveryUri(authConfig);
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+
+    String discoveryUri =
+        firstNonEmpty(
+            authConfig.getDiscoveryUri(),
+            oidcConfig != null ? oidcConfig.getDiscoveryUri() : null);
+    if (!nullOrEmpty(discoveryUri)) {
+      authConfig.setDiscoveryUri(discoveryUri);
+      if (oidcConfig != null) {
+        oidcConfig.setDiscoveryUri(discoveryUri);
+      }
+    }
+
+    String clientId =
+        firstNonEmpty(
+            oidcConfig != null ? oidcConfig.getId() : null, authConfig.getClientId());
+    if (!nullOrEmpty(clientId)) {
+      authConfig.setClientId(clientId);
+      if (oidcConfig != null) {
+        oidcConfig.setId(clientId);
+      }
+    }
+
+    String callbackUrl =
+        firstNonEmpty(
+            authConfig.getCallbackUrl(),
+            oidcConfig != null ? oidcConfig.getCallbackUrl() : null,
+            buildDefaultCallbackUrl());
+    if (!nullOrEmpty(callbackUrl)) {
+      authConfig.setCallbackUrl(callbackUrl);
+      if (oidcConfig != null) {
+        oidcConfig.setCallbackUrl(callbackUrl);
+      }
+    }
+
+    if (!nullOrEmpty(discoveryUri)) {
+      deriveFromDiscoveryDocument(authConfig, discoveryUri);
+    }
+
+    deriveProviderSpecificFields(authConfig);
     deriveClientTypeFromSecret(authConfig);
   }
 
-  private void syncDiscoveryUri(AuthenticationConfiguration authConfig) {
+  /**
+   * Hydrates canonical fields from legacy locations for GET responses.
+   * In-memory transform only (no network I/O, no DB writes) so legacy configs
+   * display consistently for all API consumers (UI, CLI, SDK).
+   */
+  public void hydrateForResponse(AuthenticationConfiguration authConfig) {
+    if (authConfig == null) {
+      return;
+    }
     OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
-    String topLevelUri = authConfig.getDiscoveryUri();
-    String nestedUri = oidcConfig != null ? oidcConfig.getDiscoveryUri() : null;
 
-    if (!nullOrEmpty(topLevelUri) && oidcConfig != null && nullOrEmpty(nestedUri)) {
-      oidcConfig.setDiscoveryUri(topLevelUri);
-      LOG.debug("Synced discoveryUri from top-level to oidcConfiguration");
-    } else if (nullOrEmpty(topLevelUri) && !nullOrEmpty(nestedUri)) {
-      authConfig.setDiscoveryUri(nestedUri);
-      LOG.debug("Synced discoveryUri from oidcConfiguration to top-level");
+    if (nullOrEmpty(authConfig.getDiscoveryUri())
+        && oidcConfig != null
+        && !nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+      authConfig.setDiscoveryUri(oidcConfig.getDiscoveryUri());
+    }
+
+    if (oidcConfig != null
+        && nullOrEmpty(oidcConfig.getId())
+        && !nullOrEmpty(authConfig.getClientId())) {
+      oidcConfig.setId(authConfig.getClientId());
+    }
+
+    if (oidcConfig != null
+        && nullOrEmpty(oidcConfig.getCallbackUrl())
+        && !nullOrEmpty(authConfig.getCallbackUrl())) {
+      oidcConfig.setCallbackUrl(authConfig.getCallbackUrl());
     }
   }
 
-  private void syncClientId(AuthenticationConfiguration authConfig) {
-    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
-    String topLevelId = authConfig.getClientId();
-    String nestedId = oidcConfig != null ? oidcConfig.getId() : null;
+  /**
+   * @deprecated Use {@link #normalizeForPersistence} instead.
+   * Kept as a thin delegate for backward compatibility during migration.
+   */
+  @Deprecated
+  public void syncFieldsFromDiscoveryUri(AuthenticationConfiguration authConfig) {
+    normalizeForPersistence(authConfig);
+  }
 
-    if (!nullOrEmpty(topLevelId) && oidcConfig != null && nullOrEmpty(nestedId)) {
-      oidcConfig.setId(topLevelId);
-      LOG.debug("Synced clientId from top-level to oidcConfiguration");
-    } else if (nullOrEmpty(topLevelId) && !nullOrEmpty(nestedId)) {
-      authConfig.setClientId(nestedId);
-      LOG.debug("Synced clientId from oidcConfiguration to top-level");
+  private void deriveFromDiscoveryDocument(
+      AuthenticationConfiguration authConfig, String discoveryUri) {
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+      if (response.getStatusCode() != 200) {
+        return;
+      }
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+      if (discoveryDoc.has("issuer")) {
+        authConfig.setAuthority(discoveryDoc.get("issuer").asText());
+      }
+      if (discoveryDoc.has("jwks_uri")) {
+        authConfig.setPublicKeyUrls(List.of(discoveryDoc.get("jwks_uri").asText()));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to derive fields from discoveryUri: {}", e.getMessage());
     }
   }
 
-  private void syncCallbackUrl(AuthenticationConfiguration authConfig) {
+  private void deriveProviderSpecificFields(AuthenticationConfiguration authConfig) {
+    if (authConfig.getProvider() == AuthProvider.AZURE) {
+      deriveAzureTenant(authConfig);
+    }
+  }
+
+  private void deriveAzureTenant(AuthenticationConfiguration authConfig) {
     OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
     if (oidcConfig == null) {
       return;
     }
-    String topLevelCallback = authConfig.getCallbackUrl();
-    String nestedCallback = oidcConfig.getCallbackUrl();
-
-    if (!nullOrEmpty(topLevelCallback) && nullOrEmpty(nestedCallback)) {
-      oidcConfig.setCallbackUrl(topLevelCallback);
-      LOG.debug("Synced callbackUrl from top-level to oidcConfiguration");
-    } else if (nullOrEmpty(topLevelCallback) && !nullOrEmpty(nestedCallback)) {
-      authConfig.setCallbackUrl(nestedCallback);
-      LOG.debug("Synced callbackUrl from oidcConfiguration to top-level");
-    }
-  }
-
-  private void deriveAuthorityFromDiscoveryUri(AuthenticationConfiguration authConfig) {
     String discoveryUri = authConfig.getDiscoveryUri();
-    if (nullOrEmpty(discoveryUri) || !nullOrEmpty(authConfig.getAuthority())) {
+    if (nullOrEmpty(discoveryUri)) {
       return;
     }
-
-    try {
-      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
-      if (response.getStatusCode() == 200) {
-        JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
-        if (discoveryDoc.has("issuer")) {
-          String issuer = discoveryDoc.get("issuer").asText();
-          authConfig.setAuthority(issuer);
-          LOG.info("Auto-derived authority '{}' from discovery document", issuer);
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to derive authority from discoveryUri: {}", e.getMessage());
+    Matcher m = AZURE_TENANT_PATTERN.matcher(discoveryUri);
+    if (m.find()) {
+      oidcConfig.setTenant(m.group(1));
     }
   }
 
@@ -1455,7 +1513,31 @@ public class SystemRepository {
     }
     boolean hasSecret = !nullOrEmpty(oidcConfig.getSecret());
     authConfig.setClientType(hasSecret ? ClientType.CONFIDENTIAL : ClientType.PUBLIC);
-    LOG.debug("Auto-derived clientType: {}", authConfig.getClientType());
+  }
+
+  private String buildDefaultCallbackUrl() {
+    try {
+      Settings setting = getOMBaseUrlConfigInternal();
+      if (setting != null) {
+        OpenMetadataBaseUrlConfiguration urlConfig =
+            (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+        if (urlConfig != null && !nullOrEmpty(urlConfig.getOpenMetadataUrl())) {
+          return urlConfig.getOpenMetadataUrl().replaceAll("/+$", "") + DEFAULT_CALLBACK_PATH;
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to build default callback URL: {}", e.getMessage());
+    }
+    return null;
+  }
+
+  private static String firstNonEmpty(String... values) {
+    for (String v : values) {
+      if (!nullOrEmpty(v)) {
+        return v;
+      }
+    }
+    return null;
   }
 
   private FieldError validateLdapConfiguration(LdapConfiguration ldapConfig) {

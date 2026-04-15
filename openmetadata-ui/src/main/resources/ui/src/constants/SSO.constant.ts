@@ -440,7 +440,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Azure-specific UI schema with required tenant for confidential client
+// Azure-specific UI schema. Tenant is derived by the backend from discoveryUri.
 export const AZURE_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -459,7 +459,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: COMMON_UI_FIELDS.oidcTenant,
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
       'ui:title': 'OIDC Callback URL',
@@ -560,6 +560,32 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
 };
+
+// OIDC configuration fields that belong in the Advanced Configuration accordion.
+// The main view shows only id (Client ID), secret (Client Secret), and root-level
+// discoveryUri. Everything else is editable but collapsed to avoid overwhelming users.
+export const SSO_ADVANCED_OIDC_FIELDS = [
+  'scope',
+  'useNonce',
+  'disablePkce',
+  'maxClockSkew',
+  'clientAuthenticationMethod',
+  'tokenValidity',
+  'customParams',
+  'maxAge',
+  'prompt',
+  'sessionExpiry',
+  'preferredJwsAlgorithm',
+];
+
+// Root authentication fields that belong in Advanced Configuration accordion.
+export const SSO_ADVANCED_AUTH_FIELDS = [
+  'jwtPrincipalClaims',
+  'jwtPrincipalClaimsMapping',
+  'jwtTeamClaimMapping',
+  'emailClaim',
+  'enableAutoRedirect',
+];
 
 // Common field titles
 export const COMMON_FIELD_TITLES = {
@@ -814,6 +840,8 @@ export interface AuthenticationConfiguration {
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
   secret?: string;
+  discoveryUri?: string;
+  emailClaim?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;
   oidcConfiguration?: Record<string, unknown>;

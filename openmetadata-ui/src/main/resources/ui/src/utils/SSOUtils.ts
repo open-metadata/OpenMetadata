@@ -1087,6 +1087,67 @@ export const handleClientTypeChange = (
   }
 };
 
+const OIDC_PROVIDERS: ReadonlyArray<AuthProvider> = [
+  AuthProvider.Google,
+  AuthProvider.Azure,
+  AuthProvider.Okta,
+  AuthProvider.Auth0,
+  AuthProvider.AwsCognito,
+  AuthProvider.CustomOidc,
+];
+
+/**
+ * Mirrors canonical and legacy OIDC field locations on the confidential flow so
+ * RJSF's schema required check passes before POSTing to the validate/save APIs.
+ * Backend robustness does not depend on this — it is a client-side form-library
+ * workaround. The backend's normalizeForPersistence handles any partial payload.
+ */
+export const mirrorConfidentialOidcFields = (
+  authConfig: AuthenticationConfiguration | undefined
+): void => {
+  if (!authConfig) {
+    return;
+  }
+  if (authConfig.clientType !== ClientType.Confidential) {
+    return;
+  }
+  if (!OIDC_PROVIDERS.includes(authConfig.provider as AuthProvider)) {
+    return;
+  }
+
+  authConfig.oidcConfiguration = authConfig.oidcConfiguration ?? {};
+  const oidc = authConfig.oidcConfiguration as Record<string, unknown>;
+
+  const nestedId = typeof oidc.id === 'string' ? oidc.id : '';
+  const nestedDiscoveryUri =
+    typeof oidc.discoveryUri === 'string' ? oidc.discoveryUri : '';
+  const nestedCallbackUrl =
+    typeof oidc.callbackUrl === 'string' ? oidc.callbackUrl : '';
+
+  if (nestedId) {
+    authConfig.clientId = nestedId;
+  } else if (authConfig.clientId) {
+    oidc.id = authConfig.clientId;
+  }
+
+  if (authConfig.discoveryUri) {
+    oidc.discoveryUri = authConfig.discoveryUri;
+  } else if (nestedDiscoveryUri) {
+    authConfig.discoveryUri = nestedDiscoveryUri;
+  }
+
+  if (!authConfig.callbackUrl) {
+    authConfig.callbackUrl = DEFAULT_CALLBACK_URL;
+  }
+  if (!nestedCallbackUrl) {
+    oidc.callbackUrl = authConfig.callbackUrl;
+  }
+
+  if (!authConfig.authority) {
+    authConfig.authority = 'placeholder';
+  }
+};
+
 /**
  * Checks if a provider is valid (non-Basic) SSO provider
  * @param config - Security configuration to check
