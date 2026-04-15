@@ -66,7 +66,7 @@ public class SubjectCache {
   private static final LoadingCache<String, User> USER_CONTEXT_CACHE =
       CacheBuilder.newBuilder()
           .maximumWeight(50_000_000L) // ~50 MB cap based on serialized User size
-          .weigher(CacheWeighers.<String, User>jsonSerializationWeigher())
+          .weigher(CacheWeighers.<String, User>toStringWeigher())
           .expireAfterWrite(15, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserContextLoader());

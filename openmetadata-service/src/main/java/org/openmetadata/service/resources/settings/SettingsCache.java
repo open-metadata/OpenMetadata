@@ -85,7 +85,7 @@ public class SettingsCache {
   protected static final LoadingCache<String, Settings> CACHE =
       CacheBuilder.newBuilder()
           .maximumWeight(20_000_000L) // ~20 MB cap based on serialized Settings size
-          .weigher(CacheWeighers.<String, Settings>jsonSerializationWeigher())
+          .weigher(CacheWeighers.<String, Settings>toStringWeigher())
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new SettingsLoader());
 

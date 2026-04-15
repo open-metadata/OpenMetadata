@@ -18,20 +18,22 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 
 /**
  * Reusable {@link Weigher} implementations for Guava caches. Weight is expressed in approximate
- * bytes so that {@code maximumWeight} caps total heap consumed by the cache.
+ * heap bytes so that {@code maximumWeight} caps total heap consumed by the cache.
  */
 public final class CacheWeighers {
 
   private static final int ESTIMATED_BYTES_PER_LINEAGE_NODE = 2048;
+  private static final int STRING_OBJECT_OVERHEAD = 40;
+  private static final int DEFAULT_OBJECT_WEIGHT = 4096;
 
   private CacheWeighers() {}
 
   /**
-   * Weigher for caches whose values are JSON {@link String}s. Weight = string length (≈ bytes for
-   * ASCII/UTF-8 JSON).
+   * Weigher for caches whose values are JSON {@link String}s. Accounts for Java's UTF-16 internal
+   * representation (2 bytes per char) plus ~40 bytes of String object overhead.
    */
   public static <K> Weigher<K, String> stringWeigher() {
-    return (key, value) -> value != null ? value.length() : 0;
+    return (key, value) -> value != null ? value.length() * 2 + STRING_OBJECT_OVERHEAD : 0;
   }
 
   /**
@@ -48,19 +50,19 @@ public final class CacheWeighers {
   }
 
   /**
-   * Weigher that estimates object size by serializing to JSON and measuring byte length. Use
-   * sparingly — serialization on every put is expensive. Prefer {@link #stringWeigher()} when the
-   * cached value is already a String.
+   * Lightweight weigher that estimates object heap size using {@code toString().length()} as a
+   * proxy. Avoids the cost of full JSON serialization on every cache put. The estimate is rough but
+   * sufficient for memory-cap purposes.
    */
-  public static <K, V> Weigher<K, V> jsonSerializationWeigher() {
+  public static <K, V> Weigher<K, V> toStringWeigher() {
     return (key, value) -> {
       if (value == null) {
         return 0;
       }
       try {
-        return org.openmetadata.schema.utils.JsonUtils.pojoToJson(value).length();
+        return value.toString().length() * 2 + STRING_OBJECT_OVERHEAD;
       } catch (Exception e) {
-        return 4096;
+        return DEFAULT_OBJECT_WEIGHT;
       }
     };
   }

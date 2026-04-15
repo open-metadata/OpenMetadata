@@ -9821,10 +9821,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
               return result;
             });
 
-    if (BULK_JOBS.size() >= 100) {
-      throw new RuntimeException("Too many concurrent bulk jobs (max 100). Try again later.");
+    synchronized (BULK_JOBS) {
+      if (BULK_JOBS.size() >= 100) {
+        throw new RuntimeException("Too many concurrent bulk jobs (max 100). Try again later.");
+      }
+      BULK_JOBS.put(jobId, mergedJob);
     }
-    BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
         (result, throwable) ->
