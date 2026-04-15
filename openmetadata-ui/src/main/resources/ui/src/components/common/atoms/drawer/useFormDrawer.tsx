@@ -244,7 +244,13 @@ export const useFormDrawerWithHook = <T extends FieldValues>(
   }
 ) => {
   const { hookForm, onSubmit, onCancel, ...rest } = config;
-  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
+  const scrollToError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
+      }),
+    []
+  );
 
   const handleSubmit = useCallback(async () => {
     const valid = await hookForm.trigger();

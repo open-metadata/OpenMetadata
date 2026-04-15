@@ -12,6 +12,7 @@
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { UseFormReturn } from 'react-hook-form';
+import { CoverImageFileValue } from '../../../components/common/CoverImageUpload/CoverImageUpload.interface';
 import { DomainType } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
@@ -28,7 +29,7 @@ export interface DomainFormValues {
   description: string;
   color: string;
   iconURL: string;
-  coverImage: File | undefined;
+  coverImage: CoverImageFileValue | null;
   tags: DomainFormSelectItem[];
   glossaryTerms: TagLabel[];
   owners: DomainFormSelectItem[];

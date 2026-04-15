@@ -88,7 +88,7 @@ export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   description: '',
   color: '',
   iconURL: '',
-  coverImage: undefined,
+  coverImage: null,
   tags: [],
   glossaryTerms: [],
   owners: [],
@@ -643,33 +643,31 @@ const AddDomainForm = ({
         </div>
       </div>
 
-      <div className="tw:flex tw:flex-col tw:gap-[6px]">
-        <FormItemLabel required label={t('label.description')} />
-        <FormField
-          control={form.control}
-          name="description"
-          rules={{
-            required: t('label.field-required', {
-              field: t('label.description'),
-            }),
-          }}>
-          {({ field, fieldState }) => (
-            <>
-              <RichTextEditor
-                className="add-domain-form-description new-form-style"
-                initialValue={
-                  typeof field.value === 'string' ? field.value : ''
-                }
-                key={descriptionEditorKey}
-                onTextChange={field.onChange}
-              />
-              {fieldState.error?.message && (
-                <HintText isInvalid>{fieldState.error.message}</HintText>
-              )}
-            </>
-          )}
-        </FormField>
-      </div>
+      <FormField
+        control={form.control}
+        name="description"
+        rules={{
+          required: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        }}>
+        {({ field, fieldState }) => (
+          <div
+            aria-invalid={fieldState.invalid || undefined}
+            className="tw:flex tw:flex-col tw:gap-[6px]">
+            <FormItemLabel required label={t('label.description')} />
+            <RichTextEditor
+              className="add-domain-form-description new-form-style"
+              initialValue={typeof field.value === 'string' ? field.value : ''}
+              key={descriptionEditorKey}
+              onTextChange={field.onChange}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </div>
+        )}
+      </FormField>
       <div>{getField(tagsField)}</div>
       <FormField control={form.control} name="glossaryTerms">
         {({ field }) => (
