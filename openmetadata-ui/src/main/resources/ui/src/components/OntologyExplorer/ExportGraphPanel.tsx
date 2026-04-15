@@ -93,7 +93,7 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
         size="sm">
         {t('label.export-graph')}
       </Button>
-      <Dropdown.Popover aria-label={t('label.export-graph')}>
+      <Dropdown.Popover aria-label={t('label.export-graph')} placement="top">
         <Dropdown.Menu items={menuItems} onAction={handleAction}>
           {(item) => <Dropdown.Item id={item.id} label={item.label} />}
         </Dropdown.Menu>
