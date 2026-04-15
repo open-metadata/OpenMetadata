@@ -20,6 +20,7 @@ import {
 } from '../OntologyExplorer.constants';
 import { OntologyNode } from '../OntologyExplorer.interface';
 import {
+  adaptiveSpacing,
   DAGRE_NODE_SEP,
   DAGRE_RANK_SEP,
   NODE_HEIGHT,
@@ -60,22 +61,7 @@ const DATA_MODE_RING_SAFETY_PAD = 60;
 
 // Mirror the adaptiveSpacing logic in graphConfig.ts so our manual grid layout
 // compresses the same way G6's Dagre does at high node counts.
-function adaptiveCircleSpacing(base: number, totalNodes: number): number {
-  if (totalNodes <= 50) {
-    return base;
-  }
-  if (totalNodes <= 200) {
-    return Math.ceil(base * 0.7);
-  }
-  if (totalNodes <= 1000) {
-    return Math.ceil(base * 0.45);
-  }
-  if (totalNodes <= 5000) {
-    return Math.ceil(base * 0.25);
-  }
-
-  return Math.ceil(base * 0.15);
-}
+const adaptiveCircleSpacing = adaptiveSpacing;
 
 export function computeGlossaryGroupPositions(
   inputNodes: OntologyNode[],

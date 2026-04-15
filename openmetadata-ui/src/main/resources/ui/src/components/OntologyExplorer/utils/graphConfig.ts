@@ -39,7 +39,7 @@ export const HIERARCHY_DAGRE_RANK_SEP = 150;
 export const MIN_NODE_WIDTH = 72;
 export const BADGE_MIN_NODE_WIDTH = 100;
 
-function adaptiveSpacing(base: number, nodeCount: number): number {
+export function adaptiveSpacing(base: number, nodeCount: number): number {
   if (nodeCount <= 50) {
     return base;
   }
@@ -58,7 +58,6 @@ function adaptiveSpacing(base: number, nodeCount: number): number {
 
 export interface GetOntologyLayoutConfigOptions {
   hasCombos: boolean;
-  focusNode?: string;
   isDataMode: boolean;
   isModelView: boolean;
   isHierarchyMode: boolean;
@@ -109,7 +108,7 @@ export function getLayoutConfig(
   nodeCount: number,
   options: GetOntologyLayoutConfigOptions
 ): LayoutConfig {
-  const { hasCombos, focusNode, isDataMode, isModelView, isHierarchyMode } =
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } =
     options;
 
   const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);

@@ -62,7 +62,12 @@ import {
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import { getEntityIconUrl } from '../utils/entityIconUrls';
-import { getLayoutConfig, NODE_HEIGHT, NODE_WIDTH } from '../utils/graphConfig';
+import {
+  adaptiveSpacing,
+  getLayoutConfig,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+} from '../utils/graphConfig';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -576,6 +581,22 @@ export function useOntologyGraph({
     }
   }, []);
 
+  const applyBakedPositions = useCallback(
+    (graph: Graph, nodes: NodeData[]) => {
+      const bakedUpdates = nodes
+        .filter((n) => typeof (n.style as Record<string, unknown> | undefined)?.x === 'number')
+        .map((n) => {
+          const s = n.style as Record<string, unknown>;
+
+          return { id: n.id, style: { x: s.x as number, y: s.y as number } };
+        });
+      if (bakedUpdates.length > 0) {
+        graph.updateNodeData(bakedUpdates);
+      }
+    },
+    []
+  );
+
   /**
    * Shared helper: builds per-combo node positions using circular inner layout
    * and arranges combo blocks in an outer grid.
@@ -584,42 +605,13 @@ export function useOntologyGraph({
   const buildIntraComboLayout = useCallback(
     (graph: Graph, innerLayout: 'circular'): NodeData[] => {
       const totalNodes = graph.getNodeData().length;
-      const adaptedNodeSep = (() => {
-        const base = 60;
-        if (totalNodes <= 50) return base;
-        if (totalNodes <= 200) return Math.ceil(base * 0.7);
-        if (totalNodes <= 1000) return Math.ceil(base * 0.45);
-        if (totalNodes <= 5000) return Math.ceil(base * 0.25);
-
-        return Math.ceil(base * 0.15);
-      })();
-
-      const adaptedGap = (() => {
-        const base = 280;
-        if (totalNodes <= 50) return base;
-        if (totalNodes <= 200) return Math.ceil(base * 0.7);
-        if (totalNodes <= 1000) return Math.ceil(base * 0.45);
-        if (totalNodes <= 5000) return Math.ceil(base * 0.25);
-
-        return Math.ceil(base * 0.15);
-      })();
+      const adaptedNodeSep = adaptiveSpacing(60, totalNodes);
+      const adaptedGap = adaptiveSpacing(280, totalNodes);
 
       const NODE_H_SEP = adaptedNodeSep;
       const COMBO_H_GAP = adaptedGap;
       const COMBO_V_GAP = adaptedGap;
-      const MAX_RING_RADIUS_MODEL = Math.max(
-        120,
-        Math.ceil(
-          360 *
-            (totalNodes <= 50
-              ? 1
-              : totalNodes <= 200
-              ? 0.7
-              : totalNodes <= 1000
-              ? 0.45
-              : 0.25)
-        )
-      );
+      const MAX_RING_RADIUS_MODEL = Math.max(120, adaptiveSpacing(360, totalNodes));
       const MIN_RING_RADIUS = 80;
       const GRID_COLS = Math.max(
         1,
@@ -1093,10 +1085,6 @@ export function useOntologyGraph({
       },
       layout: getLayoutConfig(layoutType, inputNodes.length, {
         hasCombos,
-        focusNode:
-          layoutType === LayoutEngine.Radial
-            ? focusNodeId ?? selectedNodeId ?? undefined
-            : undefined,
         isDataMode,
         isHierarchyMode,
         isModelView,
@@ -1268,26 +1256,7 @@ export function useOntologyGraph({
       suppressEdgeCheck(1500);
       try {
         if (hasBakedPositions) {
-          // Transfer baked style.x/y into G6's position store via updateNodeData
-          // so draw() renders at the correct coordinates — same mechanism as
-          // positionModelModeNodes, avoids needing a layout algorithm run.
-          const bakedUpdates = (graphData.nodes ?? [])
-            .filter(
-              (n) =>
-                typeof (n.style as Record<string, unknown> | undefined)?.x ===
-                'number'
-            )
-            .map((n) => {
-              const s = n.style as Record<string, unknown>;
-
-              return {
-                id: n.id,
-                style: { x: s.x as number, y: s.y as number },
-              };
-            });
-          if (bakedUpdates.length > 0) {
-            graph.updateNodeData(bakedUpdates);
-          }
+          applyBakedPositions(graph, graphData.nodes ?? []);
           if (isDataMode) {
             positionAssetNodes(graph);
           }
@@ -1368,6 +1337,7 @@ export function useOntologyGraph({
       graphRef.current = null;
     };
   }, [
+    applyBakedPositions,
     termNodeCount,
     explorationMode,
     hasBakedPositions,
@@ -1501,23 +1471,23 @@ export function useOntologyGraph({
         const addedNodeIds = new Set(addedNodes.map((n) => String(n.id)));
         const termsWithNewAssets = new Set<string>();
         addedNodeIds.forEach((assetId) => {
-          const termId = map[assetId];
-          if (termId) {
-            termsWithNewAssets.add(termId);
-          }
+          const termIds = map[assetId];
+          termIds?.forEach((termId) => termsWithNewAssets.add(termId));
         });
 
         // Group ALL assets by term, but only for the affected terms.
         // Ring positions are computed for the full ring because adding one asset
         // shifts the angular spacing of every sibling in the same ring.
         const affectedAssetsByTerm = new Map<string, string[]>();
-        Object.entries(map).forEach(([assetId, termId]) => {
-          if (!termsWithNewAssets.has(termId)) {
-            return;
-          }
-          const list = affectedAssetsByTerm.get(termId) ?? [];
-          list.push(assetId);
-          affectedAssetsByTerm.set(termId, list);
+        Object.entries(map).forEach(([assetId, termIds]) => {
+          termIds.forEach((termId) => {
+            if (!termsWithNewAssets.has(termId)) {
+              return;
+            }
+            const list = affectedAssetsByTerm.get(termId) ?? [];
+            list.push(assetId);
+            affectedAssetsByTerm.set(termId, list);
+          });
         });
 
         affectedAssetsByTerm.forEach((assetIds, termId) => {
@@ -1634,7 +1604,6 @@ export function useOntologyGraph({
     const isModelViewLocal = explorationMode === 'model';
     const layoutOptions = getLayoutConfig(layoutType, inputNodes.length, {
       hasCombos,
-      focusNode: undefined,
       isDataMode,
       isHierarchyMode,
       isModelView: isModelViewLocal,
@@ -1668,27 +1637,7 @@ export function useOntologyGraph({
         } else if (isModelViewLocal && layoutType === LayoutEngine.Circular) {
           positionCircularNodes(graph);
         } else if (hasBakedPositions) {
-          // Positions are baked into graphData nodes as style.x/y.  Transfer
-          // them into G6's position store via updateNodeData — the same mechanism
-          // positionModelModeNodes uses — so draw() renders at the correct
-          // coordinates without needing a layout algorithm run.
-          const bakedUpdates = (graphData.nodes ?? [])
-            .filter(
-              (n) =>
-                typeof (n.style as Record<string, unknown> | undefined)?.x ===
-                'number'
-            )
-            .map((n) => {
-              const s = n.style as Record<string, unknown>;
-
-              return {
-                id: n.id,
-                style: { x: s.x as number, y: s.y as number },
-              };
-            });
-          if (bakedUpdates.length > 0) {
-            graph.updateNodeData(bakedUpdates);
-          }
+          applyBakedPositions(graph, graphData.nodes ?? []);
         } else {
           graph.setLayout(layoutOptions);
           try {
@@ -1740,6 +1689,7 @@ export function useOntologyGraph({
     explorationMode,
     focusNodeId,
     expandedTermIds,
+    applyBakedPositions,
     hasBakedPositions,
     positionAssetNodes,
     positionModelModeNodes,
