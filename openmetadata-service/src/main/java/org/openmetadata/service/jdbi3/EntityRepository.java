@@ -6694,7 +6694,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setDescription(original.getDescription());
         return;
       }
-      recordChange(FIELD_DESCRIPTION, original.getDescription(), updated.getDescription());
+      String sanitized =
+          org.openmetadata.service.util.DescriptionSanitizer.sanitize(updated.getDescription());
+      updated.setDescription(sanitized);
+      recordChange(FIELD_DESCRIPTION, original.getDescription(), sanitized);
     }
 
     private void updateDeleted() {

@@ -45,24 +45,41 @@ public final class DescriptionSanitizer {
                 if (value.startsWith("http://")
                     || value.startsWith("https://")
                     || value.startsWith("mailto:")
-                    || value.startsWith("#")) {
+                    || value.startsWith("#")
+                    || value.startsWith("/")) {
                   return value;
                 }
                 return null;
               })
           .onElements("a")
-          .allowAttributes("target")
-          .onElements("a")
+          // Disallow target to prevent reverse-tabnabbing; clients should add rel=noopener
+          // noreferrer themselves when opening links in new tabs.
           .allowAttributes("rel")
+          .matching(
+              (elementName, attributeName, value) -> {
+                // Only permit safe rel token combinations
+                String lower = value.toLowerCase(java.util.Locale.ROOT).trim();
+                if (lower.equals("noopener")
+                    || lower.equals("noreferrer")
+                    || lower.equals("nofollow")
+                    || lower.equals("noopener noreferrer")
+                    || lower.equals("nofollow noopener noreferrer")) {
+                  return value;
+                }
+                return null;
+              })
           .onElements("a")
-          // Images (src must be http/https/data URI)
+          // Images — only http/https or safe raster data URIs (no SVG which can carry XSS)
           .allowElements("img")
           .allowAttributes("src")
           .matching(
               (elementName, attributeName, value) -> {
                 if (value.startsWith("http://")
                     || value.startsWith("https://")
-                    || value.startsWith("data:image/")) {
+                    || value.startsWith("data:image/png;")
+                    || value.startsWith("data:image/jpeg;")
+                    || value.startsWith("data:image/gif;")
+                    || value.startsWith("data:image/webp;")) {
                   return value;
                 }
                 return null;

@@ -114,10 +114,21 @@ export const formatContent = (
 
   if (formatFor === 'server') {
     anchorTags.forEach((tag, index) => {
-      const href = tag.getAttribute('href');
+      const rawHref = tag.getAttribute('href');
       const text = tag.textContent;
       const fqn = tag.getAttribute('data-fqn');
       const entityType = tag.getAttribute('data-entityType');
+
+      // Validate href to only allow safe protocols before embedding into entity link string.
+      // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
+      const href =
+        rawHref &&
+        (rawHref.startsWith('http://') ||
+          rawHref.startsWith('https://') ||
+          rawHref.startsWith('/') ||
+          rawHref.startsWith('#'))
+          ? rawHref
+          : '';
 
       const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${fqn}|[${text}](${href})>`;
       const marker = `${ENTITY_LINK_MARKER_PREFIX}${index}__`;
