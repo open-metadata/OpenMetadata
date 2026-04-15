@@ -29,6 +29,7 @@ import {
   assignDataProduct,
   assignSingleSelectDomain,
   redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
   softDeleteEntity,
@@ -37,7 +38,7 @@ import {
 import { test } from '../fixtures/pages';
 
 const domain = new Domain();
-const dataProduct = new DataProduct([domain]);
+const dataProduct = new DataProduct([domain], `pw-restore-dp-${uuid()}`);
 
 const entities = [
   ApiEndpointClass,
@@ -88,12 +89,12 @@ entities.forEach((EntityClass) => {
           : 1
       );
 
-      // click database
+      // click direct parent: Schema for Table/StoredProcedure, ApiCollection for ApiEndpoint
       await page
         .getByTestId('breadcrumb-link')
         .nth(
           ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())
-            ? 1
+            ? 2
             : 0
         )
         .click();

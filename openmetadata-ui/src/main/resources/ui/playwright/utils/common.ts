@@ -483,6 +483,7 @@ export const assignDataProduct = async (
     .getByTestId('saveAssociatedTag')
     .click();
   await patchReq;
+  await waitForAllLoadersToDisappear(page);
 
   for (const dataProduct of dataProducts) {
     await expect(
