@@ -977,12 +977,10 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.PROFILER,
       children: (
-        <Suspense fallback={<Loader />}>
-          <DataObservabilityTab
-            permissions={tablePermissions}
-            table={tableDetails}
-          />
-        </Suspense>
+        <DataObservabilityTab
+          permissions={tablePermissions}
+          table={tableDetails}
+        />
       ),
     },
     {
