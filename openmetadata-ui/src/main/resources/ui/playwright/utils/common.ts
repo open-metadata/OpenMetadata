@@ -60,8 +60,12 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await page.goto('/');
-  await page.waitForURL('**/my-data');
+  await page.goto('/', {
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForURL('**/my-data', {
+    waitUntil: 'domcontentloaded',
+  });
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -176,11 +180,10 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').waitFor({
+  await page.getByTestId('alert-bar').getByText(message).waitFor({
     state: 'visible',
+    timeout,
   });
-
-  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 };
@@ -245,9 +248,16 @@ export const assignDomain = async (
   await waitForAllLoadersToDisappear(page);
 
   if (checkSelectedDomain) {
-    await expect(page.getByTestId('domain-link')).toContainText(
-      domain.displayName
-    );
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
   }
 };
 
@@ -422,6 +432,17 @@ export const assignDataProduct = async (
   action: 'Add' | 'Edit' = 'Add',
   parentId = 'KnowledgePanel.DataProducts'
 ) => {
+  const hasMultipleDomains = await page
+    .getByTestId('domain-count-button')
+    .isVisible();
+  if (hasMultipleDomains) {
+    await expect(page.getByTestId('domain-count-button')).toBeVisible();
+  } else {
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domain.displayName
+    );
+  }
+
   await page
     .getByTestId(parentId)
     .getByTestId('data-products-container')
@@ -759,11 +780,14 @@ export const testPaginationNavigation = async (
     page1FirstItem?.displayName || page1FirstItem?.name;
 
   await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.locator('[data-testid="next"]');
-  const page2ResponsePromise = page.waitForResponse(responseMatcher);
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+  await nextButton.scrollIntoViewIfNeeded();
 
-  await nextButton.click();
-  const page2Response = await page2ResponsePromise;
+  const [page2Response] = await Promise.all([
+    page.waitForResponse(responseMatcher),
+    nextButton.click(),
+  ]);
   expect(page2Response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);

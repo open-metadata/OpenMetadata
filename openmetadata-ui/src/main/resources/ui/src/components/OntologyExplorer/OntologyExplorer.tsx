@@ -13,7 +13,6 @@
 
 import {
   Card,
-  Divider,
   Input,
   SlideoutMenu,
   Tabs,
@@ -205,8 +204,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   entityId: propEntityId,
   glossaryId,
   className,
-  showHeader = true,
   height = 'calc(100vh - 200px)',
+  onStatsChange,
+  onLoadingChange,
 }) => {
   const { t } = useTranslation();
   const graphRef = useRef<OntologyGraphHandle | null>(null);
@@ -226,6 +226,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const [expandedTermIds, setExpandedTermIds] = useState<Set<string>>(
     new Set()
   );
+  const [loadingTermIds, setLoadingTermIds] = useState<Set<string>>(new Set());
   const [rdfEnabled, setRdfEnabled] = useState<boolean | null>(null);
   const [dataSource, setDataSource] = useState<'rdf' | 'database'>('database');
   const [relationTypes, setRelationTypes] = useState<
@@ -244,6 +245,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     Record<string, number>
   >({});
   const [hasMoreTerms, setHasMoreTerms] = useState(false);
+  const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
 
   const graphDataRef = useRef<OntologyGraphData | null>(null);
   const explorationModeRef = useRef<ExplorationMode>('model');
@@ -267,6 +269,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     ...DEFAULT_FILTERS,
   });
   const dataModeInitialLoadUsesSpinnerRef = useRef(false);
+  const dataModeAbortGenRef = useRef(0);
+  const hasEnteredDataModeRef = useRef(false);
 
   useEffect(() => {
     graphDataRef.current = graphData;
@@ -316,6 +320,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           ...node,
           assetCount: termAssetCounts[node.id] ?? 0,
           loadedAssetCount: loadedAssetCountPerTerm[node.id] ?? 0,
+          isLoadingAssets: loadingTermIds.has(node.id),
         };
       });
 
@@ -354,6 +359,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     explorationMode,
     termAssetCounts,
     loadedAssetCountPerTerm,
+    loadingTermIds,
   ]);
 
   const filteredGraphData = useMemo(() => {
@@ -712,6 +718,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         return;
       }
 
+      setLoadingTermIds((prev) => new Set(prev).add(termNode.id));
+
       const size = Math.max(1, pageSize);
       const pageNumber = Math.floor(fromOffset / size) + 1;
 
@@ -791,6 +799,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           isAxiosError(error) ? error : String(error),
           t('server.entity-fetch-error')
         );
+      } finally {
+        setLoadingTermIds((prev) => {
+          const next = new Set(prev);
+          next.delete(termNode.id);
+
+          return next;
+        });
       }
     },
     [t]
@@ -1507,6 +1522,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return;
     }
 
+    const gen = dataModeAbortGenRef.current;
     const useSpinner = dataModeInitialLoadUsesSpinnerRef.current;
     if (useSpinner) {
       dataModeInitialLoadUsesSpinnerRef.current = false;
@@ -1525,9 +1541,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
 
       await fetchTermAssetCounts(termNodes, glossaryFilterIds);
+      if (dataModeAbortGenRef.current !== gen) {
+        return;
+      }
       setAssetGraphData(null);
     } finally {
-      if (useSpinner) {
+      if (useSpinner && dataModeAbortGenRef.current === gen) {
         setLoading(false);
       }
     }
@@ -1572,6 +1591,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   useEffect(() => {
     if (explorationMode !== 'data') {
+      dataModeAbortGenRef.current++;
+      if (hasEnteredDataModeRef.current) {
+        setLoading(false);
+        hasEnteredDataModeRef.current = false;
+      }
       setAssetGraphData(null);
       dataModeInitialLoadUsesSpinnerRef.current = false;
       if (isInGlobalDataModeRef.current && savedModelGraphRef.current) {
@@ -1582,6 +1606,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
       return;
     }
+
+    hasEnteredDataModeRef.current = true;
 
     if (scope !== 'global') {
       // Scoped data mode: fetch counts for existing model-mode graph
@@ -1596,6 +1622,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     const glossaryFilterIds = withoutOntologyAutocompleteAll(
       filters.glossaryIds
     );
+    const gen = ++dataModeAbortGenRef.current;
     setLoading(true);
     setGraphData(null);
     setTermAssetCounts({});
@@ -1605,19 +1632,27 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           graphData: OntologyGraphData;
           termCounts: Record<string, number>;
         }) => {
+          if (dataModeAbortGenRef.current !== gen) {
+            return;
+          }
           setGraphData(result.graphData);
           setTermAssetCounts(result.termCounts);
           setAssetGraphData(null);
         }
       )
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (dataModeAbortGenRef.current === gen) {
+          setLoading(false);
+        }
+      });
   }, [
     explorationMode,
     scope,
     filters.glossaryIds,
     loadAssetsForDataMode,
     loadDataModeTerms,
+    dataModeRefreshKey,
   ]);
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
     setGraphData((prev) => {
@@ -1711,12 +1746,20 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, []);
 
   const handleExportPng = useCallback(async () => {
-    await graphRef.current?.exportAsPng();
-  }, []);
+    try {
+      await graphRef.current?.exportAsPng();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   const handleExportSvg = useCallback(async () => {
-    await graphRef.current?.exportAsSvg();
-  }, []);
+    try {
+      await graphRef.current?.exportAsSvg();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   // Resolve the single glossary ID applicable in the current scope so we know
   // which glossary to export as an ontology file.
@@ -1865,12 +1908,28 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
+    if (explorationMode === 'data') {
+      if (scope === 'global') {
+        setDataModeRefreshKey((k) => k + 1);
+      } else {
+        dataModeInitialLoadUsesSpinnerRef.current = true;
+        loadAssetsForDataMode();
+      }
+
+      return;
+    }
     if (scope === 'global') {
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     }
-  }, [scope, glossaryId, fetchAllGlossaryData]);
+  }, [
+    explorationMode,
+    scope,
+    glossaryId,
+    fetchAllGlossaryData,
+    loadAssetsForDataMode,
+  ]);
 
   const handleScrollNearEdge = useCallback(() => {
     const activeGlossaryFilter =
@@ -2068,6 +2127,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return items;
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
+
+  useEffect(() => {
+    onStatsChange?.(statsItems);
+  }, [statsItems, onStatsChange]);
+
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
       !graphDataToShow || graphDataToShow.nodes.length === 0;
@@ -2105,7 +2172,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
     }
 
-    if (hasNoVisibleNodes && !loading) {
+    if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
       const hasActiveFilter =
         withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
         withoutOntologyAutocompleteAll(filters.relationTypes).length > 0;
@@ -2204,59 +2271,31 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
-      {showHeader && (
+      {scope === 'global' && (
         <Card
-          className="tw:mb-4 tw:flex tw:flex-col tw:px-5 tw:py-3"
+          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-none"
           data-testid="ontology-explorer-header">
-          <Typography size="text-sm" weight="medium">
-            {t('label.ontology-explorer')}
-          </Typography>
-          {filteredGraphData && statsItems.length > 0 && (
-            <div
-              className="tw:flex tw:flex-wrap tw:items-center tw:gap-2"
-              data-testid="ontology-explorer-stats">
-              {statsItems.map((item, index) => (
-                <React.Fragment key={`${item}-${index}`}>
-                  {index > 0 ? (
-                    <Divider
-                      className="tw:h-4 tw:self-center"
-                      orientation="vertical"
-                    />
-                  ) : null}
-                  <Typography
-                    data-testid={
-                      index === 0 ? 'ontology-explorer-stats-item' : undefined
-                    }
-                    size="text-sm"
-                    weight="regular">
-                    {item}
-                  </Typography>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
+          <FilterToolbar
+            filters={filters}
+            glossaries={glossaries}
+            relationTypes={relationTypes}
+            viewModeDisabled={explorationMode === 'data'}
+            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onFiltersChange={handleFiltersChange}
+            onViewModeChange={handleViewModeChange}
+          />
         </Card>
       )}
 
       <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
-        <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-          {/* Top filter bar — only on the standalone global page */}
-          {scope === 'global' && (
-            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-1 tw:px-4 tw:pt-5">
-              <Card className="tw:rounded-md tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-sm">
-                <FilterToolbar
-                  filters={filters}
-                  glossaries={glossaries}
-                  relationTypes={relationTypes}
-                  viewModeDisabled={explorationMode === 'data'}
-                  onClearAll={() => setFilters(DEFAULT_FILTERS)}
-                  onFiltersChange={handleFiltersChange}
-                  onViewModeChange={handleViewModeChange}
-                />
-              </Card>
-            </div>
-          )}
-
+        <div
+          className={classNames(
+            'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
+            'tw:border tw:border-utility-gray-blue-100',
+            scope === 'global'
+              ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
+              : 'tw:rounded-lg'
+          )}>
           {/* Bottom center: Mode tabs + Search in Graph + Settings */}
           <Card
             className={classNames(

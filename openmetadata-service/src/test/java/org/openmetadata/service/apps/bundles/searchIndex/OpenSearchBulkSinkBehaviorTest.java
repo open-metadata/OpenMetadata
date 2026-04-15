@@ -371,6 +371,11 @@ class OpenSearchBulkSinkBehaviorTest {
     }
 
     @Override
+    public String getEntityTypeName() {
+      return "stub";
+    }
+
+    @Override
     public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
       return doc;
     }
