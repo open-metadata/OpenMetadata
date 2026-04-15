@@ -797,6 +797,8 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
       await page.getByTestId('view-mode-select').click();
       await page.getByRole('option', { name: 'Hierarchy' }).click();
       await expect(
