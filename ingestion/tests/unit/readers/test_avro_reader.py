@@ -77,24 +77,15 @@ class TestAvroReader(unittest.TestCase):
         self.assertEqual(len(columns), 1)
         self.assertEqual(len(columns[0].children), 3)
 
-    @patch("s3fs.S3FileSystem")
-    @patch("metadata.readers.dataframe.avro.return_s3_storage_options")
-    def test_s3_avro_reading(self, mock_storage_opts, mock_s3fs):
-        mock_storage_opts.return_value = {}
-        mock_s3 = Mock()
-        mock_s3fs.return_value = mock_s3
-
-        def create_fresh_file():
-            return self._create_mock_avro_file()
-
-        mock_s3.open.return_value.__enter__ = Mock(
-            side_effect=lambda: create_fresh_file()
-        )
-        mock_s3.open.return_value.__exit__ = Mock(return_value=False)
-
+    def test_s3_avro_reading(self):
+        """Test S3 avro reading uses boto3 client.get_object for both schema and data."""
         mock_client = Mock()
-        mock_response = {"Body": create_fresh_file()}
-        mock_client.get_object.return_value = mock_response
+
+        # get_object is called twice: once for schema, once for data streaming
+        mock_client.get_object.side_effect = [
+            {"Body": self._create_mock_avro_file(), "close": Mock()},
+            {"Body": self._create_mock_avro_file(), "close": Mock()},
+        ]
 
         config = S3Config(
             securityConfig=AWSCredentials(
@@ -105,11 +96,12 @@ class TestAvroReader(unittest.TestCase):
 
         result = reader._read(key="test.avro", bucket_name="test-bucket")
 
+        self.assertIsNotNone(result.columns)
         self.assertIsNotNone(result.dataframes)
-        dataframes = result.dataframes()
-        self.assertIsNotNone(dataframes)
-        chunks = list(dataframes)
+        chunks = list(result.dataframes())
         self.assertTrue(len(chunks) > 0)
+
+        self.assertEqual(mock_client.get_object.call_count, 2)
 
     @patch("gcsfs.GCSFileSystem")
     def test_gcs_avro_reading(self, mock_gcsfs):

@@ -22,7 +22,6 @@ import {
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
-  LayoutEngine,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
 } from '../OntologyExplorer.constants';
@@ -359,7 +358,7 @@ export function useGraphDataBuilder({
             nodesForGraph.filter(
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
-            LayoutEngine.Dagre,
+            layoutType,
             termHSpacing,
             termVSpacing
           )
@@ -746,9 +745,9 @@ export function useGraphDataBuilder({
 
   const assetToTermMap = useMemo(() => {
     if (explorationMode !== 'data') {
-      return {} as Record<string, string>;
+      return {} as Record<string, string[]>;
     }
-    const map: Record<string, string> = {};
+    const map: Record<string, string[]> = {};
     const allAssetIds = new Set(
       inputNodes
         .filter((n) => n.type === 'dataAsset' || n.type === 'metric')
@@ -759,9 +758,17 @@ export function useGraphDataBuilder({
     );
     mergedEdgesList.forEach((edge) => {
       if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-        map[edge.to] = edge.from;
+        const existing = map[edge.to] ?? [];
+        if (!existing.includes(edge.from)) {
+          existing.push(edge.from);
+          map[edge.to] = existing;
+        }
       } else if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
-        map[edge.from] = edge.to;
+        const existing = map[edge.from] ?? [];
+        if (!existing.includes(edge.to)) {
+          existing.push(edge.to);
+          map[edge.from] = existing;
+        }
       }
     });
 

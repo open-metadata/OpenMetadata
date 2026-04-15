@@ -13,7 +13,6 @@
 
 import {
   Card,
-  Divider,
   Input,
   SlideoutMenu,
   Tabs,
@@ -205,8 +204,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   entityId: propEntityId,
   glossaryId,
   className,
-  showHeader = true,
   height = 'calc(100vh - 200px)',
+  onStatsChange,
+  onLoadingChange,
 }) => {
   const { t } = useTranslation();
   const graphRef = useRef<OntologyGraphHandle | null>(null);
@@ -531,7 +531,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return undefined;
     }
     const engine = toLayoutEngineType(settings.layout);
-    if (engine !== LayoutEngine.Circular && engine !== LayoutEngine.Radial) {
+    if (engine !== LayoutEngine.Circular) {
       return undefined;
     }
 
@@ -1746,12 +1746,20 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, []);
 
   const handleExportPng = useCallback(async () => {
-    await graphRef.current?.exportAsPng();
-  }, []);
+    try {
+      await graphRef.current?.exportAsPng();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   const handleExportSvg = useCallback(async () => {
-    await graphRef.current?.exportAsSvg();
-  }, []);
+    try {
+      await graphRef.current?.exportAsSvg();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   // Resolve the single glossary ID applicable in the current scope so we know
   // which glossary to export as an ontology file.
@@ -1929,6 +1937,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     if (
       explorationMode === 'data' ||
+      filters.viewMode !== 'overview' ||
       activeGlossaryFilter ||
       !hasMoreTerms ||
       isLoadingMoreRef.current ||
@@ -1978,6 +1987,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [
     explorationMode,
     filters.glossaryIds,
+    filters.viewMode,
     hasMoreTerms,
     scope,
     loadNextTermPage,
@@ -2119,6 +2129,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return items;
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
+
+  useEffect(() => {
+    onStatsChange?.(statsItems);
+  }, [statsItems, onStatsChange]);
+
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
       !graphDataToShow || graphDataToShow.nodes.length === 0;
@@ -2255,59 +2273,31 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
-      {showHeader && (
+      {scope === 'global' && (
         <Card
-          className="tw:mb-4 tw:flex tw:flex-col tw:px-5 tw:py-3"
+          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-none"
           data-testid="ontology-explorer-header">
-          <Typography size="text-sm" weight="medium">
-            {t('label.ontology-explorer')}
-          </Typography>
-          {filteredGraphData && statsItems.length > 0 && (
-            <div
-              className="tw:flex tw:flex-wrap tw:items-center tw:gap-2"
-              data-testid="ontology-explorer-stats">
-              {statsItems.map((item, index) => (
-                <React.Fragment key={`${item}-${index}`}>
-                  {index > 0 ? (
-                    <Divider
-                      className="tw:h-4 tw:self-center"
-                      orientation="vertical"
-                    />
-                  ) : null}
-                  <Typography
-                    data-testid={
-                      index === 0 ? 'ontology-explorer-stats-item' : undefined
-                    }
-                    size="text-sm"
-                    weight="regular">
-                    {item}
-                  </Typography>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
+          <FilterToolbar
+            filters={filters}
+            glossaries={glossaries}
+            relationTypes={relationTypes}
+            viewModeDisabled={explorationMode === 'data'}
+            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onFiltersChange={handleFiltersChange}
+            onViewModeChange={handleViewModeChange}
+          />
         </Card>
       )}
 
       <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
-        <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-          {/* Top filter bar — only on the standalone global page */}
-          {scope === 'global' && (
-            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-1 tw:px-4 tw:pt-5">
-              <Card className="tw:rounded-md tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-sm">
-                <FilterToolbar
-                  filters={filters}
-                  glossaries={glossaries}
-                  relationTypes={relationTypes}
-                  viewModeDisabled={explorationMode === 'data'}
-                  onClearAll={() => setFilters(DEFAULT_FILTERS)}
-                  onFiltersChange={handleFiltersChange}
-                  onViewModeChange={handleViewModeChange}
-                />
-              </Card>
-            </div>
-          )}
-
+        <div
+          className={classNames(
+            'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
+            'tw:border tw:border-utility-gray-blue-100',
+            scope === 'global'
+              ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
+              : 'tw:rounded-lg'
+          )}>
           {/* Bottom center: Mode tabs + Search in Graph + Settings */}
           <Card
             className={classNames(
@@ -2361,6 +2351,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               }
             />
             <GraphSettingsPanel
+              isDataMode={explorationMode === 'data'}
               settings={settings}
               onSettingsChange={handleSettingsChange}
             />

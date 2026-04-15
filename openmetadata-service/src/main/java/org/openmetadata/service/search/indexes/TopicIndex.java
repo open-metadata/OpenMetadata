@@ -13,11 +13,10 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public class TopicIndex implements SearchIndex {
+public class TopicIndex implements DataAssetIndex {
   final Set<String> excludeTopicFields = Set.of("sampleData");
   final Topic topic;
 
@@ -31,47 +30,41 @@ public class TopicIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TOPIC;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeTopicFields;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
-    List<String> fieldsWithChildrenName = new ArrayList<>();
+  @Override
+  public Object getIndexServiceType() {
+    return topic.getServiceType();
+  }
 
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null
         && !topic.getMessageSchema().getSchemaFields().isEmpty()) {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
       parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
+      List<String> fieldsWithChildrenName = new ArrayList<>();
+      Set<List<TagLabel>> childTags = new HashSet<>();
       for (FlattenSchemaField field : flattenFields) {
         fieldsWithChildrenName.add(field.getName());
         if (field.getTags() != null) {
-          tagsWithChildren.add(field.getTags());
+          childTags.add(field.getTags());
         }
       }
       doc.put("fieldNames", fieldsWithChildrenName);
-      // Add flat field names for fuzzy search to avoid array-based clause multiplication
       doc.put("fieldNamesFuzzy", String.join(" ", fieldsWithChildrenName));
+      mergeChildTags(doc, childTags);
     }
 
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));
-    tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream()
-            .flatMap(List::stream)
-            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    Map<String, Object> commonAttributes = getCommonAttributesMap(topic, Entity.TOPIC);
-    doc.putAll(commonAttributes);
-    doc.put("tags", flattenedTagList);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", topic.getServiceType());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(topic.getEntityReference()));
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
-    doc.put("service", getEntityWithDisplayName(topic.getService()));
     return doc;
   }
 
