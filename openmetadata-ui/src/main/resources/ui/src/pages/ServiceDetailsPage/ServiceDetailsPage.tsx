@@ -81,11 +81,9 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { AgentType, App } from '../../generated/entity/applications/app';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -99,23 +97,17 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getApplicationList } from '../../rest/applicationAPI';
 import {
-  getDashboards,
   getDataModels,
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
-import { getDatabases } from '../../rest/databaseAPI';
 import { getDriveAssets } from '../../rest/driveAPI';
 import {
   getIngestionPipelines,
   getPipelineServiceHostIp,
 } from '../../rest/ingestionPipelineAPI';
-import { getMlModels } from '../../rest/mlModelAPI';
-import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
   addServiceFollower,
   getServiceByFQN,
@@ -123,8 +115,6 @@ import {
   removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
-import { getContainers } from '../../rest/storageAPI';
-import { getTopics } from '../../rest/topicsAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
@@ -148,10 +138,7 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceDetailsPath,
@@ -176,7 +163,6 @@ import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
-import { ServicePageData } from './ServiceDetailsPage.interface';
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -254,7 +240,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const {
     paging: _paging,
-    pageSize,
     currentPage,
     handlePageChange,
     handlePagingChange,
@@ -277,7 +262,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
-  const [_data, setData] = useState<Array<ServicePageData>>([]);
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
@@ -308,7 +292,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { showDeletedTables: showDeleted } = tableFilters;
 
   const isInitialLoadRef = useRef(true);
-  const isInitialPaginationLoadRef = useRef(true);
   const [serviceEntityCount, setServiceEntityCount] = useState<number>(0);
 
   const { isFollowing, followers = [] } = useMemo(
@@ -440,7 +423,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const {
     version: currentVersion,
-    deleted,
+    deleted: _deleted,
     id: serviceId,
   } = useMemo(() => serviceDetails, [serviceDetails]);
 
@@ -697,61 +680,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [showDeleted]
   );
 
-  const fetchDatabases = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
-      const { data, paging: resPaging } = await getDatabases(
-        decodedServiceFQN,
-        databaseUsagePermission
-          ? `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`
-          : commonTableFields,
-        paging,
-        include
-      );
-
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include, permissions.database]
-  );
-
-  const fetchTopics = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const { data, paging: resPaging } = await getTopics(
-        decodedServiceFQN,
-        commonTableFields,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include]
-  );
-
-  const fetchDashboards = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
-      const { data, paging: resPaging } = await getDashboards(
-        decodedServiceFQN,
-        dashboardUsagePermission
-          ? `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`
-          : commonTableFields,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include, permissions.dashboard]
-  );
-
   // Fetch Data Model count to show it in tab label
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
@@ -772,100 +700,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include]
   );
 
-  const fetchPipeLines = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const pipelineUsagePermission = getPrioritizedViewPermission(
-        permissions.pipeline,
-        PermissionOperation.ViewUsage
-      );
-      const { data, paging: resPaging } = await getPipelines(
-        decodedServiceFQN,
-        pipelineUsagePermission
-          ? `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`
-          : `${commonTableFields},${TabSpecificField.STATE}`,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include, permissions.pipeline]
-  );
-
-  const fetchMlModal = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const { data, paging: resPaging } = await getMlModels(
-        decodedServiceFQN,
-        commonTableFields,
-        paging,
-        include
-      );
-      setData(data);
-      handlePagingChange(resPaging);
-    },
-    [decodedServiceFQN, include]
-  );
-
-  const fetchContainers = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getContainers({
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        paging,
-        root: true,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
-
-  const fetchSearchIndexes = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getSearchIndexes({
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        paging,
-        root: true,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
-  const fetchCollections = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getApiCollections({
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        paging,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
-  const fetchDirectories = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      const response = await getDriveAssets<Directory>(EntityType.DIRECTORY, {
-        service: decodedServiceFQN,
-        fields: commonTableFields,
-        root: true,
-        paging,
-        include,
-      });
-
-      setData(response.data);
-      handlePagingChange(response.paging);
-    },
-    [decodedServiceFQN, include]
-  );
   const fetchFiles = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
@@ -914,82 +748,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include]
   );
 
-  const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal) => {
-      try {
-        setIsServiceLoading(true);
-        const pagingParams = { ...paging, limit: pageSize };
-        switch (serviceCategory) {
-          case ServiceCategory.DATABASE_SERVICES: {
-            await fetchDatabases(pagingParams);
 
-            break;
-          }
-          case ServiceCategory.MESSAGING_SERVICES: {
-            await fetchTopics(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.DASHBOARD_SERVICES: {
-            await fetchDashboards(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.PIPELINE_SERVICES: {
-            await fetchPipeLines(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.ML_MODEL_SERVICES: {
-            await fetchMlModal(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.STORAGE_SERVICES: {
-            await fetchContainers(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.SEARCH_SERVICES: {
-            await fetchSearchIndexes(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.API_SERVICES: {
-            await fetchCollections(pagingParams);
-
-            break;
-          }
-          case ServiceCategory.DRIVE_SERVICES: {
-            await fetchDirectories(pagingParams);
-
-            break;
-          }
-          default:
-            break;
-        }
-      } catch {
-        setData([]);
-        handlePagingChange(pagingObject);
-      } finally {
-        setIsServiceLoading(false);
-      }
-    },
-    [
-      tab,
-      serviceCategory,
-      fetchDatabases,
-      fetchTopics,
-      fetchDashboards,
-      fetchPipeLines,
-      fetchMlModal,
-      fetchContainers,
-      fetchSearchIndexes,
-      fetchCollections,
-      fetchDirectories,
-      pageSize,
-    ]
-  );
 
   const fetchServiceDetails = useCallback(async () => {
     try {
