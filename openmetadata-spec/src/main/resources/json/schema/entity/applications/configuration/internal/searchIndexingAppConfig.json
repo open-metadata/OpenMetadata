@@ -42,7 +42,7 @@
       "description": "Maximum number of events sent in a batch (Default 100).",
       "type": "integer",
       "existingJavaType": "java.lang.Long",
-      "default": 104857600
+      "default": 9437184
     },
     "producerThreads": {
       "title": "Number of Producer Threads",
