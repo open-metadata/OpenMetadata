@@ -23,6 +23,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../utils/EntityLink';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -174,10 +175,43 @@ export const DataAssetSummaryPanelV1 = ({
     [entityType]
   );
 
-  const { changeSummary } = useChangeSummary(entityType, dataAsset.id ?? '', {
-    fieldPrefix: 'description',
-    limit: 1,
-  });
+  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+
+  const {
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams,
+  } = useMemo(() => {
+    if (!isColumnEntity) {
+      return {
+        changeSummaryEntityType: entityType,
+        changeSummaryEntityId: dataAsset.id ?? '',
+        changeSummaryParams: { fieldPrefix: 'description', limit: 1 },
+      };
+    }
+    const columnData = dataAsset as typeof dataAsset & {
+      table?: { id?: string };
+    };
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      dataAsset.fullyQualifiedName ?? '',
+      false
+    );
+
+    return {
+      changeSummaryEntityType: EntityType.TABLE,
+      changeSummaryEntityId: columnData.table?.id ?? '',
+      changeSummaryParams: {
+        fieldPrefix: `columns.${columnName}.description`,
+        limit: 1,
+      },
+    };
+  }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
+
+  const { changeSummary } = useChangeSummary(
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams
+  );
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -267,7 +301,6 @@ export const DataAssetSummaryPanelV1 = ({
   };
   // Columns inherit owners, domains, tier, and data products from their parent table
   // These fields should not be editable on columns
-  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
 
   const {
     editDomainPermission,
@@ -374,7 +407,9 @@ export const DataAssetSummaryPanelV1 = ({
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
-    const descriptionChangeSummaryEntry = changeSummary?.description;
+    const descriptionChangeSummaryEntry = isColumnEntity
+      ? changeSummary?.[changeSummaryParams.fieldPrefix]
+      : changeSummary?.description;
 
     switch (entityType) {
       case EntityType.API_COLLECTION:
