@@ -689,7 +689,8 @@ web:
     block: ${WEB_CONF_XSS_PROTECTION_BLOCK:-true}
   csp:
     enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
-    policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'; base-uri 'self'; script-src 'self' 'nonce-__CSP_NONCE__' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src * 'self' blob: data:; media-src * 'self' blob:; worker-src 'self' blob:; frame-src 'self' https://www.youtube.com; object-src 'none'; connect-src 'self';"}
+    # default-src 'self'; base-uri 'self'; script-src 'self' 'nonce-__CSP_NONCE__' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src * 'self' blob: data:; media-src * 'self' blob:; worker-src 'self' blob:; frame-src 'self' https://www.youtube.com; object-src 'none'; connect-src 'self';
+    policy: ${WEB_CONF_XSS_CSP_POLICY:-""}
     reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
   referrer-policy:
     enabled: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
