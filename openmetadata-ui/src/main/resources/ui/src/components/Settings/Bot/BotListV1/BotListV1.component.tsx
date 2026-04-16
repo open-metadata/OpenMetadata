@@ -35,8 +35,9 @@ import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { getBotByName, getBots } from '../../../../rest/botsAPI';
+import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getBotByName } from '../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
   getEntityName,
@@ -127,6 +128,7 @@ const BotListV1 = ({
         query: '',
         pageNumber: 1,
         pageSize: bots.length,
+        includeDeleted: showDeleted,
         searchIndex: SearchIndex.USER,
         queryFilter: {
           bool: {
@@ -351,6 +353,7 @@ const BotListV1 = ({
       query: text,
       pageNumber: 1,
       pageSize: 100,
+      includeDeleted: showDeleted,
       queryFilter: getTermQuery({ isBot: true }),
       searchIndex: SearchIndex.USER,
     });
@@ -369,6 +372,7 @@ const BotListV1 = ({
       query: '*',
       pageNumber: 1,
       pageSize: 100,
+      includeDeleted: showDeleted,
       queryFilter: getTermQuery({ isBot: true }, 'must', undefined, {
         wildcardShouldQueries: {
           'name.keyword': wildcardPattern,
