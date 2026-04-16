@@ -26,10 +26,6 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
-  private static final String UPDATE_EVENT_SUB_MYSQL =
-      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
-  private static final String UPDATE_EVENT_SUB_POSTGRESQL =
-      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String ADMIN_USER_NAME = "admin";
 

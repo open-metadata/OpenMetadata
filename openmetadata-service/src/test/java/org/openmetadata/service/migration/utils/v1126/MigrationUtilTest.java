@@ -129,7 +129,7 @@ class MigrationUtilTest {
   }
 
   @Test
-  void revertWebhookAuthTypeToSecretKeyRevertsBearer() throws Exception {
+  void revertWebhookAuthTypeToSecretKeyRevertsBearerMysql() throws Exception {
     Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
     Handle handle = handleWithUpdateCapture(List.of(row(WEBHOOK_WITH_BEARER)), mockUpdate);
 
@@ -139,6 +139,39 @@ class MigrationUtilTest {
       when(mockConfig.isMySQL()).thenReturn(true);
 
       assertDoesNotThrow(() -> MigrationUtil.revertWebhookAuthTypeToSecretKey(handle));
+
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+      verify(handle).createUpdate(sqlCaptor.capture());
+      assertEquals(
+          "UPDATE event_subscription_entity SET json = :json WHERE id = :id", sqlCaptor.getValue());
+
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(mockUpdate).bind(eq("json"), jsonCaptor.capture());
+
+      JsonNode config =
+          MAPPER.readTree(jsonCaptor.getValue()).get("destinations").get(0).get("config");
+      assertEquals("mysecret", config.get("secretKey").asText());
+      assertNull(config.get("authType"));
+    }
+  }
+
+  @Test
+  void revertWebhookAuthTypeToSecretKeyRevertsBearerPostgres() throws Exception {
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    Handle handle = handleWithUpdateCapture(List.of(row(WEBHOOK_WITH_BEARER)), mockUpdate);
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mockConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mockConfig);
+      when(mockConfig.isMySQL()).thenReturn(false);
+
+      assertDoesNotThrow(() -> MigrationUtil.revertWebhookAuthTypeToSecretKey(handle));
+
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+      verify(handle).createUpdate(sqlCaptor.capture());
+      assertEquals(
+          "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id",
+          sqlCaptor.getValue());
 
       ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
       verify(mockUpdate).bind(eq("json"), jsonCaptor.capture());
