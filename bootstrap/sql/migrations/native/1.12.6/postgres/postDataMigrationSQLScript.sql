@@ -5,9 +5,11 @@
 UPDATE entity_relationship
 SET json = json - 'pipeline'
 WHERE fromentity IN ('databaseService', 'messagingService', 'pipelineService', 'dashboardService',
-                     'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService')
+                     'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService',
+                     'driveService')
   AND toentity IN ('databaseService', 'messagingService', 'pipelineService', 'dashboardService',
-                   'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService')
+                   'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService',
+                   'driveService')
   AND relation = 13
   AND json ?? 'pipeline';
 

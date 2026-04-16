@@ -5,9 +5,11 @@
 UPDATE entity_relationship
 SET json = JSON_REMOVE(json, '$.pipeline')
 WHERE fromEntity IN ('databaseService', 'messagingService', 'pipelineService', 'dashboardService',
-                     'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService')
+                     'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService',
+                     'driveService')
   AND toEntity IN ('databaseService', 'messagingService', 'pipelineService', 'dashboardService',
-                   'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService')
+                   'mlmodelService', 'metadataService', 'storageService', 'searchService', 'apiService',
+                   'driveService')
   AND relation = 13
   AND JSON_CONTAINS_PATH(json, 'one', '$.pipeline');
 
