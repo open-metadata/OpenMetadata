@@ -13,13 +13,13 @@
 """
 Module for sqlalchemy dialect utils
 """
+
 import traceback
 from typing import Dict, Optional, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.schema import CreateTable, MetaData
 
 from metadata.utils.logger import ingestion_logger
 
@@ -36,9 +36,9 @@ def get_all_table_comments(self, connection, query):
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         table_dict = {k.lower(): v for k, v in dict(table._mapping).items()}
-        self.all_table_comments[
-            (table_dict["table_name"], table_dict["schema"])
-        ] = table_dict["table_comment"]
+        self.all_table_comments[(table_dict["table_name"], table_dict["schema"])] = (
+            table_dict["table_comment"]
+        )
 
 
 def get_table_comment_wrapper(self, connection, query, table_name, schema=None):
@@ -149,28 +149,15 @@ def get_all_table_ddls(
     """
     Method to fetch ddl of all available tables
     """
-    try:
-        self.all_table_ddls: Dict[Tuple[str, str], str] = {}
-        self.current_db: str = schema_name
-        meta = MetaData()
-        meta.reflect(bind=connection, schema=schema_name)
-        for table in meta.sorted_tables or []:
-            self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Failed to get table ddls for {schema_name}: {exc}")
-        # Roll back the aborted transaction so the connection remains usable
-        # for subsequent queries (e.g. get_table_comment). Without this,
-        # psycopg2 raises InFailedSqlTransaction on every query that follows.
-        if isinstance(exc, ProgrammingError):
-            try:
-                connection.rollback()
-            except Exception:
-                pass
-        try:
-            connection.rollback()
-        except Exception:
-            pass
+    self.all_table_ddls: Dict[Tuple[str, str], str] = {}
+    self.current_db: str = schema_name
+    result = connection.execute(
+        text(query).bindparams(schema_name=schema_name)
+        if isinstance(query, str)
+        else query
+    )
+    for row in result:
+        self.all_table_ddls[(row.schema_name, row.table_name)] = row.ddl
 
 
 def get_table_ddl_wrapper(

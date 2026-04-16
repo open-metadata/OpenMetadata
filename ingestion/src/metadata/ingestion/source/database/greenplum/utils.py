@@ -13,6 +13,7 @@
 """
 Greenplum SQLAlchemy util methods
 """
+
 import re
 from typing import Dict, Tuple
 
@@ -25,10 +26,12 @@ from metadata.ingestion.source.database.greenplum.queries import (
     GREENPLUM_COL_IDENTITY,
     GREENPLUM_SQL_COLUMNS,
     GREENPLUM_TABLE_COMMENTS,
+    GREENPLUM_TABLE_DDLS,
     GREENPLUM_VIEW_DEFINITIONS,
 )
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
+    get_table_ddl_wrapper,
     get_view_definition_wrapper,
 )
 
@@ -346,4 +349,17 @@ def get_view_definition(
         table_name=table_name,
         schema=schema,
         query=GREENPLUM_VIEW_DEFINITIONS,
+    )
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_table_ddl_wrapper(
+        self,
+        connection=connection,
+        query=GREENPLUM_TABLE_DDLS,
+        table_name=table_name,
+        schema=schema,
     )

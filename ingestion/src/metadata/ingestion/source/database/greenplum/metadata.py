@@ -11,6 +11,7 @@
 """
 Greenplum source module
 """
+
 import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
@@ -54,6 +55,7 @@ from metadata.ingestion.source.database.greenplum.utils import (
     get_column_info,
     get_columns,
     get_table_comment,
+    get_table_ddl,
     get_view_definition,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
@@ -64,7 +66,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
     get_all_view_definitions,
-    get_table_ddl,
 )
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
@@ -149,9 +150,11 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
