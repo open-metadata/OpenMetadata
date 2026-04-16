@@ -2841,6 +2841,84 @@ class DbtUnitTest(TestCase):
             expected_fqn
         ], f"Expected lineage to resolve via target_schema 'snapshots', got: {result}"
 
+    def test_dbt_entity_link_with_mixed_case_columns_issue_24636(self):
+        """
+        Test for issue #24636: dbt test case ingestion fails with relationship tests.
+
+        Root cause: dbt relationship tests have multiple upstream dependencies, but the
+        order varies by database engine (Snowflake first, Unity Catalog last). Previously,
+        code iterated over ALL upstream tables, causing column validation errors when
+        the referenced table didn't have the same column names.
+
+        Fix: Extract primary table from test_metadata.kwargs['model'] explicitly,
+        which is order-independent and works across all database engines.
+        """
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+
+        # Test case 1: Relationship test with kwargs['model'] extraction (main code path)
+        # This test exercises the primary fix for issue #24636
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_"
+        )
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table
+                "unity.catalog.schema.un_person_base",  # Referenced table
+            ],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        # Should return only one entity link (for the primary table)
+        self.assertEqual(
+            len(result), 1, "Should only create one entity link for primary table"
+        )
+        # Link should be to the primary table extracted from kwargs['model']
+        self.assertIn("un_rueckerstattungen_medis_base", result[0])
+        self.assertIn("::columns::PersonNr>", result[0])
+        self.assertNotIn("un_person_base", result[0])
+
+        # Test case 2: Verify kwargs['model'] path works with REVERSED upstream order
+        # This proves the fix is order-independent (the bug in #24636)
+        dbt_test_reversed = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_person_base",  # Referenced table FIRST
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table LAST
+            ],
+            "results": "",
+        }
+        result_reversed = generate_entity_link(dbt_test=dbt_test_reversed)
+        # Should still return the primary table, proving kwargs['model'] extraction works
+        self.assertEqual(
+            len(result_reversed),
+            1,
+            "Should return primary table regardless of upstream order",
+        )
+        self.assertIn("un_rueckerstattungen_medis_base", result_reversed[0])
+        self.assertIn("::columns::PersonNr>", result_reversed[0])
+        self.assertNotIn("un_person_base", result_reversed[0])
+
+        # Test case 3: Fallback to first upstream when kwargs['model'] is unavailable
+        # This tests the fallback path (lines 720-722)
+        manifest_node_fallback = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        dbt_test_fallback = {
+            "manifest_node": manifest_node_fallback,
+            "upstream": [
+                "unity.catalog.schema.un_abrechnungsposition_cur",  # First table
+                "unity.catalog.schema.un_person_base",  # Second table
+            ],
+            "results": "",
+        }
+        result_fallback = generate_entity_link(dbt_test=dbt_test_fallback)
+        # Should fall back to first upstream since model pattern doesn't match
+        self.assertEqual(len(result_fallback), 1)
+        self.assertIn("un_abrechnungsposition_cur", result_fallback[0])
+
 
 class TestDownloadDbtFiles(TestCase):
     """
