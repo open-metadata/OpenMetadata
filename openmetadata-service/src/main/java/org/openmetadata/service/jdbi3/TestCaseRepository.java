@@ -145,7 +145,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
         fields.contains(TEST_SUITE_FIELD)
-            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM)
+            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM, true)
             : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
@@ -725,7 +725,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface tableEntity) {
     try {
-      return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
+      return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO, false);
     } catch (EntityNotFoundException e) {
       var entityLink = EntityLink.parse(test.getEntityLink());
       var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
@@ -741,7 +741,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private EntityReference getTestSuite(UUID id, String to, String from, Direction direction)
+  private EntityReference getTestSuite(
+      UUID id, String to, String from, Direction direction, boolean allowMissingExecutable)
       throws EntityNotFoundException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records = new ArrayList<>();
@@ -749,11 +750,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       case FROM -> records = findFromRecords(id, to, Relationship.CONTAINS, from);
       case TO -> records = findToRecords(id, from, Relationship.CONTAINS, to);
     }
+    EntityReference firstSuite = null;
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
+      if (firstSuite == null) {
+        firstSuite = testSuite.getEntityReference();
+      }
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
         return testSuite.getEntityReference();
       }
+    }
+    if (allowMissingExecutable) {
+      return firstSuite;
     }
     throw new EntityNotFoundException(
         String.format(
@@ -925,6 +933,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
+    if (testCase == null
+        || testCase.getTestSuite() == null
+        || testCase.getTestSuite().getId() == null) {
+      return;
+    }
     var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
     var original = TestSuiteRepository.copyTestSuite(testSuite);
@@ -939,7 +952,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void addLogicalTestSuiteRelationships(TestCase testCase) {
-    if (nullOrEmpty(testCase) || nullOrEmpty(testCase.getTestSuites())) return;
+    if (testCase == null || nullOrEmpty(testCase.getTestSuites())) return;
 
     Set<UUID> suiteIds =
         testCase.getTestSuites().stream()
