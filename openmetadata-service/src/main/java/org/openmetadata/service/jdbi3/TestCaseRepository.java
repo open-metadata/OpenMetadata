@@ -673,12 +673,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestSuite> testSuites = test.getTestSuites();
     if (testSuites == null || testSuites.isEmpty()) return;
 
-    Set<UUID> existingSuiteIds = new HashSet<>();
+    final Set<UUID> existingSuiteIds = new HashSet<>();
     if (update && test.getId() != null) {
-      existingSuiteIds =
+      existingSuiteIds.addAll(
           findFromRecords(test.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE).stream()
               .map(CollectionDAO.EntityRelationshipRecord::getId)
-              .collect(Collectors.toSet());
+              .collect(Collectors.toSet()));
     }
 
     List<UUID> newSuiteIds =
