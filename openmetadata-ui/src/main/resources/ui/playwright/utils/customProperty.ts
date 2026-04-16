@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
