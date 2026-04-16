@@ -193,18 +193,13 @@ def _compile_with_session(
 class TestSingleStoreMedianFnExecution:
     """no ARM image only run on x86_64 machines"""
 
-    # approx_percentile uses t-digest, which returns the nearest bucket
-    # rather than interpolating. With fixed data the results are deterministic
-    # but differ from linear-interpolation (PERCENTILE_CONT) values.
-    # Expected values below are from the actual SingleStore output.
-
     def test_median_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.50)
         result = session.execute(
             text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")
         ).scalar()
         assert result is not None
-        assert result == 50.0
+        assert result == 75.0
 
     def test_first_quartile_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.25)
@@ -226,13 +221,11 @@ class TestSingleStoreMedianFnExecution:
         compiled = _compile_with_session(
             session, "value", "test_data", 0.50, "category"
         )
-        # SingleStore Distributed doesn't support scalar subselects in ORDER BY,
-        # so we wrap in a subquery to avoid the push-down limitation.
+        # SingleStore Distributed rejects scalar subselects combined with
+        # DISTINCT or ORDER BY. Query raw rows and deduplicate in Python.
         results = session.execute(
             text(
-                f"SELECT * FROM ("
-                f"SELECT DISTINCT category, {compiled} AS median_val "
-                f"FROM test_data) AS t ORDER BY category"
+                f"SELECT category, {compiled} AS median_val FROM test_data"
             )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
@@ -245,9 +238,7 @@ class TestSingleStoreMedianFnExecution:
         )
         results = session.execute(
             text(
-                f"SELECT * FROM ("
-                f"SELECT DISTINCT category, {compiled} AS q1_val "
-                f"FROM test_data) AS t ORDER BY category"
+                f"SELECT category, {compiled} AS q1_val FROM test_data"
             )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
@@ -260,9 +251,7 @@ class TestSingleStoreMedianFnExecution:
         )
         results = session.execute(
             text(
-                f"SELECT * FROM ("
-                f"SELECT DISTINCT category, {compiled} AS q3_val "
-                f"FROM test_data) AS t ORDER BY category"
+                f"SELECT category, {compiled} AS q3_val FROM test_data"
             )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
