@@ -42,17 +42,30 @@ class BaseModel(PydanticBaseModel):
 
     def model_post_init(self, context: Any, /):
         """
-        This function is used to parse the FilterPattern fields for the Connection classes.
-        This is needed because dict is defined in the JSON schema for the FilterPattern field,
-        but a FilterPattern object is required in the generated code.
+        Post-init hook for Connection classes:
+        - Sanitises ``hostPort`` by stripping accidental URL scheme prefixes.
+        - Converts raw ``dict`` values into ``FilterPattern`` objects.
         """
         # pylint: disable=import-outside-toplevel
+        if not self.__class__.__name__.endswith("Connection"):
+            return
+        if not hasattr(self, "__pydantic_fields__"):
+            return
+
+        if "hostPort" in self.__pydantic_fields__:
+            raw = getattr(self, "hostPort", None)
+            if isinstance(raw, str) and "://" in raw:
+                try:
+                    from metadata.utils.db_utils import clean_host_port
+
+                    object.__setattr__(self, "hostPort", clean_host_port(raw))
+                except Exception:
+                    logger.warning(
+                        "Failed to clean hostPort '%s'; leaving as-is",
+                        raw[:50],
+                    )
+
         try:
-            if not self.__class__.__name__.endswith("Connection"):
-                # Only parse FilterPattern for Connection classes
-                return
-            if not hasattr(self, "__pydantic_fields__"):
-                return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
                     from metadata.generated.schema.type.filterPattern import (
