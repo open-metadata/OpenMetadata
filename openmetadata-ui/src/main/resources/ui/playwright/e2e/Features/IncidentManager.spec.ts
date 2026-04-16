@@ -835,9 +835,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         .locator('[data-testid="resolved-comment-textarea"] textarea')
         .first()
         .fill('test');
-      const updateTestCaseIncidentStatus = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-      );
+      const updateTestCaseIncidentStatus = waitForTaskResolveResponse(page);
       await page.getByTestId('submit-resolved-popover-button').click();
       await updateTestCaseIncidentStatus;
     });

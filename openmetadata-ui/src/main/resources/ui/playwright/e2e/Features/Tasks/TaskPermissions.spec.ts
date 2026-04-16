@@ -12,6 +12,9 @@
  */
 
 import { expect, test, type Browser } from '@playwright/test';
+import { VIEW_ONLY_RULE } from '../../../constant/permission';
+import { PolicyClass } from '../../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -72,6 +75,8 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
   const assigneeWithoutEdit = new UserClass();
   const assigneeWithEdit = new UserClass();
   const table = new TableClass();
+  const viewOnlyPolicy = new PolicyClass();
+  const viewOnlyRole = new RolesClass();
 
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -81,8 +86,24 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await ownerUser.create(apiContext);
-      await assigneeWithoutEdit.create(apiContext);
+      await assigneeWithoutEdit.create(apiContext, false);
       await assigneeWithEdit.create(apiContext);
+      await viewOnlyPolicy.create(apiContext, VIEW_ONLY_RULE);
+      await viewOnlyRole.create(apiContext, [viewOnlyPolicy.responseData.name]);
+      await assigneeWithoutEdit.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: viewOnlyRole.responseData.id,
+              type: 'role',
+              name: viewOnlyRole.responseData.name,
+            },
+          },
+        ],
+      });
 
       // Create table with owner
       await table.create(apiContext);
@@ -110,6 +131,8 @@ test.describe('Task Permissions - Assignee Must Have Edit Permission', () => {
       await assigneeWithoutEdit.delete(apiContext);
       await ownerUser.delete(apiContext);
       await adminUser.delete(apiContext);
+      await viewOnlyRole.delete(apiContext);
+      await viewOnlyPolicy.delete(apiContext);
     } finally {
       await afterAction();
     }

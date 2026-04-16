@@ -72,6 +72,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -780,6 +781,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, fields);
 
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+    validateTaskCanBeResolved(task);
 
     // Use TaskWorkflowHandler to resolve the task and apply entity changes
     String transitionId =
@@ -1039,6 +1041,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
 
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+    validateTaskCanBeResolved(task);
 
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1142,6 +1145,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     switch (operation) {
       case Approve -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+        validateTaskCanBeResolved(task);
         repository.resolveTaskWithWorkflow(
             task,
             TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved),
@@ -1153,6 +1157,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       }
       case Reject -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+        validateTaskCanBeResolved(task);
         repository.resolveTaskWithWorkflow(
             task,
             TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected),
@@ -1187,6 +1192,18 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.closeTask(task, userName, comment);
       }
     }
+  }
+
+  private void validateTaskCanBeResolved(Task task) {
+    TaskEntityStatus status = task.getStatus();
+    if (status == TaskEntityStatus.Open
+        || status == TaskEntityStatus.InProgress
+        || status == TaskEntityStatus.Pending) {
+      return;
+    }
+
+    throw BadRequestException.of(
+        String.format("Task '%s' is already in status '%s'", task.getId(), status));
   }
 
   // ========================= Comment Endpoints =========================
