@@ -1,2 +1,0 @@
--- This file is intentionally empty. The 1.14.0 migration directory is required
--- because Java migrations exist in org.openmetadata.service.migration.utils.V114.

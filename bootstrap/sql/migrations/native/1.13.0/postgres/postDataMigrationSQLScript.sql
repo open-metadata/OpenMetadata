@@ -86,3 +86,4 @@ WHERE jsonb_exists(json::jsonb, 'relatedTerms');
 UPDATE glossary_term_entity
 SET json = jsonb_set(COALESCE(json::jsonb, '{}'::jsonb), '{conceptMappings}', '[]'::jsonb)
 WHERE json IS NULL OR json::jsonb->'conceptMappings' IS NULL;
+

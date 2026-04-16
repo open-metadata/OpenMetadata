@@ -84,3 +84,4 @@ WHERE JSON_EXTRACT(json, '$.relatedTerms') IS NOT NULL;
 UPDATE glossary_term_entity
 SET json = JSON_SET(COALESCE(json, '{}'), '$.conceptMappings', JSON_ARRAY())
 WHERE JSON_EXTRACT(json, '$.conceptMappings') IS NULL;
+
