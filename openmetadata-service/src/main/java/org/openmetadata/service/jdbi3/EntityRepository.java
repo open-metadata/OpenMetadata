@@ -1954,13 +1954,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public ResultList<T> listAfterWithOffset(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limit, int offset) {
     int total = dao.listCount(filter);
-    List<String> jsons = dao.listAfter(filter, limit + 1, offset);
+    List<String> jsons = dao.listAfter(filter, limit, offset);
 
     List<T> entities = listInternal(jsons, fields, uriInfo);
-
-    if (entities.size() > limit) {
-      entities.remove(limit);
-    }
 
     return new ResultList<>(entities, offset, limit, total);
   }
