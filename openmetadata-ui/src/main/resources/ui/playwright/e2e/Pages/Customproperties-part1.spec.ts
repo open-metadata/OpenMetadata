@@ -33,7 +33,11 @@ import {
   verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { settingClick, sidebarClick, SettingOptionsType } from '../../utils/sidebar';
+import {
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
+} from '../../utils/sidebar';
 
 const propertiesList = [
   'Integer',

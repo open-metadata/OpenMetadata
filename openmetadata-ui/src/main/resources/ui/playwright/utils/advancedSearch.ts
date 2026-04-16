@@ -221,7 +221,11 @@ export const selectOption = async (
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
     .locator('.ant-select-item-option')
-    .filter({ hasText: new RegExp(`^${optionTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) })
+    .filter({
+      hasText: new RegExp(
+        `^${optionTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+      ),
+    })
     .first();
   await expect(optionLocator).toBeVisible();
 
