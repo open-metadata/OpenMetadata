@@ -13,7 +13,7 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -164,12 +164,10 @@ const ColumnProfileTable = () => {
         dataIndex: 'profile',
         key: 'nullProportion',
         width: 200,
-        render: (profile: ColumnProfile) => {
-          return profile?.nullProportion !== undefined &&
-            profile?.nullProportion !== null
+        render: (profile: ColumnProfile) =>
+          !isNil(profile?.nullProportion)
             ? calculatePercentage(profile.nullProportion, 1, 2, true)
-            : '--';
-        },
+            : '--',
         sorter: (col1, col2) =>
           (col1.profile?.nullProportion || 0) -
           (col2.profile?.nullProportion || 0),
@@ -180,8 +178,7 @@ const ColumnProfileTable = () => {
         key: 'uniqueProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.uniqueProportion !== undefined &&
-          profile?.uniqueProportion !== null
+          !isNil(profile?.uniqueProportion)
             ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
@@ -194,8 +191,7 @@ const ColumnProfileTable = () => {
         key: 'distinctProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.distinctProportion !== undefined &&
-          profile?.distinctProportion !== null
+          !isNil(profile?.distinctProportion)
             ? calculatePercentage(profile.distinctProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
