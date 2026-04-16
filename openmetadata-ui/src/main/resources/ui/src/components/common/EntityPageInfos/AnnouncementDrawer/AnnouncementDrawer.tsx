@@ -73,7 +73,6 @@ const AnnouncementDrawer: FC<Props> = ({
   const postFeedHandler = async (value: string, id: string): Promise<void> => {
     const data = {
       message: value,
-      from: currentUser?.name,
     } as Post;
 
     try {

@@ -85,7 +85,6 @@ const AddAnnouncementModal: FC<Props> = ({
         : showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const announcementData: CreateThread = {
-        from: currentUser?.name as string,
         message: title,
         about: getEntityFeedLink(entityType, entityFQN),
         announcementDetails: {

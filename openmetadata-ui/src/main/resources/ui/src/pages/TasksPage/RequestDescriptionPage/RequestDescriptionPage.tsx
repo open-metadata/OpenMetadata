@@ -125,7 +125,6 @@ const RequestDescription = () => {
     if (assignees.length) {
       const suggestion = markdownRef.current?.getEditorContent?.();
       const data: CreateThread = {
-        from: currentUser?.name as string,
         message: value.title || taskMessage,
         about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {

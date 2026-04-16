@@ -150,7 +150,6 @@ const UpdateTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
     const data: CreateThread = {
-      from: currentUser?.name as string,
       message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
