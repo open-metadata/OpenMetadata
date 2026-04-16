@@ -101,9 +101,6 @@ test.describe.serial('System Level Certification Tags', () => {
 
       await closeCertificationDropdown(page);
     } finally {
-      // Re-enable both classification AND individual tags — disabling the
-      // classification can cascade disabled=true to each child tag at the tag
-      // level, and re-enabling the classification alone does NOT undo that.
       await restoreCertificationState(apiContext);
       await afterAction();
     }
@@ -126,10 +123,6 @@ test.describe.serial('System Level Certification Tags', () => {
       }
 
       await closeCertificationDropdown(page);
-
-      // Re-enable classification AND individual tags explicitly so the dropdown
-      // shows all system tags.  Re-enabling classification alone is not enough
-      // because the cascade that disabled the tags is not automatically reversed.
       await restoreCertificationState(apiContext);
 
       await redirectToHomePage(page);
