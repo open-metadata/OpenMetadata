@@ -32,7 +32,8 @@ public class MigrationUtil {
           Entity.METADATA_SERVICE,
           Entity.STORAGE_SERVICE,
           Entity.SEARCH_SERVICE,
-          Entity.API_SERVICE);
+          Entity.API_SERVICE,
+          Entity.DRIVE_SERVICE);
 
   public static void migratePipelineServiceEdges(CollectionDAO collectionDAO) {
     LOG.info("Starting migration: creating pipeline service edges for existing lineage data");
