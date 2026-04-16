@@ -89,7 +89,10 @@ import {
   setupCustomPropertyAdvancedSearchTest,
   verifySearchResults,
 } from '../../utils/customPropertyAdvancedSearchUtils';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { setSliderValue } from '../../utils/searchSettingUtils';
@@ -454,7 +457,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           for (const [index, type] of properties.entries()) {
             await updateCustomPropertyInRightPanel({
               page,
-              entityName: responseData['displayName'] ?? responseData['name'],
+              entityName: getEntityDisplayName(responseData),
               propertyDetails: mainEntity.customPropertyValue[type].property,
               value: mainEntity.customPropertyValue[type].value,
               endpoint: mainEntity.endpoint,
@@ -3129,7 +3132,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         const fqn = getEntityFqn(mainEntity);
         await navigateToExploreAndSelectEntity({
           page,
-          entityName: responseData.name,
+          entityName: getEntityDisplayName(responseData),
           endpoint: mainEntity.endpoint,
           fullyQualifiedName: fqn,
           exploreTab: ENDPOINT_TO_EXPLORE_TAB_MAP[mainEntity.endpoint],
@@ -3158,7 +3161,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         const fqn = getEntityFqn(mainEntity);
         await navigateToExploreAndSelectEntity({
           page,
-          entityName: responseData.name,
+          entityName: getEntityDisplayName(responseData),
           endpoint: mainEntity.endpoint,
           fullyQualifiedName: fqn,
           exploreTab: ENDPOINT_TO_EXPLORE_TAB_MAP[mainEntity.endpoint],
@@ -3188,7 +3191,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         const fqn = getEntityFqn(mainEntity);
         await navigateToExploreAndSelectEntity({
           page,
-          entityName: responseData.name,
+          entityName: getEntityDisplayName(responseData),
           endpoint: mainEntity.endpoint,
           fullyQualifiedName: fqn,
           exploreTab: ENDPOINT_TO_EXPLORE_TAB_MAP[mainEntity.endpoint],
@@ -3220,7 +3223,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         const fqn = getEntityFqn(mainEntity);
         await navigateToExploreAndSelectEntity({
           page,
-          entityName: responseData.name,
+          entityName: getEntityDisplayName(responseData),
           endpoint: mainEntity.endpoint,
           fullyQualifiedName: fqn,
           exploreTab: ENDPOINT_TO_EXPLORE_TAB_MAP[mainEntity.endpoint],
