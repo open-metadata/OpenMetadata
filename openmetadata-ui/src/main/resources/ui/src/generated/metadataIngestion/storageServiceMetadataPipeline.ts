@@ -89,7 +89,7 @@ export interface ManifestEntry {
     excludePaths?: string[];
     /**
      * Glob patterns to exclude from discovery. Any file matching these patterns will be
-     * skipped. Example: data/archive/**, data/tmp_*/**
+     * skipped. Example: 'data/archive/**', 'data/tmp_*/**'
      */
     excludePatterns?: string[];
     /**
@@ -98,8 +98,8 @@ export interface ManifestEntry {
      */
     partitionColumns?: Column[];
     /**
-     * Glob-style path pattern relative to bucket root. Use * for single-level wildcard and **
-     * for recursive matching. Examples: data/*/events/*.parquet, logs/**/*.json
+     * Glob-style path pattern relative to bucket root. Use '*' for single-level wildcard and
+     * '**' for recursive matching. Examples: 'data/*/events/*.parquet', 'logs/**/*.json'
      */
     pathPattern: string;
     /**
