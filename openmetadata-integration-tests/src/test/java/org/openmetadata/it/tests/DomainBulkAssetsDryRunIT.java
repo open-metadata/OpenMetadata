@@ -29,9 +29,9 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
-import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -40,7 +40,6 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -73,7 +72,9 @@ public class DomainBulkAssetsDryRunIT {
     BulkAssets addToDomainA =
         new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
     String addPath = "/v1/domains/" + domainA.getFullyQualifiedName() + "/assets/add";
-    client.getHttpClient().execute(HttpMethod.PUT, addPath, addToDomainA, BulkOperationResult.class);
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, addPath, addToDomainA, BulkOperationResult.class);
 
     // dryRun=true: move table to domainB — should NOT actually move
     BulkAssets dryRunRequest =
@@ -101,8 +102,13 @@ public class DomainBulkAssetsDryRunIT {
 
     // Verify the table is still in domainA (dryRun made no changes)
     Table refreshed =
-        client.getHttpClient().execute(HttpMethod.GET,
-            "/v1/tables/" + table.getId() + "?fields=domains", null, Table.class);
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tables/" + table.getId() + "?fields=domains",
+                null,
+                Table.class);
     assertNotNull(refreshed.getDomains());
     assertFalse(refreshed.getDomains().isEmpty());
     assertEquals(
@@ -150,8 +156,13 @@ public class DomainBulkAssetsDryRunIT {
 
     // Verify the table is still in the domain (dryRun made no changes)
     Table refreshed =
-        client.getHttpClient().execute(HttpMethod.GET,
-            "/v1/tables/" + table.getId() + "?fields=domains", null, Table.class);
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tables/" + table.getId() + "?fields=domains",
+                null,
+                Table.class);
     assertNotNull(refreshed.getDomains());
     assertFalse(refreshed.getDomains().isEmpty());
     assertEquals(
@@ -172,7 +183,9 @@ public class DomainBulkAssetsDryRunIT {
     BulkAssets addToDomainA =
         new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
     String addPath = "/v1/domains/" + domainA.getFullyQualifiedName() + "/assets/add";
-    client.getHttpClient().execute(HttpMethod.PUT, addPath, addToDomainA, BulkOperationResult.class);
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, addPath, addToDomainA, BulkOperationResult.class);
 
     // Create a data product in domainA linked to the table
     DataProduct dataProduct =
@@ -245,14 +258,62 @@ public class DomainBulkAssetsDryRunIT {
 
     // Verify table is now in domainB
     Table refreshed =
-        client.getHttpClient().execute(HttpMethod.GET,
-            "/v1/tables/" + table.getId() + "?fields=domains", null, Table.class);
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tables/" + table.getId() + "?fields=domains",
+                null,
+                Table.class);
     assertNotNull(refreshed.getDomains());
     assertFalse(refreshed.getDomains().isEmpty());
     assertEquals(
         domainB.getId(),
         refreshed.getDomains().get(0).getId(),
         "Table should be in domainB after actual move");
+  }
+
+  @Test
+  void test_dryRunAdd_firstTimeAdd_returnsInformativeMessage(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Domain domain = createDomain(ns, client, "domain");
+    Table table = createTable(ns);
+
+    // dryRun=true: add table to domain for the first time (table has no current domain)
+    BulkAssets dryRunRequest =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String addPath = "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add";
+    BulkOperationResult result =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PUT, addPath, dryRunRequest, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must have dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertFalse(result.getSuccessRequest().isEmpty());
+
+    BulkResponse response = result.getSuccessRequest().get(0);
+    assertNotNull(response.getMessage());
+    assertFalse(response.getMessage().isEmpty(), "Message should not be empty for first-time add");
+    assertTrue(
+        response.getMessage().contains("will be added to the domain"),
+        "Message should indicate asset will be added: " + response.getMessage());
+
+    // Verify the table still has no domain (dryRun made no changes)
+    Table refreshed =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tables/" + table.getId() + "?fields=domains",
+                null,
+                Table.class);
+    assertTrue(
+        refreshed.getDomains() == null || refreshed.getDomains().isEmpty(),
+        "Table should still have no domain after dryRun");
   }
 
   @Test
