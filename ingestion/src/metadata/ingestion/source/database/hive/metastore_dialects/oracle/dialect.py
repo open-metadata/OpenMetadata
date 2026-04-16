@@ -11,6 +11,7 @@
 """
 Hive Metastore Oracle Dialect Mixin
 """
+
 from sqlalchemy import text
 from sqlalchemy.dialects.oracle.cx_oracle import OracleDialect_cx_oracle
 from sqlalchemy.engine import reflection

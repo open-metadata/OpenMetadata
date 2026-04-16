@@ -11,6 +11,7 @@
 """
 Test Hive Oracle Metastore Dialect
 """
+
 from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.hive.metastore_dialects.oracle.dialect import (

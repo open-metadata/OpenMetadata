@@ -120,7 +120,9 @@ def get_connection(connection: HiveConnection) -> Engine:
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root["kerberos_service_name"] = connection.kerberosServiceName
+        connection.connectionArguments.root["kerberos_service_name"] = (
+            connection.kerberosServiceName
+        )
 
     # SSL cert paths (ssl_ca_certs, ssl_certfile, ssl_keyfile) are set by ssl_manager.setup_ssl()
     # via SSLManager.create_temp_file(). Do not assign sslConfig fields here directly —
@@ -283,8 +285,8 @@ def test_connection(
                 OracleConnection,
             ):
                 try:
-                    service_connection.metastoreConnection = (
-                        conn_cls.model_validate(metastore_conn)
+                    service_connection.metastoreConnection = conn_cls.model_validate(
+                        metastore_conn
                     )
                     break
                 except ValidationError:
