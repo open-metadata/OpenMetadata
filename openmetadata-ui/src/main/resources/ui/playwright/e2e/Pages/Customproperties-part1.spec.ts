@@ -13,9 +13,16 @@
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
+import {
+  CONDITIONS_MUST,
+  selectOption,
+  showAdvancedSearchDialog,
+} from '../../utils/advancedSearch';
+import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -26,7 +33,7 @@ import {
   verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+import { settingClick, sidebarClick, SettingOptionsType } from '../../utils/sidebar';
 
 const propertiesList = [
   'Integer',
@@ -189,6 +196,53 @@ test.describe(
           await expect(
             page.getByTestId(`custom-property-"${propertyName}"-card`)
           ).toHaveCount(0);
+        });
+
+        await test.step('Updated value is searchable via Advanced Search', async () => {
+          await sidebarClick(page, SidebarItem.EXPLORE);
+
+          await showAdvancedSearchDialog(page);
+
+          const ruleLocator = page.locator('.rule').nth(0);
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            'Custom Properties',
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            'Table',
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            propertyName,
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--operator .ant-select'),
+            CONDITIONS_MUST.equalTo.name
+          );
+
+          await ruleLocator
+            .locator('.rule--widget--TEXT input[type="text"]')
+            .fill('updated value');
+
+          await advanceSearchSaveFilter(page, 'updated value');
+
+          await expect(
+            page.getByTestId(
+              `table-data-card_${adminTestEntity.entityResponseData.fullyQualifiedName}`
+            )
+          ).toBeVisible();
         });
       });
     });
