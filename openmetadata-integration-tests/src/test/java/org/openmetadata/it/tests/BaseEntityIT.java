@@ -5636,6 +5636,46 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  /**
+   * Test: CSV import/export round-trip preserves Unicode text.
+   * Verifies non-ASCII content survives export, import, and re-export.
+   */
+  @Test
+  void test_importExportRoundTripUnicode(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    String containerName = getImportExportContainerName(ns);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    K createRequest = createMinimalRequest(ns);
+    String unicodeDescription = "中文描述 - CSV import/export round trip";
+    setDescription(createRequest, unicodeDescription);
+    T entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    try {
+      String exportedCsv = service.exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+      assertTrue(
+          exportedCsv.contains(unicodeDescription),
+          "Exported CSV should contain Unicode text");
+
+      CsvImportResult importResult = performImportCsv(ns, exportedCsv, false);
+      assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Unicode round-trip should succeed");
+
+      String reExportedCsv = service.exportCsv(containerName);
+      assertNotNull(reExportedCsv, "Re-export should return CSV data");
+      assertTrue(
+          reExportedCsv.contains(unicodeDescription),
+          "Re-exported CSV should retain Unicode text");
+    } catch (Exception e) {
+      fail("Unicode import/export round-trip failed: " + e.getMessage());
+    }
+  }
+
   // ===================================================================
   // COMPREHENSIVE CSV IMPORT/EXPORT TESTS
   // Template-based tests that work with any entity CSV structure

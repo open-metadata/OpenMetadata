@@ -68,7 +68,7 @@ const chineseGlossaryTermDetails = {
   displayName: '中文术语展示名',
   description: '这是用于验证导入导出编码的中文描述。',
   synonyms: '中文同义词;测试',
-  references: '参考;https://example.com/中文',
+  references: '参考;https://example.com/%E4%B8%AD%E6%96%87',
 };
 
 test.describe('Glossary Bulk Import Export', () => {

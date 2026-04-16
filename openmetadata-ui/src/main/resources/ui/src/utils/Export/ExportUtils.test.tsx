@@ -36,6 +36,7 @@ describe('ExportUtils', () => {
       style: { visibility: '' },
       click: jest.fn(),
     };
+    const originalBlob = global.Blob;
     let mockCreateObjectURL: jest.Mock;
     let mockRevokeObjectURL: jest.Mock;
 
@@ -57,6 +58,7 @@ describe('ExportUtils', () => {
     });
 
     afterEach(() => {
+      global.Blob = originalBlob;
       jest.restoreAllMocks();
     });
 
