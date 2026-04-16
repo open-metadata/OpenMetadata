@@ -1252,6 +1252,21 @@ class AdvancedSearchClassBase {
   ):
     | { subfieldsKey: string; dataObject: Field }
     | Array<{ subfieldsKey: string; dataObject: Field }> {
+    const result = this.buildCustomPropertiesSubFields(field, searchOutputType);
+    const attachType = (entry: { subfieldsKey: string; dataObject: Field }) => ({
+      subfieldsKey: entry.subfieldsKey,
+      dataObject: { ...entry.dataObject, __omPropertyType: field.type } as Field,
+    });
+
+    return Array.isArray(result) ? result.map(attachType) : attachType(result);
+  }
+
+  private buildCustomPropertiesSubFields(
+    field: CustomPropertySummary,
+    searchOutputType: SearchOutputType
+  ):
+    | { subfieldsKey: string; dataObject: Field }
+    | Array<{ subfieldsKey: string; dataObject: Field }> {
     const label = getEntityName(field);
 
     let subfieldsKey: string;

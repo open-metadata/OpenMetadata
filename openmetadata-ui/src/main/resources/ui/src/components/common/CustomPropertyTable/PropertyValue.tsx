@@ -96,28 +96,20 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   property,
   isRenderedInRightPanel = false,
 }) => {
-  const { propertyName, extensionKey, propertyType, value, isTableType } =
-    useMemo(() => {
-      // Backend may wrap names in double-quotes when they contain special chars.
-      // Normalise to the raw name (without surrounding quotes) for consistent lookups.
-      const rawName = property.name;
-      const propertyType = property.propertyType;
-      const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
-      // Extension key may be the raw name or the quoted form (e.g. "custom.test").
-      // Detect which form the backend used so we write back with the exact same key.
-      const quotedName = `"${rawName}"`;
-      const extensionKey =
-        extension && quotedName in extension ? quotedName : rawName;
-      const value = extension?.[extensionKey];
+  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
+    const propertyName = property.name;
+    const propertyType = property.propertyType;
+    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
 
-      return {
-        propertyName: rawName,
-        extensionKey,
-        propertyType,
-        value,
-        isTableType,
-      };
-    }, [property, extension]);
+    const value = extension?.[propertyName];
+
+    return {
+      propertyName,
+      propertyType,
+      value,
+      isTableType,
+    };
+  }, [property, extension]);
 
   const { t } = useTranslation();
   const [showInput, setShowInput] = useState<boolean>(false);
@@ -168,7 +160,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         omitBy(
           {
             ...extension,
-            [extensionKey]: resolvedValue,
+            [propertyName]: resolvedValue,
           },
           isUndefined
         ),
