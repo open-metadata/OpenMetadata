@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
+import { AdminClass } from '../../support/user/AdminClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
-  createNewPage,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -29,16 +30,31 @@ import {
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new AdminClass();
+
+// Using separate admin use fixture to avoid conflicts while asserting
+// toast notifications for search settings update in tests.
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 test.describe('Search Settings Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
   test('Update global search settings', async ({ page }) => {
-    test.slow(true);
-
     await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
     const enableRolesPolicesInSearchSwitch = page.getByTestId(
@@ -46,6 +62,44 @@ test.describe('Search Settings Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     );
 
     await enableRolesPolicesInSearchSwitch.click();
+    await toastNotification(page, /Search Settings updated successfully/);
+
+    // Add and remove field value boost
+    await page.getByTestId('add-field-value-boost-btn').click();
+
+    await page
+      .locator('.field-value-boost-modal:visible')
+      .waitFor({ state: 'visible' });
+
+    const modal = page.locator('.field-value-boost-modal:visible');
+
+    await modal.locator('#field').click();
+
+    await page
+      .locator('.ant-select-dropdown:visible')
+      .getByTitle('totalVotes')
+      .click();
+
+    await page
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
+
+    await setSliderValue(page, 'field-boost-slider', 25.6);
+
+    await modal.locator('button').filter({ hasText: 'Save' }).click();
+
+    await toastNotification(page, /Search Settings updated successfully/);
+
+    await page
+      .locator('.field-value-boost-panel')
+      .filter({ hasText: 'Field Value Boost' })
+      .click();
+
+    await page
+      .locator('[data-row-key="totalVotes"]')
+      .getByTestId('delete-field-value-boost-btn')
+      .click();
+
     await toastNotification(page, /Search Settings updated successfully/);
 
     const globalSettingEditIcon = page.getByTestId(
@@ -151,7 +205,7 @@ test.describe('Search Preview test', () => {
   table2.entity.description = `This is a ${table1.entity.name} test table for search settings verification`;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     // Create tables with the customized properties
     await table1.create(apiContext);
     await table2.create(apiContext);
@@ -159,7 +213,7 @@ test.describe('Search Preview test', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await table1.delete(apiContext);
     await table2.delete(apiContext);
     await afterAction();
