@@ -1209,3 +1209,174 @@ class TestAirflow(TestCase):
             self.airflow._session = original_session
 
         self.assertEqual(result, {})
+
+    def test_get_task_instances_skips_rows_with_missing_fields(self):
+        """
+        Negative-data test: if the DB returns rows with missing task_id or
+        run_id (e.g. NULLs from a partial/corrupt Airflow schema), the
+        method must log-and-continue - the rest of the batch must still be
+        ingested. It must NOT raise and abort the whole DAG.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [
+            AirflowTask(task_id="task_a"),
+            AirflowTask(task_id="task_b"),
+        ]
+
+        good_row = MagicMock()
+        good_row._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        missing_task_id = MagicMock()
+        missing_task_id._asdict.return_value = {
+            "task_id": None,
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        missing_run_id = MagicMock()
+        missing_run_id._asdict.return_value = {
+            "task_id": "task_b",
+            "state": "failed",
+            "start_date": None,
+            "end_date": None,
+            "run_id": None,
+        }
+        second_good_row = MagicMock()
+        second_good_row._asdict.return_value = {
+            "task_id": "task_b",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_2",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [
+            good_row,
+            missing_task_id,
+            missing_run_id,
+            second_good_row,
+        ]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_1", "run_2"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Bad rows skipped, good rows kept - no exception propagated
+        self.assertEqual(set(result.keys()), {"run_1", "run_2"})
+        self.assertEqual([t.task_id for t in result["run_1"]], ["task_a"])
+        self.assertEqual([t.task_id for t in result["run_2"]], ["task_b"])
+
+    def test_get_task_instances_continues_on_malformed_row(self):
+        """
+        Negative-data test: if a single row raises while being processed
+        (e.g. ._asdict() explodes for one element), the method must log the
+        offending row and keep going for the remaining rows in the batch.
+        Preferred behaviour per maintainer review: log and move forward,
+        do NOT interrupt processing of the whole DAG.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [AirflowTask(task_id="task_a")]
+
+        good_row_before = MagicMock()
+        good_row_before._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        broken_row = MagicMock()
+        broken_row._asdict.side_effect = RuntimeError("corrupt row")
+        good_row_after = MagicMock()
+        good_row_after._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "failed",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_2",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [good_row_before, broken_row, good_row_after]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_1", "run_2"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Both surrounding good rows must be present despite the bad one
+        self.assertEqual(set(result.keys()), {"run_1", "run_2"})
+        self.assertEqual(result["run_1"][0].state, "success")
+        self.assertEqual(result["run_2"][0].state, "failed")
+
+    def test_get_task_instances_unknown_run_id_not_in_result(self):
+        """
+        Negative-data test: if the DB somehow returns a TaskInstance whose
+        run_id is not in the requested run_ids list (e.g. stale cache / race
+        with a delete), it is still grouped under its own key and the caller
+        yield_pipeline_status safely ignores it via tasks_by_run_id.get(run_id, []).
+        No exception, no data for the requested runs lost.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [AirflowTask(task_id="task_a")]
+
+        requested_row = MagicMock()
+        requested_row._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_requested",
+        }
+        stray_row = MagicMock()
+        stray_row._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_stray",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [requested_row, stray_row]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_requested"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Requested run is populated; caller uses .get(run_id, []) for stray
+        self.assertIn("run_requested", result)
+        self.assertEqual(len(result["run_requested"]), 1)

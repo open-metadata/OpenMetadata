@@ -348,16 +348,36 @@ class AirflowSource(PipelineServiceSource):
                 .all()
             )
             for elem in task_instance_list:
-                row = elem._asdict()
-                if row.get("task_id") in serialized_tasks_ids:
-                    result[row["run_id"]].append(
+                # Be defensive per-row: a single malformed/missing value must
+                # not abort the whole batch. Log and continue so the rest of
+                # the DAG's task instances still get ingested.
+                try:
+                    row = elem._asdict()
+                    task_id = row.get("task_id")
+                    run_id = row.get("run_id")
+                    if not task_id or not run_id:
+                        logger.debug(
+                            f"Skipping TaskInstance row with missing "
+                            f"task_id/run_id for dag_id={dag_id}: {row}"
+                        )
+                        continue
+                    if task_id not in serialized_tasks_ids:
+                        continue
+                    result[run_id].append(
                         OMTaskInstance(
-                            task_id=row.get("task_id"),
+                            task_id=task_id,
                             state=row.get("state"),
                             start_date=row.get("start_date"),
                             end_date=row.get("end_date"),
                         )
                     )
+                except Exception as row_exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Skipping malformed TaskInstance row for "
+                        f"dag_id={dag_id}: {row_exc}"
+                    )
+                    continue
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
