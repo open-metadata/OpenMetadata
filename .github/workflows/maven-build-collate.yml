@@ -79,11 +79,12 @@ jobs:
         uses: the-actions-org/workflow-dispatch@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
+          SHA: ${{ github.event_name == 'push' && github.event.after || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.sha || github.event.pull_request.merge_commit_sha || github.event.pull_request.base.sha) }}
+          COLLATE_EVENT: ${{ github.event_name == 'push' && 'push' || 'pull_request' }}
         with:
           workflow: OpenMetadata Collate Test
           ref: main
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
-          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'
+          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ env.COLLATE_EVENT }}" }'
