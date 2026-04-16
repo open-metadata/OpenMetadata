@@ -73,7 +73,7 @@ import {
 } from '../../utils/FeedUtils';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
 import i18n from '../../utils/i18next/LocalUtil';
-import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
+import { LocalUtilClassBase } from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -439,7 +439,7 @@ const NavBar = () => {
   );
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
-    await localUtilClassBase.loadLocales(key);
+    await LocalUtilClassBase.loadLocales(key);
     await i18n.changeLanguage(key);
     navigate(0);
   }, []);

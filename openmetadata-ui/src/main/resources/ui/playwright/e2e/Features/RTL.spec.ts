@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { toLower } from 'lodash';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -20,6 +20,7 @@ import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
   followEntity,
   validateFollowedEntityToWidget,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
 const user = new UserClass();
@@ -52,6 +53,7 @@ test.describe('Verify RTL Layout for landing page', () => {
       .locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]')
       .click();
     await page.waitForLoadState('domcontentloaded');
+    await waitForAllLoadersToDisappear(page);
   });
 
   test('Verify DataAssets widget functionality', async ({

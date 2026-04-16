@@ -16,6 +16,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { ReactNode } from 'react';
 import { initReactI18next, Trans } from 'react-i18next';
 import { getInitOptions } from './i18nextUtil';
+import { LocalUtilClassBase } from './LocalUtilClassBase';
 
 i18next
   .use(LanguageDetector)
@@ -26,6 +27,10 @@ i18next
       await i18next.changeLanguage(i18next.language);
     }
   });
+
+i18next.on('languageChanged', async (lng) => {
+  await LocalUtilClassBase.loadLocales(lng);
+});
 
 export const t = (key: string, options?: Record<string, unknown>): string => {
   const translation = i18nextT(key, options);
