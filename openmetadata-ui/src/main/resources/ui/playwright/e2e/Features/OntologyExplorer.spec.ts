@@ -266,6 +266,17 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
     });
+
+    test('should show empty state when active filter yields no visible nodes', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary2.responseData.id);
+      await waitForGraphLoaded(page);
+      await page.getByTestId('ontology-isolated-toggle').click();
+
+      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+    });
   });
 
   test.describe('Control Buttons', () => {
@@ -310,6 +321,22 @@ test.describe('Ontology Explorer', () => {
       await page.getByTestId('refresh').click();
       await termsRequest;
       await waitForGraphLoaded(page);
+    });
+
+    test('should repopulate data-node-positions after fit-view', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('zoom-in').click();
+      await page.getByTestId('zoom-in').click();
+
+      await page.getByTestId('fit-view').click();
+
+      const positions = await readNodePositions(page);
+      expect(Object.keys(positions).length).toBeGreaterThan(0);
     });
   });
 
@@ -484,6 +511,24 @@ test.describe('Ontology Explorer', () => {
       await toggle.click();
       await expect(toggle).toHaveAttribute('data-selected', 'true');
     });
+
+    test('should remove isolated nodes from stats when toggled off', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary2.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '2 Terms'
+      );
+
+      await page.getByTestId('ontology-isolated-toggle').click();
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '0 Terms'
+      );
+    });
   });
 
   test.describe('Clear All Filters', () => {
@@ -639,6 +684,26 @@ test.describe('Ontology Explorer', () => {
 
       await expect(page.getByTestId('ontology-explorer-stats')).toBeVisible();
     });
+
+    test('clicking a term node in Data mode opens the entity summary panel', async ({
+      page,
+    }) => {
+      test.slow();
+      await waitForGraphLoaded(page);
+
+      await page.getByRole('tab', { name: 'Data' }).click();
+      await waitForGraphLoaded(page);
+      await page.getByTestId('fit-view').click();
+
+      await clickFirstGraphNode(page);
+
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
+    });
   });
 
   test.describe('Term Click - Entity Summary Panel', () => {
@@ -789,6 +854,21 @@ test.describe('Ontology Explorer', () => {
         positions,
         'term1 node must still be present in node positions while its name is the active search query'
       ).toHaveProperty(term1.responseData.id);
+    });
+
+    test('should keep overlay visible and not crash when search term matches nothing', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill('__nonexistent_term_xyz__');
+
+      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
+      await expect(
+        page.locator('.ontology-g6-container canvas').first()
+      ).toBeVisible();
     });
   });
 

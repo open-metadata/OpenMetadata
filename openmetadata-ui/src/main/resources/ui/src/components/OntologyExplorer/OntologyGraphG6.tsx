@@ -29,6 +29,15 @@ import {
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
 
+function writeNodePositions(
+  container: HTMLDivElement | null,
+  positions: Record<string, { x: number; y: number }>
+) {
+  if (container) {
+    container.dataset.nodePositions = JSON.stringify(positions);
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -55,9 +64,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     const containerRef = useRef<HTMLDivElement>(null);
 
     const [clickedEdgeId, setClickedEdgeId] = useState<string | null>(null);
-    const [nodePagePositions, setNodePagePositions] = useState<
-      Record<string, { x: number; y: number }>
-    >({});
 
     const getLayoutType = useCallback((): LayoutEngineType => {
       return toLayoutEngineType(settings.layout);
@@ -86,31 +92,36 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodePositions,
     });
 
-    const { graphRef, extractNodePositions, suppressEdgeCheck, emitPagePositions } =
-      useOntologyGraph({
-        containerRef,
-        graphData,
-        inputNodes,
-        mergedEdgesList,
-        explorationMode,
-        settings,
-        layoutType,
-        focusNodeId,
-        selectedNodeId,
-        expandedTermIds,
-        dataSignature,
-        onNodeClick,
-        onNodeDoubleClick,
-        onNodeContextMenu,
-        onPaneClick,
-        onScrollNearEdge,
-        setClickedEdgeId,
-        neighborSet,
-        glossaryColorMap,
-        computeNodeColor,
-        assetToTermMap,
-        onPositionsReady: setNodePagePositions,
-      });
+    const {
+      graphRef,
+      extractNodePositions,
+      suppressEdgeCheck,
+      emitPagePositions,
+    } = useOntologyGraph({
+      containerRef,
+      graphData,
+      inputNodes,
+      mergedEdgesList,
+      explorationMode,
+      settings,
+      layoutType,
+      focusNodeId,
+      selectedNodeId,
+      expandedTermIds,
+      dataSignature,
+      onNodeClick,
+      onNodeDoubleClick,
+      onNodeContextMenu,
+      onPaneClick,
+      onScrollNearEdge,
+      setClickedEdgeId,
+      neighborSet,
+      glossaryColorMap,
+      computeNodeColor,
+      assetToTermMap,
+      onPositionsReady: (positions) =>
+        writeNodePositions(containerRef.current, positions),
+    });
 
     useImperativeHandle(
       ref,
@@ -120,7 +131,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
-          setNodePagePositions({});
+          writeNodePositions(containerRef.current, {});
           suppressEdgeCheck(800);
           await fitViewWithMinZoom(graph, 300);
           emitPagePositions(graph);
@@ -187,7 +198,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     return (
       <div
         className="tw:w-full tw:h-full tw:relative ontology-g6-container"
-        data-node-positions={JSON.stringify(nodePagePositions)}
         ref={containerRef}
       />
     );

@@ -1729,5 +1729,10 @@ export function useOntologyGraph({
     emitPagePositions,
   ]);
 
-  return { graphRef, extractNodePositions, suppressEdgeCheck, emitPagePositions };
+  return {
+    graphRef,
+    extractNodePositions,
+    suppressEdgeCheck,
+    emitPagePositions,
+  };
 }
