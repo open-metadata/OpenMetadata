@@ -190,7 +190,11 @@ test.describe('Lineage Pipeline Annotator', () => {
   test('service lineage has pipeline service connected to both services', async ({
     page,
   }) => {
-    const response = await page.request.get(
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    const response = await apiContext.get(
       `/api/v1/lineage/getLineage?fqn=${encodeURIComponent(
         pipelineServiceFqn
       )}&type=pipelineService&upstreamDepth=1&downstreamDepth=1`
@@ -203,12 +207,18 @@ test.describe('Lineage Pipeline Annotator', () => {
 
     expect(nodeFqns).toContain(dbServiceFqn);
     expect(nodeFqns).toContain(messagingServiceFqn);
+
+    await apiContext.dispose();
   });
 
   test('database service has pipeline service as downstream in service lineage', async ({
     page,
   }) => {
-    const response = await page.request.get(
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    const response = await apiContext.get(
       `/api/v1/lineage/getLineage?fqn=${encodeURIComponent(
         dbServiceFqn
       )}&type=databaseService&upstreamDepth=0&downstreamDepth=1`
@@ -220,5 +230,7 @@ test.describe('Lineage Pipeline Annotator', () => {
     const nodeFqns = Object.keys(data.nodes ?? {});
 
     expect(nodeFqns).toContain(pipelineServiceFqn);
+
+    await apiContext.dispose();
   });
 });
