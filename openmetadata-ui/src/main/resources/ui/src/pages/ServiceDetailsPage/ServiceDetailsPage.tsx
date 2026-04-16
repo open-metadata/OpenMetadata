@@ -130,6 +130,7 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getDetailsTabWithNewLabel } from '../../utils/CustomizePage/CustomizePageUtils';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
@@ -1457,31 +1458,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   useEffect(() => {
-    // ServiceEntityTable widget handles its own data fetching for the
-    // DETAILS tab (the tab showing child entities: Databases, Topics,
-    // Pipelines, etc.), so skip the legacy REST API call on that tab.
-    if (searchValue || activeTab === EntityTabs.DETAILS) {
-      return;
-    }
-    const { cursorType, cursorValue } = pagingInfo?.pagingCursor ?? {};
-    getOtherDetails({
-      limit: pageSize,
-      ...(cursorType && { [cursorType]: cursorValue }),
-    });
-    if (isInitialPaginationLoadRef.current) {
-      isInitialPaginationLoadRef.current = false;
-    }
-  }, [
-    showDeleted,
-    deleted,
-    pageSize,
-    searchValue,
-    pagingInfo?.pagingCursor,
-    activeTab,
-    serviceCategory,
-  ]);
-
-  useEffect(() => {
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
@@ -1904,7 +1880,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     // Merge core tabs and plugin tabs
     const allTabs = [...tabs, ...pluginTabs];
 
-    return allTabs
+    const mappedTabs = allTabs
       .filter((tab) => !tab.isHidden)
       .map((tab) => ({
         label: (
@@ -1918,6 +1894,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         key: tab.key,
         children: tab.children,
       }));
+
+    return getDetailsTabWithNewLabel(
+      mappedTabs,
+      customizedPage?.tabs,
+      EntityTabs.DETAILS
+    );
   }, [
     currentUser,
     currentPage,
@@ -1956,6 +1938,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     extensionRegistry,
     decodedServiceFQN,
     isOpenMetadataService,
+    customizedPage,
   ]);
   const servicePermissionWithTrigger = useMemo(
     () => ({
