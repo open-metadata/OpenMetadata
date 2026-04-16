@@ -253,12 +253,14 @@ const AddDomainForm = ({
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   const isCoverImageUploadAvailable = !!onImageUpload;
 
-  const createPermission = useMemo(
-    () =>
-      checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
-    [permissions]
-  );
+  const createPermission = useMemo(() => {
+    const resourceEntity =
+      type === DomainFormType.DATA_PRODUCT
+        ? ResourceEntity.DATA_PRODUCT
+        : ResourceEntity.DOMAIN;
 
+    return checkPermission(Operation.Create, resourceEntity, permissions);
+  }, [permissions, type]);
   const defaultIcon = useMemo(
     () =>
       type === DomainFormType.DATA_PRODUCT
