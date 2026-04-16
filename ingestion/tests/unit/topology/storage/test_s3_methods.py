@@ -739,3 +739,78 @@ class TestSourceUrls:
         assert url is not None
         url_str = url.root if hasattr(url, "root") else str(url)
         assert "my-bucket" in url_str
+
+
+class TestLoadMetadataFile:
+    """Error-branch coverage for S3Source._load_metadata_file. The happy
+    path + ReadException branch is already covered by integration tests;
+    here we focus on JSON/schema errors the integration tests exercise
+    but without the workflow overhead."""
+
+    def _bind(self):
+        """Build a minimal S3Source with _load_metadata_file bound and
+        a stub s3_reader + status recorder."""
+        source = Mock(spec=S3Source)
+        source.s3_reader = Mock()
+        source.status = Mock()
+        source.status.warning = Mock()
+        source._load_metadata_file = S3Source._load_metadata_file.__get__(source)
+        return source
+
+    def test_returns_none_when_file_missing(self):
+        from metadata.readers.file.base import ReadException
+
+        source = self._bind()
+        source.s3_reader.read.side_effect = ReadException("not found")
+
+        assert source._load_metadata_file(bucket_name="b") is None
+        # Missing file is expected — must not be surfaced as a warning.
+        source.status.warning.assert_not_called()
+
+    def test_logs_and_warns_on_invalid_json(self):
+        source = self._bind()
+        source.s3_reader.read.return_value = b"{ not valid"
+
+        result = source._load_metadata_file(bucket_name="bucket-bad-json")
+
+        assert result is None
+        # Status warning should carry the bucket name and mention JSON.
+        assert source.status.warning.called
+        call_args = source.status.warning.call_args[0]
+        assert call_args[0] == "bucket-bad-json"
+        assert "not valid JSON" in call_args[1]
+
+    def test_logs_and_warns_on_schema_violation(self):
+        import json as _json
+
+        source = self._bind()
+        # Valid JSON, but entry is missing required dataPath.
+        source.s3_reader.read.return_value = _json.dumps(
+            {"entries": [{"structureFormat": "parquet"}]}
+        ).encode()
+
+        result = source._load_metadata_file(bucket_name="bucket-bad-schema")
+
+        assert result is None
+        assert source.status.warning.called
+        call_args = source.status.warning.call_args[0]
+        assert call_args[0] == "bucket-bad-schema"
+        assert "schema" in call_args[1].lower()
+        # Pydantic field paths surface in the message.
+        assert "dataPath" in call_args[1]
+
+    def test_returns_parsed_config_on_happy_path(self):
+        import json as _json
+
+        source = self._bind()
+        source.s3_reader.read.return_value = _json.dumps(
+            {"entries": [{"dataPath": "data/events", "structureFormat": "parquet"}]}
+        ).encode()
+
+        result = source._load_metadata_file(bucket_name="bucket-ok")
+
+        assert result is not None
+        assert len(result.entries) == 1
+        assert result.entries[0].dataPath == "data/events"
+        # Happy path — no warnings.
+        source.status.warning.assert_not_called()

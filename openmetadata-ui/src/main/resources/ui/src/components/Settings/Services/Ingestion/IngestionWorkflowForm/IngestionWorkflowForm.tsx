@@ -34,12 +34,13 @@ import {
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
-import { ArrayFieldTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/ArrayFieldTemplate';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
+import CodeWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget';
+import ManifestJsonWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -188,7 +189,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       schema={schema}
       showErrorList={false}
       templates={{
-        ArrayFieldTemplate: ArrayFieldTemplate,
         DescriptionFieldTemplate: DescriptionFieldTemplate,
         FieldErrorTemplate: FieldErrorTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
@@ -196,6 +196,10 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       transformErrors={transformErrors}
       uiSchema={uiSchema}
       validator={validator}
+      widgets={{
+        code: CodeWidget,
+        manifestJson: ManifestJsonWidget,
+      }}
       onChange={handleOnChange}
       onFocus={onFocus}
       onSubmit={handleSubmit}>

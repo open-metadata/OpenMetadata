@@ -11,8 +11,8 @@
 """
 Base class for ingesting Object Storage services
 """
+import json
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import Field
@@ -28,9 +28,7 @@ from metadata.generated.schema.entity.services.storageService import (
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
-)
-from metadata.generated.schema.metadataIngestion.storage.manifestEntry import (
-    ManifestEntry,
+    PartitionColumn,
 )
 from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
     ManifestMetadataConfig,
@@ -83,9 +81,11 @@ logger = ingestion_logger()
 
 KEY_SEPARATOR = "/"
 OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
-MAX_KEYS_PER_PATH_SPEC = 100_000  # Safety limit to prevent runaway scans
 
-# Paths to exclude from auto-discovery (Spark/Delta Lake internals)
+# Safety limit for the number of keys scanned per glob entry.
+MAX_KEYS_PER_GLOB = 100_000
+
+# Path segments excluded by default during glob discovery (Spark/Delta internals).
 DEFAULT_EXCLUDE_PATHS = {
     "_delta_log",
     "_temporary",
@@ -94,47 +94,12 @@ DEFAULT_EXCLUDE_PATHS = {
     "_SUCCESS",
 }
 
+_GLOB_CHARS = ("*", "?", "[")
 
-@dataclass
-class DiscoveredContainer:
-    """Result of auto-discovery from inline manifest entries.
 
-    Typed container for passing discovery results between the base
-    class discovery logic and provider-specific container creation.
-    """
-
-    name: str
-    prefix: str
-    metadata_entry: MetadataEntry
-    sample_key: str
-    files: List[Tuple[str, int]] = field(default_factory=list)
-    unstructured: bool = False
-
-    @property
-    def file_count(self) -> int:
-        return len(self.files)
-
-    @property
-    def total_size(self) -> int:
-        return sum(size for _, size in self.files)
-
-    @property
-    def first_file_size(self) -> int:
-        if self.files and len(self.files[0]) > 1:
-            return self.files[0][1]
-        return 0
-
-    @property
-    def leaf_name(self) -> str:
-        """Filename portion of the key (for unstructured containers)."""
-        return self.name.rsplit(KEY_SEPARATOR, 1)[-1] if self.name else ""
-
-    @property
-    def parent_prefix(self) -> str:
-        """Parent directory path (for unstructured containers)."""
-        if KEY_SEPARATOR in self.name:
-            return self.name.rsplit(KEY_SEPARATOR, 1)[0]
-        return ""
+def has_glob(path: str) -> bool:
+    """Return True if path contains a glob wildcard."""
+    return any(c in path for c in _GLOB_CHARS)
 
 
 class StorageServiceTopology(ServiceTopology):
@@ -237,18 +202,101 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             NoMetadataConfigurationSource,
         ):
             try:
-                manifest = get_manifest(self.source_config.storageMetadataConfigSource)
-                if manifest:
-                    logger.warning(
-                        "The global manifest file (storageMetadataConfigSource) is "
-                        "deprecated and will be removed in a future release. "
-                        "Use 'manifest' in the pipeline config instead for "
-                        "auto-discovery with glob patterns and partition detection."
-                    )
-                return manifest
+                return get_manifest(self.source_config.storageMetadataConfigSource)
             except StorageMetadataConfigException as exc:
                 logger.warning(f"Could not get global manifest due to [{exc}]")
         return None
+
+    def _load_metadata_file(self, bucket_name: str):  # pylint: disable=unused-argument
+        """Load the per-bucket openmetadata.json manifest.
+
+        Override per provider (S3/GCS/Azure). Default returns None so the
+        resolution logic falls back to the next source.
+        """
+        return None
+
+    def _parsed_default_manifest(self) -> Optional[ManifestMetadataConfig]:
+        """Parse the ``defaultManifest`` JSON string from the pipeline
+        config. Cached on first use; returns ``None`` if unset or invalid.
+
+        Errors are distinguished so users know why the fallback didn't apply:
+
+        - Empty / not set → silently None
+        - JSON syntax error → WARNING with line/column
+        - Schema validation error → WARNING with per-field details
+        """
+        if hasattr(self, "_default_manifest_cache"):
+            return self._default_manifest_cache
+
+        raw = getattr(self.source_config, "defaultManifest", None)
+        parsed: Optional[ManifestMetadataConfig] = None
+        if raw and isinstance(raw, str) and raw.strip():
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                msg = (
+                    f"defaultManifest is not valid JSON "
+                    f"(line {exc.lineno}, column {exc.colno}): {exc.msg}. "
+                    f"Fallback manifest will be ignored."
+                )
+                logger.warning(msg)
+                if hasattr(self, "status") and hasattr(self.status, "warning"):
+                    self.status.warning("defaultManifest", msg)
+                payload = None
+
+            if payload is not None:
+                try:
+                    parsed = ManifestMetadataConfig.model_validate(payload)
+                except ValueError as exc:
+                    # Pydantic ValidationError subclasses ValueError in v2.
+                    details = str(exc).replace("\n", " | ")
+                    msg = (
+                        f"defaultManifest JSON does not match the expected "
+                        f"manifest schema: {details}. Fallback manifest "
+                        f"will be ignored."
+                    )
+                    logger.warning(msg)
+                    if hasattr(self, "status") and hasattr(self.status, "warning"):
+                        self.status.warning("defaultManifest", msg)
+
+        self._default_manifest_cache = parsed
+        return parsed
+
+    def _resolve_manifest_entries(self, bucket_name: str) -> List[MetadataEntry]:
+        """Resolve manifest entries for a bucket using this precedence:
+
+        1. Global manifest (``storageMetadataConfigSource``), filtered to
+           entries whose ``containerName`` matches this bucket.
+        2. The bucket's own ``openmetadata.json`` file, if present.
+        3. The pipeline config's ``defaultManifest`` (fallback), filtered
+           to entries matching this bucket.
+
+        Returns an empty list if no source yields entries.
+        """
+        if self.global_manifest:
+            entries = self._manifest_entries_to_metadata_entries_by_container(
+                container_name=bucket_name, manifest=self.global_manifest
+            )
+            if entries:
+                return entries
+
+        bucket_config = self._load_metadata_file(bucket_name=bucket_name)
+        if bucket_config and bucket_config.entries:
+            return list(bucket_config.entries)
+
+        default_manifest = self._parsed_default_manifest()
+        if default_manifest and default_manifest.entries:
+            entries = self._manifest_entries_to_metadata_entries_by_container(
+                container_name=bucket_name, manifest=default_manifest
+            )
+            if entries:
+                logger.info(
+                    f"Using defaultManifest from pipeline config for bucket "
+                    f"'{bucket_name}' (no bucket manifest file found)."
+                )
+                return entries
+
+        return []
 
     @abstractmethod
     def get_containers(self) -> Iterable[Any]:
@@ -338,7 +386,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> List[MetadataEntry]:
         """
         Convert manifest entries (which have an extra bucket property) to bucket-level metadata entries, filtered by
-        a given bucket
+        a given bucket. Wildcard-related fields are preserved so downstream
+        glob expansion can use them.
         """
         return [
             MetadataEntry(
@@ -349,6 +398,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 separator=entry.separator,
                 depth=entry.depth,
                 unstructuredFormats=entry.unstructuredFormats,
+                unstructuredData=entry.unstructuredData,
+                autoPartitionDetection=entry.autoPartitionDetection,
+                excludePaths=entry.excludePaths,
+                excludePatterns=entry.excludePatterns,
             )
             for entry in manifest.entries
             if entry.containerName == container_name
@@ -398,6 +451,24 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             return column_parser.get_columns()
         return []
 
+    @staticmethod
+    def _partition_columns_to_table_columns(
+        partition_columns: Optional[List[PartitionColumn]],
+    ) -> List[TableColumn]:
+        """Convert lightweight manifest PartitionColumn entries into full
+        table Column objects expected by ContainerDataModel."""
+        if not partition_columns:
+            return []
+        return [
+            TableColumn(
+                name=ColumnName(pc.name),
+                dataType=pc.dataType,
+                dataTypeDisplay=pc.dataTypeDisplay,
+                description=pc.description,
+            )
+            for pc in partition_columns
+        ]
+
     def _get_columns(
         self,
         container_name: str,
@@ -410,7 +481,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         extracted_cols = self.extract_column_definitions(
             container_name, sample_key, config_source, client, metadata_entry
         )
-        return (metadata_entry.partitionColumns or []) + (extracted_cols or [])
+        partition_cols = self._partition_columns_to_table_columns(
+            metadata_entry.partitionColumns
+        )
+        return partition_cols + (extracted_cols or [])
 
     def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
         """List (key, size_bytes) pairs for files under prefix.
@@ -419,174 +493,148 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return []
 
-    def discover_containers_from_manifest_entries(
-        self,
-        bucket_name: str,
-        manifest_entries: List[ManifestEntry],
-        already_discovered: Set[str],
-        config_source: Any,
-        client: Any,
-    ) -> Iterable[DiscoveredContainer]:
-        """Auto-discover containers from inline manifest entries.
+    def expand_entry(
+        self, bucket_name: str, entry: MetadataEntry
+    ) -> Iterable[MetadataEntry]:
+        """Expand a manifest entry whose dataPath is a glob pattern into
+        one or more concrete MetadataEntry objects (one per matched logical
+        table, or one per matched file when unstructuredData is true).
 
-        Yields dicts with keys: name, prefix, metadata_entry, sample_key, files.
-        The caller (S3/GCS/Azure source) converts these into provider-specific
-        ContainerDetails objects.
-
-        Args:
-            bucket_name: The bucket to scan.
-            manifest_entries: List of ManifestEntry from pipeline config.
-            already_discovered: Set of container names already found via manifest
-                (skipped to avoid duplicates).
-            config_source: Cloud config for schema extraction.
-            client: Cloud client for schema extraction.
+        Literal-path entries pass through unchanged, so existing manifests
+        keep working exactly as before.
         """
-        for entry in manifest_entries:
-            pattern = entry.pathPattern
-            wildcard_count = pattern.count("*") + pattern.count("?")
-            if wildcard_count > 10:
+        if not has_glob(entry.dataPath):
+            yield entry
+            return
+
+        pattern = entry.dataPath
+        static_prefix = extract_static_prefix(pattern)
+        compiled_regex = pattern_to_regex(pattern)
+        exclude_paths = (
+            set(entry.excludePaths)
+            if entry.excludePaths is not None
+            else DEFAULT_EXCLUDE_PATHS
+        )
+        exclude_regexes = [pattern_to_regex(ep) for ep in (entry.excludePatterns or [])]
+
+        matched: List[Tuple[str, int]] = []
+        scanned = 0
+        for key, size in self.list_keys(bucket_name, static_prefix):
+            scanned += 1
+            if scanned > MAX_KEYS_PER_GLOB:
                 logger.warning(
-                    f"ManifestEntry pattern '{pattern}' has {wildcard_count} "
-                    f"wildcards. Consider simplifying to avoid performance "
-                    f"issues."
+                    f"Glob '{pattern}' scanned {MAX_KEYS_PER_GLOB:,} keys in "
+                    f"bucket '{bucket_name}' without completing. Stopping to "
+                    f"avoid excessive API usage — narrow the pattern."
                 )
-
-            static_prefix = extract_static_prefix(pattern)
-            compiled_regex = pattern_to_regex(pattern)
-            exclude_paths = (
-                set(entry.excludePaths)
-                if entry.excludePaths is not None
-                else DEFAULT_EXCLUDE_PATHS
-            )
-            exclude_regexes = [
-                pattern_to_regex(ep) for ep in (entry.excludePatterns or [])
-            ]
-
-            matched_keys = []
-            keys_scanned = 0
-            for key, size in self.list_keys(bucket_name, static_prefix):
-                keys_scanned += 1
-                if keys_scanned > MAX_KEYS_PER_PATH_SPEC:
-                    logger.warning(
-                        f"ManifestEntry '{pattern}' scanned "
-                        f"{MAX_KEYS_PER_PATH_SPEC:,} keys in bucket "
-                        f"'{bucket_name}'. Stopping to avoid excessive "
-                        f"API usage. Narrow the pattern or increase the limit."
-                    )
-                    break
-                key_segments = set(key.split("/"))
-                if key_segments & exclude_paths:
-                    continue
-                if any(er.match(key) for er in exclude_regexes):
-                    continue
-                if compiled_regex.match(key):
-                    matched_keys.append((key, size))
-
-            if not matched_keys:
-                logger.info(
-                    f"No files matched pattern '{entry.pathPattern}' "
-                    f"in bucket '{bucket_name}'"
-                )
+                break
+            if set(key.split(KEY_SEPARATOR)) & exclude_paths:
                 continue
-
-            # Unstructured file cataloging (images, documents, etc.)
-            if entry.unstructuredData:
-                for key, size in matched_keys:
-                    if key in already_discovered:
-                        continue
-                    already_discovered.add(key)
-                    logger.info(
-                        f"Auto-discovered unstructured file '{key}' "
-                        f"from pattern '{pattern}'"
-                    )
-                    yield DiscoveredContainer(
-                        name=key,
-                        prefix=f"{KEY_SEPARATOR}{key}",
-                        metadata_entry=MetadataEntry(dataPath=key),
-                        sample_key=key,
-                        files=[(key, size)],
-                        unstructured=True,
-                    )
+            if any(er.match(key) for er in exclude_regexes):
                 continue
+            if compiled_regex.match(key):
+                matched.append((key, size))
 
-            # Structured data — group files by logical table
-            table_groups = group_files_by_table(matched_keys)
+        if not matched:
+            logger.info(f"No files matched glob '{pattern}' in bucket '{bucket_name}'")
+            return
 
-            for table_root, files in table_groups.items():
-                container_name = table_root.strip(KEY_SEPARATOR)
-                if not container_name:
-                    continue
-
-                if container_name in already_discovered:
-                    logger.debug(
-                        f"Skipping auto-discovered '{container_name}' "
-                        f"— already registered via manifest"
-                    )
-                    continue
-
-                partition_columns = None
-                is_partitioned = False
-                if entry.partitionColumns:
-                    # Explicit partition columns override auto-detection.
-                    # Manifest uses a lightweight PartitionColumn schema
-                    # (name + dataType) — convert to full table Column.
-                    partition_columns = [
-                        TableColumn(
-                            name=ColumnName(pc.name),
-                            dataType=pc.dataType,
-                            dataTypeDisplay=pc.dataTypeDisplay,
-                            description=pc.description,
-                        )
-                        for pc in entry.partitionColumns
-                    ]
-                    is_partitioned = True
-                elif entry.autoPartitionDetection:
-                    file_keys = [k for k, _ in files]
-                    partition_columns = detect_hive_partitions(file_keys, table_root)
-                    # Mark as partitioned if Hive columns detected OR if files
-                    # are nested under subdirectories (non-Hive partitions
-                    # like date prefixes 20230412/)
-                    has_subdirs = any(
-                        KEY_SEPARATOR
-                        in key[len(table_root) :]
-                        .lstrip(KEY_SEPARATOR)
-                        .rsplit(KEY_SEPARATOR, 1)[0]
-                        for key in file_keys
-                        if key.startswith(table_root)
-                    )
-                    is_partitioned = bool(partition_columns) or has_subdirs
-
-                sample_key = files[0][0]  # Pick first file deterministically
-                structure_format = entry.structureFormat or infer_structure_format(
-                    sample_key
-                )
-                if not structure_format:
-                    logger.warning(
-                        f"Could not determine file format for '{container_name}'. "
-                        f"Skipping. Set structureFormat in manifest entry or use a "
-                        f"recognized file extension."
-                    )
-                    continue
-                metadata_entry = MetadataEntry(
-                    dataPath=container_name,
-                    structureFormat=structure_format,
-                    isPartitioned=is_partitioned,
-                    partitionColumns=partition_columns,
+        if entry.unstructuredData:
+            for key, _ in matched:
+                yield MetadataEntry(
+                    dataPath=key,
+                    structureFormat=None,
                     separator=entry.separator,
+                    isPartitioned=False,
+                    partitionColumns=None,
+                    unstructuredFormats=None,
+                    unstructuredData=True,
+                    depth=0,
                 )
+            return
 
-                logger.info(
-                    f"Auto-discovered container '{container_name}' "
-                    f"({len(files)} files, partitioned={is_partitioned}) "
-                    f"from pattern '{entry.pathPattern}'"
+        for table_root, files in group_files_by_table(matched).items():
+            container_name = table_root.strip(KEY_SEPARATOR)
+            if not container_name:
+                continue
+            file_keys = [k for k, _ in files]
+
+            partition_columns = None
+            is_partitioned = entry.isPartitioned
+            if entry.partitionColumns:
+                # Explicit partition columns are already lightweight
+                # PartitionColumn objects — pass through unchanged.
+                partition_columns = list(entry.partitionColumns)
+                is_partitioned = True
+            elif entry.autoPartitionDetection:
+                detected = detect_hive_partitions(file_keys, table_root) or []
+                # detect_hive_partitions returns full Column objects; the
+                # manifest stores the lightweight PartitionColumn shape.
+                partition_columns = [
+                    PartitionColumn(
+                        name=col.name.root,
+                        dataType=col.dataType,
+                        dataTypeDisplay=col.dataTypeDisplay,
+                        description=col.description.root if col.description else None,
+                    )
+                    for col in detected
+                ] or None
+                has_subdirs = any(
+                    KEY_SEPARATOR
+                    in k[len(table_root) :]
+                    .lstrip(KEY_SEPARATOR)
+                    .rsplit(KEY_SEPARATOR, 1)[0]
+                    for k in file_keys
+                    if k.startswith(table_root)
                 )
+                is_partitioned = bool(partition_columns) or has_subdirs
 
-                already_discovered.add(container_name)
-
-                yield DiscoveredContainer(
-                    name=container_name,
-                    prefix=f"{KEY_SEPARATOR}{container_name}",
-                    metadata_entry=metadata_entry,
-                    sample_key=sample_key,
-                    files=files,
+            structure_format = entry.structureFormat or infer_structure_format(
+                file_keys[0]
+            )
+            if not structure_format:
+                logger.warning(
+                    f"Could not determine file format for '{container_name}' "
+                    f"(glob '{pattern}'). Set structureFormat on the manifest "
+                    f"entry or use a recognized file extension. Skipping."
                 )
+                continue
+
+            yield MetadataEntry(
+                dataPath=container_name,
+                structureFormat=structure_format,
+                separator=entry.separator,
+                isPartitioned=is_partitioned,
+                partitionColumns=partition_columns,
+                depth=0,
+                unstructuredFormats=None,
+                unstructuredData=False,
+            )
+
+    def expand_entries(
+        self, bucket_name: str, entries: List[MetadataEntry]
+    ) -> List[MetadataEntry]:
+        """Expand all entries whose dataPath is a glob. Literal paths pass
+        through. Returns a concrete list safe to iterate multiple times.
+
+        Each entry is expanded inside its own try/except so a failure on
+        one (e.g. S3 AccessDenied mid-listing, a malformed glob, an
+        unexpected parse error) does NOT block the other entries from
+        processing. Failures are logged and reported to the workflow
+        status so the user can see which entry went bad.
+        """
+        result: List[MetadataEntry] = []
+        for entry in entries:
+            try:
+                result.extend(self.expand_entry(bucket_name, entry))
+            except Exception as exc:
+                msg = (
+                    f"Failed to expand manifest entry with dataPath "
+                    f"'{entry.dataPath}' in bucket '{bucket_name}': "
+                    f"{type(exc).__name__}: {exc}. "
+                    f"Other entries will still be processed."
+                )
+                logger.warning(msg)
+                if hasattr(self, "status") and hasattr(self.status, "warning"):
+                    self.status.warning(bucket_name, msg)
+        return result

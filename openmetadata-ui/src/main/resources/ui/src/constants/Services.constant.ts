@@ -320,6 +320,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  defaultManifest: { 'ui:widget': 'manifestJson' },
   'ui:order': [
     'rootProcessingEngine',
     'name',

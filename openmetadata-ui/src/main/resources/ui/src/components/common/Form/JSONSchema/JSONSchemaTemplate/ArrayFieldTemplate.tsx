@@ -18,7 +18,6 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
-import './array-field-template.less';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -47,14 +46,14 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
       </div>
       {items.map((element, index) => (
         <div
-          className={classNames('array-field-item-row w-full', {
+          className={classNames('d-flex items-center w-full', {
             'm-t-sm': index > 0,
           })}
           key={`${element.key}-${index}`}>
-          <div className="array-fields">{element.children}</div>
+          <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <Icon
-              className="array-field-delete-icon"
+              className="w-7 h-0 m-l-sm"
               component={DeleteIcon}
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);

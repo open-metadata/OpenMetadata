@@ -130,123 +130,21 @@ class S3Source(StorageServiceSource):
                 parent_entity: EntityReference = EntityReference(
                     id=self._bucket_cache[bucket_name].id.root, type="container"
                 )
-                manifest_entries = []
-                if self.global_manifest:
-                    manifest_entries = (
-                        self._manifest_entries_to_metadata_entries_by_container(
-                            container_name=bucket_name, manifest=self.global_manifest
-                        )
+                manifest_entries = self._resolve_manifest_entries(bucket_name)
+                if manifest_entries:
+                    expanded_entries = self.expand_entries(
+                        bucket_name=bucket_name, entries=manifest_entries
                     )
-                    if manifest_entries:
-                        yield from self._generate_structured_containers(
-                            bucket_response=bucket_response,
-                            entries=manifest_entries,
-                            parent=parent_entity,
-                        )
-                        yield from self._generate_unstructured_containers(
-                            bucket_response=bucket_response,
-                            entries=manifest_entries,
-                            parent=parent_entity,
-                        )
-
-                # Only check bucket-level metadata file if no inline manifest configured
-                # (inline manifest replaces the bucket-level file approach)
-                if not manifest_entries and not self.source_config.manifest:
-                    metadata_config = self._load_metadata_file(bucket_name=bucket_name)
-                    if metadata_config:
-                        manifest_entries = metadata_config.entries
-                        yield from self._generate_structured_containers(
-                            bucket_response=bucket_response,
-                            entries=manifest_entries,
-                            parent=parent_entity,
-                        )
-                        yield from self._generate_unstructured_containers(
-                            bucket_response=bucket_response,
-                            entries=manifest_entries,
-                            parent=parent_entity,
-                        )
-
-                # Auto-discover from inline manifest — fills gaps not covered by legacy manifest
-                if self.source_config.manifest:
-                    already_discovered = {
-                        e.dataPath.strip(KEY_SEPARATOR) for e in manifest_entries
-                    }
-                    for discovery in self.discover_containers_from_manifest_entries(
-                        bucket_name=bucket_name,
-                        manifest_entries=self.source_config.manifest,
-                        already_discovered=already_discovered,
-                        config_source=S3Config(
-                            securityConfig=self.service_connection.awsConfig
-                        ),
-                        client=self.s3_client,
-                    ):
-                        if discovery.unstructured:
-                            yield S3ContainerDetails(
-                                name=discovery.leaf_name or discovery.name,
-                                prefix=(
-                                    f"{KEY_SEPARATOR}{discovery.parent_prefix}"
-                                    if discovery.parent_prefix
-                                    else KEY_SEPARATOR
-                                ),
-                                creation_date=(
-                                    bucket_response.creation_date.isoformat()
-                                    if bucket_response.creation_date
-                                    else None
-                                ),
-                                number_of_objects=1,
-                                size=discovery.first_file_size,
-                                file_formats=[],
-                                data_model=None,
-                                fullPath=self._get_full_path(
-                                    bucket_name, discovery.name
-                                ),
-                                sourceUrl=self._get_object_source_url(
-                                    bucket_name=bucket_name,
-                                    prefix=discovery.name,
-                                ),
-                                parent=parent_entity,
-                                leaf_container=True,
-                            )
-                            continue
-
-                        columns = self._get_columns(
-                            container_name=bucket_name,
-                            sample_key=discovery.sample_key,
-                            metadata_entry=discovery.metadata_entry,
-                            config_source=S3Config(
-                                securityConfig=self.service_connection.awsConfig
-                            ),
-                            client=self.s3_client,
-                        )
-                        if columns:
-                            yield S3ContainerDetails(
-                                name=discovery.name,
-                                prefix=discovery.prefix,
-                                creation_date=(
-                                    bucket_response.creation_date.isoformat()
-                                    if bucket_response.creation_date
-                                    else None
-                                ),
-                                number_of_objects=discovery.file_count,
-                                size=discovery.total_size,
-                                file_formats=[
-                                    container.FileFormat(
-                                        discovery.metadata_entry.structureFormat
-                                    )
-                                ],
-                                data_model=ContainerDataModel(
-                                    isPartitioned=discovery.metadata_entry.isPartitioned,
-                                    columns=columns,
-                                ),
-                                sourceUrl=self._get_object_source_url(
-                                    bucket_name=bucket_name,
-                                    prefix=discovery.name,
-                                ),
-                                fullPath=self._get_full_path(
-                                    bucket_name, discovery.name
-                                ),
-                                parent=parent_entity,
-                            )
+                    yield from self._generate_structured_containers(
+                        bucket_response=bucket_response,
+                        entries=expanded_entries,
+                        parent=parent_entity,
+                    )
+                    yield from self._generate_unstructured_containers(
+                        bucket_response=bucket_response,
+                        entries=expanded_entries,
+                        parent=parent_entity,
+                    )
 
                 # clean up the cache after each bucket
                 self._unstructured_container_cache.clear()
@@ -890,34 +788,71 @@ class S3Source(StorageServiceSource):
 
     def _load_metadata_file(self, bucket_name: str) -> Optional[StorageContainerConfig]:
         """
-        Load the metadata template file from the root of the bucket, if it exists
+        Load the metadata template file from the root of the bucket, if it exists.
+
+        Errors are distinguished so users can diagnose why a bucket was not
+        registered:
+
+        - Missing file → logged at INFO (expected when no manifest is used)
+        - JSON syntax error → WARNING with line/column
+        - Schema validation error (e.g. missing required field, wrong type) →
+          WARNING with Pydantic's per-field message
+        - Any other error → WARNING with the exception repr
+
+        All non-missing errors are also recorded on the workflow ``status``
+        so they show up in the Ingestion tab alongside other warnings.
         """
+        manifest_uri = f"s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
         try:
-            logger.info(
-                f"Looking for metadata template file at - s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
-            )
+            logger.info(f"Looking for metadata template file at - {manifest_uri}")
             response_object = self.s3_reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
                 bucket_name=bucket_name,
                 verbose=False,
             )
-            content = json.loads(response_object)
-            metadata_config = StorageContainerConfig.model_validate(content)
-            logger.warning(
-                f"Found bucket-level metadata file at "
-                f"s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}. "
-                f"Bucket-level manifest files are deprecated and will be "
-                f"removed in a future release. Use 'manifest' in the "
-                f"pipeline config instead for auto-discovery."
-            )
-            return metadata_config
         except ReadException:
-            logger.warning(
-                f"No metadata file found at s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
+            logger.info(
+                f"No manifest file found at {manifest_uri} — falling back to "
+                f"defaultManifest / global manifest if configured."
             )
-        except Exception as exc:
+            return None
+
+        try:
+            content = json.loads(response_object)
+        except json.JSONDecodeError as exc:
+            msg = (
+                f"Bucket manifest {manifest_uri} is not valid JSON "
+                f"(line {exc.lineno}, column {exc.colno}): {exc.msg}. "
+                f"This bucket will use the defaultManifest fallback if one is "
+                f"configured; otherwise no nested containers will be ingested."
+            )
+            logger.warning(msg)
+            self.status.warning(bucket_name, msg)
+            return None
+
+        try:
+            metadata_config = StorageContainerConfig.model_validate(content)
+        except ValidationError as exc:
+            # Render Pydantic errors compactly — one line per bad field.
+            details = "; ".join(
+                f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}"
+                for err in exc.errors()
+            )
+            msg = (
+                f"Bucket manifest {manifest_uri} does not match the expected "
+                f"schema: {details}. This bucket will use the defaultManifest "
+                f"fallback if one is configured; otherwise no nested "
+                f"containers will be ingested."
+            )
+            logger.warning(msg)
+            self.status.warning(bucket_name, msg)
+            return None
+        except Exception as exc:  # pragma: no cover — defensive
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed loading metadata file s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}-{exc}"
-            )
-        return None
+            msg = f"Unexpected error loading manifest {manifest_uri}: {exc}"
+            logger.warning(msg)
+            self.status.warning(bucket_name, msg)
+            return None
+
+        logger.info(f"Loaded bucket-level manifest from {manifest_uri}")
+        return metadata_config

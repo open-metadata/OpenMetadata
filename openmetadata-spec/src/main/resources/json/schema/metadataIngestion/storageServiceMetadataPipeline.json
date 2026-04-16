@@ -30,8 +30,8 @@
     },
     "storageMetadataConfigSource": {
       "mask": true,
-      "title": "Storage Metadata Configuration Source (Deprecated)",
-      "description": "Deprecated: Use manifest instead for auto-discovery. This external manifest-based approach requires manually listing each data path. It will be removed in a future release.",
+      "title": "Storage Metadata Configuration Source",
+      "description": "Global manifest source used when buckets do not contain their own openmetadata.json file.",
       "oneOf": [
         {
           "$ref": "#/definitions/noMetadataConfigurationSource"
@@ -71,13 +71,12 @@
       "default": false,
       "title": "Include Tags"
     },
-    "manifest": {
-      "title": "Manifest",
-      "description": "Inline manifest entries for auto-discovering data in object storage. Supports glob patterns, auto-partition detection, and unstructured file cataloging. Replaces the external manifest file approach.",
-      "type": "array",
-      "items": {
-        "$ref": "./storage/manifestEntry.json"
-      },
+    "defaultManifest": {
+      "title": "Default Manifest (JSON)",
+      "description": "Fallback manifest applied to any bucket that does not have its own openmetadata.json file. If a bucket has a manifest file, that file takes precedence and this value is ignored for that bucket. Paste the same JSON you would place in a bucket's openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.",
+      "type": "string",
+      "uiFieldType": "code",
+      "format": "json",
       "default": null
     }
   },
