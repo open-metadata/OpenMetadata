@@ -99,7 +99,11 @@ export const openEntitySummaryPanel = async ({
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
-    await cardByFqn.click();
+
+    // Since the directly clicking on the card can sometimes click on title element which is link,
+    // we need to click on description container to open the summary panel.
+    await cardByFqn.getByTestId('description-text').click();
+
     return;
   }
 
