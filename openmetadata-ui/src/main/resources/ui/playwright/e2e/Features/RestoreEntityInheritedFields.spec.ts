@@ -105,9 +105,14 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(page);
 
-      await assignDataProduct(page, domain.responseData, [
-        dataProduct.responseData,
-      ]);
+      await assignDataProduct(
+        page,
+        domain.responseData,
+        [dataProduct.responseData],
+        'Add',
+        'KnowledgePanel.DataProducts',
+        true
+      );
 
       // This will delete and restore and ensure both operation are successful
       await softDeleteEntity(
