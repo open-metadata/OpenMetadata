@@ -814,12 +814,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 key={breadcrumb.fullyQualifiedName}>
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
                   <Typography.Text
-                    className={classNames('tw:text-xs tw:truncate tw:max-w-32', {
-                      'tw:cursor-default tw:font-medium tw:text-gray-700':
-                        isLastItem,
-                      'tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
-                        !isLastItem,
-                    })}
+                    className={classNames(
+                      'tw:text-xs tw:truncate tw:max-w-32',
+                      {
+                        'tw:cursor-default tw:font-medium tw:text-gray-700':
+                          isLastItem,
+                        'tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                          !isLastItem,
+                      }
+                    )}
                     title={getEntityName(breadcrumb)}
                     onClick={
                       isLastItem
