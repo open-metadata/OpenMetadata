@@ -93,7 +93,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final NLQService nlqService;
-
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
