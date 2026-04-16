@@ -232,10 +232,11 @@ export const useFormDrawerWithRef = <T,>(
  * Form drawer variant backed by a react-hook-form `UseFormReturn` instance.
  *
  * The caller owns the form state via `useForm()` from react-hook-form and
- * passes it in; the drawer triggers validation via `form.trigger()`, scrolls to
- * the first error on failure, and invokes `onSubmit(form.getValues())` on
- * success. On cancel the form is reset before any caller-supplied `onCancel`
- * handler runs.
+ * passes it in; the drawer delegates to `hookForm.handleSubmit()` so that RHF
+ * manages the full submission lifecycle (including `formState.isSubmitting` and
+ * `formState.isSubmitSuccessful`). On validation failure the drawer scrolls to
+ * the first invalid field. On cancel the form is reset before any
+ * caller-supplied `onCancel` handler runs.
  */
 export const useFormDrawerWithHook = <T extends FieldValues>(
   config: Omit<FormDrawerConfig<T>, 'onSubmit'> & {
@@ -252,15 +253,14 @@ export const useFormDrawerWithHook = <T extends FieldValues>(
     []
   );
 
-  const handleSubmit = useCallback(async () => {
-    const valid = await hookForm.trigger();
-    if (!valid) {
-      scrollToError();
-
-      return;
-    }
-    await onSubmit(hookForm.getValues());
-  }, [hookForm, onSubmit, scrollToError]);
+  const handleSubmit = useCallback(
+    () =>
+      hookForm.handleSubmit(
+        async (data) => onSubmit(data),
+        () => scrollToError()
+      )(),
+    [hookForm, onSubmit, scrollToError]
+  );
 
   const handleCancel = useCallback(() => {
     hookForm.reset();
