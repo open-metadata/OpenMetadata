@@ -496,8 +496,7 @@ export const assignDataProduct = async (
   ).toBeEnabled();
 
   const saveRequestPromise = page.waitForRequest(
-    (req) =>
-      req.method() === 'PATCH' && req.url().includes('/api/v1/')
+    (req) => req.method() === 'PATCH' && req.url().includes('/api/v1/')
   );
 
   await page
