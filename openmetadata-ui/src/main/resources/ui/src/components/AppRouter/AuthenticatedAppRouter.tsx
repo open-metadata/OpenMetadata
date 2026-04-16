@@ -22,8 +22,6 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
-import { DataProductListPage as PureDataProductListPage } from '../DataProduct/DataProductListPage';
-import { DomainListPage as PureDomainListPage } from '../DomainListing/DomainListPage';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -120,24 +118,6 @@ const DataMarketplacePage = withSuspenseFallback(
   )
 );
 
-const MarketplaceLayout = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "MarketplaceLayout" */ '../../pages/DataMarketplacePage/MarketplaceLayout.component'
-      )
-  )
-);
-
-const MarketplaceSubPageLayout = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "MarketplaceSubPageLayout" */ '../../pages/DataMarketplacePage/MarketplaceSubPageLayout.component'
-      )
-  )
-);
-
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
@@ -153,24 +133,6 @@ const TourPageComponent = withSuspenseFallback(
 );
 const UserPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/UserPage/UserPage.component'))
-);
-
-const DomainDetailPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "DomainDetailPage" */ '../../components/Domain/DomainDetailPage/DomainDetailPage.component'
-      )
-  )
-);
-
-const DataProductsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "DataProductsPage" */ '../../components/DataProducts/DataProductsPage/DataProductsPage.component'
-      )
-  )
 );
 
 const DomainVersionPage = withSuspenseFallback(
@@ -491,28 +453,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
-      <Route element={<MarketplaceLayout />} path={ROUTES.DATA_MARKETPLACE}>
-        <Route index element={<DataMarketplacePage />} />
-        <Route element={<MarketplaceSubPageLayout />}>
-          <Route element={<PureDataProductListPage />} path="data-products" />
-          <Route element={<PureDomainListPage />} path="domains" />
-          <Route element={<DomainDetailPage />} path="domains/:fqn" />
-          <Route element={<DomainDetailPage />} path="domains/:fqn/:tab" />
-          <Route
-            element={<DomainDetailPage />}
-            path="domains/:fqn/:tab/:subTab"
-          />
-          <Route element={<DataProductsPage />} path="data-products/:fqn" />
-          <Route
-            element={<DataProductsPage />}
-            path="data-products/:fqn/:tab"
-          />
-          <Route
-            element={<DataProductsPage />}
-            path="data-products/:fqn/:tab/:subTab"
-          />
-        </Route>
-      </Route>
+      <Route element={<DataMarketplacePage />} path={ROUTES.DATA_MARKETPLACE} />
       <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
       <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />
