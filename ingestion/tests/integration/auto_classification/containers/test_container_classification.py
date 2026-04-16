@@ -236,11 +236,13 @@ def test_container_sample_data_stored(
     container = metadata.get_by_name(
         entity=Container,
         fqn=f"{service_name}.{bucket_name}.customers",
-        fields=["sampleData"],
     )
 
     assert container is not None
-    sample_data = container.sampleData
+
+    container_with_sample = metadata.get_container_sample_data(container)
+    assert container_with_sample is not None
+    sample_data = container_with_sample.sampleData
     assert sample_data is not None
     assert sample_data.columns is not None
     assert len(sample_data.columns) > 0

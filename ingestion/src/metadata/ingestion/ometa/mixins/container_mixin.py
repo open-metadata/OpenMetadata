@@ -114,3 +114,36 @@ class OMetaContainerMixin:
                 f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}"
             )
             return None
+
+    def get_container_sample_data(self, container: Container) -> Optional[Container]:
+        """
+        GET call for the /sampleData endpoint for a given Container
+
+        Returns a Container entity with TableData (sampleData informed)
+        """
+        resp = None
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(Container)}/{container.id.root}/sampleData",
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return Container(**resp)
+            except UnicodeError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unicode Error parsing the sample data response from {container.fullyQualifiedName.root}: {err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse sample data results from {container.fullyQualifiedName.root}: {exc}"
+                )
+
+        return None

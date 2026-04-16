@@ -1301,7 +1301,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
     // Note: Sample data is added via PUT endpoint in actual workflow
     // This test verifies container is ready to accept sample data
-    Container fetched = client.containers().get(container.getId().toString());
+    Container fetched = client.containers().get(container.getId().toString(), "dataModel");
     assertNotNull(fetched.getDataModel());
     assertEquals(3, fetched.getDataModel().getColumns().size());
   }
