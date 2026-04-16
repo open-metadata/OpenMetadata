@@ -438,13 +438,11 @@ export const MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS = 100;
 
 export enum LayoutType {
   Hierarchical = 'hierarchical',
-  Radial = 'radial',
   Circular = 'circular',
 }
 
 export enum LayoutEngine {
   Dagre = 'dagre',
-  Radial = 'radial',
   Circular = 'circular',
 }
 
