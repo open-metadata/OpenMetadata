@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,8 +30,8 @@ import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
-import { getDomainIcon } from '../../../utils/DomainUtils';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
@@ -153,7 +153,9 @@ const MarketplaceDomainsWidget = ({
       if (isEditView) {
         return;
       }
-      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''), {
+        state: { fromMarketplace: true },
+      });
     },
     [navigate, isEditView]
   );
@@ -163,9 +165,13 @@ const MarketplaceDomainsWidget = ({
       <div className="marketplace-widget-cards">
         {domains.map((domain) => (
           <MarketplaceItemCard
-            backgroundColor={domain.style?.color}
             dataTestId={`marketplace-domain-card-${domain.id}`}
-            icon={getDomainIcon(domain.style?.iconURL)}
+            icon={
+              <Avatar
+                size="md"
+                {...getEntityAvatarProps({ ...domain, entityType: 'domain' })}
+              />
+            }
             key={domain.id}
             name={domain.displayName || domain.name}
             subtitle={

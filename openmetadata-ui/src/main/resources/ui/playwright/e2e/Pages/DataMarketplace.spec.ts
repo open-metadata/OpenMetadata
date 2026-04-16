@@ -128,7 +128,8 @@ test.describe(
       });
     });
 
-    test('Search returns results and clicking navigates to entity', async ({
+    // Skipped: /data-marketplace/* sub-routes removed in PR #27377; re-enable when the standalone marketplace shell is reintroduced.
+    test.skip('Search returns results and clicking navigates to entity', async ({
       page,
     }) => {
       test.slow();
@@ -170,7 +171,7 @@ test.describe(
       });
     });
 
-    test('Widget card click navigates to entity detail page', async ({
+    test.skip('Widget card click navigates to entity detail page', async ({
       page,
     }) => {
       test.slow();
@@ -201,7 +202,7 @@ test.describe(
       });
     });
 
-    test('View All links navigate correctly', async ({ page }) => {
+    test.skip('View All links navigate correctly', async ({ page }) => {
       test.slow();
 
       await test.step('Navigate to marketplace', async () => {

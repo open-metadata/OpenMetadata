@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,8 +34,8 @@ import { searchData } from '../../../rest/miscAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
-import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
@@ -171,7 +171,8 @@ const MarketplaceDataProductsWidget = ({
         return;
       }
       navigate(
-        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`
+        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`,
+        { state: { fromMarketplace: true } }
       );
     },
     [navigate, isEditView, dataProductBasePath]
@@ -182,9 +183,16 @@ const MarketplaceDataProductsWidget = ({
       <div className="marketplace-widget-cards">
         {dataProducts.map((dp) => (
           <MarketplaceItemCard
-            backgroundColor={dp.style?.color}
             dataTestId={`marketplace-dp-card-${dp.id}`}
-            icon={getDataProductIconByUrl(dp.style?.iconURL)}
+            icon={
+              <Avatar
+                size="md"
+                {...getEntityAvatarProps({
+                  ...dp,
+                  entityType: 'dataProduct',
+                })}
+              />
+            }
             key={dp.id}
             name={dp.displayName || dp.name}
             subtitle={getTextFromHtmlString(dp.description)}
