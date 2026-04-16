@@ -81,6 +81,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "metricGroup": {
+      "description": "Metric group that this metric belongs to for organization purposes.",
+      "type": "string"
     }
   },
   "required": ["name"],
