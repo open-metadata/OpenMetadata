@@ -154,7 +154,7 @@
       "description": "Payload size in bytes depending on config.",
       "type": "integer",
       "existingJavaType": "java.lang.Long",
-      "default": 104857600,
+      "default": 9437184,
       "minimum": 1
     },
     "producerThreads": {

@@ -16,6 +16,142 @@ on:
   workflow_dispatch:
 
 jobs:
+  vulnerability-scan:
+    runs-on: ubuntu-latest
+    environment: security-scan
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Enable yarn
+        run: corepack enable
+
+      - name: Install UI dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Run Retire.js scan
+        id: retire-scan
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          npx retire@5 \
+            --path node_modules/ \
+            --severity medium \
+            --outputformat json \
+            --outputpath retire-report.json
+
+      - name: Verify report was generated
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          if [ ! -f retire-report.json ]; then
+            echo '::error::retire-report.json was not generated — retire scan may have crashed'
+            exit 1
+          fi
+
+      - name: Upload Retire.js Report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retire-js-report
+          path: openmetadata-ui/src/main/resources/ui/retire-report.json
+          retention-days: 30
+
+      - name: Publish Retire.js Summary
+        if: success()
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          python3 - << 'EOF' >> $GITHUB_STEP_SUMMARY
+          import json
+
+          SEVERITY_ICON = {"critical": "🚨", "high": "🔴", "medium": "🟠", "low": "🟡"}
+          SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+          NM = "node_modules/"
+
+          def escape(text):
+              return str(text).replace('|', '\\|').replace('`', "'")
+
+          try:
+              with open("retire-report.json") as f:
+                  data = json.load(f)
+          except FileNotFoundError:
+              print("## Retire.js Scan Results\n\n> Report file not found — scan may not have run.")
+              raise SystemExit(0)
+
+          findings = data.get("data", [])
+          libs = {}
+          for item in findings:
+              filepath = item.get("file", "")
+              short = filepath[filepath.find(NM) + len(NM):] if NM in filepath else filepath
+              for result in item.get("results", []):
+                  key = (result.get("component", ""), result.get("version", ""))
+                  if key not in libs:
+                      libs[key] = {"files": [], "vulns": result.get("vulnerabilities", [])}
+                  if short not in libs[key]["files"]:
+                      libs[key]["files"].append(short)
+
+          print("## Retire.js Scan Results\n")
+
+          if not libs:
+              print("✅ No vulnerable libraries found.")
+          else:
+              total_vulns = sum(len(v["vulns"]) for v in libs.values())
+              print(f"> **{len(libs)} vulnerable librar{'y' if len(libs) == 1 else 'ies'} · {total_vulns} CVE{'s' if total_vulns != 1 else ''} found**\n")
+
+              for (component, version), info in sorted(libs.items(), key=lambda x: min(
+                      (SEVERITY_ORDER.get(v.get("severity", "low"), 3) for v in x[1]["vulns"]), default=3)):
+                  top_sev = min(info["vulns"], key=lambda v: SEVERITY_ORDER.get(v.get("severity", "low"), 3))
+                  icon = SEVERITY_ICON.get(top_sev.get("severity", "low"), "⚪")
+                  print(f"### {icon} {component} {version}\n")
+                  print("| Severity | CVE | Summary |")
+                  print("|---|---|---|")
+                  for vuln in sorted(info["vulns"], key=lambda v: SEVERITY_ORDER.get(v.get("severity", "low"), 3)):
+                      sev = vuln.get("severity", "")
+                      ids = vuln.get("identifiers", {})
+                      cves = ids.get("CVE", [])
+                      summary = ids.get("summary", "").split("\n")[0][:120]
+                      cve_str = ", ".join(f"[{c}](https://nvd.nist.gov/vuln/detail/{c})" for c in cves) if cves else ids.get("githubID", "—")
+                      print(f"| {SEVERITY_ICON.get(sev, '')} {sev} | {escape(cve_str)} | {escape(summary)} |")
+                  print("\n**Bundled in:**")
+                  for f in info["files"]:
+                      print(f"- `{f}`")
+                  print()
+          EOF
+
+      - name: Slack on Failure
+        if: steps.retire-scan.outcome == 'failure'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload: |
+            {
+              "text": "🚨 Vulnerability scan failed, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>. 🚨"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Slack on Success
+        if: steps.retire-scan.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload: |
+            {
+              "text": "🟢 Vulnerability scan passed for OpenMetadata Repo, please check it <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Force failure on vulnerabilities found
+        if: steps.retire-scan.outcome == 'failure'
+        run: exit 1
+
   security-scan:
     runs-on: ubuntu-latest
     environment: security-scan

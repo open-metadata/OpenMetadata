@@ -20,6 +20,7 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
+  EntityTabs,
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -394,7 +395,18 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByRole('button')
           .filter({ hasNotText: 'Add Tab' });
 
-        await expect(tabs).toHaveCount(expectedTabs.length);
+        const knowledgeGraphTab = adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-${EntityTabs.KNOWLEDGE_GRAPH}`);
+        const hasKnowledgeGraphTab = (await knowledgeGraphTab.count()) > 0;
+        const expectedTabCount =
+          expectedTabs.length +
+          (hasKnowledgeGraphTab &&
+          !expectedTabs.includes(EntityTabs.KNOWLEDGE_GRAPH)
+            ? 1
+            : 0);
+
+        await expect(tabs).toHaveCount(expectedTabCount);
 
         for (const tabName of expectedTabs) {
           await expect(
@@ -449,12 +461,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const addWidgetButton = adminPage
           .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
           .getByTestId('add-widget-button');
-        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'visible' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -465,9 +475,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'hidden' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
         await adminPage.getByTestId('save-button').click();
 
         await toastNotification(
@@ -597,12 +605,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const addWidgetButton = adminPage
           .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
           .getByTestId('add-widget-button');
-        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'visible' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -613,9 +619,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'hidden' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 
