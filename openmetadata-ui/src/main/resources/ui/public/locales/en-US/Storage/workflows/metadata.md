@@ -30,17 +30,17 @@ $$
 $$section
 ### Default Manifest $(id="defaultManifest")
 
-Fallback manifest applied to any bucket that does not have its own `openmetadata.json` file. Useful when you want an administrator to seed an initial manifest from the pipeline config while still letting bucket owners self-serve by uploading their own manifest file later.
+Lowest-priority fallback manifest used only when neither the global `storageMetadataConfigSource` nor a bucket-specific `openmetadata.json` provides entries for a given bucket. Useful when an administrator wants to seed an initial manifest from the pipeline config while letting bucket owners self-serve by uploading their own manifest later.
 
 **Precedence** (highest to lowest):
 
-1. The bucket's own `openmetadata.json` manifest file.
-2. `defaultManifest` from this pipeline config.
-3. The legacy global `storageMetadataConfigSource` (if configured).
+1. The global `storageMetadataConfigSource` (if configured).
+2. The bucket's own `openmetadata.json` manifest file.
+3. `defaultManifest` from this pipeline config.
 
-The `defaultManifest` uses the same schema as a bucket manifest file, so the same JSON works whether pasted here or uploaded to a bucket. Each entry accepts either a literal `dataPath` or a glob-style pattern — use `*` for a single path segment, `**` for any depth, and `?` for a single character.
+The matching rules are the same as a bucket-level `openmetadata.json`, but the schema differs by location. In `defaultManifest`, each entry **must include `containerName`** because this pipeline-level fallback can target multiple buckets. In a bucket-level `openmetadata.json`, the file already belongs to a single bucket, so `containerName` is not required. Each entry accepts either a literal `dataPath` or a glob-style pattern — use `*` for a single path segment, `**` for any depth, and `?` for a single character.
 
-**Example**:
+**`defaultManifest` example** (note the required `containerName`):
 
 ```json
 {

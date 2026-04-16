@@ -23,12 +23,35 @@ import ManifestJsonWidget, {
 } from './ManifestJsonWidget';
 
 // Mock the SchemaEditor so the widget can be rendered without the
-// heavy CodeMirror dependency.
-jest.mock('../../../../../Database/SchemaEditor/SchemaEditor', () =>
-  jest.fn().mockImplementation(({ value }: { value: string }) => (
-    <div data-testid="schema-editor">{value || '<empty>'}</div>
-  ))
-);
+// heavy CodeMirror dependency. We surface the props we care about as
+// data-* attributes so tests can assert the editor is wired up with
+// JSON-aware syntax highlighting (regression guard).
+const mockSchemaEditor = jest
+  .fn()
+  .mockImplementation(
+    ({
+      value,
+      mode,
+      readOnly,
+    }: {
+      value: string;
+      mode?: { name?: string; json?: boolean };
+      readOnly?: boolean;
+    }) => (
+      <div
+        data-testid="schema-editor"
+        data-mode-name={mode?.name}
+        data-mode-json={String(Boolean(mode?.json))}
+        data-readonly={String(Boolean(readOnly))}>
+        {value || '<empty>'}
+      </div>
+    )
+  );
+
+jest.mock('../../../../../Database/SchemaEditor/SchemaEditor', () => ({
+  __esModule: true,
+  default: (props: unknown) => mockSchemaEditor(props),
+}));
 
 const baseProps: Partial<WidgetProps> = {
   id: 'defaultManifest',
@@ -40,7 +63,7 @@ const baseProps: Partial<WidgetProps> = {
   schema: {},
   disabled: false,
   options: {} as Partial<
-    Omit<TemplatesType<any, RJSFSchema, any>, 'ButtonTemplates'>
+    Omit<TemplatesType<unknown, RJSFSchema, unknown>, 'ButtonTemplates'>
   >,
   registry: {} as FieldErrorProps['registry'],
 };
@@ -62,6 +85,7 @@ describe('validateManifestJson', () => {
     const result = validateManifestJson('{ not valid');
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/Invalid JSON/i);
     }
@@ -76,11 +100,10 @@ describe('validateManifestJson', () => {
   });
 
   it('rejects unknown top-level fields', () => {
-    const result = validateManifestJson(
-      JSON.stringify({ entrys: [] })
-    );
+    const result = validateManifestJson(JSON.stringify({ entrys: [] }));
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/Unknown top-level field "entrys"/);
     }
@@ -92,6 +115,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/"entries" must be an array/);
     }
@@ -105,6 +129,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/containerName/);
       expect(result.message).toMatch(/Entry 1/);
@@ -119,6 +144,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/dataPath/);
     }
@@ -138,6 +164,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/unknown field "structuredFormat"/);
       expect(result.message).toMatch(/did you mean "structureFormat"/);
@@ -158,6 +185,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/autoPartitionDetection/);
       expect(result.message).toMatch(/true or false/);
@@ -178,6 +206,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/excludePaths/);
       expect(result.message).toMatch(/array of strings/);
@@ -196,7 +225,9 @@ describe('validateManifestJson', () => {
         ],
       })
     );
+
     expect(missingName.status).toBe('error');
+
     if (missingName.status === 'error') {
       expect(missingName.message).toMatch(/name is required/);
     }
@@ -214,7 +245,9 @@ describe('validateManifestJson', () => {
         ],
       })
     );
+
     expect(typoField.status).toBe('error');
+
     if (typoField.status === 'error') {
       expect(typoField.message).toMatch(/unknown field "datatype"/);
       expect(typoField.message).toMatch(/dataType/);
@@ -229,6 +262,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('ok');
+
     if (result.status === 'ok') {
       expect(result.entryCount).toBe(1);
     }
@@ -273,6 +307,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('ok');
+
     if (result.status === 'ok') {
       expect(result.entryCount).toBe(3);
     }
@@ -284,6 +319,7 @@ describe('validateManifestJson', () => {
     );
 
     expect(result.status).toBe('error');
+
     if (result.status === 'error') {
       expect(result.message).toMatch(/Entry 1 must be an object/);
     }
@@ -299,20 +335,21 @@ describe('ManifestJsonWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the SchemaEditor with the sample JSON when value is empty', () => {
+  it('displays the sample JSON as a placeholder when value is empty (without writing it to form state)', () => {
     const onChange = jest.fn();
-    render(
-      <ManifestJsonWidget
-        {...makeProps({ value: '', onChange })}
-      />
-    );
+    render(<ManifestJsonWidget {...makeProps({ value: '', onChange })} />);
 
     expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-    // Empty value triggers the sample-JSON onChange on mount.
-    expect(onChange).toHaveBeenCalledWith(SAMPLE_MANIFEST_JSON);
+    // Sample is displayed in the editor...
+    expect(screen.getByTestId('schema-editor')).toHaveTextContent(
+      /"entries"/
+    );
+    // ...but we do NOT call onChange on mount — the field may be
+    // populated asynchronously from the saved pipeline config.
+    expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('renders the SchemaEditor with the sample when value is null', () => {
+  it('displays the sample when value is null without mutating form state', () => {
     const onChange = jest.fn();
     render(
       <ManifestJsonWidget
@@ -320,7 +357,30 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    expect(onChange).toHaveBeenCalledWith(SAMPLE_MANIFEST_JSON);
+    expect(screen.getByTestId('schema-editor')).toHaveTextContent(
+      /"entries"/
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('swallows onChange when disabled', () => {
+    // Sanity: if the consuming form marks the widget disabled, the
+    // wrapper must not propagate edits to form state.
+    const onChange = jest.fn();
+    const { rerender } = render(
+      <ManifestJsonWidget
+        {...makeProps({ value: '', onChange, disabled: true })}
+      />
+    );
+    // Nothing fires on mount either.
+    expect(onChange).not.toHaveBeenCalled();
+    // Still silent on any re-render.
+    rerender(
+      <ManifestJsonWidget
+        {...makeProps({ value: '', onChange, disabled: true })}
+      />
+    );
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('does not overwrite a pre-existing value on mount', () => {
@@ -369,13 +429,46 @@ describe('ManifestJsonWidget', () => {
   });
 
   it('shows an error alert when the JSON is malformed', () => {
-    render(
-      <ManifestJsonWidget
-        {...makeProps({ value: '{ broken' })}
-      />
-    );
+    render(<ManifestJsonWidget {...makeProps({ value: '{ broken' })} />);
 
     expect(screen.getByText(/Invalid JSON/i)).toBeInTheDocument();
+  });
+
+  it('wires the SchemaEditor with JSON-aware syntax highlighting', () => {
+    // Regression guard: the editor must be driven with CodeMirror's
+    // JavaScript mode plus the ``json: true`` flag — that's what gives
+    // us string, key, brace, and number colors in the JSON editor.
+    // Anything else (e.g. the ``application/json`` mime-type string)
+    // silently downgrades the editor to plain-text rendering.
+    render(
+      <ManifestJsonWidget
+        {...makeProps({
+          value: JSON.stringify({
+            entries: [{ containerName: 'b', dataPath: 'a' }],
+          }),
+        })}
+      />
+    );
+    const editor = screen.getByTestId('schema-editor');
+    expect(editor).toHaveAttribute('data-mode-name', 'javascript');
+    expect(editor).toHaveAttribute('data-mode-json', 'true');
+  });
+
+  it('passes readOnly through when disabled', () => {
+    render(
+      <ManifestJsonWidget
+        {...makeProps({
+          value: JSON.stringify({
+            entries: [{ containerName: 'b', dataPath: 'a' }],
+          }),
+          disabled: true,
+        })}
+      />
+    );
+    expect(screen.getByTestId('schema-editor')).toHaveAttribute(
+      'data-readonly',
+      'true'
+    );
   });
 
   it('shows the resize hint', () => {

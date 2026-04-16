@@ -31,7 +31,7 @@
     "storageMetadataConfigSource": {
       "mask": true,
       "title": "Storage Metadata Configuration Source",
-      "description": "Global manifest source used when buckets do not contain their own openmetadata.json file.",
+      "description": "Global manifest source. When configured, entries here take precedence over any bucket-level openmetadata.json and over defaultManifest for buckets whose containerName matches.",
       "oneOf": [
         {
           "$ref": "#/definitions/noMetadataConfigurationSource"

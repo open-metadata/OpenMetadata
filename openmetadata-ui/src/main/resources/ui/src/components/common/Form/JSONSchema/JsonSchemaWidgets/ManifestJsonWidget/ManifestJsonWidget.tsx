@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Typography } from 'antd';
 import { WidgetProps } from '@rjsf/utils';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Typography } from 'antd';
+import { useCallback, useMemo } from 'react';
 import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
+import { CSMode } from '../../../../../../enums/codemirror.enum';
 import './manifest-json-widget.less';
+
+// SchemaEditor uses CodeMirror's JavaScript mode with the ``json: true``
+// flag to get proper JSON-aware syntax highlighting. Reuse the default
+// shape so the editor lights up the same way as everywhere else in the
+// UI (SqlQuery, SchemaViewer, etc.).
+const JSON_EDITOR_MODE = { name: CSMode.JAVASCRIPT, json: true };
 
 const { Text } = Typography;
 
@@ -95,6 +102,7 @@ const editDistance = (a: string, b: string): number => {
       prev[j] = curr[j];
     }
   }
+
   return prev[n];
 };
 
@@ -112,6 +120,7 @@ const suggest = (bad: string, candidates: string[]): string | null => {
     }
   }
   const threshold = Math.max(2, Math.floor(bad.length / 3));
+
   return bestDistance <= threshold ? best : null;
 };
 
@@ -139,6 +148,7 @@ const checkType = (
       if (!Array.isArray(value)) {
         return 'expected an array of strings';
       }
+
       return value.every((v) => typeof v === 'string')
         ? null
         : 'expected an array of strings';
@@ -146,6 +156,7 @@ const checkType = (
       if (!Array.isArray(value)) {
         return 'expected an array of objects';
       }
+
       return value.every(
         (v) => typeof v === 'object' && v !== null && !Array.isArray(v)
       )
@@ -166,25 +177,35 @@ const validatePartitionColumns = (
   for (let i = 0; i < columns.length; i += 1) {
     const col = columns[i];
     if (typeof col !== 'object' || col === null) {
-      return `Entry ${entryIndex + 1}: partitionColumns[${i}] must be an object.`;
+      return `Entry ${
+        entryIndex + 1
+      }: partitionColumns[${i}] must be an object.`;
     }
     const keys = Object.keys(col as Record<string, unknown>);
     for (const key of keys) {
       if (!PARTITION_COLUMN_FIELDS.has(key)) {
         const suggestion = suggest(key, Array.from(PARTITION_COLUMN_FIELDS));
-        return `Entry ${entryIndex + 1}: partitionColumns[${i}] has unknown field "${key}"${
+
+        return `Entry ${
+          entryIndex + 1
+        }: partitionColumns[${i}] has unknown field "${key}"${
           suggestion ? ` — did you mean "${suggestion}"?` : ''
         }`;
       }
     }
     const rec = col as Record<string, unknown>;
     if (typeof rec.name !== 'string' || !rec.name.trim()) {
-      return `Entry ${entryIndex + 1}: partitionColumns[${i}].name is required.`;
+      return `Entry ${
+        entryIndex + 1
+      }: partitionColumns[${i}].name is required.`;
     }
     if (typeof rec.dataType !== 'string' || !rec.dataType.trim()) {
-      return `Entry ${entryIndex + 1}: partitionColumns[${i}].dataType is required.`;
+      return `Entry ${
+        entryIndex + 1
+      }: partitionColumns[${i}].dataType is required.`;
     }
   }
+
   return null;
 };
 
@@ -247,6 +268,7 @@ export const validateManifestJson = (raw: string): ValidationState => {
     for (const key of Object.keys(rec)) {
       if (!(key in ENTRY_FIELDS)) {
         const suggestion = suggest(key, allowedFields);
+
         return {
           status: 'error',
           message: `Entry ${i + 1}: unknown field "${key}"${
@@ -260,13 +282,17 @@ export const validateManifestJson = (raw: string): ValidationState => {
     if (typeof rec.containerName !== 'string' || !rec.containerName.trim()) {
       return {
         status: 'error',
-        message: `Entry ${i + 1}: "containerName" is required and must be a non-empty string.`,
+        message: `Entry ${
+          i + 1
+        }: "containerName" is required and must be a non-empty string.`,
       };
     }
     if (typeof rec.dataPath !== 'string' || !rec.dataPath.trim()) {
       return {
         status: 'error',
-        message: `Entry ${i + 1}: "dataPath" is required and must be a non-empty string.`,
+        message: `Entry ${
+          i + 1
+        }: "dataPath" is required and must be a non-empty string.`,
       };
     }
 
@@ -298,21 +324,32 @@ const ManifestJsonWidget = ({
   onFocus,
   ...props
 }: WidgetProps) => {
-  // Pre-populate an editable sample when the field is empty so users
-  // have a ready template to edit instead of inventing JSON from scratch.
-  useEffect(() => {
-    if (value === undefined || value === null || value === '') {
-      onChange(SAMPLE_MANIFEST_JSON);
-    }
-    // Only run on mount — we don't want to overwrite the user's edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const onFocusHandler = useCallback(() => {
     onFocus?.(props.id, props.value);
   }, [onFocus, props.id, props.value]);
 
-  const effectiveValue = value ?? SAMPLE_MANIFEST_JSON;
+  // Display the sample JSON as a placeholder when the field is empty so
+  // users have a ready template. We purposely do NOT write it into form
+  // state on mount — the field may be populated asynchronously after a
+  // saved pipeline config loads, and writing our sample into form data
+  // would overwrite the real value. We also skip when disabled.
+  const hasUserValue =
+    typeof value === 'string' && value.trim().length > 0;
+  const effectiveValue = hasUserValue ? value : SAMPLE_MANIFEST_JSON;
+
+  // If the user starts editing the placeholder, commit that edit to form
+  // state. The first edit will include the sample as its base; any later
+  // edits flow through unchanged.
+  const handleChange = useCallback(
+    (next: string) => {
+      if (disabled) {
+        return;
+      }
+      onChange(next);
+    },
+    [disabled, onChange]
+  );
+
   const validation = useMemo(
     () => validateManifestJson(effectiveValue),
     [effectiveValue]
@@ -323,11 +360,11 @@ const ManifestJsonWidget = ({
       <div className="manifest-json-widget-resize-wrapper">
         <SchemaEditor
           className="manifest-json-widget-editor"
-          mode={{ name: 'application/json' }}
+          mode={JSON_EDITOR_MODE}
           readOnly={disabled}
           showCopyButton={false}
           value={effectiveValue}
-          onChange={onChange}
+          onChange={handleChange}
           onFocus={onFocusHandler}
         />
       </div>

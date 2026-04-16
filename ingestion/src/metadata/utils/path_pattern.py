@@ -197,23 +197,53 @@ def extract_table_root(key: str) -> str:
     return "/".join(root_parts)
 
 
+def _extract_partition_segments(
+    relative: str,
+    partition_values: Dict[str, List[str]],
+) -> List[str]:
+    """Walk the path segments (excluding the filename) and collect
+    Hive-style ``key=value`` pairs. Updates ``partition_values`` in place
+    so the caller can later infer types per column."""
+    current: List[str] = []
+    for part in relative.split("/")[:-1]:
+        match = HIVE_PARTITION_PATTERN.match(part)
+        if match:
+            col_name, col_value = match.group(1), match.group(2)
+            current.append(col_name)
+            partition_values.setdefault(col_name, []).append(col_value)
+        elif current:
+            # A non-partition segment after partition segments ends the run.
+            break
+    return current
+
+
+def _check_partition_consistency(
+    structures: List[List[str]], table_root: str
+) -> Optional[List[str]]:
+    """Return the shared partition structure if every entry matches;
+    log and return None on mismatch."""
+    reference = structures[0]
+    for structure in structures[1:]:
+        if structure != reference:
+            logger.warning(
+                f"Inconsistent partition structure under '{table_root}'. "
+                f"Found {structure} vs {reference}. Skipping auto-partition detection."
+            )
+            return None
+    return reference
+
+
 def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Column]]:
     """Detect Hive-style partition columns from file paths.
 
-    Scans paths under table_root for consistent key=value directory
-    segments. Returns Column objects with inferred types if all files
-    share the same partition structure, None otherwise.
+    Scans paths under ``table_root`` for consistent ``key=value``
+    directory segments. Returns ``Column`` objects with inferred types
+    if every file shares the same partition structure, ``None`` otherwise.
 
     Type inference:
         - All values are integers -> DataType.INT
         - All values match YYYY-MM-DD -> DataType.DATE
         - Otherwise -> DataType.VARCHAR
-
-    Examples:
-        keys=["root/year=2024/month=01/f.parquet",
-              "root/year=2023/month=12/f.parquet"]
-        table_root="root"
-        -> [Column(name="year", dataType=INT), Column(name="month", dataType=INT)]
     """
     if not keys:
         return None
@@ -226,31 +256,14 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
     for key in keys:
         if not key.startswith(root_prefix):
             continue
-
-        relative = key[len(root_prefix) :]
-        parts = relative.split("/")
-
-        # Collect partition segments (key=value) between root and file
-        current_partitions = []
-        for part in parts[:-1]:  # Exclude the filename
-            match = HIVE_PARTITION_PATTERN.match(part)
-            if match:
-                col_name = match.group(1)
-                col_value = match.group(2)
-                current_partitions.append(col_name)
-                partition_values.setdefault(col_name, []).append(col_value)
-            elif current_partitions:
-                break
-
-        if current_partitions:
-            partition_structures.append(current_partitions)
+        current = _extract_partition_segments(key[len(root_prefix) :], partition_values)
+        if current:
+            partition_structures.append(current)
         else:
             has_flat_files = True
 
     if not partition_structures:
         return None
-
-    # Mixed partitioned + flat files = inconsistent
     if has_flat_files:
         logger.warning(
             f"Table root '{table_root}' has a mix of partitioned and "
@@ -258,18 +271,11 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
         )
         return None
 
-    # Check consistency — all files must have the same partition columns in the same order
-    reference = partition_structures[0]
-    for structure in partition_structures[1:]:
-        if structure != reference:
-            logger.warning(
-                f"Inconsistent partition structure under '{table_root}'. "
-                f"Found {structure} vs {reference}. Skipping auto-partition detection."
-            )
-            return None
+    reference = _check_partition_consistency(partition_structures, table_root)
+    if reference is None:
+        return None
 
-    # Build Column objects with inferred types
-    columns = []
+    columns: List[Column] = []
     for col_name in reference:
         col_type = _infer_partition_type(partition_values.get(col_name, []))
         columns.append(
@@ -279,7 +285,6 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
                 dataTypeDisplay=col_type.value,
             )
         )
-
     return columns
 
 

@@ -59,12 +59,14 @@ class TestHasGlob:
         assert has_glob("data/events") is False
         assert has_glob("") is False
         assert has_glob("foo/bar/baz.parquet") is False
+        # Bracket character classes are not implemented by
+        # pattern_to_regex; a path containing '[' is treated literally.
+        assert has_glob("foo/[abc]bar") is False
 
     def test_wildcards(self):
         assert has_glob("data/*") is True
         assert has_glob("data/**/*.json") is True
         assert has_glob("foo/?ar") is True
-        assert has_glob("foo/[abc]bar") is True
 
 
 class TestLiteralPassthrough:

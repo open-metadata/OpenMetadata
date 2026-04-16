@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../../../../styles/variables.less';
+
 .manifest-json-widget {
   .manifest-json-widget-resize-wrapper {
     position: relative;
@@ -18,7 +20,7 @@
     min-height: 180px;
     // Give the user a tall ceiling so they can read large manifests.
     max-height: 80vh;
-    border: 1px solid #d9d9d9;
+    border: 1px solid @grey-22;
     border-radius: 4px;
 
     .manifest-json-widget-editor,
@@ -30,7 +32,7 @@
 
   // Hint so users notice the draggable corner.
   .manifest-json-widget-resize-hint {
-    color: rgba(0, 0, 0, 0.45);
+    color: @grey-28;
     font-size: 12px;
     margin-top: 4px;
     display: block;

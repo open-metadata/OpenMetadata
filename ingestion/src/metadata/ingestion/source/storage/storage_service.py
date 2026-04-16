@@ -94,11 +94,15 @@ DEFAULT_EXCLUDE_PATHS = {
     "_SUCCESS",
 }
 
-_GLOB_CHARS = ("*", "?", "[")
+_GLOB_CHARS = ("*", "?")
 
 
 def has_glob(path: str) -> bool:
-    """Return True if path contains a glob wildcard."""
+    """Return True if path contains a supported glob wildcard (``*``,
+    ``**``, or ``?``). Bracket character classes (``[abc]``) are not
+    implemented by ``pattern_to_regex`` and are treated as literal
+    characters so paths containing ``[`` aren't misclassified as globs.
+    """
     return any(c in path for c in _GLOB_CHARS)
 
 
