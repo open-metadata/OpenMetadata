@@ -24,7 +24,9 @@ class TableRepositoryDataModelTagTest {
 
   static {
     tableRepository = Mockito.mock(TableRepository.class);
-    Mockito.when(tableRepository.removeStaleDbtAutomatedTags(Mockito.anyList(), Mockito.nullable(List.class)))
+    Mockito.when(
+            tableRepository.removeStaleDbtAutomatedTags(
+                Mockito.anyList(), Mockito.nullable(List.class)))
         .thenCallRealMethod();
   }
 
