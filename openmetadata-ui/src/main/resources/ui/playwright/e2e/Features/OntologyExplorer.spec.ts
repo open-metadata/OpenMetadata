@@ -377,29 +377,25 @@ test.describe('Ontology Explorer', () => {
       await expect(toggle).toHaveAttribute('data-selected', 'true');
     });
 
-    test('should change layout to Radial and back to Hierarchical', async ({
+    test('should change layout to Circular and back to Hierarchical', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
       await page.getByTestId('ontology-graph-settings').click();
       await expect(page.getByTestId('graph-settings-close')).toBeVisible();
 
-      await page.getByTestId('graph-settings-layout-button').click();
+      const layoutSelect = page.getByTestId('graph-settings-layout-select');
+      await layoutSelect.click();
       await expect(
-        page.getByRole('menuitemradio', { name: 'Radial' })
+        page.getByRole('option', { name: 'Circular' })
       ).toBeVisible();
-      await page.getByRole('menuitemradio', { name: 'Radial' }).click();
-
-      await expect(
-        page.getByTestId('graph-settings-layout-button')
-      ).toContainText('Radial');
+      await page.getByRole('option', { name: 'Circular' }).click();
+      await expect(layoutSelect).toContainText('Circular');
       await waitForGraphLoaded(page);
 
-      await page.getByTestId('graph-settings-layout-button').click();
-      await page.getByRole('menuitemradio', { name: 'Hierarchical' }).click();
-      await expect(
-        page.getByTestId('graph-settings-layout-button')
-      ).toContainText('Hierarchical');
+      await layoutSelect.click();
+      await page.getByRole('option', { name: 'Hierarchical' }).click();
+      await expect(layoutSelect).toContainText('Hierarchical');
     });
   });
 
@@ -800,6 +796,8 @@ test.describe('Ontology Explorer', () => {
     test('should show hierarchy empty state when no hierarchical relations', async ({
       page,
     }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('view-mode-select').click();
       await page.getByRole('option', { name: 'Hierarchy' }).click();
