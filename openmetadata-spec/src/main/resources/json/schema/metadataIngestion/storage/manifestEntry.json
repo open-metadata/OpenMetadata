@@ -8,7 +8,7 @@
   "properties": {
     "pathPattern": {
       "title": "Path Pattern",
-      "description": "Glob-style path pattern relative to bucket root. Use * for single-level wildcard and ** for recursive matching. Examples: data/*/events/*.parquet, logs/**/*.json",
+      "description": "Glob-style path pattern relative to bucket root. Use '*' for single-level wildcard and '**' for recursive matching. Examples: 'data/*/events/*.parquet', 'logs/**/*.json'",
       "type": "string"
     },
     "structureFormat": {
@@ -40,7 +40,7 @@
     },
     "excludePatterns": {
       "title": "Exclude Patterns",
-      "description": "Glob patterns to exclude from discovery. Any file matching these patterns will be skipped. Example: data/archive/**, data/tmp_*/**",
+      "description": "Glob patterns to exclude from discovery. Any file matching these patterns will be skipped. Example: 'data/archive/**', 'data/tmp_*/**'",
       "type": "array",
       "items": {
         "type": "string"
