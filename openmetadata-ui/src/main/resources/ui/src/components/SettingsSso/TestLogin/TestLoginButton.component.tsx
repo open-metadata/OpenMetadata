@@ -265,16 +265,19 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       formData?.oidcConfiguration?.callbackUrl ??
       `${window.location.origin}/callback`;
 
+    const oidc = formData?.oidcConfiguration;
     const params = new URLSearchParams({
       discoveryUri,
       clientId,
       clientSecret,
       scope,
       callbackUrl,
-      prompt: formData?.oidcConfiguration?.prompt ?? '',
-      maxAge: formData?.oidcConfiguration?.maxAge ?? '',
-      clientAuthenticationMethod:
-        formData?.oidcConfiguration?.clientAuthenticationMethod ?? '',
+      prompt: oidc?.prompt ?? '',
+      maxAge: oidc?.maxAge ?? '',
+      clientAuthenticationMethod: oidc?.clientAuthenticationMethod ?? '',
+      disablePkce: String(oidc?.disablePkce ?? false),
+      useNonce: String(oidc?.useNonce ?? true),
+      customParams: JSON.stringify(oidc?.customParams ?? {}),
     });
     const initiateUrl = `${window.location.origin}/api/v1/system/config/auth/test-login/initiate?${params.toString()}`;
 

@@ -676,7 +676,7 @@ public class SystemResource {
   public Response updateSecurityConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SecurityConfiguration securityConfig) {
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
@@ -752,6 +752,12 @@ public class SystemResource {
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+
+      // Normalize after patch so derived fields (authority, publicKeyUrls, etc.)
+      // stay in sync with patched canonical fields like discoveryUri or oidcConfig.id.
+      if (updatedConfig.getAuthenticationConfiguration() != null) {
+        systemRepository.normalizeForPersistence(updatedConfig.getAuthenticationConfiguration());
+      }
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
