@@ -11,7 +11,9 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -203,12 +206,18 @@ public class TestCaseResolutionStatusRepository
         }
       }
       case Ack, Assigned -> {
-        // Task mutations removed — transitions happen via POST /tasks/{id}/resolve.
-        // TCRS record is still stored below for backward compatibility.
+        // Bridge legacy TCRS status writes onto the task-first incident workflow so existing
+        // clients keep working while Task remains the source of truth.
+        if (applyLegacyStatusToIncidentTask(recordEntity, recordFQN)) {
+          return;
+        }
       }
       case Resolved -> {
-        // Task mutations removed — resolution happens via POST /tasks/{id}/resolve.
-        // TCRS record is still stored below for backward compatibility.
+        // Bridge legacy TCRS status writes onto the task-first incident workflow so existing
+        // clients keep working while Task remains the source of truth.
+        if (applyLegacyStatusToIncidentTask(recordEntity, recordFQN)) {
+          return;
+        }
       }
       default -> throw new IllegalArgumentException(
           String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
@@ -248,6 +257,126 @@ public class TestCaseResolutionStatusRepository
     return message != null
         && message.contains(Entity.TEST_CASE_RESOLUTION_STATUS)
         && message.contains(Relationship.PARENT_OF.value());
+  }
+
+  private boolean applyLegacyStatusToIncidentTask(
+      TestCaseResolutionStatus recordEntity, String recordFQN) {
+    Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
+    if (incidentTask == null) {
+      LOG.debug(
+          "No workflow-managed incident task found for legacy status {} on {}. Falling back to direct TCRS insert.",
+          recordEntity.getTestCaseResolutionStatusType(),
+          recordFQN);
+      return false;
+    }
+
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task task =
+        taskRepository.get(
+            null,
+            incidentTask.getId(),
+            taskRepository.getFields(
+                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"));
+
+    String transitionId = resolveLegacyTransitionId(task, recordEntity);
+    if (transitionId == null) {
+      LOG.debug(
+          "Skipping legacy status {} for incident task {} already at stage {}",
+          recordEntity.getTestCaseResolutionStatusType(),
+          task.getId(),
+          task.getWorkflowStageId());
+      return true;
+    }
+
+    TaskResolutionType resolutionType =
+        recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
+            ? TaskResolutionType.Completed
+            : null;
+    Object resolvedPayload = buildLegacyResolvedPayload(recordEntity);
+    String comment = extractLegacyResolutionComment(recordEntity);
+
+    taskRepository.resolveTaskWithWorkflow(
+        task,
+        transitionId,
+        resolutionType,
+        null,
+        resolvedPayload,
+        comment,
+        recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null);
+
+    LOG.info(
+        "Applied legacy incident status {} to task {} using transition {}",
+        recordEntity.getTestCaseResolutionStatusType(),
+        task.getId(),
+        transitionId);
+    return true;
+  }
+
+  private Task findIncidentTaskForLegacyStatus(
+      TestCaseResolutionStatus recordEntity, String recordFQN) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+
+    UUID stateId = recordEntity.getStateId();
+    if (stateId != null) {
+      try {
+        Task task = taskRepository.find(stateId, Include.ALL);
+        if (task != null
+            && task.getType() == TaskEntityType.TestCaseResolution
+            && task.getAbout() != null
+            && recordFQN.equals(task.getAbout().getFullyQualifiedName())) {
+          return task;
+        }
+      } catch (EntityNotFoundException ignored) {
+        // Fall through to lookup by entity/type.
+      }
+    }
+
+    return taskRepository.findOpenTaskByEntityAndType(recordFQN, TaskEntityType.TestCaseResolution);
+  }
+
+  private String resolveLegacyTransitionId(Task task, TestCaseResolutionStatus recordEntity) {
+    return switch (recordEntity.getTestCaseResolutionStatusType()) {
+      case Ack -> "ack".equals(task.getWorkflowStageId()) ? null : "ack";
+      case Assigned -> "assigned".equals(task.getWorkflowStageId()) ? "reassign" : "assign";
+      case Resolved -> TaskEntityStatus.Completed == task.getStatus() ? null : "resolve";
+      default -> null;
+    };
+  }
+
+  private Object buildLegacyResolvedPayload(TestCaseResolutionStatus recordEntity) {
+    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved) {
+      if (recordEntity.getTestCaseResolutionStatusType()
+          == TestCaseResolutionStatusTypes.Assigned) {
+        Assigned assigned =
+            JsonUtils.convertValue(
+                recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
+        if (assigned == null || assigned.getAssignee() == null) {
+          return null;
+        }
+        return Map.of("assignees", List.of(assigned.getAssignee()));
+      }
+      return null;
+    }
+
+    Resolved resolved =
+        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
+    if (resolved == null || resolved.getTestCaseFailureReason() == null) {
+      return null;
+    }
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("testCaseFailureReason", resolved.getTestCaseFailureReason().value());
+    return payload;
+  }
+
+  private String extractLegacyResolutionComment(TestCaseResolutionStatus recordEntity) {
+    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved) {
+      return null;
+    }
+
+    Resolved resolved =
+        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
+    return resolved != null ? resolved.getTestCaseFailureComment() : null;
   }
 
   public void inferIncidentSeverity(TestCaseResolutionStatus incident) {
