@@ -123,9 +123,9 @@ export default defineConfig({
     },
     {
       name: 'Basic',
-      testMatch: '**/CustomProperties.spec.ts',
+      testMatch: '**/CustomPropertiess.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       fullyParallel: true,
     },
     {
@@ -139,7 +139,7 @@ export default defineConfig({
     // They must run in isolation after the main chromium project to avoid flakiness
     {
       name: 'SystemCertificationTags',
-      testMatch: '**/CustomProperties.spec.ts',
+      testMatch: '**/CustomPropertiess.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
