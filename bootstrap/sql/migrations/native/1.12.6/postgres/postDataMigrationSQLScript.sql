@@ -24,3 +24,4 @@ SET json = json - 'pipeline'
 WHERE fromentity = 'dataProduct' AND toentity = 'dataProduct'
   AND relation = 13
   AND json ?? 'pipeline';
+

@@ -25,5 +25,11 @@ public class Migration extends MigrationProcessImpl {
               + "until a full reindex is performed.",
           e);
     }
+
+    try {
+      MigrationUtil.revertWebhookAuthTypeToSecretKey(handle);
+    } catch (Exception e) {
+      LOG.error("Failed to revert webhook authType to secretKey in v1126 migration.", e);
+    }
   }
 }

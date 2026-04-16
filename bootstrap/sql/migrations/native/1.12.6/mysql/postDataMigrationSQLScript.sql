@@ -24,3 +24,4 @@ SET json = JSON_REMOVE(json, '$.pipeline')
 WHERE fromEntity = 'dataProduct' AND toEntity = 'dataProduct'
   AND relation = 13
   AND JSON_EXTRACT(json, '$.pipeline') IS NOT NULL;
+  
