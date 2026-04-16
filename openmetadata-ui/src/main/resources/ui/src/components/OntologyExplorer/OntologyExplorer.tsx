@@ -531,7 +531,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return undefined;
     }
     const engine = toLayoutEngineType(settings.layout);
-    if (engine !== LayoutEngine.Circular && engine !== LayoutEngine.Radial) {
+    if (engine !== LayoutEngine.Circular) {
       return undefined;
     }
 
@@ -1937,6 +1937,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     if (
       explorationMode === 'data' ||
+      filters.viewMode !== 'overview' ||
       activeGlossaryFilter ||
       !hasMoreTerms ||
       isLoadingMoreRef.current ||
@@ -1986,6 +1987,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, [
     explorationMode,
     filters.glossaryIds,
+    filters.viewMode,
     hasMoreTerms,
     scope,
     loadNextTermPage,
@@ -2349,6 +2351,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               }
             />
             <GraphSettingsPanel
+              isDataMode={explorationMode === 'data'}
               settings={settings}
               onSettingsChange={handleSettingsChange}
             />

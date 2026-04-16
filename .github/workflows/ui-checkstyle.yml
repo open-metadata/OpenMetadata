@@ -12,6 +12,7 @@
 name: UI Checkstyle
 
 on:
+  merge_group:
   pull_request_target:
     types:
       - opened
@@ -44,20 +45,23 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   authorize:
     if: |
-      github.event_name == 'pull_request_target' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request_target' &&
+      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 90
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
@@ -82,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -137,7 +141,7 @@ jobs:
           fi
 
       - name: Find existing lint comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -146,7 +150,7 @@ jobs:
           body-includes: '<!-- check:lint-src -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -169,7 +173,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -193,7 +197,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -239,7 +243,7 @@ jobs:
           fi
 
       - name: Find existing licence comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -248,7 +252,7 @@ jobs:
           body-includes: '<!-- check:license-header -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -267,7 +271,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -292,7 +296,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -320,7 +324,7 @@ jobs:
           fi
 
       - name: Find existing tsc comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -329,7 +333,7 @@ jobs:
           body-includes: '<!-- check:tsc-src -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -354,7 +358,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -378,7 +382,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -409,7 +413,7 @@ jobs:
           fi
 
       - name: Find existing i18n comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -418,7 +422,7 @@ jobs:
           body-includes: '<!-- check:i18n-sync -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -437,7 +441,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -461,7 +465,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -492,7 +496,7 @@ jobs:
           fi
 
       - name: Find existing app-docs comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -501,7 +505,7 @@ jobs:
           body-includes: '<!-- check:app-docs -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -520,7 +524,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -544,7 +548,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -596,7 +600,7 @@ jobs:
           fi
 
       - name: Find existing playwright lint comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -605,7 +609,7 @@ jobs:
           body-includes: '<!-- check:lint-playwright -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -628,7 +632,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -653,7 +657,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -697,7 +701,7 @@ jobs:
           fi
 
       - name: Find existing playwright tsc comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -706,7 +710,7 @@ jobs:
           body-includes: '<!-- check:tsc-playwright -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -731,7 +735,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
@@ -755,7 +759,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 
@@ -802,7 +806,7 @@ jobs:
           fi
 
       - name: Find existing lint comment
-        if: always()
+        if: ${{ always() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -811,7 +815,7 @@ jobs:
           body-includes: '<!-- check:lint-core-components -->'
 
       - name: Post failure comment
-        if: failure()
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
@@ -834,7 +838,7 @@ jobs:
           edit-mode: replace
 
       - name: Delete comment on success
-        if: success() && steps.fc.outputs.comment-id != ''
+        if: ${{ success() && steps.fc.outputs.comment-id != '' && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         env:
           COMMENT_ID: ${{ steps.fc.outputs.comment-id }}
