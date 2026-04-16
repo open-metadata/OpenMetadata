@@ -480,7 +480,7 @@ class SasSource(
                 if len(columns) == 0:
                     table_description = (
                         "Table has not been analyzed. "
-                        f'Head over to <a target="_blank" href="{table_url}">'
+                        f'Head over to <a href="{table_url}">'
                         f"SAS Information Catalog</a> to analyze the table."
                     )
                     try:
@@ -494,7 +494,7 @@ class SasSource(
                 else:
                     table_description = (
                         f"Last analyzed: <b>{table_extension.get('analysisTimeStamp')}</b>. "
-                        f'Visit <a target="_blank" href="{table_url}">SAS Information Catalog</a>'
+                        f'Visit <a href="{table_url}">SAS Information Catalog</a>'
                         f" for more information."
                     )
 
