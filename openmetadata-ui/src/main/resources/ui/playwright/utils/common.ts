@@ -495,15 +495,18 @@ export const assignDataProduct = async (
       .getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
+  const saveRequestPromise = page.waitForRequest(
+    (req) =>
+      req.method() === 'PATCH' && req.url().includes('/api/v1/')
   );
 
   await page
     .getByTestId('data-product-dropdown-actions')
     .getByTestId('saveAssociatedTag')
     .click();
-  await patchReq;
+
+  const saveRequest = await saveRequestPromise;
+  await saveRequest.response();
 
   if (pollForInheritance) {
     for (const dataProduct of dataProducts) {
