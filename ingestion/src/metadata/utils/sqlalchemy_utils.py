@@ -151,6 +151,8 @@ def get_all_table_ddls(
     """
     self.all_table_ddls: Dict[Tuple[str, str], str] = {}
     self.current_db: str = schema_name
+    if query is None:
+        return
     result = connection.execute(
         text(query).bindparams(schema_name=schema_name)
         if isinstance(query, str)
