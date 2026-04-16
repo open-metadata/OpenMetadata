@@ -28,9 +28,6 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import { WidgetSizeInfo } from '../AddWidgetModal/AddWidgetModal.interface';
 import AddWidgetTabContent from '../AddWidgetModal/AddWidgetTabContent';
 
-const LANDING_PAGE_MAX_GRID_SIZE =
-  customizeMyDataPageClassBase.landingPageMaxGridSize;
-
 interface Props {
   open: boolean;
   maxGridSizeSupport: number;
@@ -67,7 +64,8 @@ function AddDetailsPageWidgetModal({
   const tabItems: TabsProps['items'] = useMemo(
     () =>
       sortBy(widgetsList, 'name')?.map((widget) => {
-        const scaleFactor = maxGridSizeSupport / LANDING_PAGE_MAX_GRID_SIZE;
+        const scaleFactor =
+          maxGridSizeSupport / customizeMyDataPageClassBase.landingPageMaxGridSize;
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: GridSizes) => ({
             label: (
