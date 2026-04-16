@@ -273,7 +273,7 @@ class TestAutoDiscoveryTableGrouping:
         assert results[0]["name"] == "data/events"
 
 
-class TestAutoDiscoveryMultipleManifestEntrys:
+class TestAutoDiscoveryMultipleManifestEntries:
     """Multiple manifest_entries in the same config."""
 
     def test_multiple_patterns_different_formats(self):

@@ -11,7 +11,6 @@
 """
 Base class for ingesting Object Storage services
 """
-import secrets
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
@@ -450,6 +449,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 for key, size in matched_keys:
                     if key in already_discovered:
                         continue
+                    already_discovered.add(key)
                     logger.info(
                         f"Auto-discovered unstructured file '{key}' "
                         f"from pattern '{pattern}'"
@@ -491,7 +491,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     )
                     is_partitioned = bool(partition_columns)
 
-                sample_key = secrets.choice([k for k, _ in files])
+                sample_key = files[0][0]  # Pick first file deterministically
                 structure_format = entry.structureFormat or infer_structure_format(
                     sample_key
                 )
@@ -515,6 +515,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     f"({len(files)} files, partitioned={is_partitioned}) "
                     f"from pattern '{entry.pathPattern}'"
                 )
+
+                already_discovered.add(container_name)
 
                 yield {
                     "name": container_name,

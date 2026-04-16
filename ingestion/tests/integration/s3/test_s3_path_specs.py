@@ -10,16 +10,17 @@
 #  limitations under the License.
 
 """
-S3 integration tests for manifest auto-discovery.
+S3 integration tests for inline manifest auto-discovery.
 
 Uses the same MinIO test data as test_s3_storage.py but configures
-manifest instead of a manifest file, verifying:
+the inline 'manifest' config instead of a legacy manifest file
+(openmetadata.json), verifying:
 - Containers auto-discovered from glob patterns
 - Hive partitions auto-detected with correct types
 - Multiple file formats (parquet, csv)
 - Format auto-detection from extension
-- Manifest + manifest coexistence
-- Migration FQN compatibility
+- Legacy manifest file + inline manifest coexistence
+- Migration FQN compatibility (legacy → inline preserves entity IDs)
 - File count and size propagation
 """
 import uuid
