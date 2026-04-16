@@ -482,6 +482,49 @@ class QuickSightUnitTest(TestCase):
         assert result[0].fromColumns == [src_fqn]
         assert result[0].toColumn == alias_fqn
 
+    @pytest.mark.order(11)
+    def test_build_column_lineage_no_fallback_when_parser_has_global_lineage(self):
+        """
+        Regression test for the multi-table fallback bug (Issue #26670).
+
+        When lineage_parser.column_lineage is non-empty (parser succeeded)
+        but none of the pairs match from_entity (because they belong to a
+        different upstream table in a multi-table JOIN), the method must
+        return an empty list and must NOT call _get_column_lineage (the
+        name-based fallback). Calling the fallback here would manufacture
+        incorrect cross-table column lineage.
+        """
+        # Parser found lineage for a DIFFERENT table, not our from_entity
+        other_src_col = MagicMock()
+        other_src_col.raw_name = "user_id"
+        other_src_col._parent = MagicMock()
+        other_src_col._parent.__str__ = MagicMock(return_value="users_table")
+
+        other_tgt_col = MagicMock()
+        other_tgt_col.raw_name = "uid"
+
+        mock_parser = MagicMock()
+        # Parser globally found lineage — but only for 'users_table'
+        mock_parser.column_lineage = [(other_src_col, other_tgt_col)]
+
+        mock_from_entity = MagicMock()
+        # Our from_entity is 'orders_table' — no parser pairs match it
+        mock_from_entity.name.root = "orders_table"
+        mock_data_model = MagicMock()
+
+        with patch.object(
+            self.quicksight,
+            "_get_column_lineage",
+        ) as mock_fallback:
+            result = self.quicksight._build_column_lineage_from_parser(
+                mock_parser, mock_from_entity, mock_data_model
+            )
+
+        # Must NOT have called the name-based fallback
+        mock_fallback.assert_not_called()
+        # Must return an empty list — no manufactured lineage
+        assert result == []
+
     @pytest.mark.order(12)
     def test_build_column_lineage_no_fallback_when_parser_has_global_lineage(self):
         """
