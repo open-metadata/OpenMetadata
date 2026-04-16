@@ -803,23 +803,24 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const columnTitle = activeColumn ? (
     <div className="title-section">
-      <div className="tw:ml-4">
+      <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
         {breadcrumbPath.length > 1 &&
           breadcrumbPath.map((breadcrumb, index) => {
             const isLastItem = index === breadcrumbPath.length - 1;
 
             return (
               <div
-                className="tw:inline-flex tw:items-center"
+                className="tw:inline-flex tw:items-center tw:min-w-0"
                 key={breadcrumb.fullyQualifiedName}>
-                <div className="tw:inline-flex tw:items-center tw:gap-0.5">
+                <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
                   <Typography.Text
-                    className={classNames('tw:text-xs', {
+                    className={classNames('tw:text-xs tw:truncate tw:max-w-32', {
                       'tw:cursor-default tw:font-medium tw:text-gray-700':
                         isLastItem,
                       'tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
                         !isLastItem,
                     })}
+                    title={getEntityName(breadcrumb)}
                     onClick={
                       isLastItem
                         ? undefined
@@ -829,7 +830,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   </Typography.Text>
                   {index < breadcrumbPath.length - 1 && (
                     <ChevronRight
-                      className="tw:text-gray-400"
+                      className="tw:text-gray-400 tw:shrink-0"
                       height={16}
                       width={16}
                     />
@@ -840,13 +841,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           })}
       </div>
       <div className="title-container items-start gap-4">
-        <div className="d-flex items-center justify-between w-full">
-          <div className="d-flex items-center w-full">
-            <div className="tw:mr-2 tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
+        <div className="d-flex items-center justify-between w-full title-row">
+          <div className="d-flex items-center title-row" style={{ flex: 1 }}>
+            <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
               <ColumnIcon className="tw:h-5 tw:w-5 tw:text-gray-700" />
             </div>
-            <div className="d-flex flex-column w-full overflow-hidden">
-              <div className="d-flex items-center gap-2 w-full">
+            <div className="d-flex flex-column title-text-column">
+              <div className="d-flex items-center gap-2 title-name-row">
                 <Tooltip
                   mouseEnterDelay={0.5}
                   placement="topLeft"
@@ -900,7 +901,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 )}
             </div>
           </div>
-          <div>
+          <div className="tw:shrink-0">
             <Button
               color="secondary"
               data-testid="close-button"

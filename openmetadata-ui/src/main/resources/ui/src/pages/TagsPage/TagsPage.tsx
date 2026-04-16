@@ -693,6 +693,7 @@ const TagsPage = () => {
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography
+                  ellipsis
                   as="p"
                   className={classNames('tw:truncate', {
                     'tw:font-bold tw:text-brand-600':
