@@ -453,7 +453,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Update all CP types in Right Panel', async () => {
-          test.slow();
           for (const [index, type] of properties.entries()) {
             await updateCustomPropertyInRightPanel({
               page,
@@ -1140,6 +1139,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Email CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['email'];
 
           await showAdvancedSearchDialog(page);
@@ -1210,6 +1210,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Markdown CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['markdown'];
 
           await showAdvancedSearchDialog(page);
@@ -1265,6 +1266,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('SQL Query CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['sqlQuery'];
 
           await showAdvancedSearchDialog(page);
@@ -1306,6 +1308,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Duration CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['duration'];
 
           await showAdvancedSearchDialog(page);
@@ -1361,6 +1364,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Time CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['time-cp'];
 
           await showAdvancedSearchDialog(page);
@@ -1422,6 +1426,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Integer CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['integer'];
 
           await showAdvancedSearchDialog(page);
@@ -1503,6 +1508,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Number CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['number'];
 
           await showAdvancedSearchDialog(page);
@@ -1572,6 +1578,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         test('Timestamp CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = propertyNames['timestamp'];
 
           await showAdvancedSearchDialog(page);
@@ -3077,7 +3084,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     if (key === 'entity_tableColumn') {
       test('Set & update column-level custom property', async ({ page }) => {
-        test.setTimeout(600000);
+        test.slow();
 
         const { apiContext, afterAction } = await getApiContext(page);
 

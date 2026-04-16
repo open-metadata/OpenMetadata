@@ -1035,7 +1035,13 @@ export const editColumnCustomProperty = async (
       .getByText(testValue, { exact: true })
       .click();
   } else if (propertyType === 'table-cp') {
-    await page.locator('[data-testid="add-new-row"]').click();
+    await page
+      .getByTestId('edit-table-type-property-modal')
+      .getByTestId('add-new-row')
+      .waitFor({
+        state: 'visible',
+      });
+    await page.getByTestId('add-new-row').click();
     await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
     // Fill Row
