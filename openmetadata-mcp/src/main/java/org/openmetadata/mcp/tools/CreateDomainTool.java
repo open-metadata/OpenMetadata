@@ -44,24 +44,28 @@ public class CreateDomainTool implements McpTool {
     Object descriptionRaw = params.get("description");
     if (!(descriptionRaw instanceof String description) || description.isBlank()) {
       throw new IllegalArgumentException(
-          "Parameter 'description' is required and must be a non-blank string. Received: " + descriptionRaw);
+          "Parameter 'description' is required and must be a non-blank string. Received: "
+              + descriptionRaw);
     }
 
     Object domainTypeRaw = params.get("domainType");
     if (!(domainTypeRaw instanceof String domainType) || domainType.isBlank()) {
       throw new IllegalArgumentException(
-          "Parameter 'domainType' is required and must be a non-blank string. Received: " + domainTypeRaw);
+          "Parameter 'domainType' is required and must be a non-blank string. Received: "
+              + domainTypeRaw);
     }
 
     CreateDomain createDomain = new CreateDomain();
     createDomain.setName(name);
     createDomain.setDescription(description);
-    
+
     try {
-        createDomain.setDomainType(org.openmetadata.schema.type.DomainType.fromValue(domainType));
+      createDomain.setDomainType(org.openmetadata.schema.type.DomainType.fromValue(domainType));
     } catch (Exception e) {
-        throw new IllegalArgumentException(
-            "Parameter 'domainType' has invalid value '" + domainType + "'. Valid values are: Aggregate, Source-aligned, Consumer-aligned");
+      throw new IllegalArgumentException(
+          "Parameter 'domainType' has invalid value '"
+              + domainType
+              + "'. Valid values are: Aggregate, Source-aligned, Consumer-aligned");
     }
 
     if (params.containsKey("displayName")) {

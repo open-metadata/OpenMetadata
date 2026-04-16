@@ -66,12 +66,12 @@ class CreateDomainToolTest {
         .thenReturn(putResponse);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-         MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
-         MockedConstruction<DomainMapper> mapperMock =
-             mockConstruction(
-                 DomainMapper.class,
-                 (mapper, context) ->
-                     when(mapper.createToEntity(any(), anyString())).thenReturn(domain))) {
+        MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
+        MockedConstruction<DomainMapper> mapperMock =
+            mockConstruction(
+                DomainMapper.class,
+                (mapper, context) ->
+                    when(mapper.createToEntity(any(), anyString())).thenReturn(domain))) {
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.DOMAIN)).thenReturn(repo);
 
