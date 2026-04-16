@@ -22,7 +22,6 @@ import {
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
-  LayoutEngine,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
 } from '../OntologyExplorer.constants';
@@ -359,7 +358,7 @@ export function useGraphDataBuilder({
             nodesForGraph.filter(
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
-            LayoutEngine.Dagre,
+            layoutType,
             termHSpacing,
             termVSpacing
           )
