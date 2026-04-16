@@ -154,11 +154,27 @@ describe('DiffView renderHTML — textContent vs innerHTML behaviour', () => {
   it('is XSS safe — img onerror payload typed as plain text is escaped', () => {
     editor.commands.setContent({
       type: 'doc',
-      content: [{ type: 'paragraph', content: [
-        { type: 'diffView',
-          attrs: { class: 'diff-added', 'data-diff': 'true', 'data-testid': '' },
-          content: [{ type: 'text', text: '<img src=1 onerror=alert(document.cookie)>' }] },
-      ] }],
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'diffView',
+              attrs: {
+                class: 'diff-added',
+                'data-diff': 'true',
+                'data-testid': '',
+              },
+              content: [
+                {
+                  type: 'text',
+                  text: '<img src=1 onerror=alert(document.cookie)>',
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     const output = editor.getHTML();
@@ -222,11 +238,22 @@ describe('DiffView — Tiptap marks vs hardcoded HTML string as content', () => 
     // angle brackets are HTML-escaped in the serialised output.
     editor.commands.setContent({
       type: 'doc',
-      content: [{ type: 'paragraph', content: [
-        { type: 'diffView',
-          attrs: { class: 'diff-added', 'data-diff': 'true', 'data-testid': '' },
-          content: [{ type: 'text', text: '<strong>bold</strong>' }] },
-      ] }],
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'diffView',
+              attrs: {
+                class: 'diff-added',
+                'data-diff': 'true',
+                'data-testid': '',
+              },
+              content: [{ type: 'text', text: '<strong>bold</strong>' }],
+            },
+          ],
+        },
+      ],
     });
 
     const output = editor.getHTML();
@@ -238,11 +265,18 @@ describe('DiffView — Tiptap marks vs hardcoded HTML string as content', () => 
   it('literal <em> typed as plain text — escaped in output, NOT rendered as a real tag', () => {
     editor.commands.setContent({
       type: 'doc',
-      content: [{ type: 'paragraph', content: [
-        { type: 'diffView',
-          attrs: { class: '', 'data-diff': 'true', 'data-testid': '' },
-          content: [{ type: 'text', text: '<em>italic</em>' }] },
-      ] }],
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'diffView',
+              attrs: { class: '', 'data-diff': 'true', 'data-testid': '' },
+              content: [{ type: 'text', text: '<em>italic</em>' }],
+            },
+          ],
+        },
+      ],
     });
 
     const output = editor.getHTML();
