@@ -461,12 +461,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const addWidgetButton = adminPage
           .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
           .getByTestId('add-widget-button');
-        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'visible' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -477,9 +475,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'hidden' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
         await adminPage.getByTestId('save-button').click();
 
         await toastNotification(
@@ -609,12 +605,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const addWidgetButton = adminPage
           .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
           .getByTestId('add-widget-button');
-        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'visible' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -625,9 +619,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'hidden' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 
