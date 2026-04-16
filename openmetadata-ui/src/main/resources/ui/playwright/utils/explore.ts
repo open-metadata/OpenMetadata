@@ -312,7 +312,11 @@ export const getExportModalContent = (page: Page) =>
 
 export const openExportScopeModal = async (page: Page) => {
   await page.getByTestId('export-search-results-button').click();
-  await expect(getExportModalContent(page)).toBeVisible();
+  const modalContent = getExportModalContent(page);
+  await expect(modalContent).toBeVisible();
+  await expect(
+    modalContent.getByRole('button', { name: 'Export' })
+  ).toBeEnabled();
 };
 
 export const countCsvResponseRows = (csvText: string): number =>

@@ -210,6 +210,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [exportScope, allAssetsCount]
   );
 
+  const isVisibleScopeLimitExceeded = useMemo(
+    () =>
+      isSearchMode &&
+      exportScope === 'visible' &&
+      tabAssetsCount !== undefined &&
+      tabAssetsCount > EXPORT_ALL_ASSETS_LIMIT,
+    [isSearchMode, exportScope, tabAssetsCount]
+  );
+
   const isTabScopeDisabled = useMemo(
     () =>
       isSearchMode &&
@@ -725,7 +734,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
             isExporting ||
             isCountLoading ||
             isTabScopeDisabled ||
-            isAllAssetsLimitExceeded,
+            isAllAssetsLimitExceeded ||
+            isVisibleScopeLimitExceeded,
           loading: isExporting,
         }}
         okText={t('label.export')}
@@ -745,7 +755,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             type="error"
           />
         )}
-        {isAllAssetsLimitExceeded && (
+        {(isAllAssetsLimitExceeded || isVisibleScopeLimitExceeded) && (
           <Alert
             showIcon
             className="m-b-sm"
