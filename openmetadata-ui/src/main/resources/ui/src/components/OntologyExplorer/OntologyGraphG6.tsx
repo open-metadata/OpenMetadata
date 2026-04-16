@@ -121,11 +121,11 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         },
         zoomIn: () => {
           suppressEdgeCheck();
-          graphRef.current?.zoomBy(1.2);
+          graphRef.current?.zoomBy(1.2, { duration: 100 });
         },
         zoomOut: () => {
           suppressEdgeCheck();
-          graphRef.current?.zoomBy(0.8);
+          graphRef.current?.zoomBy(0.8, { duration: 100 });
         },
         runLayout: () => {
           const graph = graphRef.current;
