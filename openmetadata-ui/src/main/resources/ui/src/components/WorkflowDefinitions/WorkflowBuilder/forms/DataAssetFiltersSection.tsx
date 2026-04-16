@@ -111,20 +111,6 @@ export const DataAssetFiltersSection: React.FC<
                   </div>
                 )}
               </Card>
-              <Card className="tw:px-4 tw:py-3 tw:mt-3">
-                <Typography
-                  as="span"
-                  className="tw:flex tw:items-center tw:gap-2 tw:text-secondary"
-                  size="text-xs"
-                  weight="medium">
-                  <Typography as="span" size="text-xs" weight="semibold">
-                    {t('label.note')}
-                  </Typography>
-                  {t('message.filters-applied-to-assets', {
-                    dataAsset: dataAssetFilter.dataAsset,
-                  })}
-                </Typography>
-              </Card>
             </div>
           ))}
 
@@ -142,26 +128,29 @@ export const DataAssetFiltersSection: React.FC<
             </Button>
             {open && (
               <Card className="tw:absolute tw:left-0 tw:right-0 tw:top-full tw:mt-1 tw:z-50 tw:max-h-55 tw:overflow-y-auto">
-                {dataAssets.map((dataAsset) => {
-                  const isAlreadySelected =
-                    selectedDataAssets.includes(dataAsset);
+                <div className="tw:flex tw:flex-col">
+                  {dataAssets.map((dataAsset) => {
+                    const isAlreadySelected =
+                      selectedDataAssets.includes(dataAsset);
 
-                  return (
-                    <Button
-                      color="tertiary"
-                      data-testid={`data-asset-option-${dataAsset}`}
-                      isDisabled={isAlreadySelected}
-                      key={dataAsset}
-                      size="sm"
-                      onPress={() => {
-                        if (!isAlreadySelected) {
-                          handleDataAssetSelect(dataAsset);
-                        }
-                      }}>
-                      {dataAsset}
-                    </Button>
-                  );
-                })}
+                    return (
+                      <Button
+                        className="tw:w-full tw:justify-start"
+                        color="tertiary"
+                        data-testid={`data-asset-option-${dataAsset}`}
+                        isDisabled={isAlreadySelected}
+                        key={dataAsset}
+                        size="sm"
+                        onPress={() => {
+                          if (!isAlreadySelected) {
+                            handleDataAssetSelect(dataAsset);
+                          }
+                        }}>
+                        {dataAsset}
+                      </Button>
+                    );
+                  })}
+                </div>
               </Card>
             )}
           </div>
