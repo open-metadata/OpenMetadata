@@ -65,6 +65,11 @@ public final class MigrationUtil {
 
           if ("bearer".equals(authNodeType) && authTypeNode.has("secretKey")) {
             configObj.put("secretKey", authTypeNode.get("secretKey").asText());
+          } else {
+            LOG.warn(
+                "Dropping unrecognized authType (type={}) from webhook config for subscription {}",
+                authNodeType,
+                id);
           }
           configObj.remove("authType");
           modified = true;
@@ -79,7 +84,7 @@ public final class MigrationUtil {
           revertedCount++;
         }
       } catch (Exception e) {
-        LOG.warn("Error reverting event subscription {}: {}", id, e.getMessage());
+        LOG.warn("Error reverting event subscription {}", id, e);
       }
     }
 
