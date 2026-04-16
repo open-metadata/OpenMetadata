@@ -241,12 +241,34 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Service Databases page', async ({
       page,
     }) => {
-      await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
-      await testPaginationNavigation(
-        page,
-        '/api/v1/databases',
-        '[data-testid="service-children-table"]'
-      );
+      const searchApiMatcher = (response: { url: () => string }) =>
+        response.url().includes('/api/v1/search/query');
+
+      const page1ResponsePromise = page.waitForResponse(searchApiMatcher);
+      await page.goto(`/service/databaseServices/${databaseFqn}/details`);
+      await page.locator('[data-testid="service-children-table"]').waitFor({
+        state: 'visible',
+      });
+      const page1Response = await page1ResponsePromise;
+      expect(page1Response.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      const nextButton = page.getByTestId('next');
+      await expect(nextButton).toBeEnabled();
+
+      const [page2Response] = await Promise.all([
+        page.waitForResponse(searchApiMatcher),
+        nextButton.click(),
+      ]);
+      expect(page2Response.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeEnabled();
+      const paginationText = page.locator('[data-testid="page-indicator"]');
+      await expect(paginationText).toBeVisible();
+      const page2Content = await paginationText.textContent();
+      expect(page2Content).toMatch(/2\s*of\s*\d+/);
 
       const responsePromise = page.waitForResponse((response) =>
         response
@@ -262,10 +284,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         state: 'detached',
       });
 
-      const databaseResponsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/databases')
-      );
-      await page.getByTestId('databases').click();
+      const databaseResponsePromise =
+        page.waitForResponse(searchApiMatcher);
+      await page.getByTestId('details').click();
       const response2 = await databaseResponsePromise;
       expect(response2.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
@@ -273,10 +294,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         state: 'visible',
       });
 
-      const paginationText = page.locator('[data-testid="page-indicator"]');
-      await expect(paginationText).toBeVisible();
+      const paginationTextAfterSwitch = page.locator(
+        '[data-testid="page-indicator"]'
+      );
+      await expect(paginationTextAfterSwitch).toBeVisible();
 
-      const paginationTextContent = await paginationText.textContent();
+      const paginationTextContent =
+        await paginationTextAfterSwitch.textContent();
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
     });
     test('should test Service Database Tables complete flow with search', async ({
@@ -286,8 +310,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await testCompletePaginationWithSearch({
         page,
-        baseUrl: `/service/databaseServices/${databaseFqn}/databases`,
-        normalApiPattern: '/api/v1/databases',
+        baseUrl: `/service/databaseServices/${databaseFqn}/details`,
+        normalApiPattern: '/api/v1/search/query',
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',
@@ -673,9 +697,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         '[data-testid="data-models-table"]'
       );
       const responsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/dashboard/datamodels')
+        response.url().includes('/api/v1/search/query')
       );
-      await page.getByTestId('dashboards').click();
+      await page.getByTestId('details').click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
@@ -736,14 +760,36 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Directories normal pagination', async ({ page }) => {
+      const searchApiMatcher = (response: { url: () => string }) =>
+        response.url().includes('/api/v1/search/query');
+
+      const page1ResponsePromise = page.waitForResponse(searchApiMatcher);
       await page.goto(
-        `/service/driveServices/${serviceFqn}/directories?pageSize=15`
+        `/service/driveServices/${serviceFqn}/details?pageSize=15`
       );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/drives/directories',
-        '[data-testid="service-children-table"]'
-      );
+      await page.locator('[data-testid="service-children-table"]').waitFor({
+        state: 'visible',
+      });
+      const page1Response = await page1ResponsePromise;
+      expect(page1Response.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      const nextButton = page.getByTestId('next');
+      await expect(nextButton).toBeEnabled();
+
+      const [page2Response] = await Promise.all([
+        page.waitForResponse(searchApiMatcher),
+        nextButton.click(),
+      ]);
+      expect(page2Response.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeEnabled();
+      const paginationText = page.locator('[data-testid="page-indicator"]');
+      await expect(paginationText).toBeVisible();
+      const page2Content = await paginationText.textContent();
+      expect(page2Content).toMatch(/2\s*of\s*\d+/);
     });
 
     test('should test Directories complete flow with search', async ({
@@ -753,8 +799,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await testCompletePaginationWithSearch({
         page,
-        baseUrl: `/service/driveServices/${serviceFqn}/directories?showDeletedTables=false`,
-        normalApiPattern: '/api/v1/drives/directories',
+        baseUrl: `/service/driveServices/${serviceFqn}/details?showDeletedTables=false`,
+        normalApiPattern: '/api/v1/search/query',
         searchApiPattern: '/api/v1/search/query',
         searchTestTerm: 'pw',
         searchParamName: 'schema',

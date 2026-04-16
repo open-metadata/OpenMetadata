@@ -119,7 +119,9 @@ test.describe(
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
-      await expect(adminPage.getByText('Service')).toBeVisible();
+      await expect(
+        adminPage.getByText('Service', { exact: true })
+      ).toBeVisible();
     });
 
     test('Service customization should work', async ({
@@ -142,7 +144,7 @@ test.describe(
           true
         );
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-        await adminPage.getByText('Service').click();
+        await adminPage.getByText('Service', { exact: true }).click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
