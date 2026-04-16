@@ -97,7 +97,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      testMatch: '**/CustomProperties.spec.ts',
+      testMatch: '**/CustomPropertiess.spec.ts',
       teardown: 'entity-data-teardown',
     },
     {
@@ -109,14 +109,14 @@ export default defineConfig({
     },
     {
       name: 'DataAssetRulesEnabled',
-      testMatch: '**/CustomProperties.spec.ts',
+      testMatch: '**/CustomPropertiess.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
     },
     {
       name: 'DataAssetRulesDisabled',
-      testMatch: '**/CustomProperties.spec.ts',
+      testMatch: '**/CustomPropertiess.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
@@ -130,7 +130,7 @@ export default defineConfig({
     },
     {
       name: 'SearchRBAC',
-      testMatch: '**/CustomProperties.spec.ts',
+      testMatch: '**/CustomPropertiess.spec.ts',
       dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
