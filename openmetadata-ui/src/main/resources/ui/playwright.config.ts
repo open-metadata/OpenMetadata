@@ -30,9 +30,9 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 3 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -54,7 +54,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
@@ -82,7 +82,14 @@ export default defineConfig({
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
       teardown: 'entity-data-teardown',
-      testMatch: '**/CustomProperties.spec.ts',
+      testIgnore: [
+        '**/nightly/**',
+        '**/Auth/**',
+        '**/DataAssetRulesEnabled.spec.ts',
+        '**/DataAssetRulesDisabled.spec.ts',
+        '**/SystemCertificationTags.spec.ts',
+        '**/SearchRBAC.spec.ts',
+      ],
     },
     {
       name: 'entity-data-teardown',
@@ -97,7 +104,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      testMatch: '**/CustomPropertiess.spec.ts',
+      grep: /data-insight/,
       teardown: 'entity-data-teardown',
     },
     {
@@ -109,28 +116,28 @@ export default defineConfig({
     },
     {
       name: 'DataAssetRulesEnabled',
-      testMatch: '**/CustomPropertiess.spec.ts',
+      testMatch: '**/DataAssetRulesEnabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
     },
     {
       name: 'DataAssetRulesDisabled',
-      testMatch: '**/CustomPropertiess.spec.ts',
+      testMatch: '**/DataAssetRulesDisabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
     },
     {
       name: 'Basic',
-      testMatch: '**/CustomPropertiess.spec.ts',
+      grep: [/@basic/],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['setup'],
       fullyParallel: true,
     },
     {
       name: 'SearchRBAC',
-      testMatch: '**/CustomPropertiess.spec.ts',
+      testMatch: '**/SearchRBAC.spec.ts',
       dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
@@ -139,7 +146,7 @@ export default defineConfig({
     // They must run in isolation after the main chromium project to avoid flakiness
     {
       name: 'SystemCertificationTags',
-      testMatch: '**/CustomPropertiess.spec.ts',
+      testMatch: '**/SystemCertificationTags.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,

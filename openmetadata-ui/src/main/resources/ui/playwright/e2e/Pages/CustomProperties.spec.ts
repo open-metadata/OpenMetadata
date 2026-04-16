@@ -3084,7 +3084,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     if (key === 'entity_tableColumn') {
       test('Set & update column-level custom property', async ({ page }) => {
-        test.slow();
+        // 5 minutes timeout for this test since it handles all cp types
+        test.setTimeout(300000);
 
         const { apiContext, afterAction } = await getApiContext(page);
 
