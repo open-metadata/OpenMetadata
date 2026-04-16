@@ -146,7 +146,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:w-full tw:items-center tw:gap-5">
+    <div className="tw:flex tw:w-full tw:items-center tw:gap-5 tw:pl-2">
       {/* View Mode dropdown — disabled in data mode */}
       <div
         className={
