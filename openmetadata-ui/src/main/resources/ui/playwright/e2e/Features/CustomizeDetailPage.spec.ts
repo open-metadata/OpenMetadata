@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
@@ -66,15 +66,12 @@ const test = base.extend<{
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
+    const page = await browser.newPage();
     await user.login(page);
     await use(page);
-    await context.close();
+    await page.close();
   },
 });
-
-test.describe.configure({ mode: 'serial' });
 
 test.beforeAll('Setup Customize tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -140,66 +137,6 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   await navigationPersona.delete(apiContext);
   await afterAction();
 });
-
-const openAddDetailsWidgetModal = async (page: Page) => {
-  const addWidgetButton = page
-    .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-    .getByTestId('add-widget-button');
-  const widgetInfoTabs = page.getByTestId('widget-info-tabs');
-  const addWidgetModal = page.getByTestId('add-widget-modal');
-
-  await addWidgetButton.waitFor({ state: 'visible' });
-  await expect(addWidgetButton).toBeEnabled();
-
-  for (const clickStrategy of ['normal', 'dom'] as const) {
-    if (clickStrategy === 'normal') {
-      await addWidgetButton.click();
-    } else {
-      await addWidgetButton.evaluate((element) =>
-        (element as HTMLElement).click()
-      );
-    }
-
-    for (const delay of [500, 1000, 2000, 3000]) {
-      const isOpen =
-        (await widgetInfoTabs.isVisible().catch(() => false)) ||
-        (await addWidgetModal.isVisible().catch(() => false));
-
-      if (isOpen) {
-        await widgetInfoTabs.waitFor({ state: 'visible' });
-
-        return;
-      }
-
-      await page.waitForTimeout(delay);
-    }
-  }
-
-  throw new Error(
-    'Add widget modal did not open from empty widget placeholder.'
-  );
-};
-
-const saveCustomizeDetailsLayout = async (page: Page) => {
-  const saveResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/docStore') &&
-      ['POST', 'PUT', 'PATCH'].includes(response.request().method()),
-    {
-      timeout: 15000,
-    }
-  );
-
-  await expect(page.getByTestId('save-button')).toBeEnabled();
-  await page.getByTestId('save-button').click();
-  await saveResponse;
-
-  await toastNotification(
-    page,
-    /^Page layout (created|updated) successfully\.$/,
-    20000
-  );
-};
 
 test.describe(
   'Persona customize UI tab',
@@ -297,7 +234,12 @@ test.describe(
             .getByRole('switch')
         ).not.toBeChecked();
 
-        await saveCustomizeDetailsLayout(adminPage);
+        await adminPage.getByTestId('save-button').click();
+
+        await toastNotification(
+          adminPage,
+          /^Page layout (created|updated) successfully\.$/
+        );
 
         // Select navigation persona
         await userPage.getByTestId('dropdown-profile').click();
@@ -374,7 +316,12 @@ test.describe(
           .getByText('Incident Manager')
           .getByRole('switch')
           .click();
-        await saveCustomizeDetailsLayout(adminPage);
+        await adminPage.getByTestId('save-button').click();
+
+        await toastNotification(
+          adminPage,
+          /^Page layout (created|updated) successfully\.$/
+        );
 
         // Select navigation persona
         await redirectToHomePage(userPage);
@@ -510,7 +457,14 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .locator('.ant-modal-wrap')
           .waitFor({ state: 'detached' });
 
-        await openAddDetailsWidgetModal(adminPage);
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage
+          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+          .getByTestId('add-widget-button');
+        await expect(addWidgetButton).toBeVisible();
+        await expect(addWidgetButton).toBeEnabled();
+        await addWidgetButton.click();
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -521,10 +475,13 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'hidden' });
-        await saveCustomizeDetailsLayout(adminPage);
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
+        await adminPage.getByTestId('save-button').click();
+
+        await toastNotification(
+          adminPage,
+          /^Page layout (created|updated) successfully\.$/
+        );
       });
 
       await test.step('Validate customization', async () => {
@@ -644,7 +601,14 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .locator('.ant-modal-wrap')
           .waitFor({ state: 'detached' });
 
-        await openAddDetailsWidgetModal(adminPage);
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage
+          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+          .getByTestId('add-widget-button');
+        await expect(addWidgetButton).toBeVisible();
+        await expect(addWidgetButton).toBeEnabled();
+        await addWidgetButton.click();
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -655,11 +619,14 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await adminPage
-          .getByTestId('widget-info-tabs')
-          .waitFor({ state: 'hidden' });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
 
-        await saveCustomizeDetailsLayout(adminPage);
+        await adminPage.getByTestId('save-button').click();
+
+        await toastNotification(
+          adminPage,
+          /^Page layout (created|updated) successfully\.$/
+        );
       });
 
       await test.step('Validate customization', async () => {
@@ -734,7 +701,14 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await dragElement.dragTo(dropTarget);
 
-      await saveCustomizeDetailsLayout(adminPage);
+      await expect(adminPage.getByTestId('save-button')).toBeEnabled();
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
     });
 
     await test.step('Validate customization', async () => {
@@ -831,7 +805,12 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId(`tab-sample_data`)
       ).toHaveText('Sample Data Updated');
 
-      await saveCustomizeDetailsLayout(adminPage);
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
     });
 
     await test.step('validate applied label change and language support for page', async () => {
@@ -925,7 +904,12 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId(`tab-documentation`)
       ).toHaveText('Access Policy');
 
-      await saveCustomizeDetailsLayout(adminPage);
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
     });
 
     await test.step('validate applied label change for Domain Documentation tab', async () => {

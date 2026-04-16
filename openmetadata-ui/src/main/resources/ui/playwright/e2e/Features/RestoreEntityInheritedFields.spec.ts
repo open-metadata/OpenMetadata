@@ -26,6 +26,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  assignDataProduct,
   assignSingleSelectDomain,
   getApiContext,
   redirectToHomePage,
@@ -274,9 +275,9 @@ const waitForInheritedDomainOnEntityPage = async (
     await waitForAllLoadersToDisappear(page);
 
     const domainCountButton = page.getByTestId('domain-count-button');
-    const hasMultipleDomains = await domainCountButton.isVisible().catch(
-      () => false
-    );
+    const hasMultipleDomains = await domainCountButton
+      .isVisible()
+      .catch(() => false);
 
     if (hasMultipleDomains) {
       await expect(domainCountButton).toBeVisible({
@@ -355,9 +356,16 @@ entities.forEach((EntityClass) => {
         domain.responseData.displayName
       );
 
-      await assignInheritedDataProducts(page, entity, domain.responseData, [
-        dataProduct.responseData,
-      ]);
+      await entity.visitEntityPage(page);
+
+      await assignDataProduct(
+        page,
+        domain.responseData,
+        [dataProduct.responseData],
+        'Add',
+        'KnowledgePanel.DataProducts',
+        true
+      );
 
       // This will delete and restore and ensure both operation are successful
       await softDeleteEntity(
