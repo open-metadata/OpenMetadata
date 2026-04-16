@@ -255,6 +255,32 @@ class ChangePreviewUtilsTest {
     assertEquals(List.of("PII.None"), parsed.get("tags").removed());
   }
 
+  @Test
+  void parseChangeMap_missingRemovedField_defaultsToEmpty() {
+    String json = "{\"tags\":{\"added\":[\"PII.Sensitive\"]}}";
+    Map<String, FieldDiff> parsed = ChangePreviewUtils.parseChangeMap(json);
+
+    assertEquals(List.of("PII.Sensitive"), parsed.get("tags").added());
+    assertTrue(parsed.get("tags").removed().isEmpty());
+  }
+
+  @Test
+  void parseChangeMap_missingAddedField_defaultsToEmpty() {
+    String json = "{\"tags\":{\"removed\":[\"PII.None\"]}}";
+    Map<String, FieldDiff> parsed = ChangePreviewUtils.parseChangeMap(json);
+
+    assertTrue(parsed.get("tags").added().isEmpty());
+    assertEquals(List.of("PII.None"), parsed.get("tags").removed());
+  }
+
+  @Test
+  void fieldDiff_nullComponentsInConstructor_defaultToEmpty() {
+    FieldDiff diff = new FieldDiff(null, null);
+    assertTrue(diff.added().isEmpty());
+    assertTrue(diff.removed().isEmpty());
+    assertTrue(diff.isEmpty());
+  }
+
   // ---------------------------------------------------------------------------
   // hasNoChanges
   // ---------------------------------------------------------------------------

@@ -3023,7 +3023,7 @@
     "remove-lineage-edge": "删除血缘连线",
     "rename-entity": "修改{{entity}}的名称和显示名",
     "request-approval-message": "批准请求",
-    "request-approval-notification": "Approval required for",
+    "request-approval-notification": "需要批准：",
     "request-description": "请求详细描述",
     "request-description-message": "请求描述",
     "request-tags-message": "请求标签",

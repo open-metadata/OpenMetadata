@@ -48,6 +48,11 @@ public final class ChangePreviewUtils {
   private ChangePreviewUtils() {}
 
   public record FieldDiff(List<String> added, List<String> removed) {
+    public FieldDiff {
+      added = added != null ? added : List.of();
+      removed = removed != null ? removed : List.of();
+    }
+
     FieldDiff merge(FieldDiff next) {
       return new FieldDiff(
           union(minus(added, next.removed), minus(next.added, removed)),
