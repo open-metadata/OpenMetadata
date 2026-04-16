@@ -73,6 +73,21 @@ class MigrationUtilTest {
       }
       """;
 
+  private static final String WEBHOOK_ALREADY_MIGRATED =
+      """
+      {
+        "destinations": [
+          {
+            "type": "Webhook",
+            "config": {
+              "endpoint": "https://example.com/hook",
+              "authType": { "type": "bearer", "secretKey": "mysecret" }
+            }
+          }
+        ]
+      }
+      """;
+
   private static final String NON_WEBHOOK_DESTINATION =
       """
       {
@@ -125,6 +140,15 @@ class MigrationUtilTest {
   @Test
   void migrateWebhookSecretKeyToAuthTypeIsNoOpWhenEmptySecretKey() {
     Handle handle = handleReturningRows(List.of(row(WEBHOOK_WITH_EMPTY_SECRET_KEY)));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
+
+    verify(handle, never()).createUpdate(any());
+  }
+
+  @Test
+  void migrateWebhookSecretKeyToAuthTypeIsNoOpWhenAlreadyMigrated() {
+    Handle handle = handleReturningRows(List.of(row(WEBHOOK_ALREADY_MIGRATED)));
 
     assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
