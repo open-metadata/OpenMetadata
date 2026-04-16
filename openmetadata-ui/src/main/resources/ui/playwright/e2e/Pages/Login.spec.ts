@@ -15,7 +15,12 @@ import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { updateJWTTokenExpiryTime } from '../../utils/login';
 import { visitUserProfilePage } from '../../utils/user';
 
@@ -149,13 +154,14 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test('Refresh should work', async ({ browser }) => {
+  test('Refresh should work', async ({ page: page1, browser }) => {
     test.slow();
 
-    const browserContext = await browser.newContext();
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const page1 = await browserContext.newPage(),
-      page2 = await browserContext.newPage();
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    const context = page1.context();
+    const page2 = await context.newPage();
 
     const testUser = new UserClass();
     await testUser.create(apiContext);
@@ -165,7 +171,10 @@ test.describe('Login flow should work properly', () => {
 
       await testUser.login(page1);
       await redirectToHomePage(page1);
+      await waitForAllLoadersToDisappear(page1);
       await redirectToHomePage(page2);
+      await waitForAllLoadersToDisappear(page2);
+      await page2.reload();
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
       await page1.waitForTimeout(3 * 60 * 1000);
@@ -180,7 +189,6 @@ test.describe('Login flow should work properly', () => {
       await page2.close();
     });
 
-    await browserContext.close();
     await afterAction();
   });
 

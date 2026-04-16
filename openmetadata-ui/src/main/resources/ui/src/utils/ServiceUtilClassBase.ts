@@ -317,8 +317,45 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
+  private getDefaultLogoForServiceType(type: string): string {
+    const serviceTypes = this.getSupportedServiceFromList();
+
+    if (serviceTypes.messagingServices.includes(type)) {
+      return getServiceIcon('topicdefault');
+    }
+    if (serviceTypes.dashboardServices.includes(type)) {
+      return getServiceIcon('dashboarddefault');
+    }
+    if (serviceTypes.pipelineServices.includes(type)) {
+      return getServiceIcon('pipelinedefault');
+    }
+    if (serviceTypes.databaseServices.includes(type)) {
+      return getServiceIcon('databasedefault');
+    }
+    if (serviceTypes.mlmodelServices.includes(type)) {
+      return getServiceIcon('mlmodeldefault');
+    }
+    if (serviceTypes.storageServices.includes(type)) {
+      return getServiceIcon('storagedefault');
+    }
+    if (serviceTypes.searchServices.includes(type)) {
+      return getServiceIcon('searchdefault');
+    }
+    if (serviceTypes.securityServices.includes(type)) {
+      return getServiceIcon('securitydefault');
+    }
+    if (serviceTypes.driveServices.includes(type)) {
+      return getServiceIcon('drivedefault');
+    }
+    if (serviceTypes.apiServices.includes(type)) {
+      return getServiceIcon('restservice');
+    }
+
+    return getServiceIcon('defaultservice');
+  }
+
   public getServiceLogo(type: string) {
-    return getServiceIcon(type);
+    return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
   public getServiceTypeLogo(searchSource: {

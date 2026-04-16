@@ -252,7 +252,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
 
 export const getServiceIcon = (iconKey: string): string => {
   const normalizedKey = iconKey.toLowerCase().replaceAll(/[_-]/g, '');
-  const icon = SERVICE_ICON_LOADERS[normalizedKey] ?? defaultservice;
+  const icon = SERVICE_ICON_LOADERS[normalizedKey];
 
   return icon;
 };
