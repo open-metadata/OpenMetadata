@@ -1,23 +1,32 @@
 package org.openmetadata.service.migration.utils.v1126;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 class MigrationUtilTest {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String WEBHOOK_WITH_BEARER =
       """
@@ -81,6 +90,13 @@ class MigrationUtilTest {
     return handle;
   }
 
+  private Handle handleWithUpdateCapture(List<Map<String, Object>> rows, Update mockUpdate) {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery(any(String.class)).mapToMap().list()).thenReturn(rows);
+    when(handle.createUpdate(any(String.class))).thenReturn(mockUpdate);
+    return handle;
+  }
+
   private Map<String, Object> row(String json) {
     return Map.of("id", UUID.randomUUID().toString(), "json", json);
   }
@@ -113,8 +129,9 @@ class MigrationUtilTest {
   }
 
   @Test
-  void revertWebhookAuthTypeToSecretKeyRevertsBearer() {
-    Handle handle = handleReturningRows(List.of(row(WEBHOOK_WITH_BEARER)));
+  void revertWebhookAuthTypeToSecretKeyRevertsBearer() throws Exception {
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    Handle handle = handleWithUpdateCapture(List.of(row(WEBHOOK_WITH_BEARER)), mockUpdate);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig mockConfig = mock(DatasourceConfig.class);
@@ -123,13 +140,21 @@ class MigrationUtilTest {
 
       assertDoesNotThrow(() -> MigrationUtil.revertWebhookAuthTypeToSecretKey(handle));
 
-      verify(handle).createUpdate(any());
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(mockUpdate).bind(eq("json"), jsonCaptor.capture());
+
+      JsonNode config =
+          MAPPER.readTree(jsonCaptor.getValue()).get("destinations").get(0).get("config");
+      assertEquals("mysecret", config.get("secretKey").asText());
+      assertNull(config.get("authType"));
     }
   }
 
   @Test
-  void revertWebhookAuthTypeToSecretKeyHandlesNonBearerAuthType() {
-    Handle handle = handleReturningRows(List.of(row(WEBHOOK_WITH_NON_BEARER_AUTH_TYPE)));
+  void revertWebhookAuthTypeToSecretKeyHandlesNonBearerAuthType() throws Exception {
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    Handle handle =
+        handleWithUpdateCapture(List.of(row(WEBHOOK_WITH_NON_BEARER_AUTH_TYPE)), mockUpdate);
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
       DatasourceConfig mockConfig = mock(DatasourceConfig.class);
@@ -138,7 +163,13 @@ class MigrationUtilTest {
 
       assertDoesNotThrow(() -> MigrationUtil.revertWebhookAuthTypeToSecretKey(handle));
 
-      verify(handle).createUpdate(any());
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(mockUpdate).bind(eq("json"), jsonCaptor.capture());
+
+      JsonNode config =
+          MAPPER.readTree(jsonCaptor.getValue()).get("destinations").get(0).get("config");
+      assertNull(config.get("authType"));
+      assertNull(config.get("secretKey"));
     }
   }
 }

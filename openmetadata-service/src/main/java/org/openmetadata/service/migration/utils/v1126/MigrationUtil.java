@@ -61,9 +61,14 @@ public final class MigrationUtil {
           }
 
           ObjectNode configObj = (ObjectNode) config;
-          String authNodeType = authTypeNode.has("type") ? authTypeNode.get("type").asText() : null;
+          String authNodeType =
+              authTypeNode.has("type") && !authTypeNode.get("type").isNull()
+                  ? authTypeNode.get("type").asText()
+                  : null;
 
-          if ("bearer".equals(authNodeType) && authTypeNode.has("secretKey")) {
+          if ("bearer".equalsIgnoreCase(authNodeType)
+              && authTypeNode.has("secretKey")
+              && !authTypeNode.get("secretKey").isNull()) {
             configObj.put("secretKey", authTypeNode.get("secretKey").asText());
           } else {
             LOG.warn(
