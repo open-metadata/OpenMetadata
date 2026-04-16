@@ -186,6 +186,24 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     return SdkClients.adminClient().tables().create(tableRequest);
   }
 
+  private TestSuite createBasicTestSuite(CreateTestSuite request) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.sdk.network.RequestOptions options =
+        org.openmetadata.sdk.network.RequestOptions.builder()
+            .queryParam("name", request.getName())
+            .build();
+
+    return client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.POST,
+            "/v1/dataQuality/testSuites/basic",
+            request,
+            TestSuite.class,
+            options);
+  }
+
   @Override
   protected TestCase createEntity(CreateTestCase createRequest) {
     return SdkClients.adminClient().testCases().create(createRequest);
@@ -1063,7 +1081,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     CreateTestSuite basicSuiteReq = new CreateTestSuite();
     basicSuiteReq.setName(table.getFullyQualifiedName());
     basicSuiteReq.setBasicEntityReference(table.getFullyQualifiedName());
-    TestSuite basicSuite = client.testSuites().create(basicSuiteReq);
+    TestSuite basicSuite = createBasicTestSuite(basicSuiteReq);
 
     EntityReference basicSuiteRef =
         new EntityReference().withId(basicSuite.getId()).withType(Entity.TEST_SUITE);
@@ -1184,7 +1202,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     CreateTestSuite basicSuiteReq = new CreateTestSuite();
     basicSuiteReq.setName(table.getFullyQualifiedName());
     basicSuiteReq.setBasicEntityReference(table.getFullyQualifiedName());
-    TestSuite basicSuite = client.testSuites().create(basicSuiteReq);
+    TestSuite basicSuite = createBasicTestSuite(basicSuiteReq);
 
     Map<String, Object> request = new HashMap<>();
     request.put("testSuiteId", basicSuite.getId().toString());
