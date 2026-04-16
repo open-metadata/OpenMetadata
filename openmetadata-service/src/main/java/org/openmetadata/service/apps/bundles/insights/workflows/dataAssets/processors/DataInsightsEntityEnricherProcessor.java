@@ -188,6 +188,7 @@ public class DataInsightsEntityEnricherProcessor
 
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
+    stripNestedColumnChildren(entityMap);
 
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
 
@@ -243,6 +244,26 @@ public class DataInsightsEntityEnricherProcessor
         o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
 
     return entityMap;
+  }
+
+  /**
+   * Removes the recursive {@code children} subtree from every top-level column entry in the
+   * serialized entity map. The DI data stream uses dynamic field mapping, and deeply nested
+   * STRUCT/UNION column types can expand into hundreds of unique field paths per document,
+   * pushing the index past OpenSearch's {@code index.mapping.total_fields.limit} of 1000.
+   * Top-level column metadata (name, type, description, etc.) is preserved.
+   */
+  @SuppressWarnings("unchecked")
+  private static void stripNestedColumnChildren(Map<String, Object> entityMap) {
+    Object columns = entityMap.get("columns");
+    if (!(columns instanceof List<?> columnList)) {
+      return;
+    }
+    for (Object column : columnList) {
+      if (column instanceof Map<?, ?> columnMap) {
+        ((Map<String, Object>) columnMap).remove("children");
+      }
+    }
   }
 
   private String processTeam(EntityInterface entity) {

@@ -126,7 +126,8 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
     (dp: DataProduct) => {
       setIsOpen(false);
       navigate(
-        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`
+        `${dataProductBasePath}/${getEncodedFqn(dp.fullyQualifiedName ?? '')}`,
+        { state: { fromMarketplace: true } }
       );
     },
     [navigate, dataProductBasePath]
@@ -135,7 +136,9 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const handleDomainClick = useCallback(
     (domain: Domain) => {
       setIsOpen(false);
-      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''), {
+        state: { fromMarketplace: true },
+      });
     },
     [navigate]
   );
@@ -248,7 +251,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
       <Input
         autoComplete="off"
         data-testid="marketplace-search-input"
-        fontSize="xs"
+        fontSize="sm"
         icon={SearchLg}
         iconClassName="tw:!size-4"
         inputClassName="tw:!pl-9"
@@ -258,7 +261,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
             t('label.data-product-plural') + ', ' + t('label.domain-plural'),
         })}
         value={searchValue}
-        wrapperClassName="marketplace-search-input tw:!items-center"
+        wrapperClassName="marketplace-search-input tw:!rounded-xl tw:!items-center tw:!py-1"
         onChange={(value) => handleChange(value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {

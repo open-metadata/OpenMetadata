@@ -273,3 +273,15 @@ ui-checkstyle-playwright-changed:
 .PHONY: ui-checkstyle-core-components-changed
 ui-checkstyle-core-components-changed:
 	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
+
+# Run all full UI checkstyle operations with one command.
+.PHONY: ui-checkstyle-all
+ui-checkstyle-all:
+	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle && yarn ui-checkstyle:playwright
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
+
+# Run all changed-file UI checkstyle operations with one command.
+.PHONY: ui-checkstyle-changed
+ui-checkstyle-changed:
+	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed && yarn ui-checkstyle:playwright:changed
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed

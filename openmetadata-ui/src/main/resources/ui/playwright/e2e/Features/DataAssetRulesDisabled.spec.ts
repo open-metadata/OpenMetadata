@@ -196,9 +196,9 @@ test.describe(
         ).toBeVisible();
 
         await page
-          .getByTestId('select-owner-tabs')
+          .getByRole('tabpanel', { name: /Users/ })
           .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .waitFor({ state: 'hidden' });
 
         await page
           .locator("[data-testid='select-owner-tabs']")
@@ -206,9 +206,9 @@ test.describe(
           .click();
 
         await page
-          .getByTestId('select-owner-tabs')
+          .getByRole('tabpanel', { name: 'Teams' })
           .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .waitFor({ state: 'hidden' });
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'

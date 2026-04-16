@@ -115,7 +115,6 @@ const GlossaryDetails = ({
                   glossaryId={glossary.id}
                   height="100%"
                   scope="glossary"
-                  showHeader={false}
                 />
               ),
             },

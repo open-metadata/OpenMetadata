@@ -2244,6 +2244,79 @@ class DbtUnitTest(TestCase):
                     "dbtSourceProject field should not be None",
                 )
 
+    def test_remove_manifest_non_required_keys_strips_constraint_extra_keys(self):
+        """
+        Regression test: extra keys in constraint objects should be removed from each
+        constraint dict, not from the column dict that contains those constraints.
+        Before the fix, the code iterated over column-level keys and deleted any that
+        weren't in REQUIRED_CONSTRAINT_KEYS, wiping column fields like description,
+        meta, and the constraints list itself — causing false version bumps on every
+        subsequent dbt ingestion run.
+        """
+        manifest = {
+            "metadata": {"dbt_schema_version": "v1"},
+            "nodes": {
+                "model.project.orders": {
+                    "name": "orders",
+                    "resource_type": "model",
+                    "schema": "public",
+                    "columns": {
+                        "order_id": {
+                            "name": "order_id",
+                            "description": "Primary key for orders",
+                            "meta": {"pii": False},
+                            "tags": ["primary"],
+                            "constraints": [
+                                {
+                                    "type": "not_null",
+                                    "name": "order_id_not_null",
+                                    "expression": None,
+                                    "warn_unenforced": False,
+                                    "warn_unsupported": False,
+                                    "custom_undocumented_key": "should_be_removed",
+                                }
+                            ],
+                        },
+                        "status": {
+                            "name": "status",
+                            "description": "Order status",
+                            "meta": {},
+                            "tags": [],
+                            "constraints": None,
+                        },
+                    },
+                }
+            },
+            "sources": {},
+            "exposures": {},
+        }
+
+        self.dbt_source_obj.remove_manifest_non_required_keys(manifest_dict=manifest)
+
+        order_id_col = manifest["nodes"]["model.project.orders"]["columns"]["order_id"]
+        status_col = manifest["nodes"]["model.project.orders"]["columns"]["status"]
+
+        # Column-level keys must be preserved — the bug stripped them
+        assert order_id_col["description"] == "Primary key for orders"
+        assert order_id_col["meta"] == {"pii": False}
+        assert order_id_col["tags"] == ["primary"]
+        assert order_id_col["constraints"] is not None
+
+        # Extra key inside constraint should be removed
+        constraint = order_id_col["constraints"][0]
+        assert "custom_undocumented_key" not in constraint
+
+        # Required constraint keys must be preserved
+        assert constraint["type"] == "not_null"
+        assert constraint["name"] == "order_id_not_null"
+        assert constraint["expression"] is None
+        assert constraint["warn_unenforced"] is False
+        assert constraint["warn_unsupported"] is False
+
+        # Column without constraints gets constraints set to None
+        assert status_col["constraints"] is None
+        assert status_col["description"] == "Order status"
+
     def test_constants_required_constraint_keys(self):
         """Test REQUIRED_CONSTRAINT_KEYS constant"""
         from metadata.ingestion.source.database.dbt.constants import (
@@ -2767,6 +2840,84 @@ class DbtUnitTest(TestCase):
         assert result == [
             expected_fqn
         ], f"Expected lineage to resolve via target_schema 'snapshots', got: {result}"
+
+    def test_dbt_entity_link_with_mixed_case_columns_issue_24636(self):
+        """
+        Test for issue #24636: dbt test case ingestion fails with relationship tests.
+
+        Root cause: dbt relationship tests have multiple upstream dependencies, but the
+        order varies by database engine (Snowflake first, Unity Catalog last). Previously,
+        code iterated over ALL upstream tables, causing column validation errors when
+        the referenced table didn't have the same column names.
+
+        Fix: Extract primary table from test_metadata.kwargs['model'] explicitly,
+        which is order-independent and works across all database engines.
+        """
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE
+        )
+
+        # Test case 1: Relationship test with kwargs['model'] extraction (main code path)
+        # This test exercises the primary fix for issue #24636
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.relationships_un_rueckerstattungen_medis_base_PersonNr__ref_un_person_base_"
+        )
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table
+                "unity.catalog.schema.un_person_base",  # Referenced table
+            ],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        # Should return only one entity link (for the primary table)
+        self.assertEqual(
+            len(result), 1, "Should only create one entity link for primary table"
+        )
+        # Link should be to the primary table extracted from kwargs['model']
+        self.assertIn("un_rueckerstattungen_medis_base", result[0])
+        self.assertIn("::columns::PersonNr>", result[0])
+        self.assertNotIn("un_person_base", result[0])
+
+        # Test case 2: Verify kwargs['model'] path works with REVERSED upstream order
+        # This proves the fix is order-independent (the bug in #24636)
+        dbt_test_reversed = {
+            "manifest_node": manifest_node,
+            "upstream": [
+                "unity.catalog.schema.un_person_base",  # Referenced table FIRST
+                "unity.catalog.schema.un_rueckerstattungen_medis_base",  # Primary table LAST
+            ],
+            "results": "",
+        }
+        result_reversed = generate_entity_link(dbt_test=dbt_test_reversed)
+        # Should still return the primary table, proving kwargs['model'] extraction works
+        self.assertEqual(
+            len(result_reversed),
+            1,
+            "Should return primary table regardless of upstream order",
+        )
+        self.assertIn("un_rueckerstattungen_medis_base", result_reversed[0])
+        self.assertIn("::columns::PersonNr>", result_reversed[0])
+        self.assertNotIn("un_person_base", result_reversed[0])
+
+        # Test case 3: Fallback to first upstream when kwargs['model'] is unavailable
+        # This tests the fallback path (lines 720-722)
+        manifest_node_fallback = dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.unique_orders_order_id.fed79b3a6e"
+        )
+        dbt_test_fallback = {
+            "manifest_node": manifest_node_fallback,
+            "upstream": [
+                "unity.catalog.schema.un_abrechnungsposition_cur",  # First table
+                "unity.catalog.schema.un_person_base",  # Second table
+            ],
+            "results": "",
+        }
+        result_fallback = generate_entity_link(dbt_test=dbt_test_fallback)
+        # Should fall back to first upstream since model pattern doesn't match
+        self.assertEqual(len(result_fallback), 1)
+        self.assertIn("un_abrechnungsposition_cur", result_fallback[0])
 
 
 class TestDownloadDbtFiles(TestCase):
@@ -3552,3 +3703,160 @@ class TestFilterLatestPerProject:
         assert _has_date_pattern("project/dbt_project_one") is False
         assert _has_date_pattern("project/some_static_dir") is False
         assert _has_date_pattern("dir_a") is False
+
+
+class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
+    """
+    Tests that add_dbt_test_result() skips entries that were compiled but
+    never executed (produced by dbt jobs that only run ``dbt run``).
+
+    When multiple dbt Cloud jobs share the same project a ``dbt run`` job
+    populates run_results.json with test nodes that have status="success" but
+    message=null because no SQL was actually executed.  These compiled-only
+    entries must not be ingested as real test case results.
+    """
+
+    @staticmethod
+    def _make_dbt_source():
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        source = MagicMock(spec=DbtSource)
+        # Bind the real method so self is the mock instance
+        source.add_dbt_test_result = DbtSource.add_dbt_test_result.__get__(
+            source, DbtSource
+        )
+        source.metadata = MagicMock()
+        source.context = MagicMock()
+        return source
+
+    @staticmethod
+    def _make_manifest_node(name="test_not_null_orders_id"):
+        node = MagicMock()
+        node.name = name
+        return node
+
+    @staticmethod
+    def _make_test_result(status, message, timing=None):
+        result = MagicMock()
+        result.status = MagicMock(value=status)
+        result.message = message
+        result.timing = timing or []
+        result.unique_id = f"test.pkg.{status}"
+        return result
+
+    def _make_dbt_test(self, status, message, timing=None, upstream=None):
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status=status, message=message, timing=timing
+            ),
+            DbtCommonEnum.UPSTREAM.value: upstream or [],
+        }
+
+    def test_compiled_only_null_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message=None.
+        Must not call add_test_case_results.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=None))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_compiled_only_empty_message_is_skipped(self):
+        """
+        Compiled-only entry: status=success, message="" (empty string).
+        Empty string is falsy — must also be skipped.
+        """
+        source = self._make_dbt_source()
+        source.add_dbt_test_result(self._make_dbt_test(status="success", message=""))
+        source.metadata.add_test_case_results.assert_not_called()
+
+    def test_real_pass_result_is_ingested(self):
+        """
+        Real test pass: status=pass, message="Pass".
+        Must call add_test_case_results exactly once.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="pass", message="Pass", timing=[timing]
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_failure_result_is_ingested(self):
+        """
+        Real test failure: status=fail, message populated.
+        Must not be skipped by the compiled-only guard.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="fail",
+                message="Got 3 results, configured to fail if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_warn_result_is_ingested(self):
+        """
+        Real test warn: status=warn, message populated.
+        Must not be skipped.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="warn",
+                message="Got 1 result, configured to warn if != 0",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
