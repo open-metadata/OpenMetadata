@@ -18,7 +18,9 @@ Integration tests for SingleStore median/percentile functions.
 """
 
 import platform
+import time
 
+import pymysql
 import pytest
 from sqlalchemy import column, create_engine, text
 from sqlalchemy.dialects import mysql as mysql_dialect
@@ -30,7 +32,6 @@ from metadata.profiler.source.database.single_store.functions.median import (
 
 try:
     from testcontainers.core.container import DockerContainer
-    from testcontainers.core.waiting_utils import wait_for_logs
 
     HAS_TESTCONTAINERS = True
 except ImportError:
@@ -114,6 +115,25 @@ class TestSingleStoreMedianFnSQL:
         assert "SELECT" not in compiled
 
 
+def _wait_for_singlestore(host, port, timeout=180):
+    """Poll until SingleStore accepts connections on the MySQL port."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            conn = pymysql.connect(
+                host=host,
+                port=port,
+                user="root",
+                password=SINGLESTORE_ROOT_PASSWORD,
+                connect_timeout=5,
+            )
+            conn.close()
+            return
+        except pymysql.err.OperationalError:
+            time.sleep(2)
+    raise TimeoutError(f"SingleStore not ready on {host}:{port} after {timeout}s")
+
+
 @pytest.fixture(scope="module")
 def singlestore_engine():
     container = (
@@ -122,9 +142,9 @@ def singlestore_engine():
         .with_env("ROOT_PASSWORD", SINGLESTORE_ROOT_PASSWORD)
     )
     with container:
-        wait_for_logs(container, "ready for connections", timeout=120)
         host = container.get_container_host_ip()
-        port = container.get_exposed_port(SINGLESTORE_PORT)
+        port = int(container.get_exposed_port(SINGLESTORE_PORT))
+        _wait_for_singlestore(host, port, timeout=180)
         url = (
             f"mysql+pymysql://root:{SINGLESTORE_ROOT_PASSWORD}"
             f"@{host}:{port}/information_schema"

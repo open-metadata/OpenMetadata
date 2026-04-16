@@ -72,7 +72,9 @@ def _compile_median_fn(session, col_name, table_name, percentile, dimension_col=
 def mariadb_engine():
     container = MySqlContainer(image="mariadb:11", dbname="test_db")
     with container as container:
-        url = container.get_connection_url().replace("mysql://", "mysql+pymysql://", 1)
+        url = container.get_connection_url()
+        if url.startswith("mysql://"):
+            url = "mysql+pymysql://" + url[len("mysql://") :]
         engine = create_engine(url)
         with engine.connect() as conn:
             conn.execute(
