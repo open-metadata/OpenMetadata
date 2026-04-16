@@ -486,10 +486,20 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     partition_columns = entry.partitionColumns
                     is_partitioned = True
                 elif entry.autoPartitionDetection:
-                    partition_columns = detect_hive_partitions(
-                        [k for k, _ in files], table_root
+                    file_keys = [k for k, _ in files]
+                    partition_columns = detect_hive_partitions(file_keys, table_root)
+                    # Mark as partitioned if Hive columns detected OR if files
+                    # are nested under subdirectories (non-Hive partitions
+                    # like date prefixes 20230412/)
+                    has_subdirs = any(
+                        KEY_SEPARATOR
+                        in key[len(table_root) :]
+                        .lstrip(KEY_SEPARATOR)
+                        .rsplit(KEY_SEPARATOR, 1)[0]
+                        for key in file_keys
+                        if key.startswith(table_root)
                     )
-                    is_partitioned = bool(partition_columns)
+                    is_partitioned = bool(partition_columns) or has_subdirs
 
                 sample_key = files[0][0]  # Pick first file deterministically
                 structure_format = entry.structureFormat or infer_structure_format(
