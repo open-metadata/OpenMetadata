@@ -1322,54 +1322,6 @@ public class SystemRepository {
     }
   }
 
-  /**
-   * Auto-populates publicKeyUrls from OIDC discovery document for confidential clients
-   * This is called during save operation to ensure publicKeyUrls is populated before persisting
-   */
-  public void autoPopulatePublicKeyUrlsIfNeeded(AuthenticationConfiguration authConfig) {
-    if (authConfig == null) {
-      return;
-    }
-
-    // Only auto-populate for OIDC providers with confidential client type
-    boolean isOidcProvider =
-        authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
-            || authConfig.getProvider() == AuthProvider.GOOGLE
-            || authConfig.getProvider() == AuthProvider.AZURE
-            || authConfig.getProvider() == AuthProvider.OKTA
-            || authConfig.getProvider() == AuthProvider.AUTH_0
-            || authConfig.getProvider() == AuthProvider.AWS_COGNITO;
-
-    boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
-
-    if (!isOidcProvider || !isConfidentialClient) {
-      LOG.debug("Skipping publicKeyUrls auto-population - not OIDC confidential client");
-      return;
-    }
-
-    // Skip if already populated
-    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
-      LOG.debug("publicKeyUrls already populated, skipping auto-population");
-      return;
-    }
-
-    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
-    if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-      LOG.warn("Cannot auto-populate publicKeyUrls - missing oidcConfiguration or discoveryUri");
-      return;
-    }
-
-    try {
-      OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
-      discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
-      LOG.info(
-          "Auto-populated publicKeyUrls from discovery document for provider: {}",
-          authConfig.getProvider());
-    } catch (Exception e) {
-      LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
-    }
-  }
-
   private static final Pattern AZURE_TENANT_PATTERN =
       Pattern.compile(
           "login\\.(?:microsoftonline|partner\\.microsoftonline)\\.(?:com|us|cn)/([^/]+)/");
@@ -1466,14 +1418,12 @@ public class SystemRepository {
 
     OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
 
-    String discoveryUri =
-        firstNonEmpty(
-            authConfig.getDiscoveryUri(), oidcConfig != null ? oidcConfig.getDiscoveryUri() : null);
-    if (!nullOrEmpty(discoveryUri)) {
-      authConfig.setDiscoveryUri(discoveryUri);
-      if (oidcConfig != null) {
-        oidcConfig.setDiscoveryUri(discoveryUri);
-      }
+    // Mirror root→nested only. Never nested→root — that's hydrateForResponse's job
+    // (read path only). This prevents legacy configs (only nested discoveryUri) from
+    // accidentally triggering derivation on unrelated PATCHes.
+    String discoveryUri = authConfig.getDiscoveryUri();
+    if (!nullOrEmpty(discoveryUri) && oidcConfig != null) {
+      oidcConfig.setDiscoveryUri(discoveryUri);
     }
 
     String clientId =
@@ -1485,15 +1435,26 @@ public class SystemRepository {
       }
     }
 
+    String defaultCallback = buildDefaultCallbackUrl();
     String callbackUrl =
         firstNonEmpty(
             authConfig.getCallbackUrl(),
             oidcConfig != null ? oidcConfig.getCallbackUrl() : null,
-            buildDefaultCallbackUrl());
+            defaultCallback);
     if (!nullOrEmpty(callbackUrl)) {
       authConfig.setCallbackUrl(callbackUrl);
       if (oidcConfig != null) {
         oidcConfig.setCallbackUrl(callbackUrl);
+      }
+    }
+
+    if (oidcConfig != null && nullOrEmpty(oidcConfig.getServerUrl())) {
+      String serverUrl =
+          firstNonEmpty(
+              callbackUrl != null ? callbackUrl.replaceAll("/callback/?$", "") : null,
+              defaultCallback != null ? defaultCallback.replaceAll("/callback/?$", "") : null);
+      if (!nullOrEmpty(serverUrl)) {
+        oidcConfig.setServerUrl(serverUrl);
       }
     }
 

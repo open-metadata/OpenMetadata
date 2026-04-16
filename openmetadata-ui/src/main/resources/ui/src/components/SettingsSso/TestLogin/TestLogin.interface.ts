@@ -42,8 +42,10 @@ export interface TestLoginFormData {
     callbackUrl?: string;
     prompt?: string;
     disablePkce?: boolean;
+    useNonce?: boolean;
     clientAuthenticationMethod?: string;
     maxAge?: string;
+    customParams?: Record<string, string>;
   };
   samlConfiguration?: {
     idp?: {

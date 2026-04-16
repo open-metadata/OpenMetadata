@@ -59,6 +59,9 @@ public class TestLoginHandler {
 
   private TestLoginHandler() {}
 
+  private static final String TEST_LOGIN_CODE_VERIFIER = "testLoginCodeVerifier";
+  private static final String TEST_LOGIN_CLIENT_AUTH_METHOD = "testLoginClientAuthMethod";
+
   public static Response handleInitiate(HttpServletRequest req) {
     try {
       String discoveryUri = req.getParameter("discoveryUri");
@@ -68,6 +71,9 @@ public class TestLoginHandler {
       String prompt = req.getParameter("prompt");
       String maxAge = req.getParameter("maxAge");
       String clientAuthMethod = req.getParameter("clientAuthenticationMethod");
+      String disablePkce = req.getParameter("disablePkce");
+      String useNonce = req.getParameter("useNonce");
+      String customParams = req.getParameter("customParams");
 
       if (nullOrEmpty(discoveryUri)) {
         return buildHtmlErrorResponse("Discovery URI is required for Test Login.");
@@ -120,15 +126,29 @@ public class TestLoginHandler {
       session.setAttribute(TEST_LOGIN_DISCOVERY_URI, discoveryUri);
       session.setAttribute(TEST_LOGIN_CALLBACK_URL, callbackUrl);
       session.setAttribute(
-          "testLoginClientAuthMethod", clientAuthMethod != null ? clientAuthMethod : "");
+          TEST_LOGIN_CLIENT_AUTH_METHOD, clientAuthMethod != null ? clientAuthMethod : "");
 
       Map<String, String> params = new HashMap<>();
+
+      // Merge customParams first (lower priority — explicit params override below)
+      if (!nullOrEmpty(customParams)) {
+        try {
+          Map<String, String> custom =
+              JsonUtils.readValue(
+                  customParams, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+          if (custom != null) {
+            params.putAll(custom);
+          }
+        } catch (Exception e) {
+          LOG.warn("[Test Login] Failed to parse customParams: {}", e.getMessage());
+        }
+      }
+
       params.put(OidcConfiguration.SCOPE, scope);
       params.put(OidcConfiguration.RESPONSE_TYPE, "code");
       params.put(OidcConfiguration.RESPONSE_MODE, "query");
       params.put(OidcConfiguration.CLIENT_ID, clientId);
       params.put(OidcConfiguration.REDIRECT_URI, callbackUrl);
-      params.put("access_type", "offline");
 
       if (!nullOrEmpty(prompt)) {
         params.put(OidcConfiguration.PROMPT, prompt);
@@ -137,13 +157,27 @@ public class TestLoginHandler {
         params.put(OidcConfiguration.MAX_AGE, maxAge);
       }
 
+      // PKCE: send code_challenge unless explicitly disabled (mirrors real login)
+      if (!"true".equalsIgnoreCase(disablePkce)) {
+        com.nimbusds.oauth2.sdk.pkce.CodeVerifier codeVerifier =
+            new com.nimbusds.oauth2.sdk.pkce.CodeVerifier();
+        session.setAttribute(TEST_LOGIN_CODE_VERIFIER, codeVerifier.getValue());
+        com.nimbusds.oauth2.sdk.pkce.CodeChallenge challenge =
+            com.nimbusds.oauth2.sdk.pkce.CodeChallenge.compute(
+                com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod.S256, codeVerifier);
+        params.put("code_challenge", challenge.getValue());
+        params.put("code_challenge_method", "S256");
+      }
+
       // Prefix state with "test-login:" so AuthCallbackServlet routes to us
-      String state = TEST_LOGIN_STATE_PREFIX + java.util.UUID.randomUUID().toString();
+      String state = TEST_LOGIN_STATE_PREFIX + java.util.UUID.randomUUID();
       params.put("state", state);
       session.setAttribute(TEST_LOGIN_STATE, state);
 
-      String nonce = java.util.UUID.randomUUID().toString();
-      params.put("nonce", nonce);
+      // Nonce: send unless explicitly disabled (mirrors real login useNonce config)
+      if (!"false".equalsIgnoreCase(useNonce)) {
+        params.put("nonce", java.util.UUID.randomUUID().toString());
+      }
 
       String queryString =
           AuthenticationRequest.parse(
@@ -197,7 +231,7 @@ public class TestLoginHandler {
       String clientSecret = (String) session.getAttribute(TEST_LOGIN_CLIENT_SECRET);
       String discoveryUri = (String) session.getAttribute(TEST_LOGIN_DISCOVERY_URI);
       String callbackUrl = (String) session.getAttribute(TEST_LOGIN_CALLBACK_URL);
-      String clientAuthMethod = (String) session.getAttribute("testLoginClientAuthMethod");
+      String clientAuthMethod = (String) session.getAttribute(TEST_LOGIN_CLIENT_AUTH_METHOD);
 
       if (nullOrEmpty(clientId) || nullOrEmpty(discoveryUri)) {
         return buildPostMessageResponse(
@@ -211,8 +245,18 @@ public class TestLoginHandler {
                   .getContent());
       URI tokenEndpoint = providerMetadata.getTokenEndpointURI();
 
-      AuthorizationCodeGrant grant =
-          new AuthorizationCodeGrant(new AuthorizationCode(code), new URI(callbackUrl));
+      // Include PKCE code_verifier if it was generated during initiate
+      String storedVerifier = (String) session.getAttribute(TEST_LOGIN_CODE_VERIFIER);
+      AuthorizationCodeGrant grant;
+      if (!nullOrEmpty(storedVerifier)) {
+        grant =
+            new AuthorizationCodeGrant(
+                new AuthorizationCode(code),
+                new URI(callbackUrl),
+                new com.nimbusds.oauth2.sdk.pkce.CodeVerifier(storedVerifier));
+      } else {
+        grant = new AuthorizationCodeGrant(new AuthorizationCode(code), new URI(callbackUrl));
+      }
 
       TokenRequest tokenRequest;
       if (!nullOrEmpty(clientSecret)) {
@@ -256,7 +300,8 @@ public class TestLoginHandler {
       session.removeAttribute(TEST_LOGIN_CLIENT_SECRET);
       session.removeAttribute(TEST_LOGIN_DISCOVERY_URI);
       session.removeAttribute(TEST_LOGIN_CALLBACK_URL);
-      session.removeAttribute("testLoginClientAuthMethod");
+      session.removeAttribute(TEST_LOGIN_CLIENT_AUTH_METHOD);
+      session.removeAttribute(TEST_LOGIN_CODE_VERIFIER);
       LOG.info("[Test Login] Callback successful, {} claims extracted", claims.size());
 
       return buildPostMessageResponse(true, null, result);

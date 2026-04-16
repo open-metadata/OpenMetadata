@@ -200,7 +200,10 @@ class SystemRepositoryNormalizeTest {
   }
 
   @Test
-  void normalizeForPersistence_discoveryUriFromNested_syncsToRoot() {
+  void normalizeForPersistence_discoveryUriOnlyInNested_doesNotSyncToRoot() {
+    // Option B: normalize only mirrors root→nested. Legacy configs with only nested
+    // discoveryUri should NOT trigger root population or derivation on PATCH.
+    // hydrateForResponse handles nested→root for display only.
     AuthenticationConfiguration authConfig = new AuthenticationConfiguration();
     authConfig.setProvider(AuthProvider.CUSTOM_OIDC);
     authConfig.setCallbackUrl("http://localhost:8585/callback");
@@ -210,15 +213,10 @@ class SystemRepositoryNormalizeTest {
     oidc.setSecret("s");
     authConfig.setOidcConfiguration(oidc);
 
-    try (MockedStatic<ValidationHttpUtil> httpMock = mockStatic(ValidationHttpUtil.class)) {
-      httpMock
-          .when(() -> ValidationHttpUtil.safeGet(anyString()))
-          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, DISCOVERY_RESPONSE));
+    repository.normalizeForPersistence(authConfig);
 
-      repository.normalizeForPersistence(authConfig);
-    }
-
-    assertEquals(DISCOVERY_URI, authConfig.getDiscoveryUri());
+    assertNull(authConfig.getDiscoveryUri());
+    assertEquals(DISCOVERY_URI, authConfig.getOidcConfiguration().getDiscoveryUri());
   }
 
   @Test

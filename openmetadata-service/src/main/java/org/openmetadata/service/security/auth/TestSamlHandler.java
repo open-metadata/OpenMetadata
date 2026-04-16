@@ -20,7 +20,6 @@ import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
@@ -45,8 +45,13 @@ import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 public final class TestSamlHandler {
 
   public static final String RELAY_STATE_PREFIX = "saml-test-login:";
-  private static final String SESSION_KEY_PREFIX = "testSaml.";
   private static final String DEFAULT_CALLBACK_PATH = "/callback";
+  private static final long TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+  private record PendingTestLogin(Saml2Settings settings, long createdAt) {}
+
+  private static final ConcurrentHashMap<String, PendingTestLogin> PENDING =
+      new ConcurrentHashMap<>();
   private static final String HTTP_POST_BINDING =
       "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
   private static final String HTTP_REDIRECT_BINDING =
@@ -94,9 +99,9 @@ public final class TestSamlHandler {
           buildSamlSettings(idpEntityId, idpSsoLoginUrl, idpX509Certificate, spEntityId, spAcsUrl,
               nameIdFormat);
 
+      cleanupStale();
       String relayState = RELAY_STATE_PREFIX + UUID.randomUUID();
-      HttpSession session = req.getSession(true);
-      session.setAttribute(SESSION_KEY_PREFIX + relayState, settings);
+      PENDING.put(relayState, new PendingTestLogin(settings, System.currentTimeMillis()));
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
@@ -122,18 +127,12 @@ public final class TestSamlHandler {
             false, "Missing or invalid RelayState for SAML Test Login.", null);
       }
 
-      HttpSession session = req.getSession(false);
-      if (session == null) {
+      PendingTestLogin pending = PENDING.remove(relayState);
+      if (pending == null) {
         return TestLoginResponses.buildPostMessageResponse(
-            false, "Session expired. Please try SAML Test Login again.", null);
+            false, "SAML Test Login expired or already consumed. Please try again.", null);
       }
-
-      Saml2Settings settings =
-          (Saml2Settings) session.getAttribute(SESSION_KEY_PREFIX + relayState);
-      if (settings == null) {
-        return TestLoginResponses.buildPostMessageResponse(
-            false, "SAML Test Login session not found (RelayState mismatch).", null);
-      }
+      Saml2Settings settings = pending.settings();
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse =
@@ -153,7 +152,6 @@ public final class TestSamlHandler {
       }
 
       Map<String, Object> claims = buildClaimsFromAuth(auth);
-      session.removeAttribute(SESSION_KEY_PREFIX + relayState);
 
       return TestLoginResponses.buildPostMessageResponse(
           true, null, Map.of("claims", claims));
@@ -228,6 +226,11 @@ public final class TestSamlHandler {
       }
     }
     return claims;
+  }
+
+  private static void cleanupStale() {
+    long cutoff = System.currentTimeMillis() - TTL_MS;
+    PENDING.entrySet().removeIf(e -> e.getValue().createdAt() < cutoff);
   }
 
   private static String buildServerUrl(HttpServletRequest req) {
