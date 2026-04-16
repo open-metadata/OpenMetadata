@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Autocomplete,
   Avatar,
   Button,
   Dot,
@@ -18,6 +19,7 @@ import {
   FieldTypes,
   FormField,
   FormItemLabel,
+  FormSelectItem,
   getField,
   HintText,
   HookForm,
@@ -586,6 +588,18 @@ const AddDomainForm = ({
       onFocus: handleTagFocus,
       onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
       options: tagOptions,
+      renderItem: (item: FormSelectItem) => (
+        <Autocomplete.Item
+          avatarUrl={item.avatarUrl}
+          data-testid={`tag-option-${item.id}`}
+          icon={item.icon}
+          id={item.id}
+          isDisabled={item.isDisabled}
+          key={item.id}
+          label={item.label}
+          supportingText={item.supportingText}
+        />
+      ),
     },
     type: FieldTypes.TAG_SUGGESTION,
   };
