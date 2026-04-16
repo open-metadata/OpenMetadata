@@ -16,17 +16,14 @@ package org.openmetadata.service.governance.workflows.util;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import jakarta.json.JsonArray;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonString;
-import jakarta.json.JsonValue;
-import java.util.ArrayList;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -42,207 +39,140 @@ import org.openmetadata.schema.utils.JsonUtils;
 @Slf4j
 public final class ChangePreviewUtils {
 
+  private static final List<String> ID_KEYS =
+      List.of("tagFQN", "fullyQualifiedName", "displayName", "name");
+
+  private static final TypeReference<Map<String, FieldDiff>> CHANGE_MAP_TYPE =
+      new TypeReference<>() {};
+
   private ChangePreviewUtils() {}
 
-  public static List<String> extractIdentifiers(Object fieldValue) {
-    if (fieldValue == null) return List.of();
-    if (fieldValue instanceof List<?> list) {
-      if (list.isEmpty()) return List.of();
-      List<String> result = new ArrayList<>();
-      for (Object item : list) {
-        result.addAll(extractIdentifiers(item));
+  public record FieldDiff(List<String> added, List<String> removed) {
+    FieldDiff merge(FieldDiff next) {
+      return new FieldDiff(
+          union(minus(added, next.removed), minus(next.added, removed)),
+          union(minus(removed, next.added), minus(next.removed, added)));
+    }
+
+    boolean isEmpty() {
+      return added.isEmpty() && removed.isEmpty();
+    }
+  }
+
+  public static List<String> extractIdentifiers(Object value) {
+    return collect(normalize(value));
+  }
+
+  private static Object normalize(Object value) {
+    if (!(value instanceof String raw)) return value;
+    String stripped = raw.strip();
+    if (stripped.isEmpty()) return null;
+    try {
+      return JsonUtils.readValue(stripped, Object.class);
+    } catch (Exception e) {
+      return stripped;
+    }
+  }
+
+  private static List<String> collect(Object value) {
+    if (value == null) return List.of();
+    if (value instanceof Collection<?> collection) {
+      return collection.stream().flatMap(item -> collect(item).stream()).toList();
+    }
+    if (value instanceof Map<?, ?> map) {
+      for (String key : ID_KEYS) {
+        if (map.get(key) instanceof String idValue && !idValue.isBlank())
+          return List.of(idValue.strip());
       }
-      return result;
+      List<String> nested =
+          map.values().stream()
+              .filter(item -> item instanceof Map || item instanceof Collection)
+              .flatMap(item -> collect(item).stream())
+              .toList();
+      return nested.isEmpty() ? List.of(JsonUtils.pojoToJson(map)) : nested;
     }
-    if (fieldValue instanceof Map<?, ?> map) {
-      if (map.isEmpty()) return List.of();
-      return extractFromMap(map);
-    }
-    if (fieldValue instanceof String str) {
-      String stripped = str.strip();
-      if (stripped.isEmpty()) return List.of();
-      try {
-        JsonValue json = JsonUtils.readJson(stripped);
-        return extractFromJsonValue(json);
-      } catch (Exception e) {
-        return List.of(stripped);
-      }
-    }
-    String str = fieldValue.toString().strip();
+    String str = value.toString().strip();
     return str.isEmpty() ? List.of() : List.of(str);
   }
 
-  private static List<String> extractFromJsonValue(JsonValue json) {
-    return switch (json.getValueType()) {
-      case ARRAY -> extractFromArray(json.asJsonArray());
-      case OBJECT -> extractFromObject(json.asJsonObject());
-      case STRING -> List.of(((JsonString) json).getString().strip());
-      default -> List.of(json.toString());
-    };
+  private static List<String> union(List<String> left, List<String> right) {
+    return Stream.concat(left.stream(), right.stream()).distinct().toList();
   }
 
-  private static List<String> extractFromArray(JsonArray array) {
-    List<String> result = new ArrayList<>();
-    for (JsonValue item : array) {
-      result.addAll(extractFromJsonValue(item));
-    }
-    return result;
+  private static List<String> minus(List<String> source, Collection<String> exclusions) {
+    Set<String> exclusionSet = new HashSet<>(exclusions);
+    return source.stream().filter(item -> !exclusionSet.contains(item)).toList();
   }
 
-  private static List<String> extractFromObject(JsonObject obj) {
-    Set<String> keys = obj.keySet();
-    if (keys.contains("tagFQN")) return List.of(obj.getString("tagFQN").strip());
-    if (keys.contains("fullyQualifiedName"))
-      return List.of(obj.getString("fullyQualifiedName").strip());
-    if (keys.contains("displayName")) return List.of(obj.getString("displayName").strip());
-    if (keys.contains("name")) return List.of(obj.getString("name").strip());
-    List<String> result = new ArrayList<>();
-    for (JsonValue value : obj.values()) {
-      if (value.getValueType() == JsonValue.ValueType.OBJECT) {
-        result.addAll(extractFromObject(value.asJsonObject()));
-      }
-    }
-    return result.isEmpty() ? List.of(obj.toString()) : result;
-  }
-
-  private static List<String> extractFromMap(Map<?, ?> map) {
-    for (String key : List.of("tagFQN", "fullyQualifiedName", "displayName", "name")) {
-      Object val = map.get(key);
-      if (val != null) {
-        String identifier = val.toString().strip();
-        if (!identifier.isEmpty()) return List.of(identifier);
-      }
-    }
-    List<String> result = new ArrayList<>();
-    for (Object val : map.values()) {
-      if (val instanceof Map<?, ?> nested) {
-        result.addAll(extractFromMap(nested));
-      }
-    }
-    return result.isEmpty() ? List.of(JsonUtils.pojoToJson(map)) : result;
-  }
-
-  private static Map<String, List<String>> fieldEntry(List<String> added, List<String> removed) {
-    Map<String, List<String>> entry = new LinkedHashMap<>();
-    entry.put("added", new ArrayList<>(added));
-    entry.put("removed", new ArrayList<>(removed));
-    return entry;
-  }
-
-  public static Map<String, Map<String, List<String>>> buildChangeMap(ChangeDescription cd) {
-    Map<String, Map<String, List<String>>> result = new LinkedHashMap<>();
-    for (FieldChange fc : listOrEmpty(cd.getFieldsAdded())) {
-      result.put(fc.getName(), fieldEntry(extractIdentifiers(fc.getNewValue()), List.of()));
-    }
-    for (FieldChange fc : listOrEmpty(cd.getFieldsDeleted())) {
-      result.put(fc.getName(), fieldEntry(List.of(), extractIdentifiers(fc.getOldValue())));
-    }
-    for (FieldChange fc : listOrEmpty(cd.getFieldsUpdated())) {
+  public static Map<String, FieldDiff> buildChangeMap(ChangeDescription changeDescription) {
+    Map<String, FieldDiff> result = new LinkedHashMap<>();
+    for (FieldChange fieldChange : listOrEmpty(changeDescription.getFieldsAdded())) {
       result.put(
-          fc.getName(),
-          fieldEntry(extractIdentifiers(fc.getNewValue()), extractIdentifiers(fc.getOldValue())));
+          fieldChange.getName(),
+          new FieldDiff(extractIdentifiers(fieldChange.getNewValue()), List.of()));
+    }
+    for (FieldChange fieldChange : listOrEmpty(changeDescription.getFieldsDeleted())) {
+      result.put(
+          fieldChange.getName(),
+          new FieldDiff(List.of(), extractIdentifiers(fieldChange.getOldValue())));
+    }
+    for (FieldChange fieldChange : listOrEmpty(changeDescription.getFieldsUpdated())) {
+      result.put(
+          fieldChange.getName(),
+          new FieldDiff(
+              extractIdentifiers(fieldChange.getNewValue()),
+              extractIdentifiers(fieldChange.getOldValue())));
     }
     return result;
   }
 
-  private static List<String> setMinus(List<String> a, List<String> b) {
-    Set<String> bSet = new LinkedHashSet<>(b);
-    return a.stream().filter(v -> !bSet.contains(v)).collect(Collectors.toList());
-  }
-
-  private static List<String> setUnion(List<String> a, List<String> b) {
-    Set<String> aSet = new LinkedHashSet<>(a);
-    List<String> result = new ArrayList<>(a);
-    b.stream().filter(v -> !aSet.contains(v)).forEach(result::add);
-    return result;
-  }
-
-  private static Map<String, List<String>> mergeFieldEntries(
-      Map<String, List<String>> old, Map<String, List<String>> next) {
-    List<String> oldAdded = old.get("added");
-    List<String> oldRemoved = old.get("removed");
-    List<String> nextAdded = next.get("added");
-    List<String> nextRemoved = next.get("removed");
-    return fieldEntry(
-        setUnion(setMinus(oldAdded, nextRemoved), setMinus(nextAdded, oldRemoved)),
-        setUnion(setMinus(oldRemoved, nextAdded), setMinus(nextRemoved, oldAdded)));
-  }
-
-  public static Map<String, Map<String, List<String>>> mergeChangeMaps(
-      Map<String, Map<String, List<String>>> oldMap,
-      Map<String, Map<String, List<String>>> newMap) {
-    Map<String, Map<String, List<String>>> merged = new LinkedHashMap<>(oldMap);
-    for (Map.Entry<String, Map<String, List<String>>> entry : newMap.entrySet()) {
+  public static Map<String, FieldDiff> mergeChangeMaps(
+      Map<String, FieldDiff> oldMap, Map<String, FieldDiff> newMap) {
+    Map<String, FieldDiff> merged = new LinkedHashMap<>(oldMap);
+    for (Map.Entry<String, FieldDiff> entry : newMap.entrySet()) {
       String field = entry.getKey();
       merged.put(
           field,
-          merged.containsKey(field)
-              ? mergeFieldEntries(merged.get(field), entry.getValue())
-              : new LinkedHashMap<>(entry.getValue()));
+          merged.containsKey(field) ? merged.get(field).merge(entry.getValue()) : entry.getValue());
     }
-    merged
-        .entrySet()
-        .removeIf(
-            e -> e.getValue().get("added").isEmpty() && e.getValue().get("removed").isEmpty());
+    merged.entrySet().removeIf(entry -> entry.getValue().isEmpty());
     return merged;
   }
 
-  public static boolean hasNoChanges(ChangeDescription cd) {
-    return cd == null
-        || (nullOrEmpty(cd.getFieldsAdded())
-            && nullOrEmpty(cd.getFieldsUpdated())
-            && nullOrEmpty(cd.getFieldsDeleted()));
+  public static boolean hasNoChanges(ChangeDescription changeDescription) {
+    return changeDescription == null
+        || (nullOrEmpty(changeDescription.getFieldsAdded())
+            && nullOrEmpty(changeDescription.getFieldsUpdated())
+            && nullOrEmpty(changeDescription.getFieldsDeleted()));
   }
 
-  @SuppressWarnings("unchecked")
-  public static Map<String, Map<String, List<String>>> parseChangeMap(String message) {
+  public static Map<String, FieldDiff> parseChangeMap(String message) {
     if (nullOrEmpty(message) || !message.strip().startsWith("{")) return new LinkedHashMap<>();
     try {
-      Map<String, Object> raw = JsonUtils.readValue(message, Map.class);
-      Map<String, Map<String, List<String>>> result = new LinkedHashMap<>();
-      for (Map.Entry<String, Object> e : raw.entrySet()) {
-        if (e.getValue() instanceof Map<?, ?> fm) {
-          result.put(e.getKey(), toTypedFieldEntry((Map<String, Object>) fm));
-        }
-      }
-      return result;
+      return JsonUtils.readValue(message, CHANGE_MAP_TYPE);
     } catch (Exception e) {
       return new LinkedHashMap<>();
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private static Map<String, List<String>> toTypedFieldEntry(Map<String, Object> fieldMap) {
-    return fieldEntry(
-        toStringList(fieldMap.getOrDefault("added", List.of())),
-        toStringList(fieldMap.getOrDefault("removed", List.of())));
-  }
-
-  private static List<String> toStringList(Object value) {
-    if (value instanceof List<?> list) {
-      return list.stream().map(Object::toString).collect(Collectors.toList());
-    }
-    return new ArrayList<>();
-  }
-
   public static void applyChangePreview(
       Thread taskThread, EntityInterface entity, String oldMessage) {
     taskThread.withCardStyle(null).withFieldOperation(null).withFeedInfo(null);
-    final ChangeDescription cd = entity.getChangeDescription();
-    if (hasNoChanges(cd)) {
+    final ChangeDescription changeDescription = entity.getChangeDescription();
+    if (hasNoChanges(changeDescription)) {
       taskThread.withMessage(oldMessage != null ? oldMessage : "{}");
       return;
     }
     try {
-      Map<String, Map<String, List<String>>> merged =
-          mergeChangeMaps(parseChangeMap(oldMessage), buildChangeMap(cd));
+      Map<String, FieldDiff> merged =
+          mergeChangeMaps(parseChangeMap(oldMessage), buildChangeMap(changeDescription));
       taskThread.withMessage(merged.isEmpty() ? "{}" : JsonUtils.pojoToJson(merged));
     } catch (Exception e) {
       LOG.warn(
           "Failed to build change preview for approval task on {}",
           entity.getFullyQualifiedName(),
           e);
-      taskThread.withMessage(oldMessage);
+      taskThread.withMessage(oldMessage != null ? oldMessage : "{}");
     }
   }
 }

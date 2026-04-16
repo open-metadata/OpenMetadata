@@ -23,6 +23,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
 
 class ChangePreviewUtilsTest {
 
@@ -135,10 +136,10 @@ class ChangePreviewUtilsTest {
             .withFieldsDeleted(new ArrayList<>())
             .withFieldsUpdated(new ArrayList<>());
 
-    Map<String, Map<String, List<String>>> result = ChangePreviewUtils.buildChangeMap(cd);
+    Map<String, FieldDiff> result = ChangePreviewUtils.buildChangeMap(cd);
 
-    assertEquals(List.of("PII.None"), result.get("tags").get("added"));
-    assertTrue(result.get("tags").get("removed").isEmpty());
+    assertEquals(List.of("PII.None"), result.get("tags").added());
+    assertTrue(result.get("tags").removed().isEmpty());
   }
 
   @Test
@@ -151,10 +152,10 @@ class ChangePreviewUtilsTest {
             .withFieldsDeleted(List.of(fc))
             .withFieldsUpdated(new ArrayList<>());
 
-    Map<String, Map<String, List<String>>> result = ChangePreviewUtils.buildChangeMap(cd);
+    Map<String, FieldDiff> result = ChangePreviewUtils.buildChangeMap(cd);
 
-    assertTrue(result.get("owners").get("added").isEmpty());
-    assertEquals(List.of("Jane Smith"), result.get("owners").get("removed"));
+    assertTrue(result.get("owners").added().isEmpty());
+    assertEquals(List.of("Jane Smith"), result.get("owners").removed());
   }
 
   @Test
@@ -167,10 +168,10 @@ class ChangePreviewUtilsTest {
             .withFieldsDeleted(new ArrayList<>())
             .withFieldsUpdated(List.of(fc));
 
-    Map<String, Map<String, List<String>>> result = ChangePreviewUtils.buildChangeMap(cd);
+    Map<String, FieldDiff> result = ChangePreviewUtils.buildChangeMap(cd);
 
-    assertEquals(List.of("new text"), result.get("description").get("added"));
-    assertEquals(List.of("old text"), result.get("description").get("removed"));
+    assertEquals(List.of("new text"), result.get("description").added());
+    assertEquals(List.of("old text"), result.get("description").removed());
   }
 
   // ---------------------------------------------------------------------------
@@ -179,13 +180,12 @@ class ChangePreviewUtilsTest {
 
   @Test
   void mergeChangeMaps_disjointFields_mergesAll() {
-    Map<String, Map<String, List<String>>> oldMap =
-        Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of("PII.None")));
-    Map<String, Map<String, List<String>>> newMap =
-        Map.of("description", Map.of("added", List.of("new text"), "removed", List.of("old text")));
+    Map<String, FieldDiff> oldMap =
+        Map.of("tags", new FieldDiff(List.of("PII.Sensitive"), List.of("PII.None")));
+    Map<String, FieldDiff> newMap =
+        Map.of("description", new FieldDiff(List.of("new text"), List.of("old text")));
 
-    Map<String, Map<String, List<String>>> merged =
-        ChangePreviewUtils.mergeChangeMaps(oldMap, newMap);
+    Map<String, FieldDiff> merged = ChangePreviewUtils.mergeChangeMaps(oldMap, newMap);
 
     assertEquals(2, merged.size());
     assertTrue(merged.containsKey("tags"));
@@ -194,90 +194,42 @@ class ChangePreviewUtilsTest {
 
   @Test
   void mergeChangeMaps_newAddedCancelsOldRemoved() {
-    // Edit 1: PII.None → PII.Sensitive (removed PII.None, added PII.Sensitive)
-    Map<String, Map<String, List<String>>> edit1 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(List.of("PII.Sensitive")),
-                "removed", new ArrayList<>(List.of("PII.None"))));
+    Map<String, FieldDiff> edit1 =
+        Map.of("tags", new FieldDiff(List.of("PII.Sensitive"), List.of("PII.None")));
+    Map<String, FieldDiff> edit2 = Map.of("tags", new FieldDiff(List.of("PII.None"), List.of()));
 
-    // Edit 2: add PII.None back (added PII.None)
-    Map<String, Map<String, List<String>>> edit2 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(List.of("PII.None")),
-                "removed", new ArrayList<>()));
+    Map<String, FieldDiff> merged = ChangePreviewUtils.mergeChangeMaps(edit1, edit2);
 
-    Map<String, Map<String, List<String>>> merged =
-        ChangePreviewUtils.mergeChangeMaps(edit1, edit2);
-
-    // PII.None was removed then re-added → net zero for PII.None (cancelled from removed);
-    // PII.Sensitive still shows as added
-    assertEquals(List.of("PII.Sensitive"), merged.get("tags").get("added"));
-    assertTrue(merged.get("tags").get("removed").isEmpty());
+    assertEquals(List.of("PII.Sensitive"), merged.get("tags").added());
+    assertTrue(merged.get("tags").removed().isEmpty());
   }
 
   @Test
   void mergeChangeMaps_newRemovedCancelsOldAdded() {
-    // Edit 1: add PII.Sensitive
-    Map<String, Map<String, List<String>>> edit1 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(List.of("PII.Sensitive")),
-                "removed", new ArrayList<>()));
+    Map<String, FieldDiff> edit1 =
+        Map.of("tags", new FieldDiff(List.of("PII.Sensitive"), List.of()));
+    Map<String, FieldDiff> edit2 =
+        Map.of("tags", new FieldDiff(List.of(), List.of("PII.Sensitive")));
 
-    // Edit 2: remove PII.Sensitive (net zero)
-    Map<String, Map<String, List<String>>> edit2 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(),
-                "removed", new ArrayList<>(List.of("PII.Sensitive"))));
+    Map<String, FieldDiff> merged = ChangePreviewUtils.mergeChangeMaps(edit1, edit2);
 
-    Map<String, Map<String, List<String>>> merged =
-        ChangePreviewUtils.mergeChangeMaps(edit1, edit2);
-
-    // Net zero — field entry should be removed entirely
     assertNull(merged.get("tags"));
   }
 
   @Test
   void mergeChangeMaps_threeEdits_accumulatesCorrectly() {
-    // Edit 1: tag PII.None → PII.Sensitive
-    Map<String, Map<String, List<String>>> edit1 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(List.of("PII.Sensitive")),
-                "removed", new ArrayList<>(List.of("PII.None"))));
+    Map<String, FieldDiff> edit1 =
+        Map.of("tags", new FieldDiff(List.of("PII.Sensitive"), List.of("PII.None")));
+    Map<String, FieldDiff> edit2 =
+        Map.of("tags", new FieldDiff(List.of("PersonalData.Personal"), List.of()));
+    Map<String, FieldDiff> edit3 =
+        Map.of("tags", new FieldDiff(List.of(), List.of("PII.Sensitive")));
 
-    // Edit 2: also add PersonalData.Personal
-    Map<String, Map<String, List<String>>> edit2 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(List.of("PersonalData.Personal")),
-                "removed", new ArrayList<>()));
+    Map<String, FieldDiff> after12 = ChangePreviewUtils.mergeChangeMaps(edit1, edit2);
+    Map<String, FieldDiff> after123 = ChangePreviewUtils.mergeChangeMaps(after12, edit3);
 
-    // Edit 3: remove PII.Sensitive
-    Map<String, Map<String, List<String>>> edit3 =
-        Map.of(
-            "tags",
-            Map.of(
-                "added", new ArrayList<>(),
-                "removed", new ArrayList<>(List.of("PII.Sensitive"))));
-
-    Map<String, Map<String, List<String>>> after12 =
-        ChangePreviewUtils.mergeChangeMaps(edit1, edit2);
-    Map<String, Map<String, List<String>>> after123 =
-        ChangePreviewUtils.mergeChangeMaps(after12, edit3);
-
-    // PII.Sensitive cancels; PersonalData.Personal added; PII.None removed
-    assertEquals(List.of("PersonalData.Personal"), after123.get("tags").get("added"));
-    assertEquals(List.of("PII.None"), after123.get("tags").get("removed"));
+    assertEquals(List.of("PersonalData.Personal"), after123.get("tags").added());
+    assertEquals(List.of("PII.None"), after123.get("tags").removed());
   }
 
   // ---------------------------------------------------------------------------
@@ -297,10 +249,10 @@ class ChangePreviewUtilsTest {
   @Test
   void parseChangeMap_validJson_roundTrips() {
     String json = "{\"tags\":{\"added\":[\"PII.Sensitive\"],\"removed\":[\"PII.None\"]}}";
-    Map<String, Map<String, List<String>>> parsed = ChangePreviewUtils.parseChangeMap(json);
+    Map<String, FieldDiff> parsed = ChangePreviewUtils.parseChangeMap(json);
 
-    assertEquals(List.of("PII.Sensitive"), parsed.get("tags").get("added"));
-    assertEquals(List.of("PII.None"), parsed.get("tags").get("removed"));
+    assertEquals(List.of("PII.Sensitive"), parsed.get("tags").added());
+    assertEquals(List.of("PII.None"), parsed.get("tags").removed());
   }
 
   // ---------------------------------------------------------------------------
@@ -310,13 +262,9 @@ class ChangePreviewUtilsTest {
   @Test
   void buildChangeMap_nullFieldLists_doesNotThrow() {
     ChangeDescription cd = new ChangeDescription();
-    Map<String, Map<String, List<String>>> result = ChangePreviewUtils.buildChangeMap(cd);
+    Map<String, FieldDiff> result = ChangePreviewUtils.buildChangeMap(cd);
     assertTrue(result.isEmpty());
   }
-
-  // ---------------------------------------------------------------------------
-  // hasNoChanges
-  // ---------------------------------------------------------------------------
 
   @Test
   void hasNoChanges_nullChangeDescription_returnsTrue() {
