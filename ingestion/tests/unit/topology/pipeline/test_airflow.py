@@ -27,7 +27,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
+from metadata.ingestion.source.pipeline.airflow.metadata import (
+    AirflowSource,
+    OMTaskInstance,
+)
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
@@ -1068,3 +1071,141 @@ class TestAirflow(TestCase):
         self.assertEqual(len(result["run_2"]), 1)
         self.assertEqual(result["run_2"][0].task_id, "task_b")
         self.assertEqual(result["run_2"][0].state, "failed")
+
+    def test_get_task_instances_no_regression_vs_old_per_run_loop(self):
+        """
+        Behavioural-equivalence test against the previous per-run_id loop.
+
+        Reconstructs a realistic mixed dataset (multiple DAG runs, multiple
+        tasks per run, some renamed/removed tasks, one run with no surviving
+        tasks) and asserts that the new bulk get_task_instances produces the
+        same per-run mapping a per-run_id loop over the old single-run filter
+        would have produced. This is the no-regression check the maintainer
+        asked for, performed without needing a live Airflow DB.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [
+            AirflowTask(task_id="extract"),
+            AirflowTask(task_id="transform"),
+            AirflowTask(task_id="load"),
+        ]
+
+        def make_row(task_id, run_id, state):
+            row = MagicMock()
+            row._asdict.return_value = {
+                "task_id": task_id,
+                "state": state,
+                "start_date": None,
+                "end_date": None,
+                "run_id": run_id,
+            }
+            return row
+
+        all_rows = [
+            make_row("extract", "scheduled__1", "success"),
+            make_row("transform", "scheduled__1", "success"),
+            make_row("load", "scheduled__1", "success"),
+            make_row("extract", "scheduled__2", "success"),
+            make_row("transform", "scheduled__2", "failed"),
+            make_row("legacy_step", "scheduled__2", "success"),
+            make_row("extract", "manual__3", "running"),
+            make_row("only_old_task", "scheduled__4", "success"),
+        ]
+        run_ids = ["scheduled__1", "scheduled__2", "manual__3", "scheduled__4"]
+
+        def expected_per_run():
+            grouped = {}
+            allowed = {t.task_id for t in serialized_tasks}
+            for run_id in run_ids:
+                grouped[run_id] = [
+                    OMTaskInstance(
+                        task_id=r._asdict()["task_id"],
+                        state=r._asdict()["state"],
+                        start_date=None,
+                        end_date=None,
+                    )
+                    for r in all_rows
+                    if r._asdict()["run_id"] == run_id
+                    and r._asdict()["task_id"] in allowed
+                ]
+            return grouped
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = all_rows
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            actual = self.airflow.get_task_instances(
+                "etl_dag", run_ids, serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        expected = expected_per_run()
+
+        # Single bulk query, not one per run_id
+        mock_session.query.assert_called_once()
+        self.assertEqual(
+            set(actual.keys()), {"scheduled__1", "scheduled__2", "manual__3"}
+        )
+        for run_id in actual:
+            self.assertEqual(
+                [(t.task_id, t.state) for t in actual[run_id]],
+                [(t.task_id, t.state) for t in expected[run_id]],
+                f"Bulk query result for {run_id} diverges from per-run loop output",
+            )
+        # scheduled__4 had only a legacy task: equivalent to old loop returning []
+        self.assertEqual(actual.get("scheduled__4", []), expected["scheduled__4"])
+
+    def test_get_task_instances_returns_empty_dict_on_db_exception(self):
+        """
+        On any DB error (e.g. older Airflow schemas without run_id column) the
+        method must swallow the exception and return an empty dict so that
+        yield_pipeline_status keeps emitting per-run statuses with empty task
+        lists - matching the pre-change safe-fallback behaviour.
+        """
+        from unittest.mock import MagicMock
+
+        mock_session = MagicMock()
+        mock_session.query.side_effect = RuntimeError("simulated DB failure")
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "any_dag",
+                ["run_a", "run_b"],
+                [AirflowTask(task_id="t1")],
+            )
+        finally:
+            self.airflow._session = original_session
+
+        self.assertEqual(result, {})
+
+    def test_get_task_instances_handles_empty_run_ids(self):
+        """
+        If get_task_instances is ever called with no run_ids it must not throw
+        (some SQL dialects reject `IN ()`). yield_pipeline_status guards this
+        upstream, but the method itself should still degrade gracefully.
+        """
+        from unittest.mock import MagicMock
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances("any_dag", [], [])
+        finally:
+            self.airflow._session = original_session
+
+        self.assertEqual(result, {})
