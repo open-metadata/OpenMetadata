@@ -180,28 +180,29 @@ class S3Source(StorageServiceSource):
                         ),
                         client=self.s3_client,
                     ):
-                        if discovery.get("unstructured"):
-                            # Unstructured file — no schema, just catalog it
+                        if discovery.unstructured:
                             yield S3ContainerDetails(
-                                name=discovery["name"],
-                                prefix=discovery["prefix"],
+                                name=discovery.leaf_name or discovery.name,
+                                prefix=(
+                                    f"{KEY_SEPARATOR}{discovery.parent_prefix}"
+                                    if discovery.parent_prefix
+                                    else KEY_SEPARATOR
+                                ),
                                 creation_date=(
                                     bucket_response.creation_date.isoformat()
                                     if bucket_response.creation_date
                                     else None
                                 ),
                                 number_of_objects=1,
-                                size=discovery["files"][0][1]
-                                if discovery["files"]
-                                else 0,
+                                size=discovery.first_file_size,
                                 file_formats=[],
                                 data_model=None,
                                 fullPath=self._get_full_path(
-                                    bucket_name, discovery["name"]
+                                    bucket_name, discovery.name
                                 ),
                                 sourceUrl=self._get_object_source_url(
                                     bucket_name=bucket_name,
-                                    prefix=discovery["name"],
+                                    prefix=discovery.name,
                                 ),
                                 parent=parent_entity,
                                 leaf_container=True,
@@ -210,8 +211,8 @@ class S3Source(StorageServiceSource):
 
                         columns = self._get_columns(
                             container_name=bucket_name,
-                            sample_key=discovery["sample_key"],
-                            metadata_entry=discovery["metadata_entry"],
+                            sample_key=discovery.sample_key,
+                            metadata_entry=discovery.metadata_entry,
                             config_source=S3Config(
                                 securityConfig=self.service_connection.awsConfig
                             ),
@@ -219,32 +220,30 @@ class S3Source(StorageServiceSource):
                         )
                         if columns:
                             yield S3ContainerDetails(
-                                name=discovery["name"],
-                                prefix=discovery["prefix"],
+                                name=discovery.name,
+                                prefix=discovery.prefix,
                                 creation_date=(
                                     bucket_response.creation_date.isoformat()
                                     if bucket_response.creation_date
                                     else None
                                 ),
-                                number_of_objects=len(discovery["files"]),
-                                size=sum(s for _, s in discovery["files"]),
+                                number_of_objects=discovery.file_count,
+                                size=discovery.total_size,
                                 file_formats=[
                                     container.FileFormat(
-                                        discovery["metadata_entry"].structureFormat
+                                        discovery.metadata_entry.structureFormat
                                     )
                                 ],
                                 data_model=ContainerDataModel(
-                                    isPartitioned=discovery[
-                                        "metadata_entry"
-                                    ].isPartitioned,
+                                    isPartitioned=discovery.metadata_entry.isPartitioned,
                                     columns=columns,
                                 ),
                                 sourceUrl=self._get_object_source_url(
                                     bucket_name=bucket_name,
-                                    prefix=discovery["name"],
+                                    prefix=discovery.name,
                                 ),
                                 fullPath=self._get_full_path(
-                                    bucket_name, discovery["name"]
+                                    bucket_name, discovery.name
                                 ),
                                 parent=parent_entity,
                             )

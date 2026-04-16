@@ -12,7 +12,8 @@
 Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import Field
 from typing_extensions import Annotated
@@ -90,6 +91,48 @@ DEFAULT_EXCLUDE_PATHS = {
     ".tmp",
     "_SUCCESS",
 }
+
+
+@dataclass
+class DiscoveredContainer:
+    """Result of auto-discovery from inline manifest entries.
+
+    Typed container for passing discovery results between the base
+    class discovery logic and provider-specific container creation.
+    """
+
+    name: str
+    prefix: str
+    metadata_entry: MetadataEntry
+    sample_key: str
+    files: List[Tuple[str, int]] = field(default_factory=list)
+    unstructured: bool = False
+
+    @property
+    def file_count(self) -> int:
+        return len(self.files)
+
+    @property
+    def total_size(self) -> int:
+        return sum(size for _, size in self.files)
+
+    @property
+    def first_file_size(self) -> int:
+        if self.files and len(self.files[0]) > 1:
+            return self.files[0][1]
+        return 0
+
+    @property
+    def leaf_name(self) -> str:
+        """Filename portion of the key (for unstructured containers)."""
+        return self.name.rsplit(KEY_SEPARATOR, 1)[-1] if self.name else ""
+
+    @property
+    def parent_prefix(self) -> str:
+        """Parent directory path (for unstructured containers)."""
+        if KEY_SEPARATOR in self.name:
+            return self.name.rsplit(KEY_SEPARATOR, 1)[0]
+        return ""
 
 
 class StorageServiceTopology(ServiceTopology):
@@ -381,7 +424,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         already_discovered: Set[str],
         config_source: Any,
         client: Any,
-    ) -> Iterable[Dict[str, Any]]:
+    ) -> Iterable[DiscoveredContainer]:
         """Auto-discover containers from inline manifest entries.
 
         Yields dicts with keys: name, prefix, metadata_entry, sample_key, files.
@@ -454,14 +497,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                         f"Auto-discovered unstructured file '{key}' "
                         f"from pattern '{pattern}'"
                     )
-                    yield {
-                        "name": key,
-                        "prefix": f"{KEY_SEPARATOR}{key}",
-                        "metadata_entry": MetadataEntry(dataPath=key),
-                        "sample_key": key,
-                        "files": [(key, size)],
-                        "unstructured": True,
-                    }
+                    yield DiscoveredContainer(
+                        name=key,
+                        prefix=f"{KEY_SEPARATOR}{key}",
+                        metadata_entry=MetadataEntry(dataPath=key),
+                        sample_key=key,
+                        files=[(key, size)],
+                        unstructured=True,
+                    )
                 continue
 
             # Structured data — group files by logical table
@@ -528,10 +571,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
                 already_discovered.add(container_name)
 
-                yield {
-                    "name": container_name,
-                    "prefix": f"{KEY_SEPARATOR}{container_name}",
-                    "metadata_entry": metadata_entry,
-                    "sample_key": sample_key,
-                    "files": files,
-                }
+                yield DiscoveredContainer(
+                    name=container_name,
+                    prefix=f"{KEY_SEPARATOR}{container_name}",
+                    metadata_entry=metadata_entry,
+                    sample_key=sample_key,
+                    files=files,
+                )

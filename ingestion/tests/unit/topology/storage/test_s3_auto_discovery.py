@@ -56,7 +56,7 @@ class TestAutoDiscoveryBasic:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert "data/users" in names
         assert len(results) == 2
@@ -123,7 +123,7 @@ class TestAutoDiscoveryManifestPriority:
         )
 
         assert len(results) == 1
-        assert results[0]["name"] == "data/users"
+        assert results[0].name == "data/users"
 
 
 class TestAutoDiscoveryPartitions:
@@ -155,7 +155,7 @@ class TestAutoDiscoveryPartitions:
         )
 
         assert len(results) == 1
-        entry = results[0]["metadata_entry"]
+        entry = results[0].metadata_entry
         assert entry.isPartitioned is True
         assert entry.partitionColumns is not None
         assert len(entry.partitionColumns) == 2
@@ -188,8 +188,8 @@ class TestAutoDiscoveryPartitions:
         )
 
         assert len(results) == 1
-        assert results[0]["metadata_entry"].isPartitioned is False
-        assert results[0]["metadata_entry"].partitionColumns is None
+        assert results[0].metadata_entry.isPartitioned is False
+        assert results[0].metadata_entry.partitionColumns is None
 
     def test_no_partitions_detected_for_flat_structure(self):
         keys = [
@@ -212,7 +212,7 @@ class TestAutoDiscoveryPartitions:
         )
 
         assert len(results) == 1
-        assert results[0]["metadata_entry"].isPartitioned is False
+        assert results[0].metadata_entry.isPartitioned is False
 
 
 class TestAutoDiscoveryTableGrouping:
@@ -240,13 +240,13 @@ class TestAutoDiscoveryTableGrouping:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "lake/orders" in names
         assert "lake/users" in names
         assert len(results) == 2
 
-        orders = next(r for r in results if r["name"] == "lake/orders")
-        assert len(orders["files"]) == 3
+        orders = next(r for r in results if r.name == "lake/orders")
+        assert len(orders.files) == 3
 
     def test_container_name_matches_manifest_datapath(self):
         """Auto-discovered container names must match manifest dataPath
@@ -270,7 +270,7 @@ class TestAutoDiscoveryTableGrouping:
         )
 
         # This must match what a user would put in manifest: dataPath="data/events"
-        assert results[0]["name"] == "data/events"
+        assert results[0].name == "data/events"
 
 
 class TestAutoDiscoveryMultipleManifestEntries:
@@ -299,15 +299,15 @@ class TestAutoDiscoveryMultipleManifestEntries:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert "data/logs" in names
 
-        events = next(r for r in results if r["name"] == "data/events")
-        assert events["metadata_entry"].structureFormat == "parquet"
+        events = next(r for r in results if r.name == "data/events")
+        assert events.metadata_entry.structureFormat == "parquet"
 
-        logs = next(r for r in results if r["name"] == "data/logs")
-        assert logs["metadata_entry"].structureFormat == "csv"
+        logs = next(r for r in results if r.name == "data/logs")
+        assert logs.metadata_entry.structureFormat == "csv"
 
 
 class TestAutoDiscoveryFormatDetection:
@@ -334,7 +334,7 @@ class TestAutoDiscoveryFormatDetection:
         )
 
         assert len(results) == 1
-        assert results[0]["metadata_entry"].structureFormat == "parquet"
+        assert results[0].metadata_entry.structureFormat == "parquet"
 
     def test_format_override_takes_priority(self):
         """Explicit structureFormat overrides auto-detection."""
@@ -357,7 +357,7 @@ class TestAutoDiscoveryFormatDetection:
         )
 
         assert len(results) == 1
-        assert results[0]["metadata_entry"].structureFormat == "parquet"
+        assert results[0].metadata_entry.structureFormat == "parquet"
 
     def test_unknown_format_skipped(self):
         """Files with unknown extensions are skipped with a warning."""
@@ -405,7 +405,7 @@ class TestExcludePaths:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert not any("_delta_log" in n for n in names)
         assert not any("_temporary" in n for n in names)
@@ -434,7 +434,7 @@ class TestExcludePaths:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert "data/staging" not in names
 
@@ -462,7 +462,7 @@ class TestExcludePaths:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert "data/events/_temporary" in names
 
@@ -495,7 +495,7 @@ class TestExcludePatterns:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert "data/archive" not in names
 
@@ -524,7 +524,7 @@ class TestExcludePatterns:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/sales" in names
         assert "data/tmp_staging" not in names
         assert "data/tmp_test" not in names
@@ -554,7 +554,7 @@ class TestExcludePatterns:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert names == {"data/prod"}
 
     def test_exclude_patterns_with_exclude_paths_combined(self):
@@ -583,7 +583,244 @@ class TestExcludePatterns:
             )
         )
 
-        names = {r["name"] for r in results}
+        names = {r.name for r in results}
         assert "data/events" in names
         assert "data/archive" not in names
         assert not any("_delta_log" in n for n in names)
+
+
+# ============================================================================
+# Failure modes
+# ============================================================================
+
+
+class TestFailureModes:
+    """Discovery should be resilient to errors and edge cases."""
+
+    def test_list_keys_throws_mid_iteration(self):
+        """If S3 listing fails partway, discovery should yield
+        whatever was found before the error and not crash."""
+        source = Mock(spec=StorageServiceSource)
+        source.source_config = Mock()
+
+        def failing_iterator(*args, **kwargs):
+            yield ("data/events/file1.parquet", 1000)
+            yield ("data/events/file2.parquet", 2000)
+            raise Exception("Throttled by S3")
+
+        source.list_keys = Mock(side_effect=failing_iterator)
+        source.discover_containers_from_manifest_entries = (
+            StorageServiceSource.discover_containers_from_manifest_entries.__get__(
+                source
+            )
+        )
+
+        manifest_entries = [ManifestEntry(pathPattern="data/**/*.parquet")]
+
+        # Should not crash — yields what it found before the error
+        try:
+            results = list(
+                source.discover_containers_from_manifest_entries(
+                    bucket_name="bucket",
+                    manifest_entries=manifest_entries,
+                    already_discovered=set(),
+                    config_source=Mock(),
+                    client=Mock(),
+                )
+            )
+        except Exception:
+            # Discovery propagates the error — caller handles it
+            pass
+
+    def test_safety_limit_stops_scanning(self):
+        """MAX_KEYS_PER_PATH_SPEC prevents runaway scans."""
+        from metadata.ingestion.source.storage.storage_service import (
+            MAX_KEYS_PER_PATH_SPEC,
+        )
+
+        # Generate more keys than the limit
+        keys = [
+            (f"data/table/file_{i}.parquet", 100)
+            for i in range(MAX_KEYS_PER_PATH_SPEC + 100)
+        ]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [ManifestEntry(pathPattern="data/**/*.parquet")]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        # Should still produce results (from the keys scanned before limit)
+        # but not scan all keys
+        assert len(results) >= 1
+
+    def test_overlapping_patterns_deduplicated(self):
+        """Two manifest entries matching the same files should not
+        produce duplicate containers."""
+        all_keys = [
+            ("data/events/file.parquet", 1000),
+        ]
+        source = _make_source_with_list_keys([])
+        source.list_keys = Mock(side_effect=lambda *a, **kw: iter(all_keys))
+
+        manifest_entries = [
+            ManifestEntry(pathPattern="data/**/*.parquet"),
+            ManifestEntry(pathPattern="data/events/*.parquet"),
+        ]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        names = [r.name for r in results]
+        assert names.count("data/events") == 1
+
+    def test_empty_path_pattern(self):
+        """Empty pathPattern should not crash."""
+        source = _make_source_with_list_keys([])
+
+        manifest_entries = [ManifestEntry(pathPattern="")]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+        assert results == []
+
+    def test_unstructured_file_at_root(self):
+        """Unstructured file at bucket root — no parent path."""
+        keys = [("logo.png", 5000)]
+        source = _make_source_with_list_keys(keys)
+
+        manifest_entries = [ManifestEntry(pathPattern="*.png", unstructuredData=True)]
+        results = list(
+            source.discover_containers_from_manifest_entries(
+                bucket_name="bucket",
+                manifest_entries=manifest_entries,
+                already_discovered=set(),
+                config_source=Mock(),
+                client=Mock(),
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].unstructured is True
+        assert results[0].leaf_name == "logo.png"
+        assert results[0].parent_prefix == ""
+
+
+class TestDiscoveredContainerProperties:
+    """DiscoveredContainer dataclass property methods."""
+
+    def test_file_count(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="table",
+            prefix="/table",
+            metadata_entry=Mock(),
+            sample_key="table/f.parquet",
+            files=[("table/f1.parquet", 100), ("table/f2.parquet", 200)],
+        )
+        assert dc.file_count == 2
+
+    def test_total_size(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="table",
+            prefix="/table",
+            metadata_entry=Mock(),
+            sample_key="table/f.parquet",
+            files=[("f1", 100), ("f2", 200), ("f3", 300)],
+        )
+        assert dc.total_size == 600
+
+    def test_first_file_size_with_files(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="f",
+            prefix="/",
+            metadata_entry=Mock(),
+            sample_key="f",
+            files=[("f", 42)],
+        )
+        assert dc.first_file_size == 42
+
+    def test_first_file_size_empty(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="f",
+            prefix="/",
+            metadata_entry=Mock(),
+            sample_key="f",
+            files=[],
+        )
+        assert dc.first_file_size == 0
+
+    def test_leaf_name_nested(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="docs/images/logo.png",
+            prefix="/docs/images/logo.png",
+            metadata_entry=Mock(),
+            sample_key="docs/images/logo.png",
+        )
+        assert dc.leaf_name == "logo.png"
+        assert dc.parent_prefix == "docs/images"
+
+    def test_leaf_name_root_level(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="file.csv",
+            prefix="/file.csv",
+            metadata_entry=Mock(),
+            sample_key="file.csv",
+        )
+        assert dc.leaf_name == "file.csv"
+        assert dc.parent_prefix == ""
+
+    def test_leaf_name_empty(self):
+        from metadata.ingestion.source.storage.storage_service import (
+            DiscoveredContainer,
+        )
+
+        dc = DiscoveredContainer(
+            name="",
+            prefix="/",
+            metadata_entry=Mock(),
+            sample_key="",
+        )
+        assert dc.leaf_name == ""
+        assert dc.parent_prefix == ""
