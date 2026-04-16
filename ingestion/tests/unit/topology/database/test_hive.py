@@ -352,9 +352,15 @@ class HiveUnitTest(TestCase):
         self.thread_id = self.hive.context.get_current_thread_id()
         self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-        self.hive._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
-        self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
-        self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_pk_constraint = (
+            lambda table_name, schema_name: []
+        )
+        self.hive._inspector_map[self.thread_id].get_unique_constraints = (
+            lambda table_name, schema_name: []
+        )
+        self.hive._inspector_map[self.thread_id].get_foreign_keys = (
+            lambda table_name, schema_name: []
+        )
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
@@ -1219,9 +1225,7 @@ class TestHivePartitionDetails(TestCase):
         )
         conn_mock = Mock()
         conn_mock.execute.return_value = mock_rows
-        self.source.engine.connect.return_value.__enter__ = Mock(
-            return_value=conn_mock
-        )
+        self.source.engine.connect.return_value.__enter__ = Mock(return_value=conn_mock)
         self.source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         is_partitioned, partition = self.source.get_table_partition_details(
@@ -1250,9 +1254,7 @@ class TestHivePartitionDetails(TestCase):
         )
         conn_mock = Mock()
         conn_mock.execute.return_value = mock_rows
-        self.source.engine.connect.return_value.__enter__ = Mock(
-            return_value=conn_mock
-        )
+        self.source.engine.connect.return_value.__enter__ = Mock(return_value=conn_mock)
         self.source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         is_partitioned, partition = self.source.get_table_partition_details(

@@ -135,7 +135,6 @@ class HiveSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-
     def get_table_partition_details(
         self,
         table_name: str,
@@ -213,7 +212,6 @@ class HiveSource(CommonDbSourceService):
                 for key in partition_keys
             ]
         )
-
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
