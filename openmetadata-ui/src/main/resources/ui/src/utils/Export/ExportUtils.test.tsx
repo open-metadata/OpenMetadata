@@ -104,6 +104,18 @@ describe('ExportUtils', () => {
       });
     });
 
+    it('does not prepend a duplicate BOM when content already has one', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadFile('\uFEFFcontent', 'file.csv', 'text/csv;charset=utf-8;');
+
+      expect(MockBlob).toHaveBeenCalledWith(['\uFEFFcontent'], {
+        type: 'text/csv;charset=utf-8;',
+      });
+    });
+
     it('does not prepend BOM for non-csv files', () => {
       const mockBlob = {};
       const MockBlob = jest.fn().mockReturnValue(mockBlob);

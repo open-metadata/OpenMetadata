@@ -28,7 +28,11 @@ export const downloadFile = (
   const csvMimeType = 'text/csv;charset=utf-8;';
   const effectiveMimeType = isCsvFile || isCsvMime ? csvMimeType : mimeType;
   const effectiveContent =
-    isCsvFile || isCsvMime ? `\uFEFF${content}` : content;
+    isCsvFile || isCsvMime
+      ? content.startsWith('\uFEFF')
+        ? content
+        : `\uFEFF${content}`
+      : content;
   const blob = new Blob([effectiveContent], { type: effectiveMimeType });
   const link = document.createElement('a');
 
