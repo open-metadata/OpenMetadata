@@ -34,8 +34,8 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -541,8 +541,7 @@ class LineageRepositoryTest {
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
-    CollectionDAO.EntityRelationshipDAO relDAO =
-        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(freshDao.relationshipDAO()).thenReturn(relDAO);
 
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(freshDao);
@@ -571,11 +570,9 @@ class LineageRepositoryTest {
     buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
 
     verify(relDAO)
-        .insert(
-            eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
+        .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
 
-    LineageDetails captured =
-        JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class);
+    LineageDetails captured = JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class);
     assertNull(
         captured.getPipeline(),
         "Service-level lineage must not inherit pipeline annotation from entity lineage");
@@ -623,11 +620,9 @@ class LineageRepositoryTest {
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
-    CollectionDAO.EntityRelationshipDAO relDAO =
-        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(freshDao.relationshipDAO()).thenReturn(relDAO);
-    when(relDAO.getRecord(eq(fromServiceId), eq(toServiceId), anyInt()))
-        .thenReturn(existingRecord);
+    when(relDAO.getRecord(eq(fromServiceId), eq(toServiceId), anyInt())).thenReturn(existingRecord);
 
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(freshDao);
     mockedEntity.when(() -> Entity.entityHasField(entityType, "service")).thenReturn(true);
@@ -655,11 +650,9 @@ class LineageRepositoryTest {
     buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
 
     verify(relDAO)
-        .insert(
-            eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
+        .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
 
-    LineageDetails captured =
-        JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class);
+    LineageDetails captured = JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class);
     assertNull(
         captured.getPipeline(),
         "Updating an existing service-level edge must not inherit pipeline annotation from entity lineage");
@@ -682,8 +675,7 @@ class LineageRepositoryTest {
 
     EntityReference fromRef = new EntityReference().withId(fromEntityId).withType(entityType);
     EntityReference toRef = new EntityReference().withId(toEntityId).withType(entityType);
-    EntityReference pipelineRef =
-        new EntityReference().withId(pipelineId).withType("pipeline");
+    EntityReference pipelineRef = new EntityReference().withId(pipelineId).withType("pipeline");
     EntityReference fromServiceRef =
         new EntityReference().withId(fromServiceId).withType("databaseService");
     EntityReference toServiceRef =
@@ -706,8 +698,7 @@ class LineageRepositoryTest {
     when(pipelineEntityMock.getService()).thenReturn(pipelineServiceRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
-    CollectionDAO.EntityRelationshipDAO relDAO =
-        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(freshDao.relationshipDAO()).thenReturn(relDAO);
 
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(freshDao);
@@ -775,7 +766,8 @@ class LineageRepositoryTest {
     EntityReference toServiceRef =
         new EntityReference().withId(toServiceId).withType("messagingService");
 
-    LineageDetails entityDetails = new LineageDetails().withPipeline(null).withCreatedBy("testUser");
+    LineageDetails entityDetails =
+        new LineageDetails().withPipeline(null).withCreatedBy("testUser");
 
     EntityInterface fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
@@ -786,8 +778,7 @@ class LineageRepositoryTest {
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
-    CollectionDAO.EntityRelationshipDAO relDAO =
-        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(freshDao.relationshipDAO()).thenReturn(relDAO);
 
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(freshDao);
