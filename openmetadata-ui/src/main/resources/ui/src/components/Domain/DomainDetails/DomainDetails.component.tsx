@@ -21,7 +21,7 @@ import { isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -146,6 +146,10 @@ const DomainDetails = ({
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { isMarketplace } = useMarketplaceStore();
+  const location = useLocation();
+  const fromMarketplace =
+    (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
+    false;
   const { getEntityPermission, permissions } = usePermissionProvider();
   const routeParams = useParams<{
     fqn?: string;
@@ -404,11 +408,12 @@ const DomainDetails = ({
       ? [{ name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }]
       : [];
 
+    const rootCrumb: BreadcrumbItem = fromMarketplace
+      ? { name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }
+      : { name: t('label.domain-plural'), url: getDomainPath() };
+
     if (!domainFqn) {
-      return [
-        ...marketplaceRoot,
-        { name: t('label.domain-plural'), url: getDomainPath() },
-      ];
+      return [...marketplaceRoot, rootCrumb];
     }
 
     const arr = Fqn.split(domainFqn);
@@ -416,10 +421,7 @@ const DomainDetails = ({
 
     return [
       ...marketplaceRoot,
-      {
-        name: t('label.domain-plural'),
-        url: getDomainPath(),
-      },
+      rootCrumb,
       ...arr.map((d) => {
         dataFQN.push(d);
 
@@ -429,7 +431,7 @@ const DomainDetails = ({
         };
       }),
     ];
-  }, [domainFqn, isMarketplace, t]);
+  }, [domainFqn, isMarketplace, fromMarketplace, t]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 

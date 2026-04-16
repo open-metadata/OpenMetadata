@@ -216,7 +216,7 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
 
-        await hardDeleteTeam(page);
+        await hardDeleteTeam(page, teamName);
 
         // Validate the deleted team
         await expect(
