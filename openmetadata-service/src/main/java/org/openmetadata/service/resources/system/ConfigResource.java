@@ -229,16 +229,32 @@ public class ConfigResource {
     return jwtTokenGenerator.getJWKSResponse();
   }
 
-  @GET
+  @POST
   @Path("/auth/test-login/initiate")
+  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Operation(
       operationId = "testLoginInitiate",
-      summary = "Initiate Test Login",
+      summary = "Initiate OIDC Test Login",
       description =
-          "Initiates a Test Login flow by redirecting to the IdP. "
-              + "Opens in a popup window. After authentication, redirects to the callback endpoint.")
-  public Response testLoginInitiate(@Context HttpServletRequest request) {
-    return TestLoginHandler.handleInitiate(request);
+          "Initiates an OIDC Test Login flow by redirecting to the IdP. "
+              + "Accepts form-encoded body so secrets stay out of the URL. "
+              + "Opens in a popup window via hidden form POST with target=_blank.")
+  public Response testLoginInitiate(
+      @Context HttpServletRequest request,
+      @FormParam("discoveryUri") String discoveryUri,
+      @FormParam("clientId") String clientId,
+      @FormParam("clientSecret") String clientSecret,
+      @FormParam("scope") String scope,
+      @FormParam("callbackUrl") String callbackUrl,
+      @FormParam("prompt") String prompt,
+      @FormParam("maxAge") String maxAge,
+      @FormParam("clientAuthenticationMethod") String clientAuthMethod,
+      @FormParam("disablePkce") String disablePkce,
+      @FormParam("useNonce") String useNonce,
+      @FormParam("customParams") String customParams) {
+    return TestLoginHandler.handleInitiate(
+        request, discoveryUri, clientId, clientSecret, scope, callbackUrl,
+        prompt, maxAge, clientAuthMethod, disablePkce, useNonce, customParams);
   }
 
   @POST
