@@ -166,7 +166,7 @@ export const importColumnsCSV = async (
     `/columns/import?${queryParams.toString()}`,
     params.csv,
     {
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': 'text/plain; charset=UTF-8' },
     }
   );
 
@@ -198,7 +198,7 @@ export const importColumnsCSVAsync = async (
     string,
     AxiosResponse<CSVImportResponse>
   >(`/columns/import-async?${queryParams.toString()}`, params.csv, {
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'text/plain; charset=UTF-8' },
   });
 
   return response.data;

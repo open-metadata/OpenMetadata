@@ -1217,7 +1217,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @GET
   @Path("/name/{fqn}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportGlossaryTerm",
@@ -1242,7 +1242,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @GET
   @Path("/name/{fqn}/exportAsync")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportGlossaryTermAsync",
@@ -1272,7 +1272,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @PUT
   @Path("/name/{fqn}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importGlossaryTerm",
@@ -1310,7 +1310,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @PUT
   @Path("/name/{fqn}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(

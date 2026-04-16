@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 public final class CsvUtil {
   public static final String SEPARATOR = ",";
   public static final String FIELD_SEPARATOR = ";";
+  public static final String UTF8_BOM = "\uFEFF";
 
   public static final String ENTITY_TYPE_SEPARATOR = ":";
   public static final String LINE_SEPARATOR = "\r\n";
@@ -48,6 +49,13 @@ public final class CsvUtil {
 
   private CsvUtil() {
     // Utility class hides the constructor
+  }
+
+  public static String stripUtf8Bom(String value) {
+    if (value == null || value.isEmpty() || !value.startsWith(UTF8_BOM)) {
+      return value;
+    }
+    return value.substring(1);
   }
 
   public static String formatCsv(CsvFile csvFile) throws IOException {

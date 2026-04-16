@@ -582,7 +582,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTable",
@@ -606,7 +606,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTable",
@@ -631,7 +631,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTable",
@@ -665,7 +665,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTableAsync",

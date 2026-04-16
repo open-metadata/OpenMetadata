@@ -401,7 +401,7 @@ public class LineageResource {
 
   @GET
   @Path("/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Operation(
       operationId = "exportLineage",
       summary = "Export lineage",

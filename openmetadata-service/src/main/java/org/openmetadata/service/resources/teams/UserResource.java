@@ -1685,7 +1685,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportUsers",
@@ -1713,7 +1713,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTeams",
@@ -1750,7 +1750,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTeamsAsync",

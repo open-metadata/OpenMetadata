@@ -356,7 +356,7 @@ public class ColumnResource {
 
   @GET
   @Path("/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Operation(
       operationId = "exportUniqueColumns",
       summary = "Export unique column names to CSV",
@@ -402,7 +402,7 @@ public class ColumnResource {
 
   @POST
   @Path("/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Operation(
       operationId = "importUniqueColumns",
       summary = "Import column metadata from CSV (with dry-run)",
@@ -459,7 +459,7 @@ public class ColumnResource {
 
   @POST
   @Path("/import-async")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Operation(
       operationId = "importUniqueColumnsAsync",
       summary = "Import column metadata from CSV asynchronously",

@@ -41,7 +41,7 @@ const UploadFile: FC<UploadFileProps> = ({
         reader.onerror = () => {
           throw t('server.unexpected-error');
         };
-        reader.readAsText(options.file as Blob);
+        reader.readAsText(options.file as Blob, 'utf-8');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {

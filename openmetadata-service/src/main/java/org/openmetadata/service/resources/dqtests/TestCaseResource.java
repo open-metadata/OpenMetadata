@@ -1252,7 +1252,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTestCases",
@@ -1315,7 +1315,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
@@ -1360,7 +1360,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(

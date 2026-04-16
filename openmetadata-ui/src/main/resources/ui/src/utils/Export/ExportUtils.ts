@@ -23,7 +23,13 @@ export const downloadFile = (
   fileName: string,
   mimeType: string = 'text/plain'
 ): void => {
-  const blob = new Blob([content], { type: mimeType });
+  const isCsvFile = fileName.toLowerCase().endsWith('.csv');
+  const isCsvMime = mimeType.toLowerCase().includes('text/csv');
+  const csvMimeType = 'text/csv;charset=utf-8;';
+  const effectiveMimeType = isCsvFile || isCsvMime ? csvMimeType : mimeType;
+  const effectiveContent =
+    isCsvFile || isCsvMime ? `\uFEFF${content}` : content;
+  const blob = new Blob([effectiveContent], { type: effectiveMimeType });
   const link = document.createElement('a');
 
   link.href = URL.createObjectURL(blob);

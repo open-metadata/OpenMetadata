@@ -63,6 +63,13 @@ const propertiesList = Object.values(CUSTOM_PROPERTIES_TYPES);
 const propertyListName: Record<string, string> = {};
 
 const additionalGlossaryTerm = createGlossaryTermRowDetails();
+const chineseGlossaryTermDetails = {
+  name: `术语${uuid()}`,
+  displayName: '中文术语展示名',
+  description: '这是用于验证导入导出编码的中文描述。',
+  synonyms: '中文同义词;测试',
+  references: '参考;https://example.com/中文',
+};
 
 test.describe('Glossary Bulk Import Export', () => {
   test.slow(true);
@@ -183,6 +190,7 @@ test.describe('Glossary Bulk Import Export', () => {
       await fillGlossaryRowDetails(
         {
           ...additionalGlossaryTerm,
+          ...chineseGlossaryTermDetails,
           owners: [user1.responseData?.['displayName']],
           reviewers: [user2.responseData?.['displayName']],
           relatedTerm: {
@@ -214,6 +222,7 @@ test.describe('Glossary Bulk Import Export', () => {
       const rowStatus = ['Entity updated', 'Entity created'];
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expect(page.getByText(chineseGlossaryTermDetails.name)).toBeVisible();
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page

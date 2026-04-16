@@ -50,7 +50,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/dataQuality/testCases/name/test.suite.name/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -78,7 +78,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/dataQuality/testCases/name/test.suite.name/importAsync?dryRun=false&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -105,7 +105,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/dataQuality/testCases/name/test.suite.name/importAsync?dryRun=true&recursive=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -132,7 +132,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.stringContaining('/dataQuality/testCases/name/'),
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -177,7 +177,7 @@ describe('importExportAPI tests', () => {
       });
 
       expect(mockPut).toHaveBeenCalledWith(expect.any(String), '', {
-        headers: { 'Content-type': 'text/plain' },
+        headers: { 'Content-type': 'text/plain; charset=UTF-8' },
       });
     });
   });
@@ -205,7 +205,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/tables/name/database.schema.table/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -232,7 +232,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/databases/name/service.database/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -258,7 +258,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/databaseSchemas/name/service.database.schema/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -286,7 +286,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/tables/name/database.schema.table/importAsync?dryRun=false&recursive=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -312,7 +312,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -361,7 +361,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         'services/databaseServices/name/my-database-service/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -388,7 +388,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         'services/messagingServices/name/my-messaging-service/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -416,7 +416,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         'services/databaseServices/name/my-service/importAsync?dryRun=false&recursive=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -465,7 +465,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaries/name/my-glossary/importAsync?dryRun=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -493,7 +493,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaries/name/my-glossary/importAsync?dryRun=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -547,7 +547,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.stringContaining('/glossaries/name/'),
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -596,7 +596,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaryTerms/name/glossary.term/importAsync?dryRun=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -624,7 +624,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaryTerms/name/glossary.term/importAsync?dryRun=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -678,7 +678,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.stringContaining('/glossaryTerms/name/'),
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': 'text/plain; charset=UTF-8' } }
       );
     });
 
@@ -724,7 +724,7 @@ describe('importExportAPI tests', () => {
       });
 
       expect(mockPut).toHaveBeenCalledWith(expect.any(String), largeCsvData, {
-        headers: { 'Content-type': 'text/plain' },
+        headers: { 'Content-type': 'text/plain; charset=UTF-8' },
       });
     });
   });
@@ -826,3 +826,4 @@ describe('importExportAPI tests', () => {
     });
   });
 });
+

@@ -33,7 +33,7 @@ export const importTestCaseInCSVFormat = async ({
   targetEntityType,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   let url = `/dataQuality/testCases/name/${getEncodedFqn(
     name
@@ -58,7 +58,7 @@ export const importEntityInCSVFormat = async ({
   recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const res = await APIClient.put<
     string,
@@ -82,7 +82,7 @@ export const importServiceInCSVFormat = async ({
   recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const res = await APIClient.put<
     string,
@@ -104,7 +104,7 @@ export const importGlossaryInCSVFormat = async ({
   dryRun = true,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const response = await APIClient.put<
     string,
@@ -124,7 +124,7 @@ export const importGlossaryTermInCSVFormat = async ({
   dryRun = true,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const response = await APIClient.put<
     string,

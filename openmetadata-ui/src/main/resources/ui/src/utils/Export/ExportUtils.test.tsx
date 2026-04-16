@@ -99,8 +99,20 @@ describe('ExportUtils', () => {
 
       downloadFile('content', 'file.csv', 'text/csv;charset=utf-8;');
 
-      expect(MockBlob).toHaveBeenCalledWith(['content'], {
+      expect(MockBlob).toHaveBeenCalledWith(['\uFEFFcontent'], {
         type: 'text/csv;charset=utf-8;',
+      });
+    });
+
+    it('does not prepend BOM for non-csv files', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadFile('content', 'file.txt');
+
+      expect(MockBlob).toHaveBeenCalledWith(['content'], {
+        type: 'text/plain',
       });
     });
   });

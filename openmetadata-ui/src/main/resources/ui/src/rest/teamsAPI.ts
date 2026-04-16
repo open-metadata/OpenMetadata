@@ -130,7 +130,7 @@ export const importTeam = async (
   dryRun = true
 ) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
     params: {
       dryRun,
     },
@@ -149,7 +149,7 @@ export const importUserInTeam = async (
   dryRun = true
 ) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
     params: {
       team,
       dryRun,
