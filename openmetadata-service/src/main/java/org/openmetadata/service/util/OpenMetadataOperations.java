@@ -1365,6 +1365,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
@@ -1967,6 +1969,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
