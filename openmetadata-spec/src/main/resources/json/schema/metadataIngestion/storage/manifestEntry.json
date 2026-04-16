@@ -1,20 +1,34 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/storage/manifestEntry.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ManifestEntry",
+  "title": "Manifest Entry",
   "description": "A manifest entry for auto-discovering structured or unstructured data in object storage. Supports glob patterns, auto-partition detection, and explicit partition column definitions.",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestEntry",
   "type": "object",
   "properties": {
     "pathPattern": {
       "title": "Path Pattern",
-      "description": "Glob-style path pattern relative to bucket root. Use '*' for single-level wildcard and '**' for recursive matching. Examples: 'data/*/events/*.parquet', 'logs/**/*.json'",
+      "description": "Glob-style path pattern relative to bucket root. Use a single-star wildcard for one path level, and a double-star wildcard for recursive matching. Example patterns: data, one level wildcard, events, parquet files; or logs, recursive wildcard, json files.",
       "type": "string"
+    },
+    "unstructuredData": {
+      "title": "Unstructured Data",
+      "description": "When true, files matching the path pattern are cataloged as individual containers without schema extraction. Use for images, documents, and other non-tabular files.",
+      "type": "boolean",
+      "default": false
     },
     "structureFormat": {
       "title": "Structure Format",
-      "description": "Expected file format for schema inference (e.g., parquet, csv, avro, json). If omitted, auto-detected from file extension.",
-      "type": "string",
+      "description": "Expected file format for schema inference. Leave blank to auto-detect from the file extension. Ignored when Unstructured Data is enabled.",
+      "oneOf": [
+        {"type": "null", "title": "Auto-detect from extension"},
+        {"const": "parquet", "title": "Parquet", "type": "string"},
+        {"const": "csv", "title": "CSV", "type": "string"},
+        {"const": "tsv", "title": "TSV", "type": "string"},
+        {"const": "avro", "title": "Avro", "type": "string"},
+        {"const": "json", "title": "JSON", "type": "string"},
+        {"const": "jsonl", "title": "JSON Lines", "type": "string"}
+      ],
       "default": null
     },
     "separator": {
@@ -40,7 +54,7 @@
     },
     "excludePatterns": {
       "title": "Exclude Patterns",
-      "description": "Glob patterns to exclude from discovery. Any file matching these patterns will be skipped. Example: 'data/archive/**', 'data/tmp_*/**'",
+      "description": "Glob patterns to exclude from discovery. Any file matching these patterns will be skipped. Example patterns exclude an archive subtree or a temp prefix subtree.",
       "type": "array",
       "items": {
         "type": "string"
@@ -52,15 +66,33 @@
       "description": "Explicit partition column definitions. Overrides auto-detection when provided. Use when auto-detection cannot determine partition structure (e.g., non-standard directory naming).",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/table.json#/definitions/column"
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "description": "Partition column name.",
+            "type": "string"
+          },
+          "dataType": {
+            "title": "Data Type",
+            "description": "Partition column data type.",
+            "$ref": "../../entity/data/table.json#/definitions/dataType"
+          },
+          "dataTypeDisplay": {
+            "title": "Data Type Display",
+            "description": "Display name for the data type (optional).",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "description": "Description of the partition column (optional).",
+            "type": "string"
+          }
+        },
+        "required": ["name", "dataType"],
+        "additionalProperties": false
       },
       "default": null
-    },
-    "unstructuredData": {
-      "title": "Unstructured Data",
-      "description": "When true, files matching the path pattern are cataloged as individual containers without schema extraction. Use for images, documents, and other non-tabular files.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["pathPattern"],

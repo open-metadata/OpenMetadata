@@ -3132,17 +3132,18 @@ export interface ManifestEntry {
     excludePaths?: string[];
     /**
      * Glob patterns to exclude from discovery. Any file matching these patterns will be
-     * skipped. Example: data/archive/**, data/tmp_*/**
+     * skipped. Example patterns exclude an archive subtree or a temp prefix subtree.
      */
     excludePatterns?: string[];
     /**
      * Explicit partition column definitions. Overrides auto-detection when provided. Use when
      * auto-detection cannot determine partition structure (e.g., non-standard directory naming).
      */
-    partitionColumns?: Column[];
+    partitionColumns?: PartitionColumn[];
     /**
-     * Glob-style path pattern relative to bucket root. Use * for single-level wildcard and **
-     * for recursive matching. Examples: data/*/events/*.parquet, logs/**/*.json
+     * Glob-style path pattern relative to bucket root. Use a single-star wildcard for one path
+     * level, and a double-star wildcard for recursive matching. Example patterns: data, one
+     * level wildcard, events, parquet files; or logs, recursive wildcard, json files.
      */
     pathPattern: string;
     /**
@@ -3150,10 +3151,10 @@ export interface ManifestEntry {
      */
     separator?: string;
     /**
-     * Expected file format for schema inference (e.g., parquet, csv, avro, json). If omitted,
-     * auto-detected from file extension.
+     * Expected file format for schema inference. Leave blank to auto-detect from the file
+     * extension. Ignored when Unstructured Data is enabled.
      */
-    structureFormat?: string;
+    structureFormat?: null | string;
     /**
      * When true, files matching the path pattern are cataloged as individual containers without
      * schema extraction. Use for images, documents, and other non-tabular files.
@@ -3161,93 +3162,29 @@ export interface ManifestEntry {
     unstructuredData?: boolean;
 }
 
-/**
- * This schema defines the type for a column in a table.
- */
-export interface Column {
+export interface PartitionColumn {
     /**
-     * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
-     * arrayDataType as `int`.
-     */
-    arrayDataType?: DataType;
-    /**
-     * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
-     */
-    children?: Column[];
-    /**
-     * Column level constraint.
-     */
-    constraint?: Constraint;
-    /**
-     * List of Custom Metrics registered for a table.
-     */
-    customMetrics?: CustomMetric[];
-    /**
-     * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
-     * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
-     */
-    dataLength?: number;
-    /**
-     * Data type of the column (int, date etc.).
+     * Partition column data type.
      */
     dataType: DataType;
     /**
-     * Display name used for dataType. This is useful for complex types, such as `array<int>`,
-     * `map<int,string>`, `struct<>`, and union types.
+     * Display name for the data type (optional).
      */
     dataTypeDisplay?: string;
     /**
-     * Description of the column.
+     * Description of the partition column (optional).
      */
     description?: string;
     /**
-     * Display Name that identifies this column name.
+     * Partition column name.
      */
-    displayName?: string;
-    /**
-     * Entity extension data with custom attributes added to the entity.
-     */
-    extension?:          any;
-    fullyQualifiedName?: string;
-    /**
-     * Json schema only if the dataType is JSON else null.
-     */
-    jsonSchema?: string;
-    name:        string;
-    /**
-     * Ordinal position of the column.
-     */
-    ordinalPosition?: number;
-    /**
-     * The precision of a numeric is the total count of significant digits in the whole number,
-     * that is, the number of digits to both sides of the decimal point. Precision is applicable
-     * Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric
-     * types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
-     */
-    precision?: number;
-    /**
-     * Latest Data profile for a Column.
-     */
-    profile?: ColumnProfile;
-    /**
-     * The scale of a numeric is the count of decimal digits in the fractional part, to the
-     * right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non
-     * Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
-     */
-    scale?: number;
-    /**
-     * Tags associated with the column.
-     */
-    tags?: TierElement[];
+    name: string;
 }
 
 /**
- * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
- * arrayDataType as `int`.
+ * Partition column data type.
  *
  * This enum defines the type of data stored in a column.
- *
- * Data type of the column (int, date etc.).
  */
 export enum DataType {
     AggState = "AGG_STATE",
@@ -3336,233 +3273,6 @@ export enum DataType {
     Variant = "VARIANT",
     XML = "XML",
     Year = "YEAR",
-}
-
-/**
- * Column level constraint.
- *
- * This enum defines the type for column constraint.
- */
-export enum Constraint {
-    NotNull = "NOT_NULL",
-    Null = "NULL",
-    PrimaryKey = "PRIMARY_KEY",
-    Unique = "UNIQUE",
-}
-
-/**
- * Custom Metric definition that we will associate with a column.
- */
-export interface CustomMetric {
-    /**
-     * Name of the column in a table.
-     */
-    columnName?: string;
-    /**
-     * Description of the Metric.
-     */
-    description?: string;
-    /**
-     * SQL expression to compute the Metric. It should return a single numerical value.
-     */
-    expression: string;
-    /**
-     * Unique identifier of this Custom Metric instance.
-     */
-    id?: string;
-    /**
-     * Name that identifies this Custom Metric.
-     */
-    name: string;
-    /**
-     * Owners of this Custom Metric.
-     */
-    owners?: EntityReference[];
-    /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds.
-     */
-    updatedAt?: number;
-    /**
-     * User who made the update.
-     */
-    updatedBy?: string;
-}
-
-/**
- * Latest Data profile for a Column.
- *
- * This schema defines the type to capture the table's column profile.
- */
-export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
-    cardinalityDistribution?: CardinalityDistribution;
-    /**
-     * Custom Metrics profile list bound to a column.
-     */
-    customMetrics?: CustomMetricProfile[];
-    /**
-     * Number of values that contain distinct values.
-     */
-    distinctCount?: number;
-    /**
-     * Proportion of distinct values in a column.
-     */
-    distinctProportion?: number;
-    /**
-     * No.of Rows that contain duplicates in a column.
-     */
-    duplicateCount?: number;
-    /**
-     * First quartile of a column.
-     */
-    firstQuartile?: number;
-    /**
-     * Histogram of a column.
-     */
-    histogram?: any[] | boolean | HistogramClass | number | number | null | string;
-    /**
-     * Inter quartile range of a column.
-     */
-    interQuartileRange?: number;
-    /**
-     * Maximum value in a column.
-     */
-    max?: number | string;
-    /**
-     * Maximum string length in a column.
-     */
-    maxLength?: number;
-    /**
-     * Avg value in a column.
-     */
-    mean?: number;
-    /**
-     * Median of a column.
-     */
-    median?: number;
-    /**
-     * Minimum value in a column.
-     */
-    min?: number | string;
-    /**
-     * Minimum string length in a column.
-     */
-    minLength?: number;
-    /**
-     * Missing count is calculated by subtracting valuesCount - validCount.
-     */
-    missingCount?: number;
-    /**
-     * Missing Percentage is calculated by taking percentage of validCount/valuesCount.
-     */
-    missingPercentage?: number;
-    /**
-     * Column Name.
-     */
-    name: string;
-    /**
-     * Non parametric skew of a column.
-     */
-    nonParametricSkew?: number;
-    /**
-     * No.of null values in a column.
-     */
-    nullCount?: number;
-    /**
-     * No.of null value proportion in columns.
-     */
-    nullProportion?: number;
-    /**
-     * Standard deviation of a column.
-     */
-    stddev?: number;
-    /**
-     * Median value in a column.
-     */
-    sum?: number;
-    /**
-     * First quartile of a column.
-     */
-    thirdQuartile?: number;
-    /**
-     * Timestamp on which profile is taken.
-     */
-    timestamp: number;
-    /**
-     * No. of unique values in the column.
-     */
-    uniqueCount?: number;
-    /**
-     * Proportion of number of unique values in a column.
-     */
-    uniqueProportion?: number;
-    /**
-     * Total count of valid values in this column.
-     */
-    validCount?: number;
-    /**
-     * Total count of the values in this column.
-     */
-    valuesCount?: number;
-    /**
-     * Percentage of values in this column with respect to row count.
-     */
-    valuesPercentage?: number;
-    /**
-     * Variance of a column.
-     */
-    variance?: number;
-}
-
-/**
- * Cardinality distribution showing top categories with an 'Others' bucket.
- */
-export interface CardinalityDistribution {
-    /**
-     * Flag indicating that all values in the column are unique, so no distribution is
-     * calculated.
-     */
-    allValuesUnique?: boolean;
-    /**
-     * List of category names including 'Others'.
-     */
-    categories?: string[];
-    /**
-     * List of counts corresponding to each category.
-     */
-    counts?: number[];
-    /**
-     * List of percentages corresponding to each category.
-     */
-    percentages?: number[];
-}
-
-/**
- * Profiling results of a Custom Metric.
- */
-export interface CustomMetricProfile {
-    /**
-     * Custom metric name.
-     */
-    name?: string;
-    /**
-     * Profiling results for the metric.
-     */
-    value?: number;
-}
-
-export interface HistogramClass {
-    /**
-     * Boundaries of Histogram.
-     */
-    boundaries?: any[];
-    /**
-     * Frequencies of Histogram.
-     */
-    frequencies?: any[];
 }
 
 /**

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import ArrayField from '@rjsf/core/lib/components/fields/ArrayField';
 import { FieldProps } from '@rjsf/utils';
 import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
@@ -21,8 +22,23 @@ import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
 import './workflow-array-field-template.less';
 
+const isArrayOfObjects = (schema: FieldProps['schema']): boolean => {
+  const items = schema.items;
+
+  return (
+    isObject(items) &&
+    !isArray(items) &&
+    (items as { type?: string }).type === 'object'
+  );
+};
+
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
+
+  if (isArrayOfObjects(props.schema)) {
+    return <ArrayField {...props} />;
+  }
+
   const isFilterPatternField = (id: string) => {
     return /FilterPattern/.test(id);
   };

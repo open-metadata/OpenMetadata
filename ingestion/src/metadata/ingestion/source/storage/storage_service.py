@@ -20,6 +20,8 @@ from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.table import Column as TableColumn
+from metadata.generated.schema.entity.data.table import ColumnName
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
@@ -525,8 +527,18 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 partition_columns = None
                 is_partitioned = False
                 if entry.partitionColumns:
-                    # Explicit partition columns override auto-detection
-                    partition_columns = entry.partitionColumns
+                    # Explicit partition columns override auto-detection.
+                    # Manifest uses a lightweight PartitionColumn schema
+                    # (name + dataType) — convert to full table Column.
+                    partition_columns = [
+                        TableColumn(
+                            name=ColumnName(pc.name),
+                            dataType=pc.dataType,
+                            dataTypeDisplay=pc.dataTypeDisplay,
+                            description=pc.description,
+                        )
+                        for pc in entry.partitionColumns
+                    ]
                     is_partitioned = True
                 elif entry.autoPartitionDetection:
                     file_keys = [k for k, _ in files]
