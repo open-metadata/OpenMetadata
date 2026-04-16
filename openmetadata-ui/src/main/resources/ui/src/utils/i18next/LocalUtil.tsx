@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-import { t as i18nextT } from 'i18next';
+import i18next, { t as i18nextT } from 'i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
 import { ReactNode } from 'react';
-import { Trans } from 'react-i18next';
-import localUtilClassBase from './LocalUtilClassBase';
+import { initReactI18next, Trans } from 'react-i18next';
+import { getInitOptions } from './i18nextUtil';
 
-const i18n = localUtilClassBase.getI18nInstance();
+i18next
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init(getInitOptions())
+  .then(async () => {
+    if (i18next.language !== i18next.resolvedLanguage) {
+      await i18next.changeLanguage(i18next.language);
+    }
+  });
 
 export const t = (key: string, options?: Record<string, unknown>): string => {
   const translation = i18nextT(key, options);
@@ -70,4 +79,4 @@ export const Transi18next = ({
   </Trans>
 );
 
-export default i18n;
+export default i18next;

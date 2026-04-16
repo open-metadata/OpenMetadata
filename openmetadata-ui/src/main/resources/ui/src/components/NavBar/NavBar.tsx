@@ -440,7 +440,7 @@ const NavBar = () => {
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
     await localUtilClassBase.loadLocales(key);
-    i18n.changeLanguage(key);
+    await i18n.changeLanguage(key);
     navigate(0);
   }, []);
 

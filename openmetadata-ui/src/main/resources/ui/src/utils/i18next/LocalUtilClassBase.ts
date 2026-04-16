@@ -11,20 +11,7 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
-import { initReactI18next } from 'react-i18next';
-import { getInitOptions } from './i18nextUtil';
-
-i18next
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init(getInitOptions())
-  .then(async () => {
-    if (i18next.language !== i18next.resolvedLanguage) {
-      await i18next.changeLanguage(i18next.language);
-    }
-  });
+import i18next from './LocalUtil';
 
 class LocalUtilClassBase {
   private static _instance: LocalUtilClassBase;
