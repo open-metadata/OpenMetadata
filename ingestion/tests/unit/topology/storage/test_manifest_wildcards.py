@@ -444,6 +444,290 @@ class TestParsedDefaultManifest:
         assert first is second
 
 
+class TestContainerFilterAppliesToManifestEntries:
+    """Issue #24823: containerFilterPattern at the pipeline level is
+    documented to filter containers. Today it only filters top-level
+    buckets. It SHOULD also filter nested containers coming from a
+    bucket manifest (``openmetadata.json``) or from ``defaultManifest``.
+
+    These tests drive the filter through the manifest-entry resolution
+    path so users can exclude paths like ``_SUCCESS`` / ``_temporary`` /
+    Spark metadata directories without editing every manifest file."""
+
+    def _stub(self, container_filter_pattern=None):
+        """Build a resolver with the expand_entries / filter pipeline,
+        configured with an optional container filter."""
+        from types import SimpleNamespace
+
+        resolver = SimpleNamespace()
+        resolver.source_config = SimpleNamespace(
+            defaultManifest=None,
+            containerFilterPattern=container_filter_pattern,
+        )
+        resolver.list_keys = lambda *a, **kw: iter(())  # no globs here
+        resolver.expand_entry = StorageServiceSource.expand_entry.__get__(resolver)
+        resolver.expand_entries = StorageServiceSource.expand_entries.__get__(resolver)
+        resolver.filter_manifest_entries = (
+            StorageServiceSource.filter_manifest_entries.__get__(resolver)
+        )
+        resolver.status = SimpleNamespace(filter=lambda *a, **kw: None)
+        return resolver
+
+    def test_exclude_matches_dataPath(self):
+        """Entries whose dataPath matches the exclude pattern must be
+        dropped before any sample-file fetch happens. containerFilter
+        patterns are left-anchored regex (``re.match``), so ``.*_SUCCESS``
+        matches any path ending with _SUCCESS."""
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(excludes=[".*_SUCCESS"])
+        )
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            # These would match the user-provided exclude but also hit
+            # the default Spark-artifact skip list — either way, dropped.
+            MetadataEntry(dataPath="data/_SUCCESS", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/dt=2024/_SUCCESS", structureFormat="parquet"),
+        ]
+        filtered = resolver.filter_manifest_entries("bucket", entries)
+        paths = [e.dataPath for e in filtered]
+        assert "data/events" in paths
+        assert all("_SUCCESS" not in p for p in paths)
+
+    def test_include_takes_precedence(self):
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(includes=["data/events"])
+        )
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/other", structureFormat="parquet"),
+        ]
+        filtered = resolver.filter_manifest_entries("bucket", entries)
+        assert [e.dataPath for e in filtered] == ["data/events"]
+
+    def test_no_filter_pattern_passes_through(self):
+        resolver = self._stub(container_filter_pattern=None)
+        entries = [
+            MetadataEntry(dataPath="a", structureFormat="parquet"),
+            MetadataEntry(dataPath="b", structureFormat="parquet"),
+        ]
+        assert resolver.filter_manifest_entries("bucket", entries) == entries
+
+    def test_excludes_default_spark_artifacts(self):
+        """Common Spark/Delta leftover segments must be dropped even
+        without an explicit exclude pattern — they are never valid
+        data containers."""
+        resolver = self._stub(container_filter_pattern=None)
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/_SUCCESS", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/_temporary/x", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/_spark_metadata/x", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/_delta_log/00000", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/.tmp/x", structureFormat="parquet"),
+        ]
+        paths = [
+            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
+        ]
+        assert paths == ["data/events"]
+
+    def test_multiple_exclude_patterns(self):
+        """Each entry in ``excludes`` is evaluated independently."""
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(excludes=[".*staging", ".*archive"])
+        )
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/staging", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/archive", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/orders", structureFormat="parquet"),
+        ]
+        paths = [
+            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
+        ]
+        assert sorted(paths) == ["data/events", "data/orders"]
+
+    def test_multiple_include_patterns(self):
+        """Any include match keeps the entry."""
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(
+                includes=["data/events", "data/orders"]
+            )
+        )
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/orders", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/other", structureFormat="parquet"),
+        ]
+        paths = sorted(
+            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
+        )
+        assert paths == ["data/events", "data/orders"]
+
+    def test_includes_and_excludes_together(self):
+        """When both are set, include must match AND exclude must not.
+        Exclude takes precedence when a path matches both."""
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(
+                includes=["data/.*"],  # include all under data/
+                excludes=[".*staging"],  # but drop staging
+            )
+        )
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/staging", structureFormat="parquet"),
+            MetadataEntry(dataPath="other/x", structureFormat="parquet"),
+        ]
+        paths = sorted(
+            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
+        )
+        assert paths == ["data/events"]
+
+    def test_filter_is_case_insensitive(self):
+        """``filter_by_container`` uses ``re.IGNORECASE``."""
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(excludes=[".*STAGING"])
+        )
+        entries = [
+            MetadataEntry(dataPath="data/staging", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+        ]
+        paths = [
+            e.dataPath for e in resolver.filter_manifest_entries("bucket", entries)
+        ]
+        assert paths == ["data/events"]
+
+    def test_empty_includes_and_excludes_lists_are_noops(self):
+        """Empty lists must NOT drop everything — they should be treated
+        as 'no pattern'."""
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            container_filter_pattern=FilterPattern(includes=[], excludes=[])
+        )
+        entries = [
+            MetadataEntry(dataPath="data/events", structureFormat="parquet"),
+            MetadataEntry(dataPath="data/orders", structureFormat="parquet"),
+        ]
+        assert len(resolver.filter_manifest_entries("bucket", entries)) == 2
+
+
+class TestIsExcludedArtifact:
+    """Per-artifact unit coverage for S3Source._is_excluded_artifact. A
+    sentinel file matched by this helper must never be picked for schema
+    inference or used as a depth-scan candidate."""
+
+    @staticmethod
+    def _excluded(key):
+        from metadata.ingestion.source.storage.s3.metadata import S3Source
+
+        return S3Source._is_excluded_artifact(key)
+
+    def test_regular_parquet_is_not_excluded(self):
+        assert not self._excluded("data/events/part-00000.parquet")
+        assert not self._excluded("data/events/State=AL/f.parquet")
+        assert not self._excluded("logs/year=2024/file.json")
+
+    def test_success_sentinel(self):
+        assert self._excluded("data/_SUCCESS")
+        assert self._excluded("data/events/dt=2024/_SUCCESS")
+
+    def test_success_crc_sentinel(self):
+        assert self._excluded("data/_SUCCESS.crc")
+        assert self._excluded("data/events/_SUCCESS.gz")
+
+    def test_crc_sidecar_files(self):
+        assert self._excluded("data/events/part-00000.parquet.crc")
+        assert self._excluded("data/events/.part-00000.parquet.crc")
+
+    def test_delta_log_segment(self):
+        assert self._excluded("data/events/_delta_log/00000000000000000000.json")
+        assert self._excluded("data/_delta_log/commit.json")
+
+    def test_temporary_segment(self):
+        assert self._excluded("data/_temporary/0/task.parquet")
+
+    def test_spark_metadata_segment(self):
+        assert self._excluded("data/_spark_metadata/0")
+
+    def test_tmp_segment(self):
+        assert self._excluded("data/.tmp/scratch.parquet")
+
+    def test_committed_and_started_markers(self):
+        assert self._excluded("data/_committed_0")
+        assert self._excluded("data/_started_1234")
+
+    def test_does_not_false_positive_on_similar_names(self):
+        """A directory or file that only *contains* '_SUCCESS' as a
+        substring (e.g., a legit column named 'is_SUCCESS') must not be
+        excluded — only exact sentinel names are matched."""
+        assert not self._excluded("data/is_SUCCESS_table/part.parquet")
+        assert not self._excluded("data/events/SUCCESS.parquet")
+        # Note: `.crc` suffix excludes any file — this is intentional,
+        # Hadoop .crc files are always sidecars and never the real data.
+
+
+class TestFilterAppliesToExpandedGlobEntries:
+    """Regression: the filter must run AFTER glob expansion, so paths
+    derived from a wildcard ``dataPath`` are filtered just like literal
+    paths. Otherwise a user writing ``dataPath: "**/*"`` could pull in
+    _SUCCESS / excluded folders via the glob."""
+
+    def _stub(self, keys, container_filter_pattern=None):
+        from types import SimpleNamespace
+
+        resolver = SimpleNamespace()
+        resolver.source_config = SimpleNamespace(
+            defaultManifest=None,
+            containerFilterPattern=container_filter_pattern,
+        )
+        resolver.list_keys = lambda bucket, prefix: iter(
+            (k, s) for k, s in keys if k.startswith(prefix or "")
+        )
+        resolver.expand_entry = StorageServiceSource.expand_entry.__get__(resolver)
+        resolver.expand_entries = StorageServiceSource.expand_entries.__get__(resolver)
+        resolver.filter_manifest_entries = (
+            StorageServiceSource.filter_manifest_entries.__get__(resolver)
+        )
+        resolver.status = SimpleNamespace(
+            filter=lambda *a, **kw: None, warning=lambda *a, **kw: None
+        )
+        return resolver
+
+    def test_glob_expansion_then_filter_drops_excluded(self):
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        resolver = self._stub(
+            keys=[
+                ("data/events/f1.parquet", 10),
+                ("data/staging/f1.parquet", 20),
+                ("data/orders/f1.parquet", 30),
+            ],
+            container_filter_pattern=FilterPattern(excludes=[".*staging"]),
+        )
+        entry = MetadataEntry(dataPath="data/*/*.parquet", structureFormat="parquet")
+        expanded = resolver.expand_entries("bucket", [entry])
+        # All three globs expanded before filter runs.
+        assert {e.dataPath for e in expanded} == {
+            "data/events",
+            "data/staging",
+            "data/orders",
+        }
+        filtered = resolver.filter_manifest_entries("bucket", expanded)
+        assert {e.dataPath for e in filtered} == {"data/events", "data/orders"}
+
+
 class TestPartitionColumnsToTableColumns:
     """Conversion from lightweight PartitionColumn → full table Column."""
 

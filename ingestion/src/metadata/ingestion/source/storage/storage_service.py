@@ -642,3 +642,53 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 if hasattr(self, "status") and hasattr(self.status, "warning"):
                     self.status.warning(bucket_name, msg)
         return result
+
+    def filter_manifest_entries(
+        self, bucket_name: str, entries: List[MetadataEntry]
+    ) -> List[MetadataEntry]:
+        """Drop manifest entries whose ``dataPath`` should not become a
+        container, applying:
+
+        1. Default Spark/Delta artifact skip list (``_SUCCESS``,
+           ``_delta_log``, ``_temporary``, ``_spark_metadata``, ``.tmp``)
+           so these never leak into the catalog even when a manifest
+           accidentally lists them.
+        2. The pipeline's ``containerFilterPattern`` (includes / excludes
+           / regex) against the **dataPath**. This lets users write a
+           single pipeline-level rule (e.g. ``excludes: ["_SUCCESS"]``)
+           and have it apply across every bucket manifest without
+           editing each manifest file.
+
+        Called by the source after ``expand_entries`` so both literal
+        and expanded entries are filtered uniformly.
+        """
+        from metadata.utils.filters import filter_by_container
+
+        pattern = getattr(self.source_config, "containerFilterPattern", None)
+        filtered: List[MetadataEntry] = []
+        for entry in entries:
+            path = entry.dataPath or ""
+            segments = set(path.split(KEY_SEPARATOR))
+            # 1. Default skip list — never let Spark artifacts become containers.
+            if segments & DEFAULT_EXCLUDE_PATHS:
+                logger.info(
+                    f"Skipping manifest entry '{path}' in bucket "
+                    f"'{bucket_name}' — matches a default excluded "
+                    f"path segment (Spark/Delta internal)."
+                )
+                if hasattr(self, "status") and hasattr(self.status, "filter"):
+                    self.status.filter(path, "Default exclude (Spark artifact)")
+                continue
+
+            # 2. Pipeline-level containerFilterPattern against the dataPath.
+            if pattern and filter_by_container(pattern, path):
+                logger.info(
+                    f"Skipping manifest entry '{path}' in bucket "
+                    f"'{bucket_name}' — filtered by containerFilterPattern."
+                )
+                if hasattr(self, "status") and hasattr(self.status, "filter"):
+                    self.status.filter(path, "containerFilterPattern excluded")
+                continue
+
+            filtered.append(entry)
+        return filtered

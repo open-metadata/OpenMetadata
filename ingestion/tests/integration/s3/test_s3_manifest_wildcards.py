@@ -1147,6 +1147,328 @@ class TestSpecialCharsInPaths:
             _cleanup_service(metadata, service_name)
 
 
+# ----------------------------------------------------------------------
+# Issue #24823 — pipeline-level include/exclude + _SUCCESS sentinel
+# ----------------------------------------------------------------------
+
+
+class TestContainerFilterPatternAgainstManifestPaths:
+    """Issue #24823: users report that ``containerFilterPattern``
+    excludes do not apply when the manifest lists nested paths, and
+    that Spark ``_SUCCESS`` sentinel files get sampled for schema
+    inference. Both paths now go through ``filter_manifest_entries``
+    and ``_is_excluded_artifact``."""
+
+    def test_success_sentinel_in_manifest_is_skipped(
+        self, minio, metadata, wildcard_bucket
+    ):
+        """A manifest that accidentally lists ``_SUCCESS`` (or a path
+        containing ``_SUCCESS``) must NOT produce a container."""
+        _, minio_client = minio
+        service_name = f"wc-succ-{uuid.uuid4().hex[:8]}"
+
+        manifest = {
+            "entries": [
+                {
+                    "dataPath": "data/sales",
+                    "structureFormat": "parquet",
+                    "isPartitioned": True,
+                },
+                # Shouldn't show up in the catalog even though it's listed.
+                {"dataPath": "_SUCCESS"},
+                {"dataPath": "data/sales/_SUCCESS"},
+            ]
+        }
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "openmetadata.json",
+            json.dumps(manifest).encode(),
+        )
+        config = _build_pipeline_config(
+            service_name=service_name,
+            minio_container=minio[0],
+        )
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
+            wildcard_bucket
+        ]
+
+        try:
+            _run_workflow(config)
+            sales = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/sales",
+                fields=["*"],
+            )
+            assert sales is not None
+
+            bad = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}._SUCCESS",
+                fields=["*"],
+            )
+            assert bad is None, "_SUCCESS must never become a container"
+
+            nested = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/sales/_SUCCESS",
+                fields=["*"],
+            )
+            assert (
+                nested is None
+            ), "entries whose dataPath contains a _SUCCESS segment must be skipped"
+        finally:
+            _cleanup_service(metadata, service_name)
+
+    def test_container_filter_excludes_applies_to_manifest_paths(
+        self, minio, metadata, wildcard_bucket
+    ):
+        """``containerFilterPattern.excludes`` set on the pipeline
+        config must drop matching entries from a bucket manifest, not
+        just top-level buckets."""
+        _, minio_client = minio
+        service_name = f"wc-excl-{uuid.uuid4().hex[:8]}"
+
+        manifest = {
+            "entries": [
+                {
+                    "dataPath": "data/sales",
+                    "structureFormat": "parquet",
+                    "isPartitioned": True,
+                },
+                {
+                    "dataPath": "data/orders",
+                    "structureFormat": "parquet",
+                    "isPartitioned": True,
+                },
+            ]
+        }
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "openmetadata.json",
+            json.dumps(manifest).encode(),
+        )
+
+        config = _build_pipeline_config(
+            service_name=service_name,
+            minio_container=minio[0],
+        )
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
+            wildcard_bucket
+        ]
+        # Exclude orders at the pipeline level. containerFilterPattern
+        # uses left-anchored regex — ``.*orders`` matches any path that
+        # ends with 'orders' (or contains it, since patterns aren't
+        # right-anchored either).
+        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {
+            "excludes": [".*orders"]
+        }
+
+        try:
+            _run_workflow(config)
+            sales = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/sales",
+                fields=["*"],
+            )
+            orders = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/orders",
+                fields=["*"],
+            )
+            assert sales is not None, "sales must be ingested"
+            assert orders is None, (
+                "containerFilterPattern.excludes must drop manifest "
+                "entries matching the exclude pattern"
+            )
+        finally:
+            _cleanup_service(metadata, service_name)
+
+    def test_container_filter_includes_applies_to_manifest_paths(
+        self, minio, metadata, wildcard_bucket
+    ):
+        """Likewise ``containerFilterPattern.includes`` restricts which
+        manifest entries become containers."""
+        _, minio_client = minio
+        service_name = f"wc-incl-{uuid.uuid4().hex[:8]}"
+
+        manifest = {
+            "entries": [
+                {
+                    "dataPath": "data/sales",
+                    "structureFormat": "parquet",
+                    "isPartitioned": True,
+                },
+                {
+                    "dataPath": "data/orders",
+                    "structureFormat": "parquet",
+                    "isPartitioned": True,
+                },
+            ]
+        }
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "openmetadata.json",
+            json.dumps(manifest).encode(),
+        )
+
+        config = _build_pipeline_config(
+            service_name=service_name,
+            minio_container=minio[0],
+        )
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
+            wildcard_bucket
+        ]
+        # Left-anchored regex: ``.*sales`` matches any path that contains 'sales'.
+        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {
+            "includes": [".*sales"]
+        }
+
+        try:
+            _run_workflow(config)
+            sales = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/sales",
+                fields=["*"],
+            )
+            orders = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/orders",
+                fields=["*"],
+            )
+            assert sales is not None
+            assert orders is None, "only 'sales' matches the include pattern"
+        finally:
+            _cleanup_service(metadata, service_name)
+
+    def test_filter_applies_after_glob_expansion(
+        self, minio, metadata, wildcard_bucket
+    ):
+        """End-to-end: a glob ``dataPath`` plus a pipeline-level
+        ``containerFilterPattern`` must expand the glob THEN drop the
+        matching excludes. Without this ordering, an innocent
+        ``data/**/*.parquet`` pattern would sweep archive/staging dirs
+        that the user already tried to exclude at the pipeline level."""
+        _, minio_client = minio
+        service_name = f"wc-glob-excl-{uuid.uuid4().hex[:8]}"
+
+        manifest = {
+            "entries": [
+                {
+                    "dataPath": "data/**/*.parquet",
+                    "structureFormat": "parquet",
+                    "autoPartitionDetection": True,
+                }
+            ]
+        }
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "openmetadata.json",
+            json.dumps(manifest).encode(),
+        )
+
+        config = _build_pipeline_config(
+            service_name=service_name,
+            minio_container=minio[0],
+        )
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
+            wildcard_bucket
+        ]
+        # Drop orders even though the glob would match it.
+        config["source"]["sourceConfig"]["config"]["containerFilterPattern"] = {
+            "excludes": [".*orders"]
+        }
+
+        try:
+            _run_workflow(config)
+            sales = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/sales",
+                fields=["*"],
+            )
+            orders = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/orders",
+                fields=["*"],
+            )
+            assert (
+                sales is not None
+            ), "sales was in the glob expansion and must be ingested"
+            assert orders is None, (
+                "orders was in the glob expansion but matches the "
+                "containerFilterPattern exclude — must be dropped"
+            )
+        finally:
+            _cleanup_service(metadata, service_name)
+
+    def test_success_file_in_sample_directory_is_not_picked(
+        self, minio, metadata, wildcard_bucket
+    ):
+        """Sample-file selection must skip ``_SUCCESS`` so pyarrow
+        doesn't crash on a 0-byte sentinel (original reported crash)."""
+        _, minio_client = minio
+        service_name = f"wc-sampsucc-{uuid.uuid4().hex[:8]}"
+
+        # Drop 0-byte Spark sentinels alongside the valid parquet files.
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "data/sales/State=AL/_SUCCESS",
+            b"",
+        )
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "data/sales/State=AL/_SUCCESS.crc",
+            b"",
+        )
+
+        manifest = {
+            "entries": [
+                {
+                    "dataPath": "data/sales",
+                    "structureFormat": "parquet",
+                    "isPartitioned": True,
+                }
+            ]
+        }
+        _put_object(
+            minio_client,
+            wildcard_bucket,
+            "openmetadata.json",
+            json.dumps(manifest).encode(),
+        )
+
+        config = _build_pipeline_config(
+            service_name=service_name,
+            minio_container=minio[0],
+        )
+        config["source"]["serviceConnection"]["config"]["bucketNames"] = [
+            wildcard_bucket
+        ]
+
+        try:
+            # Must not raise — if _SUCCESS were sampled, pyarrow would
+            # blow up with "Parquet file size is 0 bytes".
+            _run_workflow(config)
+
+            sales = metadata.get_by_name(
+                entity=Container,
+                fqn=f"{service_name}.{wildcard_bucket}.data/sales",
+                fields=["*"],
+            )
+            assert sales is not None
+            assert sales.dataModel is not None
+            assert (
+                sales.dataModel.columns
+            ), "columns must come from a real parquet file, not _SUCCESS"
+        finally:
+            _cleanup_service(metadata, service_name)
+
+
 class TestMalformedDefaultManifest:
     """Symmetric coverage for defaultManifest parse errors."""
 

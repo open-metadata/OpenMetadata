@@ -48,6 +48,7 @@ def _make_s3_source():
     source._clean_path = S3Source._clean_path.__get__(source)
     source._get_sample_file_path = S3Source._get_sample_file_path.__get__(source)
     source._get_sample_file_prefix = S3Source._get_sample_file_prefix
+    source._is_excluded_artifact = S3Source._is_excluded_artifact
     source.get_aws_bucket_region = S3Source.get_aws_bucket_region.__get__(source)
     source.fetch_buckets = S3Source.fetch_buckets.__get__(source)
     source._generate_unstructured_container = (

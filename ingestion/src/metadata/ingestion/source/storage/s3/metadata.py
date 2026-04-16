@@ -135,14 +135,22 @@ class S3Source(StorageServiceSource):
                     expanded_entries = self.expand_entries(
                         bucket_name=bucket_name, entries=manifest_entries
                     )
+                    # Apply containerFilterPattern + default Spark-artifact
+                    # excludes to the concrete paths *before* we attempt to
+                    # list sample files / infer schema. Prevents Issue #24823
+                    # where entries like ``_SUCCESS`` or user-excluded paths
+                    # would still be processed.
+                    filtered_entries = self.filter_manifest_entries(
+                        bucket_name=bucket_name, entries=expanded_entries
+                    )
                     yield from self._generate_structured_containers(
                         bucket_response=bucket_response,
-                        entries=expanded_entries,
+                        entries=filtered_entries,
                         parent=parent_entity,
                     )
                     yield from self._generate_unstructured_containers(
                         bucket_response=bucket_response,
-                        entries=expanded_entries,
+                        entries=filtered_entries,
                         parent=parent_entity,
                     )
 
@@ -339,8 +347,7 @@ class S3Source(StorageServiceSource):
                     if entry
                     and entry.get("Key")
                     and len(entry.get("Key").split("/")) > total_depth
-                    and "/_delta_log/" not in entry.get("Key")
-                    and not entry.get("Key").endswith("/_SUCCESS")
+                    and not self._is_excluded_artifact(entry.get("Key"))
                 }
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
@@ -676,36 +683,57 @@ class S3Source(StorageServiceSource):
         self, bucket_name: str, metadata_entry: MetadataEntry
     ) -> Optional[str]:
         """
-        Given a bucket and a metadata entry, returns the full path key to a file which can then be used to infer schema
-        or None in the case of a non-structured metadata entry, or if no such keys can be found
+        Given a bucket and a metadata entry, returns the full path key to a
+        file which can then be used to infer schema, or None if no suitable
+        file exists.
+
+        Spark/Delta artifacts (``_SUCCESS``, ``_SUCCESS.crc``,
+        ``_delta_log``, ``_temporary``, ``_spark_metadata``, ``.tmp``,
+        ``_committed_*``, ``_started_*``) are always skipped — these
+        sentinel files are commonly 0-byte or non-parquet and would
+        crash the schema-inference readers (see Issue #24823).
+
+        The entry's ``structureFormat`` (if set) is used to prefer a
+        matching extension so a ``.parquet`` table is not sampled from
+        a neighbouring ``.csv`` or ``.crc`` file.
         """
         prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
-        # this will look only in the first 1000 files under that path (default for list_objects_v2).
-        # We'd rather not do pagination here as it would incur unwanted costs
+        if not prefix:
+            return None
+
+        # this will look only in the first 1000 files under that path
+        # (default for list_objects_v2). Pagination would incur unwanted costs.
         try:
-            if prefix:
-                response = self.s3_client.list_objects_v2(
-                    Bucket=bucket_name, Prefix=prefix
+            response = self.s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+            all_keys = [
+                entry["Key"]
+                for entry in response.get(S3_CLIENT_ROOT_RESPONSE, []) or []
+                if entry
+                and entry.get("Key")
+                and not entry.get("Key").endswith("/")
+                and not self._is_excluded_artifact(entry.get("Key"))
+            ]
+            # Prefer files that match the requested structureFormat
+            # extension when one is set; fall back to any remaining file
+            # if none match (some tables write parquet with uncommon
+            # extensions like .pq / .parq).
+            fmt = (metadata_entry.structureFormat or "").strip().lower()
+            if fmt:
+                preferred = [k for k in all_keys if k.lower().endswith("." + fmt)]
+                candidate_keys = preferred or all_keys
+            else:
+                candidate_keys = all_keys
+
+            if candidate_keys:
+                result_key = secrets.choice(candidate_keys)
+                logger.info(
+                    f"File {result_key} was picked to infer data structure from."
                 )
-                candidate_keys = [
-                    entry["Key"]
-                    for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                    if entry
-                    and entry.get("Key")
-                    and not entry.get("Key").endswith("/")
-                    and "/_delta_log/" not in entry.get("Key")
-                    and not entry.get("Key").endswith("/_SUCCESS")
-                ]
-                # pick a random key out of the candidates if any were returned
-                if candidate_keys:
-                    result_key = secrets.choice(candidate_keys)
-                    logger.info(
-                        f"File {result_key} was picked to infer data structure from."
-                    )
-                    return result_key
-                logger.warning(
-                    f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension"
-                )
+                return result_key
+            logger.warning(
+                f"No sample files found in {prefix} with "
+                f"{metadata_entry.structureFormat} extension"
+            )
             return None
         except Exception:
             logger.debug(traceback.format_exc())
@@ -713,6 +741,30 @@ class S3Source(StorageServiceSource):
                 f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}"
             )
             return None
+
+    @staticmethod
+    def _is_excluded_artifact(key: str) -> bool:
+        """Return True if ``key`` looks like a Spark/Delta sentinel
+        artifact that must not be used for schema inference."""
+        # Segment-based checks: any path component matching one of these
+        # means the file lives under a Spark/Delta internal directory.
+        sentinel_segments = {
+            "_delta_log",
+            "_temporary",
+            "_spark_metadata",
+            ".tmp",
+        }
+        if set(key.split("/")) & sentinel_segments:
+            return True
+        # Leaf-name checks: match the file name itself, not the path.
+        leaf = key.rsplit("/", 1)[-1]
+        if leaf == "_SUCCESS" or leaf.startswith("_SUCCESS."):
+            return True
+        if leaf.startswith("_committed_") or leaf.startswith("_started_"):
+            return True
+        if leaf.endswith(".crc"):
+            return True
+        return False
 
     def get_aws_bucket_region(self, bucket_name: str) -> str:
         """
