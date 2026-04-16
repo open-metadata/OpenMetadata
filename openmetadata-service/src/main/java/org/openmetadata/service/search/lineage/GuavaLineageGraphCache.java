@@ -48,7 +48,7 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
     // Build cache with TTL, max size, and removal listener
     this.cache =
         CacheBuilder.newBuilder()
-            .maximumSize(50) // Reduced from 100 — lineage graphs can be large
+            .maximumSize(config.getMaxCachedGraphs())
             .expireAfterWrite(config.getCacheTTLSeconds(), TimeUnit.SECONDS)
             .recordStats() // Enable statistics collection
             .removalListener(
