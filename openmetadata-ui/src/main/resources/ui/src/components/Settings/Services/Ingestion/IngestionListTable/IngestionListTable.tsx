@@ -186,23 +186,22 @@ function IngestionListTable({
     [handleCancelConfirmationModal]
   );
 
-  const fetchIngestionPipelineExtraDetails = useCallback(async () => {
-    try {
-      setIsIngestionRunsLoading(true);
-      const permissionPromises = ingestionData.map((item) =>
-        getEntityPermissionByFqn(
-          ResourceEntity.INGESTION_PIPELINE,
-          item.fullyQualifiedName ?? ''
-        )
-      );
-      const recentRunStatusPromises = ingestionData.map((item) =>
-        getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
-      );
-      const permissionResponse = await Promise.allSettled(permissionPromises);
-      const recentRunStatusResponse = await Promise.allSettled(
-        recentRunStatusPromises
-      );
+  const fetchIngestionPipelineExtraDetails = useCallback(() => {
+    setIsIngestionRunsLoading(true);
 
+    const permissionPromises = ingestionData.map((item) =>
+      getEntityPermissionByFqn(
+        ResourceEntity.INGESTION_PIPELINE,
+        item.fullyQualifiedName ?? ''
+      )
+    );
+
+    const recentRunStatusPromises = ingestionData.map((item) =>
+      getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
+    );
+
+    // Fire both batches concurrently — whichever settles first updates state immediately
+    Promise.allSettled(permissionPromises).then((permissionResponse) => {
       const permissionData = permissionResponse.reduce((acc, cv, index) => {
         return {
           ...acc,
@@ -210,36 +209,34 @@ function IngestionListTable({
             cv.status === 'fulfilled' ? cv.value : {},
         };
       }, {});
-
-      const recentRunStatusData = recentRunStatusResponse.reduce(
-        (acc, cv, index) => {
-          let value: PipelineStatus[] = [];
-
-          if (cv.status === 'fulfilled') {
-            const runs = cv.value.data ?? [];
-
-            const ingestion = ingestionData[index];
-
-            value =
-              runs.length === 0 && ingestion?.pipelineStatuses
-                ? [ingestion.pipelineStatuses]
-                : runs;
-          }
-
-          return {
-            ...acc,
-            [ingestionData?.[index].name]: value,
-          };
-        },
-        {}
-      );
       setIngestionPipelinePermissions(permissionData);
-      setRecentRunStatuses(recentRunStatusData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsIngestionRunsLoading(false);
-    }
+    });
+
+    Promise.allSettled(recentRunStatusPromises)
+      .then((recentRunStatusResponse) => {
+        const recentRunStatusData = recentRunStatusResponse.reduce(
+          (acc, cv, index) => {
+            let value: PipelineStatus[] = [];
+
+            if (cv.status === 'fulfilled') {
+              const runs = cv.value.data ?? [];
+              const ingestion = ingestionData[index];
+              value =
+                runs.length === 0 && ingestion?.pipelineStatuses
+                  ? [ingestion.pipelineStatuses]
+                  : runs;
+            }
+
+            return {
+              ...acc,
+              [ingestionData?.[index].name]: value,
+            };
+          },
+          {}
+        );
+        setRecentRunStatuses(recentRunStatusData);
+      })
+      .finally(() => setIsIngestionRunsLoading(false));
   }, [ingestionData]);
 
   const { isFetchingStatus, platform } = useMemo(
@@ -379,7 +376,7 @@ function IngestionListTable({
         title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
-        width: 150,
+        width: 180,
         render: (_: string, record: IngestionPipeline) => (
           <IngestionRecentRuns
             appRuns={recentRunStatuses[record.name]}

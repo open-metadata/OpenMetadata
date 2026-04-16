@@ -14,9 +14,11 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { WidgetProps } from '@rjsf/utils';
 import { TreeSelect } from 'antd';
 import { startCase } from 'lodash';
-import { FC, ReactNode, useMemo } from 'react';
+import { FC, ReactNode, useCallback, useMemo } from 'react';
 import { ReactComponent as ArrowIcon } from '../../../../../assets/svg/ic-arrow-down.svg';
 import { TEXT_BODY_COLOR } from '../../../../../constants/constants';
+
+const ALL_VALUE = 'all';
 
 const TreeSelectWidget: FC<WidgetProps> = ({
   onFocus,
@@ -28,8 +30,8 @@ const TreeSelectWidget: FC<WidgetProps> = ({
     () => [
       {
         title: 'All',
-        value: 'all',
-        key: 'all',
+        value: ALL_VALUE,
+        key: ALL_VALUE,
         children: rest.options.enumOptions?.map((node) => ({
           title: startCase(node.label),
           value: node.value,
@@ -38,6 +40,32 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       },
     ],
     [rest.options.enumOptions]
+  );
+
+  // When `expandAllValue` is set on the schema, the synthetic "all" parent
+  // node is a UI-only convenience: the backend enum does not include "all",
+  // so we expand it back into the full list of enum values before submit.
+  // Without this, selecting "All" would persist a value that violates the
+  // schema (e.g. MetadataExporterApp eventTypes).
+  const shouldExpandAll = Boolean(rest.schema.expandAllValue);
+
+  const handleChange = useCallback(
+    (value: unknown) => {
+      if (
+        shouldExpandAll &&
+        Array.isArray(value) &&
+        value.includes(ALL_VALUE)
+      ) {
+        const expanded =
+          rest.options.enumOptions?.map((option) => option.value) ?? [];
+        onChange(expanded);
+
+        return;
+      }
+
+      onChange(value);
+    },
+    [onChange, shouldExpandAll, rest.options.enumOptions]
   );
 
   return (
@@ -63,7 +91,7 @@ const TreeSelectWidget: FC<WidgetProps> = ({
       }
       treeData={treeData}
       onBlur={() => onBlur(rest.id, rest.value)}
-      onChange={(value) => onChange(value)}
+      onChange={handleChange}
       onFocus={() => onFocus(rest.id, rest.value)}
       {...rest}>
       {rest.children as ReactNode}
