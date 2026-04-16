@@ -58,6 +58,7 @@ const mockPatchApplication = jest
 const mockGetApplicationByName = jest
   .fn()
   .mockImplementation(() => Promise.resolve(mockApplicationData));
+const mockImportSchema = jest.fn().mockReturnValue({ default: ['table'] });
 
 jest.mock('../ApplicationConfiguration/ApplicationConfiguration', () =>
   jest.fn().mockImplementation(({ onConfigSave }) => (
@@ -159,7 +160,7 @@ jest.mock('../AppSchedule/AppSchedule.component', () =>
 );
 
 jest.mock('./ApplicationsClassBase', () => ({
-  importSchema: jest.fn().mockReturnValue({ default: ['table'] }),
+  importSchema: jest.fn().mockImplementation(() => mockImportSchema()),
   getJSONUISchema: jest.fn().mockReturnValue({}),
   getApplicationConfigurationComponent: jest
     .fn()
@@ -186,6 +187,11 @@ const ConfirmAction = (buttonLabel: string) => {
 };
 
 describe('AppDetails component', () => {
+  beforeEach(() => {
+    mockImportSchema.mockReset();
+    mockImportSchema.mockReturnValue({ default: ['table'] });
+  });
+
   it('actions check in AppDetails component', async () => {
     await renderAppDetails();
 
@@ -276,5 +282,13 @@ describe('AppDetails component', () => {
 
     expect(mockDeployApp).toHaveBeenCalled();
     expect(mockGetApplicationByName).toHaveBeenCalled();
+  });
+
+  it('logs schema import failures before showing the fallback toast', async () => {
+    mockImportSchema.mockRejectedValueOnce(new Error('schema missing'));
+
+    await renderAppDetails();
+
+    expect(mockShowErrorToast).toHaveBeenCalled();
   });
 });
