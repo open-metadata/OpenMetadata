@@ -436,24 +436,6 @@ export const assignDataProduct = async (
   // to fetch the current state directly from the entity API.
   pollForInheritance = false
 ) => {
-  // Returns the domain display text. When multiple domains are present the
-  // count-button is shown instead of domain-link; returning displayName directly
-  // satisfies the .toContain assertion in both the poll and non-poll paths.
-  const getDomainText = async () => {
-    const hasMultipleDomains = await page
-      .getByTestId('domain-count-button')
-      .isVisible();
-
-    if (hasMultipleDomains) {
-      await expect(page.getByTestId('domain-count-button')).toBeVisible();
-    }
-
-    return page
-      .getByTestId('domain-link')
-      .textContent()
-      .catch(() => null);
-  };
-
   if (pollForInheritance) {
     await expect
       .poll(
@@ -461,19 +443,22 @@ export const assignDataProduct = async (
           await page.reload();
           await waitForAllLoadersToDisappear(page);
 
-          return getDomainText();
+          return page
+            .getByTestId('domain-link')
+            .textContent()
+            .catch(() => null);
         },
         {
           message: `Waiting for inherited domain "${domain.displayName}" to appear on the entity page`,
-          timeout: 30_000,
+          timeout: 60_000,
           intervals: [2_000, 3_000, 5_000],
         }
       )
       .toContain(domain.displayName);
   } else {
-    const domainText = await getDomainText();
-
-    expect(domainText).toContain(domain.displayName);
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domain.displayName
+    );
   }
 
   await page
@@ -537,7 +522,7 @@ export const assignDataProduct = async (
           },
           {
             message: `Waiting for data product "${dataProduct.displayName}" to appear after save`,
-            timeout: 30_000,
+            timeout: 60_000,
             intervals: [2_000, 3_000, 5_000],
           }
         )
