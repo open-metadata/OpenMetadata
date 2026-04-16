@@ -258,7 +258,7 @@ public class LineageRepository {
   }
 
   private EntityReference getPipelineService(LineageDetails entityLineageDetails) {
-    if (nullOrEmpty(entityLineageDetails.getPipeline())) {
+    if (entityLineageDetails == null || nullOrEmpty(entityLineageDetails.getPipeline())) {
       return null;
     }
     EntityReference pipelineRef = entityLineageDetails.getPipeline();
