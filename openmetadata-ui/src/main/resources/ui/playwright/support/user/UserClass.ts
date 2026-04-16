@@ -55,12 +55,41 @@ export class UserClass {
     });
 
     if (!response.ok()) {
-      throw new Error(
-        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
-      );
+      const responseText = await response.text();
+
+      if (
+        response.status() === 400 &&
+        responseText.includes('User with Email Already Exists')
+      ) {
+        const existingUserResponse = await apiContext.get(
+          `/api/v1/users?email=${encodeURIComponent(this.data.email)}&limit=1`
+        );
+
+        if (!existingUserResponse.ok()) {
+          throw new Error(
+            `UserClass.create() user exists but fetch failed (${existingUserResponse.status()}): ${await existingUserResponse.text()}`
+          );
+        }
+
+        const existingUsersData = await existingUserResponse.json();
+        const existingUser = existingUsersData?.data?.[0];
+
+        if (!existingUser) {
+          throw new Error(
+            `UserClass.create() user exists but no user found for email ${this.data.email}`
+          );
+        }
+
+        this.responseData = existingUser;
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${responseText}`
+        );
+      }
+    } else {
+      this.responseData = await response.json();
     }
 
-    this.responseData = await response.json();
     if (assignRole) {
       const { entity } = await this.patch({
         apiContext,

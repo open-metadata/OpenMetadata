@@ -124,6 +124,18 @@ test.describe('Lineage Filters', () => {
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    await Promise.allSettled(
+      entities.map((entity) => entity.delete(apiContext))
+    );
+    await Promise.allSettled([lineageEntity.delete(apiContext)]);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await lineageEntity.visitEntityPage(page);
     await visitLineageTab(page);

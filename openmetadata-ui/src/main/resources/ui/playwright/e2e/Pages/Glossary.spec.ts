@@ -577,9 +577,19 @@ test.describe('Glossary tests', () => {
         await patchRequest;
 
         // Add non mutually exclusive tags
-        await page.click(
-          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
-        );
+        await waitForAllLoadersToDisappear(page);
+        const addGlossaryBtn = page
+          .getByTestId('KnowledgePanel.GlossaryTerms')
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag');
+
+        await addGlossaryBtn.waitFor({
+          state: 'visible',
+          timeout: 60000,
+        });
+        await expect(addGlossaryBtn).toBeEnabled();
+        await addGlossaryBtn.scrollIntoViewIfNeeded();
+        await addGlossaryBtn.click();
 
         // Select 1st term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
@@ -1794,7 +1804,7 @@ test.describe('Glossary tests', () => {
   test('Check for duplicate Glossary Term with Glossary having dot in name', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(
       glossary1,

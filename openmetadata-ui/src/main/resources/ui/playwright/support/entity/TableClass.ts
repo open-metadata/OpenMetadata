@@ -230,18 +230,35 @@ export class TableClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    let service;
     const serviceResponse = await apiContext.post(
       '/api/v1/services/databaseServices',
       {
         data: this.service,
       }
     );
-    if (!serviceResponse.ok()) {
+
+    if (serviceResponse.status() === 409) {
+      const existingServiceResponse = await apiContext.get(
+        `/api/v1/services/databaseServices/name/${encodeURIComponent(
+          this.service.name
+        )}`
+      );
+
+      if (!existingServiceResponse.ok()) {
+        throw new Error(
+          `TableClass: service exists but fetch failed (${existingServiceResponse.status()}): ${await existingServiceResponse.text()}`
+        );
+      }
+
+      service = await existingServiceResponse.json();
+    } else if (!serviceResponse.ok()) {
       throw new Error(
         `TableClass: service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
       );
+    } else {
+      service = await serviceResponse.json();
     }
-    const service = await serviceResponse.json();
 
     const databaseResponse = await apiContext.post('/api/v1/databases', {
       data: { ...this.database, service: service.fullyQualifiedName },

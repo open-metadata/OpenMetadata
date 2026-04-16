@@ -88,17 +88,26 @@ export const searchForEntityShouldWorkShowNoResult = async (
 
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
-  await page.getByTestId('searchBox').press('Enter');
-
-  await page.waitForResponse(`api/v1/search/query?**`);
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    ),
+    page.getByTestId('searchBox').press('Enter'),
+  ]);
 
   await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.getByTestId('no-search-results').getByText('No result found.')
+  ).toBeVisible({ timeout: 30000 });
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]', {
       hasText: displayName,
     })
-  ).not.toBeAttached();
+  ).toHaveCount(0);
 
   await expect(
     page.getByTestId('no-search-results').getByText('No result found.')

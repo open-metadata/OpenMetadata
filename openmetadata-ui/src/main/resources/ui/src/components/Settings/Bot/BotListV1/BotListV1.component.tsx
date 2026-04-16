@@ -16,7 +16,7 @@ import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
@@ -35,7 +35,7 @@ import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { getBotByName, getBots } from '../../../../rest/botsAPI';
+import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
@@ -87,6 +87,7 @@ const BotListV1 = ({
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const latestSearchRequest = useRef(0);
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -97,6 +98,24 @@ const BotListV1 = ({
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
     []
   );
+
+  const enrichBotWithMatchedUser = useCallback((bot: Bot, botUser?: User) => {
+    if (!botUser) {
+      return bot;
+    }
+
+    return {
+      ...bot,
+      botUser: {
+        ...(bot.botUser ?? {}),
+        id: botUser.id,
+        name: botUser.name,
+        displayName: botUser.displayName,
+        fullyQualifiedName: botUser.fullyQualifiedName,
+        email: botUser.email,
+      } as Bot['botUser'],
+    };
+  }, []);
 
   const enrichBotsWithBotUsers = async (bots: Bot[]) => {
     if (!bots.length) {
@@ -124,28 +143,40 @@ const BotListV1 = ({
         botUsers.map((botUser) => [botUser.name, botUser])
       );
 
-      return bots.map((bot) => {
-        const botUser = botUsersByName.get(bot.name);
-
-        if (!botUser) {
-          return bot;
-        }
-
-        return {
-          ...bot,
-          botUser: {
-            ...(bot.botUser ?? {}),
-            id: botUser.id,
-            name: botUser.name,
-            displayName: botUser.displayName,
-            fullyQualifiedName: botUser.fullyQualifiedName,
-            email: botUser.email,
-          } as Bot['botUser'],
-        };
-      });
+      return bots.map((bot) =>
+        enrichBotWithMatchedUser(bot, botUsersByName.get(bot.name))
+      );
     } catch {
       return bots;
     }
+  };
+
+  const getBotsByBotUserNames = async (botUserNames: string[]) => {
+    const include = getBotIncludeFilter();
+    const remainingBotNames = new Set(botUserNames);
+    const botsByBotUserName = new Map<string, Bot>();
+    let after: string | undefined;
+
+    do {
+      const { data, paging } = await getBots({
+        after,
+        include,
+        limit: 100,
+      });
+
+      data.forEach((bot) => {
+        if (!remainingBotNames.has(bot.name)) {
+          return;
+        }
+
+        botsByBotUserName.set(bot.name, bot);
+        remainingBotNames.delete(bot.name);
+      });
+
+      after = paging.after;
+    } while (after && remainingBotNames.size > 0);
+
+    return botsByBotUserName;
   };
 
   /**
@@ -286,7 +317,6 @@ const BotListV1 = ({
   }, [selectedUser]);
 
   const searchBots = async (text: string) => {
-    const include = getBotIncludeFilter();
     const getMatchedBots = async (matchedBotUsers: User[]) => {
       const matchedBotUserNames = Array.from(
         new Set(
@@ -300,43 +330,25 @@ const BotListV1 = ({
         return [];
       }
 
-      const matchedBotsResponse = await Promise.allSettled(
-        matchedBotUserNames.map((name) =>
-          getBotByName(name, {
-            include,
-          })
-        )
+      const botsByBotUserName = await getBotsByBotUserNames(
+        matchedBotUserNames
       );
       const matchedBotUsersByName = new Map(
         matchedBotUsers.map((botUser) => [botUser.name, botUser])
       );
 
-      return matchedBotsResponse.flatMap((result) => {
-        if (result.status !== 'fulfilled') {
+      return matchedBotUserNames.flatMap((botUserName) => {
+        const matchedBot = botsByBotUserName.get(botUserName);
+
+        if (!matchedBot) {
           return [];
         }
 
-        const botUserName = result.value.botUser?.name;
-        const matchedBotUser = botUserName
-          ? matchedBotUsersByName.get(botUserName)
-          : undefined;
-
-        if (!matchedBotUser) {
-          return [result.value];
-        }
-
         return [
-          {
-            ...result.value,
-            botUser: {
-              ...(result.value.botUser ?? {}),
-              id: matchedBotUser.id,
-              name: matchedBotUser.name,
-              displayName: matchedBotUser.displayName,
-              fullyQualifiedName: matchedBotUser.fullyQualifiedName,
-              email: matchedBotUser.email,
-            } as Bot['botUser'],
-          },
+          enrichBotWithMatchedUser(
+            matchedBot,
+            matchedBotUsersByName.get(botUserName)
+          ),
         ];
       });
     };
@@ -345,7 +357,7 @@ const BotListV1 = ({
       query: text,
       pageNumber: 1,
       pageSize: 100,
-      queryFilter: getTermQuery({ isBot: 'true' }),
+      queryFilter: getTermQuery({ isBot: true }),
       searchIndex: SearchIndex.USER,
     });
     const matchedBotUsers = formatUsersResponse(
@@ -357,13 +369,13 @@ const BotListV1 = ({
       return matchedBots;
     }
 
-    const escapedText = escapeESReservedCharacters(text.toLowerCase());
+    const escapedText = escapeESReservedCharacters(text);
     const wildcardPattern = `*${escapedText}*`;
     const matchedUsersByWildcardFilter = await searchQuery({
       query: '*',
       pageNumber: 1,
       pageSize: 100,
-      queryFilter: getTermQuery({ isBot: 'true' }, 'must', undefined, {
+      queryFilter: getTermQuery({ isBot: true }, 'must', undefined, {
         wildcardShouldQueries: {
           'name.keyword': wildcardPattern,
           'displayName.keyword': wildcardPattern,
@@ -381,6 +393,7 @@ const BotListV1 = ({
   };
 
   const handleSearch = async (text: string) => {
+    const searchRequestId = ++latestSearchRequest.current;
     setSearchTerm(text);
 
     handlePageChange(INITIAL_PAGING_VALUE, {
@@ -390,6 +403,7 @@ const BotListV1 = ({
 
     if (!text) {
       setSearchedData(botUsers);
+      setLoading(false);
 
       return;
     }
@@ -398,12 +412,22 @@ const BotListV1 = ({
       setLoading(true);
       const matchedBots = await searchBots(text);
 
+      if (searchRequestId !== latestSearchRequest.current) {
+        return;
+      }
+
       setSearchedData(matchedBots);
     } catch (error) {
+      if (searchRequestId !== latestSearchRequest.current) {
+        return;
+      }
+
       showErrorToast((error as AxiosError).message);
       setSearchedData([]);
     } finally {
-      setLoading(false);
+      if (searchRequestId === latestSearchRequest.current) {
+        setLoading(false);
+      }
     }
   };
 

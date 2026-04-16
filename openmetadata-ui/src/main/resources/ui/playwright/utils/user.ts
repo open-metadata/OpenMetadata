@@ -107,12 +107,6 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
   const searchBar = page.getByTestId('searchbar');
 
   await expect
@@ -122,12 +116,18 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
         await searchBar.fill('');
         await searchBar.fill(userName);
         await searchRequest;
-        await loaderPromise.catch(() => undefined);
+        await page
+          .getByTestId('user-list-v1-component')
+          .getByTestId('loader')
+          .waitFor({
+            state: 'detached',
+          })
+          .catch(() => undefined);
 
         return await page.getByTestId(userName).count();
       },
       {
-        timeout: 60000,
+        timeout: 120000,
         intervals: [1000, 2000, 5000],
         message: `Timed out waiting for user ${userName} to become visible in the user list`,
       }
@@ -503,7 +503,17 @@ export const generateToken = async (page: Page) => {
 };
 
 export const revokeToken = async (page: Page, isBot?: boolean) => {
-  await page.click('[data-testid="revoke-button"]');
+  const revokeButton = page
+    .locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
+    .first();
+
+  await revokeButton.waitFor({
+    state: 'visible',
+    timeout: 60000,
+  });
+  await expect(revokeButton).toBeEnabled();
+  await revokeButton.scrollIntoViewIfNeeded();
+  await revokeButton.click();
 
   await expect(page.locator('[data-testid="body-text"]')).toContainText(
     `Are you sure you want to revoke access for ${
@@ -511,9 +521,16 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
     }?`
   );
 
-  await page.click('[data-testid="save-button"]');
+  const revokeResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/security/token') &&
+      ['DELETE', 'POST'].includes(response.request().method())
+  );
 
-  await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
+  await page.click('[data-testid="save-button"]');
+  await revokeResponse.catch(() => undefined);
+
+  await expect(revokeButton).toBeHidden({ timeout: 60000 });
 };
 
 export const updateExpiration = async (page: Page, expiry: number) => {
