@@ -233,6 +233,9 @@ interface UseOntologyGraphProps {
   glossaryColorMap: Record<string, string>;
   computeNodeColor: (node: OntologyNode) => string;
   assetToTermMap: Record<string, string[]>;
+  onPositionsReady?: (
+    positions: Record<string, { x: number; y: number }>
+  ) => void;
 }
 
 export function useOntologyGraph({
@@ -257,6 +260,7 @@ export function useOntologyGraph({
   glossaryColorMap,
   computeNodeColor,
   assetToTermMap,
+  onPositionsReady,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
@@ -283,6 +287,9 @@ export function useOntologyGraph({
 
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
+
+  const onPositionsReadyRef = useRef(onPositionsReady);
+  onPositionsReadyRef.current = onPositionsReady;
 
   // Cached graph bounds — recomputed only when node data changes, not on every
   // pan/zoom transform. Updated by recomputeGraphBounds() after data updates.
@@ -358,6 +365,24 @@ export function useOntologyGraph({
     });
 
     return positions;
+  }, []);
+
+  const emitPagePositions = useCallback((graph: Graph) => {
+    const cb = onPositionsReadyRef.current;
+    if (!cb) {
+      return;
+    }
+    const pagePositions: Record<string, { x: number; y: number }> = {};
+    graph.getNodeData().forEach((node) => {
+      try {
+        const canvasPos = graph.getElementPosition(node.id);
+        const clientPos = graph.getClientByCanvas(canvasPos);
+        pagePositions[node.id] = { x: clientPos[0], y: clientPos[1] };
+      } catch {
+        // Node may not be rendered yet; skip it.
+      }
+    });
+    cb(pagePositions);
   }, []);
 
   const positionAssetNodes = useCallback((graph: Graph) => {
@@ -1284,6 +1309,7 @@ export function useOntologyGraph({
         }
         await fitAndClampZoom();
         recomputeGraphBounds();
+        emitPagePositions(graph);
       } catch {
         if (renderCancelled) {
           return;
@@ -1295,6 +1321,7 @@ export function useOntologyGraph({
           if (!renderCancelled) {
             await fitAndClampZoom();
             recomputeGraphBounds();
+            emitPagePositions(graph);
           }
         } catch {
           // Graph may have been destroyed; ignore.
@@ -1345,6 +1372,7 @@ export function useOntologyGraph({
     hasBakedPositions,
     layoutType,
     recomputeGraphBounds,
+    emitPagePositions,
   ]);
 
   useEffect(() => {
@@ -1670,6 +1698,7 @@ export function useOntologyGraph({
           await fitViewWithMinZoom(graph);
         }
         recomputeGraphBounds();
+        emitPagePositions(graph);
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1697,7 +1726,13 @@ export function useOntologyGraph({
     positionModelModeNodes,
     positionCircularNodes,
     recomputeGraphBounds,
+    emitPagePositions,
   ]);
 
-  return { graphRef, extractNodePositions, suppressEdgeCheck };
+  return {
+    graphRef,
+    extractNodePositions,
+    suppressEdgeCheck,
+    emitPagePositions,
+  };
 }
