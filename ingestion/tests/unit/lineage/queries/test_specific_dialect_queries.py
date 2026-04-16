@@ -1338,7 +1338,7 @@ FILE_FORMAT = (TYPE = PARQUET)"""
 
         assert_table_lineage_equal(
             query,
-            {Location("@prod_db.staging.stg_events_root")},
+            {Location("@PROD_DB.STAGING.STG_EVENTS_ROOT")},
             {"prod_db.staging.raw_events"},
             dialect=Dialect.SNOWFLAKE.value,
             skip_graph_check=True,
@@ -1368,7 +1368,7 @@ ON_ERROR = CONTINUE"""
 
         assert_table_lineage_equal(
             query,
-            {Location("@load_db.staging.stg_deliveries")},
+            {Location("@LOAD_DB.STAGING.STG_DELIVERIES")},
             {"load_db.public.fact_deliveries"},
             dialect=Dialect.SNOWFLAKE.value,
             skip_graph_check=True,
@@ -1395,7 +1395,7 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         assert_table_lineage_equal(
             query,
-            {Location("@analytics_db.public.stg_events")},
+            {Location("@ANALYTICS_DB.PUBLIC.STG_EVENTS")},
             {"analytics_db.public.fact_events"},
             dialect=Dialect.SNOWFLAKE.value,
             skip_graph_check=True,
