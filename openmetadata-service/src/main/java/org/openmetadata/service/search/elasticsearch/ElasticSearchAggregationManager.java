@@ -143,7 +143,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       }
 
       String aggregationField =
-          SearchSourceBuilderFactory.remapAggregationField(request.getFieldName());
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
         throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
       }
@@ -282,9 +282,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
       LOG.info(
           "Generic Aggregation - Aggregation results present: {}", aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info("Generic Aggregation - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject -> LOG.info("Generic Aggregation - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());
@@ -334,7 +333,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
           if (parsedQuery != null) {
             final Query existingQuery = parsedQuery;
-            Query combinedQuery =
+            parsedQuery =
                 Query.of(
                     qb ->
                         qb.bool(
@@ -343,7 +342,6 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
                               b.filter(rbacQuery);
                               return b;
                             }));
-            parsedQuery = combinedQuery;
           } else {
             parsedQuery = rbacQuery;
           }
@@ -388,10 +386,9 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       LOG.info(
           "Generic Aggregation with RBAC - Aggregation results present: {}",
           aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info(
-            "Generic Aggregation with RBAC - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject ->
+              LOG.info("Generic Aggregation with RBAC - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());

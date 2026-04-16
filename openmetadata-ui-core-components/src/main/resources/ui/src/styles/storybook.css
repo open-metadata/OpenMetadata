@@ -1,8 +1,8 @@
-@import "tailwindcss/theme.css" prefix(tw);
-@import "tailwindcss/preflight.css" prefix(tw);
-@import "tailwindcss/utilities.css" prefix(tw);
+@import 'tailwindcss/theme.css' prefix(tw);
+@import 'tailwindcss/preflight.css' prefix(tw);
+@import 'tailwindcss/utilities.css' prefix(tw);
 
-@import "./globals.css";
+@import './globals.css';
 
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-react-aria-components";

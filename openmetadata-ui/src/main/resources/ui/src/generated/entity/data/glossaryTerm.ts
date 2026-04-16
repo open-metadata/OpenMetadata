@@ -27,6 +27,14 @@ export interface GlossaryTerm {
      */
     childrenCount?: number;
     /**
+     * Optional mappings to external concepts (e.g., SKOS alignments).
+     */
+    conceptMappings?: ConceptMapping[];
+    /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -231,6 +239,8 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the data contract for this entity.
+ *
  * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
@@ -287,6 +297,7 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
@@ -435,6 +446,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

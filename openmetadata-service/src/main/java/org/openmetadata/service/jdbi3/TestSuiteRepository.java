@@ -973,9 +973,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
           });
       compareAndUpdate(
           "dataContract",
-          () -> {
-            recordChange("dataContract", original.getDataContract(), updated.getDataContract());
-          });
+          () ->
+              recordChange("dataContract", original.getDataContract(), updated.getDataContract()));
     }
   }
 }

@@ -440,8 +440,7 @@ public class MigrationUtil {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode rootNode = mapper.readTree(nodeJson);
 
-      if (rootNode instanceof ObjectNode) {
-        ObjectNode nodeObj = (ObjectNode) rootNode;
+      if (rootNode instanceof ObjectNode nodeObj) {
 
         // Navigate to config and add thresholds
         if (nodeObj.has("config") && nodeObj.get("config").isObject()) {
@@ -486,8 +485,7 @@ public class MigrationUtil {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode nodeJsonNode = mapper.readTree(nodeJson);
 
-      if (nodeJsonNode instanceof ObjectNode) {
-        ObjectNode nodeObj = (ObjectNode) nodeJsonNode;
+      if (nodeJsonNode instanceof ObjectNode nodeObj) {
 
         // Change subType
         nodeObj.put("subType", "setEntityAttributeTask");
@@ -525,15 +523,13 @@ public class MigrationUtil {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode triggerNode = mapper.readTree(triggerJson);
 
-        if (triggerNode instanceof ObjectNode) {
-          ObjectNode triggerObj = (ObjectNode) triggerNode;
+        if (triggerNode instanceof ObjectNode triggerObj) {
 
           // Check if it's an eventBasedEntity trigger
           if ("eventBasedEntity".equals(triggerObj.get("type").asText())) {
             JsonNode configNode = triggerObj.get("config");
 
-            if (configNode instanceof ObjectNode) {
-              ObjectNode configObj = (ObjectNode) configNode;
+            if (configNode instanceof ObjectNode configObj) {
 
               boolean triggerModified = false;
 

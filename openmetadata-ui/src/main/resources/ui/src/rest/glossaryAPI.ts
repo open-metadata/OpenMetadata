@@ -309,6 +309,30 @@ export const removeAssetsFromGlossaryTerm = async (
   return response.data;
 };
 
+export const getGlossaryTermAssets = async (
+  termId: string,
+  limit = 100,
+  offset = 0
+) => {
+  const response = await APIClient.get<PagingResponse<EntityReference[]>>(
+    `/glossaryTerms/${termId}/assets`,
+    { params: { limit, offset } }
+  );
+
+  return response.data;
+};
+
+export const getGlossaryTermsAssetCounts = async (
+  parent?: string
+): Promise<Record<string, number>> => {
+  const response = await APIClient.get<Record<string, number>>(
+    '/glossaryTerms/assets/counts',
+    { params: parent ? { parent } : undefined }
+  );
+
+  return response.data;
+};
+
 export const searchGlossaryTerms = async (search: string, page = 1) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 

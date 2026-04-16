@@ -145,10 +145,9 @@ public class LineageRepository {
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
     boolean relationAlreadyExists =
-        Boolean.FALSE.equals(
-            nullOrEmpty(
-                dao.relationshipDAO()
-                    .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal())));
+        !nullOrEmpty(
+            dao.relationshipDAO()
+                .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal()));
 
     if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
@@ -494,14 +493,14 @@ public class LineageRepository {
       for (ColumnLineage columnLineage : columnsLineage) {
         if (!toColumns.contains(
             columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
-          LOG.debug("Invalid toColumn: " + columnLineage.getToColumn());
+          LOG.debug("Invalid toColumn: {}", columnLineage.getToColumn());
           continue;
         }
         List<String> filteredFromColumns = new ArrayList<>();
         boolean updateFromColumns = false;
         for (String fromColumn : columnLineage.getFromColumns()) {
           if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
-            LOG.debug("Invalid fromColumn: " + fromColumn);
+            LOG.debug("Invalid fromColumn: {}", fromColumn);
             updateFromColumns = true;
             continue;
           }
@@ -569,7 +568,7 @@ public class LineageRepository {
                       .withQueryFilter(queryFilter)
                       .withIncludeDeleted(deleted)
                       .withIsConnectedVia(isConnectedVia(entityType))
-                      .withDirection(LineageDirection.UPSTREAM));
+                      .withDirection(null));
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
@@ -996,13 +995,14 @@ public class LineageRepository {
   @Transaction
   public void deleteLineageBySource(UUID toId, String toEntity, String source) {
     List<CollectionDAO.EntityRelationshipObject> relations;
-    if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())) {
+    if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())
+        || source.equals(LineageDetails.Source.OPEN_LINEAGE.value())) {
       relations =
           dao.relationshipDAO()
               .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-          .deleteLineageBySourcePipeline(toId, toEntity, Relationship.UPSTREAM.ordinal());
+          .deleteLineageBySourcePipeline(toId, source, Relationship.UPSTREAM.ordinal());
     } else {
       relations =
           dao.relationshipDAO()

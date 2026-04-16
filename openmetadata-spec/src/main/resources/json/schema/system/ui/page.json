@@ -20,6 +20,7 @@
         "Pipeline",
         "Dashboard",
         "DashboardDataModel",
+        "DataMarketplace",
         "Container",
         "SearchIndex",
         "Glossary",

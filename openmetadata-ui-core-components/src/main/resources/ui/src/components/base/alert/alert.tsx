@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import type { FC, HTMLAttributes, ReactNode } from "react";
+import type { FC, HTMLAttributes, ReactNode } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
   InfoCircle,
-} from "@untitledui/icons";
-import { CloseButton } from "@/components/base/buttons/close-button";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { cx } from "@/utils/cx";
+} from '@untitledui/icons';
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
+import { cx } from '@/utils/cx';
 
-export type AlertVariant = "success" | "warning" | "error" | "brand" | "gray";
+export type AlertVariant = 'success' | 'warning' | 'error' | 'brand' | 'gray';
 
-type FeaturedIconColor = "brand" | "gray" | "success" | "warning" | "error";
+type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
 
 const variantStyles: Record<
   AlertVariant,
@@ -35,33 +35,34 @@ const variantStyles: Record<
   }
 > = {
   success: {
-    root: "tw:border-utility-success-300 tw:bg-success-25",
-    iconColor: "success",
+    root: 'tw:border-utility-success-300 tw:bg-success-25',
+    iconColor: 'success',
     defaultIcon: CheckCircle,
   },
   warning: {
-    root: "tw:border-utility-warning-300 tw:bg-warning-25",
-    iconColor: "warning",
+    root: 'tw:border-utility-warning-300 tw:bg-warning-25',
+    iconColor: 'warning',
     defaultIcon: AlertTriangle,
   },
   error: {
-    root: "tw:border-utility-error-300 tw:bg-error-25",
-    iconColor: "error",
+    root: 'tw:border-utility-error-300 tw:bg-error-25',
+    iconColor: 'error',
     defaultIcon: AlertCircle,
   },
   brand: {
-    root: "tw:border-utility-blue-300 tw:bg-blue-25",
-    iconColor: "brand",
+    root: 'tw:border-utility-blue-300 tw:bg-blue-25',
+    iconColor: 'brand',
     defaultIcon: InfoCircle,
   },
   gray: {
-    root: "tw:border-utility-gray-300 tw:bg-white",
-    iconColor: "gray",
+    root: 'tw:border-utility-gray-300 tw:bg-white',
+    iconColor: 'gray',
     defaultIcon: InfoCircle,
   },
 };
 
-export interface AlertProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
+export interface AlertProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   /** success, warning, error, brand or gray */
   variant: AlertVariant;
   /** Bold heading text */
@@ -92,20 +93,19 @@ export const Alert = ({
   return (
     <div
       {...props}
-      role="alert"
       className={cx(
-        "tw:flex tw:w-full tw:gap-3 tw:rounded-xl tw:border tw:px-4",
-        children ? "tw:items-start tw:py-4" : "tw:items-center tw:py-2",
+        'tw:flex tw:w-full tw:gap-3 tw:rounded-xl tw:border tw:px-4',
+        children ? 'tw:items-start tw:py-4' : 'tw:items-center tw:py-2',
         styles.root,
-        className,
+        className
       )}
-    >
+      role="alert">
       <FeaturedIcon
-        icon={Icon}
+        className={cx('tw:shrink-0', children && 'tw:self-start')}
         color={styles.iconColor}
-        theme="light"
+        icon={Icon}
         size="md"
-        className={cx("tw:shrink-0", children && "tw:self-start")}
+        theme="light"
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
@@ -116,9 +116,9 @@ export const Alert = ({
 
       {closable && (
         <CloseButton
-          size="sm"
-          label="Close alert"
           className="tw:shrink-0"
+          label="Close alert"
+          size="sm"
           onPress={onClose}
         />
       )}

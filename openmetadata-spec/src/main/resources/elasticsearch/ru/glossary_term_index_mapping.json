@@ -101,7 +101,13 @@
         "enabled": false
       },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -321,6 +327,9 @@
           },
           "href": {
             "type": "text"
+          },
+          "mutuallyExclusive": {
+            "type": "boolean"
           }
         }
       },
@@ -550,6 +559,9 @@
       },
       "childrenCount": {
         "type": "integer"
+      },
+      "mutuallyExclusive": {
+        "type": "boolean"
       },
       "fingerprint": {
         "type": "keyword"

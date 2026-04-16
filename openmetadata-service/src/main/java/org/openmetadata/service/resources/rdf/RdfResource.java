@@ -20,10 +20,15 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -39,7 +44,9 @@ import org.openmetadata.service.security.Authorizer;
 @Slf4j
 public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";
-  private final RdfRepository rdfRepository;
+  private static final int MIN_GRAPH_DEPTH = 1;
+  private static final int MAX_GRAPH_DEPTH = 5;
+  private volatile RdfRepository rdfRepository;
   private final Authorizer authorizer;
   private final SemanticSearchEngine semanticSearchEngine;
   private OpenMetadataApplicationConfig config;
@@ -104,6 +111,32 @@ public class RdfResource {
             enabled ? rdfRepository.getConfig().getStorageType() : "N/A");
 
     return Response.ok().entity(statusJson).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  @GET
+  @Path("/debug/glossary-relations")
+  @Operation(
+      operationId = "debugGlossaryRelations",
+      summary = "Debug glossary term relations in RDF",
+      description =
+          "Diagnostic endpoint to inspect what predicates are stored between glossary terms in the RDF store",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Debug information about glossary term relations",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON)),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response debugGlossaryRelations(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity("{\"error\": \"RDF service not enabled\"}")
+          .build();
+    }
+
+    String result = getRdfRepository().debugGlossaryTermRelations();
+    return Response.ok(result, MediaType.APPLICATION_JSON).build();
   }
 
   @GET
@@ -195,22 +228,146 @@ public class RdfResource {
       @Parameter(description = "Depth of relationships to explore")
           @QueryParam("depth")
           @DefaultValue("2")
-          int depth) {
-
+          int depth,
+      @Parameter(description = "Comma-separated entity types to keep in the graph")
+          @QueryParam("entityTypes")
+          String entityTypes,
+      @Parameter(description = "Comma-separated relationship types to keep in the graph")
+          @QueryParam("relationshipTypes")
+          String relationshipTypes) {
+    authorizer.authorizeAdmin(securityContext);
     try {
-      if (!rdfRepository.isEnabled()) {
+      String validatedEntityType = validateEntityType(entityType);
+      int clampedDepth = clampGraphDepth(depth);
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-            .entity("{\"error\": \"RDF service not enabled\"}")
+            .entity(buildErrorResponse("RDF service not enabled"))
             .build();
       }
 
-      String graphData = rdfRepository.getEntityGraph(entityId, entityType, depth);
+      String graphData =
+          getRdfRepository()
+              .getEntityGraph(
+                  entityId,
+                  validatedEntityType,
+                  clampedDepth,
+                  parseCsvFilter(entityTypes),
+                  parseCsvFilter(relationshipTypes));
       return Response.ok(graphData, MediaType.APPLICATION_JSON).build();
-
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .build();
     } catch (Exception e) {
       LOG.error("Error exploring entity graph", e);
-      return Response.serverError().entity("{\"error\": \"" + e.getMessage() + "\"}").build();
+      return Response.serverError()
+          .entity(buildErrorResponse("An internal error occurred"))
+          .build();
     }
+  }
+
+  @GET
+  @Path("/graph/explore/export")
+  @Produces({JSON_LD, TURTLE, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "exportEntityGraph",
+      summary = "Export explored entity graph",
+      description = "Export the currently explored entity graph in Turtle or JSON-LD format",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity graph exported successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response exportEntityGraph(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity ID", required = true) @QueryParam("entityId") UUID entityId,
+      @Parameter(description = "Entity type", required = true) @QueryParam("entityType")
+          String entityType,
+      @Parameter(description = "Depth of relationships to explore")
+          @QueryParam("depth")
+          @DefaultValue("2")
+          int depth,
+      @Parameter(description = "Comma-separated entity types to keep in the graph")
+          @QueryParam("entityTypes")
+          String entityTypes,
+      @Parameter(description = "Comma-separated relationship types to keep in the graph")
+          @QueryParam("relationshipTypes")
+          String relationshipTypes,
+      @Parameter(description = "Export format: turtle or jsonld")
+          @QueryParam("format")
+          @DefaultValue("turtle")
+          String format) {
+    authorizer.authorizeAdmin(securityContext);
+    try {
+      String validatedEntityType = validateEntityType(entityType);
+      int clampedDepth = clampGraphDepth(depth);
+      String normalizedFormat = RdfRepository.normalizeEntityGraphExportFormat(format);
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            .entity(buildErrorResponse("RDF service not enabled"))
+            .build();
+      }
+
+      String result =
+          getRdfRepository()
+              .exportEntityGraph(
+                  entityId,
+                  validatedEntityType,
+                  clampedDepth,
+                  parseCsvFilter(entityTypes),
+                  parseCsvFilter(relationshipTypes),
+                  normalizedFormat);
+
+      MediaType mediaType =
+          switch (normalizedFormat) {
+            case "JSON-LD" -> MediaType.valueOf(JSON_LD);
+            default -> MediaType.valueOf(TURTLE);
+          };
+
+      return Response.ok(result, mediaType).build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Error exporting entity graph", e);
+      return Response.serverError()
+          .entity(buildErrorResponse("An internal error occurred"))
+          .build();
+    }
+  }
+
+  private String validateEntityType(String entityType) {
+    if (entityType == null || entityType.isBlank()) {
+      throw new IllegalArgumentException("Entity type is required");
+    }
+
+    String trimmedEntityType = entityType.trim();
+    if (!trimmedEntityType.matches("[A-Za-z][A-Za-z0-9]*")
+        || !Entity.hasEntityRepository(trimmedEntityType)) {
+      throw new IllegalArgumentException("Invalid entity type");
+    }
+
+    return trimmedEntityType;
+  }
+
+  private String buildErrorResponse(String message) {
+    return JsonUtils.pojoToJson(Map.of("error", message));
+  }
+
+  private int clampGraphDepth(int depth) {
+    return Math.min(Math.max(depth, MIN_GRAPH_DEPTH), MAX_GRAPH_DEPTH);
+  }
+
+  private Set<String> parseCsvFilter(String values) {
+    if (values == null || values.isBlank()) {
+      return Set.of();
+    }
+
+    return Arrays.stream(values.split(","))
+        .map(String::trim)
+        .filter(value -> !value.isEmpty())
+        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
   }
 
   @GET
@@ -379,17 +536,35 @@ public class RdfResource {
           String direction) {
 
     try {
-      String query = buildLineageQuery(entityId, entityType, direction);
-      String results = rdfRepository.executeSparqlQueryWithInference(query, SPARQL_JSON, "custom");
+      String validatedEntityType = validateEntityType(entityType);
+      if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            .entity(buildErrorResponse("RDF service not enabled"))
+            .build();
+      }
+
+      String query =
+          buildLineageQuery(
+              entityId, validatedEntityType, direction, getRdfRepository().getBaseUri());
+      String results =
+          getRdfRepository().executeSparqlQueryWithInference(query, SPARQL_JSON, "custom");
       return Response.ok(results).build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .build();
     } catch (Exception e) {
       LOG.error("Error getting lineage with inference", e);
-      return Response.serverError().entity("Error: " + e.getMessage()).build();
+      return Response.serverError()
+          .entity(buildErrorResponse("An internal error occurred"))
+          .build();
     }
   }
 
-  private String buildLineageQuery(UUID entityId, String entityType, String direction) {
-    String entityUri = "https://open-metadata.org/entity/" + entityType + "/" + entityId;
+  private String buildLineageQuery(
+      UUID entityId, String entityType, String direction, String baseUri) {
+    String normalizedBaseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
+    String entityUri = normalizedBaseUri + "entity/" + entityType + "/" + entityId;
 
     return switch (direction.toLowerCase()) {
       case "upstream" -> String.format(

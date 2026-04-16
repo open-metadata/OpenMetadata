@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Locator, Page, expect } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import type { RightPanelPageObject } from './RightPanelPageObject';
 
 /**

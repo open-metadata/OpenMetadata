@@ -84,12 +84,9 @@ public class ColumnRepository {
   public ColumnRepository(Authorizer authorizer, SearchClient searchClient) {
     this.authorizer = authorizer;
     if (searchClient instanceof ElasticSearchClient) {
-      this.columnAggregator =
-          new ElasticSearchColumnAggregator(
-              ((ElasticSearchClient) searchClient).getHighLevelClient());
+      this.columnAggregator = new ElasticSearchColumnAggregator(searchClient.getHighLevelClient());
     } else if (searchClient instanceof OpenSearchClient) {
-      this.columnAggregator =
-          new OpenSearchColumnAggregator(((OpenSearchClient) searchClient).getHighLevelClient());
+      this.columnAggregator = new OpenSearchColumnAggregator(searchClient.getHighLevelClient());
     } else {
       throw new IllegalArgumentException(
           "Unsupported SearchClient type: " + searchClient.getClass().getName());
@@ -604,11 +601,9 @@ public class ColumnRepository {
           previewItem.setNewValues(newValues);
 
           // Determine if there are actual changes
-          boolean hasChanges = false;
-          if (columnUpdate.getDisplayName() != null
-              && !columnUpdate.getDisplayName().equals(currentColumn.getDisplayName())) {
-            hasChanges = true;
-          }
+          boolean hasChanges =
+              columnUpdate.getDisplayName() != null
+                  && !columnUpdate.getDisplayName().equals(currentColumn.getDisplayName());
           if (columnUpdate.getDescription() != null
               && !columnUpdate.getDescription().equals(currentColumn.getDescription())) {
             hasChanges = true;

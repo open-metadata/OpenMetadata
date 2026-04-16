@@ -96,36 +96,28 @@ public class PromptTemplateRepository extends EntityRepository<PromptTemplate> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "templateContent",
-          () -> {
-            recordChange(
-                "templateContent", original.getTemplateContent(), updated.getTemplateContent());
-          });
+          () ->
+              recordChange(
+                  "templateContent", original.getTemplateContent(), updated.getTemplateContent()));
       compareAndUpdate(
           "systemPrompt",
-          () -> {
-            recordChange("systemPrompt", original.getSystemPrompt(), updated.getSystemPrompt());
-          });
+          () ->
+              recordChange("systemPrompt", original.getSystemPrompt(), updated.getSystemPrompt()));
       compareAndUpdate(
           "variables",
-          () -> {
-            recordChange("variables", original.getVariables(), updated.getVariables(), true);
-          });
+          () -> recordChange("variables", original.getVariables(), updated.getVariables(), true));
       compareAndUpdate(
           "examples",
-          () -> {
-            recordChange("examples", original.getExamples(), updated.getExamples(), true);
-          });
+          () -> recordChange("examples", original.getExamples(), updated.getExamples(), true));
       compareAndUpdate(
           "templateType",
-          () -> {
-            recordChange("templateType", original.getTemplateType(), updated.getTemplateType());
-          });
+          () ->
+              recordChange("templateType", original.getTemplateType(), updated.getTemplateType()));
       compareAndUpdate(
           "templateVersion",
-          () -> {
-            recordChange(
-                "templateVersion", original.getTemplateVersion(), updated.getTemplateVersion());
-          });
+          () ->
+              recordChange(
+                  "templateVersion", original.getTemplateVersion(), updated.getTemplateVersion()));
     }
   }
 }

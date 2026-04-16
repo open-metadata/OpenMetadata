@@ -21,10 +21,10 @@ import {
   selectDomain,
   setupAssetsForDomain,
 } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base.extend<{
   page: Page;

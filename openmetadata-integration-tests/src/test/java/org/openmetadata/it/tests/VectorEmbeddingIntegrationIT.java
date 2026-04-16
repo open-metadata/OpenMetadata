@@ -253,11 +253,11 @@ class VectorEmbeddingIntegrationIT {
 
   @Test
   void testEnsureHybridSearchPipelineCreatesAndUpdates() throws Exception {
-    vectorService.ensureHybridSearchPipeline(0.6, 0.4);
+    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
 
     Map<String, Object> pipeline = getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
     assertNotNull(pipeline, "Pipeline should exist after creation");
-    assertWeightsInPipeline(pipeline, 0.6, 0.4);
+    assertWeightsInPipeline(pipeline, 0.4, 0.6);
 
     vectorService.ensureHybridSearchPipeline(0.3, 0.7);
 

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -517,7 +516,19 @@ test.describe('User with different Roles', () => {
       .getByText('Application bot role', { exact: true })
       .click();
 
+    await adminPage.getByTestId('profile-edit-roles-select').click();
+
+    await adminPage.locator('.ant-select-dropdown').waitFor({
+      state: 'hidden',
+    });
+
+    const saveTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
+    await saveTeamsResponse;
 
     await expect(adminPage.getByTestId('user-profile-roles')).toContainText(
       'Application bot role'

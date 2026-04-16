@@ -105,7 +105,7 @@ export class GlossaryTerm extends EntityClass {
 
     this.responseData = await response.json();
 
-    return await response.json();
+    return this.responseData;
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
@@ -120,8 +120,6 @@ export class GlossaryTerm extends EntityClass {
     );
 
     this.responseData = await response.json();
-
-    return await response.json();
   }
 
   get() {
@@ -129,7 +127,8 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const fqn = this.responseData.fullyQualifiedName;
+    const fqn =
+      this.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
     const response = await apiContext.delete(
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
         fqn

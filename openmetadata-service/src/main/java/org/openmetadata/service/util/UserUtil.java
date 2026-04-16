@@ -124,9 +124,8 @@ public final class UserUtil {
       } else {
         if (Boolean.TRUE.equals(originalUser.getIsBot())) {
           LOG.error(
-              String.format(
-                  "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                  originalUser.getName()));
+              "You configured bot user {} in initialAdmins config. Bot user cannot be promoted to be an admin.",
+              originalUser.getName());
         }
       }
     } catch (EntityNotFoundException e) {
@@ -247,10 +246,6 @@ public final class UserUtil {
    * If a team exists and is of type Group, it will be assigned to the user.
    * If a team doesn't exist or is not of type Group, it will be logged and ignored.
    * This method only ADDS teams - it does not remove users from existing teams.
-   *
-   * @param user User to assign teams to
-   * @param teamNames List of team names from the claim (e.g., groups or department values)
-   * @return true if any team was assigned, false otherwise
    */
   public static boolean assignTeamsFromClaim(User user, List<String> teamNames) {
     if (nullOrEmpty(teamNames)) {

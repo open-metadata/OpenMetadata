@@ -15,6 +15,7 @@ package org.openmetadata.service.clients.pipeline.k8s;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,7 +40,7 @@ class IngestionLogHandlerTest {
   }
 
   @Test
-  void testBuildLogResponseMultipleChunks() throws Exception {
+  void testBuildLogResponseMultipleChunks() {
     // Create a large log that will require multiple chunks
     StringBuilder largeLog = new StringBuilder();
     String logLine =
@@ -75,7 +76,7 @@ class IngestionLogHandlerTest {
     assertEquals(String.valueOf(totalChunks), secondChunk.get("total"));
 
     // Content should be different
-    assertFalse(firstChunk.get(taskKey).equals(secondChunk.get(taskKey)));
+    assertNotEquals(firstChunk.get(taskKey), secondChunk.get(taskKey));
 
     // Last chunk should not have "after" field
     String lastChunkIndex = String.valueOf(totalChunks - 1);

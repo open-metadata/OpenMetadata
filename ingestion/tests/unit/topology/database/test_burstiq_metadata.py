@@ -55,8 +55,6 @@ class TestBurstIQMetadataIngestion(TestCase):
                     "description": "Patient age",
                     "datatype": "INTEGER",
                     "required": False,
-                    "min": 0,
-                    "max": 150,
                 },
                 {
                     "name": "diagnosis_codes",
@@ -70,9 +68,7 @@ class TestBurstIQMetadataIngestion(TestCase):
                     "required": True,
                 },
             ],
-            "indexes": [
-                {"name": "pk_patient", "type": "PRIMARY", "attributes": ["patient_id"]}
-            ],
+            "indexes": [{"type": "PRIMARY", "attributes": ["patient_id"]}],
         }
 
     def test_datatype_mapping_simple_types(self):
@@ -87,15 +83,15 @@ class TestBurstIQMetadataIngestion(TestCase):
 
         # Test simple type mappings
         test_cases = [
-            ("STRING", ("VARCHAR", None)),
+            ("STRING", ("STRING", None)),
             ("INTEGER", ("INT", None)),
             ("LONG", ("BIGINT", None)),
             ("DOUBLE", ("DOUBLE", None)),
             ("FLOAT", ("FLOAT", None)),
             ("BOOLEAN", ("BOOLEAN", None)),
-            ("DATETIME", ("TIMESTAMP", None)),
+            ("DATETIME", ("DATETIME", None)),
             ("DATE", ("DATE", None)),
-            ("UUID", ("VARCHAR", None)),
+            ("UUID", ("UUID", None)),
             ("JSON", ("JSON", None)),
             ("OBJECT", ("STRUCT", None)),
         ]
@@ -115,7 +111,7 @@ class TestBurstIQMetadataIngestion(TestCase):
 
         # Test array type mappings
         test_cases = [
-            ("STRING_ARRAY", ("ARRAY", "VARCHAR")),
+            ("STRING_ARRAY", ("ARRAY", "STRING")),
             ("INTEGER_ARRAY", ("ARRAY", "INT")),
             ("BOOLEAN_ARRAY", ("ARRAY", "BOOLEAN")),
             ("DOUBLE_ARRAY", ("ARRAY", "DOUBLE")),
@@ -154,7 +150,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         # Verify column properties
         self.assertIsNotNone(column)
         self.assertEqual(column.name.root, "patient_id")
-        self.assertEqual(column.dataType.value, "VARCHAR")
+        self.assertEqual(column.dataType.value, "STRING")
         self.assertEqual(column.constraint, Constraint.NOT_NULL)
         self.assertIsNotNone(column.description)
 
@@ -181,7 +177,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         # Verify column properties
         self.assertIsNotNone(column)
         self.assertEqual(column.dataType.value, "ARRAY")
-        self.assertEqual(column.arrayDataType.value, "VARCHAR")
+        self.assertEqual(column.arrayDataType.value, "STRING")
 
     def test_column_processing_nested_object(self):
         """Test processing nested object attributes"""
@@ -229,11 +225,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         dictionary = BurstIQDictionary(
             name="patient",
             attributes=[],
-            indexes=[
-                BurstIQIndex(
-                    name="pk_patient", type="PRIMARY", attributes=["patient_id"]
-                )
-            ],
+            indexes=[BurstIQIndex(type="PRIMARY", attributes=["patient_id"])],
         )
 
         # Get constraints
@@ -258,9 +250,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         dictionary = BurstIQDictionary(
             name="patient",
             attributes=[],
-            indexes=[
-                BurstIQIndex(name="uk_email", type="UNIQUE", attributes=["email"])
-            ],
+            indexes=[BurstIQIndex(type="UNIQUE", attributes=["email"])],
         )
 
         # Get constraints

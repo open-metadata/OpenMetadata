@@ -16,9 +16,9 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { createTableDescriptionSuggestions } from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const table = new TableClass();
 const table2 = new TableClass();

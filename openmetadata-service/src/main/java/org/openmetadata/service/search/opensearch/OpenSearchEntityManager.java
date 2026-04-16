@@ -78,6 +78,8 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 public class OpenSearchEntityManager implements EntityManagementClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
+  private final OpenSearchAsyncClient asyncClient;
+  private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public OpenSearchEntityManager(OpenSearchClient client) {
@@ -1488,8 +1490,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                 .withIncludeSourceFields(
                     SearchUtils.getRequiredEntityRelationshipFields(includeSourceFields));
         SearchEntityRelationshipResult tableER =
-            ((SearchClient) Entity.getSearchRepository().getSearchClient())
-                .searchEntityRelationship(request);
+            Entity.getSearchRepository().getSearchClient().searchEntityRelationship(request);
         Map.Entry<String, NodeInformation> tableNode =
             tableER.getNodes().entrySet().stream()
                 .filter(e -> fqn.toString().equals(e.getKey()))

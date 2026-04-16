@@ -1,6 +1,8 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,6 +45,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner.CleanupResult;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.ReindexingException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -298,7 +301,7 @@ class ReindexingOrchestratorTest {
 
       assertTrue(jobData.getEntities().contains(Entity.TABLE));
       assertTrue(jobData.getEntities().contains(reportType));
-      assertTrue(!jobData.getEntities().contains(Entity.USER));
+      assertFalse(jobData.getEntities().contains(Entity.USER));
       assertEquals(7L, total);
     }
   }
@@ -381,7 +384,7 @@ class ReindexingOrchestratorTest {
     InvocationTargetException thrown =
         assertThrows(
             InvocationTargetException.class, () -> invokePrivate("loadJobData", new Class<?>[0]));
-    assertTrue(thrown.getCause() instanceof SearchIndexApp.ReindexingException);
+    assertInstanceOf(ReindexingException.class, thrown.getCause());
   }
 
   @Test

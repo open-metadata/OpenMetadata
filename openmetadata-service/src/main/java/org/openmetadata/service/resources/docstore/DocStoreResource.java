@@ -73,7 +73,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "knowledgePanel", order = 2)
 public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
   public static final String COLLECTION_PATH = "/v1/docStore";
-  private DocStoreMapper mapper;
+  private final DocStoreMapper mapper;
 
   @Override
   public Document addHref(UriInfo uriInfo, Document doc) {

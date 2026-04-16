@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -470,12 +473,9 @@ public class RdfRepository {
 
         storageService.executeSparqlUpdate(deleteQuery);
 
-        StringBuilder insertQuery = new StringBuilder();
-        insertQuery.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-        insertQuery.append(triples);
-        insertQuery.append(" } }");
+        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
 
-        storageService.executeSparqlUpdate(insertQuery.toString());
+        storageService.executeSparqlUpdate(insertQuery);
         LOG.debug("Added lineage with details from {}/{} to {}/{}", fromType, fromId, toType, toId);
       }
     } catch (Exception e) {
@@ -745,46 +745,605 @@ public class RdfRepository {
     return "TURTLE"; // default
   }
 
-  public String getEntityGraph(UUID entityId, String entityType, int depth) throws IOException {
+  public String getEntityGraph(
+      UUID entityId,
+      String entityType,
+      int depth,
+      Set<String> entityTypes,
+      Set<String> relationshipTypes)
+      throws IOException {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF Repository is not enabled");
     }
 
-    String entityUri = config.getBaseUri().toString() + "entity/" + entityType + "/" + entityId;
+    String validatedEntityType = requireKnownEntityType(entityType);
+    String entityUri =
+        config.getBaseUri().toString() + "entity/" + validatedEntityType + "/" + entityId;
 
     try {
-      Set<String> visitedNodes = new HashSet<>();
-      Set<String> currentLevelNodes = new HashSet<>();
-      List<EdgeInfo> allEdges = new ArrayList<>();
+      EntityGraphTraversalResult traversalResult = traverseEntityGraph(entityUri, depth);
+      FilteredEntityGraph filteredGraph =
+          applyGraphFilters(
+              entityUri,
+              traversalResult.nodeUris(),
+              traversalResult.edges(),
+              entityTypes,
+              relationshipTypes);
 
-      currentLevelNodes.add(entityUri);
-      visitedNodes.add(entityUri);
-
-      for (int currentDepth = 0;
-          currentDepth < depth && !currentLevelNodes.isEmpty();
-          currentDepth++) {
-        Set<String> nextLevelNodes = new HashSet<>();
-
-        // For each node at current level, get its relationships
-        for (String nodeUri : currentLevelNodes) {
-          String sparql = buildSingleNodeQuery(nodeUri);
-          String results =
-              storageService.executeSparqlQuery(sparql, "application/sparql-results+json");
-
-          if (results != null && !results.trim().isEmpty()) {
-            List<EdgeInfo> edges = parseEdgesFromResults(results, visitedNodes, nextLevelNodes);
-            allEdges.addAll(edges);
-          }
-        }
-
-        currentLevelNodes = nextLevelNodes;
-        visitedNodes.addAll(nextLevelNodes);
-      }
-
-      return convertEdgesToGraphData(allEdges);
+      return convertEdgesToGraphData(
+          entityUri,
+          filteredGraph.nodeUris(),
+          filteredGraph.edges(),
+          buildEntityTypeFilterOptions(traversalResult.nodeUris()),
+          buildRelationshipFilterOptions(traversalResult.edges()));
     } catch (Exception e) {
       LOG.error("Error getting entity graph for {}", entityUri, e);
       throw new IOException("Failed to get entity graph", e);
+    }
+  }
+
+  public String exportEntityGraph(
+      UUID entityId,
+      String entityType,
+      int depth,
+      Set<String> entityTypes,
+      Set<String> relationshipTypes,
+      String format)
+      throws IOException {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF Repository is not enabled");
+    }
+
+    String validatedEntityType = requireKnownEntityType(entityType);
+    String normalizedFormat = normalizeEntityGraphExportFormat(format);
+    String entityUri =
+        config.getBaseUri().toString() + "entity/" + validatedEntityType + "/" + entityId;
+
+    try {
+      EntityGraphTraversalResult traversalResult = traverseEntityGraph(entityUri, depth);
+      FilteredEntityGraph filteredGraph =
+          applyGraphFilters(
+              entityUri,
+              traversalResult.nodeUris(),
+              traversalResult.edges(),
+              entityTypes,
+              relationshipTypes);
+
+      Model model = buildEntityGraphExportModel(filteredGraph.nodeUris(), filteredGraph.edges());
+
+      java.io.StringWriter writer = new java.io.StringWriter();
+      model.write(writer, normalizedFormat);
+
+      return writer.toString();
+    } catch (Exception e) {
+      LOG.error("Error exporting entity graph for {}", entityUri, e);
+      throw new IOException("Failed to export entity graph", e);
+    }
+  }
+
+  private String requireKnownEntityType(String entityType) {
+    if (entityType == null || entityType.isBlank()) {
+      throw new IllegalArgumentException("Entity type is required");
+    }
+
+    String trimmedEntityType = entityType.trim();
+    if (!trimmedEntityType.matches("[A-Za-z][A-Za-z0-9]*")
+        || !Entity.hasEntityRepository(trimmedEntityType)) {
+      throw new IllegalArgumentException("Invalid entity type");
+    }
+
+    return trimmedEntityType;
+  }
+
+  /**
+   * Get glossary term relationship graph with pagination support.
+   * This method queries the RDF store for glossary terms and their relationships,
+   * supporting filtering by glossary and relation types.
+   *
+   * @param glossaryId Optional glossary ID to filter terms
+   * @param relationTypes Comma-separated list of relation types to include (e.g., "relatedTo,synonym")
+   * @param limit Maximum number of terms to return
+   * @param offset Pagination offset
+   * @param includeIsolated Whether to include terms without relationships
+   * @return JSON string with nodes and edges
+   */
+  public String getGlossaryTermGraph(
+      UUID glossaryId, String relationTypes, int limit, int offset, boolean includeIsolated)
+      throws IOException {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF Repository is not enabled");
+    }
+
+    try {
+      String sparqlQuery =
+          buildGlossaryTermGraphQuery(glossaryId, relationTypes, limit, offset, includeIsolated);
+      LOG.info("SPARQL Query for glossary term graph:\n{}", sparqlQuery);
+
+      String results =
+          storageService.executeSparqlQuery(sparqlQuery, "application/sparql-results+json");
+      LOG.info(
+          "SPARQL Results (first 2000 chars): {}",
+          results.length() > 2000 ? results.substring(0, 2000) + "..." : results);
+
+      return parseGlossaryTermGraphResults(results, includeIsolated, glossaryId, limit, offset);
+    } catch (Exception e) {
+      LOG.error("Error getting glossary term graph", e);
+      throw new IOException("Failed to get glossary term graph", e);
+    }
+  }
+
+  private String buildGlossaryTermGraphQuery(
+      UUID glossaryId, String relationTypes, int limit, int offset, boolean includeIsolated) {
+    StringBuilder queryBuilder = new StringBuilder();
+    queryBuilder.append("PREFIX om: <https://open-metadata.org/ontology/> ");
+    queryBuilder.append("PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> ");
+    queryBuilder.append("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ");
+    queryBuilder.append("PREFIX skos: <http://www.w3.org/2004/02/skos/core#> ");
+    queryBuilder.append("PREFIX prov: <http://www.w3.org/ns/prov#> ");
+    queryBuilder.append(
+        "SELECT DISTINCT ?term1 ?term2 ?relationType ?term1Name ?term2Name ?term1FQN ?term2FQN ?term1DisplayName ?term2DisplayName ?glossary ");
+    queryBuilder.append("WHERE { ");
+    queryBuilder.append("  GRAPH ?g { ");
+    // Note: glossaryTerm entities are typed as skos:Concept (see RdfUtils.getRdfType)
+    queryBuilder.append("    ?term1 a skos:Concept . ");
+    // Filter to only include glossaryTerm URIs (not tags or other skos:Concept types)
+    queryBuilder.append("    FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) ");
+    queryBuilder.append("    OPTIONAL { ?term1 om:name ?term1Name } ");
+    queryBuilder.append("    OPTIONAL { ?term1 skos:prefLabel ?term1DisplayName } ");
+    queryBuilder.append("    OPTIONAL { ?term1 om:fullyQualifiedName ?term1FQN } ");
+    queryBuilder.append("    OPTIONAL { ?term1 om:belongsTo ?glossary } ");
+
+    // Build relation type filter
+    List<String> relationPredicates = new ArrayList<>();
+    if (relationTypes != null && !relationTypes.isEmpty()) {
+      for (String relType : relationTypes.split(",")) {
+        String trimmed = relType.trim().toLowerCase();
+        relationPredicates.add(getRelationPredicate(trimmed));
+      }
+    } else {
+      // Default: all glossary term relations (must match predicates from settings/storage)
+      // OpenMetadata ontology predicates
+      relationPredicates.add("om:relatedTo");
+      relationPredicates.add("om:typeOf");
+      relationPredicates.add("om:hasTypes");
+      relationPredicates.add("om:componentOf");
+      relationPredicates.add("om:composedOf");
+      relationPredicates.add("om:calculatedFrom");
+      relationPredicates.add("om:usedToCalculate");
+      relationPredicates.add("om:partOf");
+      relationPredicates.add("om:hasPart");
+      relationPredicates.add("om:antonym");
+      // SKOS predicates (as configured in settings)
+      relationPredicates.add("skos:broader");
+      relationPredicates.add("skos:narrower");
+      relationPredicates.add("skos:related");
+      relationPredicates.add("skos:exactMatch"); // synonym
+      // RDFS predicates
+      relationPredicates.add("rdfs:seeAlso");
+      relationPredicates.add("rdfs:subClassOf");
+      // PROV-O predicates (for calculatedFrom, usedToCalculate)
+      relationPredicates.add("prov:wasDerivedFrom");
+      relationPredicates.add("prov:wasInfluencedBy");
+    }
+
+    queryBuilder.append("    OPTIONAL { ");
+    queryBuilder.append("      ?term1 ?relationType ?term2 . ");
+    // Note: glossaryTerm entities are typed as skos:Concept (see RdfUtils.getRdfType)
+    queryBuilder.append("      ?term2 a skos:Concept . ");
+    queryBuilder.append("      FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) ");
+    queryBuilder.append("      OPTIONAL { ?term2 om:name ?term2Name } ");
+    queryBuilder.append("      OPTIONAL { ?term2 skos:prefLabel ?term2DisplayName } ");
+    queryBuilder.append("      OPTIONAL { ?term2 om:fullyQualifiedName ?term2FQN } ");
+    queryBuilder.append("      FILTER(?relationType IN (");
+    queryBuilder.append(String.join(", ", relationPredicates));
+    queryBuilder.append(")) ");
+    queryBuilder.append("    } ");
+
+    // Filter by glossary if specified
+    if (glossaryId != null) {
+      String glossaryUri = config.getBaseUri().toString() + "entity/glossary/" + glossaryId;
+      queryBuilder.append("    FILTER(?glossary = <").append(glossaryUri).append(">) ");
+    }
+
+    queryBuilder.append("  } ");
+    queryBuilder.append("} ");
+    queryBuilder.append("ORDER BY ?term1Name ");
+    queryBuilder.append("LIMIT ").append(limit * 10); // Get more to account for relations
+    queryBuilder.append(" OFFSET ").append(offset);
+
+    return queryBuilder.toString();
+  }
+
+  private String getRelationPredicate(String relationType) {
+    // Must match the predicates configured in GlossaryTermRelationSettings
+    return switch (relationType) {
+      case "relatedto", "related" -> "om:relatedTo";
+      case "synonym" -> "skos:exactMatch"; // matches settings config
+      case "typeof", "type" -> "om:typeOf";
+      case "hastypes" -> "om:hasTypes";
+      case "componentof" -> "om:componentOf";
+      case "composedof" -> "om:composedOf";
+      case "calculatedfrom" -> "om:calculatedFrom";
+      case "usedtocalculate" -> "om:usedToCalculate";
+      case "seealso" -> "rdfs:seeAlso"; // matches settings config
+      case "broader" -> "skos:broader";
+      case "narrower" -> "skos:narrower";
+      case "skosrelated" -> "skos:related";
+      case "partof" -> "om:partOf";
+      case "haspart" -> "om:hasPart";
+      case "antonym" -> "om:antonym";
+      default -> {
+        if (!relationType.matches("[a-zA-Z][a-zA-Z0-9]*")) {
+          LOG.warn("Invalid relation type rejected: {}", relationType);
+          yield "om:relatedTo";
+        }
+        yield "om:" + relationType;
+      }
+    };
+  }
+
+  private String parseGlossaryTermGraphResults(
+      String sparqlResults, boolean includeIsolated, UUID glossaryId, int limit, int offset) {
+    com.fasterxml.jackson.databind.node.ObjectNode graphData =
+        JsonUtils.getObjectMapper().createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode nodes =
+        JsonUtils.getObjectMapper().createArrayNode();
+    com.fasterxml.jackson.databind.node.ArrayNode edges =
+        JsonUtils.getObjectMapper().createArrayNode();
+
+    Set<String> addedNodes = new HashSet<>();
+    Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
+    Set<String> edgeKeys = new HashSet<>();
+    Set<String> termsWithRelations = new HashSet<>();
+
+    com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
+
+    if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
+      for (com.fasterxml.jackson.databind.JsonNode binding :
+          resultsJson.get("results").get("bindings")) {
+
+        String term1Uri = binding.has("term1") ? binding.get("term1").get("value").asText() : null;
+        String term2Uri =
+            binding.has("term2") && !binding.get("term2").isNull()
+                ? binding.get("term2").get("value").asText()
+                : null;
+        String relationTypeUri =
+            binding.has("relationType") && !binding.get("relationType").isNull()
+                ? binding.get("relationType").get("value").asText()
+                : null;
+        String term1Name =
+            binding.has("term1Name") && !binding.get("term1Name").isNull()
+                ? binding.get("term1Name").get("value").asText()
+                : null;
+        String term2Name =
+            binding.has("term2Name") && !binding.get("term2Name").isNull()
+                ? binding.get("term2Name").get("value").asText()
+                : null;
+        String term1DisplayName =
+            binding.has("term1DisplayName") && !binding.get("term1DisplayName").isNull()
+                ? binding.get("term1DisplayName").get("value").asText()
+                : null;
+        String term2DisplayName =
+            binding.has("term2DisplayName") && !binding.get("term2DisplayName").isNull()
+                ? binding.get("term2DisplayName").get("value").asText()
+                : null;
+        String term1FQN =
+            binding.has("term1FQN") && !binding.get("term1FQN").isNull()
+                ? binding.get("term1FQN").get("value").asText()
+                : null;
+        String term2FQN =
+            binding.has("term2FQN") && !binding.get("term2FQN").isNull()
+                ? binding.get("term2FQN").get("value").asText()
+                : null;
+
+        // Use displayName if available, otherwise fall back to name
+        String term1Label = term1DisplayName != null ? term1DisplayName : term1Name;
+        String term2Label = term2DisplayName != null ? term2DisplayName : term2Name;
+
+        if (term1Uri == null) continue;
+
+        // Add term1 node
+        if (!addedNodes.contains(term1Uri) && addedNodes.size() < limit) {
+          com.fasterxml.jackson.databind.node.ObjectNode node =
+              createGlossaryTermNode(term1Uri, term1Label, term1FQN, term2Uri != null);
+          nodes.add(node);
+          nodeMap.put(term1Uri, node);
+          addedNodes.add(term1Uri);
+        }
+
+        // If there's a relation, add term2 and the edge
+        if (term2Uri != null && relationTypeUri != null) {
+          termsWithRelations.add(term1Uri);
+          termsWithRelations.add(term2Uri);
+
+          if (!addedNodes.contains(term2Uri) && addedNodes.size() < limit) {
+            com.fasterxml.jackson.databind.node.ObjectNode node =
+                createGlossaryTermNode(term2Uri, term2Label, term2FQN, true);
+            nodes.add(node);
+            nodeMap.put(term2Uri, node);
+            addedNodes.add(term2Uri);
+          }
+
+          // Add edge (avoid duplicates)
+          String edgeKey = term1Uri + "-" + relationTypeUri + "-" + term2Uri;
+          String reverseKey = term2Uri + "-" + relationTypeUri + "-" + term1Uri;
+          if (!edgeKeys.contains(edgeKey) && !edgeKeys.contains(reverseKey)) {
+            edgeKeys.add(edgeKey);
+
+            String extractedRelationType = extractPredicateName(relationTypeUri);
+            String formattedLabel = formatGlossaryRelationType(relationTypeUri);
+            LOG.info(
+                "RDF Edge: {} -> {}, predicateUri={}, extractedType={}, label={}",
+                extractEntityIdFromUri(term1Uri),
+                extractEntityIdFromUri(term2Uri),
+                relationTypeUri,
+                extractedRelationType,
+                formattedLabel);
+
+            com.fasterxml.jackson.databind.node.ObjectNode edge =
+                JsonUtils.getObjectMapper().createObjectNode();
+            edge.put("from", extractEntityIdFromUri(term1Uri));
+            edge.put("to", extractEntityIdFromUri(term2Uri));
+            edge.put("label", formattedLabel);
+            edge.put("relationType", extractedRelationType);
+            edges.add(edge);
+          }
+        }
+      }
+    }
+
+    // Mark isolated nodes
+    for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
+      String nodeId = node.get("id").asText();
+      String nodeUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + nodeId;
+      if (!termsWithRelations.contains(nodeUri)) {
+        node.put("type", "glossaryTermIsolated");
+        node.put("isolated", true);
+      }
+    }
+
+    // If RDF didn't return enough results, fall back to database query
+    if (nodes.isEmpty()) {
+      LOG.info("RDF query returned no nodes, falling back to database");
+      return getGlossaryTermGraphFromDatabase(glossaryId, limit, offset, includeIsolated);
+    }
+    LOG.info("RDF query returned {} nodes and {} edges", nodes.size(), edges.size());
+
+    graphData.set("nodes", nodes);
+    graphData.set("edges", edges);
+    graphData.put("totalNodes", addedNodes.size());
+    graphData.put("totalEdges", edges.size());
+
+    return JsonUtils.pojoToJson(graphData);
+  }
+
+  private com.fasterxml.jackson.databind.node.ObjectNode createGlossaryTermNode(
+      String termUri, String name, String fqn, boolean hasRelations) {
+    com.fasterxml.jackson.databind.node.ObjectNode node =
+        JsonUtils.getObjectMapper().createObjectNode();
+
+    String entityId = extractEntityIdFromUri(termUri);
+    node.put("id", entityId);
+    node.put("label", name != null ? name : entityId);
+    node.put("type", hasRelations ? "glossaryTerm" : "glossaryTermIsolated");
+    if (fqn != null) {
+      node.put("fullyQualifiedName", fqn);
+    }
+    node.put("isolated", !hasRelations);
+
+    return node;
+  }
+
+  private String formatGlossaryRelationType(String relationUri) {
+    String relation = extractPredicateName(relationUri);
+    return formatRelationTypeName(relation);
+  }
+
+  private String formatRelationTypeName(String relationType) {
+    if (relationType == null) {
+      return "Related To";
+    }
+
+    // Look up display name from settings
+    try {
+      org.openmetadata.schema.configuration.GlossaryTermRelationSettings settings =
+          org.openmetadata.service.resources.settings.SettingsCache.getSetting(
+              org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS,
+              org.openmetadata.schema.configuration.GlossaryTermRelationSettings.class);
+
+      if (settings != null && settings.getRelationTypes() != null) {
+        for (var configuredType : settings.getRelationTypes()) {
+          // Match by name (case-insensitive)
+          if (configuredType.getName().equalsIgnoreCase(relationType)) {
+            return configuredType.getDisplayName();
+          }
+          // Also check if this is an RDF predicate local name that maps to a configured type
+          if (configuredType.getRdfPredicate() != null) {
+            String predicateLocalName =
+                extractLocalName(configuredType.getRdfPredicate().toString());
+            if (predicateLocalName != null && predicateLocalName.equalsIgnoreCase(relationType)) {
+              return configuredType.getDisplayName();
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not load settings for display name lookup: {}", e.getMessage());
+    }
+
+    // Fallback: format the relation type name nicely
+    return formatRelationshipLabel(relationType);
+  }
+
+  private String extractLocalName(String uri) {
+    if (uri == null) return null;
+    if (uri.contains("#")) {
+      return uri.substring(uri.lastIndexOf('#') + 1);
+    } else if (uri.contains("/")) {
+      return uri.substring(uri.lastIndexOf('/') + 1);
+    }
+    return uri;
+  }
+
+  /**
+   * Fallback method to get glossary terms from database when RDF store is empty or returns no results.
+   */
+  private String getGlossaryTermGraphFromDatabase(
+      UUID glossaryId, int limit, int offset, boolean includeIsolated) {
+    com.fasterxml.jackson.databind.node.ObjectNode graphData =
+        JsonUtils.getObjectMapper().createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode nodes =
+        JsonUtils.getObjectMapper().createArrayNode();
+    com.fasterxml.jackson.databind.node.ArrayNode edges =
+        JsonUtils.getObjectMapper().createArrayNode();
+
+    try {
+      // Get glossary terms from database
+      var glossaryTermRepository = Entity.getEntityRepository("glossaryTerm");
+      var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
+
+      if (glossaryId != null) {
+        listFilter.addQueryParam("glossary", glossaryId.toString());
+      }
+
+      var terms =
+          glossaryTermRepository.listAll(
+              glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
+
+      Set<String> addedNodes = new HashSet<>();
+      Set<String> termsWithRelations = new HashSet<>();
+      Set<String> edgeKeys = new HashSet<>();
+      int count = 0;
+
+      for (var entity : terms) {
+        if (count >= limit) break;
+
+        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+        String termId = term.getId().toString();
+
+        boolean hasRelations =
+            (term.getRelatedTerms() != null && !term.getRelatedTerms().isEmpty())
+                || (term.getChildren() != null && !term.getChildren().isEmpty())
+                || term.getParent() != null;
+
+        if (!includeIsolated && !hasRelations) {
+          continue;
+        }
+
+        if (!addedNodes.contains(termId)) {
+          com.fasterxml.jackson.databind.node.ObjectNode node =
+              JsonUtils.getObjectMapper().createObjectNode();
+          node.put("id", termId);
+          node.put("label", term.getDisplayName() != null ? term.getDisplayName() : term.getName());
+          node.put("type", hasRelations ? "glossaryTerm" : "glossaryTermIsolated");
+          node.put("fullyQualifiedName", term.getFullyQualifiedName());
+          node.put("isolated", !hasRelations);
+          if (term.getDescription() != null) {
+            node.put("description", term.getDescription());
+          }
+          nodes.add(node);
+          addedNodes.add(termId);
+          count++;
+        }
+
+        if (hasRelations) {
+          termsWithRelations.add(termId);
+
+          // Add related term edges
+          if (term.getRelatedTerms() != null) {
+            for (var relatedTerm : term.getRelatedTerms()) {
+              var relatedTermRef = relatedTerm.getTerm();
+              if (relatedTermRef == null || relatedTermRef.getId() == null) continue;
+
+              String relatedId = relatedTermRef.getId().toString();
+              String relationType =
+                  relatedTerm.getRelationType() != null
+                      ? relatedTerm.getRelationType()
+                      : "relatedTo";
+              termsWithRelations.add(relatedId);
+
+              String edgeKey =
+                  termId.compareTo(relatedId) < 0
+                      ? termId + "-" + relationType + "-" + relatedId
+                      : relatedId + "-" + relationType + "-" + termId;
+
+              if (!edgeKeys.contains(edgeKey)) {
+                edgeKeys.add(edgeKey);
+                String formattedLabel = formatRelationTypeName(relationType);
+                LOG.info(
+                    "DB Edge: {} -> {}, rawType={}, formattedLabel={}",
+                    termId,
+                    relatedId,
+                    relationType,
+                    formattedLabel);
+                com.fasterxml.jackson.databind.node.ObjectNode edge =
+                    JsonUtils.getObjectMapper().createObjectNode();
+                edge.put("from", termId);
+                edge.put("to", relatedId);
+                edge.put("label", formattedLabel);
+                edge.put("relationType", relationType);
+                edges.add(edge);
+
+                // Add related term node if not already added
+                if (!addedNodes.contains(relatedId) && count < limit) {
+                  com.fasterxml.jackson.databind.node.ObjectNode relatedNode =
+                      JsonUtils.getObjectMapper().createObjectNode();
+                  relatedNode.put("id", relatedId);
+                  String relatedLabel =
+                      relatedTermRef.getDisplayName() != null
+                          ? relatedTermRef.getDisplayName()
+                          : (relatedTermRef.getName() != null
+                              ? relatedTermRef.getName()
+                              : relatedId);
+                  relatedNode.put("label", relatedLabel);
+                  relatedNode.put("type", "glossaryTerm");
+                  if (relatedTermRef.getFullyQualifiedName() != null) {
+                    relatedNode.put("fullyQualifiedName", relatedTermRef.getFullyQualifiedName());
+                  }
+                  relatedNode.put("isolated", false);
+                  nodes.add(relatedNode);
+                  addedNodes.add(relatedId);
+                  count++;
+                }
+              }
+            }
+          }
+
+          // Add parent edge
+          if (term.getParent() != null) {
+            String parentId = term.getParent().getId().toString();
+            String edgeKey = parentId + "-parent-" + termId;
+            if (!edgeKeys.contains(edgeKey)) {
+              edgeKeys.add(edgeKey);
+              com.fasterxml.jackson.databind.node.ObjectNode edge =
+                  JsonUtils.getObjectMapper().createObjectNode();
+              edge.put("from", parentId);
+              edge.put("to", termId);
+              edge.put("label", "Parent Of");
+              edge.put("relationType", "parentOf");
+              edges.add(edge);
+            }
+          }
+        }
+      }
+
+      graphData.set("nodes", nodes);
+      graphData.set("edges", edges);
+      graphData.put("totalNodes", addedNodes.size());
+      graphData.put("totalEdges", edges.size());
+      graphData.put("source", "database");
+
+      return JsonUtils.pojoToJson(graphData);
+
+    } catch (Exception e) {
+      LOG.error("Error getting glossary terms from database", e);
+      // Return empty graph
+      graphData.set("nodes", nodes);
+      graphData.set("edges", edges);
+      graphData.put("totalNodes", 0);
+      graphData.put("totalEdges", 0);
+      graphData.put("error", "An internal error occurred while building the graph");
+      return JsonUtils.pojoToJson(graphData);
     }
   }
 
@@ -941,55 +1500,156 @@ public class RdfRepository {
     };
   }
 
-  private String buildSingleNodeQuery(String nodeUri) {
+  private EntityGraphTraversalResult traverseEntityGraph(String rootUri, int depth) {
+    Set<String> visitedNodes = new HashSet<>();
+    Set<String> currentLevelNodes = new HashSet<>();
+    Set<String> discoveredNodes = new HashSet<>();
+    Set<String> edgeKeys = new HashSet<>();
+    List<EdgeInfo> allEdges = new ArrayList<>();
+
+    currentLevelNodes.add(rootUri);
+    visitedNodes.add(rootUri);
+    discoveredNodes.add(rootUri);
+
+    for (int currentDepth = 0;
+        currentDepth < depth && !currentLevelNodes.isEmpty();
+        currentDepth++) {
+      String sparql = buildEntityGraphBatchQuery(currentLevelNodes);
+      String results = storageService.executeSparqlQuery(sparql, "application/sparql-results+json");
+
+      Set<String> nextLevelNodes = new HashSet<>();
+      if (results != null && !results.trim().isEmpty()) {
+        allEdges.addAll(
+            parseEntityGraphEdgesFromResults(
+                results, visitedNodes, nextLevelNodes, discoveredNodes, edgeKeys));
+      }
+
+      nextLevelNodes.removeAll(visitedNodes);
+      visitedNodes.addAll(nextLevelNodes);
+      currentLevelNodes = nextLevelNodes;
+    }
+
+    return new EntityGraphTraversalResult(discoveredNodes, allEdges);
+  }
+
+  private String buildEntityGraphBatchQuery(Set<String> nodeUris) {
+    String entityPrefix = escapeSparqlStringLiteral(config.getBaseUri().toString() + "entity/");
+    String valuesClause =
+        nodeUris.stream()
+            .sorted()
+            .map(this::escapeSparqlUri)
+            .map(uri -> "<" + uri + ">")
+            .collect(java.util.stream.Collectors.joining(" "));
+
     return "PREFIX om: <https://open-metadata.org/ontology/> "
         + "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> "
         + "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "
         + "SELECT DISTINCT ?subject ?predicate ?object WHERE { "
         + "  { "
-        + "    GRAPH ?g { <"
-        + nodeUri
-        + "> ?predicate ?object . "
-        + "    FILTER(isIRI(?object) && "
-        + "           ?predicate != rdf:type && "
-        + "           ?predicate != rdfs:label) } "
-        + "    BIND(<"
-        + nodeUri
-        + "> AS ?subject) "
+        + "    VALUES ?frontier { "
+        + valuesClause
+        + " } "
+        + "    GRAPH ?g { "
+        + "      ?frontier ?predicate ?object . "
+        + "      FILTER(isIRI(?object) && "
+        + "             STRSTARTS(STR(?object), \""
+        + entityPrefix
+        + "\") && "
+        + "             ?predicate != rdf:type && "
+        + "             ?predicate != rdfs:label) "
+        + "    } "
+        + "    BIND(?frontier AS ?subject) "
         + "  } UNION { "
-        + "    GRAPH ?g { ?subject ?predicate <"
-        + nodeUri
-        + "> . "
-        + "    FILTER(isIRI(?subject) && "
-        + "           ?predicate != rdf:type && "
-        + "           ?predicate != rdfs:label) } "
-        + "    BIND(<"
-        + nodeUri
-        + "> AS ?object) "
+        + "    VALUES ?frontier { "
+        + valuesClause
+        + " } "
+        + "    GRAPH ?g { "
+        + "      ?subject ?predicate ?frontier . "
+        + "      FILTER(isIRI(?subject) && "
+        + "             STRSTARTS(STR(?subject), \""
+        + entityPrefix
+        + "\") && "
+        + "             ?predicate != rdf:type && "
+        + "             ?predicate != rdfs:label) "
+        + "    } "
+        + "    BIND(?frontier AS ?object) "
         + "  } "
-        + "} LIMIT 200";
+        + "} LIMIT 5000";
   }
 
-  private List<EdgeInfo> parseEdgesFromResults(
-      String sparqlResults, Set<String> visitedNodes, Set<String> nextLevelNodes) {
+  private String escapeSparqlUri(String uri) {
+    if (uri == null || uri.isBlank()) {
+      throw new IllegalArgumentException("Invalid URI for SPARQL: " + uri);
+    }
+
+    if (uri.contains("<") || uri.contains(">") || uri.chars().anyMatch(Character::isWhitespace)) {
+      throw new IllegalArgumentException("Invalid URI for SPARQL: " + uri);
+    }
+
+    try {
+      java.net.URI parsedUri = java.net.URI.create(uri);
+      if (!parsedUri.isAbsolute()) {
+        throw new IllegalArgumentException("Invalid URI for SPARQL: " + uri);
+      }
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid URI for SPARQL: " + uri, e);
+    }
+
+    return uri;
+  }
+
+  private String escapeSparqlStringLiteral(String value) {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
+  }
+
+  private List<EdgeInfo> parseEntityGraphEdgesFromResults(
+      String sparqlResults,
+      Set<String> visitedNodes,
+      Set<String> nextLevelNodes,
+      Set<String> discoveredNodes,
+      Set<String> edgeKeys) {
     List<EdgeInfo> edges = new ArrayList<>();
     com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
 
     if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
       for (com.fasterxml.jackson.databind.JsonNode binding :
           resultsJson.get("results").get("bindings")) {
-        String subjectUri = binding.get("subject").get("value").asText();
-        String objectUri = binding.get("object").get("value").asText();
-        String predicate = binding.get("predicate").get("value").asText();
+        String subjectUri =
+            binding.has("subject") ? binding.get("subject").get("value").asText() : null;
+        String objectUri =
+            binding.has("object") ? binding.get("object").get("value").asText() : null;
+        String predicate =
+            binding.has("predicate") ? binding.get("predicate").get("value").asText() : null;
 
-        EdgeInfo edge = new EdgeInfo(subjectUri, objectUri, extractPredicateName(predicate));
-        edges.add(edge);
-
-        if (!visitedNodes.contains(objectUri)) {
-          nextLevelNodes.add(objectUri);
+        if (!isEntityUri(subjectUri) || !isEntityUri(objectUri)) {
+          continue;
         }
+
+        String relationType = extractEntityRelationType(predicate);
+        if (relationType == null || relationType.isBlank()) {
+          continue;
+        }
+
+        String edgeKey = subjectUri + "|" + relationType + "|" + objectUri;
+        if (!edgeKeys.add(edgeKey)) {
+          continue;
+        }
+
+        EdgeInfo edge = new EdgeInfo(subjectUri, objectUri, relationType, predicate);
+        edges.add(edge);
+        discoveredNodes.add(subjectUri);
+        discoveredNodes.add(objectUri);
+
         if (!visitedNodes.contains(subjectUri)) {
           nextLevelNodes.add(subjectUri);
+        }
+        if (!visitedNodes.contains(objectUri)) {
+          nextLevelNodes.add(objectUri);
         }
       }
     }
@@ -1001,59 +1661,411 @@ public class RdfRepository {
     final String fromUri;
     final String toUri;
     final String relation;
+    final String predicateUri;
 
-    EdgeInfo(String fromUri, String toUri, String relation) {
+    EdgeInfo(String fromUri, String toUri, String relation, String predicateUri) {
       this.fromUri = fromUri;
       this.toUri = toUri;
       this.relation = relation;
+      this.predicateUri = predicateUri;
     }
   }
 
-  private String convertEdgesToGraphData(List<EdgeInfo> edges) {
+  private FilteredEntityGraph applyGraphFilters(
+      String rootUri,
+      Set<String> nodeUris,
+      List<EdgeInfo> edges,
+      Set<String> entityTypeFilters,
+      Set<String> relationshipTypeFilters) {
+    if ((entityTypeFilters == null || entityTypeFilters.isEmpty())
+        && (relationshipTypeFilters == null || relationshipTypeFilters.isEmpty())) {
+      return new FilteredEntityGraph(new HashSet<>(nodeUris), edges);
+    }
+
+    Set<String> normalizedEntityFilters = new HashSet<>();
+    if (entityTypeFilters != null) {
+      entityTypeFilters.stream()
+          .map(this::normalizeEntityTypeFilter)
+          .filter(value -> !value.isBlank())
+          .forEach(normalizedEntityFilters::add);
+    }
+
+    Set<String> normalizedRelationshipFilters = new HashSet<>();
+    if (relationshipTypeFilters != null) {
+      relationshipTypeFilters.stream()
+          .map(this::normalizeRelationTypeFilter)
+          .filter(value -> !value.isBlank())
+          .forEach(normalizedRelationshipFilters::add);
+    }
+
+    Set<String> allowedNodes = new HashSet<>();
+    for (String nodeUri : nodeUris) {
+      if (rootUri.equals(nodeUri)
+          || normalizedEntityFilters.isEmpty()
+          || normalizedEntityFilters.contains(
+              normalizeEntityTypeFilter(extractEntityTypeFromUri(nodeUri)))) {
+        allowedNodes.add(nodeUri);
+      }
+    }
+
+    List<EdgeInfo> filteredEdges = new ArrayList<>();
+    Set<String> connectedNodes = new HashSet<>();
+    connectedNodes.add(rootUri);
+
+    for (EdgeInfo edge : edges) {
+      boolean relationshipAllowed =
+          normalizedRelationshipFilters.isEmpty()
+              || normalizedRelationshipFilters.contains(normalizeRelationTypeFilter(edge.relation));
+      if (!relationshipAllowed) {
+        continue;
+      }
+
+      if (!allowedNodes.contains(edge.fromUri) || !allowedNodes.contains(edge.toUri)) {
+        continue;
+      }
+
+      filteredEdges.add(edge);
+      connectedNodes.add(edge.fromUri);
+      connectedNodes.add(edge.toUri);
+    }
+
+    Set<String> filteredNodes = new HashSet<>();
+    for (String nodeUri : allowedNodes) {
+      if (rootUri.equals(nodeUri) || connectedNodes.contains(nodeUri)) {
+        filteredNodes.add(nodeUri);
+      }
+    }
+    filteredNodes.add(rootUri);
+
+    return new FilteredEntityGraph(filteredNodes, filteredEdges);
+  }
+
+  private List<FilterOptionInfo> buildEntityTypeFilterOptions(Set<String> nodeUris) {
+    Map<String, Integer> counts = new LinkedHashMap<>();
+    for (String nodeUri : nodeUris) {
+      String entityType = extractEntityTypeFromUri(nodeUri);
+      counts.merge(entityType, 1, Integer::sum);
+    }
+    return buildFilterOptions(counts);
+  }
+
+  private List<FilterOptionInfo> buildRelationshipFilterOptions(List<EdgeInfo> edges) {
+    Map<String, Integer> counts = new LinkedHashMap<>();
+    for (EdgeInfo edge : edges) {
+      counts.merge(edge.relation, 1, Integer::sum);
+    }
+    return buildFilterOptions(counts);
+  }
+
+  private List<FilterOptionInfo> buildFilterOptions(Map<String, Integer> counts) {
+    return counts.entrySet().stream()
+        .map(
+            entry ->
+                new FilterOptionInfo(
+                    entry.getKey(), formatRelationshipLabel(entry.getKey()), entry.getValue()))
+        .sorted(
+            Comparator.comparingInt(FilterOptionInfo::count)
+                .reversed()
+                .thenComparing(FilterOptionInfo::label))
+        .toList();
+  }
+
+  private Model buildEntityGraphExportModel(Set<String> nodeUris, List<EdgeInfo> edges) {
+    Model model = ModelFactory.createDefaultModel();
+    configureEntityGraphPrefixes(model);
+
+    Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
+    List<String> orderedNodeUris = nodeUris.stream().sorted().toList();
+
+    for (String nodeUri : orderedNodeUris) {
+      com.fasterxml.jackson.databind.node.ObjectNode node = createNodeFromUri(nodeUri);
+      nodeMap.put(nodeUri, node);
+    }
+
+    enhanceNodesWithEntityDetails(nodeMap);
+
+    for (String nodeUri : orderedNodeUris) {
+      addEntityGraphNodeToModel(model, nodeUri, nodeMap.get(nodeUri));
+    }
+
+    for (EdgeInfo edge : edges) {
+      if (edge.predicateUri == null || edge.predicateUri.isBlank()) {
+        continue;
+      }
+
+      Resource fromResource = model.createResource(edge.fromUri);
+      Resource toResource = model.createResource(edge.toUri);
+      Property predicate = model.createProperty(edge.predicateUri);
+      fromResource.addProperty(predicate, toResource);
+    }
+
+    return model;
+  }
+
+  private void configureEntityGraphPrefixes(Model model) {
+    model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+    model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+    model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#");
+    model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#");
+    model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
+    model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/");
+    model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#");
+    model.setNsPrefix("dprod", "https://ekgf.github.io/dprod/");
+  }
+
+  private void addEntityGraphNodeToModel(
+      Model model, String nodeUri, com.fasterxml.jackson.databind.node.ObjectNode node) {
+    Resource resource = model.createResource(nodeUri);
+    String entityType =
+        node != null
+            ? node.path("type").asText(extractEntityTypeFromUri(nodeUri))
+            : extractEntityTypeFromUri(nodeUri);
+    String rdfTypeUri = resolvePrefixedUri(RdfUtils.getRdfType(entityType));
+
+    if (rdfTypeUri != null) {
+      resource.addProperty(
+          model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+          model.createResource(rdfTypeUri));
+    }
+
+    if (node == null) {
+      return;
+    }
+
+    addLiteralIfPresent(
+        resource,
+        model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label"),
+        node.path("label").asText(null));
+    addLiteralIfPresent(
+        resource,
+        model.createProperty("https://open-metadata.org/ontology/", "name"),
+        node.path("name").asText(null));
+    addLiteralIfPresent(
+        resource,
+        model.createProperty("https://open-metadata.org/ontology/", "fullyQualifiedName"),
+        node.path("fullyQualifiedName").asText(null));
+    addLiteralIfPresent(
+        resource,
+        model.createProperty("https://open-metadata.org/ontology/", "description"),
+        node.path("description").asText(null));
+  }
+
+  private void addLiteralIfPresent(Resource resource, Property property, String value) {
+    if (value != null && !value.isBlank()) {
+      resource.addProperty(property, value);
+    }
+  }
+
+  private String resolvePrefixedUri(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+      return value;
+    }
+
+    int separatorIndex = value.indexOf(':');
+    if (separatorIndex <= 0 || separatorIndex == value.length() - 1) {
+      return value;
+    }
+
+    String prefix = value.substring(0, separatorIndex);
+    String localName = value.substring(separatorIndex + 1);
+
+    return switch (prefix) {
+      case "om" -> "https://open-metadata.org/ontology/" + localName;
+      case "rdf" -> "http://www.w3.org/1999/02/22-rdf-syntax-ns#" + localName;
+      case "rdfs" -> "http://www.w3.org/2000/01/rdf-schema#" + localName;
+      case "dcat" -> "http://www.w3.org/ns/dcat#" + localName;
+      case "prov" -> "http://www.w3.org/ns/prov#" + localName;
+      case "foaf" -> "http://xmlns.com/foaf/0.1/" + localName;
+      case "skos" -> "http://www.w3.org/2004/02/skos/core#" + localName;
+      case "dprod" -> "https://ekgf.github.io/dprod/" + localName;
+      default -> value;
+    };
+  }
+
+  public static String normalizeEntityGraphExportFormat(String format) {
+    if (format == null || format.isBlank()) {
+      return "TURTLE";
+    }
+
+    return switch (format.trim().toLowerCase(Locale.ROOT)) {
+      case "jsonld", "json-ld" -> "JSON-LD";
+      case "turtle", "ttl" -> "TURTLE";
+      default -> throw new IllegalArgumentException("Unsupported export format");
+    };
+  }
+
+  private String convertEdgesToGraphData(
+      String rootUri,
+      Set<String> nodeUris,
+      List<EdgeInfo> edges,
+      List<FilterOptionInfo> entityTypeOptions,
+      List<FilterOptionInfo> relationshipTypeOptions) {
     com.fasterxml.jackson.databind.node.ObjectNode graphData =
         JsonUtils.getObjectMapper().createObjectNode();
     com.fasterxml.jackson.databind.node.ArrayNode nodes =
         JsonUtils.getObjectMapper().createArrayNode();
     com.fasterxml.jackson.databind.node.ArrayNode graphEdges =
         JsonUtils.getObjectMapper().createArrayNode();
+    com.fasterxml.jackson.databind.node.ObjectNode filterOptions =
+        JsonUtils.getObjectMapper().createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode entityTypeFilterOptions =
+        JsonUtils.getObjectMapper().createArrayNode();
+    com.fasterxml.jackson.databind.node.ArrayNode relationshipTypeFilterOptions =
+        JsonUtils.getObjectMapper().createArrayNode();
 
-    Set<String> addedNodes = new HashSet<>();
     Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
 
+    List<String> orderedNodeUris =
+        nodeUris.stream()
+            .sorted(
+                Comparator.comparing((String uri) -> !rootUri.equals(uri))
+                    .thenComparing(this::extractEntityTypeFromUri)
+                    .thenComparing(uri -> uri))
+            .toList();
+
+    for (String nodeUri : orderedNodeUris) {
+      com.fasterxml.jackson.databind.node.ObjectNode node = createNodeFromUri(nodeUri);
+      nodes.add(node);
+      nodeMap.put(nodeUri, node);
+    }
+
     for (EdgeInfo edge : edges) {
-      String fromUri = edge.fromUri;
-      String toUri = edge.toUri;
-
-      if (!addedNodes.contains(fromUri)) {
-        com.fasterxml.jackson.databind.node.ObjectNode fromNode = createNodeFromUri(fromUri);
-        nodes.add(fromNode);
-        nodeMap.put(fromUri, fromNode);
-        addedNodes.add(fromUri);
-      }
-
-      if (!addedNodes.contains(toUri)) {
-        com.fasterxml.jackson.databind.node.ObjectNode toNode = createNodeFromUri(toUri);
-        nodes.add(toNode);
-        nodeMap.put(toUri, toNode);
-        addedNodes.add(toUri);
-      }
-
       com.fasterxml.jackson.databind.node.ObjectNode graphEdge =
           JsonUtils.getObjectMapper().createObjectNode();
-      graphEdge.put("from", fromUri);
-      graphEdge.put("to", toUri);
+      graphEdge.put("from", edge.fromUri);
+      graphEdge.put("to", edge.toUri);
       graphEdge.put("label", formatRelationshipLabel(edge.relation));
+      graphEdge.put("relationType", edge.relation);
       graphEdge.put("arrows", "to");
       graphEdges.add(graphEdge);
+    }
+
+    for (FilterOptionInfo filterOption : entityTypeOptions) {
+      entityTypeFilterOptions.add(createFilterOptionNode(filterOption));
+    }
+
+    for (FilterOptionInfo filterOption : relationshipTypeOptions) {
+      relationshipTypeFilterOptions.add(createFilterOptionNode(filterOption));
     }
 
     enhanceNodesWithEntityDetails(nodeMap);
 
     graphData.set("nodes", nodes);
     graphData.set("edges", graphEdges);
+    graphData.put("totalNodes", nodes.size());
+    graphData.put("totalEdges", graphEdges.size());
+    graphData.put("source", "rdf");
+
+    filterOptions.set("entityTypes", entityTypeFilterOptions);
+    filterOptions.set("relationshipTypes", relationshipTypeFilterOptions);
+    graphData.set("filterOptions", filterOptions);
 
     return JsonUtils.pojoToJson(graphData);
   }
+
+  private com.fasterxml.jackson.databind.node.ObjectNode createFilterOptionNode(
+      FilterOptionInfo filterOption) {
+    com.fasterxml.jackson.databind.node.ObjectNode option =
+        JsonUtils.getObjectMapper().createObjectNode();
+    option.put("id", filterOption.id());
+    option.put("label", filterOption.label());
+    option.put("count", filterOption.count());
+    return option;
+  }
+
+  private boolean isEntityUri(String uri) {
+    if (uri == null || !uri.startsWith(config.getBaseUri().toString() + "entity/")) {
+      return false;
+    }
+    String[] parts = uri.split("/entity/")[1].split("/");
+    return parts.length >= 2 && !parts[0].isBlank() && !parts[1].isBlank();
+  }
+
+  private String extractEntityRelationType(String predicateUri) {
+    if (predicateUri == null || predicateUri.isBlank()) {
+      return null;
+    }
+
+    String localName = extractUriLocalName(predicateUri);
+    if (localName == null || localName.isBlank()) {
+      return null;
+    }
+
+    String normalized = localName.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+    return switch (normalized) {
+      case "used" -> "uses";
+      case "wasderivedfrom", "upstream" -> "upstream";
+      case "wasinfluencedby", "downstream" -> "downstream";
+      case "wasgeneratedby" -> "processedBy";
+      default -> toCanonicalIdentifier(localName);
+    };
+  }
+
+  private String normalizeEntityTypeFilter(String entityType) {
+    return entityType == null ? "" : entityType.trim().toLowerCase(Locale.ROOT);
+  }
+
+  private String normalizeRelationTypeFilter(String relationType) {
+    String canonical = toCanonicalIdentifier(relationType);
+    return canonical == null ? "" : canonical.toLowerCase(Locale.ROOT);
+  }
+
+  private String extractUriLocalName(String uri) {
+    if (uri == null || uri.isBlank()) {
+      return null;
+    }
+    if (uri.contains("#")) {
+      return uri.substring(uri.lastIndexOf('#') + 1);
+    }
+    if (uri.contains("/")) {
+      return uri.substring(uri.lastIndexOf('/') + 1);
+    }
+    return uri;
+  }
+
+  private String toCanonicalIdentifier(String value) {
+    String localName = extractUriLocalName(value);
+    if (localName == null || localName.isBlank()) {
+      return null;
+    }
+
+    if (localName.equals(localName.toUpperCase(Locale.ROOT))) {
+      return localName.toLowerCase(Locale.ROOT);
+    }
+
+    if (localName.matches("[a-z]+([A-Z][a-z0-9]+)+")) {
+      return Character.toLowerCase(localName.charAt(0)) + localName.substring(1);
+    }
+
+    String spaced =
+        localName.replaceAll("([a-z0-9])([A-Z])", "$1 $2").replace('_', ' ').replace('-', ' ');
+    String[] parts = spaced.trim().split("\\s+");
+    if (parts.length == 0) {
+      return localName;
+    }
+
+    StringBuilder builder = new StringBuilder(parts[0].toLowerCase(Locale.ROOT));
+    for (int i = 1; i < parts.length; i++) {
+      if (parts[i].isBlank()) {
+        continue;
+      }
+      String normalizedPart = parts[i].toLowerCase(Locale.ROOT);
+      builder
+          .append(Character.toUpperCase(normalizedPart.charAt(0)))
+          .append(normalizedPart.substring(1));
+    }
+    return builder.toString();
+  }
+
+  private record EntityGraphTraversalResult(Set<String> nodeUris, List<EdgeInfo> edges) {}
+
+  private record FilteredEntityGraph(Set<String> nodeUris, List<EdgeInfo> edges) {}
+
+  private record FilterOptionInfo(String id, String label, int count) {}
 
   public void executeSparqlUpdate(String update) {
     if (!isEnabled()) {
@@ -1109,6 +2121,571 @@ public class RdfRepository {
     }
   }
 
+  /**
+   * Add a glossary term relation to RDF store. This creates typed semantic relationships between
+   * glossary terms using appropriate RDF predicates based on the relation type.
+   *
+   * @param fromTermId The source glossary term ID
+   * @param toTermId The target glossary term ID
+   * @param relationType The type of relation (e.g., 'synonym', 'broader', 'relatedTo')
+   */
+  public void addGlossaryTermRelation(UUID fromTermId, UUID toTermId, String relationType) {
+    if (!isEnabled()) {
+      return;
+    }
+
+    try {
+      Model model = ModelFactory.createDefaultModel();
+      model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+      model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#");
+
+      String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
+      String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
+
+      Resource fromResource = model.createResource(fromUri);
+      Resource toResource = model.createResource(toUri);
+
+      Property predicate = getGlossaryTermRelationPredicate(relationType, model);
+      fromResource.addProperty(predicate, toResource);
+
+      java.io.StringWriter writer = new java.io.StringWriter();
+      model.write(writer, "N-TRIPLES");
+      String triples = writer.toString();
+
+      if (!triples.isEmpty()) {
+        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
+
+        storageService.executeSparqlUpdate(insertQuery);
+        LOG.debug("Added glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to add glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          relationType,
+          e);
+    }
+  }
+
+  /**
+   * Remove a glossary term relation from RDF store.
+   *
+   * @param fromTermId The source glossary term ID
+   * @param toTermId The target glossary term ID
+   * @param relationType The type of relation (e.g., 'synonym', 'broader', 'relatedTo')
+   */
+  public void removeGlossaryTermRelation(UUID fromTermId, UUID toTermId, String relationType) {
+    if (!isEnabled()) {
+      return;
+    }
+
+    try {
+      String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
+      String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
+      String predicateUri = getGlossaryTermRelationPredicateUri(relationType);
+
+      String sparqlUpdate =
+          String.format(
+              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
+              KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri);
+
+      storageService.executeSparqlUpdate(sparqlUpdate);
+      LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to remove glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          relationType,
+          e);
+    }
+  }
+
+  private String getGlossaryTermRelationPredicateUri(String relationType) {
+    if (relationType == null) {
+      relationType = "relatedTo";
+    }
+
+    return switch (relationType.toLowerCase()) {
+      case "relatedto" -> "https://open-metadata.org/ontology/relatedTo";
+      case "synonym" -> "https://open-metadata.org/ontology/synonym";
+      case "typeof", "type" -> "https://open-metadata.org/ontology/typeOf";
+      case "hastypes" -> "https://open-metadata.org/ontology/hasTypes";
+      case "componentof" -> "https://open-metadata.org/ontology/componentOf";
+      case "composedof" -> "https://open-metadata.org/ontology/composedOf";
+      case "calculatedfrom" -> "https://open-metadata.org/ontology/calculatedFrom";
+      case "usedtocalculate" -> "https://open-metadata.org/ontology/usedToCalculate";
+      case "seealso" -> "https://open-metadata.org/ontology/seeAlso";
+      case "broader" -> "http://www.w3.org/2004/02/skos/core#broader";
+      case "narrower" -> "http://www.w3.org/2004/02/skos/core#narrower";
+      case "related" -> "http://www.w3.org/2004/02/skos/core#related";
+      default -> "https://open-metadata.org/ontology/" + relationType;
+    };
+  }
+
+  /**
+   * Clear all glossary term relations from RDF store. This should be called before re-indexing to
+   * remove stale relations with potentially wrong predicates.
+   */
+  public void clearAllGlossaryTermRelations() {
+    if (!isEnabled()) {
+      return;
+    }
+
+    try {
+      // Delete all triples where a glossaryTerm has any relation to another glossaryTerm
+      String deleteQuery =
+          String.format(
+              "DELETE WHERE { "
+                  + "GRAPH <%s> { "
+                  + "?term1 ?relationType ?term2 . "
+                  + "FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) "
+                  + "FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) "
+                  + "FILTER(?relationType IN ("
+                  + "  <https://open-metadata.org/ontology/relatedTo>, "
+                  + "  <https://open-metadata.org/ontology/synonym>, "
+                  + "  <https://open-metadata.org/ontology/typeOf>, "
+                  + "  <https://open-metadata.org/ontology/hasTypes>, "
+                  + "  <https://open-metadata.org/ontology/componentOf>, "
+                  + "  <https://open-metadata.org/ontology/composedOf>, "
+                  + "  <https://open-metadata.org/ontology/calculatedFrom>, "
+                  + "  <https://open-metadata.org/ontology/usedToCalculate>, "
+                  + "  <https://open-metadata.org/ontology/seeAlso>, "
+                  + "  <http://www.w3.org/2004/02/skos/core#broader>, "
+                  + "  <http://www.w3.org/2004/02/skos/core#narrower>, "
+                  + "  <http://www.w3.org/2004/02/skos/core#related>"
+                  + ")) "
+                  + "} "
+                  + "}",
+              KNOWLEDGE_GRAPH);
+
+      storageService.executeSparqlUpdate(deleteQuery);
+      LOG.info("Cleared all glossary term relations from RDF store");
+    } catch (Exception e) {
+      LOG.error("Failed to clear glossary term relations from RDF", e);
+    }
+  }
+
+  /**
+   * Bulk add glossary term relations to RDF store.
+   */
+  public void bulkAddGlossaryTermRelations(List<GlossaryTermRelationData> relations) {
+    if (!isEnabled() || relations.isEmpty()) {
+      return;
+    }
+
+    try {
+      Model model = ModelFactory.createDefaultModel();
+      model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+      model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#");
+
+      for (GlossaryTermRelationData relation : relations) {
+        String fromUri =
+            config.getBaseUri().toString() + "entity/glossaryTerm/" + relation.fromTermId();
+        String toUri =
+            config.getBaseUri().toString() + "entity/glossaryTerm/" + relation.toTermId();
+
+        Resource fromResource = model.createResource(fromUri);
+        Resource toResource = model.createResource(toUri);
+
+        Property predicate = getGlossaryTermRelationPredicate(relation.relationType(), model);
+        LOG.debug(
+            "RDF Indexing: {} -> {} with predicate {} (relationType={})",
+            relation.fromTermId(),
+            relation.toTermId(),
+            predicate.getURI(),
+            relation.relationType());
+        fromResource.addProperty(predicate, toResource);
+      }
+
+      java.io.StringWriter writer = new java.io.StringWriter();
+      model.write(writer, "N-TRIPLES");
+      String triples = writer.toString();
+
+      LOG.debug("Generated N-Triples:\n{}", triples);
+
+      if (!triples.isEmpty()) {
+        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
+
+        storageService.executeSparqlUpdate(insertQuery);
+        LOG.debug("Bulk added {} glossary term relations to RDF store", relations.size());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to bulk add glossary term relations to RDF", e);
+    }
+  }
+
+  private Property getGlossaryTermRelationPredicate(String relationType, Model model) {
+    LOG.debug(
+        "getGlossaryTermRelationPredicate: Looking up predicate for relationType='{}'",
+        relationType);
+    if (relationType == null) {
+      LOG.debug(
+          "getGlossaryTermRelationPredicate: relationType is null, defaulting to 'relatedTo'");
+      relationType = "relatedTo";
+    }
+
+    // Look up the relation type from settings to get the configured RDF predicate
+    try {
+      org.openmetadata.schema.configuration.GlossaryTermRelationSettings settings =
+          org.openmetadata.service.resources.settings.SettingsCache.getSetting(
+              org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS,
+              org.openmetadata.schema.configuration.GlossaryTermRelationSettings.class);
+
+      if (settings != null && settings.getRelationTypes() != null) {
+        LOG.debug(
+            "getGlossaryTermRelationPredicate: Found {} relation types in settings",
+            settings.getRelationTypes().size());
+        for (var configuredType : settings.getRelationTypes()) {
+          if (configuredType.getName().equalsIgnoreCase(relationType)) {
+            java.net.URI rdfPredicateUri = configuredType.getRdfPredicate();
+            LOG.debug(
+                "getGlossaryTermRelationPredicate: Matched '{}' to configured type '{}' with rdfPredicate='{}'",
+                relationType,
+                configuredType.getName(),
+                rdfPredicateUri);
+            if (rdfPredicateUri != null) {
+              Property prop = createPropertyFromUri(rdfPredicateUri.toString(), model);
+              LOG.debug(
+                  "getGlossaryTermRelationPredicate: Created property with URI='{}'",
+                  prop.getURI());
+              return prop;
+            }
+            break;
+          }
+        }
+        LOG.debug(
+            "getGlossaryTermRelationPredicate: No match found for '{}' in configured types",
+            relationType);
+      } else {
+        LOG.debug("getGlossaryTermRelationPredicate: Settings or relationTypes is null");
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "getGlossaryTermRelationPredicate: Could not load settings, error: {}", e.getMessage());
+    }
+
+    // Fall back to default: use OpenMetadata ontology namespace with the relation type name
+    Property defaultProp =
+        model.createProperty("https://open-metadata.org/ontology/", relationType);
+    LOG.debug(
+        "getGlossaryTermRelationPredicate: Using default predicate URI='{}'", defaultProp.getURI());
+    return defaultProp;
+  }
+
+  private Property createPropertyFromUri(String uri, Model model) {
+    if (uri == null || uri.isEmpty()) {
+      return model.createProperty("https://open-metadata.org/ontology/", "relatedTo");
+    }
+
+    String trimmedUri = uri.trim();
+
+    // Handle common prefix shortcuts (CURIE format)
+    if (trimmedUri.startsWith("skos:") && trimmedUri.length() > 5) {
+      return model.createProperty("http://www.w3.org/2004/02/skos/core#", trimmedUri.substring(5));
+    } else if (trimmedUri.startsWith("om:") && trimmedUri.length() > 3) {
+      return model.createProperty("https://open-metadata.org/ontology/", trimmedUri.substring(3));
+    } else if (trimmedUri.startsWith("rdfs:") && trimmedUri.length() > 5) {
+      return model.createProperty("http://www.w3.org/2000/01/rdf-schema#", trimmedUri.substring(5));
+    } else if (trimmedUri.startsWith("owl:") && trimmedUri.length() > 4) {
+      return model.createProperty("http://www.w3.org/2002/07/owl#", trimmedUri.substring(4));
+    } else if (trimmedUri.startsWith("prov:") && trimmedUri.length() > 5) {
+      return model.createProperty("http://www.w3.org/ns/prov#", trimmedUri.substring(5));
+    }
+
+    // Handle full URIs
+    if (trimmedUri.contains("#")) {
+      int hashIndex = trimmedUri.lastIndexOf('#');
+      String localName = trimmedUri.substring(hashIndex + 1);
+      if (!localName.isEmpty()) {
+        return model.createProperty(trimmedUri.substring(0, hashIndex + 1), localName);
+      }
+    }
+
+    if (trimmedUri.startsWith("http://") || trimmedUri.startsWith("https://")) {
+      // Full HTTP URI - find last path segment as local name
+      int lastSlash = trimmedUri.lastIndexOf('/');
+      if (lastSlash > 7 && lastSlash < trimmedUri.length() - 1) {
+        String localName = trimmedUri.substring(lastSlash + 1);
+        return model.createProperty(trimmedUri.substring(0, lastSlash + 1), localName);
+      }
+      // URI ends with / or has no path - use as-is
+      return model.createProperty(trimmedUri);
+    }
+
+    // Default: treat as local name in OpenMetadata ontology
+    return model.createProperty("https://open-metadata.org/ontology/", trimmedUri);
+  }
+
+  public record GlossaryTermRelationData(UUID fromTermId, UUID toTermId, String relationType) {}
+
+  /**
+   * Export a glossary with all its terms and relationships as an ontology. Uses SKOS vocabulary for
+   * semantic interoperability.
+   */
+  public String exportGlossaryAsOntology(UUID glossaryId, String format, boolean includeRelations)
+      throws IOException {
+    Model model = ModelFactory.createDefaultModel();
+
+    model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#");
+    model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+    model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#");
+    model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+    model.setNsPrefix("dct", "http://purl.org/dc/terms/");
+    model.setNsPrefix("sh", "http://www.w3.org/ns/shacl#");
+
+    Property rdfType = model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type");
+    Property skosConceptScheme =
+        model.createProperty("http://www.w3.org/2004/02/skos/core#", "ConceptScheme");
+    Property skosConcept = model.createProperty("http://www.w3.org/2004/02/skos/core#", "Concept");
+    Property skosPrefLabel =
+        model.createProperty("http://www.w3.org/2004/02/skos/core#", "prefLabel");
+    Property skosDefinition =
+        model.createProperty("http://www.w3.org/2004/02/skos/core#", "definition");
+    Property skosInScheme =
+        model.createProperty("http://www.w3.org/2004/02/skos/core#", "inScheme");
+    Property skosTopConcept =
+        model.createProperty("http://www.w3.org/2004/02/skos/core#", "hasTopConcept");
+    Property skosBroader = model.createProperty("http://www.w3.org/2004/02/skos/core#", "broader");
+    Property skosNarrower =
+        model.createProperty("http://www.w3.org/2004/02/skos/core#", "narrower");
+    Property skosRelated = model.createProperty("http://www.w3.org/2004/02/skos/core#", "related");
+    Property dctCreated = model.createProperty("http://purl.org/dc/terms/", "created");
+    Property dctModified = model.createProperty("http://purl.org/dc/terms/", "modified");
+    Property rdfsLabel = model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label");
+
+    try {
+      org.openmetadata.schema.entity.data.Glossary glossary =
+          Entity.getEntity("glossary", glossaryId, "*", null);
+
+      String glossaryUri = config.getBaseUri().toString() + "glossary/" + glossaryId;
+      Resource glossaryResource = model.createResource(glossaryUri);
+      glossaryResource.addProperty(rdfType, skosConceptScheme);
+      glossaryResource.addProperty(
+          rdfsLabel,
+          glossary.getDisplayName() != null ? glossary.getDisplayName() : glossary.getName());
+      if (glossary.getDescription() != null) {
+        glossaryResource.addProperty(skosDefinition, glossary.getDescription());
+      }
+
+      var glossaryTermRepository = Entity.getEntityRepository("glossaryTerm");
+      var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
+      listFilter.addQueryParam("glossary", glossaryId.toString());
+
+      var terms =
+          glossaryTermRepository.listAll(
+              glossaryTermRepository.getFields("relatedTerms,parent,children,synonyms"),
+              listFilter);
+
+      Map<UUID, Resource> termResources = new HashMap<>();
+
+      for (var entity : terms) {
+        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+        String termUri = config.getBaseUri().toString() + "glossaryTerm/" + term.getId();
+        Resource termResource = model.createResource(termUri);
+
+        termResource.addProperty(rdfType, skosConcept);
+        termResource.addProperty(
+            skosPrefLabel, term.getDisplayName() != null ? term.getDisplayName() : term.getName());
+        termResource.addProperty(skosInScheme, glossaryResource);
+
+        if (term.getDescription() != null) {
+          termResource.addProperty(skosDefinition, term.getDescription());
+        }
+
+        if (term.getSynonyms() != null) {
+          Property skosAltLabel =
+              model.createProperty("http://www.w3.org/2004/02/skos/core#", "altLabel");
+          for (String synonym : term.getSynonyms()) {
+            termResource.addProperty(skosAltLabel, synonym);
+          }
+        }
+
+        if (term.getParent() == null) {
+          glossaryResource.addProperty(skosTopConcept, termResource);
+        }
+
+        termResources.put(term.getId(), termResource);
+      }
+
+      if (includeRelations) {
+        for (var entity : terms) {
+          var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+          Resource termResource = termResources.get(term.getId());
+
+          if (term.getParent() != null && term.getParent().getId() != null) {
+            Resource parentResource = termResources.get(term.getParent().getId());
+            if (parentResource != null) {
+              termResource.addProperty(skosBroader, parentResource);
+              parentResource.addProperty(skosNarrower, termResource);
+            }
+          }
+
+          if (term.getRelatedTerms() != null) {
+            for (var relation : term.getRelatedTerms()) {
+              if (relation.getTerm() != null && relation.getTerm().getId() != null) {
+                Resource relatedResource = termResources.get(relation.getTerm().getId());
+                if (relatedResource == null) {
+                  String relatedUri =
+                      config.getBaseUri().toString() + "glossaryTerm/" + relation.getTerm().getId();
+                  relatedResource = model.createResource(relatedUri);
+                }
+
+                String relationType = relation.getRelationType();
+                Property relationProp = getSkosRelationProperty(relationType, model);
+                termResource.addProperty(relationProp, relatedResource);
+              }
+            }
+          }
+        }
+        addRelationCardinalityShapes(model);
+      }
+
+      java.io.StringWriter writer = new java.io.StringWriter();
+      String rdfFormat =
+          switch (format.toLowerCase()) {
+            case "rdfxml", "xml" -> "RDF/XML";
+            case "ntriples", "nt" -> "N-TRIPLES";
+            case "jsonld", "json-ld" -> "JSON-LD";
+            default -> "TURTLE";
+          };
+
+      model.write(writer, rdfFormat);
+      return writer.toString();
+
+    } catch (Exception e) {
+      LOG.error("Error exporting glossary {} as ontology", glossaryId, e);
+      throw new IOException("Failed to export glossary as ontology", e);
+    }
+  }
+
+  private Property getSkosRelationProperty(String relationType, Model model) {
+    if (relationType == null) {
+      return model.createProperty("http://www.w3.org/2004/02/skos/core#", "related");
+    }
+
+    return switch (relationType.toLowerCase()) {
+      case "broader" -> model.createProperty("http://www.w3.org/2004/02/skos/core#", "broader");
+      case "narrower" -> model.createProperty("http://www.w3.org/2004/02/skos/core#", "narrower");
+      case "synonym" -> model.createProperty("http://www.w3.org/2004/02/skos/core#", "exactMatch");
+      case "relatedto", "related" -> model.createProperty(
+          "http://www.w3.org/2004/02/skos/core#", "related");
+      case "seealso" -> model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "seeAlso");
+      default -> {
+        try {
+          org.openmetadata.schema.configuration.GlossaryTermRelationSettings settings =
+              org.openmetadata.service.resources.settings.SettingsCache.getSetting(
+                  org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS,
+                  org.openmetadata.schema.configuration.GlossaryTermRelationSettings.class);
+
+          if (settings != null && settings.getRelationTypes() != null) {
+            for (var configuredType : settings.getRelationTypes()) {
+              if (configuredType.getName().equalsIgnoreCase(relationType)) {
+                java.net.URI rdfPredicateUri = configuredType.getRdfPredicate();
+                if (rdfPredicateUri != null) {
+                  yield createPropertyFromUri(rdfPredicateUri.toString(), model);
+                }
+                break;
+              }
+            }
+          }
+        } catch (Exception e) {
+          LOG.debug("Could not load relation settings for type {}", relationType);
+        }
+        yield model.createProperty("https://open-metadata.org/ontology/", relationType);
+      }
+    };
+  }
+
+  private void addRelationCardinalityShapes(Model model) {
+    try {
+      org.openmetadata.schema.configuration.GlossaryTermRelationSettings settings =
+          org.openmetadata.service.resources.settings.SettingsCache.getSetting(
+              org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS,
+              org.openmetadata.schema.configuration.GlossaryTermRelationSettings.class);
+
+      if (settings == null || settings.getRelationTypes() == null) {
+        return;
+      }
+
+      String shNs = "http://www.w3.org/ns/shacl#";
+      String rdfNs = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+      String skosNs = "http://www.w3.org/2004/02/skos/core#";
+
+      Property rdfType = model.createProperty(rdfNs, "type");
+      Property shTargetClass = model.createProperty(shNs, "targetClass");
+      Property shProperty = model.createProperty(shNs, "property");
+      Property shPath = model.createProperty(shNs, "path");
+      Property shMaxCount = model.createProperty(shNs, "maxCount");
+      Property shInversePath = model.createProperty(shNs, "inversePath");
+
+      Resource shape = null;
+
+      for (var relationType : settings.getRelationTypes()) {
+        Integer sourceMax = relationType.getSourceMax();
+        Integer targetMax = relationType.getTargetMax();
+        RelationCardinality cardinality = relationType.getCardinality();
+
+        if (cardinality != null && cardinality != RelationCardinality.CUSTOM) {
+          switch (cardinality) {
+            case ONE_TO_ONE -> {
+              sourceMax = 1;
+              targetMax = 1;
+            }
+            case ONE_TO_MANY -> {
+              sourceMax = 1;
+              targetMax = null;
+            }
+            case MANY_TO_ONE -> {
+              sourceMax = null;
+              targetMax = 1;
+            }
+            case MANY_TO_MANY -> {
+              sourceMax = null;
+              targetMax = null;
+            }
+            default -> {
+              // No-op for unknown values.
+            }
+          }
+        }
+
+        if (sourceMax == null && targetMax == null) {
+          continue;
+        }
+
+        if (shape == null) {
+          String shapeUri =
+              config.getBaseUri().toString() + "shapes/glossaryTermRelationCardinality";
+          shape = model.createResource(shapeUri);
+          shape.addProperty(rdfType, model.createResource(shNs + "NodeShape"));
+          shape.addProperty(shTargetClass, model.createResource(skosNs + "Concept"));
+        }
+
+        Property relationProp = getSkosRelationProperty(relationType.getName(), model);
+
+        if (sourceMax != null) {
+          Resource propertyShape = model.createResource();
+          shape.addProperty(shProperty, propertyShape);
+          propertyShape.addProperty(shPath, relationProp);
+          propertyShape.addProperty(shMaxCount, model.createTypedLiteral(sourceMax));
+        }
+
+        if (targetMax != null) {
+          Resource propertyShape = model.createResource();
+          shape.addProperty(shProperty, propertyShape);
+          Resource inversePath = model.createResource();
+          inversePath.addProperty(shInversePath, relationProp);
+          propertyShape.addProperty(shPath, inversePath);
+          propertyShape.addProperty(shMaxCount, model.createTypedLiteral(targetMax));
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not add glossary term cardinality shapes", e);
+    }
+  }
+
   public void clearAll() {
     if (!isEnabled()) {
       return;
@@ -1121,6 +2698,105 @@ public class RdfRepository {
     } catch (Exception e) {
       LOG.error("Failed to clear RDF store", e);
       throw new RuntimeException("Failed to clear RDF store", e);
+    }
+  }
+
+  /**
+   * Diagnostic method to dump all glossary term relations stored in RDF. Returns a map with
+   * predicate URIs as keys and counts as values, plus sample triples.
+   */
+  public String debugGlossaryTermRelations() {
+    if (!isEnabled()) {
+      return "{\"error\": \"RDF not enabled\"}";
+    }
+
+    try {
+      // Query to get all predicates used between glossary terms
+      String predicateQuery =
+          "PREFIX om: <https://open-metadata.org/ontology/> "
+              + "SELECT ?predicate (COUNT(*) as ?count) WHERE { "
+              + "  GRAPH ?g { "
+              + "    ?term1 ?predicate ?term2 . "
+              + "    FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) "
+              + "    FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) "
+              + "  } "
+              + "} GROUP BY ?predicate ORDER BY DESC(?count)";
+
+      String predicateResults =
+          storageService.executeSparqlQuery(predicateQuery, "application/sparql-results+json");
+
+      // Query to get sample triples (first 20)
+      String sampleQuery =
+          "PREFIX om: <https://open-metadata.org/ontology/> "
+              + "SELECT ?term1 ?predicate ?term2 WHERE { "
+              + "  GRAPH ?g { "
+              + "    ?term1 ?predicate ?term2 . "
+              + "    FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) "
+              + "    FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) "
+              + "  } "
+              + "} LIMIT 20";
+
+      String sampleResults =
+          storageService.executeSparqlQuery(sampleQuery, "application/sparql-results+json");
+
+      // Build response
+      com.fasterxml.jackson.databind.node.ObjectNode response =
+          JsonUtils.getObjectMapper().createObjectNode();
+
+      // Parse predicate counts
+      com.fasterxml.jackson.databind.node.ArrayNode predicates =
+          JsonUtils.getObjectMapper().createArrayNode();
+      com.fasterxml.jackson.databind.JsonNode predResultsJson =
+          JsonUtils.readTree(predicateResults);
+      if (predResultsJson.has("results") && predResultsJson.get("results").has("bindings")) {
+        for (com.fasterxml.jackson.databind.JsonNode binding :
+            predResultsJson.get("results").get("bindings")) {
+          com.fasterxml.jackson.databind.node.ObjectNode predInfo =
+              JsonUtils.getObjectMapper().createObjectNode();
+          predInfo.put(
+              "predicate",
+              binding.has("predicate") ? binding.get("predicate").get("value").asText() : "null");
+          predInfo.put(
+              "count", binding.has("count") ? binding.get("count").get("value").asInt() : 0);
+          predicates.add(predInfo);
+        }
+      }
+      response.set("predicateCounts", predicates);
+
+      // Parse sample triples
+      com.fasterxml.jackson.databind.node.ArrayNode samples =
+          JsonUtils.getObjectMapper().createArrayNode();
+      com.fasterxml.jackson.databind.JsonNode sampleResultsJson = JsonUtils.readTree(sampleResults);
+      if (sampleResultsJson.has("results") && sampleResultsJson.get("results").has("bindings")) {
+        for (com.fasterxml.jackson.databind.JsonNode binding :
+            sampleResultsJson.get("results").get("bindings")) {
+          com.fasterxml.jackson.databind.node.ObjectNode triple =
+              JsonUtils.getObjectMapper().createObjectNode();
+          triple.put(
+              "term1",
+              binding.has("term1")
+                  ? extractEntityIdFromUri(binding.get("term1").get("value").asText())
+                  : "null");
+          triple.put(
+              "predicate",
+              binding.has("predicate") ? binding.get("predicate").get("value").asText() : "null");
+          triple.put(
+              "term2",
+              binding.has("term2")
+                  ? extractEntityIdFromUri(binding.get("term2").get("value").asText())
+                  : "null");
+          samples.add(triple);
+        }
+      }
+      response.set("sampleTriples", samples);
+
+      return JsonUtils.pojoToJson(response);
+    } catch (Exception e) {
+      LOG.error("Error debugging glossary term relations", e);
+      com.fasterxml.jackson.databind.node.ObjectNode errorNode =
+          JsonUtils.getObjectMapper().createObjectNode();
+      errorNode.put("error", "An internal error occurred while debugging glossary relations");
+      return JsonUtils.pojoToJson(errorNode);
     }
   }
 

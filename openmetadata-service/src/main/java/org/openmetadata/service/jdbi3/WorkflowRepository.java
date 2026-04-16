@@ -107,15 +107,10 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
-          "status",
-          () -> {
-            recordChange("status", original.getStatus(), updated.getStatus());
-          });
+          "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
       compareAndUpdate(
           "response",
-          () -> {
-            recordChange("response", original.getResponse(), updated.getResponse(), true);
-          });
+          () -> recordChange("response", original.getResponse(), updated.getResponse(), true));
     }
   }
 }

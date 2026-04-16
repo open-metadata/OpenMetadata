@@ -40,6 +40,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedConstruction.Context;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.Entity;
@@ -71,6 +72,10 @@ class DistributedSearchIndexExecutorTest {
   private JobRecoveryManager recoveryManager;
   private DistributedSearchIndexExecutor executor;
   private MockedStatic<ServerIdentityResolver> serverIdentityMock;
+
+  private static void prepare(IndexingFailureRecorder mock, Context context) {
+    when(mock.toString()).thenReturn("failure-recorder");
+  }
 
   @BeforeEach
   void setUp() throws Exception {
@@ -655,10 +660,7 @@ class DistributedSearchIndexExecutorTest {
             mockConstruction(DistributedJobStatsAggregator.class);
         MockedConstruction<IndexingFailureRecorder> failureConstruction =
             mockConstruction(
-                IndexingFailureRecorder.class,
-                (mock, context) -> {
-                  when(mock.toString()).thenReturn("failure-recorder");
-                });
+                IndexingFailureRecorder.class, DistributedSearchIndexExecutorTest::prepare);
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
 
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);

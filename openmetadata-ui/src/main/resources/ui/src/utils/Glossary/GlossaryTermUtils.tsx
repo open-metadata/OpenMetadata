@@ -176,6 +176,19 @@ export const getGlossaryTermDetailPageTabs = (
           {
             label: (
               <TabsLabel
+                id={EntityTabs.RELATIONS_GRAPH}
+                name={
+                  tabLabelMap[EntityTabs.RELATIONS_GRAPH] ??
+                  i18n.t('label.relations-graph')
+                }
+              />
+            ),
+            key: EntityTabs.RELATIONS_GRAPH,
+            children: <OntologyExplorer height="100%" scope="term" />,
+          },
+          {
+            label: (
+              <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
                 name={
                   tabLabelMap[EntityTabs.CUSTOM_PROPERTIES] ??

@@ -83,6 +83,7 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -116,6 +117,8 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -146,6 +149,7 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
+import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -370,6 +374,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
+    registerDistributedRdfJobParticipant(environment, jdbi);
 
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -732,7 +737,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .getObjectMapper()
         .registerSubtypes(
             org.openmetadata.service.events.AuditOnlyFilterFactory.class,
-            org.openmetadata.service.events.AuditExcludeFilterFactory.class);
+            org.openmetadata.service.events.AuditExcludeFilterFactory.class,
+            SwitchableEventLayoutFactory.class,
+            SwitchableAccessLayoutFactory.class);
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {
@@ -761,8 +768,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     super.initialize(bootstrap);
   }
 
-  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
-      throws IOException {
+  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf) {
     LOG.info("Validating native migrations");
     ConnectionType connectionType =
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
@@ -1044,6 +1050,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
+
+    CspNonceHandler cspNonceHandler = new CspNonceHandler();
+    cspNonceHandler.setHandler(environment.getApplicationContext().getHandler());
+    environment.getApplicationContext().setHandler(cspNonceHandler);
   }
 
   private void initializeWebsockets(
@@ -1115,7 +1125,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           "Registered DistributedJobParticipant for distributed search indexing using {}",
           notifierType);
     } catch (Exception e) {
-      LOG.warn("Failed to register DistributedJobParticipant: {}", e.getMessage());
+      LOG.warn("Failed to register DistributedJobParticipant", e);
+    }
+  }
+
+  protected void registerDistributedRdfJobParticipant(Environment environment, Jdbi jdbi) {
+    try {
+      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+      RdfDistributedJobParticipant participant = new RdfDistributedJobParticipant(collectionDAO);
+      environment.lifecycle().manage(participant);
+      LOG.info("Registered RdfDistributedJobParticipant for distributed RDF indexing");
+    } catch (Exception e) {
+      LOG.warn("Failed to register RdfDistributedJobParticipant", e);
     }
   }
 

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { parse, unparse } from 'papaparse';
@@ -52,6 +53,7 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   fullyQualifiedName: 300,
   tiers: 120,
   status: 70,
+  parameterValues: 300,
 };
 
 export const CSV_DISABLED_COLUMNS = [
@@ -102,6 +104,19 @@ export const renderColumnDataEditor = (
           markdown={value}
           reducePreviewLineClass="max-one-line"
         />
+      );
+    case 'parameterValues':
+      return value ? (
+        <Tooltip
+          containerClassName="tw:max-w-sm tw:break-all"
+          placement="top"
+          title={value}>
+          <TooltipTrigger>
+            <span className="tw:block tw:truncate">{value}</span>
+          </TooltipTrigger>
+        </Tooltip>
+      ) : (
+        value
       );
 
     default:

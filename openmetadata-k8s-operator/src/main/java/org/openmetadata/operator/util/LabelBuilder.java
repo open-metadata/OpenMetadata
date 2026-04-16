@@ -114,7 +114,6 @@ public class LabelBuilder {
   public static Map<String, String> buildPodSelector(OMJobResource omJob) {
     Map<String, String> selector = new HashMap<>();
     selector.put(LABEL_OMJOB_NAME, omJob.getMetadata().getName());
-    selector.put(LABEL_APP_MANAGED_BY, MANAGED_BY_OMJOB_OPERATOR);
     return selector;
   }
 

@@ -16,8 +16,8 @@
 
     <properties>
         <okhttp.version>4.12.0</okhttp.version>
-        <junit.version>5.9.3</junit.version>
-        <junit-platform.version>1.9.3</junit-platform.version>
+        <junit.version>${org.junit.jupiter.version}</junit.version>
+        <junit-platform.version>${org.junit.platform.version}</junit-platform.version>
         <mockito.version>5.5.0</mockito.version>
         <slf4j.version>2.0.9</slf4j.version>
         <lombok.version>1.18.30</lombok.version>

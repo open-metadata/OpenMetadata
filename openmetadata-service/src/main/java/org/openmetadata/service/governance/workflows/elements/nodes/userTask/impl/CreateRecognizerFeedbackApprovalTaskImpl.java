@@ -109,9 +109,8 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Failure: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());

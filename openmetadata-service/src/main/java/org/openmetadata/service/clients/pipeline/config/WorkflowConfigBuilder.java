@@ -40,8 +40,7 @@ import org.openmetadata.service.clients.pipeline.config.types.WorkflowConfigType
 public class WorkflowConfigBuilder {
 
   public static OpenMetadataWorkflowConfig buildOMWorkflowConfig(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service)
-      throws WorkflowBuildException {
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
 
     WorkflowConfigTypeStrategy workflowStrategy;
 

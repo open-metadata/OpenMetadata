@@ -117,6 +117,7 @@ export default defineConfig(({ mode }) => {
     },
 
     css: {
+      preprocessorMaxWorkers: 1, // Disable parallel Less processing to avoid race conditions in CI
       preprocessorOptions: {
         less: {
           javascriptEnabled: true,

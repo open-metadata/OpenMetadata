@@ -54,6 +54,8 @@ import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.type.Style;
@@ -76,6 +78,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -193,6 +197,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
     return daoCollection.glossaryTermDAO().listCount(filter);
+  }
+
+  @Override
+  protected void postDelete(Glossary entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeByPrefixFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -346,6 +359,116 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                 .withEndpoint(URI.create(termRefList.get(i++))));
       }
       return list;
+    }
+
+    private static final Set<String> DEFAULT_RELATION_TYPES =
+        Set.copyOf(GlossaryTermRepository.DEFAULT_RELATION_TYPES);
+
+    /**
+     * Parse term relations from CSV field with support for relation type prefix.
+     * Format: "relationType:termFQN" or just "termFQN" (defaults to "relatedTo").
+     * Example: "synonym:Glossary.Term1;broader:Glossary.Term2;Glossary.Term3"
+     */
+    private List<TermRelation> getTermRelationsFromCsv(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (!processRecord) {
+        return null;
+      }
+      String fieldValue = csvRecord.get(fieldNumber);
+      if (nullOrEmpty(fieldValue)) {
+        return null;
+      }
+
+      List<TermRelation> termRelations = new ArrayList<>();
+      String[] entries = fieldValue.split(FIELD_SEPARATOR);
+
+      for (String entry : entries) {
+        String relationType = "relatedTo"; // Default relation type
+        String termFqn = entry.trim();
+
+        // Check for relationType:fqn format
+        int colonIndex = entry.indexOf(':');
+        if (colonIndex > 0) {
+          String prefix = entry.substring(0, colonIndex).trim();
+          String suffix = entry.substring(colonIndex + 1).trim();
+
+          if (isValidRelationType(prefix)) {
+            relationType = prefix;
+            termFqn = suffix;
+          } else if (!prefix.contains(".")) {
+            // Prefix has no dots, so it looks like an intended relation type, not part of an FQN
+            importFailure(
+                printer,
+                invalidField(
+                    fieldNumber,
+                    String.format(
+                        "Invalid relation type '%s' in entry '%s'. " + "Valid types: %s",
+                        prefix, entry.trim(), getValidRelationTypeNames())),
+                csvRecord);
+            continue;
+          }
+          // If prefix contains dots, it's likely part of an FQN — treat entire string as FQN
+        }
+
+        // Resolve the term FQN to an EntityReference
+        EntityReference termRef =
+            getEntityReference(printer, csvRecord, fieldNumber, GLOSSARY_TERM, termFqn);
+        if (termRef != null) {
+          GlossaryTerm resolvedTerm =
+              Entity.getEntity(GLOSSARY_TERM, termRef.getId(), "", Include.NON_DELETED);
+          if (resolvedTerm.getEntityStatus() != null
+              && resolvedTerm.getEntityStatus() != EntityStatus.APPROVED) {
+            importFailure(
+                printer,
+                invalidField(
+                    fieldNumber,
+                    String.format(
+                        "Glossary term '%s' must have APPROVED status. Current: %s",
+                        termFqn, resolvedTerm.getEntityStatus())),
+                csvRecord);
+            processRecord = false;
+            continue;
+          }
+          termRelations.add(new TermRelation().withTerm(termRef).withRelationType(relationType));
+        }
+      }
+
+      return termRelations.isEmpty() ? null : termRelations;
+    }
+
+    /**
+     * Check if a relation type is valid against the glossaryTermRelationSettings.
+     */
+    private boolean isValidRelationType(String relationType) {
+      try {
+        GlossaryTermRelationSettings settings =
+            SettingsCache.getSetting(
+                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+        if (settings == null || settings.getRelationTypes() == null) {
+          return DEFAULT_RELATION_TYPES.contains(relationType);
+        }
+        return settings.getRelationTypes().stream()
+            .anyMatch(rt -> relationType.equals(rt.getName()));
+      } catch (Exception e) {
+        return DEFAULT_RELATION_TYPES.contains(relationType);
+      }
+    }
+
+    private String getValidRelationTypeNames() {
+      try {
+        GlossaryTermRelationSettings settings =
+            SettingsCache.getSetting(
+                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+        if (settings != null && settings.getRelationTypes() != null) {
+          return settings.getRelationTypes().stream()
+              .map(GlossaryTermRelationType::getName)
+              .sorted()
+              .collect(Collectors.joining(", "));
+        }
+      } catch (Exception e) {
+        // Fall through to defaults
+      }
+      return String.join(", ", new TreeSet<>(DEFAULT_RELATION_TYPES));
     }
 
     private EntityStatus getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
@@ -517,11 +640,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "name",
-          () -> {
-            updateName(updated);
-          });
+      compareAndUpdate("name", () -> updateName(updated));
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
@@ -564,6 +683,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .tagUsageDAO()
           .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
       updateEntityLinksOnGlossaryRename(oldFqn, newFqn, updated);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
     }
 
     public void invalidateGlossary(UUID classificationId) {

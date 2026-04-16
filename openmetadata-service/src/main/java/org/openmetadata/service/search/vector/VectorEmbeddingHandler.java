@@ -29,11 +29,6 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public boolean isAsync() {
-    return true;
-  }
-
-  @Override
   public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
     updateEmbedding(entity);
   }

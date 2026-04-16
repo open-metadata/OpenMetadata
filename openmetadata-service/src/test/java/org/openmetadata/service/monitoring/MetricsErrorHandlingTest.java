@@ -67,7 +67,7 @@ public class MetricsErrorHandlingTest {
 
   @Test
   void testNullRequestContext() {
-    assertDoesNotThrow(() -> RequestLatencyContext.endRequest());
+    assertDoesNotThrow(RequestLatencyContext::endRequest);
 
     Timer.Sample sample = RequestLatencyContext.startDatabaseOperation();
     assertNull(sample);

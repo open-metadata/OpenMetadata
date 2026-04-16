@@ -299,7 +299,6 @@ public class AbstractNativeApplication implements NativeApplication {
     App jobApp =
         appRepository.getByName(
             null, appName, appRepository.getFields("bot"), Include.NON_DELETED, true);
-    ;
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(

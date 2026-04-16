@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -18,6 +19,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 
@@ -79,7 +81,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         MAPPER
             .createObjectNode()
             .put("technique", "rrf")
-            .put("rank_constant", 60)
+            .put("rank_constant", 30)
             .set("parameters", MAPPER.createObjectNode().set("weights", weights));
     var scoreRanker =
         MAPPER
@@ -102,6 +104,52 @@ public class OpenSearchVectorService implements VectorIndexService {
         HYBRID_PIPELINE_NAME,
         keywordWeight,
         semanticWeight);
+  }
+
+  public Optional<String> checkHybridSearchPipeline() {
+    try {
+      OpenSearchGenericClient genericClient = client.generic();
+      var request =
+          Requests.builder()
+              .endpoint("/_search/pipeline/" + HYBRID_PIPELINE_NAME)
+              .method("GET")
+              .build();
+      try (var response = genericClient.execute(request)) {
+        int status = response.getStatus();
+        if (status < 400) {
+          return Optional.empty();
+        }
+        if (status == 404) {
+          return Optional.of(
+              "Hybrid search pipeline '"
+                  + HYBRID_PIPELINE_NAME
+                  + "' not found. Run a reindex to create it.");
+        }
+        String detail =
+            response
+                .getBody()
+                .map(
+                    b -> {
+                      try {
+                        String body = new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                        return body.length() > 200 ? body.substring(0, 200) : body;
+                      } catch (Exception ignored) {
+                        return "";
+                      }
+                    })
+                .orElse("");
+        return Optional.of(
+            "Unexpected status "
+                + status
+                + " when checking hybrid search pipeline '"
+                + HYBRID_PIPELINE_NAME
+                + "'."
+                + (detail.isEmpty() ? "" : " Response: " + detail));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to check hybrid search pipeline '{}'", HYBRID_PIPELINE_NAME, e);
+      return Optional.of("Failed to check hybrid search pipeline: " + e.toString());
+    }
   }
 
   @Override
@@ -317,7 +365,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       var request = Requests.builder().endpoint(endpoint).method(method).json(body).build();
       try (var response = genericClient.execute(request)) {
         if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(b -> b.bodyAsString()).orElse("no body");
+          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
           throw new IOException(
               "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
         }

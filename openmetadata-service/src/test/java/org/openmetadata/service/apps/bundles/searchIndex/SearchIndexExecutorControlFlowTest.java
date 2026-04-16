@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -63,6 +64,7 @@ import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -187,7 +189,7 @@ class SearchIndexExecutorControlFlowTest {
                     null,
                     "table"));
 
-    assertTrue(thrown.getCause() instanceof SearchIndexException);
+    assertInstanceOf(SearchIndexException.class, thrown.getCause());
   }
 
   @Test
@@ -358,7 +360,7 @@ class SearchIndexExecutorControlFlowTest {
                   invokePrivateMethod(
                       "validateClusterCapacity", new Class<?>[] {Set.class}, Set.of(Entity.TABLE)));
 
-      assertTrue(thrown.getCause() instanceof InsufficientClusterCapacityException);
+      assertInstanceOf(InsufficientClusterCapacityException.class, thrown.getCause());
     }
   }
 
@@ -863,7 +865,7 @@ class SearchIndexExecutorControlFlowTest {
   }
 
   @Test
-  void executeCompletesRecreateFlowForZeroEntityWorkload() throws Exception {
+  void executeCompletesRecreateFlowForZeroEntityWorkload() {
     ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
     ReindexingJobContext jobContext = mock(ReindexingJobContext.class);
     CollectionDAO.SearchIndexFailureDAO failureDao =
@@ -892,7 +894,9 @@ class SearchIndexExecutorControlFlowTest {
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(0);
-    when(searchRepository.createBulkSink(100, 100, 104857600L)).thenReturn(sink);
+    when(searchRepository.createBulkSink(
+            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+        .thenReturn(sink);
     when(searchRepository.createReindexHandler()).thenReturn(handler);
     when(handler.reCreateIndexes(Set.of(Entity.TABLE))).thenReturn(recreateContext);
     executor.addListener(listener);
@@ -930,7 +934,8 @@ class SearchIndexExecutorControlFlowTest {
     when(jobContext.getJobId()).thenReturn(UUID.randomUUID());
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(0);
-    when(searchRepository.createBulkSink(100, 100, 104857600L))
+    when(searchRepository.createBulkSink(
+            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
         .thenThrow(new IllegalStateException("sink init failed"));
     executor.addListener(listener);
 
@@ -1289,7 +1294,7 @@ class SearchIndexExecutorControlFlowTest {
     setField("searchIndexSink", sink);
     setField("taskQueue", queue);
     when(source.readWithCursor(RestUtil.encodeCursor("0")))
-        .thenReturn((ResultList) new ResultList<>(List.of(mock(EntityInterface.class))));
+        .thenReturn(new ResultList<>(List.of(mock(EntityInterface.class))));
 
     invokePrivateMethod(
         "processReadTask",

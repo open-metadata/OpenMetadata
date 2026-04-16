@@ -14,7 +14,6 @@
 package org.openmetadata.service.logstorage;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.io.*;
@@ -130,7 +129,7 @@ public class S3LogStorageTest {
   }
 
   @Test
-  void testAppendLogs() throws IOException {
+  void testAppendLogs() {
     String newContent = "New log content\n";
     String expectedKey = String.format("%s/%s/%s/logs.txt", testPrefix, testPipelineFQN, testRunId);
 
@@ -171,7 +170,7 @@ public class S3LogStorageTest {
   }
 
   @Test
-  void testAppendLogsToNewFile() throws IOException {
+  void testAppendLogsToNewFile() {
     String newContent = "First log content\n";
     String expectedKey = String.format("%s/%s/%s/logs.txt", testPrefix, testPipelineFQN, testRunId);
 
@@ -280,7 +279,7 @@ public class S3LogStorageTest {
   }
 
   @Test
-  void testDeleteLogs() throws IOException {
+  void testDeleteLogs() {
     // Mock delete object
     when(mockS3Client.deleteObject(any(DeleteObjectRequest.class)))
         .thenReturn(DeleteObjectResponse.builder().build());
@@ -625,7 +624,7 @@ public class S3LogStorageTest {
       config.put("config", invalidConfig);
 
       IOException exception = assertThrows(IOException.class, () -> storage.initialize(config));
-      assertTrue(exception.getCause() instanceof IllegalArgumentException);
+      assertInstanceOf(IllegalArgumentException.class, exception.getCause());
       assertTrue(exception.getCause().getMessage().contains("AWS credentials not configured"));
     }
   }

@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.flowable.builders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -24,7 +25,7 @@ class IntermediateCatchEventBuilderTest {
     assertEquals(1, event.getEventDefinitions().size());
 
     EventDefinition def = event.getEventDefinitions().get(0);
-    assertTrue(def instanceof MessageEventDefinition);
+    assertInstanceOf(MessageEventDefinition.class, def);
     assertEquals("${taskId}", ((MessageEventDefinition) def).getMessageExpression());
   }
 

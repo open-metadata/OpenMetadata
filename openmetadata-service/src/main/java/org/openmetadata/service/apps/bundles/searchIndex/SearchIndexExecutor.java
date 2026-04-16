@@ -9,7 +9,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECR
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -134,6 +133,7 @@ public class SearchIndexExecutor implements AutoCloseable {
   private final Map<String, AtomicInteger> entityBatchFailures = new ConcurrentHashMap<>();
   private final Set<String> promotedEntities = ConcurrentHashMap.newKeySet();
   private final Map<String, StageStatsTracker> sinkTrackers = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Object>> contextDataCache = new ConcurrentHashMap<>();
   private static final long SINK_SYNC_INTERVAL_MS = 2000;
   private final AtomicLong lastSinkSyncTime = new AtomicLong(0);
 
@@ -235,6 +235,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     entityBatchFailures.clear();
     promotedEntities.clear();
     sinkTrackers.clear();
+    contextDataCache.clear();
     lastSinkSyncTime.set(0);
     initStatsManager();
   }
@@ -397,17 +398,28 @@ public class SearchIndexExecutor implements AutoCloseable {
     int cappedEntityCount = Math.min(entityCount, maxJobThreads);
     jobExecutor =
         Executors.newFixedThreadPool(
-            cappedEntityCount, Thread.ofPlatform().name(threadPrefix + "job-", 0).factory());
+            cappedEntityCount,
+            Thread.ofPlatform()
+                .name(threadPrefix + "job-", 0)
+                .priority(Thread.MIN_PRIORITY)
+                .factory());
 
     int finalNumConsumers = Math.min(threadConfig.numConsumers(), MAX_CONSUMER_THREADS);
     consumerExecutor =
         Executors.newFixedThreadPool(
-            finalNumConsumers, Thread.ofPlatform().name(threadPrefix + "consumer-", 0).factory());
+            finalNumConsumers,
+            Thread.ofPlatform()
+                .name(threadPrefix + "consumer-", 0)
+                .priority(Thread.MIN_PRIORITY)
+                .factory());
 
     producerExecutor =
         Executors.newFixedThreadPool(
             threadConfig.numProducers(),
-            Thread.ofPlatform().name(threadPrefix + "producer-", 0).factory());
+            Thread.ofPlatform()
+                .name(threadPrefix + "producer-", 0)
+                .priority(Thread.MIN_PRIORITY)
+                .factory());
 
     return effectiveQueueSize;
   }
@@ -524,14 +536,18 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private Map<String, Object> createContextData(String entityType) {
-    Map<String, Object> contextData = new HashMap<>();
-    contextData.put(ENTITY_TYPE_KEY, entityType);
-    contextData.put(RECREATE_INDEX, config.recreateIndex());
-    contextData.put(RECREATE_CONTEXT, recreateContext);
-    contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getSinkTracker(entityType));
-    getTargetIndexForEntity(entityType)
-        .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
-    return contextData;
+    return contextDataCache.computeIfAbsent(
+        entityType,
+        type -> {
+          Map<String, Object> contextData = new HashMap<>();
+          contextData.put(ENTITY_TYPE_KEY, type);
+          contextData.put(RECREATE_INDEX, config.recreateIndex());
+          contextData.put(RECREATE_CONTEXT, recreateContext);
+          contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getSinkTracker(type));
+          getTargetIndexForEntity(type)
+              .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
+          return contextData;
+        });
   }
 
   private StageStatsTracker getSinkTracker(String entityType) {
@@ -1034,7 +1050,7 @@ public class SearchIndexExecutor implements AutoCloseable {
                 recordLimit);
             break;
           }
-          if (endCursor != null && hasReachedEndCursor(keysetCursor, endCursor)) {
+          if (hasReachedEndCursor(keysetCursor, endCursor)) {
             LOG.debug("Reader for {} reached end cursor at processed={}", entityType, processed);
             break;
           }
@@ -1232,9 +1248,7 @@ public class SearchIndexExecutor implements AutoCloseable {
         if (metrics != null) {
           metrics.updateQueueFillRatio(fillPercent);
         }
-        if (fillPercent > 90) {
-          return true;
-        }
+        return fillPercent > 90;
       }
     }
     return false;
@@ -1667,7 +1681,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     return recreateIndexHandler.reCreateIndexes(entities);
   }
 
-  private void closeSinkIfNeeded() throws IOException {
+  private void closeSinkIfNeeded() {
     if (searchIndexSink != null && sinkClosed.compareAndSet(false, true)) {
       int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
       if (pendingVectorTasks > 0) {

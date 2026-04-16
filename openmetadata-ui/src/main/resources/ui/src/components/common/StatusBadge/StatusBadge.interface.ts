@@ -25,6 +25,7 @@ export enum StatusType {
   Version = 'version',
   Acknowledged = 'acknowledged',
   Unprocessed = 'unprocessed',
+  Archived = 'archived',
 }
 
 export interface StatusBadgeProps {

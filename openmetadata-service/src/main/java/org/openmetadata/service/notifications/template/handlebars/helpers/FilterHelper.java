@@ -26,11 +26,9 @@ public class FilterHelper implements HandlebarsHelper {
     handlebars.registerHelper(
         getName(),
         (context, options) -> {
-          if (context == null || !(context instanceof Collection<?>)) {
+          if (context == null || !(context instanceof Collection<?> collection)) {
             return new ArrayList<>();
           }
-
-          Collection<?> collection = (Collection<?>) context;
 
           // Check if we have property=value hash parameters
           if (options.hash.isEmpty()) {

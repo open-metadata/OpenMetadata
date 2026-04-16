@@ -17,6 +17,8 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpExecution;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.LLMService;
+import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -91,6 +94,9 @@ import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.IngestionPipelineIndex;
 import org.openmetadata.service.search.indexes.LlmModelIndex;
 import org.openmetadata.service.search.indexes.LlmServiceIndex;
+import org.openmetadata.service.search.indexes.McpExecutionIndex;
+import org.openmetadata.service.search.indexes.McpServerIndex;
+import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
@@ -227,6 +233,10 @@ class SearchIndexFactoryTest {
             (Supplier<Object>) MlModelService::new,
             MlModelServiceIndex.class),
         Arguments.of(Entity.LLM_SERVICE, (Supplier<Object>) LLMService::new, LlmServiceIndex.class),
+        Arguments.of(Entity.MCP_SERVER, (Supplier<Object>) McpServer::new, McpServerIndex.class),
+        Arguments.of(
+            Entity.MCP_EXECUTION, (Supplier<Object>) McpExecution::new, McpExecutionIndex.class),
+        Arguments.of(Entity.MCP_SERVICE, (Supplier<Object>) McpService::new, McpServiceIndex.class),
         Arguments.of(
             Entity.SEARCH_SERVICE, (Supplier<Object>) SearchService::new, SearchServiceIndex.class),
         Arguments.of(

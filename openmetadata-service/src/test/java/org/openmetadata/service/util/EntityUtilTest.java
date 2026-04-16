@@ -669,7 +669,7 @@ class EntityUtilTest {
     assertNull(EntityUtil.toEntityReferences(null, "table"));
     assertNull(EntityUtil.refToIds(null));
     assertNull(EntityUtil.getFqns(null));
-    assertNull(EntityUtil.getEntityReference((Table) null));
+    assertNull(EntityUtil.getEntityReference(null));
     assertNull(EntityUtil.getEntityReference("table", null));
     assertNull(EntityUtil.getEntityReferenceByName("table", null));
     assertNull(EntityUtil.getEntityReferences("table", null));

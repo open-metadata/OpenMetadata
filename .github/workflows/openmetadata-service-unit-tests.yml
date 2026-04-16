@@ -12,6 +12,7 @@
 name: OpenMetadata Service Unit Tests
 
 on:
+  merge_group:
   workflow_dispatch:
   push:
     branches:
@@ -39,7 +40,12 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
+      k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+
       - uses: dorny/paths-filter@v3
         id: filter
         if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -55,32 +61,23 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
+            k8s_operator:
+              - 'openmetadata-k8s-operator/**'
 
   openmetadata-service-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: changes
     if: ${{ needs.changes.outputs.java == 'true' }}
-    env:
-      NEW_CODE_COVERAGE_THRESHOLD: "90"
-    outputs:
-      jacoco-report-available: ${{ steps.jacoco-report.outputs.available }}
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mysql, postgresql]
     steps:
-      - name: Require safe-to-test label
-        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'safe to test') }}
-        run: |
-          echo "The 'safe to test' label is required before running OpenMetadata service unit tests."
-          exit 1
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Fetch PR base branch
-        if: ${{ github.event_name == 'pull_request' }}
-        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4
@@ -103,43 +100,20 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Run openmetadata-service unit tests with JaCoCo
+      - name: Run openmetadata-service unit tests (${{ matrix.database }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis \
+            -Pstatic-code-analysis,${{ matrix.database }} \
             -DfailIfNoTests=false \
             -Dsonar.skip=true
-
-      - name: Generate JaCoCo report
-        run: |
-          mvn -B -pl openmetadata-service -Pstatic-code-analysis jacoco:report \
-            -DskipTests \
-            -Dsonar.skip=true
-
-      - name: Detect JaCoCo report
-        id: jacoco-report
-        if: ${{ always() }}
-        run: |
-          if [ -f openmetadata-service/target/site/jacoco/jacoco.xml ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload JaCoCo report
-        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('openmetadata-service/target/site/jacoco/jacoco.xml') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: openmetadata-service-jacoco-report
-          path: openmetadata-service/target/site/jacoco/
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: openmetadata-service-surefire-reports
+          name: openmetadata-service-surefire-reports-${{ matrix.database }}
           path: openmetadata-service/target/surefire-reports/
 
       - name: Publish Test Report
@@ -149,60 +123,56 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
           report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
+          check_name: "Test Report (${{ matrix.database }})"
 
-  openmetadata-service-new-code-coverage:
+  k8s_operator-unit-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [changes, openmetadata-service-unit-tests]
-    if: ${{ needs.changes.outputs.java == 'true' && github.event_name == 'pull_request' }}
-    env:
-      NEW_CODE_COVERAGE_THRESHOLD: "90"
+    timeout-minutes: 30
+    needs: changes
+    if: ${{ needs.changes.outputs.k8s_operator == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Fetch PR base branch
-        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
-
-      - name: Ensure JaCoCo report is available
-        if: ${{ needs.openmetadata-service-unit-tests.outputs.jacoco-report-available != 'true' }}
-        run: |
-          echo "JaCoCo report was not generated by openmetadata-service-unit-tests."
-          echo "Inspect the unit-test job logs for the root cause instead of treating this as an artifact download failure."
-          exit 1
-
-      - name: Download JaCoCo report
-        if: ${{ needs.openmetadata-service-unit-tests.outputs.jacoco-report-available == 'true' }}
-        uses: actions/download-artifact@v4
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
         with:
-          name: openmetadata-service-jacoco-report
-          path: openmetadata-service/target/site/jacoco
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      - name: Evaluate new-code coverage
-        id: diff-coverage
-        if: ${{ needs.openmetadata-service-unit-tests.outputs.jacoco-report-available == 'true' }}
-        run: |
-          python3 scripts/jacoco_diff_coverage.py \
-            --report openmetadata-service/target/site/jacoco/jacoco.xml \
-            --source-root openmetadata-service/src/main/java \
-            --base-ref origin/${{ github.event.pull_request.base.ref }} \
-            --head-ref HEAD \
-            --minimum-coverage "${NEW_CODE_COVERAGE_THRESHOLD}" \
-            --markdown-output openmetadata-service/target/diff-coverage.md
-
-      - name: Add coverage summary to job summary
-        if: ${{ always() && (steps.diff-coverage.outcome == 'success' || steps.diff-coverage.outcome == 'failure') }}
-        run: cat openmetadata-service/target/diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Comment PR with coverage summary
-        if: ${{ always() && github.event.pull_request.head.repo.full_name == github.repository && (steps.diff-coverage.outcome == 'success' || steps.diff-coverage.outcome == 'failure') }}
-        uses: marocchino/sticky-pull-request-comment@v2
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          header: openmetadata-service-new-code-coverage
-          path: openmetadata-service/target/diff-coverage.md
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Build k8s-operator dependencies
+        run: |
+          mvn -B clean install -pl openmetadata-k8s-operator -am -DskipTests
+
+      - name: Run k8s-operator unit tests
+        run: |
+          mvn -B test -pl openmetadata-k8s-operator
+
+      - name: Upload surefire reports
+        if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-operator-surefire-reports
+          path: openmetadata-k8s-operator/target/surefire-reports/
+
+      - name: Publish Test Report
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
+          check_name: "K8s Operator Test Report"
 
   # Single required-check gate for branch protection.
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
@@ -210,7 +180,7 @@ jobs:
   # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
   openmetadata-service-unit-tests-status:
     name: openmetadata-service-unit-tests-status
-    needs: [changes, openmetadata-service-unit-tests, openmetadata-service-new-code-coverage]
+    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests]
     if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-latest
     steps:

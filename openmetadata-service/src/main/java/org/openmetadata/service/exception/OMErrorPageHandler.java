@@ -14,6 +14,8 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.web.CspHeaderFactory;
+import org.openmetadata.service.security.CspNonceHandler;
 
 /**
  * Custom error page handler that adds security headers to error responses. This is compatible with
@@ -41,7 +43,7 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
       Throwable cause)
       throws IOException {
     // Add security headers to the response before generating the error page
-    setSecurityHeaders(this.webConfiguration, response);
+    setSecurityHeaders(this.webConfiguration, request, response);
     return super.generateAcceptableResponse(
         request, response, callback, contentType, charsets, code, message, cause);
   }
@@ -50,9 +52,11 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
    * Sets security headers on the Jetty Response object (new Jetty 12.1 API).
    *
    * @param webConfiguration the web configuration containing header settings
+   * @param request the Jetty Request object
    * @param response the Jetty Response object
    */
-  public static void setSecurityHeaders(OMWebConfiguration webConfiguration, Response response) {
+  public static void setSecurityHeaders(
+      OMWebConfiguration webConfiguration, Request request, Response response) {
     // Hsts
     if (webConfiguration.getHstsHeaderFactory() != null) {
       webConfiguration
@@ -90,7 +94,19 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
       webConfiguration
           .getCspHeaderFactory()
           .build()
-          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+          .forEach(
+              (name, value) -> {
+                if ((name.equals(CspHeaderFactory.CSP_HEADER)
+                        || name.equals(CspHeaderFactory.CSP_REPORT_ONLY_HEADER))
+                    && value.contains(CspNonceHandler.CSP_NONCE_PLACEHOLDER)) {
+                  final String nonce =
+                      (String) request.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
+                  if (nonce != null) {
+                    value = value.replace(CspNonceHandler.CSP_NONCE_PLACEHOLDER, nonce);
+                  }
+                }
+                response.getHeaders().put(new HttpField(name, value));
+              });
     }
 
     // Referrer Policy

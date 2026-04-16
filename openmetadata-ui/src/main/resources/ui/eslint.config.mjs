@@ -43,6 +43,8 @@ export default [
       'src/generated/**',
       'coverage/**',
       'playwright/doc-generator/**',
+      'playwright/output/**',
+      'playwright/test-data/**',
     ],
   },
 

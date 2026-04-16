@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FeedUtils;
 
 class MessageDecoratorTest {
@@ -436,7 +435,7 @@ class MessageDecoratorTest {
                 new TestCaseResult().withResult("Row count failed").withSampleData("sample rows"))
             .withTestCaseStatus(TestCaseStatus.Failed);
 
-    when(repository.getFields("*")).thenReturn((EntityUtil.Fields) null);
+    when(repository.getFields("*")).thenReturn(null);
     when(repository.getByName(isNull(), eq(fqn), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(testCase);
 

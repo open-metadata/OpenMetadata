@@ -143,7 +143,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       }
 
       String aggregationField =
-          SearchSourceBuilderFactory.remapAggregationField(request.getFieldName());
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
         throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
       }
@@ -310,7 +310,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
           Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
           if (parsedQuery != null) {
             final Query existingQuery = parsedQuery;
-            Query combinedQuery =
+            parsedQuery =
                 Query.of(
                     qb ->
                         qb.bool(
@@ -319,7 +319,6 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
                               b.filter(rbacQuery);
                               return b;
                             }));
-            parsedQuery = combinedQuery;
           } else {
             parsedQuery = rbacQuery;
           }

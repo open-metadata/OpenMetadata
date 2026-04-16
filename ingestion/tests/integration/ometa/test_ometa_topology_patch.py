@@ -233,6 +233,39 @@ def table_entity_three(metadata, topology_schema, topology_columns, topology_use
     metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
 
 
+@pytest.fixture(scope="module")
+def table_entity_column_order(metadata, topology_schema):
+    """Table for testing column order after table recreation (issue #18246)."""
+    table_name = generate_name()
+    create = CreateTableRequest(
+        name=table_name,
+        databaseSchema=topology_schema.fullyQualifiedName,
+        columns=[
+            Column(
+                name="id",
+                dataType=DataType.INT,
+                description=Markdown("primary key"),
+            ),
+            Column(
+                name="name",
+                dataType=DataType.VARCHAR,
+                dataLength=100,
+                description=Markdown("user name"),
+            ),
+            Column(
+                name="created_at",
+                dataType=DataType.TIMESTAMP,
+                description=Markdown("creation timestamp"),
+            ),
+        ],
+    )
+    table = _safe_create_or_update(metadata, create)
+
+    yield table
+
+    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+
+
 class TestOMetaTopologyPatchAPI:
     """
     Topology Patch API integration tests.
@@ -294,27 +327,28 @@ class TestOMetaTopologyPatchAPI:
         assert table_entity.displayName == "TABLE ONE"
         assert table_entity.tags[0].tagFQN.root == "PersonalData.Personal"
 
-        # Column tests - order should be preserved, values merged
-        assert table_entity.columns[0].description.root == "test column1"
-        assert table_entity.columns[0].name.root == "column1"
-        assert table_entity.columns[0].displayName is None
-        assert table_entity.columns[1].description.root == "test column2"
-        assert table_entity.columns[1].name.root == "column2"
-        assert table_entity.columns[1].displayName == "COLUMN TWO"
-        assert table_entity.columns[2].description.root == "test column3"
-        assert table_entity.columns[2].name.root == "column3"
-        assert table_entity.columns[2].displayName == "COLUMN THREE"
-        assert table_entity.columns[2].tags[0].tagFQN.root == "PII.Sensitive"
-        assert table_entity.columns[2].tags[1].tagFQN.root == "Tier.Tier2"
-        assert table_entity.columns[3].description.root == "test column4"
-        assert table_entity.columns[3].name.root == "column4"
-        assert table_entity.columns[3].displayName == "COLUMN FOUR"
-        assert table_entity.columns[3].tags[0].tagFQN.root == "PII.Sensitive"
-        assert table_entity.columns[4].description.root == "test column5"
-        assert table_entity.columns[4].name.root == "column5"
-        assert table_entity.columns[4].displayName == "COLUMN FIVE"
-        assert table_entity.columns[4].tags[0].tagFQN.root == "PersonalData.Personal"
-        assert len(table_entity.columns[4].tags) == 1
+        # Column tests - order follows destination [col3, col4, col5, col1, col2]
+        # Restricted fields (description, displayName, tags) preserved from source
+        assert table_entity.columns[0].name.root == "column3"
+        assert table_entity.columns[0].description.root == "test column3"
+        assert table_entity.columns[0].displayName == "COLUMN THREE"
+        assert table_entity.columns[0].tags[0].tagFQN.root == "PII.Sensitive"
+        assert table_entity.columns[0].tags[1].tagFQN.root == "Tier.Tier2"
+        assert table_entity.columns[1].name.root == "column4"
+        assert table_entity.columns[1].description.root == "test column4"
+        assert table_entity.columns[1].displayName == "COLUMN FOUR"
+        assert table_entity.columns[1].tags[0].tagFQN.root == "PII.Sensitive"
+        assert table_entity.columns[2].name.root == "column5"
+        assert table_entity.columns[2].description.root == "test column5"
+        assert table_entity.columns[2].displayName == "COLUMN FIVE"
+        assert table_entity.columns[2].tags[0].tagFQN.root == "PersonalData.Personal"
+        assert len(table_entity.columns[2].tags) == 1
+        assert table_entity.columns[3].name.root == "column1"
+        assert table_entity.columns[3].description.root == "test column1"
+        assert table_entity.columns[3].displayName is None
+        assert table_entity.columns[4].name.root == "column2"
+        assert table_entity.columns[4].description.root == "test column2"
+        assert table_entity.columns[4].displayName == "COLUMN TWO"
 
     def test_topology_patch_table_columns_with_add_del(
         self, metadata, table_entity_two
@@ -348,16 +382,17 @@ class TestOMetaTopologyPatchAPI:
         table_entity = metadata.get_by_id(
             entity=Table, entity_id=table_entity_two.id.root
         )
-        assert table_entity.columns[0].description.root == "test column1"
-        assert table_entity.columns[0].name.root == "column1"
-        assert table_entity.columns[1].description.root == "test column3"
+        # Order follows destination: [col7, col3, col5, col1, col6]
+        assert table_entity.columns[0].name.root == "column7"
+        assert table_entity.columns[0].description.root == "test column7"
         assert table_entity.columns[1].name.root == "column3"
-        assert table_entity.columns[2].description.root == "test column5"
+        assert table_entity.columns[1].description.root == "test column3"
         assert table_entity.columns[2].name.root == "column5"
-        assert table_entity.columns[3].description.root == "test column7"
-        assert table_entity.columns[3].name.root == "column7"
-        assert table_entity.columns[4].description.root == "test column6"
+        assert table_entity.columns[2].description.root == "test column5"
+        assert table_entity.columns[3].name.root == "column1"
+        assert table_entity.columns[3].description.root == "test column1"
         assert table_entity.columns[4].name.root == "column6"
+        assert table_entity.columns[4].description.root == "test column6"
 
     def test_topology_patch_with_override_enabled(
         self, metadata, table_entity_three, topology_users
@@ -420,24 +455,87 @@ class TestOMetaTopologyPatchAPI:
         assert table_entity.displayName == "TABLE THREE OVERRIDEN"
         assert table_entity.tags[0].tagFQN.root == "PII.Sensitive"
 
-        assert table_entity.columns[0].description.root == "test column1 overriden"
-        assert table_entity.columns[0].name.root == "column1"
-        assert table_entity.columns[0].displayName == "COLUMN ONE OVERRIDEN"
-        assert table_entity.columns[1].description.root == "test column3"
+        # With override + destination order, columns follow the destination order
+        assert table_entity.columns[0].name.root == "column7"
+        assert table_entity.columns[0].description.root == "test column7"
+
         assert table_entity.columns[1].name.root == "column3"
+        assert table_entity.columns[1].description.root == "test column3"
         assert table_entity.columns[1].displayName == "COLUMN THREE OVERRIDEN"
         assert table_entity.columns[1].tags[0].tagFQN.root == "PII.Sensitive"
         assert table_entity.columns[1].tags[1].tagFQN.root == "Tier.Tier2"
-        assert table_entity.columns[2].description.root == "test column4 overriden"
-        assert table_entity.columns[2].name.root == "column4"
-        assert table_entity.columns[2].displayName is None
-        assert table_entity.columns[3].description.root == "test column5"
-        assert table_entity.columns[3].name.root == "column5"
-        assert table_entity.columns[3].displayName == "COLUMN FIVE"
-        assert table_entity.columns[3].tags[0].tagFQN.root == "PII.Sensitive"
-        assert table_entity.columns[4].description.root == "test column7"
-        assert table_entity.columns[4].name.root == "column7"
-        assert table_entity.columns[4].displayName is None
-        assert table_entity.columns[5].description.root == "test column6"
-        assert table_entity.columns[5].name.root == "column6"
-        assert table_entity.columns[5].displayName == "COLUMN SIX"
+
+        assert table_entity.columns[2].name.root == "column5"
+        assert table_entity.columns[2].description.root == "test column5"
+        assert table_entity.columns[2].displayName == "COLUMN FIVE"
+        assert table_entity.columns[2].tags[0].tagFQN.root == "PII.Sensitive"
+
+        assert table_entity.columns[3].name.root == "column1"
+        assert table_entity.columns[3].description.root == "test column1 overriden"
+        assert table_entity.columns[3].displayName == "COLUMN ONE OVERRIDEN"
+
+        assert table_entity.columns[4].name.root == "column6"
+        assert table_entity.columns[4].description.root == "test column6"
+        assert table_entity.columns[4].displayName == "COLUMN SIX"
+
+        assert table_entity.columns[5].name.root == "column4"
+        assert table_entity.columns[5].description.root == "test column4 overriden"
+
+    def test_topology_patch_column_order_with_new_column_in_middle(
+        self, metadata, table_entity_column_order
+    ):
+        """
+        Reproduce issue #18246: a new column added in the middle should appear
+        at its correct position, not appended at the end.
+
+        Simulates: table dropped and recreated with a new column inserted
+        between existing columns.
+        Original:  [id, name, created_at]
+        Recreated: [id, name, name_2, created_at]
+        Expected:  [id, name, name_2, created_at] (not [id, name, created_at, name_2])
+        """
+        new_columns_list = [
+            Column(
+                name="id",
+                dataType=DataType.INT,
+            ),
+            Column(
+                name="name",
+                dataType=DataType.VARCHAR,
+                dataLength=100,
+            ),
+            Column(
+                name="name_2",
+                dataType=DataType.VARCHAR,
+                dataLength=100,
+                description=Markdown("secondary name"),
+            ),
+            Column(
+                name="created_at",
+                dataType=DataType.TIMESTAMP,
+            ),
+        ]
+        updated_table = table_entity_column_order.model_copy(deep=True)
+        updated_table.columns = new_columns_list
+        metadata.patch(
+            entity=type(table_entity_column_order),
+            source=table_entity_column_order,
+            destination=updated_table,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+        )
+        table_entity = metadata.get_by_id(
+            entity=Table, entity_id=table_entity_column_order.id.root
+        )
+        assert len(table_entity.columns) == 4
+        assert table_entity.columns[0].name.root == "id"
+        assert table_entity.columns[1].name.root == "name"
+        assert table_entity.columns[2].name.root == "name_2"
+        assert table_entity.columns[3].name.root == "created_at"
+        # Existing columns preserve their descriptions
+        assert table_entity.columns[0].description.root == "primary key"
+        assert table_entity.columns[1].description.root == "user name"
+        assert table_entity.columns[3].description.root == "creation timestamp"
+        # New column has its own description
+        assert table_entity.columns[2].description.root == "secondary name"

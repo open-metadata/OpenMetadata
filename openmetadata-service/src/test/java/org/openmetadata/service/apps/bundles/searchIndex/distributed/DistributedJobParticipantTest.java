@@ -67,6 +67,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -204,9 +205,7 @@ class DistributedJobParticipantTest {
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
-            (mock, context) -> {
-              when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of());
-            })) {
+            (mock, context) -> when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of()))) {
 
       participant =
           new DistributedJobParticipant(
@@ -223,7 +222,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testJoinsActiveJobWithPendingPartitions() throws Exception {
+  void testJoinsActiveJobWithPendingPartitions() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
@@ -318,7 +317,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testDoesNotRejoinSameRunningJob() throws Exception {
+  void testDoesNotRejoinSameRunningJob() {
     UUID jobId = UUID.randomUUID();
 
     EventPublisherJob config = new EventPublisherJob();
@@ -388,7 +387,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testClearsJobIdWhenJobCompletes() throws Exception {
+  void testClearsJobIdWhenJobCompletes() {
     UUID jobId = UUID.randomUUID();
 
     EventPublisherJob config = new EventPublisherJob();
@@ -484,7 +483,7 @@ class DistributedJobParticipantTest {
   }
 
   @Test
-  void testAttemptsToClaimPartitions() throws Exception {
+  void testAttemptsToClaimPartitions() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
@@ -1030,7 +1029,9 @@ class DistributedJobParticipantTest {
     CollectionDAO.SearchIndexFailureDAO failureDao =
         mock(CollectionDAO.SearchIndexFailureDAO.class);
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
-    when(searchRepository.createBulkSink(100, 100, 104857600L)).thenReturn(bulkSink);
+    when(searchRepository.createBulkSink(
+            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+        .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(false);
 
     try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
@@ -1054,7 +1055,8 @@ class DistributedJobParticipantTest {
       invokeParticipantMethod(
           "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
 
-      verify(searchRepository).createBulkSink(100, 100, 104857600L);
+      verify(searchRepository)
+          .createBulkSink(100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
       verify(bulkSink).flushAndAwait(60);
       assertTrue(Thread.currentThread().isInterrupted());
       verify(coordinatorMocked.constructed().get(0)).claimNextPartition(jobId);

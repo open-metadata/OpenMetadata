@@ -859,7 +859,7 @@
         "randomizedSample": {
           "description": "Whether to randomize the sample data or not.",
           "type": "boolean",
-          "default": true
+          "default": false
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
@@ -1297,6 +1297,10 @@
     "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",

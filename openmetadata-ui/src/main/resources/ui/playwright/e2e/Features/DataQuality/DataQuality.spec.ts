@@ -32,22 +32,20 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
-import { getCurrentMillis } from '../../../utils/dateTime';
-import { sidebarClick } from '../../../utils/sidebar';
-import {
-  deleteTestCase,
-  verifyIncidentBreadcrumbsFromTablePageRedirect,
-  visitDataQualityTab,
-} from '../../../utils/testCases';
-import { test } from '../../fixtures/pages';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-
-const table1 = new TableClass();
-const table2 = new TableClass();
+import { sidebarClick } from '../../../utils/sidebar';
+import {
+  deleteTestCase,
+  submitTestCaseForm,
+  verifyIncidentBreadcrumbsFromTablePageRedirect,
+  visitDataQualityTab,
+} from '../../../utils/testCases';
+import { test } from '../../fixtures/pages';
 
 // Test data for tags and glossary terms
 const testClassification = new ClassificationClass();
@@ -86,8 +84,13 @@ test.describe(
     ],
   },
   () => {
+    let table1: TableClass;
+    let table2: TableClass;
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      table1 = new TableClass();
+      table2 = new TableClass();
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = await table2.createTestCase(apiContext, {
@@ -237,18 +240,7 @@ test.describe(
           .click();
 
         await page.getByRole('heading', { name: 'Glossary Terms' }).click();
-        const ingestionPipelines = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines'
-        );
-        const deploy = page.waitForResponse(
-          '/api/v1/services/ingestionPipelines/deploy/*'
-        );
-        await page.click('[data-testid="create-btn"]');
-
-        await ingestionPipelines;
-        await deploy;
-
-        await toastNotification(page, 'Test case created successfully.');
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
       });
@@ -454,10 +446,7 @@ test.describe(
 
         await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
-        await page.click('[data-testid="create-btn"]');
-        await toastNotification(page, 'Test case created successfully.');
-
-        await page.getByTestId(NEW_COLUMN_TEST_CASE.name).waitFor();
+        await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_COLUMN_TEST_CASE.name)).toBeVisible();
       });
@@ -621,7 +610,7 @@ test.describe(
         expect(body1).toEqual(
           JSON.stringify([
             {
-              op: 'add',
+              op: 'replace',
               path: '/displayName',
               value: 'Table test case display name',
             },

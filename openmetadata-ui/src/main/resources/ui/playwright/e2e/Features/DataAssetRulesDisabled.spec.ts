@@ -196,9 +196,9 @@ test.describe(
         ).toBeVisible();
 
         await page
-          .getByTestId('select-owner-tabs')
+          .getByRole('tabpanel', { name: /Users/ })
           .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .waitFor({ state: 'hidden' });
 
         await page
           .locator("[data-testid='select-owner-tabs']")
@@ -206,9 +206,9 @@ test.describe(
           .click();
 
         await page
-          .getByTestId('select-owner-tabs')
+          .getByRole('tabpanel', { name: 'Teams' })
           .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+          .waitFor({ state: 'hidden' });
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'
@@ -425,9 +425,17 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
+          })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByRole('link', {
+            name: 'Gold',
           })
         ).toBeVisible();
 
@@ -565,9 +573,17 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
+          })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByRole('link', {
+            name: 'Gold',
           })
         ).toBeVisible();
 
@@ -703,10 +719,16 @@ test.describe(
           })
         ).toBeVisible();
 
+        // Verify Tier
         await expect(
           page.getByRole('link', {
             name: 'Tier1',
           })
+        ).toBeVisible();
+
+        // Verify Certification
+        await expect(
+          page.getByTestId('certification-Certification.Gold')
         ).toBeVisible();
 
         await expect(

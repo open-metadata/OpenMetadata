@@ -550,7 +550,7 @@ public class MigrationUtil {
                   Relationship.CONTAINS);
             }
           } catch (Exception ex) {
-            LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
+            LOG.warn("TestSuite {} exists", nativeTestSuiteFqn);
           }
         }
       }

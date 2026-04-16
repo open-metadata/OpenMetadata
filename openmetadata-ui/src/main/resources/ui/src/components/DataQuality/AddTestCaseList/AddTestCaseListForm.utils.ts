@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { TestCase } from '../../../generated/tests/testCase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { AddTestCaseListChangePayload } from './AddTestCaseList.interface';
 
 /**
@@ -27,7 +26,7 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
   if (Array.isArray(selectedTest)) {
     return selectedTest
       .map((item) =>
-        typeof item === 'string' ? item : getEntityName(item as TestCase)
+        typeof item === 'string' ? item : (item as TestCase).name
       )
       .filter(Boolean);
   }
@@ -38,7 +37,7 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
   ) {
     const p = selectedTest as AddTestCaseListChangePayload;
 
-    return (p.testCases ?? []).map((tc) => getEntityName(tc)).filter(Boolean);
+    return (p.testCases ?? []).map((tc) => tc.name).filter(Boolean);
   }
 
   return [];

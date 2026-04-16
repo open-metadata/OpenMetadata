@@ -13,12 +13,11 @@
 import { expect, test } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Frequently Joined', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Frequently Joined', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await visitEntityPage({

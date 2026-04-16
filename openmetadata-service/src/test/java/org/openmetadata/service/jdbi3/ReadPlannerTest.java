@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
@@ -55,7 +56,7 @@ class ReadPlannerTest {
     ReadPlan.RelationSpec spec = plan.getRelationSpec(FIELD_OWNERS).orElseThrow();
     assertEquals(ReadPlan.RelationDirection.TO, spec.direction());
     assertEquals(Relationship.OWNS, spec.relationship());
-    assertEquals(null, spec.relatedEntityType());
+    assertNull(spec.relatedEntityType());
     assertEquals(
         Set.of(Relationship.OWNS.ordinal()), plan.getToRelationsByInclude().get(NON_DELETED));
   }
@@ -90,7 +91,7 @@ class ReadPlannerTest {
     ReadPlan.RelationSpec spec = plan.getRelationSpec(FIELD_REVIEWERS).orElseThrow();
     assertEquals(ReadPlan.RelationDirection.TO, spec.direction());
     assertEquals(Relationship.REVIEWS, spec.relationship());
-    assertEquals(null, spec.relatedEntityType());
+    assertNull(spec.relatedEntityType());
   }
 
   @Test

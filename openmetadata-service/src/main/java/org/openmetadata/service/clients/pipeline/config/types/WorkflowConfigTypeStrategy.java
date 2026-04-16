@@ -19,6 +19,5 @@ import org.openmetadata.schema.metadataIngestion.OpenMetadataWorkflowConfig;
 
 public interface WorkflowConfigTypeStrategy {
   OpenMetadataWorkflowConfig buildOMWorkflowConfig(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service)
-      throws WorkflowBuildException;
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 }

@@ -19,11 +19,7 @@ public class NotHelper implements HandlebarsHelper {
 
   @Override
   public void register(Handlebars handlebars) {
-    handlebars.registerHelper(
-        getName(),
-        (context, options) -> {
-          return !isTruthy(context);
-        });
+    handlebars.registerHelper(getName(), (context, options) -> !isTruthy(context));
   }
 
   private boolean isTruthy(Object value) {

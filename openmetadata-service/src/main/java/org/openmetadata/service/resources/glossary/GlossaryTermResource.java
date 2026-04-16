@@ -392,6 +392,58 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @GET
+  @Path("/relationTypes/usage")
+  @Operation(
+      operationId = "getRelationTypeUsageCounts",
+      summary = "Get usage counts for all relation types",
+      description =
+          "Get a map of relation types to the count of glossary term relations using that type. "
+              + "Useful for determining if a relation type can be safely deleted.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of relation type to usage count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getRelationTypeUsageCounts(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    java.util.Map<String, Integer> result = repository.getRelationTypeUsageCounts();
+    return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllGlossaryTermsWithAssetsCount",
+      summary = "Get all glossary terms with their asset counts",
+      description =
+          "Get a map of glossary term fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of glossary term FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllGlossaryTermsWithAssetsCount(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Filter by parent glossary or glossary term FQN. "
+                      + "When provided, only returns asset counts for children whose FQN starts with this value.")
+          @QueryParam("parent")
+          String parent) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
+    return Response.ok(result).build();
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(
       operationId = "getGlossaryTermByID",

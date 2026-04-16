@@ -1,0 +1,75 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.chart-total-count-value-link {
+  &.ant-typography a {
+    font-size: 1.25rem /* 20px */;
+    line-height: 1.75rem /* 28px */;
+    font-weight: 500;
+  }
+}
+
+.chart-widget-link-no-underline {
+  a:hover {
+    text-decoration: none;
+  }
+
+  &:hover .chart-widget-link-underline {
+    text-decoration: underline;
+  }
+}
+
+.custom-chart-background.ant-card {
+  background: @grey-26;
+  border-color: @grey-9;
+
+  .custom-tooltip-area-chart.ant-card {
+    background-color: @white;
+  }
+}
+
+.custom-chart-icon-background {
+  height: 32px;
+  width: 32px;
+  border-radius: 50%;
+  background-color: @grey-2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    height: 16px;
+    width: 16px;
+  }
+
+  &.data-assets-coverage-icon,
+  &.all-tests-icon {
+    &.icon-container {
+      background-color: @blue-13;
+      svg {
+        color: @blue-500;
+      }
+    }
+  }
+
+  &.health-check-icon {
+    &.icon-container {
+      background-color: @green-12;
+      svg {
+        color: @green-500;
+      }
+    }
+  }
+}

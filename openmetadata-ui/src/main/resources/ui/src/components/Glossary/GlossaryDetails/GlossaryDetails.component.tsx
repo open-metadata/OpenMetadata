@@ -100,6 +100,26 @@ const GlossaryDetails = ({
             {
               label: (
                 <TabsLabel
+                  id={EntityTabs.RELATIONS_GRAPH}
+                  isActive={activeTab === EntityTabs.RELATIONS_GRAPH}
+                  name={
+                    tabLabelMap[EntityTabs.RELATIONS_GRAPH] ??
+                    t('label.relations-graph')
+                  }
+                />
+              ),
+              key: EntityTabs.RELATIONS_GRAPH,
+              children: (
+                <OntologyExplorer
+                  glossaryId={glossary.id}
+                  height="100%"
+                  scope="glossary"
+                />
+              ),
+            },
+            {
+              label: (
+                <TabsLabel
                   count={feedCount.totalCount}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}

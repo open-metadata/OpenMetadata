@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
@@ -45,6 +46,26 @@ public class VectorDocBuilder {
      */
     String extract(EntityInterface entity);
   }
+
+  private static final Map<String, BodyTextExtractor> BODY_TEXT_EXTRACTORS =
+      new ConcurrentHashMap<>();
+
+  /**
+   * Register a custom {@link BodyTextExtractor} for an entity type. The registry is consulted by
+   * {@link #buildBodyText(EntityInterface, String)} before the default description-based logic,
+   * so callers can cleanly override body text for their own entity types without patching this
+   * class. Registration is idempotent (last writer wins) and thread-safe.
+   */
+  public static void registerBodyTextExtractor(String entityType, BodyTextExtractor extractor) {
+    if (entityType == null || entityType.isBlank() || extractor == null) {
+      return;
+    }
+    BODY_TEXT_EXTRACTORS.put(entityType, extractor);
+  }
+
+  public static List<Map<String, Object>> fromEntity(
+      EntityInterface entity, EmbeddingClient embeddingClient) {
+    Map<String, Object> doc = new HashMap<>(buildEmbeddingFields(entity, embeddingClient));
 
   private static final Map<String, BodyTextExtractor> BODY_TEXT_EXTRACTORS =
       new ConcurrentHashMap<>();
@@ -135,7 +156,7 @@ public class VectorDocBuilder {
                   }
                   return name;
                 })
-            .filter(n -> n != null)
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
     List<EntityReference> domainsPojo =
@@ -143,7 +164,7 @@ public class VectorDocBuilder {
     List<String> domainFqns =
         domainsPojo.stream()
             .map(EntityReference::getFullyQualifiedName)
-            .filter(fqn -> fqn != null)
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
     List<String> parts = new ArrayList<>();
@@ -162,8 +183,8 @@ public class VectorDocBuilder {
           term.getRelatedTerms() != null ? term.getRelatedTerms() : Collections.emptyList();
       List<String> relatedTermFqns =
           relatedTerms.stream()
-              .map(EntityReference::getFullyQualifiedName)
-              .filter(fqn -> fqn != null)
+              .map(tr -> tr.getTerm().getFullyQualifiedName())
+              .filter(Objects::nonNull)
               .collect(Collectors.toList());
       parts.add("relatedTerms: " + joinOrEmpty(relatedTermFqns));
     }
@@ -196,7 +217,7 @@ public class VectorDocBuilder {
         List<String> relatedMetricFqns =
             relatedMetrics.stream()
                 .map(EntityReference::getFullyQualifiedName)
-                .filter(fqn -> fqn != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         parts.add("relatedMetrics: " + joinOrEmpty(relatedMetricFqns));
       }
