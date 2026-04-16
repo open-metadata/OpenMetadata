@@ -216,7 +216,7 @@ jest.mock('./PopupAlertClassBase', () => ({
 
 jest.mock('../../utils/i18next/i18nextUtil', () => ({
   languageSelectOptions: [],
-  loadLocale: jest.fn(),
+  getInitOptions: jest.fn().mockImplementation(() => ({})),
 }));
 
 describe('Test NavBar Component', () => {
