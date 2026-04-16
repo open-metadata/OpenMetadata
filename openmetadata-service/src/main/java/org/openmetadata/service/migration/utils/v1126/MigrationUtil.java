@@ -1,13 +1,16 @@
 package org.openmetadata.service.migration.utils.v1126;
 
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -15,14 +18,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.List;
-import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 @Slf4j
@@ -45,6 +40,11 @@ public class MigrationUtil {
           Entity.API_SERVICE,
           Entity.DRIVE_SERVICE);
 
+  private static final String UPDATE_MYSQL =
+      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+  private static final String UPDATE_POSTGRES =
+      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
+
   public static void migratePipelineServiceEdges(CollectionDAO collectionDAO) {
     LOG.info("Starting migration: creating pipeline service edges for existing lineage data");
 
@@ -61,7 +61,7 @@ public class MigrationUtil {
               .getRecordWithOffset(Relationship.UPSTREAM.ordinal(), offset, batchSize);
       for (CollectionDAO.EntityRelationshipObject record : batch) {
         if (SERVICE_ENTITY_TYPES.contains(record.getFromEntity())) {
-          continue; // Skip service-level edges; we need data-asset-level edges
+          continue;
         }
         String json = record.getJson();
         if (json == null || !json.contains("\"pipeline\"")) {
@@ -189,11 +189,7 @@ public class MigrationUtil {
             Relationship.UPSTREAM.ordinal(),
             JsonUtils.pojoToJson(details));
     return true;
-
-  private static final String UPDATE_MYSQL =
-      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
-  private static final String UPDATE_POSTGRES =
-      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
+  }
 
   public static void revertWebhookAuthTypeToSecretKey(Handle handle) {
     LOG.info("Reverting webhook authType back to secretKey");
@@ -270,5 +266,4 @@ public class MigrationUtil {
 
     LOG.info("Reverted {} event subscriptions from authType back to secretKey", revertedCount);
   }
-    
 }
