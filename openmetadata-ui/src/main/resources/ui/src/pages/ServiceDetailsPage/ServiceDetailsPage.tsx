@@ -98,10 +98,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApplicationList } from '../../rest/applicationAPI';
-import {
-  getDataModels,
-  ListDataModelParams,
-} from '../../rest/dashboardAPI';
+import { getDataModels, ListDataModelParams } from '../../rest/dashboardAPI';
 import { getDriveAssets } from '../../rest/driveAPI';
 import {
   getIngestionPipelines,
@@ -267,7 +264,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
     useState(false);
-  const [_isServiceLoading, setIsServiceLoading] = useState(true);
   const [isFilesLoading, setIsFilesLoading] = useState(true);
   const [isSpreadsheetsLoading, setIsSpreadsheetsLoading] = useState(true);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
@@ -684,7 +680,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
@@ -747,8 +742,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     },
     [decodedServiceFQN, include]
   );
-
-
 
   const fetchServiceDetails = useCallback(async () => {
     try {

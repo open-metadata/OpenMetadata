@@ -38,8 +38,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { getApplicationList } from '../../rest/applicationAPI';
-import { getDashboards, getDataModels } from '../../rest/dashboardAPI';
-import { getDatabases } from '../../rest/databaseAPI';
+import { getDataModels } from '../../rest/dashboardAPI';
 import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
 import {
   addServiceFollower,
@@ -48,12 +47,10 @@ import {
   removeServiceFollower,
   restoreService,
 } from '../../rest/serviceAPI';
-import { getTopics } from '../../rest/topicsAPI';
 import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
