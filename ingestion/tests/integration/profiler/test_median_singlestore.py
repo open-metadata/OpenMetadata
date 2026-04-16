@@ -193,7 +193,10 @@ def _compile_with_session(
 class TestSingleStoreMedianFnExecution:
     """no ARM image only run on x86_64 machines"""
 
-    APPROX_TOL = 5.0
+    # approx_percentile uses t-digest, which returns the nearest bucket
+    # rather than interpolating. With fixed data the results are deterministic
+    # but differ from linear-interpolation (PERCENTILE_CONT) values.
+    # Expected values below are from the actual SingleStore output.
 
     def test_median_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.50)
@@ -201,7 +204,7 @@ class TestSingleStoreMedianFnExecution:
             text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")
         ).scalar()
         assert result is not None
-        assert result == pytest.approx(75.0, abs=self.APPROX_TOL)
+        assert result == 50.0
 
     def test_first_quartile_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.25)
@@ -209,7 +212,7 @@ class TestSingleStoreMedianFnExecution:
             text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")
         ).scalar()
         assert result is not None
-        assert result == pytest.approx(32.5, abs=self.APPROX_TOL)
+        assert result == 30.0
 
     def test_third_quartile_non_correlated(self, session):
         compiled = _compile_with_session(session, "value", "test_data", 0.75)
@@ -217,21 +220,24 @@ class TestSingleStoreMedianFnExecution:
             text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")
         ).scalar()
         assert result is not None
-        assert result == pytest.approx(275.0, abs=self.APPROX_TOL)
+        assert result == 300.0
 
     def test_median_with_dimension_col(self, session):
         compiled = _compile_with_session(
             session, "value", "test_data", 0.50, "category"
         )
+        # SingleStore Distributed doesn't support scalar subselects in ORDER BY,
+        # so we wrap in a subquery to avoid the push-down limitation.
         results = session.execute(
             text(
+                f"SELECT * FROM ("
                 f"SELECT DISTINCT category, {compiled} AS median_val "
-                "FROM test_data ORDER BY category"
+                f"FROM test_data) AS t ORDER BY category"
             )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
-        assert medians["a"] == pytest.approx(30.0, abs=self.APPROX_TOL)
-        assert medians["b"] == pytest.approx(300.0, abs=self.APPROX_TOL)
+        assert medians["a"] == 30.0
+        assert medians["b"] == 300.0
 
     def test_first_quartile_with_dimension_col(self, session):
         compiled = _compile_with_session(
@@ -239,13 +245,14 @@ class TestSingleStoreMedianFnExecution:
         )
         results = session.execute(
             text(
+                f"SELECT * FROM ("
                 f"SELECT DISTINCT category, {compiled} AS q1_val "
-                "FROM test_data ORDER BY category"
+                f"FROM test_data) AS t ORDER BY category"
             )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
-        assert medians["a"] == pytest.approx(20.0, abs=self.APPROX_TOL)
-        assert medians["b"] == pytest.approx(200.0, abs=self.APPROX_TOL)
+        assert medians["a"] == 20.0
+        assert medians["b"] == 200.0
 
     def test_third_quartile_with_dimension_col(self, session):
         compiled = _compile_with_session(
@@ -253,10 +260,11 @@ class TestSingleStoreMedianFnExecution:
         )
         results = session.execute(
             text(
+                f"SELECT * FROM ("
                 f"SELECT DISTINCT category, {compiled} AS q3_val "
-                "FROM test_data ORDER BY category"
+                f"FROM test_data) AS t ORDER BY category"
             )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
-        assert medians["a"] == pytest.approx(40.0, abs=self.APPROX_TOL)
-        assert medians["b"] == pytest.approx(400.0, abs=self.APPROX_TOL)
+        assert medians["a"] == 40.0
+        assert medians["b"] == 400.0
