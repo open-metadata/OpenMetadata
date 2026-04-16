@@ -13,7 +13,12 @@
 
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
-import { getAuthContext, getToken, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 
 /**
  * Playwright tests for the pipeline-as-annotator lineage scenario.
@@ -162,7 +167,9 @@ test.describe('Lineage Pipeline Annotator', () => {
     expect(nodeFqns).toContain(topicFqn);
   });
 
-  test('entity lineage edge preserves pipeline annotation', async ({ page }) => {
+  test('entity lineage edge preserves pipeline annotation', async ({
+    page,
+  }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
     await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
 
