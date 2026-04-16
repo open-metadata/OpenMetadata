@@ -94,8 +94,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final NLQService nlqService;
-  private static final String SORT_FIELD_SCORE = "_score";
-  private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -1018,7 +1016,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1055,7 +1053,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1098,8 +1096,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias,
-      boolean isExport)
+      String clusterAlias)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -1242,15 +1239,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
               + request.getSortOrder().substring(1).toLowerCase();
       SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
-        equestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
+      if (!sortField.equalsIgnoreCase("_score")) {
+        requestBuilder.sort(sortField, sortOrder, "integer");
       } else {
         requestBuilder.sort(sortField, sortOrder, null);
       }
 
       // Add tiebreaker sort for stable pagination when sorting by score
-      if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
-        requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+      if (sortField.equalsIgnoreCase("_score")) {
+        requestBuilder.sort("name.keyword", SortOrder.Asc, "keyword");
       }
     }
 
@@ -1414,8 +1411,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Add sorting by score first for relevance, then by fullyQualifiedName for consistent hierarchy
     // ordering
-    requestBuilder.sort(SORT_FIELD_SCORE, SortOrder.Desc, null);
-    requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, SORT_TYPE_KEYWORD);
+    requestBuilder.sort("_score", SortOrder.Desc, null);
+    requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, "keyword");
 
     return requestBuilder;
   }
