@@ -35,7 +35,7 @@ import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { getBots } from '../../../../rest/botsAPI';
+import { getBotByName, getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import {
@@ -153,28 +153,22 @@ const BotListV1 = ({
 
   const getBotsByBotUserNames = async (botUserNames: string[]) => {
     const include = getBotIncludeFilter();
-    const remainingBotNames = new Set(botUserNames);
     const botsByBotUserName = new Map<string, Bot>();
-    let after: string | undefined;
+    const matchedBotsResponse = await Promise.allSettled(
+      botUserNames.map((name) =>
+        getBotByName(name, {
+          include,
+        })
+      )
+    );
 
-    do {
-      const { data, paging } = await getBots({
-        after,
-        include,
-        limit: 100,
-      });
+    matchedBotsResponse.forEach((response) => {
+      if (response.status !== 'fulfilled') {
+        return;
+      }
 
-      data.forEach((bot) => {
-        if (!remainingBotNames.has(bot.name)) {
-          return;
-        }
-
-        botsByBotUserName.set(bot.name, bot);
-        remainingBotNames.delete(bot.name);
-      });
-
-      after = paging.after;
-    } while (after && remainingBotNames.size > 0);
+      botsByBotUserName.set(response.value.name, response.value);
+    });
 
     return botsByBotUserName;
   };
