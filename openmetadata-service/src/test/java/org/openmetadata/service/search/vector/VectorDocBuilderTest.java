@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -26,6 +28,12 @@ class VectorDocBuilderTest {
   private static final EmbeddingClient MOCK_CLIENT =
       new EmbeddingClientTest.MockEmbeddingClient(384);
 
+  static {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("database", "database");
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("glossaryterm", "glossaryTerm");
+  }
+
   @Test
   void testBuildEmbeddingFieldsBasic() {
     Table table = createTestTable("test_table", "Test Table", "A test table for unit testing");
@@ -36,9 +44,149 @@ class VectorDocBuilderTest {
     assertEquals(table.getId().toString(), fields.get("parentId"));
     assertNotNull(fields.get("embedding"));
     assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("textToEmbedSemantic"));
     assertNotNull(fields.get("fingerprint"));
     assertEquals(0, fields.get("chunkIndex"));
     assertTrue((int) fields.get("chunkCount") >= 1);
+  }
+
+  @Test
+  void testSemanticTextDropsStructuralScaffolding() {
+    Table table = createTestTable("orders", null, "Order table");
+    table.setFullyQualifiedName("postgres.jaffle_shop.public.orders");
+
+    String semantic = VectorDocBuilder.buildSemanticMetaLightText(table, "table");
+
+    assertTrue(semantic.contains("orders"));
+    assertFalse(semantic.contains("name:"));
+    assertFalse(semantic.contains("displayName:"));
+    assertFalse(semantic.contains("entityType:"));
+    assertFalse(semantic.contains("serviceType:"));
+    assertFalse(semantic.contains("fullyQualifiedName:"));
+    assertFalse(semantic.contains("postgres.jaffle_shop.public.orders"));
+    assertFalse(semantic.contains("[]"));
+    assertFalse(semantic.contains(" | "));
+  }
+
+  @Test
+  void testSemanticTextIncludesPopulatedFieldsAsPhrases() {
+    Table table = createTestTable("orders", "Orders Display", "desc");
+    TagLabel tag = new TagLabel();
+    tag.setTagFQN("PII.Sensitive");
+    tag.setName("Sensitive");
+    table.setTags(List.of(tag));
+
+    String semantic = VectorDocBuilder.buildSemanticMetaLightText(table, "table");
+
+    assertTrue(semantic.contains("Orders Display"));
+    assertTrue(semantic.contains("orders"));
+    assertTrue(semantic.contains("Tagged as PII Sensitive"));
+    assertFalse(semantic.contains("owners"));
+    assertFalse(semantic.contains("user."));
+  }
+
+  @Test
+  void testSemanticBodyTextSkipsEmptyDescriptionAndColumns() {
+    Table table = createTestTable("empty", null, null);
+    table.setColumns(null);
+
+    String semanticBody = VectorDocBuilder.buildSemanticBodyText(table, "table");
+
+    assertEquals("", semanticBody);
+  }
+
+  @Test
+  void testSemanticTextPrependsTypeLabelWhenContentIsEmpty() {
+    Table table = new Table();
+    table.setId(UUID.randomUUID());
+    table.setName("lonely");
+    table.setDeleted(false);
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
+    String semantic = (String) fields.get("textToEmbedSemantic");
+
+    assertEquals("table lonely", semantic);
+  }
+
+  @Test
+  void testSemanticTextJoinsMetaAndBodyWithPeriod() {
+    Table table = createTestTable("customers", "Customers dashboard", "A sample dashboard");
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
+    String semantic = (String) fields.get("textToEmbedSemantic");
+
+    assertTrue(semantic.startsWith("table Customers dashboard (customers)"));
+    assertTrue(semantic.contains(". A sample dashboard"));
+    assertFalse(semantic.contains("chunk"));
+  }
+
+  @Test
+  void testSemanticBodyIncludesChildContextForContainers() {
+    Database database = new Database();
+    database.setId(UUID.randomUUID());
+    database.setName("customers");
+    database.setDeleted(false);
+
+    EntityReference ethereum = new EntityReference();
+    ethereum.setId(UUID.randomUUID());
+    ethereum.setType("databaseSchema");
+    ethereum.setName("CRYPTO_ETHEREUM");
+    EntityReference bitcoin = new EntityReference();
+    bitcoin.setId(UUID.randomUUID());
+    bitcoin.setType("databaseSchema");
+    bitcoin.setName("CRYPTO_BITCOIN");
+    database.setDatabaseSchemas(List.of(ethereum, bitcoin));
+
+    String body = VectorDocBuilder.buildSemanticBodyText(database, "database");
+
+    assertTrue(body.contains("Contains schemas CRYPTO_ETHEREUM, CRYPTO_BITCOIN"));
+  }
+
+  @Test
+  void testSemanticBodySkipsChildContextForNonContainers() {
+    Table table = createTestTable("orders", null, "Order table");
+
+    String body = VectorDocBuilder.buildSemanticBodyText(table, "table");
+
+    assertFalse(body.contains("Contains"));
+  }
+
+  @Test
+  void testSemanticMetaLightUsesTypeLabelForContainerWithoutName() {
+    Database database = new Database();
+    database.setId(UUID.randomUUID());
+    database.setDeleted(false);
+
+    String metaLight = VectorDocBuilder.buildSemanticMetaLightText(database, "database");
+
+    assertEquals("database", metaLight);
+  }
+
+  @Test
+  void testHumanizeEntityTypeSplitsCamelCase() {
+    assertEquals("", VectorDocBuilder.humanizeEntityType(null));
+    assertEquals("", VectorDocBuilder.humanizeEntityType(""));
+    assertEquals("table", VectorDocBuilder.humanizeEntityType("table"));
+    assertEquals("database Schema", VectorDocBuilder.humanizeEntityType("databaseSchema"));
+    assertEquals("data Product", VectorDocBuilder.humanizeEntityType("dataProduct"));
+    assertEquals("api Collection", VectorDocBuilder.humanizeEntityType("apiCollection"));
+    assertEquals("glossary Term", VectorDocBuilder.humanizeEntityType("glossaryTerm"));
+  }
+
+  @Test
+  void testTextToEmbedRemainsLegacyFormat() {
+    Table table = createTestTable("orders", null, "Order table");
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
+    String legacy = (String) fields.get("textToEmbed");
+    String semantic = (String) fields.get("textToEmbedSemantic");
+
+    assertTrue(legacy.contains("displayName: []"), "legacy textToEmbed keeps empty placeholders");
+    assertTrue(legacy.contains(" | chunk 1/"));
+    assertFalse(semantic.contains("[]"));
+    assertFalse(semantic.contains("name:"));
+    assertTrue(semantic.contains("orders"));
+    assertTrue(semantic.contains("Order table"));
   }
 
   @Test

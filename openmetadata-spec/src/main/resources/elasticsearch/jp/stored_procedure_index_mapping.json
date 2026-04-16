@@ -871,6 +871,9 @@
       "textToEmbed": {
         "type": "text"
       },
+      "textToEmbedSemantic": {
+        "type": "text"
+      },
       "chunkIndex": {
         "type": "integer"
       },
