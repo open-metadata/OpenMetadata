@@ -27,7 +27,6 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useSnackbar } from 'notistack';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
 import {
@@ -61,8 +60,6 @@ const AddAnnouncementModal: FC<Props> = ({
   entityFQN,
   showToastInSnackbar = false,
 }) => {
-  const { currentUser } = useApplicationStore();
-
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();

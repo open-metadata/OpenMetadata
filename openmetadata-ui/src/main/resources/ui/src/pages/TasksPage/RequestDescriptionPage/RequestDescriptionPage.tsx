@@ -35,7 +35,6 @@ import {
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
@@ -60,7 +59,6 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
-  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
