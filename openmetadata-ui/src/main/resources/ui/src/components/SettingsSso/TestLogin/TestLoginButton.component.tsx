@@ -266,7 +266,7 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       `${window.location.origin}/callback`;
 
     const oidc = formData?.oidcConfiguration;
-    const params = new URLSearchParams({
+    const fields: Record<string, string> = {
       discoveryUri,
       clientId,
       clientSecret,
@@ -278,20 +278,9 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
       disablePkce: String(oidc?.disablePkce ?? false),
       useNonce: String(oidc?.useNonce ?? true),
       customParams: JSON.stringify(oidc?.customParams ?? {}),
-    });
-    const initiateUrl = `${window.location.origin}/api/v1/system/config/auth/test-login/initiate?${params.toString()}`;
+    };
 
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const popup = window.open(
-      initiateUrl,
-      'sso-test-login',
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-    );
-
+    const popup = openPopup();
     if (!popup) {
       setIsLoading(false);
       setStatus('error');
@@ -302,6 +291,22 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     }
 
     popupRef.current = popup;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${window.location.origin}/api/v1/system/config/auth/test-login/initiate`;
+    form.target = 'sso-test-login';
+    form.style.display = 'none';
+    Object.entries(fields).forEach(([k, v]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = k;
+      input.value = v;
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
 
     timerRef.current = setTimeout(() => {
       if (popupRef.current && !popupRef.current.closed) {

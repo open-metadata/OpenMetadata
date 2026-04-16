@@ -62,19 +62,20 @@ public class TestLoginHandler {
   private static final String TEST_LOGIN_CODE_VERIFIER = "testLoginCodeVerifier";
   private static final String TEST_LOGIN_CLIENT_AUTH_METHOD = "testLoginClientAuthMethod";
 
-  public static Response handleInitiate(HttpServletRequest req) {
+  public static Response handleInitiate(
+      HttpServletRequest req,
+      String discoveryUri,
+      String clientId,
+      String clientSecret,
+      String scope,
+      String callbackUrl,
+      String prompt,
+      String maxAge,
+      String clientAuthMethod,
+      String disablePkce,
+      String useNonce,
+      String customParams) {
     try {
-      String discoveryUri = req.getParameter("discoveryUri");
-      String clientId = req.getParameter("clientId");
-      String clientSecret = req.getParameter("clientSecret");
-      String scope = req.getParameter("scope");
-      String prompt = req.getParameter("prompt");
-      String maxAge = req.getParameter("maxAge");
-      String clientAuthMethod = req.getParameter("clientAuthenticationMethod");
-      String disablePkce = req.getParameter("disablePkce");
-      String useNonce = req.getParameter("useNonce");
-      String customParams = req.getParameter("customParams");
-
       if (nullOrEmpty(discoveryUri)) {
         return buildHtmlErrorResponse("Discovery URI is required for Test Login.");
       }
@@ -107,9 +108,6 @@ public class TestLoginHandler {
 
       HttpSession session = req.getSession(true);
 
-      // Use the registered callback URL (same one registered in the IdP)
-      // so we don't need customers to register a separate redirect URI
-      String callbackUrl = req.getParameter("callbackUrl");
       if (nullOrEmpty(callbackUrl)) {
         String serverUrl =
             req.getScheme()
@@ -192,7 +190,10 @@ public class TestLoginHandler {
       LOG.info(
           "[Test Login] Redirecting to IdP: {}", providerMetadata.getAuthorizationEndpointURI());
 
-      return Response.temporaryRedirect(new URI(authUrl)).build();
+      // Use 302 (not 307) so the browser converts POST → GET when following the redirect.
+      // 307 preserves the method, which would POST to the IdP's authorization endpoint
+      // with an empty body — causing "client_id missing" errors from Azure/others.
+      return Response.status(302).header("Location", authUrl).build();
     } catch (Exception e) {
       LOG.error("[Test Login] Failed to initiate", e);
 
