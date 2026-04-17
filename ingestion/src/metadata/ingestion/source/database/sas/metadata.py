@@ -18,6 +18,7 @@ import copy
 import json
 import re
 import traceback
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable, Optional, Tuple
 
@@ -81,6 +82,86 @@ from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+@dataclass(frozen=True)
+class SASResourceContext:
+    """Components extracted from a SAS Information Catalog resourceId.
+
+    The SAS Data Tables REST API exposes table resources at paths of the form:
+
+        /dataTables/dataSources/{provider}~fs~{host}~fs~{library}/tables/{table}
+
+    where ``~fs~`` is the field separator (literal, not URL-encoded).
+
+    Known provider values
+    ---------------------
+    - ``cas``     — CAS (Cloud Analytic Services) table.  *host* is the CAS
+      server name (e.g. ``cas-shared-default``).
+    - ``Compute`` — SAS Compute session table.  *host* is a session UUID
+      (e.g. ``49736234-36b3-48d2-b2e2-e12aa365ce05``).
+
+    Real-world examples
+    -------------------
+    CAS table:
+        ``/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER``
+    Compute table:
+        ``/dataTables/dataSources/Compute~fs~49736234-…~fs~PUBLIC/tables/LAS_TRAIN``
+
+    Reference
+    ---------
+    SAS REST API — Data Tables service:
+        https://developer.sas.com/rest-apis/dataTables
+    """
+
+    provider: str
+    host: str
+    library: str
+    raw_resource_id: str
+
+    @property
+    def database_name(self) -> str:
+        return f"{self.provider}.{self.host}"
+
+
+# The field separator used inside the ``dataSources`` path segment.
+_SAS_FIELD_SEPARATOR = "~fs~"
+
+
+def parse_resource_id(resource_id: str) -> Optional[SASResourceContext]:
+    """Parse a SAS Information Catalog resourceId into its components.
+
+    Returns ``None`` (instead of raising) when the resourceId does not
+    conform to the expected shape so that callers can cleanly fall back
+    to the relationships-based lookup.
+    """
+    segments = resource_id.split("/")
+    # Expected: ['', 'dataTables', 'dataSources', '<context>', 'tables', ...]
+    if len(segments) < 4:
+        logger.warning(
+            "resourceId %r has fewer than 4 slash-delimited segments; "
+            "cannot extract provider/host/library.",
+            resource_id,
+        )
+        return None
+
+    context = segments[3]
+    parts = context.split(_SAS_FIELD_SEPARATOR)
+    if len(parts) < 3:
+        logger.warning(
+            "resourceId context segment %r has %d field(s) (expected 3: "
+            "provider, host, library); cannot derive database/schema.",
+            context,
+            len(parts),
+        )
+        return None
+
+    return SASResourceContext(
+        provider=parts[0],
+        host=parts[1],
+        library=parts[2],
+        raw_resource_id=resource_id,
+    )
 
 
 class SasSource(
@@ -232,78 +313,71 @@ class SasSource(
 
     def create_database_schema(self, table):
         """
-        create database schema
+        Create database and schema entities for the given table.
+
+        First attempts to derive provider/host/library from the table's
+        ``resourceId`` via ``parse_resource_id``.  If the resourceId does
+        not match the expected SAS Data Tables shape, or the resulting
+        create/update call fails, falls back to a relationships-based
+        lookup through the Information Catalog.
         """
-        try:
-            context = table["resourceId"].split("/")[3]
-            context_parts = context.split("~")
-            # Explicit shape check (rather than letting context_parts[4]
-            # raise IndexError): gives operators a named error in the
-            # fallback log and guards against "5 parts but wrong shape"
-            # strings that would otherwise silently build a garbage
-            # db_name/schema pair.
-            if len(context_parts) < 5:
-                raise ValueError(
-                    f"Unexpected resourceId format, cannot derive database/schema: "
-                    f"{table['resourceId']}"
+        resource_id = table.get("resourceId", "")
+        ctx = parse_resource_id(resource_id)
+
+        if ctx is not None:
+            try:
+                self.db_name = ctx.database_name
+                self.db_schema_name = ctx.library
+
+                database = CreateDatabaseRequest(
+                    name=self.db_name,
+                    displayName=self.db_name,
+                    service=self.config.serviceName,
                 )
+                database = self.metadata.create_or_update(data=database)
 
-            provider = context_parts[0]
-            self.db_name = provider + "." + context_parts[2]
-            self.db_schema_name = context_parts[4]
+                db_schema = CreateDatabaseSchemaRequest(
+                    name=self.db_schema_name, database=database.fullyQualifiedName
+                )
+                return self.metadata.create_or_update(db_schema)
 
-            database = CreateDatabaseRequest(
-                name=self.db_name,
-                displayName=self.db_name,
-                service=self.config.serviceName,
-            )
-            database = self.metadata.create_or_update(data=database)
-
-            db_schema = CreateDatabaseSchemaRequest(
-                name=self.db_schema_name, database=database.fullyQualifiedName
-            )
-            db_schema_entity = self.metadata.create_or_update(db_schema)
-            return db_schema_entity
-
-        except (HTTPError, IndexError, KeyError, ValueError) as exc:
-            # Distinguish the "expected" HTTP-failure path (catalog/create
-            # request bounced) from a parsing/format issue with the
-            # resourceId, so operators can tell them apart in the logs.
-            if isinstance(exc, HTTPError):
+            except HTTPError as exc:
                 logger.debug(
                     "Falling back to relationships-based schema lookup for "
-                    f"{table.get('resourceId')} after HTTP error: {exc}"
+                    "%s after HTTP error: %s",
+                    resource_id,
+                    exc,
                 )
-            else:
-                logger.warning(
-                    "Could not derive database/schema from resourceId "
-                    f"{table.get('resourceId')!r} ({type(exc).__name__}: {exc}); "
-                    "falling back to relationships-based lookup."
-                )
-            # Find the "database" entity in Information Catalog
-            # First see if the table is a member of the library through the relationships attribute
-            # Or we could use views to query the dataStores
-            data_store_data_sets = "4b114f6e-1c2a-4060-9184-6809a612f27b"
-            data_store_id = None
-            for relation in table["relationships"]:
-                if relation["definitionId"] != data_store_data_sets:
-                    continue
-                data_store_id = relation["endpointId"]
-                break
 
-            if data_store_id is None:
-                # log error due to exclude amount of work with tables in dataTables
-                logger.error("Data store id should not be none")
-                return None
+        return self._create_database_schema_from_relationships(table)
 
-            data_store = self.sas_client.get_instance(data_store_id)
-            database = self.create_database_alt(data_store)
-            self.db_schema_name = data_store["name"]
-            db_schema = CreateDatabaseSchemaRequest(
-                name=data_store["name"], database=database.fullyQualifiedName
-            )
-            db_schema_entity = self.metadata.create_or_update(db_schema)
-            return db_schema_entity
+    def _create_database_schema_from_relationships(self, table):
+        """Derive database/schema from the table's catalog relationships.
+
+        This is the fallback path when ``parse_resource_id`` returns
+        ``None`` or the primary create fails.  It looks for a
+        ``dataStoreDataSets`` relationship to locate the parent data
+        store, then uses ``create_database_alt`` for the database entity.
+        """
+        data_store_data_sets = "4b114f6e-1c2a-4060-9184-6809a612f27b"
+        data_store_id = None
+        for relation in table.get("relationships", []):
+            if relation["definitionId"] != data_store_data_sets:
+                continue
+            data_store_id = relation["endpointId"]
+            break
+
+        if data_store_id is None:
+            logger.error("Data store id should not be none")
+            return None
+
+        data_store = self.sas_client.get_instance(data_store_id)
+        database = self.create_database_alt(data_store)
+        self.db_schema_name = data_store["name"]
+        db_schema = CreateDatabaseSchemaRequest(
+            name=data_store["name"], database=database.fullyQualifiedName
+        )
+        return self.metadata.create_or_update(db_schema)
 
     def create_columns_alt(self, table):
         """

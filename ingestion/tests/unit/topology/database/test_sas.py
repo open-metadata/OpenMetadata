@@ -35,7 +35,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.source.database.sas.client import SASClient
-from metadata.ingestion.source.database.sas.metadata import SasSource
+from metadata.ingestion.source.database.sas.metadata import (
+    SASResourceContext,
+    SasSource,
+    parse_resource_id,
+)
 
 MOCK_SAS_CONFIG = {
     "source": {
@@ -135,12 +139,65 @@ def sas_source():
         return source
 
 
-class TestCreateDatabaseSchema:
-    """Cover the fragile resourceId parsing in create_database_schema."""
+class TestParseResourceId:
+    """Cover the standalone parse_resource_id function that extracts
+    provider/host/library from a SAS Information Catalog resourceId.
 
-    def test_parses_standard_cas_resource_id(self, sas_source):
-        """A well-formed cas~fs~host~fs~lib path should populate db_name
-        and db_schema_name without hitting the HTTPError fallback."""
+    Known shapes (SAS Data Tables REST API):
+        /dataTables/dataSources/{provider}~fs~{host}~fs~{library}/tables/{table}
+    """
+
+    def test_cas_table(self):
+        ctx = parse_resource_id(
+            "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples"
+            "/tables/WATER_CLUSTER?ext=sashdat"
+        )
+        assert ctx == SASResourceContext(
+            provider="cas",
+            host="cas-shared-default",
+            library="Samples",
+            raw_resource_id=(
+                "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples"
+                "/tables/WATER_CLUSTER?ext=sashdat"
+            ),
+        )
+        assert ctx.database_name == "cas.cas-shared-default"
+
+    def test_compute_table(self):
+        ctx = parse_resource_id(
+            "/dataTables/dataSources/Compute~fs~"
+            "49736234-36b3-48d2-b2e2-e12aa365ce05~fs~PUBLIC/tables/LAS_TRAIN"
+        )
+        assert ctx.provider == "Compute"
+        assert ctx.host == "49736234-36b3-48d2-b2e2-e12aa365ce05"
+        assert ctx.library == "PUBLIC"
+        assert ctx.database_name == "Compute.49736234-36b3-48d2-b2e2-e12aa365ce05"
+
+    def test_too_few_slash_segments_returns_none(self):
+        assert parse_resource_id("/too/short") is None
+
+    def test_missing_field_separator_returns_none(self):
+        assert (
+            parse_resource_id("/dataTables/dataSources/no-separators-here/tables/T")
+            is None
+        )
+
+    def test_only_two_fields_returns_none(self):
+        assert parse_resource_id("/dataTables/dataSources/cas~fs~host/tables/T") is None
+
+    def test_empty_string_returns_none(self):
+        assert parse_resource_id("") is None
+
+    def test_frozen_dataclass(self):
+        ctx = parse_resource_id("/dataTables/dataSources/cas~fs~host~fs~lib/tables/T")
+        with pytest.raises(AttributeError):
+            ctx.provider = "modified"
+
+
+class TestCreateDatabaseSchema:
+    """Cover create_database_schema using parse_resource_id + fallback."""
+
+    def test_well_formed_resource_id_sets_db_and_schema(self, sas_source):
         sas_source.metadata = MagicMock()
         sas_source.metadata.create_or_update.return_value = MagicMock(
             fullyQualifiedName="cas.cas-shared-default"
@@ -157,10 +214,7 @@ class TestCreateDatabaseSchema:
         assert sas_source.db_name == "cas.cas-shared-default"
         assert sas_source.db_schema_name == "Samples"
 
-    def test_malformed_resource_id_falls_back_without_index_error(self, sas_source):
-        """A resourceId without the expected tilde segments used to raise
-        IndexError because the old code only caught HTTPError. It should
-        now enter the relationships-based fallback path."""
+    def test_malformed_resource_id_falls_back_to_relationships(self, sas_source):
         sas_source.metadata = MagicMock()
         sas_source.sas_client = MagicMock()
         sas_source.sas_client.get_instance.return_value = {
@@ -168,13 +222,11 @@ class TestCreateDatabaseSchema:
             "resourceId": "/dataSources/some/parent",
             "links": [{"rel": "parent", "uri": "/parent"}],
         }
-        # Stub create_database_alt so we don't need a real API round-trip.
         sas_source.create_database_alt = MagicMock(
             return_value=MagicMock(fullyQualifiedName="fallback_db")
         )
 
         table = {
-            # Only three slash-delimited segments: indexing [3] raises.
             "resourceId": "/too/short",
             "relationships": [
                 {
@@ -190,14 +242,11 @@ class TestCreateDatabaseSchema:
         sas_source.create_database_alt.assert_called_once()
 
     def test_fallback_returns_none_when_no_data_store_relationship(self, sas_source):
-        """If the resourceId is malformed *and* there's no datastore
-        relationship, the method should bail out cleanly instead of
-        raising."""
         sas_source.metadata = MagicMock()
         sas_source.sas_client = MagicMock()
 
         table = {
-            "resourceId": "/x/y",  # not enough segments
+            "resourceId": "/x/y",
             "relationships": [],
         }
 
