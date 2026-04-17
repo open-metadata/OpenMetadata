@@ -12,9 +12,14 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { DataType } from '../../../generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
-import { tableVersionMockProps } from '../../../mocks/TableVersion.mock';
+import {
+  mockTableData,
+  tableVersionMockProps,
+} from '../../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
+import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 
 const mockNavigate = jest.fn();
 jest.mock(
@@ -136,6 +141,50 @@ describe('TableVersion tests', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
+  });
+
+  it('should pass historical columns from currentVersionData to VersionTable, not from a live API call', async () => {
+    const historicalVersionData = {
+      ...mockTableData,
+      columns: [
+        {
+          name: 'order_amount',
+          dataType: DataType.Decimal,
+          dataTypeDisplay: 'decimal(9,1)',
+          precision: 9,
+          scale: 1,
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_product_catalog.order_amount',
+          tags: [],
+          ordinalPosition: 1,
+        },
+      ],
+      changeDescription: {
+        fieldsAdded: [],
+        fieldsUpdated: [],
+        fieldsDeleted: [],
+        previousVersion: 0.1,
+      },
+    };
+
+    const mockedVersionTable = VersionTable as jest.MockedFunction<typeof VersionTable>;
+    mockedVersionTable.mockClear();
+
+    await act(async () => {
+      render(
+        <TableVersion
+          {...tableVersionMockProps}
+          currentVersionData={historicalVersionData}
+        />
+      );
+    });
+
+    const calls = mockedVersionTable.mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const columnsPassedToVersionTable = calls[calls.length - 1][0].columns;
+
+    expect(columnsPassedToVersionTable).toHaveLength(1);
+    expect(columnsPassedToVersionTable[0].dataTypeDisplay).toBe('decimal(9,1)');
   });
 
   describe('ViewCustomFields Permission Tests', () => {
