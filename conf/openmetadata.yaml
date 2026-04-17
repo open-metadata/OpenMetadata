@@ -78,7 +78,7 @@ server:
   # Virtual Threads (Project Loom) - Recommended for Java 21+
   # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
   # while keeping non-blocking I/O on platform threads for optimal cache locality
-  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
   # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
@@ -612,6 +612,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
 
@@ -688,7 +689,8 @@ web:
     block: ${WEB_CONF_XSS_PROTECTION_BLOCK:-true}
   csp:
     enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
-    policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
+    # default-src 'self'; base-uri 'self'; script-src 'self' 'nonce-__CSP_NONCE__' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src * 'self' blob: data:; media-src * 'self' blob:; worker-src 'self' blob:; frame-src 'self' https://www.youtube.com; object-src 'none'; connect-src 'self';
+    policy: ${WEB_CONF_XSS_CSP_POLICY:-""}
     reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
   referrer-policy:
     enabled: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
