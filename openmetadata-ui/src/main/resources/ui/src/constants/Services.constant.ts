@@ -494,7 +494,7 @@ export const ADVANCED_PROPERTIES = [
   'includeViews',
   'useStatistics',
   'confidence',
-  'samplingMethodType',
+  'profileSampleConfig',
   'randomizedSample',
   'sampleDataCount',
   'threadCount',
