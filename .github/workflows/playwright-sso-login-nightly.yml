@@ -114,7 +114,7 @@ jobs:
           KEYCLOAK_SAML_BASE_URL: http://localhost:8080
           PLAYWRIGHT_IS_OSS: true
         run: |
-          npx playwright test playwright/e2e/Auth/SSOLogin.spec.ts \
+          npx playwright test playwright/e2e/Auth/SSOLogin.spec.ts playwright/e2e/Auth/SSORenewal.spec.ts \
             --project=sso-auth \
             --workers=1
 
