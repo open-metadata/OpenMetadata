@@ -221,7 +221,7 @@ test.describe(
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page, 3, 40000);
+      await waitForTourBadgeWithRetry(page);
     });
   }
 );

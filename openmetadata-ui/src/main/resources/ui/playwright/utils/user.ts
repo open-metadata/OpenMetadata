@@ -107,6 +107,12 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
+  const loaderPromise = page
+    .getByTestId('user-list-v1-component')
+    .getByTestId('loader')
+    .waitFor({
+      state: 'detached',
+    });
   const searchBar = page.getByTestId('searchbar');
 
   await expect
@@ -116,13 +122,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
         await searchBar.fill('');
         await searchBar.fill(userName);
         await searchRequest;
-        await page
-          .getByTestId('user-list-v1-component')
-          .getByTestId('loader')
-          .waitFor({
-            state: 'detached',
-          })
-          .catch(() => undefined);
+        await loaderPromise.catch(() => undefined);
 
         return await page.getByTestId(userName).count();
       },
@@ -503,21 +503,7 @@ export const generateToken = async (page: Page) => {
 };
 
 export const revokeToken = async (page: Page, isBot?: boolean) => {
-  if (page.isClosed()) {
-    return;
-  }
-
-  const revokeButton = page
-    .locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
-    .first();
-
-  await revokeButton.waitFor({
-    state: 'visible',
-    timeout: 60000,
-  });
-  await expect(revokeButton).toBeEnabled();
-  await revokeButton.scrollIntoViewIfNeeded();
-  await revokeButton.click();
+  await page.click('[data-testid="revoke-button"]');
 
   await expect(page.locator('[data-testid="body-text"]')).toContainText(
     `Are you sure you want to revoke access for ${
@@ -525,22 +511,9 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
     }?`
   );
 
-  const revokeResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/users/security/token') &&
-      ['DELETE', 'POST'].includes(response.request().method())
-  );
-
   await page.click('[data-testid="save-button"]');
-  await revokeResponse;
 
-  if (page.isClosed()) {
-    return;
-  }
-
-  await expect(page.locator('[data-testid="revoke-button"]')).toHaveCount(0, {
-    timeout: 60000,
-  });
+  await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
 export const updateExpiration = async (page: Page, expiry: number) => {
@@ -561,15 +534,8 @@ export const updateExpiration = async (page: Page, expiry: number) => {
   // Wait for any dropdown animations to complete
   await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
 
-  const saveTokenResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/users/security/token') &&
-      response.request().method() === 'POST'
-  );
-
   // Now click the save button
   await page.click('[data-testid="save-edit"]');
-  await saveTokenResponse;
 
   await expect(
     page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')

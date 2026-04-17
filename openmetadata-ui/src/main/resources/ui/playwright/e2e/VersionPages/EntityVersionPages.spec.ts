@@ -143,9 +143,6 @@ test.describe('Entity Version pages', () => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.allSettled(
-      entities.map((entity) => entity.delete(apiContext))
-    );
     await adminUser.delete(apiContext);
 
     await afterAction();
