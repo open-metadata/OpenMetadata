@@ -2699,6 +2699,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Invoked by {@link org.openmetadata.service.cache.CacheInvalidationPubSub} when another OM
+   * instance signals an entity change. Evicts this instance's per-process Guava caches so the next
+   * read pulls fresh data. Does not touch Redis — the writer already invalidated shared keys
+   * before publishing.
+   */
+  public static void onRemoteCacheInvalidate(String entityType, UUID id, String fqn) {
+    if (entityType == null) {
+      return;
+    }
+    if (id != null) {
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+    }
+    if (fqn != null) {
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+    }
+  }
+
+  /**
    * Invalidate cache entries when entity is deleted
    */
   protected void invalidateCache(T entity) {
@@ -2733,6 +2751,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
       if (cachedTagUsageDao != null) {
         cachedTagUsageDao.invalidateTags(entityType, entity.getId());
+      }
+
+      // Tell other OM instances to evict their local caches.
+      var pubsub = CacheBundle.getCacheInvalidationPubSub();
+      if (pubsub != null) {
+        pubsub.publish(entityType, entity.getId(), entity.getFullyQualifiedName(), "invalidate");
       }
 
       LOG.debug("Invalidated cache for deleted entity: {} {}", entityType, entity.getId());
@@ -7955,8 +7979,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void invalidateCachesAfterStore() {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, updated.getId()));
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, updated.getFullyQualifiedName()));
+      var cachedReadBundle = CacheBundle.getCachedReadBundle();
+      if (cachedReadBundle != null) {
+        cachedReadBundle.invalidate(entityType, updated.getId());
+      }
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, updated.getId(), updated.getFullyQualifiedName());
+      var pubsub = CacheBundle.getCacheInvalidationPubSub();
+      if (pubsub != null) {
+        pubsub.publish(entityType, updated.getId(), updated.getFullyQualifiedName(), "update");
+      }
     }
 
     public final boolean updatedByBot() {

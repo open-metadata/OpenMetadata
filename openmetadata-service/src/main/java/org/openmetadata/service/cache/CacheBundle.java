@@ -19,6 +19,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedRelationshipDao cachedRelationshipDao;
   private static CachedTagUsageDao cachedTagUsageDao;
   private static CachedReadBundle cachedReadBundle;
+  private static CacheInvalidationPubSub cacheInvalidationPubSub;
 
   public CacheBundle() {
     instance = this;
@@ -66,6 +67,20 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cachedTagUsageDao =
           new CachedTagUsageDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
+      cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
+      cacheInvalidationPubSub.setHandler(
+          msg -> {
+            try {
+              org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
+                  msg.type(), msg.id(), msg.fqn());
+              if (msg.id() != null && cachedReadBundle != null) {
+                cachedReadBundle.invalidate(msg.type(), msg.id());
+              }
+            } catch (Exception e) {
+              LOG.debug("Remote invalidation handler failed for {}", msg, e);
+            }
+          });
+      cacheInvalidationPubSub.start();
 
       environment.lifecycle().manage(new CacheLifecycleManager());
       environment.healthChecks().register("cache", new CacheHealthCheck());
@@ -98,6 +113,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     return cachedReadBundle;
   }
 
+  public static CacheInvalidationPubSub getCacheInvalidationPubSub() {
+    return cacheInvalidationPubSub;
+  }
+
   private static class CacheLifecycleManager implements Managed {
     @Override
     public void start() {
@@ -107,6 +126,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     @Override
     public void stop() {
       try {
+        if (cacheInvalidationPubSub != null) {
+          cacheInvalidationPubSub.stop();
+        }
         if (cacheProvider != null) {
           cacheProvider.close();
         }
