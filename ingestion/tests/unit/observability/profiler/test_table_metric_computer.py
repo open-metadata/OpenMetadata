@@ -360,13 +360,18 @@ class TestSAPHanaTableMetricComputer:
             )
         )
         sql_upper = sql.upper()
+        has_m_tables_source = (
+            'FROM "SYS"."M_TABLES"' in sql_upper or "FROM SYS.M_TABLES" in sql_upper
+        )
+        has_tables_source = (
+            'FROM "SYS"."TABLES"' in sql_upper or "FROM SYS.TABLES" in sql_upper
+        )
         assert "WITH" in sql_upper, f"Expected WITH clause in query, got: {sql}"
         assert (
-            "M_TABLES" in sql_upper
-        ), f"Expected M_TABLES CTE definition in query, got: {sql}"
-        assert (
-            "TABLES" in sql_upper
-        ), f"Expected TABLES CTE definition in query, got: {sql}"
+            sql_upper.count(" AS (") >= 2
+        ), f"Expected two CTE definitions in query, got: {sql}"
+        assert has_m_tables_source, f"Expected M_TABLES source in query, got: {sql}"
+        assert has_tables_source, f"Expected TABLES source in query, got: {sql}"
         assert (
             "LEFT OUTER JOIN" in sql_upper or "LEFT JOIN" in sql_upper
         ), f"TABLES CTE must be LEFT JOINed, got: {sql}"

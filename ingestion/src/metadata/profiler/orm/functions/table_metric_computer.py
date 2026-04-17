@@ -793,6 +793,7 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
     """SAP HANA Table Metric Computer"""
 
     def compute(self):
+        """Compute table metrics from SYS.M_TABLES and CREATE_TIME from SYS.TABLES."""
         if not self.schema_name or not self.table_name:
             logger.warning(
                 "Missing schema or table name for HANA table metric computation"
