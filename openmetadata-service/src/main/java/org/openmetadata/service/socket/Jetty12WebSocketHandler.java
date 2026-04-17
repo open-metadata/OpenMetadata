@@ -128,16 +128,13 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
   @OnWebSocketError
   public void onError(Throwable error) {
+    if (error instanceof ClosedChannelException) {
+      LOG.debug("WebSocket channel closed by peer (likely abnormal disconnect)");
+      return;
+    }
     try {
-      if (error instanceof ClosedChannelException) {
-        LOG.debug("WebSocket channel closed by peer (likely abnormal disconnect)");
-      } else {
-        LOG.error(
-            "WebSocket error: {} - {}",
-            error.getClass().getSimpleName(),
-            error.getMessage(),
-            error);
-      }
+      LOG.error(
+          "WebSocket error: {} - {}", error.getClass().getSimpleName(), error.getMessage(), error);
       emit("error", "websocket error", error.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to handle WebSocket error gracefully: {}", e.getMessage(), e);

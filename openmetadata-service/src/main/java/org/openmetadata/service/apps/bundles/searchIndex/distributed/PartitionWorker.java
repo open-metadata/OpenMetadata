@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
@@ -507,10 +508,15 @@ public class PartitionWorker {
     if (failureRecorder != null && readErrorCount > 0) {
       for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
         Object rawEntity = entityError.getEntity();
-        String entityId =
-            rawEntity instanceof EntityInterface
-                ? ((EntityInterface) rawEntity).getId().toString()
-                : (rawEntity != null ? rawEntity.toString() : null);
+        String entityId = null;
+        if (rawEntity instanceof EntityInterface) {
+          UUID id = ((EntityInterface) rawEntity).getId();
+          if (id != null) {
+            entityId = id.toString();
+          }
+        } else if (rawEntity != null) {
+          entityId = rawEntity.toString();
+        }
         if (entityId == null) {
           LOG.warn(
               "Skipping reader failure record for entityType={}: entityId is null, message={}",
