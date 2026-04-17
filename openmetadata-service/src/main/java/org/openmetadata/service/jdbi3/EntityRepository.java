@@ -213,7 +213,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
-import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -354,8 +353,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       long maxWeightBytes, int ttlSeconds) {
     return CacheBuilder.newBuilder()
         .maximumWeight(maxWeightBytes)
-        .weigher(
-            (Weigher<Pair<String, UUID>, EntityInterface>) (key, value) -> weighEntity(value))
+        .weigher((Weigher<Pair<String, UUID>, EntityInterface>) (key, value) -> weighEntity(value))
         .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
         .recordStats()
         .build(new EntityLoaderWithId());
