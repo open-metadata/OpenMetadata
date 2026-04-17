@@ -206,7 +206,7 @@ def create_test_data(trino_container):
     ).fetchall()
 
     _execute_with_connect(
-        "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
+        "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/my_schema/')"
     )
     data_dir = os.path.dirname(__file__) + "/data"
     for file in os.listdir(data_dir):
@@ -218,7 +218,9 @@ def create_test_data(trino_container):
             create_test_data_from_parquet(engine, file_path)
 
         sleep(1)
-        _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
+        retry(wait=wait_fixed(2), stop=stop_after_delay(120))(_execute_with_connect)(
+            "ANALYZE " + f'minio."my_schema"."{file_path.stem}"'
+        )
     _execute_with_connect(
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
