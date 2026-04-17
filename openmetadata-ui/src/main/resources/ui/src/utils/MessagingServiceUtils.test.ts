@@ -38,7 +38,10 @@ describe('MessagingServiceUtils tests', () => {
 
     expect(config).toEqual({
       schema: { ...redpandaConnection },
-      uiSchema: { ...COMMON_UI_SCHEMA },
+      uiSchema: {
+        ...COMMON_UI_SCHEMA,
+        schemaRegistryTopicSuffixName: { 'ui:emptyValue': '' },
+      },
     });
   });
 

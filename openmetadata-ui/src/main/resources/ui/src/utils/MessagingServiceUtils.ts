@@ -58,6 +58,9 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
 
     case MessagingServiceType.Redpanda:
       schema = redpandaConnection;
+      Object.assign(uiSchema, {
+        schemaRegistryTopicSuffixName: { 'ui:emptyValue': '' },
+      });
 
       break;
 
