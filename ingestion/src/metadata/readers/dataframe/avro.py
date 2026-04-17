@@ -12,7 +12,6 @@
 """
 Avro DataFrame reader - streams records in batches to avoid OOM
 """
-import traceback
 from functools import singledispatchmethod
 from typing import Iterator, List, Optional
 
@@ -94,9 +93,8 @@ class AvroDataFrameReader(DataFrameReader):
                     writer_schema = json.dumps(reader.writer_schema)
 
                 return parse_avro_schema(schema=writer_schema, cls=Column)
-        except Exception as warn:
-            logger.warning(f"Error reading Avro schema: {warn}")
-            logger.debug(traceback.format_exc())
+        except Exception:
+            logger.warning("Error reading Avro schema")
         return None
 
     @singledispatchmethod
