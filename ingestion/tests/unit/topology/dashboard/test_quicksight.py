@@ -388,3 +388,16 @@ class QuickSightUnitTest(TestCase):
 
         col_names_b = {col.name.root for col in dm_b.columns}
         assert col_names_b == {"email", "created_at"}
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        dashboard_details = DashboardDetail(
+            **{**MOCK_DASHBOARD_DETAILS, "Version": mock_data["Version"]}
+        )
+        self.quicksight.chart_source_state = set()
+        list(self.quicksight.yield_dashboard_chart(dashboard_details))
+        assert len(self.quicksight.chart_source_state) == len(
+            mock_data["Version"]["Sheets"]
+        )
+        for fqn in self.quicksight.chart_source_state:
+            assert "quicksight_source_test" in fqn

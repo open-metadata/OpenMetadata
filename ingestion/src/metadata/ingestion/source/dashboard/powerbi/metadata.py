@@ -536,23 +536,23 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             continue
                         self.dashboard_charts[dashboard_details.id].append(chart.id)
-                        yield Either(
-                            right=CreateChartRequest(
-                                name=EntityName(chart.id),
-                                displayName=chart_display_name,
-                                chartType=ChartType.Other.value,
-                                sourceUrl=SourceUrl(
-                                    self._get_chart_url(
-                                        report_id=chart.reportId,
-                                        workspace_id=self.context.get().workspace.id,
-                                        dashboard_id=dashboard_details.id,
-                                    )
-                                ),
-                                service=FullyQualifiedEntityName(
-                                    self.context.get().dashboard_service
-                                ),
-                            )
+                        chart_request = CreateChartRequest(
+                            name=EntityName(chart.id),
+                            displayName=chart_display_name,
+                            chartType=ChartType.Other.value,
+                            sourceUrl=SourceUrl(
+                                self._get_chart_url(
+                                    report_id=chart.reportId,
+                                    workspace_id=self.context.get().workspace.id,
+                                    dashboard_id=dashboard_details.id,
+                                )
+                            ),
+                            service=FullyQualifiedEntityName(
+                                self.context.get().dashboard_service
+                            ),
                         )
+                        yield Either(right=chart_request)
+                        self.register_record_chart(chart_request=chart_request)
                     except Exception as exc:
                         yield Either(
                             left=StackTraceError(

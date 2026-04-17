@@ -323,16 +323,14 @@ class MicrostrategySource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
 
-                yield Either(
-                    right=CreateChartRequest(
-                        name=f"{page.key}{chart.key}",
-                        displayName=chart.name,
-                        chartType=get_standard_chart_type(
-                            chart.visualizationType
-                        ).value,
-                        service=self.context.get().dashboard_service,
-                    )
+                chart_request = CreateChartRequest(
+                    name=f"{page.key}{chart.key}",
+                    displayName=chart.name,
+                    chartType=get_standard_chart_type(chart.visualizationType).value,
+                    service=self.context.get().dashboard_service,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

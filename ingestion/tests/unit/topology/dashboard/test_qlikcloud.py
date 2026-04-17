@@ -634,3 +634,14 @@ class QlikCloudUnitTest(TestCase):
             data_files = self.qlikcloud.client.get_data_files()
 
             assert data_files == [], "Expected empty list when API fails"
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.qlikcloud.chart_source_state = set()
+        with patch.object(
+            QlikCloudClient, "get_dashboard_charts", return_value=MOCK_CHARTS
+        ):
+            list(self.qlikcloud.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
+        assert len(self.qlikcloud.chart_source_state) == 2
+        for fqn in self.qlikcloud.chart_source_state:
+            assert "qlikcloud_source_test" in fqn

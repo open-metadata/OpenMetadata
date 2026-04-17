@@ -1121,3 +1121,11 @@ class TableauUnitTest(TestCase):
                     list(self.tableau.yield_dashboard_lineage_details(mock_dashboard))
                     mock_datasource_lineage.assert_called_once()
                     mock_table_lineage.assert_called_once()
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.tableau.chart_source_state = set()
+        list(self.tableau.yield_dashboard_chart(MOCK_DASHBOARD))
+        assert len(self.tableau.chart_source_state) == 3
+        for fqn in self.tableau.chart_source_state:
+            assert "tableau_source_test" in fqn

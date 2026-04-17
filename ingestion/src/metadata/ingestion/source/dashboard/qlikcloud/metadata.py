@@ -341,20 +341,20 @@ class QlikcloudSource(QliksenseSource):
                 ):
                     self.status.filter(chart.qMeta.title, "Chart Pattern not allowed")
                     continue
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart.qInfo.qId),
-                        displayName=chart.qMeta.title,
-                        description=(
-                            Markdown(chart.qMeta.description)
-                            if chart.qMeta.description
-                            else None
-                        ),
-                        chartType=ChartType.Other,
-                        sourceUrl=SourceUrl(chart_url),
-                        service=self.context.get().dashboard_service,
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.qInfo.qId),
+                    displayName=chart.qMeta.title,
+                    description=(
+                        Markdown(chart.qMeta.description)
+                        if chart.qMeta.description
+                        else None
+                    ),
+                    chartType=ChartType.Other,
+                    sourceUrl=SourceUrl(chart_url),
+                    service=self.context.get().dashboard_service,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(

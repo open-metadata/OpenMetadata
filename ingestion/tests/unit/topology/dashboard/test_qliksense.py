@@ -519,3 +519,14 @@ class QlikSenseUnitTest(TestCase):
             self.qliksense._fetch_script_table_sources()
 
         mock_get.assert_called_once()
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.qliksense.chart_source_state = set()
+        with patch.object(
+            QlikSenseClient, "get_dashboard_charts", return_value=MOCK_CHARTS
+        ):
+            list(self.qliksense.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
+        assert len(self.qliksense.chart_source_state) == 2
+        for fqn in self.qliksense.chart_source_state:
+            assert "qliksense_source_test" in fqn

@@ -224,23 +224,23 @@ class GrafanaSource(DashboardServiceSource):
                 # Map Grafana panel types to standard chart types
                 chart_type = self._map_panel_type_to_chart_type(panel.type)
 
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart_name),
-                        displayName=chart_display_name,
-                        description=(
-                            Markdown(panel.description) if panel.description else None
-                        ),
-                        chartType=chart_type,
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
-                        sourceUrl=SourceUrl(
-                            f"{clean_uri(self.service_connection.hostPort)}"
-                            f"{dashboard_details.meta.url}?viewPanel={panel.id}"
-                        ),
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart_name),
+                    displayName=chart_display_name,
+                    description=(
+                        Markdown(panel.description) if panel.description else None
+                    ),
+                    chartType=chart_type,
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}"
+                        f"{dashboard_details.meta.url}?viewPanel={panel.id}"
+                    ),
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

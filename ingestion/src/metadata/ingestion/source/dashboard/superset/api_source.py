@@ -152,7 +152,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         f"chart details for id: {chart_id} not found, skipped"
                     )
                     continue
-                chart = CreateChartRequest(
+                chart_request = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
                     description=(
@@ -166,7 +166,8 @@ class SupersetAPISource(SupersetSourceMixin):
                     ),
                     service=self.context.get().dashboard_service,
                 )
-                yield Either(right=chart)
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(

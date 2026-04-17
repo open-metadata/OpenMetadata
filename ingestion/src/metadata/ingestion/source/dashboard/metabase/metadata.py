@@ -271,16 +271,16 @@ class MetabaseSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart_details.name, "Chart Pattern not allowed")
                     continue
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart_details.id),
-                        displayName=chart_details.name,
-                        description=chart_details.description,
-                        chartType=get_standard_chart_type(chart_details.display).value,
-                        sourceUrl=SourceUrl(chart_url),
-                        service=self.context.get().dashboard_service,
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart_details.id),
+                    displayName=chart_details.name,
+                    description=chart_details.description,
+                    chartType=get_standard_chart_type(chart_details.display).value,
+                    sourceUrl=SourceUrl(chart_url),
+                    service=self.context.get().dashboard_service,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except KeyError as exc:
                 yield Either(
                     left=StackTraceError(

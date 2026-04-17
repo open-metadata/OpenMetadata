@@ -17,17 +17,27 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.microstrategy.metadata import (
     MicrostrategySource,
 )
 from metadata.ingestion.source.dashboard.microstrategy.models import (
+    MstrChapter,
     MstrDashboard,
+    MstrDashboardDetails,
     MstrOwner,
+    MstrPage,
     MstrProject,
+    MstrVisualization,
 )
 
 mock_micro_config = {
@@ -181,3 +191,49 @@ class MicroStrategyUnitTest(TestCase):
         self.assertIsNotNone(dashboard.owner)
         self.assertEqual(dashboard.owner.name, "Administrator")
         self.assertEqual(dashboard.owner.id, "54F3D26011D2896560009A8E67019608")
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        MOCK_DASHBOARD_SERVICE = DashboardService(
+            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+            name="mock_microstrategy",
+            fullyQualifiedName=FullyQualifiedEntityName("mock_microstrategy"),
+            connection=DashboardConnection(),
+            serviceType=DashboardServiceType.MicroStrategy,
+        )
+        self.microstrategy.context.get().__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        mock_details = MstrDashboardDetails(
+            id="dash1",
+            name="Test Dashboard",
+            projectId="proj1",
+            projectName="Test Project",
+            currentChapter="ch1",
+            chapters=[
+                MstrChapter(
+                    key="ch1",
+                    name="Chapter 1",
+                    pages=[
+                        MstrPage(
+                            key="pg1",
+                            name="Page 1",
+                            visualizations=[
+                                MstrVisualization(
+                                    key="v1", name="Chart A", visualizationType="grid"
+                                ),
+                                MstrVisualization(
+                                    key="v2", name="Chart B", visualizationType="bar"
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+            datasets=[],
+        )
+        self.microstrategy.chart_source_state = set()
+        list(self.microstrategy.yield_dashboard_chart(mock_details))
+        assert len(self.microstrategy.chart_source_state) == 2
+        for fqn in self.microstrategy.chart_source_state:
+            assert "mock_microstrategy" in fqn

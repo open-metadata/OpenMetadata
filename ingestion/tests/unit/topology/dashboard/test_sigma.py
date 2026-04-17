@@ -471,6 +471,15 @@ class SigmaUnitTest(TestCase):
         self.assertEqual(response.total, 1)
         self.assertEqual(response.entries[0].elementId, "1")
 
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
+        self.sigma.chart_source_state = set()
+        list(self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
+        assert len(self.sigma.chart_source_state) == 3
+        for fqn in self.sigma.chart_source_state:
+            assert "mock_sigma" in fqn
+
     @patch("metadata.ingestion.source.dashboard.sigma.client.TrackedREST")
     def test_get_chart_details_pagination(self, mock_rest):
         """

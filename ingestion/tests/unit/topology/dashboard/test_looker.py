@@ -970,3 +970,12 @@ class LookerUnitTest(TestCase):
 
         results = list(self.looker._process_view(ViewName("missing_view"), explore))
         assert len(results) == 0
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.looker.chart_source_state = set()
+        list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
+        assert len(self.looker.chart_source_state) == 1
+        assert any(
+            "looker_source_test" in fqn for fqn in self.looker.chart_source_state
+        )

@@ -214,17 +214,17 @@ class QuicksightSource(DashboardServiceSource):
                         f"https://{self.aws_region}.quicksight.aws.amazon.com/sn/dashboards"
                         f"/{dashboard_details.DashboardId}"
                     )
-                    yield Either(
-                        right=CreateChartRequest(
-                            name=EntityName(chart.ChartId),
-                            displayName=chart.Name,
-                            chartType=ChartType.Other.value,
-                            sourceUrl=SourceUrl(self.dashboard_url),
-                            service=FullyQualifiedEntityName(
-                                self.context.get().dashboard_service
-                            ),
-                        )
+                    chart_request = CreateChartRequest(
+                        name=EntityName(chart.ChartId),
+                        displayName=chart.Name,
+                        chartType=ChartType.Other.value,
+                        sourceUrl=SourceUrl(self.dashboard_url),
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                     )
+                    yield Either(right=chart_request)
+                    self.register_record_chart(chart_request=chart_request)
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
