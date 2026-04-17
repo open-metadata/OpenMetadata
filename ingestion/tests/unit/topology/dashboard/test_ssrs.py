@@ -241,6 +241,13 @@ class TestSsrsSource:
         result = ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0])
         assert result is None
 
+    def test_chart_source_state_populated(self, ssrs_source):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        ssrs_source.chart_source_state = set()
+        list(ssrs_source.yield_dashboard_chart(MOCK_REPORTS[0]))
+        assert len(ssrs_source.chart_source_state) == 1
+        assert any("mock_ssrs" in fqn for fqn in ssrs_source.chart_source_state)
+
 
 class TestSsrsModels:
     def test_ssrs_report_parsing(self):

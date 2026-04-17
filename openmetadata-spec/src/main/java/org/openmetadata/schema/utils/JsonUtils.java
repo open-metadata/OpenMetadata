@@ -113,7 +113,9 @@ public final class JsonUtils {
     OBJECT_MAPPER
         .getFactory()
         .setStreamReadConstraints(
-            StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build());
+            StreamReadConstraints.builder()
+                .maxStringLength(50 * 1024 * 1024) // ~50M chars max per single JSON string token
+                .build());
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
