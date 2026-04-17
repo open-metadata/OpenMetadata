@@ -250,7 +250,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           String parentTermFQNParam,
       @Parameter(
               description =
-                  "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
+                  "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed,Archived)")
           @QueryParam("entityStatus")
           String entityStatus) {
     RestUtil.validateCursors(before, after);
@@ -360,7 +360,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           Include include,
       @Parameter(
               description =
-                  "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
+                  "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed,Archived)")
           @QueryParam("entityStatus")
           String entityStatus) {
 

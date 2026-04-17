@@ -140,14 +140,13 @@ export const StatusClass = {
   [EntityStatus.Deprecated]: StatusType.Deprecated,
   [EntityStatus.InReview]: StatusType.InReview,
   [EntityStatus.Unprocessed]: StatusType.Unprocessed,
+  [EntityStatus.Archived]: StatusType.Archived,
 };
 
-export const StatusFilters = Object.values(EntityStatus)
-  .filter((status) => status !== EntityStatus.Deprecated) // Deprecated not in use for this release
-  .map((status) => ({
-    text: status,
-    value: status,
-  }));
+export const StatusFilters = Object.values(EntityStatus).map((status) => ({
+  text: status,
+  value: status,
+}));
 
 export const getGlossaryBreadcrumbs = (fqn: string) => {
   const arr = Fqn.split(fqn);
