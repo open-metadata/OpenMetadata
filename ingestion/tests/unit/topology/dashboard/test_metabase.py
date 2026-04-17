@@ -453,6 +453,14 @@ class MetabaseUnitTest(TestCase):
             "SELECT * FROM new_format_table",
         )
 
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.metabase.chart_source_state = set()
+        list(self.metabase.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
+        assert len(self.metabase.chart_source_state) == 3
+        for fqn in self.metabase.chart_source_state:
+            assert "mock_metabase" in fqn
+
         # Test 8: New format with stages but no native query
         chart_with_empty_stages = MetabaseChart(
             name="test_chart_empty_stages",
