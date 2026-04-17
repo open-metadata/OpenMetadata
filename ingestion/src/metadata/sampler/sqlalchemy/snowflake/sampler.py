@@ -68,6 +68,10 @@ class SnowflakeSampler(SQASampler):
             static = sample_config.get_static_config()
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_method_type = func.system
+        if sample_config:
+            static = sample_config.get_static_config()
+            if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
+                self.sampling_method_type = func.system
 
     def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake
@@ -75,12 +79,16 @@ class SnowflakeSampler(SQASampler):
             static (StaticSamplingConfig): sampling configuration
             selectable (Table): table to sample
         """
+        static = self.sample_config.get_static_config()
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
+                self.sampling_method_type(static.profileSample or 100)
                 self.sampling_method_type(static.profileSample or 100)
             )
 
         return selectable.tablesample(
+            func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS"))
             func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS"))
         )
 

@@ -77,15 +77,16 @@ class PostgresSampler(SQASampler):
             static (StaticSamplingConfig): sampling configuration
             selectable (Table): table to sample
         """
+        static = self.sample_config.get_static_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(self.sampling_fn(static.profileSample or 100))
 
         return selectable
 
-    def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> Query:
+    def get_sample_query(self, *, column=None) -> Query:
+        static = self.sample_config.get_static_config()
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-            selectable = self.set_tablesample(static, self.raw_dataset.__table__)
-            return self._base_sample_query(selectable, column).cte(
+            return self._base_sample_query(column).cte(
                 f"{self.get_sampler_table_name()}_rnd"
             )
 

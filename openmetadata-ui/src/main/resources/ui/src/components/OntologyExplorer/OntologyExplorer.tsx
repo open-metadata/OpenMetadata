@@ -2202,6 +2202,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           <div
             aria-hidden
             className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
+            data-testid="ontology-search-overlay"
           />
         ) : null}
         <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">

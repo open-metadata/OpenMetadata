@@ -103,6 +103,12 @@ class RunnerTest(TestCase):
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
             cls.dataset = sampler.get_dataset()
 

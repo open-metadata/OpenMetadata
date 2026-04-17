@@ -36,7 +36,14 @@ from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
 )
-from metadata.sampler.models import DatabaseAndSchemaConfig, SampleConfig, TableConfig
+from metadata.sampler.models import (
+    DatabaseAndSchemaConfig,
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+    TableConfig,
+)
 
 
 def get_sample_storage_config(

@@ -21,12 +21,7 @@ from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import (
-    ColumnName,
-    DataType,
-    ProfileSampleType,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -116,6 +111,12 @@ class SampleTest(TestCase):
                 service_connection_config=cls.sqlite_conn,
                 ometa_client=None,
                 entity=None,
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
                 sample_config=SampleConfig(
                     profileSampleConfig=ProfileSampleConfig(
                         sampleConfigType=ProfileSampleConfigType.STATIC,
@@ -373,6 +374,12 @@ class SampleTest(TestCase):
                         config=StaticSamplingConfig(profileSample=50.0),
                     )
                 ),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
                 sample_query=stmt,
             )
         sample_data = sampler.fetch_sample_data()
@@ -390,8 +397,13 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=True,
                 ),
                 sample_data_count=5,
@@ -412,8 +424,13 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=False,
                 ),
                 sample_data_count=5,
@@ -434,8 +451,13 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=None,
                 ),
                 sample_data_count=5,
@@ -456,8 +478,13 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=True,
                 ),
                 sample_data_count=5,
@@ -477,8 +504,13 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=100,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=100,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    ),
                     randomizedSample=False,
                 ),
                 sample_data_count=5,

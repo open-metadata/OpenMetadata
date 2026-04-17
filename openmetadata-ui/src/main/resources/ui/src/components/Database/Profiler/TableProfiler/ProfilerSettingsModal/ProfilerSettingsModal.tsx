@@ -183,9 +183,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     } = tableProfilerConfig;
     const staticConfig = profileSampleConfig?.config;
     const profileSample = staticConfig?.profileSample;
-    const profileSampleType = staticConfig?.profileSampleType as
-      | ProfileSampleType
-      | undefined;
+    const profileSampleType = staticConfig?.profileSampleType;
     handleStateChange({
       sqlQuery: profileQuery ?? '',
       profileSample: profileSample,

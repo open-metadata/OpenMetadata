@@ -105,6 +105,13 @@ class SampleTest(TestCase):
                         profileSampleType=ProfileSampleType.PERCENTAGE,
                     ),
                 )
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -134,6 +141,13 @@ class SampleTest(TestCase):
                         profileSampleType=ProfileSampleType.ROWS,
                     ),
                 )
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50,
+                        profileSampleType=ProfileSampleType.ROWS,
+                    ),
+                )
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -156,6 +170,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
                 profileSampleConfig=ProfileSampleConfig(
                     sampleConfigType=ProfileSampleConfigType.STATIC,
                     config=StaticSamplingConfig(
