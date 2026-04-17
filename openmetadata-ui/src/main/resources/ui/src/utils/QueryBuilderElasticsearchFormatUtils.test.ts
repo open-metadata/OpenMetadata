@@ -12,8 +12,9 @@
  */
 
 import { QbUtils } from '@react-awesome-query-builder/antd';
+import { NUMBER_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
-import { SearchOutputType } from '../generated/type/searchOutputType';
 import { elasticSearchFormat } from './QueryBuilderElasticsearchFormatUtils';
 import { getTreeConfig } from './AdvancedSearchUtils';
 
@@ -24,6 +25,24 @@ describe('QueryBuilderElasticsearchFormatUtils', () => {
       searchIndex: SearchIndex.TABLE,
       isExplorePage: true,
     });
+
+    // Make the test deterministic: Advanced Search injects custom property subfields at runtime.
+    // Provide a minimal extension field so QbUtils.checkTree keeps the rule.
+    config.fields.extension = {
+      ...(config.fields.extension ?? {}),
+      subfields: {
+        ...(config.fields.extension?.subfields ?? {}),
+        table: {
+          type: '!group',
+          subfields: {
+            myNumberProperty: {
+              type: 'number',
+              operators: NUMBER_FIELD_OPERATORS,
+            },
+          },
+        },
+      },
+    };
 
     const jsonTree = {
       id: 'root',
