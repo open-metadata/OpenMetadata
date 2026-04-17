@@ -480,7 +480,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     if (prefix != null && !prefix.isEmpty()) {
       return prefix + "*";
     }
-    return clusterAlias.isEmpty() ? "*" : clusterAlias + "_*";
+    return clusterAlias.isEmpty() ? "*" : clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
   }
 
   @Override
