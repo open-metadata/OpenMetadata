@@ -97,13 +97,14 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     await page.goto('/explore/tables?search=sample_data');
     await expect(page.getByTestId('explore-page')).toBeVisible();
 
-    const countApiPromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/search/query')
+    const countApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
     );
 
     await openExportScopeModal(page);
-    const response = await countApiPromise;
-    expect(response.status()).toBe(200);
+    await countApiPromise;
 
     const modalContent = getExportModalContent(page);
 
@@ -169,6 +170,88 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
+  test('Filtered search visible export downloads CSV with the filtered record count', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const searchResultsPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+
+    await page.goto('/explore/tables?search=sample_data');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    await searchResultsPromise;
+    await waitForAllLoadersToDisappear(page);
+
+    await test.step('Apply Service filter from the Explore page', async () => {
+      await page.getByTestId('search-dropdown-Service').click();
+
+      const serviceAggregatePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/aggregate') &&
+          response.url().includes('sample_data') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('search-input').fill('sample_data');
+      await serviceAggregatePromise;
+      await page.getByTestId('sample_data').click();
+      await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
+
+      const filteredQueryPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('update-btn').click();
+      await filteredQueryPromise;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    const filteredCount =
+      await test.step('Read filtered count from the first left panel tab', async () => {
+        const filteredCountText = await page
+          .getByTestId('explore-left-panel')
+          .locator('[role="menuitem"]')
+          .first()
+          .getByTestId('filter-count')
+          .textContent();
+
+        return parseInt(filteredCountText?.trim() ?? '0', 10);
+      });
+
+    await openExportScopeModal(page);
+
+    const modalContent = getExportModalContent(page);
+    await modalContent.locator('input[value="visible"]').click();
+
+    const visibleExportCount =
+      await test.step('Read filtered visible count from the export modal', () =>
+        getExportCountFromModal(modalContent, 'export-scope-visible-count'));
+
+    await test.step('Filtered page count matches the export modal count', async () => {
+      expect(visibleExportCount).toBe(filteredCount);
+    });
+
+    const exportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/export') &&
+        response.status() === 200
+    );
+
+    await modalContent.getByRole('button', { name: 'Export' }).click();
+
+    await test.step('CSV row count matches the filtered record count', async () => {
+      const csvText = await (await exportResponsePromise).text();
+
+      expect(countCsvResponseRows(csvText)).toBe(filteredCount);
+    });
+  });
+
   test('Browse mode visible export downloads CSV with current page row count', async ({
     page,
   }) => {
@@ -215,9 +298,27 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Export is disabled when all matching assets exceed limit', async ({
+  test('Export is disabled when all matching assets exceed 200k', async ({
     page,
   }) => {
+    await page.route('**/api/v1/search/query?*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          took: 1,
+          hits: {
+            total: {
+              value: 200001,
+              relation: 'eq',
+            },
+            hits: [],
+          },
+          aggregations: {},
+        }),
+      });
+    });
+
     await openExportScopeModal(page);
 
     const modalContent = getExportModalContent(page);
@@ -241,14 +342,15 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   }) => {
     test.slow();
 
-    const countApiPromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/search/query')
+    const countApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
     );
 
     await page.goto('/explore/tables?search=sample_data');
     await expect(page.getByTestId('explore-page')).toBeVisible();
-    const countResponse = await countApiPromise;
-    expect(countResponse.status()).toBe(200);
+    await countApiPromise;
 
     await openExportScopeModal(page);
 
