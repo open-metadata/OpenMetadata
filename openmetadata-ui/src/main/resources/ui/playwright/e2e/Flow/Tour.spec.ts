@@ -25,11 +25,6 @@ const waitForTourBadgeWithRetry = async (
 ) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await page.waitForURL('**/tour', { timeout: 60000 });
-      await page.locator('#feedWidgetData').waitFor({
-        state: 'visible',
-        timeout: 60000,
-      });
       await page.locator('[data-tour-elem="badge"]').waitFor({
         state: 'visible',
         timeout,
