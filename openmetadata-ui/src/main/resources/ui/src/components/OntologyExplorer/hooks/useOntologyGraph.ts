@@ -173,6 +173,20 @@ function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   return idx === 1;
 }
 
+function stripNodePositionsForDataMode<T extends { style?: unknown }>(
+  nodes: T[]
+): T[] {
+  return nodes.map((node) => {
+    const style = node.style as Record<string, unknown> | undefined;
+    if (!style || (!('x' in style) && !('y' in style))) {
+      return node;
+    }
+    const { x: _x, y: _y, ...restStyle } = style;
+
+    return { ...node, style: restStyle };
+  });
+}
+
 interface GraphNodeMeta {
   color?: string;
   assetColor?: string;
@@ -1438,15 +1452,7 @@ export function useOntologyGraph({
       try {
         let nodesToUpdate = graphData.nodes ?? [];
         if (isDataMode) {
-          nodesToUpdate = nodesToUpdate.map((node) => {
-            const style = node.style as Record<string, unknown> | undefined;
-            if (!style || (!('x' in style) && !('y' in style))) {
-              return node;
-            }
-            const { x: _x, y: _y, ...restStyle } = style;
-
-            return { ...node, style: restStyle };
-          });
+          nodesToUpdate = stripNodePositionsForDataMode(nodesToUpdate);
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
@@ -1626,15 +1632,7 @@ export function useOntologyGraph({
       try {
         let nodesToUpdate = graphData.nodes ?? [];
         if (isDataMode) {
-          nodesToUpdate = nodesToUpdate.map((node) => {
-            const style = node.style as Record<string, unknown> | undefined;
-            if (!style || (!('x' in style) && !('y' in style))) {
-              return node;
-            }
-            const { x: _x, y: _y, ...restStyle } = style;
-
-            return { ...node, style: restStyle };
-          });
+          nodesToUpdate = stripNodePositionsForDataMode(nodesToUpdate);
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
@@ -1681,18 +1679,13 @@ export function useOntologyGraph({
 
         setClickedEdgeIdRef.current(null);
 
-        const preUpdateTermPositions: Record<string, [number, number]> = {};
+        const preUpdatePositions: Record<string, [number, number]> = {};
         if (isDataMode && !termFingerprintChanged) {
-          const termIds = new Set(
-            inputNodesRef.current
-              .filter((n) => n.type !== 'dataAsset' && n.type !== 'metric')
-              .map((n) => n.id)
-          );
-          termIds.forEach((id) => {
+          inputNodesRef.current.forEach((n) => {
             try {
-              const pos = graph.getElementPosition(id);
+              const pos = graph.getElementPosition(n.id);
               if (pos) {
-                preUpdateTermPositions[id] = [pos[0], pos[1]];
+                preUpdatePositions[n.id] = [pos[0], pos[1]];
               }
             } catch {
               // not yet positioned
@@ -1713,11 +1706,11 @@ export function useOntologyGraph({
           if (
             isDataMode &&
             !termFingerprintChanged &&
-            Object.keys(preUpdateTermPositions).length > 0
+            Object.keys(preUpdatePositions).length > 0
           ) {
             const updates = (graphData.nodes ?? [])
               .map((node) => {
-                const snapshotPos = preUpdateTermPositions[String(node.id)];
+                const snapshotPos = preUpdatePositions[String(node.id)];
                 if (!snapshotPos) {
                   return null;
                 }
