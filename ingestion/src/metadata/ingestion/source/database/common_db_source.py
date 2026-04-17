@@ -756,7 +756,7 @@ class CommonDbSourceService(
                 )
             else:
                 table_constraints = foreign_table_constraints
-        return table_constraints
+        return self._filter_invalid_constraints(columns, table_constraints)
 
     @property
     def connection(self) -> Connection:
