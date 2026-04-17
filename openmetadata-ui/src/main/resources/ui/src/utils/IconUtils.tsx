@@ -227,7 +227,7 @@ export const getEntityAvatarProps = (entity: {
     src: isUrl ? iconURL : undefined,
     className: 'tw:text-white',
     style: {
-      backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
+      backgroundColor: entity.style?.color || 'var(--tw-color-brand-600)',
     },
     placeholderIcon: (isUrl
       ? undefined
