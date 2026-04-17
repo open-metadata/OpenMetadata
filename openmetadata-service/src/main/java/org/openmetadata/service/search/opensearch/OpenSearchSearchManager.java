@@ -14,9 +14,8 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -111,24 +110,19 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           "field_suggest");
 
   // RBAC cache for new Java API — size configurable via cacheMemory.rbacCacheMaxEntries
-  private static volatile LoadingCache<@NotNull String, @NotNull Query> RBAC_CACHE_V2 =
+  // Uses plain Cache (not LoadingCache) — values are loaded via get(key, Callable) at call sites.
+  private static volatile Cache<String, Query> RBAC_CACHE_V2 =
       buildRbacCache(CacheConfiguration.DEFAULT_RBAC_CACHE_MAX_ENTRIES);
 
   public static void initRbacCache(int maxEntries) {
     RBAC_CACHE_V2 = buildRbacCache(maxEntries);
   }
 
-  private static LoadingCache<@NotNull String, @NotNull Query> buildRbacCache(int maxEntries) {
+  private static Cache<String, Query> buildRbacCache(int maxEntries) {
     return CacheBuilder.newBuilder()
         .maximumSize(maxEntries)
         .expireAfterWrite(5, TimeUnit.MINUTES)
-        .build(
-            new CacheLoader<>() {
-              @Override
-              public Query load(String key) {
-                return null;
-              }
-            });
+        .build();
   }
 
   public OpenSearchSearchManager(

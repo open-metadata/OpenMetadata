@@ -139,6 +139,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -9826,6 +9827,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       new ConcurrentHashMap<>();
 
   private static final int MAX_CONCURRENT_BULK_JOBS = 100;
+  private static final Semaphore BULK_JOB_PERMITS = new Semaphore(MAX_CONCURRENT_BULK_JOBS);
 
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
       UriInfo uriInfo,
@@ -9835,13 +9837,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
 
-    // Check capacity before scheduling any async work
-    synchronized (BULK_JOBS) {
-      if (BULK_JOBS.size() >= MAX_CONCURRENT_BULK_JOBS) {
-        throw new jakarta.ws.rs.WebApplicationException(
-            "Too many concurrent bulk jobs (max " + MAX_CONCURRENT_BULK_JOBS + "). Retry later.",
-            jakarta.ws.rs.core.Response.Status.TOO_MANY_REQUESTS);
-      }
+    // Acquire a permit before scheduling — Semaphore is thread-safe and avoids TOCTOU races
+    if (!BULK_JOB_PERMITS.tryAcquire()) {
+      throw new jakarta.ws.rs.WebApplicationException(
+          "Too many concurrent bulk jobs (max " + MAX_CONCURRENT_BULK_JOBS + "). Retry later.",
+          jakarta.ws.rs.core.Response.Status.TOO_MANY_REQUESTS);
     }
 
     String jobId = UUID.randomUUID().toString();
@@ -9890,9 +9890,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
-        (result, throwable) ->
-            CompletableFuture.delayedExecutor(5, TimeUnit.MINUTES)
-                .execute(() -> BULK_JOBS.remove(jobId)));
+        (result, throwable) -> {
+          BULK_JOB_PERMITS.release();
+          CompletableFuture.delayedExecutor(5, TimeUnit.MINUTES)
+              .execute(() -> BULK_JOBS.remove(jobId));
+        });
 
     return mergedJob;
   }

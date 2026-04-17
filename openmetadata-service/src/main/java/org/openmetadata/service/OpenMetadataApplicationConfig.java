@@ -198,7 +198,8 @@ public class OpenMetadataApplicationConfig extends Configuration {
   private QoSConfiguration qosConfiguration;
 
   @JsonProperty("cacheMemory")
-  private CacheConfiguration cacheMemoryConfiguration;
+  @Valid
+  private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
 
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {
