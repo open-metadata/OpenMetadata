@@ -1777,16 +1777,16 @@ class LookerSource(DashboardServiceSource):
                     source_url = chart.result_maker.query.share_url
                 else:
                     source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart.id),
-                        displayName=chart.title or chart.id,
-                        description=Markdown(description) if description else None,
-                        chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=SourceUrl(source_url),
-                        service=self.context.get().dashboard_service,
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.id),
+                    displayName=chart.title or chart.id,
+                    description=Markdown(description) if description else None,
+                    chartType=get_standard_chart_type(chart.type).value,
+                    sourceUrl=SourceUrl(source_url),
+                    service=self.context.get().dashboard_service,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
 
             except Exception as exc:
                 yield Either(
