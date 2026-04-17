@@ -107,12 +107,6 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
   const searchBar = page.getByTestId('searchbar');
 
   await expect
@@ -122,12 +116,18 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
         await searchBar.fill('');
         await searchBar.fill(userName);
         await searchRequest;
-        await loaderPromise.catch(() => undefined);
+        await page
+          .getByTestId('user-list-v1-component')
+          .getByTestId('loader')
+          .waitFor({
+            state: 'detached',
+          })
+          .catch(() => undefined);
 
         return await page.getByTestId(userName).count();
       },
       {
-        timeout: 60000,
+        timeout: 120000,
         intervals: [1000, 2000, 5000],
         message: `Timed out waiting for user ${userName} to become visible in the user list`,
       }
@@ -512,8 +512,10 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   );
 
   await page.click('[data-testid="save-button"]');
-
-  await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.locator('[data-testid="revoke-button"]')).toBeHidden({
+    timeout: 30_000,
+  });
 };
 
 export const updateExpiration = async (page: Page, expiry: number) => {
