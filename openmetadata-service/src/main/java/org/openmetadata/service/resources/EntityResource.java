@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -323,7 +324,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured. With
+   * Redis, invalidation in {@code EntityRepository.invalidateCache} keeps all instances coherent so
+   * cached reads stay fresh. Without Redis we fall back to {@code fromCache=false} to avoid
+   * serving stale reads from a per-instance Guava cache in a multi-instance deployment.
+   */
+  private static boolean isDistributedCacheEnabled() {
+    return CacheBundle.getCachedEntityDao() != null;
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -426,7 +439,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.getByName(uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {

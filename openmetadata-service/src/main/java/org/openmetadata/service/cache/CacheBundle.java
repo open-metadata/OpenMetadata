@@ -5,6 +5,7 @@ import io.dropwizard.core.ConfiguredBundle;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.lifecycle.Managed;
+import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -17,6 +18,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedEntityDao cachedEntityDao;
   private static CachedRelationshipDao cachedRelationshipDao;
   private static CachedTagUsageDao cachedTagUsageDao;
+  private static CachedReadBundle cachedReadBundle;
 
   public CacheBundle() {
     instance = this;
@@ -44,6 +46,8 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     try {
       LOG.info("Initializing cache with provider: {}", cacheConfig.provider);
 
+      CacheMetrics.initialize(Metrics.globalRegistry);
+
       switch (cacheConfig.provider) {
         case redis:
           cacheProvider = new RedisCacheProvider(cacheConfig);
@@ -61,6 +65,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
           new CachedRelationshipDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedTagUsageDao =
           new CachedTagUsageDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
+      cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
 
       environment.lifecycle().manage(new CacheLifecycleManager());
       environment.healthChecks().register("cache", new CacheHealthCheck());
@@ -87,6 +92,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static CachedTagUsageDao getCachedTagUsageDao() {
     return cachedTagUsageDao;
+  }
+
+  public static CachedReadBundle getCachedReadBundle() {
+    return cachedReadBundle;
   }
 
   private static class CacheLifecycleManager implements Managed {

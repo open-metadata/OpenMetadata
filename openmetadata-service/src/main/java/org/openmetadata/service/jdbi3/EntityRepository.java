@@ -216,6 +216,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.cache.CachedReadBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -1536,37 +1537,76 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return bundle;
     }
 
-    List<CollectionDAO.EntityRelationshipObject> toRecords;
-    try (var ignored = phase("readBundleFetchToRelationships")) {
-      toRecords =
-          fetchToRelationshipsForEntity(
-              entity.getId(), entityType, readPlan.getToRelationsByInclude());
-    }
-    List<CollectionDAO.EntityRelationshipObject> fromRecords;
-    try (var ignored = phase("readBundleFetchFromRelationships")) {
-      fromRecords =
-          fetchFromRelationshipsForEntity(
-              entity.getId(), entityType, readPlan.getFromRelationsByInclude());
+    boolean onlyNonDeleted = isReadPlanNonDeletedOnly(readPlan);
+    CachedReadBundle bundleCache = onlyNonDeleted ? CacheBundle.getCachedReadBundle() : null;
+
+    boolean relationsFilledFromCache = false;
+    boolean tagsFilledFromCache = false;
+    if (bundleCache != null) {
+      CachedReadBundle.Dto dto;
+      try (var ignored = phase("readBundleCacheGet")) {
+        dto = bundleCache.get(entityType, entity.getId());
+      }
+      if (dto != null) {
+        if (dto.relations != null && readPlanCoversRelations(readPlan, dto.relations)) {
+          readPlan
+              .getRelationSpecs()
+              .forEach(
+                  (field, spec) -> {
+                    List<EntityReference> refs =
+                        dto.relations.getOrDefault(field, Collections.emptyList());
+                    bundle.putRelations(entity.getId(), field, spec.include(), refs);
+                  });
+          relationsFilledFromCache = true;
+        }
+        if (dto.tagsLoaded && readPlan.shouldLoadTags()) {
+          bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
+          tagsFilledFromCache = true;
+        }
+      }
     }
 
-    readPlan
-        .getRelationSpecs()
-        .forEach(
-            (field, spec) -> {
-              List<EntityReference> references;
-              if (spec.direction() == ReadPlan.RelationDirection.TO) {
-                references =
-                    resolveReferencesFromToRecords(
-                        toRecords, spec.relationship(), spec.relatedEntityType(), spec.include());
-              } else {
-                references =
-                    resolveReferencesFromFromRecords(
-                        fromRecords, spec.relationship(), spec.relatedEntityType(), spec.include());
-              }
-              bundle.putRelations(entity.getId(), field, spec.include(), references);
-            });
+    List<CollectionDAO.EntityRelationshipObject> toRecords = Collections.emptyList();
+    List<CollectionDAO.EntityRelationshipObject> fromRecords = Collections.emptyList();
+    if (!relationsFilledFromCache) {
+      try (var ignored = phase("readBundleFetchToRelationships")) {
+        toRecords =
+            fetchToRelationshipsForEntity(
+                entity.getId(), entityType, readPlan.getToRelationsByInclude());
+      }
+      try (var ignored = phase("readBundleFetchFromRelationships")) {
+        fromRecords =
+            fetchFromRelationshipsForEntity(
+                entity.getId(), entityType, readPlan.getFromRelationsByInclude());
+      }
 
-    if (readPlan.shouldLoadTags()) {
+      List<CollectionDAO.EntityRelationshipObject> toRecordsFinal = toRecords;
+      List<CollectionDAO.EntityRelationshipObject> fromRecordsFinal = fromRecords;
+      readPlan
+          .getRelationSpecs()
+          .forEach(
+              (field, spec) -> {
+                List<EntityReference> references;
+                if (spec.direction() == ReadPlan.RelationDirection.TO) {
+                  references =
+                      resolveReferencesFromToRecords(
+                          toRecordsFinal,
+                          spec.relationship(),
+                          spec.relatedEntityType(),
+                          spec.include());
+                } else {
+                  references =
+                      resolveReferencesFromFromRecords(
+                          fromRecordsFinal,
+                          spec.relationship(),
+                          spec.relatedEntityType(),
+                          spec.include());
+                }
+                bundle.putRelations(entity.getId(), field, spec.include(), references);
+              });
+    }
+
+    if (readPlan.shouldLoadTags() && !tagsFilledFromCache) {
       List<TagLabel> tags;
       try (var ignored = phase("readBundleFetchTags")) {
         tags =
@@ -1595,7 +1635,58 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("readBundlePrefetchEntitySpecific")) {
       prefetchEntitySpecificReadData(entity, readPlan, bundle);
     }
+
+    if (bundleCache != null && (!relationsFilledFromCache || !tagsFilledFromCache)) {
+      CachedReadBundle.Dto dto = buildBundleDto(entity, readPlan, bundle);
+      if (dto != null) {
+        try (var ignored = phase("readBundleCachePut")) {
+          bundleCache.put(entityType, entity.getId(), dto);
+        }
+      }
+    }
     return bundle;
+  }
+
+  private static boolean isReadPlanNonDeletedOnly(ReadPlan readPlan) {
+    return readPlan.getRelationSpecs().values().stream()
+        .allMatch(spec -> spec.include() == Include.NON_DELETED);
+  }
+
+  private static boolean readPlanCoversRelations(
+      ReadPlan readPlan, Map<String, List<EntityReference>> cached) {
+    for (String field : readPlan.getRelationSpecs().keySet()) {
+      if (!cached.containsKey(field)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static CachedReadBundle.Dto buildBundleDto(
+      EntityInterface entity, ReadPlan readPlan, ReadBundle bundle) {
+    CachedReadBundle.Dto dto = new CachedReadBundle.Dto();
+    dto.relations = new HashMap<>();
+    readPlan
+        .getRelationSpecs()
+        .forEach(
+            (field, spec) -> {
+              bundle
+                  .getRelations(entity.getId(), field, spec.include())
+                  .ifPresent(refs -> dto.relations.put(field, refs));
+            });
+    if (readPlan.shouldLoadTags()) {
+      bundle
+          .getTags(entity.getId())
+          .ifPresent(
+              tags -> {
+                dto.tags = tags;
+                dto.tagsLoaded = true;
+              });
+    }
+    if (dto.relations.isEmpty() && !dto.tagsLoaded) {
+      return null;
+    }
+    return dto;
   }
 
   private Map<Include, Set<Integer>> collapseRelationGroups(
@@ -2630,6 +2721,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (cachedRelationshipDao != null) {
         cachedRelationshipDao.invalidateOwners(entityType, entity.getId());
         cachedRelationshipDao.invalidateDomains(entityType, entity.getId());
+      }
+
+      // Invalidate packed read bundle (relationships + tags)
+      var cachedReadBundle = CacheBundle.getCachedReadBundle();
+      if (cachedReadBundle != null) {
+        cachedReadBundle.invalidate(entityType, entity.getId());
       }
 
       // Invalidate tag caches
@@ -8231,6 +8328,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
             entity == null ? "null" : entity.getId());
         throw new IllegalStateException(
             String.format("Invalid entity from database: %s %s", entityType, fqn));
+      }
+
+      // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
+      if (!"user".equals(entityType)) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          try {
+            cachedEntityDao.putByName(entityType, fqn, json);
+            if (entity.getId() != null) {
+              cachedEntityDao.putBase(entityType, entity.getId(), json);
+            }
+          } catch (Exception e) {
+            LOG.debug("Failed to populate Redis on byName miss: {} {}", entityType, fqn, e);
+          }
+        }
       }
 
       return json;

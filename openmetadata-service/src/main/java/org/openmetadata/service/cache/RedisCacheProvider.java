@@ -5,6 +5,7 @@ import io.lettuce.core.RedisURI;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,7 +32,8 @@ public class RedisCacheProvider implements CacheProvider {
       RedisURI uri = buildRedisURI();
       initializeStandalone(uri);
       available = true;
-      LOG.info("Redis cache provider initialized successfully");
+      LOG.info(
+          "Redis cache provider initialized (commandTimeoutMs={})", config.redis.commandTimeoutMs);
     } catch (Exception e) {
       LOG.error("Failed to initialize Redis cache provider", e);
       available = false;
@@ -39,18 +41,15 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   private RedisURI buildRedisURI() {
-    // Parse the URL to handle both "host:port" and "redis://host:port" formats
     String url = config.redis.url;
     RedisURI.Builder builder;
 
     if (url.startsWith("redis://") || url.startsWith("rediss://")) {
-      // Full URL with scheme - use create method
       RedisURI uri = RedisURI.create(url);
       builder =
           RedisURI.Builder.redis(uri.getHost(), uri.getPort())
               .withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
     } else if (url.contains(":")) {
-      // host:port format
       String[] parts = url.split(":");
       String host = parts[0];
       int port = Integer.parseInt(parts[1]);
@@ -58,7 +57,6 @@ public class RedisCacheProvider implements CacheProvider {
           RedisURI.Builder.redis(host, port)
               .withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
     } else {
-      // Just hostname, use default port
       builder =
           RedisURI.Builder.redis(url).withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
     }
@@ -86,20 +84,54 @@ public class RedisCacheProvider implements CacheProvider {
   private void initializeStandalone(RedisURI uri) {
     redisClient = RedisClient.create(uri);
     connection = redisClient.connect();
+    connection.setTimeout(Duration.ofMillis(config.redis.commandTimeoutMs));
     syncCommands = connection.sync();
     LOG.info("Initialized Redis connection");
+  }
+
+  private static CacheMetrics metrics() {
+    return CacheMetrics.getInstance();
+  }
+
+  private static Timer.Sample startReadTimer(CacheMetrics m) {
+    return m != null ? m.startReadTimer() : null;
+  }
+
+  private static Timer.Sample startWriteTimer(CacheMetrics m) {
+    return m != null ? m.startWriteTimer() : null;
+  }
+
+  private static void stopReadTimer(CacheMetrics m, Timer.Sample sample) {
+    if (m != null && sample != null) {
+      m.recordReadTime(sample);
+    }
+  }
+
+  private static void stopWriteTimer(CacheMetrics m, Timer.Sample sample) {
+    if (m != null && sample != null) {
+      m.recordWriteTime(sample);
+    }
   }
 
   @Override
   public Optional<String> get(String key) {
     if (!available) return Optional.empty();
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startReadTimer(m);
     try {
       String value = syncCommands.get(key);
+      if (m != null) {
+        if (value != null) m.recordHit();
+        else m.recordMiss();
+      }
       return Optional.ofNullable(value);
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error getting key: {}", key, e);
       return Optional.empty();
+    } finally {
+      stopReadTimer(m, sample);
     }
   }
 
@@ -107,11 +139,17 @@ public class RedisCacheProvider implements CacheProvider {
   public void set(String key, String value, Duration ttl) {
     if (!available) return;
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
     try {
       SetArgs args = SetArgs.Builder.ex(ttl.getSeconds());
       syncCommands.set(key, value, args);
+      if (m != null) m.recordWrite();
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error setting key: {}", key, e);
+    } finally {
+      stopWriteTimer(m, sample);
     }
   }
 
@@ -119,15 +157,20 @@ public class RedisCacheProvider implements CacheProvider {
   public boolean setIfAbsent(String key, String value, Duration ttl) {
     if (!available) return false;
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
     try {
-      // SET NX EX - set if not exists with expiration
       SetArgs args = SetArgs.Builder.nx().ex(ttl.getSeconds());
       String result = syncCommands.set(key, value, args);
-      // Redis returns "OK" if the key was set, null if it already exists
-      return "OK".equals(result);
+      boolean acquired = "OK".equals(result);
+      if (m != null && acquired) m.recordWrite();
+      return acquired;
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error setting key if absent: {}", key, e);
       return false;
+    } finally {
+      stopWriteTimer(m, sample);
     }
   }
 
@@ -135,10 +178,16 @@ public class RedisCacheProvider implements CacheProvider {
   public void del(String... keys) {
     if (!available || keys.length == 0) return;
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
     try {
       syncCommands.del(keys);
+      if (m != null) m.recordEviction();
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error deleting keys", e);
+    } finally {
+      stopWriteTimer(m, sample);
     }
   }
 
@@ -146,12 +195,21 @@ public class RedisCacheProvider implements CacheProvider {
   public Optional<String> hget(String key, String field) {
     if (!available) return Optional.empty();
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startReadTimer(m);
     try {
       String value = syncCommands.hget(key, field);
+      if (m != null) {
+        if (value != null) m.recordHit();
+        else m.recordMiss();
+      }
       return Optional.ofNullable(value);
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error getting hash field: {} -> {}", key, field, e);
       return Optional.empty();
+    } finally {
+      stopReadTimer(m, sample);
     }
   }
 
@@ -159,13 +217,19 @@ public class RedisCacheProvider implements CacheProvider {
   public void hset(String key, Map<String, String> fields, Duration ttl) {
     if (!available || fields.isEmpty()) return;
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
     try {
       syncCommands.hset(key, fields);
       if (ttl != null && ttl.getSeconds() > 0) {
         syncCommands.expire(key, ttl.getSeconds());
       }
+      if (m != null) m.recordWrite();
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error setting hash fields: {}", key, e);
+    } finally {
+      stopWriteTimer(m, sample);
     }
   }
 
@@ -173,10 +237,16 @@ public class RedisCacheProvider implements CacheProvider {
   public void hdel(String key, String... fields) {
     if (!available || fields.length == 0) return;
 
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
     try {
       syncCommands.hdel(key, fields);
+      if (m != null) m.recordEviction();
     } catch (Exception e) {
+      if (m != null) m.recordError();
       LOG.error("Error deleting hash fields: {}", key, e);
+    } finally {
+      stopWriteTimer(m, sample);
     }
   }
 
@@ -193,7 +263,6 @@ public class RedisCacheProvider implements CacheProvider {
 
     if (available) {
       try {
-        // Get Redis server info
         String info = syncCommands.info("stats");
         String[] lines = info.split("\r?\n");
         for (String line : lines) {
@@ -206,11 +275,9 @@ public class RedisCacheProvider implements CacheProvider {
           }
         }
 
-        // Get DB size
         Long dbSize = syncCommands.dbsize();
         stats.put("keys", dbSize);
 
-        // Calculate hit rate if we have hits and misses
         Long hits = (Long) stats.get("hits");
         Long misses = (Long) stats.get("misses");
         if (hits != null && misses != null) {

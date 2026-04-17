@@ -38,6 +38,7 @@ public class CacheConfig {
     // Connection pool
     public int poolSize = 64;
     public int connectTimeoutMs = 2000;
+    public int commandTimeoutMs = 300;
 
     // AWS ElastiCache IAM authentication
     public AwsConfig aws = new AwsConfig();
