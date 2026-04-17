@@ -43,13 +43,14 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   const { task: taskDetails } = task ?? {};
 
   const taskContent = useMemo(() => {
-    if (
-      entityType === 'glossaryTerm' &&
-      task.task?.type === TaskType.RequestApproval
-    ) {
+    if (task.task?.type === TaskType.RequestApproval) {
       return (
         <>
-          <span className="p-x-xss">{task.message}</span>
+          <span className="p-x-xss">
+            {task.message?.trimStart().startsWith('{')
+              ? t('message.request-approval-notification')
+              : task.message}
+          </span>{' '}
           <Link
             className='className="p-r-xss"'
             to={getEntityLinkFromType(
