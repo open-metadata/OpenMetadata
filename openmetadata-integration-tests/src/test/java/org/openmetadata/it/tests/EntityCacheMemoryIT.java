@@ -203,6 +203,59 @@ class EntityCacheMemoryIT {
             - heapSnapshots.get("after_create_30_tables"));
     LOG.info("  Concurrent fetch storm: +{}MB", fetchGrowth);
     LOG.info("  Total growth: +{}MB", totalGrowth);
+    LOG.info("");
+
+    // --- Per-entity allocation cost analysis ---
+    // Based on code path tracing of EntityRepository.createOrUpdate → postCreate →
+    // ChangeEventHandler
+    int columnsPerTable = COLUMNS_PER_TABLE;
+    LOG.info(
+        "=== PER-TABLE ALLOCATION BUDGET ({}KB entity, {} columns) ===",
+        entityJsonKB,
+        columnsPerTable);
+    LOG.info("  DB storage (serializeForStorage):               ~{}KB", entityJsonKB);
+    LOG.info(
+        "  Search indexing (buildSearchIndexDoc):             ~{}KB",
+        entityJsonKB * 2 + columnsPerTable * 3);
+    LOG.info("    ├─ getMap(entity) full entity→Map:              ~{}KB", entityJsonKB * 2);
+    LOG.info("    ├─ pojoToJson(searchDoc) Map→JSON:              ~{}KB", entityJsonKB);
+    LOG.info(
+        "    └─ indexTableColumns ({} cols × ~3KB):          ~{}KB",
+        columnsPerTable,
+        columnsPerTable * 3);
+    LOG.info("  ChangeEvent (entity embedded + serialized):       ~{}KB", entityJsonKB * 2);
+    LOG.info("    ├─ pojoToMaskedJson(entity):                    ~{}KB", entityJsonKB);
+    LOG.info("    └─ pojoToJson(changeEvent):                     ~{}KB", entityJsonKB + 3);
+    LOG.info("  Redis write-through (dao.findById round-trip):    ~{}KB", entityJsonKB);
+    LOG.info("  RequestEntityCache (pojoToJson for cache):        ~{}KB", entityJsonKB);
+    LOG.info("  Other (relations, inheritance, tags):             ~150KB");
+    int totalPerTableKB =
+        entityJsonKB
+            + (entityJsonKB * 2 + columnsPerTable * 3)
+            + entityJsonKB * 2
+            + entityJsonKB
+            + entityJsonKB
+            + 150;
+    LOG.info(
+        "  TOTAL PER TABLE:                                  ~{}KB (~{}MB)",
+        totalPerTableKB,
+        totalPerTableKB / 1024);
+    LOG.info(
+        "  × {} tables:                                      ~{}MB in allocations",
+        NUM_LARGE_TABLES,
+        NUM_LARGE_TABLES * totalPerTableKB / 1024);
+    LOG.info("");
+    LOG.info("--- Per-fetch allocation budget (GET /api/v1/tables) ---");
+    LOG.info("  Guava cache hit → readValue(JSON):                ~{}KB", entityHeapKB);
+    LOG.info("  setFieldsInternal (10+ DB queries):               ~50KB");
+    LOG.info("  RequestEntityCache put (pojoToJson):              ~{}KB", entityJsonKB);
+    LOG.info("  HTTP response serialization:                      ~{}KB", entityJsonKB);
+    int perFetchKB = entityHeapKB + 50 + entityJsonKB + entityJsonKB;
+    LOG.info("  TOTAL PER FETCH:                                  ~{}KB", perFetchKB);
+    LOG.info(
+        "  × {} concurrent fetches:                          ~{}MB transient allocations",
+        totalFetches,
+        (long) totalFetches * perFetchKB / 1024);
     LOG.info("================================");
 
     // --- Prometheus memory pool breakdown ---
