@@ -103,4 +103,49 @@ public class CachedRelationshipDao {
     cache.hdel(cacheKey, "domains");
     LOG.debug("Invalidated domains cache for entity: {} -> {}", entityType, entityId);
   }
+
+  /**
+   * Cached parent-reference lookup: given a child's id and a relationship, return the cached
+   * {@link EntityReference} of whatever entity contains the child via that relationship. Used to
+   * short-circuit the {@code findFrom(toId, toEntity, relation)} query fired repeatedly during
+   * href assembly (e.g. database -> service chain for every table GET).
+   */
+  public EntityReference getContainer(String childType, UUID childId, int relation) {
+    String key = keys.containerRef(childType, childId, relation);
+    try {
+      Optional<String> cached = cache.get(key);
+      if (cached.isEmpty()) return null;
+      return JsonUtils.readValue(cached.get(), EntityReference.class);
+    } catch (Exception e) {
+      LOG.debug("Bad container cache entry, evicting: {} {}", childType, childId, e);
+      cache.del(key);
+      return null;
+    }
+  }
+
+  public void putContainer(String childType, UUID childId, int relation, EntityReference parent) {
+    if (parent == null) return;
+    try {
+      cache.set(
+          keys.containerRef(childType, childId, relation),
+          JsonUtils.pojoToJson(parent),
+          java.time.Duration.ofSeconds(config.relationshipTtlSeconds));
+    } catch (Exception e) {
+      LOG.debug("Failed to cache container: {} {}", childType, childId, e);
+    }
+  }
+
+  /**
+   * Invalidate every cached parent reference for a child across all relationship types. Called
+   * when the child entity is written so re-parent operations don't leave a stale ref behind.
+   */
+  public void invalidateContainer(String childType, UUID childId) {
+    org.openmetadata.schema.type.Relationship[] values =
+        org.openmetadata.schema.type.Relationship.values();
+    String[] all = new String[values.length];
+    for (int i = 0; i < values.length; i++) {
+      all[i] = keys.containerRef(childType, childId, values[i].ordinal());
+    }
+    cache.del(all);
+  }
 }

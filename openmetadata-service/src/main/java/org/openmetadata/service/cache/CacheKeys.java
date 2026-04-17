@@ -23,6 +23,15 @@ public final class CacheKeys {
     return ns + ":bundle:{" + id.toString() + "}:" + type;
   }
 
+  /**
+   * Cached "find my parent via relationship R" lookup — used to serve href assembly without
+   * re-reading {@code entity_relationship}. Keyed by the child's id with a Redis hash tag so
+   * all parent lookups for the same child route to the same cluster slot.
+   */
+  public String containerRef(String childType, UUID childId, int relation) {
+    return ns + ":parent:{" + childId.toString() + "}:" + childType + ":" + relation;
+  }
+
   public String rel(String type, UUID id, String rel, String dir) {
     return ns + ":rel:" + type + ":" + id.toString() + ":" + rel + ":" + dir;
   }

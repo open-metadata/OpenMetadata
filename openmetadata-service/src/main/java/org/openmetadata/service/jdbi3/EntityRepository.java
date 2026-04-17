@@ -217,6 +217,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedReadBundle;
+import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -1542,6 +1543,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     boolean relationsFilledFromCache = false;
     boolean tagsFilledFromCache = false;
+    boolean certificationFilledFromCache = false;
     boolean holdsLoadLock = false;
     if (bundleCache != null) {
       CachedReadBundle.Dto initialDto;
@@ -1575,6 +1577,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (dto.tagsLoaded && readPlan.shouldLoadTags()) {
           bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
           tagsFilledFromCache = true;
+        }
+        if (dto.certificationLoaded && supportsCertification) {
+          bundle.putCertification(entity.getId(), dto.certification);
+          certificationFilledFromCache = true;
         }
       }
     }
@@ -1620,13 +1626,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     if (readPlan.shouldLoadTags() && !tagsFilledFromCache) {
-      List<TagLabel> tags;
       try (var ignored = phase("readBundleFetchTags")) {
-        tags =
-            batchFetchTags(List.of(entity.getFullyQualifiedName()))
-                .getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList());
+        // One DB round-trip returns both normal tags and any certification tag for this entity.
+        // Previously getCertification() fired a second query (getCertTagsInternalBatch) and
+        // batchFetchTags() discarded the cert rows it had already loaded.
+        fetchAndPutTagsWithCertification(entity, bundle);
       }
-      bundle.putTags(entity.getId(), tags);
     }
 
     if (readPlan.shouldLoadVotes()) {
@@ -1650,8 +1655,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     try {
-      if (bundleCache != null && (!relationsFilledFromCache || !tagsFilledFromCache)) {
-        CachedReadBundle.Dto dto = buildBundleDto(entity, readPlan, bundle);
+      if (bundleCache != null
+          && (!relationsFilledFromCache || !tagsFilledFromCache || !certificationFilledFromCache)) {
+        CachedReadBundle.Dto dto = buildBundleDto(entity, readPlan, bundle, supportsCertification);
         if (dto != null) {
           try (var ignored = phase("readBundleCachePut")) {
             bundleCache.put(entityType, entity.getId(), dto);
@@ -1682,7 +1688,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private static CachedReadBundle.Dto buildBundleDto(
-      EntityInterface entity, ReadPlan readPlan, ReadBundle bundle) {
+      EntityInterface entity, ReadPlan readPlan, ReadBundle bundle, boolean supportsCertification) {
     CachedReadBundle.Dto dto = new CachedReadBundle.Dto();
     dto.relations = new HashMap<>();
     readPlan
@@ -1693,6 +1699,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .getRelations(entity.getId(), field, spec.include())
                   .ifPresent(refs -> dto.relations.put(field, refs));
             });
+    if (supportsCertification && bundle.hasCertification(entity.getId())) {
+      dto.certificationLoaded = true;
+      dto.certification = bundle.getCertificationOrNull(entity.getId());
+    }
     if (readPlan.shouldLoadTags()) {
       bundle
           .getTags(entity.getId())
@@ -1702,7 +1712,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 dto.tagsLoaded = true;
               });
     }
-    if (dto.relations.isEmpty() && !dto.tagsLoaded) {
+    if (dto.relations.isEmpty() && !dto.tagsLoaded && !dto.certificationLoaded) {
       return null;
     }
     return dto;
@@ -2758,6 +2768,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (cachedRelationshipDao != null) {
         cachedRelationshipDao.invalidateOwners(entityType, entity.getId());
         cachedRelationshipDao.invalidateDomains(entityType, entity.getId());
+        // The entity's own parent may have moved — drop any cached container lookup for it.
+        cachedRelationshipDao.invalidateContainer(entityType, entity.getId());
       }
 
       // Invalidate packed read bundle (relationships + tags)
@@ -4687,6 +4699,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected AssetCertification getCertification(T entity) {
     if (!supportsCertification) return null;
+    // Fast path: the read bundle populates certification from the same tag query it already
+    // runs. If the bundle entry exists for this entity (including an explicit "no cert" entry),
+    // skip the extra DB round-trip.
+    ReadBundle readBundle = ReadBundleContext.getCurrent();
+    if (readBundle != null && readBundle.hasCertification(entity.getId())) {
+      return readBundle.getCertificationOrNull(entity.getId());
+    }
     String certClassification = getCertificationClassification();
     if (certClassification == null) return null;
     List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> certTags =
@@ -4695,7 +4714,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .getCertTagsInternalBatch(
                 List.of(entity.getFullyQualifiedName()), certClassification + ".%");
     if (nullOrEmpty(certTags)) return null;
-    TagLabel tagLabel = certTags.get(0).toTagLabel();
+    return buildCertificationFromCertTag(certTags.get(0).toTagLabel());
+  }
+
+  private void fetchAndPutTagsWithCertification(EntityInterface entity, ReadBundle bundle) {
+    String fqn = entity.getFullyQualifiedName();
+    Map<String, List<TagLabel>> byHash =
+        populateTagLabel(
+            listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(List.of(fqn))));
+    String targetHash = FullyQualifiedName.buildHash(fqn);
+    List<TagLabel> all = new ArrayList<>(byHash.getOrDefault(targetHash, Collections.emptyList()));
+    String certClassification = supportsCertification ? getCertificationClassification() : null;
+    AssetCertification certification = null;
+    if (certClassification != null) {
+      List<TagLabel> normal = new ArrayList<>(all.size());
+      for (TagLabel tag : all) {
+        if (certification == null
+            && certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN()))) {
+          certification = buildCertificationFromCertTag(tag);
+        } else {
+          normal.add(tag);
+        }
+      }
+      bundle.putTags(entity.getId(), normal);
+    } else {
+      bundle.putTags(entity.getId(), all);
+    }
+    if (supportsCertification) {
+      bundle.putCertification(entity.getId(), certification);
+    }
+  }
+
+  private static AssetCertification buildCertificationFromCertTag(TagLabel tagLabel) {
     TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
     return new AssetCertification()
         .withTagLabel(tagLabel)
@@ -5238,13 +5288,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       String fromEntityType,
       boolean mustHaveRelationship) {
+    // Container fast-path: when no explicit fromEntityType is pinned, this is the typical
+    // "who contains X" lookup and stays cacheable by child id + relationship.
+    CachedRelationshipDao cacheDao =
+        fromEntityType == null ? CacheBundle.getCachedRelationshipDao() : null;
+    if (cacheDao != null) {
+      EntityReference cached = cacheDao.getContainer(toEntity, toId, relationship.ordinal());
+      if (cached != null) {
+        return cached;
+      }
+    }
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, toEntity, relationship, fromEntityType);
     ensureSingleRelationship(
         toEntity, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
     if (!records.isEmpty()) {
       try {
-        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+        EntityReference parent =
+            Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+        if (cacheDao != null && parent != null) {
+          cacheDao.putContainer(toEntity, toId, relationship.ordinal(), parent);
+        }
+        return parent;
       } catch (EntityNotFoundException e) {
         // Entity was deleted but relationship still exists - return null
         LOG.debug(

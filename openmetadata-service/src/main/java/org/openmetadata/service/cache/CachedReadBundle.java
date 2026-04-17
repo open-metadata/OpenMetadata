@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -31,6 +32,8 @@ public class CachedReadBundle {
     public Map<String, List<EntityReference>> relations;
     public List<TagLabel> tags;
     public boolean tagsLoaded;
+    public AssetCertification certification;
+    public boolean certificationLoaded;
   }
 
   public Dto get(String entityType, UUID entityId) {
@@ -49,7 +52,7 @@ public class CachedReadBundle {
   }
 
   public void put(String entityType, UUID entityId, Dto dto) {
-    if (dto == null || (dto.relations == null && !dto.tagsLoaded)) {
+    if (dto == null || (dto.relations == null && !dto.tagsLoaded && !dto.certificationLoaded)) {
       return;
     }
     String key = keys.bundle(entityType, entityId);
