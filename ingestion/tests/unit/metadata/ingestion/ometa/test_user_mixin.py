@@ -95,6 +95,14 @@ class TestNameSearchQueryEsUrlEncoding:
         )
         raw_filter = query.split("query_filter=")[1].split("&from=")[0]
         assert "&" not in raw_filter
+        assert "/" not in raw_filter
+        assert " " not in raw_filter
+        assert "%26" in raw_filter
+        assert "%2F" in raw_filter
+        assert "%20" in raw_filter
+        decoded = unquote(raw_filter)
+        parsed = json.loads(decoded)
+        assert name in parsed["query"]["query_string"]["query"]
 
 
 class TestGetReferenceByNameExactMatch:

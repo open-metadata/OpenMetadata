@@ -26,7 +26,7 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
-import { addOwner, removeOwner } from '../../utils/entity';
+import { addOwner } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

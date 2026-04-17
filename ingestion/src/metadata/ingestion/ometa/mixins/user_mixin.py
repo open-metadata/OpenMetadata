@@ -70,7 +70,7 @@ class OMetaUserMixin:
         }
 
         return (
-            f"""/search/query?query_filter={quote(json.dumps(query_filter))}"""
+            f"""/search/query?query_filter={quote(json.dumps(query_filter), safe="")}"""
             f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
 
