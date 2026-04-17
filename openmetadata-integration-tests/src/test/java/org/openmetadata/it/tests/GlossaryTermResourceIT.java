@@ -2669,6 +2669,57 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   private static class GlossaryTermResultList extends ResultList<GlossaryTerm> {}
 
   @Test
+  void test_searchGlossaryTermsWithOffsetPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a dedicated glossary for this test
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("offset_glossary"))
+            .withDescription("Glossary for offset pagination test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    // Create 5 terms
+    for (int i = 0; i < 5; i++) {
+      CreateGlossaryTerm create =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("offsetTerm" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Term for offset test");
+      createEntity(create);
+    }
+
+    // Search with no query (empty query path) — page 1
+    ResultList<GlossaryTerm> page1 =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 2, 0);
+    assertNotNull(page1.getData());
+    assertEquals(2, page1.getData().size());
+    assertEquals(5, page1.getPaging().getTotal());
+    assertEquals(0, page1.getPaging().getOffset());
+
+    // Offset=2 skips first 2 rows — this was the bug: offset > 0 with empty query would crash
+    ResultList<GlossaryTerm> page2 =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 2, 2);
+    assertNotNull(page2.getData());
+    assertEquals(2, page2.getData().size());
+    assertEquals(2, page2.getPaging().getOffset());
+
+    // Offset=4 skips first 4 rows — only 1 remaining
+    ResultList<GlossaryTerm> page3 =
+        searchGlossaryTerms(client, null, glossary.getFullyQualifiedName(), null, 2, 4);
+    assertNotNull(page3.getData());
+    assertEquals(1, page3.getData().size());
+    assertEquals(4, page3.getPaging().getOffset());
+
+    // Verify no duplicates across pages
+    List<UUID> allIds = new ArrayList<>();
+    page1.getData().forEach(t -> allIds.add(t.getId()));
+    page2.getData().forEach(t -> allIds.add(t.getId()));
+    page3.getData().forEach(t -> allIds.add(t.getId()));
+    assertEquals(5, new java.util.HashSet<>(allIds).size(), "No duplicates across pages");
+  }
+
+  @Test
   void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
