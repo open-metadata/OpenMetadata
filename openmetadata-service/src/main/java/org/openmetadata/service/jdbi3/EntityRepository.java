@@ -1542,11 +1542,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     boolean relationsFilledFromCache = false;
     boolean tagsFilledFromCache = false;
+    boolean holdsLoadLock = false;
     if (bundleCache != null) {
-      CachedReadBundle.Dto dto;
+      CachedReadBundle.Dto initialDto;
       try (var ignored = phase("readBundleCacheGet")) {
-        dto = bundleCache.get(entityType, entity.getId());
+        initialDto = bundleCache.get(entityType, entity.getId());
       }
+      // Single-flight: on a cold miss, one caller claims a short-lived Redis lock and loads from
+      // DB while other concurrent callers wait for the populate. This caps a stampede's DB hit
+      // count at 1 instead of N regardless of concurrency.
+      if (initialDto == null) {
+        holdsLoadLock = bundleCache.tryAcquireLoadLock(entityType, entity.getId());
+        if (!holdsLoadLock) {
+          try (var ignored = phase("readBundleWaitForLoad")) {
+            initialDto = bundleCache.waitForConcurrentLoad(entityType, entity.getId());
+          }
+        }
+      }
+      final CachedReadBundle.Dto dto = initialDto;
       if (dto != null) {
         if (dto.relations != null && readPlanCoversRelations(readPlan, dto.relations)) {
           readPlan
@@ -1636,12 +1649,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       prefetchEntitySpecificReadData(entity, readPlan, bundle);
     }
 
-    if (bundleCache != null && (!relationsFilledFromCache || !tagsFilledFromCache)) {
-      CachedReadBundle.Dto dto = buildBundleDto(entity, readPlan, bundle);
-      if (dto != null) {
-        try (var ignored = phase("readBundleCachePut")) {
-          bundleCache.put(entityType, entity.getId(), dto);
+    try {
+      if (bundleCache != null && (!relationsFilledFromCache || !tagsFilledFromCache)) {
+        CachedReadBundle.Dto dto = buildBundleDto(entity, readPlan, bundle);
+        if (dto != null) {
+          try (var ignored = phase("readBundleCachePut")) {
+            bundleCache.put(entityType, entity.getId(), dto);
+          }
         }
+      }
+    } finally {
+      if (holdsLoadLock && bundleCache != null) {
+        bundleCache.releaseLoadLock(entityType, entity.getId());
       }
     }
     return bundle;

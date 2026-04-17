@@ -19,6 +19,13 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
+  // Single-flight lock TTLs (milliseconds).
+  // loadLockTtlMs: short ceiling - if the holder crashes, a waiter takes over after this.
+  // loadLockWaitMs: total time a waiter polls for the concurrent load before giving up
+  //                 and doing its own DB load.
+  public int loadLockTtlMs = 3000;
+  public int loadLockWaitMs = 200;
+
   public Redis redis = new Redis();
 
   public static class Redis {
