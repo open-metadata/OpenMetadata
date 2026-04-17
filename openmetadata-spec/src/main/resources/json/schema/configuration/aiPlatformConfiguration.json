@@ -28,6 +28,26 @@
         }
       },
       "required": ["port"]
+    },
+    "contextMemoryConfiguration": {
+      "description": "Tuning for the Context Memory T0 (user preferences) block shipped to the AI Platform via the gRPC user_memory_context field.",
+      "javaType": "org.openmetadata.schema.configuration.ContextMemoryConfiguration",
+      "type": "object",
+      "properties": {
+        "tokenBudget": {
+          "description": "Maximum number of tokens worth of T0 user-preference memories to include. Memories are ranked by freshness + usage and filled in order until the budget or item cap is reached.",
+          "type": "integer",
+          "default": 500,
+          "minimum": 0
+        },
+        "maxItems": {
+          "description": "Maximum number of T0 user-preference memories to include regardless of token budget.",
+          "type": "integer",
+          "default": 5,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -59,6 +79,10 @@
     "grpc": {
       "description": "gRPC configuration for the AI Platform server",
       "$ref": "#/definitions/grpcConfiguration"
+    },
+    "contextMemory": {
+      "description": "Context Memory tuning for the T0 user-preference block assembled by Collate and shipped to the AI Platform.",
+      "$ref": "#/definitions/contextMemoryConfiguration"
     }
   },
   "required": ["host", "port", "grpc"],
