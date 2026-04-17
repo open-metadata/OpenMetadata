@@ -784,6 +784,22 @@ class PartitionWorkerTest {
   }
 
   @Test
+  void initializeKeysetCursorRejectsOffsetsBeyondSupportedRange() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                invokePrivate(
+                    worker,
+                    "initializeKeysetCursor",
+                    new Class<?>[] {String.class, long.class},
+                    "table",
+                    (long) Integer.MAX_VALUE + 2L));
+
+    assertTrue(exception.getMessage().contains("does not support offsets above"));
+  }
+
+  @Test
   void testPartitionResult_RecordWithReaderFailuresDefaultsWarningsToZero() {
     PartitionWorker.PartitionResult result = new PartitionWorker.PartitionResult(10, 2, false, 3);
 

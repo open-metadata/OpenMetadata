@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.ai;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
@@ -125,6 +127,27 @@ class McpExecutionResourceTest {
       ResultList<McpExecution> result = resource.list(securityContext, serverId, null, null, 10);
 
       assertNotNull(result);
+    }
+  }
+
+  @Test
+  void testListRejectsPartialTimeRange() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      McpExecutionRepository mockRepo = mock(McpExecutionRepository.class);
+      Authorizer mockAuth = mock(Authorizer.class);
+      McpExecutionResource resource = createResource(entityMock, mockRepo, mockAuth);
+
+      SecurityContext securityContext = mock(SecurityContext.class);
+      doNothing().when(mockAuth).authorize(any(), any(), any());
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> resource.list(securityContext, null, 1000L, null, 10));
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> resource.list(securityContext, null, null, 2000L, 10));
+
+      verifyNoInteractions(mockRepo);
     }
   }
 
