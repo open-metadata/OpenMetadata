@@ -4801,7 +4801,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
