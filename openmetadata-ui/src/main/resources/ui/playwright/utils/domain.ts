@@ -1395,8 +1395,8 @@ export const verifyDataProductsCount = async (
         },
         {
           message: `Wait for data product search index to show ${expectedCount} results for domain "${domainFqn}"`,
-          timeout: 30_000,
-          intervals: [2_000, 3_000, 5_000],
+          timeout: 90_000,
+          intervals: [2_000, 3_000, 5_000, 5_000],
         }
       )
       .toEqual(expectedCount);
@@ -1621,6 +1621,7 @@ export const renameDomain = async (page: Page, newName: string) => {
   const patchRes = page.waitForResponse('/api/v1/domains/*');
   await page.getByTestId('save-button').click();
   await patchRes;
+  await page.waitForURL((url) => url.pathname.includes(newName));
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();
