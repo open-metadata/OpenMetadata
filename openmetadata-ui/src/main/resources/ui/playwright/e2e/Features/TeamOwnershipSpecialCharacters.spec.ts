@@ -25,7 +25,11 @@ import { expect, test } from '@playwright/test';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { addOwner } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -62,7 +66,7 @@ test.describe(
   { tag: ['@Ownership', '@Teams'] },
   () => {
     test.beforeAll('Create teams and table', async ({ browser }) => {
-      const { apiContext, afterAction } = await getApiContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
       await specialCharTeam.create(apiContext);
       await shortTeam.create(apiContext);
       await longTeam.create(apiContext);
@@ -71,7 +75,7 @@ test.describe(
     });
 
     test.afterAll('Delete teams and table', async ({ browser }) => {
-      const { apiContext, afterAction } = await getApiContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
       await specialCharTeam.delete(apiContext);
       await shortTeam.delete(apiContext);
       await longTeam.delete(apiContext);
