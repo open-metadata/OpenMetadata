@@ -102,6 +102,13 @@ STATUS_MAP = {
     AirflowTaskStatus.SKIPPED.value: StatusType.Skipped.value,
 }
 
+# Upper bound on run_ids sent in a single TaskInstance bulk query. Keeps peak
+# memory bounded and stays well below common DB driver IN(...) parameter caps
+# (SQLite 999, some MySQL configs 1000). yield_pipeline_status chunks the
+# eligible DagRuns by this size and yields statuses per chunk, so a failure in
+# one chunk does not wipe out the whole DAG's status ingestion.
+_TASK_INSTANCE_RUN_ID_CHUNK_SIZE = 50
+
 
 class OMTaskInstance(BaseModel):
     """
@@ -392,27 +399,42 @@ class AirflowSource(PipelineServiceSource):
         try:
             dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
-            # Collect all run_ids up front so we can fetch all TaskInstances in
-            # one query instead of one per DagRun (N+1 avoidance).
-            run_ids = [
-                dag_run.run_id
+            # Filter eligible DagRuns once. task_names is empty when the DAG
+            # has no tasks in the current context, in which case we skip the
+            # DB round trip entirely.
+            task_names = self.context.get().task_names
+            eligible_runs = [
+                dag_run
                 for dag_run in dag_run_list
-                if dag_run.run_id and self.context.get().task_names
+                if dag_run.run_id and task_names
             ]
-            tasks_by_run_id = (
-                self.get_task_instances(
-                    dag_id=pipeline_details.dag_id,
-                    run_ids=run_ids,
-                    serialized_tasks=pipeline_details.tasks,
-                )
-                if run_ids
-                else {}
-            )
 
-            for dag_run in dag_run_list:
-                if (
-                    dag_run.run_id and self.context.get().task_names
-                ):  # Airflow dags can have old task which are turned off/commented out in code
+            # Chunk run_ids so we never send an unbounded IN(...) list to the
+            # DB and so we can stream per-run statuses without buffering every
+            # TaskInstance for the whole DAG in memory at once. A failure in
+            # one chunk is logged and the remaining chunks still emit.
+            for start in range(
+                0, len(eligible_runs), _TASK_INSTANCE_RUN_ID_CHUNK_SIZE
+            ):
+                chunk = eligible_runs[
+                    start : start + _TASK_INSTANCE_RUN_ID_CHUNK_SIZE
+                ]
+                try:
+                    tasks_by_run_id = self.get_task_instances(
+                        dag_id=pipeline_details.dag_id,
+                        run_ids=[dag_run.run_id for dag_run in chunk],
+                        serialized_tasks=pipeline_details.tasks,
+                    )
+                except Exception as chunk_exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed TaskInstance chunk for "
+                        f"{pipeline_details.dag_id} "
+                        f"(runs {start}-{start + len(chunk)}) - {chunk_exc}"
+                    )
+                    continue
+
+                for dag_run in chunk:
                     tasks = tasks_by_run_id.get(dag_run.run_id, [])
 
                     task_statuses = [
@@ -427,7 +449,7 @@ class AirflowSource(PipelineServiceSource):
                             ),  # Might be None for running tasks
                         )  # Log link might not be present in all Airflow versions
                         for task in tasks
-                        if task.task_id in self.context.get().task_names
+                        if task.task_id in task_names
                     ]
 
                     # DagRun objects are built with logical_date (SDK is Airflow 3.x)

@@ -1380,3 +1380,162 @@ class TestAirflow(TestCase):
         # Requested run is populated; caller uses .get(run_id, []) for stray
         self.assertIn("run_requested", result)
         self.assertEqual(len(result["run_requested"]), 1)
+
+    def test_yield_pipeline_status_chunks_run_ids(self):
+        """
+        Defense-in-depth: even though run_ids is already bounded by
+        numberOfStatus upstream, yield_pipeline_status must chunk the calls
+        to get_task_instances by _TASK_INSTANCE_RUN_ID_CHUNK_SIZE so that
+        we never send an unbounded IN(...) list to the DB and so that a
+        failed chunk does not wipe out the rest of the DAG's statuses.
+
+        With 125 eligible runs and a chunk size of 50 we expect exactly
+        3 calls (50 + 50 + 25) to get_task_instances and 125 yielded
+        pipeline statuses.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from metadata.ingestion.source.pipeline.airflow import metadata as airflow_module
+
+        total_runs = 125
+        chunk_size = 50
+        expected_calls = 3
+
+        dag_runs = []
+        for i in range(total_runs):
+            dag_run = MagicMock()
+            dag_run.dag_id = "my_dag"
+            dag_run.run_id = f"run_{i}"
+            dag_run.state = "success"
+            dag_run.logical_date = None
+            dag_run.start_date = None
+            dag_runs.append(dag_run)
+
+        pipeline_details = MagicMock()
+        pipeline_details.dag_id = "my_dag"
+        pipeline_details.tasks = [AirflowTask(task_id="t1")]
+
+        context_value = MagicMock()
+        context_value.task_names = ["t1"]
+        context_value.pipeline_service = "svc"
+        context_value.pipeline = "my_dag"
+
+        bulk_call_log = []
+
+        def fake_get_task_instances(dag_id, run_ids, serialized_tasks):
+            bulk_call_log.append(list(run_ids))
+            return {run_id: [] for run_id in run_ids}
+
+        with patch.object(
+            airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size
+        ), patch.object(
+            self.airflow, "get_pipeline_status", return_value=dag_runs
+        ), patch.object(
+            self.airflow, "get_task_instances", side_effect=fake_get_task_instances
+        ), patch.object(
+            self.airflow, "context", MagicMock(get=MagicMock(return_value=context_value))
+        ), patch.object(
+            self.airflow, "metadata", MagicMock()
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+            return_value="svc.my_dag",
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
+            return_value=1,
+        ):
+            results = list(self.airflow.yield_pipeline_status(pipeline_details))
+
+        # Exactly ceil(total_runs / chunk_size) bulk queries
+        self.assertEqual(len(bulk_call_log), expected_calls)
+
+        # Every chunk respects the configured bound
+        for chunk in bulk_call_log:
+            self.assertLessEqual(len(chunk), chunk_size)
+
+        # Chunk sizes for 125 with chunk_size=50 are 50, 50, 25
+        self.assertEqual([len(c) for c in bulk_call_log], [50, 50, 25])
+
+        # Every eligible run_id is covered exactly once, in order
+        flattened = [run_id for chunk in bulk_call_log for run_id in chunk]
+        self.assertEqual(flattened, [f"run_{i}" for i in range(total_runs)])
+
+        # One PipelineStatus is yielded per eligible DagRun
+        self.assertEqual(len(results), total_runs)
+        for either in results:
+            self.assertIsNone(either.left)
+            self.assertIsNotNone(either.right)
+
+    def test_yield_pipeline_status_chunk_failure_does_not_block_other_chunks(self):
+        """
+        If one chunk's get_task_instances call raises, yield_pipeline_status
+        must log the failure and keep processing the remaining chunks. The
+        runs in the failed chunk produce no statuses, but the rest of the
+        DAG still gets its statuses ingested.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from metadata.ingestion.source.pipeline.airflow import metadata as airflow_module
+
+        total_runs = 30
+        chunk_size = 10  # -> 3 chunks of 10
+
+        dag_runs = []
+        for i in range(total_runs):
+            dag_run = MagicMock()
+            dag_run.dag_id = "my_dag"
+            dag_run.run_id = f"run_{i}"
+            dag_run.state = "success"
+            dag_run.logical_date = None
+            dag_run.start_date = None
+            dag_runs.append(dag_run)
+
+        pipeline_details = MagicMock()
+        pipeline_details.dag_id = "my_dag"
+        pipeline_details.tasks = [AirflowTask(task_id="t1")]
+
+        context_value = MagicMock()
+        context_value.task_names = ["t1"]
+        context_value.pipeline_service = "svc"
+        context_value.pipeline = "my_dag"
+
+        call_counter = {"n": 0}
+
+        def fake_get_task_instances(dag_id, run_ids, serialized_tasks):
+            call_counter["n"] += 1
+            # Fail the middle chunk only
+            if call_counter["n"] == 2:
+                raise RuntimeError("simulated chunk failure")
+            return {run_id: [] for run_id in run_ids}
+
+        with patch.object(
+            airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size
+        ), patch.object(
+            self.airflow, "get_pipeline_status", return_value=dag_runs
+        ), patch.object(
+            self.airflow, "get_task_instances", side_effect=fake_get_task_instances
+        ), patch.object(
+            self.airflow, "context", MagicMock(get=MagicMock(return_value=context_value))
+        ), patch.object(
+            self.airflow, "metadata", MagicMock()
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+            return_value="svc.my_dag",
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
+            return_value=1,
+        ):
+            results = list(self.airflow.yield_pipeline_status(pipeline_details))
+
+        # All 3 chunks were attempted even though the middle one raised
+        self.assertEqual(call_counter["n"], 3)
+
+        # Chunks 1 (runs 0-9) and 3 (runs 20-29) produced statuses; chunk 2
+        # (runs 10-19) was skipped. Total = 20 successful statuses, no lefts.
+        self.assertEqual(len(results), 20)
+        for either in results:
+            self.assertIsNone(either.left)
+            self.assertIsNotNone(either.right)
+
+        yielded_run_ids = {either.right.pipeline_status.executionId for either in results}
+        expected_run_ids = {f"run_{i}" for i in list(range(0, 10)) + list(range(20, 30))}
+        self.assertEqual(yielded_run_ids, expected_run_ids)
