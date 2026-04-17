@@ -115,7 +115,7 @@ const CodeEditor = ({
                 icon={<CopyIcon height={16} width={16} />}
                 size="small"
                 type="text"
-                onClick={onCopyToClipBoard}
+                onClick={() => onCopyToClipBoard()}
               />
             </Tooltip>
           </div>

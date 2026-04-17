@@ -23,8 +23,7 @@ import {
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
-import { highlightCode } from '@codemirror/language';
-import { classHighlighter } from '@lezer/highlight';
+import { classHighlighter, highlightCode } from '@lezer/highlight';
 
 import katex from 'katex';
 import React from 'react';
@@ -119,44 +118,6 @@ const runHighlight = (
   }
 
   return fragments;
-};
-
-const getHTMLTokens = (node: MdNode): HTMLToken[] => {
-  const blockNode = node as CodeBlockMdNode;
-
-  // Parse inline markdown to html string
-  const htmlContent = MarkdownToHTMLConverter.makeHtml(blockNode.literal ?? '');
-
-  return [
-    {
-      type: 'openTag',
-      tagName: 'div',
-      outerNewLine: true,
-      classNames: ['admonition', `admonition_${blockNode.info}`],
-    },
-    {
-      type: 'html',
-      content: htmlContent,
-      outerNewLine: true,
-    },
-    { type: 'closeTag', tagName: 'div', outerNewLine: true },
-  ];
-};
-
-export const CodeMirrorLanguageAliases: Readonly<Record<string, string>> = {
-  // Mappings for C-like languages https://codemirror.net/5/mode/clike/index.html
-  c: 'text/x-csrc',
-  'c++': 'text/x-c++src',
-  java: 'text/x-java',
-  csharp: 'text/x-csharp',
-  scala: 'text/x-scala',
-  kotlin: 'text/x-kotlin',
-  objectivec: 'text/x-objectivec',
-  'objectivec++': 'text/x-objectivec++',
-  // Aliases for convenience
-  js: 'javascript',
-  py: 'python',
-  cpp: 'text/x-c++src',
 };
 
 export const customHTMLRenderer: CustomHTMLRenderer = {

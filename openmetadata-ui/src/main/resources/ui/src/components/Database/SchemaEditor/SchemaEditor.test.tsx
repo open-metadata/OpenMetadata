@@ -211,6 +211,13 @@ describe('SchemaEditor component test', () => {
 
     it('Should reset scrollTop via requestAnimationFrame after refresh', () => {
       jest.useFakeTimers();
+      const rAFSpy = jest
+        .spyOn(window, 'requestAnimationFrame')
+        .mockImplementation((cb: FrameRequestCallback) => {
+          cb(0);
+
+          return 0;
+        });
       render(<SchemaEditor {...mockProps} refreshEditor />);
 
       act(() => {
@@ -218,8 +225,9 @@ describe('SchemaEditor component test', () => {
       });
 
       expect(mockView.requestMeasure).toHaveBeenCalled();
-      expect(window.requestAnimationFrame).toHaveBeenCalled();
+      expect(rAFSpy).toHaveBeenCalled();
 
+      rAFSpy.mockRestore();
       jest.useRealTimers();
     });
   });
