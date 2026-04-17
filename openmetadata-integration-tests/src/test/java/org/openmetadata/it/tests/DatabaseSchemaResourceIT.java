@@ -24,8 +24,11 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.ProfileSampleConfig;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -435,9 +438,15 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
       if (i % 2 == 0) {
         org.openmetadata.schema.type.DatabaseSchemaProfilerConfig profilerConfig =
             new org.openmetadata.schema.type.DatabaseSchemaProfilerConfig()
-                .withProfileSampleType(
-                    org.openmetadata.schema.type.TableProfilerConfig.ProfileSampleType.PERCENTAGE)
-                .withProfileSample(50.0);
+                .withProfileSampleConfig(
+                    new ProfileSampleConfig()
+                        .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
+                        .withConfig(
+                            new StaticSamplingConfig()
+                                .withProfileSample(50.0)
+                                .withProfileSampleType(
+                                    org.openmetadata.schema.type.TableProfile.ProfileSampleType
+                                        .PERCENTAGE)));
 
         // Use dedicated SDK method to add profiler config
         schema = client.databaseSchemas().addProfilerConfig(schema.getId(), profilerConfig);
@@ -479,10 +488,15 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
           assertNotNull(
               schema.getDatabaseSchemaProfilerConfig(),
               "Even-indexed schema should have profiler config");
+          ProfileSampleConfig psc =
+              schema.getDatabaseSchemaProfilerConfig().getProfileSampleConfig();
+          assertNotNull(psc, "ProfileSampleConfig should be set");
+          StaticSamplingConfig staticConfig =
+              JsonUtils.convertValue(psc.getConfig(), StaticSamplingConfig.class);
           assertEquals(
-              org.openmetadata.schema.type.TableProfilerConfig.ProfileSampleType.PERCENTAGE,
-              schema.getDatabaseSchemaProfilerConfig().getProfileSampleType());
-          assertEquals(50.0, schema.getDatabaseSchemaProfilerConfig().getProfileSample());
+              org.openmetadata.schema.type.TableProfile.ProfileSampleType.PERCENTAGE,
+              staticConfig.getProfileSampleType());
+          assertEquals(50.0, staticConfig.getProfileSample());
         } else {
           assertTrue(
               schema.getDatabaseSchemaProfilerConfig() == null,
@@ -513,8 +527,8 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
               bulkSchema.getDatabaseSchemaProfilerConfig(),
               "Profiler config should be present in bulk fetch if present in individual fetch");
           assertEquals(
-              individualSchema.getDatabaseSchemaProfilerConfig().getProfileSampleType(),
-              bulkSchema.getDatabaseSchemaProfilerConfig().getProfileSampleType(),
+              individualSchema.getDatabaseSchemaProfilerConfig().getProfileSampleConfig(),
+              bulkSchema.getDatabaseSchemaProfilerConfig().getProfileSampleConfig(),
               "Profiler config should match");
         } else {
           assertTrue(

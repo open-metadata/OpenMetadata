@@ -55,7 +55,9 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -726,11 +728,20 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Validate the request content
     DatabaseSchema databaseSchema = find(databaseSchemaId, Include.NON_DELETED);
 
-    if (databaseSchemaProfilerConfig.getProfileSampleType() != null
-        && databaseSchemaProfilerConfig.getProfileSample() != null) {
-      EntityUtil.validateProfileSample(
-          databaseSchemaProfilerConfig.getProfileSampleType().toString(),
-          databaseSchemaProfilerConfig.getProfileSample());
+    ProfileSampleConfig profileSampleConfig = databaseSchemaProfilerConfig.getProfileSampleConfig();
+    if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+      ProfileSampleConfig.SampleConfigType sampleConfigType =
+          profileSampleConfig.getSampleConfigType();
+      if (!nullOrEmpty(sampleConfigType)
+          && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+        StaticSamplingConfig staticConfig =
+            JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+        if (staticConfig.getProfileSampleType() != null
+            && staticConfig.getProfileSample() != null) {
+          EntityUtil.validateProfileSample(
+              staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+        }
+      }
     }
 
     daoCollection
