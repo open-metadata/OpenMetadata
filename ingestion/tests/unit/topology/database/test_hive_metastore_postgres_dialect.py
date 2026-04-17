@@ -40,6 +40,7 @@ class TestHivePostgresMetastoreDialectGetTableNames:
         assert "VIRTUAL_VIEW" in executed_query
         assert "!=" in executed_query
         assert result == ["table1", "table2"]
+        assert mock_connection.execute.call_args[0][1] == {"schema": "test_schema"}
 
     def test_get_table_names_query_includes_null_tbl_type(self):
         mock_connection = Mock()
@@ -71,8 +72,9 @@ class TestHivePostgresMetastoreDialectGetTableNames:
 
         executed_query = str(mock_connection.execute.call_args[0][0])
         assert "DBS" in executed_query
-        assert "my_schema" in executed_query
+        assert ":schema" in executed_query
         assert result == ["my_table"]
+        assert mock_connection.execute.call_args[0][1] == {"schema": "my_schema"}
 
     def test_get_table_names_without_schema(self):
         mock_connection = Mock()
@@ -85,6 +87,7 @@ class TestHivePostgresMetastoreDialectGetTableNames:
         assert "IS NULL" in executed_query.upper()
         assert "DBS" not in executed_query
         assert result == ["table_a"]
+        assert mock_connection.execute.call_args[0][1] == {}
 
     def test_get_table_names_returns_empty_when_no_tables(self):
         mock_connection = Mock()
@@ -129,8 +132,12 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
         self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         executed_query = str(mock_connection.execute.call_args[0][0])
-        assert "test_schema" in executed_query
+        assert ":schema" in executed_query
         assert '"DBS"' in executed_query
+        assert mock_connection.execute.call_args[0][1] == {
+            "schema": "test_schema",
+            "table_name": "test_table",
+        }
 
     def test_get_table_columns_without_schema(self):
         mock_connection = Mock()
@@ -141,9 +148,10 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
         self.dialect._get_table_columns(mock_connection, "test_table", None)
 
         executed_query = str(mock_connection.execute.call_args[0][0])
-        assert "test_table" in executed_query
+        assert ":table_name" in executed_query
         assert '"COLUMNS_V2"' in executed_query
         assert '"PARTITION_KEYS"' in executed_query
+        assert mock_connection.execute.call_args[0][1] == {"table_name": "test_table"}
 
     def test_get_table_columns_uses_quoted_identifiers(self):
         """Postgres dialect uses double-quoted identifiers for case-sensitivity."""

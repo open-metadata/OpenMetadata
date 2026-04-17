@@ -14,6 +14,8 @@ SQL Queries used during ingestion
 
 import textwrap
 
-HIVE_GET_COMMENTS = textwrap.dedent("""
+HIVE_GET_COMMENTS = textwrap.dedent(
+    """
     describe formatted {schema_name}.{table_name}
-    """)
+    """
+)

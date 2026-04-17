@@ -13,7 +13,7 @@ Hive Metastore MSSQL Dialect Mixin
 """
 
 from sqlalchemy import text
-from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
+from sqlalchemy.dialects.mssql.base import MSDialect
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source.database.hive.metastore_dialects.mixin import (
@@ -29,7 +29,7 @@ logger = ingestion_logger()
 
 
 # pylint: disable=abstract-method
-class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
+class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect):
     """
     MSSQL metastore dialect class for Hive metastore backed by SQL Server.
     Uses unquoted identifiers and supports CTEs.
@@ -49,21 +49,24 @@ class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
 
     # pylint: disable=arguments-differ
     def get_view_names(self, connection, schema=None, **kw):
-        query = self._get_table_names_base_query(schema=schema)
+        query, params = self._get_table_names_base_query(schema=schema)
         query += " WHERE TBL_TYPE = 'VIRTUAL_VIEW'"
-        view_names = [row[0] for row in connection.execute(text(query))]
+        view_names = [row[0] for row in connection.execute(text(query), params)]
         logger.debug(f"Fetched view names for schema '{schema}': {view_names}")
         return view_names
 
     def _get_table_columns(self, connection, table_name, schema):
+        params = {"table_name": table_name}
         schema_join = (
-            f"""
+            """
             JOIN DBS db ON tbsl.DB_ID = db.DB_ID
-            AND db.NAME = '{schema}'
+            AND db.NAME = :schema
         """
             if schema
             else ""
         )
+        if schema:
+            params["schema"] = schema
 
         query = f"""
             WITH regular_columns AS (
@@ -75,7 +78,7 @@ class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
                 JOIN CDS cds ON col.CD_ID = cds.CD_ID
                 JOIN SDS sds ON sds.CD_ID = cds.CD_ID
                 JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
-                    AND tbsl.TBL_NAME = '{table_name}'
+                    AND tbsl.TBL_NAME = :table_name
                 {schema_join}
             ),
             partition_columns AS (
@@ -85,25 +88,27 @@ class HiveMssqlMetaStoreDialect(HiveMetaStoreDialectMixin, MSDialect_pyodbc):
                     pk.PKEY_COMMENT AS COMMENT
                 FROM PARTITION_KEYS pk
                 JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
-                    AND tbsl.TBL_NAME = '{table_name}'
+                    AND tbsl.TBL_NAME = :table_name
                 {schema_join}
             )
             SELECT * FROM regular_columns
             UNION ALL
             SELECT * FROM partition_columns
         """
-        return connection.execute(text(query)).fetchall()
+        return connection.execute(text(query), params).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
         query = "SELECT TBL_NAME FROM TBLS tbl"
+        params = {}
         if schema:
-            query += f" JOIN DBS db ON tbl.DB_ID = db.DB_ID AND db.NAME = '{schema}'"
-        return query
+            query += " JOIN DBS db ON tbl.DB_ID = db.DB_ID AND db.NAME = :schema"
+            params["schema"] = schema
+        return query, params
 
     def get_table_names(self, connection, schema=None, **kw):
-        query = self._get_table_names_base_query(schema=schema)
+        query, params = self._get_table_names_base_query(schema=schema)
         query += " WHERE (TBL_TYPE != 'VIRTUAL_VIEW' OR TBL_TYPE IS NULL)"
-        table_names = [row[0] for row in connection.execute(text(query))]
+        table_names = [row[0] for row in connection.execute(text(query), params)]
         logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
         return table_names
 

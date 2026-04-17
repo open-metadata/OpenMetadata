@@ -68,11 +68,15 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         self.assertIn("PARTITION_KEYS", executed_query)
         self.assertIn("TBLS", executed_query)
 
-        # Verify the query includes the table name
-        self.assertIn("test_table", executed_query)
+        # Verify the query uses bound parameters (no string interpolation)
+        self.assertIn(":table_name", executed_query)
+        self.assertIn(":schema", executed_query)
+        self.assertEqual(
+            mock_connection.execute.call_args[0][1],
+            {"schema": "test_schema", "table_name": "test_table"},
+        )
 
         # Verify the query includes the schema join
-        self.assertIn("test_schema", executed_query)
         self.assertIn("DBS", executed_query)
 
         # Verify the result
@@ -109,6 +113,11 @@ class TestHiveMySQLMetastoreDialect(TestCase):
 
         # Verify UNION ALL is present
         self.assertIn("UNION ALL", executed_query.upper())
+        self.assertIn(":table_name", executed_query)
+        self.assertEqual(
+            mock_connection.execute.call_args[0][1],
+            {"table_name": "test_table"},
+        )
 
         # Verify the result
         self.assertEqual(len(result), 1)
@@ -203,6 +212,7 @@ class TestHiveMySQLMetastoreDialectGetTableNames:
         assert "VIRTUAL_VIEW" in executed_query
         assert "!=" in executed_query
         assert result == ["table1", "table2"]
+        assert mock_connection.execute.call_args[0][1] == {"schema": "test_schema"}
 
     def test_get_table_names_query_includes_null_tbl_type(self):
         mock_connection = Mock()
@@ -234,8 +244,9 @@ class TestHiveMySQLMetastoreDialectGetTableNames:
 
         executed_query = str(mock_connection.execute.call_args[0][0])
         assert "DBS" in executed_query
-        assert "my_schema" in executed_query
+        assert ":schema" in executed_query
         assert result == ["my_table"]
+        assert mock_connection.execute.call_args[0][1] == {"schema": "my_schema"}
 
     def test_get_table_names_without_schema(self):
         mock_connection = Mock()
@@ -248,6 +259,7 @@ class TestHiveMySQLMetastoreDialectGetTableNames:
         assert "IS NULL" in executed_query.upper()
         assert "DBS" not in executed_query
         assert result == ["table_a"]
+        assert mock_connection.execute.call_args[0][1] == {}
 
     def test_get_table_names_returns_empty_when_no_tables(self):
         mock_connection = Mock()

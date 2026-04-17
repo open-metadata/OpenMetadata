@@ -120,9 +120,9 @@ def get_connection(connection: HiveConnection) -> Engine:
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root["kerberos_service_name"] = (
-            connection.kerberosServiceName
-        )
+        connection.connectionArguments.root[
+            "kerberos_service_name"
+        ] = connection.kerberosServiceName
 
     # SSL cert paths (ssl_ca_certs, ssl_certfile, ssl_keyfile) are set by ssl_manager.setup_ssl()
     # via SSLManager.create_temp_file(). Do not assign sslConfig fields here directly —
@@ -238,6 +238,9 @@ def _(connection: OracleConnection):
     from metadata.ingestion.source.database.hive.metastore_dialects.oracle import (  # nopycln: import
         HiveOracleMetaStoreDialect,
     )
+    from metadata.ingestion.source.database.oracle.connection import (
+        OracleConnection as OracleConnectionHandler,
+    )
 
     class CustomOracleScheme(Enum):
         HIVE_ORACLE = HIVE_ORACLE_SCHEME
@@ -252,7 +255,7 @@ def _(connection: OracleConnection):
 
     return create_generic_db_connection(
         connection=custom_connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=OracleConnectionHandler.get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 
