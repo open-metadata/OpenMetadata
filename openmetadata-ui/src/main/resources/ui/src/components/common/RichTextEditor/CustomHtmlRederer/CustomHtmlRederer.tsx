@@ -83,9 +83,7 @@ const runHighlight = (code: string, langName: string): React.ReactElement[] => {
   const langExt = getLanguageExtensionByName(langName);
 
   if (!langExt) {
-    fragments.push(<React.Fragment key={0}>{code}</React.Fragment>);
-
-    return fragments;
+    return [<React.Fragment key={0}>{code}</React.Fragment>];
   }
 
   const lang = langExt.language;
