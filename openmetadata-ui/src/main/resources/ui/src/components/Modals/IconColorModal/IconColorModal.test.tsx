@@ -15,6 +15,38 @@ import { Style } from '../../../generated/type/schema';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 import IconColorModal from './IconColorModal';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onPress, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onPress}>
+        {children}
+      </button>
+    )),
+  Dialog: Object.assign(
+    jest.fn().mockImplementation(({ children, title }) => (
+      <div role="dialog">
+        <div>{title}</div>
+        {children}
+      </div>
+    )),
+    {
+      Content: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+      Footer: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
+    }
+  ),
+  Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  ModalOverlay: jest
+    .fn()
+    .mockImplementation(({ children, isOpen }) =>
+      isOpen ? <div>{children}</div> : null
+    ),
+}));
+
 const mockOnSubmit = jest.fn();
 const mockOnCancel = jest.fn();
 

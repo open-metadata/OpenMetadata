@@ -40,6 +40,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
@@ -253,6 +255,128 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
     return searchRepository.search(request, subjectContext);
+  }
+
+  @GET
+  @Path("/export")
+  @Produces("text/csv; charset=utf-8")
+  @Operation(
+      operationId = "exportSearchResults",
+      summary = "Export search results as CSV (streaming)",
+      description =
+          "Exports the current search results as a streaming CSV download. "
+              + "The response is streamed directly to the client without buffering the entire result set in memory.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "CSV file stream",
+            content = @Content(mediaType = "text/csv; charset=utf-8"))
+      })
+  public Response exportSearchResults(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search Query Text") @DefaultValue("*") @QueryParam("q")
+          String query,
+      @Parameter(description = "ElasticSearch Index name, defaults to table")
+          @DefaultValue("table")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(
+              description = "Sort order asc for ascending or desc for descending, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Maximum number of rows to export. When null, exports all matching results up to the hard cap.")
+          @QueryParam("size")
+          Integer size,
+      @Parameter(
+              description =
+                  "Starting offset for export. Use with size to export a specific page of results (e.g., from=30&size=15 for page 3).")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from)
+      throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    SearchRequest request =
+        buildExportSearchRequest(
+            subjectContext,
+            query,
+            index,
+            deleted,
+            queryFilter,
+            postFilter,
+            sortFieldParam,
+            sortOrder);
+
+    int totalHits = searchRepository.countSearchResults(request, subjectContext);
+    final int effectiveTotal =
+        Math.max(
+            (size != null && size > 0) ? Math.min(size, totalHits - from) : totalHits - from, 0);
+
+    if (effectiveTotal > SearchResultCsvExporter.MAX_EXPORT_ROWS) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              String.format(
+                  "Results contain %d rows, max is %d. Please add filters to reduce the result set.",
+                  effectiveTotal, SearchResultCsvExporter.MAX_EXPORT_ROWS))
+          .type(MediaType.TEXT_PLAIN)
+          .build();
+    }
+
+    StreamingOutput stream =
+        output ->
+            searchRepository.exportSearchResultsCsvStream(
+                request, subjectContext, effectiveTotal, from, output);
+
+    return Response.ok(stream)
+        .header("Content-Disposition", "attachment; filename=\"search_export.csv\"")
+        .build();
+  }
+
+  private SearchRequest buildExportSearchRequest(
+      SubjectContext subjectContext,
+      String query,
+      String index,
+      Boolean deleted,
+      String queryFilter,
+      String postFilter,
+      String sortFieldParam,
+      String sortOrder) {
+    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+
+    List<EntityReference> domains = new ArrayList<>();
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    return new SearchRequest()
+        .withQuery(resolvedQuery)
+        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+        .withQueryFilter(queryFilter)
+        .withPostFilter(postFilter)
+        .withDeleted(deleted)
+        .withSortFieldParam(sortFieldParam)
+        .withSortOrder(sortOrder)
+        .withDomains(domains)
+        .withApplyDomainFilter(
+            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
   }
 
   @POST

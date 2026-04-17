@@ -27,12 +27,14 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
     Datasource,
     DatasourceConnectionDetails,
+    Group,
     PowerBiColumns,
     PowerBIDashboard,
     PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
     ReportPage,
+    Tile,
     UpstreaDataflow,
 )
 from metadata.utils import fqn
@@ -2199,3 +2201,179 @@ class PowerBIUnitTest(TestCase):
         assert result is not None
         tables = [t["table"] for t in result]
         assert "DimAccounts" in tables
+
+    @pytest.mark.order(47)
+    def test_yield_dashboard_chart_populates_dashboard_charts_mapping(self):
+        """
+        Test that yield_dashboard_chart correctly populates the dashboard_charts
+        mapping so each dashboard ID maps only to its own tile IDs.
+        """
+        from unittest.mock import MagicMock
+
+        dashboard_1 = PowerBIDashboard(
+            id="dash-1",
+            displayName="Dashboard One",
+            tiles=[
+                Tile(id="tile-1a", title="Tile 1A"),
+                Tile(id="tile-1b", title="Tile 1B"),
+            ],
+        )
+        dashboard_2 = PowerBIDashboard(
+            id="dash-2",
+            displayName="Dashboard Two",
+            tiles=[
+                Tile(id="tile-2a", title="Tile 2A"),
+            ],
+        )
+        dashboard_3 = PowerBIDashboard(
+            id="dash-3",
+            displayName="Dashboard Three",
+            tiles=[
+                Tile(id="tile-3a", title="Tile 3A"),
+                Tile(id="tile-3b", title="Tile 3B"),
+                Tile(id="tile-3c", title="Tile 3C"),
+            ],
+        )
+
+        self.powerbi.filtered_dashboards = [dashboard_1, dashboard_2, dashboard_3]
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Test Workspace")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        workspace = Group(id="ws-1", name="Test Workspace")
+        charts = list(self.powerbi.yield_dashboard_chart(workspace))
+
+        assert len(self.powerbi.dashboard_charts) == 3
+        assert self.powerbi.dashboard_charts["dash-1"] == ["tile-1a", "tile-1b"]
+        assert self.powerbi.dashboard_charts["dash-2"] == ["tile-2a"]
+        assert self.powerbi.dashboard_charts["dash-3"] == [
+            "tile-3a",
+            "tile-3b",
+            "tile-3c",
+        ]
+
+        successful_charts = [c for c in charts if c.right is not None]
+        assert len(successful_charts) == 6
+
+    @pytest.mark.order(48)
+    def test_yield_dashboard_chart_resets_mapping_on_each_call(self):
+        """
+        Test that yield_dashboard_chart resets dashboard_charts on each invocation
+        so stale data from a previous workspace does not leak.
+        """
+        from unittest.mock import MagicMock
+
+        self.powerbi.dashboard_charts = {"stale-dash": ["stale-tile"]}
+
+        dashboard = PowerBIDashboard(
+            id="fresh-dash",
+            displayName="Fresh Dashboard",
+            tiles=[Tile(id="fresh-tile", title="Fresh Tile")],
+        )
+        self.powerbi.filtered_dashboards = [dashboard]
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Test Workspace")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        list(
+            self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace"))
+        )
+
+        assert "stale-dash" not in self.powerbi.dashboard_charts
+        assert self.powerbi.dashboard_charts["fresh-dash"] == ["fresh-tile"]
+
+    @pytest.mark.order(49)
+    def test_yield_dashboard_chart_filtered_chart_not_in_mapping(self):
+        """
+        Test that charts excluded by chartFilterPattern are not added
+        to the dashboard_charts mapping.
+        """
+        from unittest.mock import MagicMock
+
+        dashboard = PowerBIDashboard(
+            id="dash-filter",
+            displayName="Filter Dashboard",
+            tiles=[
+                Tile(id="tile-keep", title="Keep Me"),
+                Tile(id="tile-skip", title="Skip Me"),
+            ],
+        )
+        self.powerbi.filtered_dashboards = [dashboard]
+        self.powerbi.source_config.chartFilterPattern = FilterPattern(
+            excludes=["Skip Me"]
+        )
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Test Workspace")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        list(
+            self.powerbi.yield_dashboard_chart(Group(id="ws-1", name="Test Workspace"))
+        )
+
+        assert self.powerbi.dashboard_charts["dash-filter"] == ["tile-keep"]
+
+    @pytest.mark.order(50)
+    @patch.object(
+        fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name")
+    )
+    def test_yield_dashboard_uses_per_dashboard_charts(self, *_):
+        """
+        Test that yield_dashboard associates only the correct charts with each
+        dashboard, not all charts from the workspace.
+        """
+        from unittest.mock import MagicMock
+
+        dashboard_1 = PowerBIDashboard(
+            id="dash-1",
+            displayName="Dashboard One",
+            tiles=[
+                Tile(id="tile-1a", title="Tile 1A"),
+            ],
+        )
+        dashboard_2 = PowerBIDashboard(
+            id="dash-2",
+            displayName="Dashboard Two",
+            tiles=[
+                Tile(id="tile-2a", title="Tile 2A"),
+                Tile(id="tile-2b", title="Tile 2B"),
+            ],
+        )
+        dashboard_3 = PowerBIDashboard(
+            id="dash-3",
+            displayName="Dashboard Three",
+            tiles=[],
+        )
+
+        self.powerbi.filtered_dashboards = [dashboard_1, dashboard_2, dashboard_3]
+        self.powerbi.dashboard_charts = {
+            "dash-1": ["tile-1a"],
+            "dash-2": ["tile-2a", "tile-2b"],
+            "dash-3": [],
+        }
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Test Workspace")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        workspace = Group(id="ws-1", name="Test Workspace")
+        results = list(self.powerbi.yield_dashboard(workspace))
+
+        dashboards = [r.right for r in results if r.right is not None]
+        assert len(dashboards) == 3
+
+        dash_1_result = next(d for d in dashboards if d.name.root == "dash-1")
+        assert len(dash_1_result.charts) == 1
+        assert dash_1_result.charts[0].root == "tile-1a"
+
+        dash_2_result = next(d for d in dashboards if d.name.root == "dash-2")
+        assert len(dash_2_result.charts) == 2
+
+        dash_3_result = next(d for d in dashboards if d.name.root == "dash-3")
+        assert len(dash_3_result.charts) == 0

@@ -185,9 +185,12 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         """
         return schema names
         """
+        database_name = self.context.get().database
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page.DatabaseList:
                 try:
+                    if schema.CatalogId != database_name:
+                        continue
                     schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,

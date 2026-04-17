@@ -699,8 +699,12 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     # Revisit: Check the antlr grammer for issue when string has double quotes
     # Issue Link: https://github.com/open-metadata/OpenMetadata/issues/8874
     details: List[str] = split(table_name.replace('"', ""))
-    # Pad None to the left until size of list is 3
-    full_details: List[Optional[str]] = ([None] * (3 - len(details))) + details
+    # Handles table names with 4+ parts (e.g., BigQuery INFORMATION_SCHEMA:
+    # `project-name.region-name.INFORMATION_SCHEMA.table_name`) by taking only
+    # the last 3 segments (database, schema, table). Pads with None if fewer than 3.
+    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[
+        -3:
+    ]
 
     database, database_schema, table = full_details
     return {"database": database, "database_schema": database_schema, "table": table}
