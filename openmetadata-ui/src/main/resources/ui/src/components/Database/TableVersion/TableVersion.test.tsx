@@ -18,8 +18,8 @@ import {
   mockTableData,
   tableVersionMockProps,
 } from '../../../mocks/TableVersion.mock';
-import TableVersion from './TableVersion.component';
 import VersionTable from '../../Entity/VersionTable/VersionTable.component';
+import TableVersion from './TableVersion.component';
 
 const mockNavigate = jest.fn();
 jest.mock(
@@ -167,7 +167,9 @@ describe('TableVersion tests', () => {
       },
     };
 
-    const mockedVersionTable = VersionTable as jest.MockedFunction<typeof VersionTable>;
+    const mockedVersionTable = VersionTable as jest.MockedFunction<
+      typeof VersionTable
+    >;
     mockedVersionTable.mockClear();
 
     await act(async () => {
@@ -180,7 +182,9 @@ describe('TableVersion tests', () => {
     });
 
     const calls = mockedVersionTable.mock.calls;
+
     expect(calls.length).toBeGreaterThan(0);
+
     const columnsPassedToVersionTable = calls[calls.length - 1][0].columns;
 
     expect(columnsPassedToVersionTable).toHaveLength(1);
