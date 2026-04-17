@@ -1,0 +1,145 @@
+#  Copyright 2025 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: SSO Login Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      sso_provider:
+        description: 'SSO provider (or "all")'
+        required: true
+        default: okta
+        type: choice
+        options:
+          - okta
+          - keycloak-azure-saml
+          - all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sso-login-nightly-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  cancel-in-progress: true
+
+jobs:
+  # To onboard a new provider:
+  #   1. Add a matrix entry below (`name` is the lowercase provider id used by
+  #      the Playwright helper; `env_prefix` is the uppercase/underscore form
+  #      used to look up credentials). Also add `name` to the dispatch
+  #      `options:` list above.
+  #   2. Add <ENV_PREFIX>_SSO_USERNAME (variable) and <ENV_PREFIX>_SSO_PASSWORD
+  #      (variable) to the `test` environment. Use a secret instead of a
+  #      variable for the password if the provider uses a real (non-fixture)
+  #      credential.
+  #   3. Register the helper in playwright/utils/sso-providers/index.ts.
+  sso-login:
+    runs-on: ubuntu-latest
+    environment: test
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        provider:
+          ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
+          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+          || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
+              && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+              || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]')) }}
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup OpenMetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: '3.10'
+          args: '-d postgresql -i false'
+          ingestion_dependency: 'all'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright@1.57.0 install chromium --with-deps
+
+      - name: Start Keycloak SAML IdP
+        if: startsWith(matrix.provider.name, 'keycloak-')
+        run: |
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
+          timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
+
+      - name: Run SSO Login Spec
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
+          SSO_USERNAME: ${{ vars[format('{0}_SSO_USERNAME', matrix.provider.env_prefix)] }}
+          SSO_PASSWORD: ${{ vars[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] || secrets[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] }}
+          KEYCLOAK_SAML_BASE_URL: http://localhost:8080
+          PLAYWRIGHT_IS_OSS: true
+        run: |
+          npx playwright test playwright/e2e/Auth/SSOLogin.spec.ts \
+            --project=sso-auth \
+            --workers=1
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-login-html-report-${{ matrix.provider.name }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          retention-days: 5
+
+      - name: Send Slack Notification
+        if: always()
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          RUN_TITLE: "SSO Login Nightly: ${{ matrix.provider.name }} (${{ github.ref_name }})"
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+        run: |
+          npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
+
+      - name: Clean Up
+        if: always()
+        run: |
+          docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans || true
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
