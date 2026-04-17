@@ -83,7 +83,7 @@ const runHighlight = (code: string, langName: string): React.ReactElement[] => {
   const langExt = getLanguageExtensionByName(langName);
 
   if (!langExt) {
-    fragments.push(<React.Fragment>{code}</React.Fragment>);
+    fragments.push(<React.Fragment key={0}>{code}</React.Fragment>);
 
     return fragments;
   }
@@ -91,6 +91,7 @@ const runHighlight = (code: string, langName: string): React.ReactElement[] => {
   const lang = langExt.language;
   const tree = lang.parser.parse(code);
   let pos = 0;
+  let idx = 0;
 
   highlightCode(
     code,
@@ -98,20 +99,26 @@ const runHighlight = (code: string, langName: string): React.ReactElement[] => {
     classHighlighter,
     (text: string, classes: string) => {
       if (classes) {
-        fragments.push(<span className={classes}>{text}</span>);
+        fragments.push(
+          <span className={classes} key={idx++}>
+            {text}
+          </span>
+        );
       } else {
-        fragments.push(<React.Fragment>{text}</React.Fragment>);
+        fragments.push(<React.Fragment key={idx++}>{text}</React.Fragment>);
       }
       pos += text.length;
     },
     () => {
-      fragments.push(<br />);
+      fragments.push(<br key={idx++} />);
       pos++;
     }
   );
 
   if (pos < code.length) {
-    fragments.push(<React.Fragment>{code.slice(pos)}</React.Fragment>);
+    fragments.push(
+      <React.Fragment key={idx}>{code.slice(pos)}</React.Fragment>
+    );
   }
 
   return fragments;

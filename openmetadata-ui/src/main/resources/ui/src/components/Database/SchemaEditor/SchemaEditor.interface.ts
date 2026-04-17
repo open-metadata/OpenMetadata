@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Extension } from '@codemirror/state';
 import { ReactNode } from 'react';
 import { CSModeConfig } from '../../../enums/codemirror.enum';
 
@@ -34,5 +33,4 @@ export interface SchemaEditorProps {
   onChange?: (value: string) => void;
   onFocus?: () => void;
   title?: ReactNode;
-  extensions?: Extension[];
 }

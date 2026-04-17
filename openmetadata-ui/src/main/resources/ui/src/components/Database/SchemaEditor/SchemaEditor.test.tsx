@@ -41,11 +41,9 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 }));
 
 jest.mock('@uiw/react-codemirror', () => {
-  const forwardRef = React.forwardRef;
-
   return {
     __esModule: true,
-    default: forwardRef(function MockCodeMirror(
+    default: React.forwardRef(function MockCodeMirror(
       props: { value: string; onChange?: (val: string) => void },
       ref: React.Ref<{ view: typeof mockView }>
     ) {
