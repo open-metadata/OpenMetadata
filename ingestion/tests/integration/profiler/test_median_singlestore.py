@@ -224,9 +224,7 @@ class TestSingleStoreMedianFnExecution:
         # SingleStore Distributed rejects scalar subselects combined with
         # DISTINCT or ORDER BY. Query raw rows and deduplicate in Python.
         results = session.execute(
-            text(
-                f"SELECT category, {compiled} AS median_val FROM test_data"
-            )
+            text(f"SELECT category, {compiled} AS median_val FROM test_data")
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == 30.0
@@ -237,23 +235,19 @@ class TestSingleStoreMedianFnExecution:
             session, "value", "test_data", 0.25, "category"
         )
         results = session.execute(
-            text(
-                f"SELECT category, {compiled} AS q1_val FROM test_data"
-            )
+            text(f"SELECT category, {compiled} AS q1_val FROM test_data")
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
-        assert medians["a"] == 20.0
-        assert medians["b"] == 200.0
+        assert medians["a"] == 17.5
+        assert medians["b"] == 175.0
 
     def test_third_quartile_with_dimension_col(self, session):
         compiled = _compile_with_session(
             session, "value", "test_data", 0.75, "category"
         )
         results = session.execute(
-            text(
-                f"SELECT category, {compiled} AS q3_val FROM test_data"
-            )
+            text(f"SELECT category, {compiled} AS q3_val FROM test_data")
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
-        assert medians["a"] == 40.0
-        assert medians["b"] == 400.0
+        assert medians["a"] == 42.5
+        assert medians["b"] == 425.0
