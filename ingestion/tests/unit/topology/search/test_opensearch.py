@@ -19,6 +19,9 @@ from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
 from metadata.generated.schema.entity.data.searchIndex import DataType, SearchIndexField
+from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
+    OpenSearchConnection,
+)
 from metadata.generated.schema.entity.services.searchService import (
     SearchConnection,
     SearchService,
@@ -26,9 +29,6 @@ from metadata.generated.schema.entity.services.searchService import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
-)
-from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
-    OpenSearchConnection,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.source.search.opensearch.connection import get_connection

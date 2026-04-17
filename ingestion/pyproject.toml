@@ -232,11 +232,11 @@ enable = "useless-suppression"
 max-line-length = 120
 
 [tool.black]
-extend-exclude = "src/metadata/generated"
+exclude = '(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|src/metadata/generated|env|venv)'
 
 [tool.pycln]
 all = true
-extend-exclude = "src/metadata/generated"
+exclude = '(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|src/metadata/generated|env|venv)'
 
 [tool.isort]
 skip_glob = [
