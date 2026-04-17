@@ -152,7 +152,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   clickhouse: clickhouse,
   databricks: databrick,
   unitycatalog: unitycatalog,
-  ibmdb2: ibmdb2,
+  db2: ibmdb2,
   doris: doris,
   starrocks: starrocks,
   druid: druid,
@@ -162,7 +162,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   saphana: saphana,
   saperp: saperp,
   deltalake: deltalake,
-  pinot: pinot,
+  pinotdb: pinot,
   datalake: datalake,
   exasol: exasol,
   mongodb: mongodb,
@@ -175,12 +175,15 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   burstiq: burstiq,
   sas: sas,
   iomete: iomete,
+  domodatabase: domo,
+  customdatabase: databasedefault,
 
   // Messaging services
   kafka: kafka,
   pubsub: pubsub,
   redpanda: redpanda,
   kinesis: kinesis,
+  custommessaging: topicdefault,
 
   // Dashboard services
   superset: superset,
@@ -191,30 +194,37 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   powerbi: powerbi,
   sigma: sigma,
   mode: mode,
-  domo: domo,
+  domodashboard: domo,
   quicksight: quicksight,
   qliksense: qliksense,
   lightdash: lightdash,
   microstrategy: microstrategy,
   grafana: grafana,
   hex: hex,
+  customdashboard: dashboarddefault,
 
   // Pipeline services
   airflow: airflow,
   airbyte: airbyte,
   dagster: dagster,
-  dbt: dbt,
+  dbtcloud: dbt,
   fivetran: fivetran,
   nifi: nifi,
   spark: spark,
   spline: spline,
   flink: flink,
   openlineage: openlineage,
+  domopipeline: domo,
+  kafkaconnect: kafka,
+  databrickspipeline: databrick,
+  gluepipeline: glue,
+  custompipeline: pipelinedefault,
 
   // ML Model services
   mlflow: mlflow,
   scikit: scikit,
   sagemaker: sagemaker,
+  custommlmodel: mlmodeldefault,
 
   // Storage services
   s3: amazons3,
@@ -233,6 +243,10 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   // Drive services
   googledrive: googledrive,
   sftp: sftp,
+  customdrive: customdrivedefault,
+
+  // API services
+  rest: restservice,
 
   // Default icons
   defaultservice: defaultservice,

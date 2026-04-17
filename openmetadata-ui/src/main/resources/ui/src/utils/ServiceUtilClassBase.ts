@@ -235,59 +235,37 @@ class ServiceUtilClassBase {
     return {
       databaseServices: this.filterUnsupportedServiceType(
         Object.values(DatabaseServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       messagingServices: this.filterUnsupportedServiceType(
         Object.values(MessagingServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       dashboardServices: this.filterUnsupportedServiceType(
         Object.values(DashboardServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       pipelineServices: this.filterUnsupportedServiceType(
         Object.values(PipelineServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       mlmodelServices: this.filterUnsupportedServiceType(
         Object.values(MlModelServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       metadataServices: this.filterUnsupportedServiceType(
         Object.values(MetadataServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       storageServices: this.filterUnsupportedServiceType(
         Object.values(StorageServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       searchServices: this.filterUnsupportedServiceType(
         Object.values(SearchServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       driveServices: this.filterUnsupportedServiceType(
         Object.values(DriveServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
         Object.values(SecurityServiceType) as string[]
-      )
-        .sort(customServiceComparator)
-        .map((s) => s.toLowerCase()),
+      ).sort(customServiceComparator),
     };
   }
 
@@ -341,35 +319,35 @@ class ServiceUtilClassBase {
 
   private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
-    const typeLowerCase = type.toLowerCase();
-    if (serviceTypes.messagingServices.includes(typeLowerCase)) {
+
+    if (serviceTypes.messagingServices.includes(type)) {
       return getServiceIcon('topicdefault');
     }
-    if (serviceTypes.dashboardServices.includes(typeLowerCase)) {
+    if (serviceTypes.dashboardServices.includes(type)) {
       return getServiceIcon('dashboarddefault');
     }
-    if (serviceTypes.pipelineServices.includes(typeLowerCase)) {
+    if (serviceTypes.pipelineServices.includes(type)) {
       return getServiceIcon('pipelinedefault');
     }
-    if (serviceTypes.databaseServices.includes(typeLowerCase)) {
+    if (serviceTypes.databaseServices.includes(type)) {
       return getServiceIcon('databasedefault');
     }
-    if (serviceTypes.mlmodelServices.includes(typeLowerCase)) {
+    if (serviceTypes.mlmodelServices.includes(type)) {
       return getServiceIcon('mlmodeldefault');
     }
-    if (serviceTypes.storageServices.includes(typeLowerCase)) {
+    if (serviceTypes.storageServices.includes(type)) {
       return getServiceIcon('storagedefault');
     }
-    if (serviceTypes.searchServices.includes(typeLowerCase)) {
+    if (serviceTypes.searchServices.includes(type)) {
       return getServiceIcon('searchdefault');
     }
-    if (serviceTypes.securityServices.includes(typeLowerCase)) {
+    if (serviceTypes.securityServices.includes(type)) {
       return getServiceIcon('securitydefault');
     }
-    if (serviceTypes.driveServices.includes(typeLowerCase)) {
+    if (serviceTypes.driveServices.includes(type)) {
       return getServiceIcon('drivedefault');
     }
-    if (serviceTypes.apiServices.includes(typeLowerCase)) {
+    if (serviceTypes.apiServices.includes(type)) {
       return getServiceIcon('restservice');
     }
 
