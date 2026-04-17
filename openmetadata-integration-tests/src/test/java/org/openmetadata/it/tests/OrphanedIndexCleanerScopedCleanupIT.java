@@ -77,6 +77,11 @@ public class OrphanedIndexCleanerScopedCleanupIT {
 
     lowLevelClient = TestSuiteBootstrap.createSearchClient();
 
+    // Idempotent: drop any residue from a prior failed run before creating.
+    for (String index : List.of(OUR_ORPHAN, FOREIGN_ORPHAN, FOREIGN_LIVE)) {
+      deleteIndexQuietly(index);
+    }
+
     createIndex(OUR_ORPHAN);
     createIndex(FOREIGN_ORPHAN);
     createIndex(FOREIGN_LIVE);
