@@ -43,6 +43,7 @@ RUN apt-get -qq update \
   wget --no-install-recommends \
   # Accept MSSQL ODBC License
   && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+  && apt-get -qq install -y --only-upgrade imagemagick libmagickcore-dev libmagickwand-dev \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
