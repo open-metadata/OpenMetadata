@@ -230,15 +230,59 @@ public class LineageRepository {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
-    // Add Service Level Lineage
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
     if (!fromService.getId().equals(toService.getId())) {
       LineageDetails serviceLineageDetails =
           getOrCreateLineageDetails(
-              fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists);
+                  fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
+              .withPipeline(null);
       insertLineage(fromService, toService, serviceLineageDetails);
     }
+    addPipelineServiceEdges(fromService, toService, entityLineageDetails, childRelationExists);
+  }
+
+  private void addPipelineServiceEdges(
+      EntityReference fromService,
+      EntityReference toService,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+    if (pipelineService == null) {
+      return;
+    }
+    insertServiceEdgeIfDistinct(
+        fromService, pipelineService, entityLineageDetails, childRelationExists);
+    insertServiceEdgeIfDistinct(
+        pipelineService, toService, entityLineageDetails, childRelationExists);
+  }
+
+  private EntityReference getPipelineService(LineageDetails entityLineageDetails) {
+    if (entityLineageDetails == null || nullOrEmpty(entityLineageDetails.getPipeline())) {
+      return null;
+    }
+    EntityReference pipelineRef = entityLineageDetails.getPipeline();
+    if (!Entity.entityHasField(pipelineRef.getType(), FIELD_SERVICE)) {
+      return null;
+    }
+    EntityInterface pipelineEntity =
+        Entity.getEntity(pipelineRef.getType(), pipelineRef.getId(), FIELD_SERVICE, Include.ALL);
+    return pipelineEntity.getService();
+  }
+
+  private void insertServiceEdgeIfDistinct(
+      EntityReference fromService,
+      EntityReference toService,
+      LineageDetails entityLineageDetails,
+      boolean childRelationExists) {
+    if (fromService.getId().equals(toService.getId())) {
+      return;
+    }
+    LineageDetails serviceDetails =
+        getOrCreateLineageDetails(
+                fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
+            .withPipeline(null);
+    insertLineage(fromService, toService, serviceDetails);
   }
 
   private void addDomainLineage(
@@ -259,7 +303,11 @@ public class LineageRepository {
         if (!fromDomain.getId().equals(toDomain.getId())) {
           LineageDetails domainLineageDetails =
               getOrCreateLineageDetails(
-                  fromDomain.getId(), toDomain.getId(), entityLineageDetails, childRelationExists);
+                      fromDomain.getId(),
+                      toDomain.getId(),
+                      entityLineageDetails,
+                      childRelationExists)
+                  .withPipeline(null);
           insertLineage(fromDomain, toDomain, domainLineageDetails);
         }
       }
@@ -281,11 +329,11 @@ public class LineageRepository {
         if (!fromEntityRef.getId().equals(toEntityRef.getId())) {
           LineageDetails dataProductsLineageDetails =
               getOrCreateLineageDetails(
-                  fromEntityRef.getId(),
-                  toEntityRef.getId(),
-                  entityLineageDetails,
-                  childRelationExists);
-
+                      fromEntityRef.getId(),
+                      toEntityRef.getId(),
+                      entityLineageDetails,
+                      childRelationExists)
+                  .withPipeline(null);
           insertLineage(fromEntityRef, toEntityRef, dataProductsLineageDetails);
         }
       }
@@ -988,6 +1036,9 @@ public class LineageRepository {
         RdfUpdater.removeRelationship(lineageRelationship);
       }
 
+      if (result) {
+        cleanUpExtendedLineage(from, to, lineageDetails);
+      }
       return result;
     }
     return false;
@@ -1056,14 +1107,15 @@ public class LineageRepository {
       }
 
       if (result) {
-        cleanUpExtendedLineage(from, to);
+        cleanUpExtendedLineage(from, to, lineageDetails);
       }
       return result;
     }
     return false;
   }
 
-  private void cleanUpExtendedLineage(EntityReference from, EntityReference to) {
+  private void cleanUpExtendedLineage(
+      EntityReference from, EntityReference to, LineageDetails lineageDetails) {
     boolean addService = hasField(from, FIELD_SERVICE) && hasField(to, FIELD_SERVICE);
     boolean addDomain = hasField(from, FIELD_DOMAINS) && hasField(to, FIELD_DOMAINS);
     boolean addDataProduct =
@@ -1075,9 +1127,25 @@ public class LineageRepository {
     EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
     cleanUpLineage(fromEntity, toEntity, FIELD_SERVICE, EntityInterface::getService);
+    cleanUpPipelineServiceEdges(fromEntity, toEntity, lineageDetails);
     cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface::getDomains);
     cleanUpLineageForDataProducts(
         fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface::getDataProducts);
+  }
+
+  private void cleanUpPipelineServiceEdges(
+      EntityInterface fromEntity, EntityInterface toEntity, LineageDetails entityLineageDetails) {
+    if (!shouldAddServiceLineage(fromEntity, toEntity)) {
+      return;
+    }
+    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+    if (pipelineService == null) {
+      return;
+    }
+    EntityReference fromService = fromEntity.getService();
+    EntityReference toService = toEntity.getService();
+    processExtendedLineageCleanup(fromService, pipelineService);
+    processExtendedLineageCleanup(pipelineService, toService);
   }
 
   private boolean hasField(EntityReference entity, String field) {
