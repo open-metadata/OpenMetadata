@@ -81,10 +81,12 @@ public class WebSocketManager {
                       userId,
                       remoteAddress);
                   UUID id = UUID.fromString(userId);
-                  Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
-                  if (allUserConnection != null) {
-                    allUserConnection.remove(socket.getId());
-                  }
+                  activityFeedEndpoints.computeIfPresent(
+                      id,
+                      (key, connections) -> {
+                        connections.remove(socket.getId());
+                        return connections.isEmpty() ? null : connections;
+                      });
                 });
 
             // On Socket Connection Error

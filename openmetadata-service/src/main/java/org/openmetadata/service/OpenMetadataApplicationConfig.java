@@ -38,6 +38,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.BulkOperationConfiguration;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
@@ -178,6 +179,17 @@ public class OpenMetadataApplicationConfig extends Configuration {
       bulkOperationConfiguration = new BulkOperationConfiguration();
     }
     return bulkOperationConfiguration;
+  }
+
+  @JsonProperty("cacheMemory")
+  @Valid
+  private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
+  public CacheConfiguration getCacheMemoryConfiguration() {
+    if (cacheMemoryConfiguration == null) {
+      cacheMemoryConfiguration = new CacheConfiguration();
+    }
+    return cacheMemoryConfiguration;
   }
 
   public String getApiRootPath() {
