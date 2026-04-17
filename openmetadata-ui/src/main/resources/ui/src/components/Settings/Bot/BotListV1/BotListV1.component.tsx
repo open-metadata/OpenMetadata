@@ -321,14 +321,9 @@ const BotListV1 = ({
             .filter((name): name is string => Boolean(name))
         )
       );
-
-      if (!matchedBotUserNames.length) {
-        return [];
-      }
-
-      const botsByBotUserName = await getBotsByBotUserNames(
-        matchedBotUserNames
-      );
+      const botsByBotUserName = matchedBotUserNames.length
+        ? await getBotsByBotUserNames(matchedBotUserNames)
+        : new Map<string, Bot>();
       const matchedBotUsersByName = new Map(
         matchedBotUsers.map((botUser) => [botUser.name, botUser])
       );
@@ -373,14 +368,17 @@ const BotListV1 = ({
       pageNumber: 1,
       pageSize: 100,
       includeDeleted: showDeleted,
-      queryFilter: getTermQuery({ isBot: true }, 'must', undefined, {
-        wildcardShouldQueries: {
-          'name.keyword': wildcardPattern,
-          'displayName.keyword': wildcardPattern,
-          'fullyQualifiedName.keyword': wildcardPattern,
-          'email.keyword': wildcardPattern,
+      queryFilter: {
+        bool: {
+          must: [{ term: { isBot: true } }],
+          should: [
+            { wildcard: { 'name.keyword': wildcardPattern } },
+            { wildcard: { 'displayName.keyword': wildcardPattern } },
+            { wildcard: { 'email.keyword': wildcardPattern } },
+          ],
+          minimum_should_match: 1,
         },
-      }),
+      },
       searchIndex: SearchIndex.USER,
     });
     const fallbackMatchedBotUsers = formatUsersResponse(

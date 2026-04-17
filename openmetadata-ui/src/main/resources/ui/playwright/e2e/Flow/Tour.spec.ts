@@ -23,27 +23,16 @@ const waitForTourBadgeWithRetry = async (
   maxAttempts = 3,
   timeout = 20000
 ) => {
-  const startedAt = Date.now();
-  const getRemainingTimeout = () => {
-    const remainingTimeout = timeout - (Date.now() - startedAt);
-
-    if (remainingTimeout <= 0) {
-      throw new Error(`Timed out waiting for tour badge after ${timeout}ms.`);
-    }
-
-    return remainingTimeout;
-  };
-
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await page.waitForURL('**/tour', { timeout: getRemainingTimeout() });
+      await page.waitForURL('**/tour', { timeout: 60000 });
       await page.locator('#feedWidgetData').waitFor({
         state: 'visible',
-        timeout: getRemainingTimeout(),
+        timeout: 60000,
       });
       await page.locator('[data-tour-elem="badge"]').waitFor({
         state: 'visible',
-        timeout: getRemainingTimeout(),
+        timeout,
       });
 
       return; // Success

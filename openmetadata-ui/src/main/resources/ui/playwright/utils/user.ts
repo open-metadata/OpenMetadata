@@ -127,7 +127,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
         return await page.getByTestId(userName).count();
       },
       {
-        timeout: 120000,
+        timeout: 60000,
         intervals: [1000, 2000, 5000],
         message: `Timed out waiting for user ${userName} to become visible in the user list`,
       }

@@ -463,16 +463,8 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.scrollIntoViewIfNeeded();
-        await addWidgetButton.click({ trial: true });
         await addWidgetButton.click();
-
-        await expect(adminPage.getByTestId('add-widget-modal')).toBeVisible({
-          timeout: 60000,
-        });
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible({
-          timeout: 60000,
-        });
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')

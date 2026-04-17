@@ -23,11 +23,12 @@ import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
-const botName = `a-bot-pw%test-${uuid()}`;
+const botName = `test-bot-${uuid()}`;
+const botEmailPrefix = `hello-${uuid()}`;
 
 const BOT_DETAILS = {
   botName: botName,
-  botEmail: `${botName}@mail.com`,
+  botEmail: `${botEmailPrefix}@open-metadata.org`,
   description: `This is bot description for ${botName}`,
   updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
@@ -165,6 +166,14 @@ export const verifyBotSearch = async (page: Page) => {
 
   await searchInput.clear();
   await searchInput.fill(BOT_DETAILS.botEmail);
+  await expect(createdBotLink).toBeVisible();
+
+  await searchInput.clear();
+  await searchInput.fill('test');
+  await expect(createdBotLink).toBeVisible();
+
+  await searchInput.clear();
+  await searchInput.fill('hello');
   await expect(createdBotLink).toBeVisible();
 
   await searchInput.clear();

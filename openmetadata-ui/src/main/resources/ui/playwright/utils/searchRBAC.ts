@@ -88,14 +88,7 @@ export const searchForEntityShouldWorkShowNoResult = async (
 
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
-    ),
-    page.getByTestId('searchBox').press('Enter'),
-  ]);
+  await page.getByTestId('searchBox').press('Enter');
 
   await waitForAllLoadersToDisappear(page);
 
