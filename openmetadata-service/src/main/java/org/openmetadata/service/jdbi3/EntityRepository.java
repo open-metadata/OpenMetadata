@@ -2227,7 +2227,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 fetchLimit);
 
     List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
-    hydrateHistoryEntities(entities);
+    setFieldsInBulk(putFields, entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
 
