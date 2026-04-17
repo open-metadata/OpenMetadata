@@ -23,6 +23,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../utils/EntityLink';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -37,6 +38,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
@@ -173,6 +175,44 @@ export const DataAssetSummaryPanelV1 = ({
     [entityType]
   );
 
+  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+
+  const {
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams,
+  } = useMemo(() => {
+    if (!isColumnEntity) {
+      return {
+        changeSummaryEntityType: entityType,
+        changeSummaryEntityId: dataAsset.id ?? '',
+        changeSummaryParams: { fieldPrefix: 'description', limit: 1 },
+      };
+    }
+    const columnData = dataAsset as typeof dataAsset & {
+      table?: { id?: string };
+    };
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      dataAsset.fullyQualifiedName ?? '',
+      false
+    );
+
+    return {
+      changeSummaryEntityType: EntityType.TABLE,
+      changeSummaryEntityId: columnData.table?.id ?? '',
+      changeSummaryParams: {
+        fieldPrefix: `columns.${columnName}.description`,
+        limit: 1,
+      },
+    };
+  }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
+
+  const { changeSummary } = useChangeSummary(
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams
+  );
+
   const fetchIncidentCount = useCallback(async () => {
     if (
       dataAsset?.fullyQualifiedName &&
@@ -261,7 +301,6 @@ export const DataAssetSummaryPanelV1 = ({
   };
   // Columns inherit owners, domains, tier, and data products from their parent table
   // These fields should not be editable on columns
-  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
 
   const {
     editDomainPermission,
@@ -368,6 +407,10 @@ export const DataAssetSummaryPanelV1 = ({
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
+    const descriptionChangeSummaryEntry = isColumnEntity
+      ? changeSummary?.[changeSummaryParams.fieldPrefix]
+      : changeSummary?.description;
+
     switch (entityType) {
       case EntityType.API_COLLECTION:
       case EntityType.API_ENDPOINT:
@@ -463,6 +506,7 @@ export const DataAssetSummaryPanelV1 = ({
               />
             )}
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -579,6 +623,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <span className="d-none" data-testid="KnowledgePageSummary" />
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -626,6 +671,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -712,6 +758,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -764,6 +811,7 @@ export const DataAssetSummaryPanelV1 = ({
     componentType,
     statusCounts,
     entityPermissions,
+    changeSummary,
   ]);
 
   useEffect(() => {

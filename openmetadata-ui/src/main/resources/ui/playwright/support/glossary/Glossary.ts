@@ -88,8 +88,6 @@ export class Glossary extends EntityClass {
     );
 
     this.responseData = await response.json();
-
-    return await response.json();
   }
 
   get() {

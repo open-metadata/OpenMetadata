@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,41 @@ import org.openmetadata.service.search.vector.utils.TextChunkManager;
 @Slf4j
 @UtilityClass
 public class VectorDocBuilder {
+
+  /**
+   * Strategy for producing the semantic "body text" of an entity that will be chunked and fed to
+   * the embedding model. The default implementation concatenates {@code description} and, for
+   * tables, the column names — which works for every entity type whose semantic payload lives in
+   * {@code description}. Entity types whose payload is spread across other fields (for example
+   * Collate's {@code ContextMemory}, with title/question/answer/summary) can provide a typed
+   * extractor via {@link #registerBodyTextExtractor(String, BodyTextExtractor)} so the embedding
+   * pipeline uses their fields instead of an empty description.
+   */
+  @FunctionalInterface
+  public interface BodyTextExtractor {
+    /**
+     * Returns the body text for the given entity, or {@code null} to fall back to the default
+     * behavior. Implementations should be fast and side-effect free; they run on the hot path of
+     * every create/update and every reembed iteration.
+     */
+    String extract(EntityInterface entity);
+  }
+
+  private static final Map<String, BodyTextExtractor> BODY_TEXT_EXTRACTORS =
+      new ConcurrentHashMap<>();
+
+  /**
+   * Register a custom {@link BodyTextExtractor} for an entity type. The registry is consulted by
+   * {@link #buildBodyText(EntityInterface, String)} before the default description-based logic,
+   * so callers can cleanly override body text for their own entity types without patching this
+   * class. Registration is idempotent (last writer wins) and thread-safe.
+   */
+  public static void registerBodyTextExtractor(String entityType, BodyTextExtractor extractor) {
+    if (entityType == null || entityType.isBlank() || extractor == null) {
+      return;
+    }
+    BODY_TEXT_EXTRACTORS.put(entityType, extractor);
+  }
 
   public static List<Map<String, Object>> fromEntity(
       EntityInterface entity, EmbeddingClient embeddingClient) {
@@ -219,6 +255,21 @@ public class VectorDocBuilder {
   }
 
   static String buildBodyText(EntityInterface entity, String entityType) {
+    if (entityType != null) {
+      BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
+      if (customExtractor != null) {
+        try {
+          String custom = customExtractor.extract(entity);
+          if (custom != null) {
+            return custom;
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Custom BodyTextExtractor failed for [{}], falling back to default", entityType, e);
+        }
+      }
+    }
+
     List<String> bodyParts = new ArrayList<>();
     bodyParts.add("description: " + removeHtml(orEmpty(entity.getDescription())));
 

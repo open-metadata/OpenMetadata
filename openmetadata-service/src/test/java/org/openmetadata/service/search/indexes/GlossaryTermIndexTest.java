@@ -1,15 +1,3 @@
-/*
- *  Copyright 2021 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +27,8 @@ class GlossaryTermIndexTest {
 
   @BeforeAll
   static void setUp() {
-    SearchRepository mockSearchRepo = mock(SearchRepository.class, Mockito.RETURNS_DEEP_STUBS);
+    SearchRepository mockSearchRepo =
+        Mockito.mock(SearchRepository.class, Mockito.RETURNS_DEEP_STUBS);
     entityStaticMock = Mockito.mockStatic(Entity.class);
     entityStaticMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepo);
   }
@@ -71,10 +59,7 @@ class GlossaryTermIndexTest {
                     any(EntityReference.class), eq("mutuallyExclusive"), eq(Include.NON_DELETED)))
         .thenReturn(glossary);
 
-    GlossaryTermIndex index = Mockito.spy(new GlossaryTermIndex(glossaryTerm));
-    Mockito.doReturn(new HashMap<>())
-        .when(index)
-        .getCommonAttributesMap(glossaryTerm, "glossaryTerm");
+    GlossaryTermIndex index = new GlossaryTermIndex(glossaryTerm);
 
     Map<String, Object> glossaryMap = new HashMap<>();
     glossaryMap.put("name", "testGlossary");
@@ -95,10 +80,7 @@ class GlossaryTermIndexTest {
     glossaryTerm.setName("testTerm");
     glossaryTerm.setFullyQualifiedName("testGlossary.testTerm");
 
-    GlossaryTermIndex index = Mockito.spy(new GlossaryTermIndex(glossaryTerm));
-    Mockito.doReturn(new HashMap<>())
-        .when(index)
-        .getCommonAttributesMap(glossaryTerm, "glossaryTerm");
+    GlossaryTermIndex index = new GlossaryTermIndex(glossaryTerm);
 
     Map<String, Object> doc = new HashMap<>();
 
@@ -128,10 +110,7 @@ class GlossaryTermIndexTest {
                     any(EntityReference.class), eq("mutuallyExclusive"), eq(Include.NON_DELETED)))
         .thenReturn(glossary);
 
-    GlossaryTermIndex index = Mockito.spy(new GlossaryTermIndex(glossaryTerm));
-    Mockito.doReturn(new HashMap<>())
-        .when(index)
-        .getCommonAttributesMap(glossaryTerm, "glossaryTerm");
+    GlossaryTermIndex index = new GlossaryTermIndex(glossaryTerm);
 
     Map<String, Object> glossaryMap = new HashMap<>();
     glossaryMap.put("name", "testGlossary");

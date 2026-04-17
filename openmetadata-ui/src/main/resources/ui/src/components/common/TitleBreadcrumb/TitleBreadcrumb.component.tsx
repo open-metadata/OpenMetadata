@@ -66,6 +66,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
             maxWidth,
           }}
           to={link.url}>
+          {link.icon}
           {link.name}
         </Link>
       );
@@ -79,6 +80,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           style={{
             maxWidth,
           }}>
+          {link.icon}
           {link.name}
         </span>
         {noLink &&
@@ -117,7 +119,6 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 className="d-flex items-center breadcrumb-item"
                 data-testid="breadcrumb-link"
                 key={link.name}>
-                {link.icon}
                 {link.imgSrc ? (
                   <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
@@ -127,6 +128,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       className={classes}
                       style={{ maxWidth }}
                       to={link.url}>
+                      {link.icon}
                       {link.name}
                     </Link>
                     {useCustomArrow ? (

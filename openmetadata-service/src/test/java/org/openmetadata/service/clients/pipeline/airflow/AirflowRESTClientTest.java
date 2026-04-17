@@ -500,12 +500,94 @@ class AirflowRESTClientTest {
     }
   }
 
+  @Test
+  void constructorHandlesStringTimeout() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      AirflowRESTClient client = newClient(server, "", "10");
+      assertEquals("Airflow", client.getPlatform());
+    }
+  }
+
+  @Test
+  void constructorHandlesIntegerTimeout() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      AirflowRESTClient client = newClient(server, "", 10);
+      assertEquals("Airflow", client.getPlatform());
+    }
+  }
+
+  @Test
+  void constructorHandlesLongTimeout() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      AirflowRESTClient client = newClient(server, "", 30L);
+      assertEquals("Airflow", client.getPlatform());
+    }
+  }
+
+  @Test
+  void constructorHandlesNullParameters() {
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setApiEndpoint("http://localhost:8080");
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(null);
+
+    PipelineServiceClientException exception =
+        assertThrows(PipelineServiceClientException.class, () -> new AirflowRESTClient(config));
+    assertTrue(exception.getMessage().contains("Missing Airflow credentials"));
+  }
+
+  @Test
+  void constructorHandlesNonNumericTimeout() throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      AirflowRESTClient client = newClient(server, "", "abc");
+      assertEquals("Airflow", client.getPlatform());
+    }
+  }
+
+  @Test
+  void constructorHandlesNullAdditionalProperties() throws Exception {
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setApiEndpoint("http://localhost:8080");
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    Parameters parameters = new Parameters();
+    java.lang.reflect.Field field = Parameters.class.getDeclaredField("additionalProperties");
+    field.setAccessible(true);
+    field.set(parameters, null);
+    config.setParameters(parameters);
+
+    PipelineServiceClientException exception =
+        assertThrows(PipelineServiceClientException.class, () -> new AirflowRESTClient(config));
+    assertTrue(exception.getMessage().contains("Missing Airflow credentials"));
+  }
+
+  @Test
+  void constructorHandlesMissingCredentials() {
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setApiEndpoint("http://localhost:8080");
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    Parameters parameters = new Parameters();
+    parameters.setAdditionalProperty("timeout", "10");
+    config.setParameters(parameters);
+
+    PipelineServiceClientException exception =
+        assertThrows(PipelineServiceClientException.class, () -> new AirflowRESTClient(config));
+    assertTrue(exception.getMessage().contains("Missing Airflow credentials"));
+  }
+
   private static AirflowRESTClient newClient(AirflowTestServer server, String basePath)
       throws KeyStoreException {
+    return newClient(server, basePath, 5);
+  }
+
+  private static AirflowRESTClient newClient(
+      AirflowTestServer server, String basePath, Object timeout) throws KeyStoreException {
     Parameters parameters = new Parameters();
     parameters.setAdditionalProperty("username", "airflow");
     parameters.setAdditionalProperty("password", "admin");
-    parameters.setAdditionalProperty("timeout", 5);
+    parameters.setAdditionalProperty("timeout", timeout);
 
     PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
     config.setEnabled(true);

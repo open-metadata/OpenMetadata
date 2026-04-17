@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,37 +64,11 @@ public class ChangeSummarizer<T extends EntityInterface> {
   }
 
   private boolean isFieldTracked(String fieldName) {
-    // Check if the field is explicitly tracked or if it is a nested field
-    if (fields.contains(fieldName)) {
-      return true;
-    }
-    // Check for nested fields
-    String[] parts = FullyQualifiedName.split(fieldName);
-    return fields.contains(parts[0] + "." + parts[parts.length - 1]);
+    return fields.stream().anyMatch(trackedField -> matchesTrackedField(trackedField, fieldName));
   }
 
   private boolean hasField(Class<T> clazz, String fieldName) {
-    // Check if the class has the specified field
-    try {
-      clazz.getDeclaredField(fieldName);
-      return true;
-    } catch (NoSuchFieldException e) {
-      // Ignore
-    }
-    // Handle nested fields (e.g. columns.column1.description)
-    try {
-      String[] parts = FullyQualifiedName.split(fieldName);
-      String field = parts[0];
-      String nestedField = parts[parts.length - 1];
-      Field fieldObj = clazz.getDeclaredField(field);
-      // Handles list types. We might want to expand this to cover other types in the future
-      ((Class<?>) ((ParameterizedType) fieldObj.getGenericType()).getActualTypeArguments()[0])
-          .getDeclaredField(nestedField);
-      return true;
-    } catch (NoSuchFieldException e) {
-      // Ignore
-    }
-    return false;
+    return hasField(clazz, FullyQualifiedName.split(fieldName), 0);
   }
 
   /**
@@ -123,21 +98,12 @@ public class ChangeSummarizer<T extends EntityInterface> {
               .collect(Collectors.toSet());
 
       for (FieldChange fieldChange : nestedFields) {
-        String fieldName = field.split("\\.")[0];
-        String nestedField = field.split("\\.")[1];
-        try {
-          if (!clazz.getDeclaredField(fieldName).getType().isAssignableFrom(List.class)) {
-            // skip non List types
-            continue;
-          }
-        } catch (NoSuchFieldException e) {
-          LOG.warn(
-              "No field {} found in class {}",
-              fieldChange.getName().split("\\.")[0],
-              clazz.getName());
+        if (!isListField(clazz, fieldChange.getName())) {
+          continue;
         }
 
         try {
+          String nestedField = field.substring(fieldChange.getName().length() + 1);
           JsonUtils.readObjects((String) fieldChange.getOldValue(), Map.class).stream()
               .map(map -> (Map<String, Object>) map)
               .map(map -> (String) map.get("name"))
@@ -151,5 +117,74 @@ public class ChangeSummarizer<T extends EntityInterface> {
       }
     }
     return keysToDelete;
+  }
+
+  private boolean matchesTrackedField(String trackedField, String fieldName) {
+    if (trackedField.equals(fieldName)) {
+      return true;
+    }
+
+    String[] trackedParts = FullyQualifiedName.split(trackedField);
+    String[] fieldParts = FullyQualifiedName.split(fieldName);
+
+    if (trackedParts.length == 1 || fieldParts.length < trackedParts.length) {
+      return false;
+    }
+
+    for (int i = 0; i < trackedParts.length - 1; i++) {
+      if (!trackedParts[i].equals(fieldParts[i])) {
+        return false;
+      }
+    }
+
+    return trackedParts[trackedParts.length - 1].equals(fieldParts[fieldParts.length - 1]);
+  }
+
+  private boolean hasField(Class<?> currentClass, String[] fieldParts, int index) {
+    try {
+      Field field = currentClass.getDeclaredField(fieldParts[index]);
+      if (index == fieldParts.length - 1) {
+        return true;
+      }
+
+      return hasField(getFieldClass(field), fieldParts, index + 1);
+    } catch (NoSuchFieldException e) {
+      return false;
+    }
+  }
+
+  private boolean isListField(Class<?> currentClass, String fieldName) {
+    try {
+      String[] fieldParts = FullyQualifiedName.split(fieldName);
+      Field field = null;
+      Class<?> fieldClass = currentClass;
+
+      for (String fieldPart : fieldParts) {
+        field = fieldClass.getDeclaredField(fieldPart);
+        fieldClass = getFieldClass(field);
+      }
+
+      return field != null && List.class.isAssignableFrom(field.getType());
+    } catch (NoSuchFieldException e) {
+      LOG.warn("No field {} found in class {}", fieldName, currentClass.getName());
+      return false;
+    }
+  }
+
+  private Class<?> getFieldClass(Field field) {
+    if (List.class.isAssignableFrom(field.getType())) {
+      Type genericType = field.getGenericType();
+      if (genericType instanceof ParameterizedType parameterizedType) {
+        Type elementType = parameterizedType.getActualTypeArguments()[0];
+        if (elementType instanceof Class<?> elementClass) {
+          return elementClass;
+        }
+        if (elementType instanceof ParameterizedType nestedParameterizedType) {
+          return (Class<?>) nestedParameterizedType.getRawType();
+        }
+      }
+    }
+
+    return field.getType();
   }
 }

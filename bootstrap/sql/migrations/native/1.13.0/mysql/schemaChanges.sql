@@ -129,3 +129,82 @@ SELECT ue.id, re.id, 'user', 'role', 10
 FROM user_entity ue, role_entity re
 WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole';
+
+-- RDF distributed indexing state tables
+CREATE TABLE IF NOT EXISTS rdf_index_job (
+    id VARCHAR(36) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    jobConfiguration JSON NOT NULL,
+    totalRecords BIGINT NOT NULL DEFAULT 0,
+    processedRecords BIGINT NOT NULL DEFAULT 0,
+    successRecords BIGINT NOT NULL DEFAULT 0,
+    failedRecords BIGINT NOT NULL DEFAULT 0,
+    stats JSON,
+    createdBy VARCHAR(256) NOT NULL,
+    createdAt BIGINT NOT NULL,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    updatedAt BIGINT NOT NULL,
+    errorMessage TEXT,
+    PRIMARY KEY (id),
+    INDEX idx_rdf_index_job_status (status),
+    INDEX idx_rdf_index_job_created (createdAt DESC)
+);
+
+CREATE TABLE IF NOT EXISTS rdf_index_partition (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    partitionIndex INT NOT NULL,
+    rangeStart BIGINT NOT NULL,
+    rangeEnd BIGINT NOT NULL,
+    estimatedCount BIGINT NOT NULL,
+    workUnits BIGINT NOT NULL,
+    priority INT NOT NULL DEFAULT 50,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    processingCursor BIGINT NOT NULL DEFAULT 0,
+    processedCount BIGINT NOT NULL DEFAULT 0,
+    successCount BIGINT NOT NULL DEFAULT 0,
+    failedCount BIGINT NOT NULL DEFAULT 0,
+    assignedServer VARCHAR(255),
+    claimedAt BIGINT,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    lastUpdateAt BIGINT,
+    lastError TEXT,
+    retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_rdf_partition_job_entity_idx (jobId, entityType, partitionIndex),
+    INDEX idx_rdf_partition_job (jobId),
+    INDEX idx_rdf_partition_status_priority (status, priority DESC),
+    INDEX idx_rdf_partition_claimable (jobId, status, claimableAt),
+    INDEX idx_rdf_partition_assigned_server (jobId, assignedServer),
+    CONSTRAINT fk_rdf_partition_job FOREIGN KEY (jobId) REFERENCES rdf_index_job(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS rdf_reindex_lock (
+    lockKey VARCHAR(64) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(255) NOT NULL,
+    acquiredAt BIGINT NOT NULL,
+    lastHeartbeat BIGINT NOT NULL,
+    expiresAt BIGINT NOT NULL,
+    PRIMARY KEY (lockKey)
+);
+
+CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    processedRecords BIGINT DEFAULT 0,
+    successRecords BIGINT DEFAULT 0,
+    failedRecords BIGINT DEFAULT 0,
+    partitionsCompleted INT DEFAULT 0,
+    partitionsFailed INT DEFAULT 0,
+    lastUpdatedAt BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE INDEX idx_rdf_index_server_stats_job_server_entity (jobId, serverId, entityType),
+    INDEX idx_rdf_index_server_stats_job_id (jobId)
+);
