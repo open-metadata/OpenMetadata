@@ -3278,14 +3278,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       patchEntity(fetched.getId().toString(), fetched);
     }
 
-    // Verify updates. Retry briefly to absorb the cache write-through / pub-sub fan-out under
-    // parallel load — the PATCH is synchronous server-side but concurrent test traffic can
-    // briefly stall the fresh read of a just-updated row.
+    // Verify updates. Retry to absorb the cache write-through / pub-sub fan-out under parallel
+    // load — the PATCH is synchronous server-side but concurrent test traffic can briefly stall
+    // the fresh read of a just-updated row. 60s matches other eventual-consistency windows in
+    // this test suite; NotificationTemplate showed the previous 10s budget hit 12s of stall.
     for (T entity : createdEntities) {
       String entityId = entity.getId().toString();
       Awaitility.await("Description should be bulk updated")
-          .atMost(Duration.ofSeconds(10))
-          .pollInterval(Duration.ofMillis(250))
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofMillis(500))
           .untilAsserted(
               () -> {
                 T refetched = getEntity(entityId);
