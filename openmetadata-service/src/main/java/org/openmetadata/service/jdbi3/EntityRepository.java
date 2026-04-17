@@ -295,17 +295,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
 
-  private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
+  private static final int ENTITY_OBJECT_OVERHEAD_BYTES = 40;
 
-  // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
-  // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this overestimates
-  // slightly — which is intentional for memory capping. Zero allocation, single field read.
+  // Weigh an EntityInterface by its JSON serialization size: length * 2 (UTF-16 worst-case) + 40.
+  // Serialization happens once on cache write; the resulting byte estimate caps total heap used
+  // by the cache. Overestimates slightly (compact strings on Java 21 use fewer bytes) — intentional
+  // for memory safety.
   // Defaults used before CacheConfiguration is loaded at startup. initCaches() replaces these.
-  public static volatile LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
+  public static volatile LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       buildEntityNameCache(
           CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
-  public static volatile LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
+  public static volatile LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID =
       buildEntityIdCache(
           CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
@@ -327,25 +328,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
         config.getEntityCacheTTLSeconds());
   }
 
-  private static LoadingCache<Pair<String, String>, String> buildEntityNameCache(
+  private static int weighEntity(EntityInterface value) {
+    if (value == null) {
+      return ENTITY_OBJECT_OVERHEAD_BYTES;
+    }
+    try {
+      return JsonUtils.pojoToJson(value).length() * 2 + ENTITY_OBJECT_OVERHEAD_BYTES;
+    } catch (Exception e) {
+      return ENTITY_OBJECT_OVERHEAD_BYTES;
+    }
+  }
+
+  private static LoadingCache<Pair<String, String>, EntityInterface> buildEntityNameCache(
       long maxWeightBytes, int ttlSeconds) {
     return CacheBuilder.newBuilder()
         .maximumWeight(maxWeightBytes)
         .weigher(
-            (Weigher<Pair<String, String>, String>)
-                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+            (Weigher<Pair<String, String>, EntityInterface>) (key, value) -> weighEntity(value))
         .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
         .recordStats()
         .build(new EntityLoaderWithName());
   }
 
-  private static LoadingCache<Pair<String, UUID>, String> buildEntityIdCache(
+  private static LoadingCache<Pair<String, UUID>, EntityInterface> buildEntityIdCache(
       long maxWeightBytes, int ttlSeconds) {
     return CacheBuilder.newBuilder()
         .maximumWeight(maxWeightBytes)
         .weigher(
-            (Weigher<Pair<String, UUID>, String>)
-                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+            (Weigher<Pair<String, UUID>, EntityInterface>) (key, value) -> weighEntity(value))
         .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
         .recordStats()
         .build(new EntityLoaderWithId());
