@@ -156,20 +156,20 @@ class SsrsSource(DashboardServiceSource):
                 f"{clean_uri(self.service_connection.hostPort)}"
                 f"/report{dashboard_details.path}"
             )
-            yield Either(
-                right=CreateChartRequest(
-                    name=EntityName(f"{dashboard_details.id}_chart"),
-                    displayName=chart_name,
-                    description=(
-                        Markdown(dashboard_details.description)
-                        if dashboard_details.description
-                        else None
-                    ),
-                    chartType=ChartType.Other.value,
-                    sourceUrl=SourceUrl(chart_url),
-                    service=self.context.get().dashboard_service,
-                )
+            chart_request = CreateChartRequest(
+                name=EntityName(f"{dashboard_details.id}_chart"),
+                displayName=chart_name,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
+                chartType=ChartType.Other.value,
+                sourceUrl=SourceUrl(chart_url),
+                service=self.context.get().dashboard_service,
             )
+            yield Either(right=chart_request)
+            self.register_record_chart(chart_request=chart_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
