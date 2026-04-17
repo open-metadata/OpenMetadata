@@ -38,7 +38,7 @@ from metadata.data_quality.validations.models import (
     TableDiffRuntimeParameters,
     TableParameter,
 )
-from metadata.generated.schema.entity.data.table import Column, ProfileSampleType
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
 )
@@ -50,6 +50,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
@@ -465,16 +466,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         on Table 1 and the hash will ensure that the same row is selected on Table 2. We want to avoid selecting rows
         with different ids because the comparison will not be sensible.
         """
-        if (
-            # no sample configuration
-            self.runtime_params.table_profile_config is None
-            or self.runtime_params.table_profile_config.profileSample is None
-            # sample is 100% or in other words no sample is required
-            or (
-                self.runtime_params.table_profile_config.profileSampleType
-                == ProfileSampleType.PERCENTAGE
-                and self.runtime_params.table_profile_config.profileSample == 100
-            )
+        config = self.runtime_params.table_profile_config
+        if config is None:
+            return None, None
+        profile_sample_config = config.profileSampleConfig if config else None
+        sample_config = profile_sample_config.root if profile_sample_config else None
+        static = sample_config.config if sample_config else None
+        profile_sample = getattr(static, "profileSample", None) if static else None
+        profile_sample_type = (
+            getattr(static, "profileSampleType", None) if static else None
+        )
+        if profile_sample is None or (
+            profile_sample_type == ProfileSampleType.PERCENTAGE
+            and profile_sample == 100
         ):
             return None, None
         if DatabaseServiceType.Mssql in [
@@ -520,26 +524,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     def calculate_nounce(self, max_nounce=2**32 - 1) -> int:
         """Calculate the nounce based on the profile sample configuration. The nounce is
         the sample fraction projected to a number on a scale of 0 to max_nounce"""
-        if (
-            self.runtime_params.table_profile_config.profileSampleType
-            == ProfileSampleType.PERCENTAGE
-        ):
-            return int(
-                max_nounce
-                * self.runtime_params.table_profile_config.profileSample
-                / 100
-            )
-        if (
-            self.runtime_params.table_profile_config.profileSampleType
-            == ProfileSampleType.ROWS
-        ):
+        config = self.runtime_params.table_profile_config
+        profile_sample_config = config.profileSampleConfig if config else None
+        sample_config = profile_sample_config.root if profile_sample_config else None
+        static = sample_config.config if sample_config else None
+        profile_sample = getattr(static, "profileSample", 100)
+        profile_sample_type = getattr(static, "profileSampleType", None)
+        if profile_sample_type == ProfileSampleType.PERCENTAGE:
+            return int(max_nounce * profile_sample / 100)
+        if profile_sample_type == ProfileSampleType.ROWS:
             row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
-            return int(
-                max_nounce
-                * (self.runtime_params.table_profile_config.profileSample / row_count)
-            )
+            return int(max_nounce * (profile_sample / row_count))
         raise ValueError("Invalid profile sample type")
 
     def get_row_diff_test_case_result(
