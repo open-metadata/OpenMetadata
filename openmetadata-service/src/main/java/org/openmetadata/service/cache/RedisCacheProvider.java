@@ -1,15 +1,20 @@
 package org.openmetadata.service.cache;
 
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -19,6 +24,7 @@ public class RedisCacheProvider implements CacheProvider {
   private RedisClient redisClient;
   private StatefulRedisConnection<String, String> connection;
   private RedisCommands<String, String> syncCommands;
+  private RedisAsyncCommands<String, String> asyncCommands;
   private volatile boolean available = false;
 
   public RedisCacheProvider(CacheConfig config) {
@@ -86,6 +92,7 @@ public class RedisCacheProvider implements CacheProvider {
     connection = redisClient.connect();
     connection.setTimeout(Duration.ofMillis(config.redis.commandTimeoutMs));
     syncCommands = connection.sync();
+    asyncCommands = connection.async();
     LOG.info("Initialized Redis connection");
   }
 
@@ -247,6 +254,64 @@ public class RedisCacheProvider implements CacheProvider {
       LOG.error("Error deleting hash fields: {}", key, e);
     } finally {
       stopWriteTimer(m, sample);
+    }
+  }
+
+  @Override
+  public void pipelineSet(Map<String, String> keyValues, Duration ttl) {
+    if (!available || keyValues.isEmpty()) return;
+
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
+    try {
+      SetArgs args = SetArgs.Builder.ex(ttl.getSeconds());
+      List<RedisFuture<?>> futures = new ArrayList<>(keyValues.size());
+      for (Map.Entry<String, String> e : keyValues.entrySet()) {
+        futures.add(asyncCommands.set(e.getKey(), e.getValue(), args));
+      }
+      awaitAll(futures);
+      if (m != null) {
+        for (int i = 0; i < keyValues.size(); i++) m.recordWrite();
+      }
+    } catch (Exception e) {
+      if (m != null) m.recordError();
+      LOG.error("Error on pipelineSet (batch={})", keyValues.size(), e);
+    } finally {
+      stopWriteTimer(m, sample);
+    }
+  }
+
+  @Override
+  public void pipelineHset(Map<String, Map<String, String>> keyFields, Duration ttl) {
+    if (!available || keyFields.isEmpty()) return;
+
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
+    try {
+      List<RedisFuture<?>> futures = new ArrayList<>(keyFields.size() * 2);
+      for (Map.Entry<String, Map<String, String>> e : keyFields.entrySet()) {
+        if (e.getValue().isEmpty()) continue;
+        futures.add(asyncCommands.hset(e.getKey(), e.getValue()));
+        if (ttl != null && ttl.getSeconds() > 0) {
+          futures.add(asyncCommands.expire(e.getKey(), ttl.getSeconds()));
+        }
+      }
+      awaitAll(futures);
+      if (m != null) {
+        for (int i = 0; i < keyFields.size(); i++) m.recordWrite();
+      }
+    } catch (Exception e) {
+      if (m != null) m.recordError();
+      LOG.error("Error on pipelineHset (batch={})", keyFields.size(), e);
+    } finally {
+      stopWriteTimer(m, sample);
+    }
+  }
+
+  private void awaitAll(List<RedisFuture<?>> futures) throws Exception {
+    long timeoutMs = Math.max(1000L, (long) config.redis.commandTimeoutMs * 10);
+    for (RedisFuture<?> f : futures) {
+      f.get(timeoutMs, TimeUnit.MILLISECONDS);
     }
   }
 

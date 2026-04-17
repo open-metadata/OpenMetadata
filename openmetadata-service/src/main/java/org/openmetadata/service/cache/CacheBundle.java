@@ -20,6 +20,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedTagUsageDao cachedTagUsageDao;
   private static CachedReadBundle cachedReadBundle;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
+  private static CacheConfig cacheConfig;
 
   public CacheBundle() {
     instance = this;
@@ -34,7 +35,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   @Override
   public void run(OpenMetadataApplicationConfig configuration, Environment environment) {
-    CacheConfig cacheConfig = configuration.getCacheConfig();
+    cacheConfig = configuration.getCacheConfig();
 
     LOG.info("CacheBundle.run() called with cacheConfig: {}", cacheConfig);
 
@@ -115,6 +116,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {
     return cacheInvalidationPubSub;
+  }
+
+  public static CacheConfig getCacheConfig() {
+    return cacheConfig;
   }
 
   private static class CacheLifecycleManager implements Managed {
