@@ -493,7 +493,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
         """List (key, size_bytes) pairs for files under prefix.
 
-        Override per provider (S3, GCS, Azure). Default returns empty.
+        Must be overridden by each provider to enable glob-style
+        ``dataPath`` expansion. Currently implemented for **S3 only**.
+        GCS and Azure support are tracked as follow-ups — until then,
+        glob patterns on those providers will log a warning and match
+        nothing (literal paths still work).
+
+        Returns an empty iterable by default so providers that have
+        not yet implemented listing degrade gracefully.
         """
         return []
 
@@ -540,7 +547,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 matched.append((key, size))
 
         if not matched:
-            logger.info(f"No files matched glob '{pattern}' in bucket '{bucket_name}'")
+            logger.info(
+                f"No files matched glob '{pattern}' in bucket "
+                f"'{bucket_name}'. If this is unexpected, verify that "
+                f"glob dataPath is supported on your storage provider "
+                f"(currently S3 only — GCS/Azure require a list_keys "
+                f"override)."
+            )
             return
 
         if entry.unstructuredData:
