@@ -506,8 +506,18 @@ public class PartitionWorker {
 
     if (failureRecorder != null && readErrorCount > 0) {
       for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
+        Object rawEntity = entityError.getEntity();
         String entityId =
-            entityError.getEntity() != null ? entityError.getEntity().toString() : null;
+            rawEntity instanceof EntityInterface
+                ? ((EntityInterface) rawEntity).getId().toString()
+                : (rawEntity != null ? rawEntity.toString() : null);
+        if (entityId == null) {
+          LOG.warn(
+              "Skipping reader failure record for entityType={}: entityId is null, message={}",
+              entityType,
+              entityError.getMessage());
+          continue;
+        }
         failureRecorder.recordReaderEntityFailure(
             entityType, entityId, null, entityError.getMessage());
       }
