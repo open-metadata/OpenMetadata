@@ -245,7 +245,6 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -3032,11 +3031,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (cachedEntityDao == null || !isValidEntityForCache(entity) || "user".equals(entityType)) {
       return;
     }
-    UUID entityId = entity.getId();
-    String fqn = entity.getFullyQualifiedName();
-    CompletableFuture.runAsync(
-        () -> writeToRedisCache(cachedEntityDao, entityId, fqn),
-        AsyncService.getInstance().getExecutorService());
+    // Populate synchronously on the write path. A previous async version raced on rapid updates:
+    // two CompletableFutures on the shared executor could complete out of order, leaving the
+    // cache pinned to the older value while the DB held the newer one. Running on the request
+    // thread guarantees the final cache write observes the final DB commit order.
+    //
+    // Use the same storage-shaped JSON the DB column stores — i.e. relationship fields (owners,
+    // tags, followers, domains, etc.) stripped. If we serialized the in-memory POJO directly,
+    // downstream reads that bypass setFieldsInternal (e.g. inheritance traversal loading the
+    // parent via find()) would see embedded owners that don't reflect the current
+    // entity_relationship state and return stale inherited data.
+    try {
+      String json = serializeForStorage(entity);
+      writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
+    } catch (Exception e) {
+      LOG.debug("Write-through cache failed: {} {}", entityType, entity.getId(), e);
+    }
   }
 
   protected void writeThroughCacheMany(List<T> entities, boolean update) {
@@ -3047,22 +3057,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if ("user".equals(entityType)) {
       return;
     }
-    List<UUID> ids = new ArrayList<>();
-    List<String> fqns = new ArrayList<>();
     for (T entity : entities) {
-      if (isValidEntityForCache(entity)) {
-        ids.add(entity.getId());
-        fqns.add(entity.getFullyQualifiedName());
+      if (!isValidEntityForCache(entity)) continue;
+      try {
+        String json = serializeForStorage(entity);
+        writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
+      } catch (Exception e) {
+        LOG.debug("Write-through cache failed (bulk): {} {}", entityType, entity.getId(), e);
       }
     }
-    if (ids.isEmpty()) return;
-    CompletableFuture.runAsync(
-        () -> {
-          for (int i = 0; i < ids.size(); i++) {
-            writeToRedisCache(cachedEntityDao, ids.get(i), fqns.get(i));
-          }
-        },
-        AsyncService.getInstance().getExecutorService());
   }
 
   /**
@@ -3078,14 +3081,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void writeToRedisCache(CachedEntityDao cachedEntityDao, UUID entityId, String fqn) {
+  private void writeJsonToRedis(
+      CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
+    if (entityJson == null || entityJson.isEmpty()) return;
     try {
-      String entityJson = dao.findById(dao.getTableName(), entityId, "");
-      if (entityJson != null && !entityJson.isEmpty()) {
-        cachedEntityDao.putBase(entityType, entityId, entityJson);
-        if (fqn != null) {
-          cachedEntityDao.putByName(entityType, fqn, entityJson);
-        }
+      cachedEntityDao.putBase(entityType, entityId, entityJson);
+      if (fqn != null) {
+        cachedEntityDao.putByName(entityType, fqn, entityJson);
       }
     } catch (Exception e) {
       LOG.debug("Failed to write to Redis cache: {} {}", entityType, entityId, e);
@@ -5288,10 +5290,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       String fromEntityType,
       boolean mustHaveRelationship) {
-    // Container fast-path: when no explicit fromEntityType is pinned, this is the typical
-    // "who contains X" lookup and stays cacheable by child id + relationship.
+    // Container fast-path: cacheable only for hierarchical CONTAINS resolution where the
+    // parent identity is stable. Other relationship types (OWNS, HAS, FOLLOWS, ...) change
+    // per-write and must always hit the DB so downstream inheritance sees the freshest record.
     CachedRelationshipDao cacheDao =
-        fromEntityType == null ? CacheBundle.getCachedRelationshipDao() : null;
+        (fromEntityType == null && relationship == Relationship.CONTAINS)
+            ? CacheBundle.getCachedRelationshipDao()
+            : null;
     if (cacheDao != null) {
       EntityReference cached = cacheDao.getContainer(toEntity, toId, relationship.ordinal());
       if (cached != null) {
@@ -8061,17 +8066,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void invalidateCachesAfterStore() {
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, updated.getId()));
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, updated.getFullyQualifiedName()));
+      UUID id = updated.getId();
+      String fqn = updated.getFullyQualifiedName();
+
+      // Evict the Guava L1 so future reads reload from Redis/DB.
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+
+      // Critical: drop Redis *base* entries for the entity BEFORE scheduling the async
+      // writeThroughCache. Between the sync DB commit and the async re-read, a concurrent GET
+      // would otherwise hit stale JSON in Redis (base hash field) and serve old values -
+      // including old owners/domains consumed by downstream inheritance. Deleting first means
+      // the next read misses, goes to DB, and populates fresh.
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        cachedEntityDao.invalidateBase(entityType, id);
+        if (fqn != null) {
+          cachedEntityDao.invalidateByName(entityType, fqn);
+        }
+      }
+
+      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+      if (cachedRelationshipDao != null) {
+        cachedRelationshipDao.invalidateOwners(entityType, id);
+        cachedRelationshipDao.invalidateDomains(entityType, id);
+        // Children of this entity cache its reference under "who contains me" - drop on write so
+        // inherited chains (e.g. table inherits owner from database) re-resolve via fresh lookup.
+        cachedRelationshipDao.invalidateContainer(entityType, id);
+      }
+
       var cachedReadBundle = CacheBundle.getCachedReadBundle();
       if (cachedReadBundle != null) {
-        cachedReadBundle.invalidate(entityType, updated.getId());
+        cachedReadBundle.invalidate(entityType, id);
       }
+
+      // Kick off the async repopulate; correctness no longer depends on when it completes.
       EntityRepository.this.writeThroughCache(updated, true);
-      RequestEntityCache.invalidate(entityType, updated.getId(), updated.getFullyQualifiedName());
+      RequestEntityCache.invalidate(entityType, id, fqn);
+
       var pubsub = CacheBundle.getCacheInvalidationPubSub();
       if (pubsub != null) {
-        pubsub.publish(entityType, updated.getId(), updated.getFullyQualifiedName(), "update");
+        pubsub.publish(entityType, id, fqn, "update");
       }
     }
 
