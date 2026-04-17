@@ -28,6 +28,10 @@ const glossary = new Glossary();
 const term1 = new GlossaryTerm(glossary);
 const term2 = new GlossaryTerm(glossary);
 
+const glossary2 = new Glossary();
+const term3 = new GlossaryTerm(glossary2);
+const term4 = new GlossaryTerm(glossary2);
+
 async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('search-dropdown-Glossary').click();
   await page.getByTestId(glossaryId).click();
@@ -47,49 +51,40 @@ async function waitForGraphLoaded(page: Page) {
   });
 }
 
-async function clickCanvasAndWaitForPanel(
-  page: Page,
-  x: number,
-  y: number
-): Promise<boolean> {
-  await page.mouse.click(x, y);
+async function readNodePositions(
+  page: Page
+): Promise<Record<string, { x: number; y: number }>> {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const pos = el?.dataset.nodePositions;
+      if (!pos) {
+        return false;
+      }
+      try {
+        return Object.keys(JSON.parse(pos)).length > 0;
+      } catch {
+        return false;
+      }
+    },
+    { timeout: 10000 }
+  );
 
   return page
-    .getByTestId('entity-summary-panel-container')
-    .waitFor({ state: 'visible', timeout: 1500 })
-    .then(() => true)
-    .catch(() => false);
+    .locator('.ontology-g6-container')
+    .evaluate(
+      (el: HTMLElement) =>
+        JSON.parse(el.dataset.nodePositions ?? '{}') as Record<
+          string,
+          { x: number; y: number }
+        >
+    );
 }
 
-async function clickCanvasToFindNode(
-  page: Page,
-  box: { x: number; y: number; width: number; height: number }
-): Promise<boolean> {
-  const offsets = [
-    [0.5, 0.5],
-    [0.35, 0.5],
-    [0.65, 0.5],
-    [0.5, 0.35],
-    [0.5, 0.65],
-    [0.4, 0.4],
-    [0.6, 0.4],
-    [0.4, 0.6],
-    [0.6, 0.6],
-  ];
-
-  for (const [fx, fy] of offsets) {
-    const found = await clickCanvasAndWaitForPanel(
-      page,
-      box.x + box.width * fx,
-      box.y + box.height * fy
-    );
-
-    if (found) {
-      return true;
-    }
-  }
-
-  return false;
+async function clickFirstGraphNode(page: Page): Promise<void> {
+  const positions = await readNodePositions(page);
+  const firstPos = Object.values(positions)[0];
+  await page.mouse.click(firstPos.x, firstPos.y);
 }
 
 test.describe('Ontology Explorer', () => {
@@ -104,6 +99,10 @@ test.describe('Ontology Explorer', () => {
     await glossary.create(apiContext);
     await term1.create(apiContext);
     await term2.create(apiContext);
+
+    await glossary2.create(apiContext);
+    await term3.create(apiContext);
+    await term4.create(apiContext);
 
     await term1.patch(apiContext, [
       {
@@ -142,6 +141,16 @@ test.describe('Ontology Explorer', () => {
     }
     if (glossary.responseData?.id) {
       await glossary.delete(apiContext);
+    }
+
+    if (term3.responseData?.id) {
+      await term3.delete(apiContext);
+    }
+    if (term4.responseData?.id) {
+      await term4.delete(apiContext);
+    }
+    if (glossary2.responseData?.id) {
+      await glossary2.delete(apiContext);
     }
 
     await apiContext.dispose();
@@ -257,6 +266,17 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
     });
+
+    test('should show empty state when active filter yields no visible nodes', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary2.responseData.id);
+      await waitForGraphLoaded(page);
+      await page.getByTestId('ontology-isolated-toggle').click();
+
+      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+    });
   });
 
   test.describe('Control Buttons', () => {
@@ -285,6 +305,38 @@ test.describe('Ontology Explorer', () => {
         timeout: 5000,
       });
       await expect(page.getByTestId('refresh')).toBeDisabled();
+    });
+
+    test('should fire a glossaryTerms API request when refresh is clicked', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+
+      const termsRequest = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/glossaryTerms') &&
+          res.request().method() === 'GET',
+        { timeout: 15000 }
+      );
+      await page.getByTestId('refresh').click();
+      await termsRequest;
+      await waitForGraphLoaded(page);
+    });
+
+    test('should repopulate data-node-positions after fit-view', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('zoom-in').click();
+      await page.getByTestId('zoom-in').click();
+
+      await page.getByTestId('fit-view').click();
+
+      const positions = await readNodePositions(page);
+      expect(Object.keys(positions).length).toBeGreaterThan(0);
     });
   });
 
@@ -459,6 +511,24 @@ test.describe('Ontology Explorer', () => {
       await toggle.click();
       await expect(toggle).toHaveAttribute('data-selected', 'true');
     });
+
+    test('should remove isolated nodes from stats when toggled off', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary2.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '2 Terms'
+      );
+
+      await page.getByTestId('ontology-isolated-toggle').click();
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '0 Terms'
+      );
+    });
   });
 
   test.describe('Clear All Filters', () => {
@@ -614,6 +684,26 @@ test.describe('Ontology Explorer', () => {
 
       await expect(page.getByTestId('ontology-explorer-stats')).toBeVisible();
     });
+
+    test('clicking a term node in Data mode opens the entity summary panel', async ({
+      page,
+    }) => {
+      test.slow();
+      await waitForGraphLoaded(page);
+
+      await page.getByRole('tab', { name: 'Data' }).click();
+      await waitForGraphLoaded(page);
+      await page.getByTestId('fit-view').click();
+
+      await clickFirstGraphNode(page);
+
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
+    });
   });
 
   test.describe('Term Click - Entity Summary Panel', () => {
@@ -622,30 +712,19 @@ test.describe('Ontology Explorer', () => {
     }) => {
       test.slow();
       await waitForGraphLoaded(page);
-
       await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
-
       await page.getByTestId('fit-view').click();
 
-      const canvas = page.locator('.ontology-g6-container canvas').first();
-      const box = await canvas.boundingBox();
+      await clickFirstGraphNode(page);
 
-      expect(box).not.toBeNull();
-      const found = await clickCanvasToFindNode(page, box!);
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
 
-      if (found) {
-        await expect(
-          page.getByTestId('entity-summary-panel-container')
-        ).toBeVisible();
-
-        await expect(
-          page.getByTestId('permission-error-placeholder')
-        ).not.toBeVisible();
-      } else {
-        // No node hit after scanning the canvas — skip soft
-        expect(true).toBe(true);
-      }
+      await expect(
+        page.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
     });
 
     test('entity panel should display outgoing or incoming relations section for a connected term', async ({
@@ -657,63 +736,24 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
-      const canvas = page.locator('.ontology-g6-container canvas').first();
-      const box = await canvas.boundingBox();
+      await clickFirstGraphNode(page);
 
-      expect(box).not.toBeNull();
-      const panelOpened = await clickCanvasToFindNode(page, box!);
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
 
-      if (panelOpened) {
-        await expect(
-          page.getByTestId('entity-summary-panel-container')
-        ).toBeVisible();
+      await page.getByTestId('ontology-relations-tab').click();
 
-        const outgoing = page.getByTestId('outgoing-relation-label');
-        const incoming = page.getByTestId('incoming-relation-label');
+      const outgoing = page.getByTestId('outgoing-relation-label');
+      const incoming = page.getByTestId('incoming-relation-label');
 
-        const hasRelations =
-          (await outgoing.isVisible()) || (await incoming.isVisible());
-
-        expect(typeof hasRelations).toBe('boolean');
-      } else {
-        expect(true).toBe(true);
-      }
+      await expect(
+        outgoing.or(incoming),
+        'Expected the selected term to have at least one outgoing or incoming relation'
+      ).toBeVisible({ timeout: 5000 });
     });
-  });
 
-  test.describe('Node Context Menu', () => {
-    async function rightClickCanvasToFindNode(
-      page: Page,
-      box: { x: number; y: number; width: number; height: number }
-    ): Promise<boolean> {
-      const offsets = [
-        [0.5, 0.5],
-        [0.35, 0.5],
-        [0.65, 0.5],
-        [0.5, 0.35],
-        [0.5, 0.65],
-      ];
-
-      for (const [fx, fy] of offsets) {
-        await page.mouse.click(
-          box.x + box.width * fx,
-          box.y + box.height * fy,
-          { button: 'right' }
-        );
-
-        const menuVisible = await page
-          .getByTestId('node-context-menu')
-          .isVisible();
-
-        if (menuVisible) {
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    test('should open context menu on right-click over a node and show all menu items', async ({
+    test('entity panel Relations tab should show the related term by name', async ({
       page,
     }) => {
       test.slow();
@@ -722,73 +762,34 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
-      const canvas = page.locator('.ontology-g6-container canvas').first();
-      const box = await canvas.boundingBox();
+      const positions = await readNodePositions(page);
+      const term1Pos = positions[term1.responseData.id];
 
-      expect(box).not.toBeNull();
+      expect(
+        term1Pos,
+        'term1 node must be present in graph positions'
+      ).toBeDefined();
+      await page.mouse.click(term1Pos.x, term1Pos.y);
 
-      const found = await rightClickCanvasToFindNode(page, box!);
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
 
-      if (found) {
-        await expect(page.getByTestId('context-menu-focus')).toBeVisible();
-        await expect(page.getByTestId('context-menu-details')).toBeVisible();
-        await expect(
-          page.getByTestId('context-menu-open-new-tab')
-        ).toBeVisible();
-        await expect(page.getByTestId('context-menu-copy-fqn')).toBeVisible();
-      } else {
-        expect(true).toBe(true);
-      }
-    });
+      await page.getByTestId('ontology-relations-tab').click();
 
-    test('should close context menu when clicking outside', async ({
-      page,
-    }) => {
-      test.slow();
-      await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, glossary.responseData.id);
-      await waitForGraphLoaded(page);
-      await page.getByTestId('fit-view').click();
+      // Section label only renders when rows.length > 0, so its visibility already
+      // implies a non-zero count. Confirm the related term (term2) appears by name.
+      const outgoing = page.getByTestId('outgoing-relation-label');
+      const incoming = page.getByTestId('incoming-relation-label');
+      await expect(outgoing.or(incoming)).toBeVisible({ timeout: 5000 });
 
-      const canvas = page.locator('.ontology-g6-container canvas').first();
-      const box = await canvas.boundingBox();
-
-      expect(box).not.toBeNull();
-
-      const found = await rightClickCanvasToFindNode(page, box!);
-
-      if (found) {
-        await page.mouse.click(box!.x + 10, box!.y + 10);
-        await expect(page.getByTestId('node-context-menu')).not.toBeVisible();
-      } else {
-        expect(true).toBe(true);
-      }
-    });
-
-    test('should open entity panel when View Details is clicked from context menu', async ({
-      page,
-    }) => {
-      test.slow();
-      await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, glossary.responseData.id);
-      await waitForGraphLoaded(page);
-      await page.getByTestId('fit-view').click();
-
-      const canvas = page.locator('.ontology-g6-container canvas').first();
-      const box = await canvas.boundingBox();
-
-      expect(box).not.toBeNull();
-
-      const found = await rightClickCanvasToFindNode(page, box!);
-
-      if (found) {
-        await page.getByTestId('context-menu-details').click();
-        await expect(
-          page.getByTestId('entity-summary-panel-container')
-        ).toBeVisible();
-      } else {
-        expect(true).toBe(true);
-      }
+      const relatedName =
+        term2.responseData.displayName ?? term2.responseData.name;
+      await expect(
+        page
+          .getByTestId('entity-summary-panel-container')
+          .getByText(relatedName)
+      ).toBeVisible();
     });
   });
 
@@ -804,6 +805,325 @@ test.describe('Ontology Explorer', () => {
       await expect(
         page.getByTestId('ontology-graph-hierarchy-empty')
       ).toBeVisible();
+    });
+  });
+
+  test.describe('Search Graph Overlay', () => {
+    test('should show overlay when search query is entered', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill(term1.data.name);
+      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
+    });
+
+    test('should hide overlay when search query is cleared', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill(term1.data.name);
+      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
+      await searchInput.clear();
+      await expect(
+        page.getByTestId('ontology-search-overlay')
+      ).not.toBeVisible();
+    });
+
+    test('matched term node should remain rendered in the graph during search', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill(term1.data.name);
+      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
+
+      const positions = await readNodePositions(page);
+
+      expect(
+        positions,
+        'term1 node must still be present in node positions while its name is the active search query'
+      ).toHaveProperty(term1.responseData.id);
+    });
+
+    test('should keep overlay visible and not crash when search term matches nothing', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      const searchInput = page
+        .getByTestId('ontology-graph-search')
+        .locator('input');
+      await searchInput.fill('__nonexistent_term_xyz__');
+
+      await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
+      await expect(
+        page.locator('.ontology-g6-container canvas').first()
+      ).toBeVisible();
+    });
+  });
+
+  test.describe('Multi-select Glossary Filter', () => {
+    test('should show terms from both glossaries when both are selected', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('search-dropdown-Glossary').click();
+      await page.getByTestId(glossary.responseData.id).click();
+      await page.getByTestId(glossary2.responseData.id).click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '4 Terms'
+      );
+    });
+
+    test('should show only one glossary terms when one is deselected', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('search-dropdown-Glossary').click();
+      await page.getByTestId(glossary.responseData.id).click();
+      await page.getByTestId(glossary2.responseData.id).click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('search-dropdown-Glossary').click();
+      await page.getByTestId(glossary2.responseData.id).click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '2 Terms'
+      );
+    });
+  });
+
+  test.describe('Multi-select Relation Type Filter', () => {
+    test('should filter to only matching relation type when Synonym is selected', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '1 Relations'
+      );
+
+      await page.getByTestId('search-dropdown-Relationship Type').click();
+      await page.getByTestId('drop-down-menu').getByText('Synonym').click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '0 Relations'
+      );
+    });
+
+    test('should show relatedTo edge when Related To filter is selected', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('search-dropdown-Relationship Type').click();
+      await page.getByTestId('drop-down-menu').getByText('Related To').click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '1 Relations'
+      );
+    });
+  });
+
+  test.describe('View Mode Disabled in Data Mode', () => {
+    test('should disable the view mode select when Data tab is active', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByRole('tab', { name: 'Data' }).click();
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('view-mode-select')).toHaveAttribute(
+        'data-disabled',
+        'true'
+      );
+    });
+
+    test('should re-enable view mode select when switching back to Model tab', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByRole('tab', { name: 'Data' }).click();
+      await waitForGraphLoaded(page);
+      await page.getByRole('tab', { name: 'Model' }).click();
+
+      await expect(page.getByTestId('view-mode-select')).not.toHaveAttribute(
+        'data-disabled',
+        'true'
+      );
+    });
+  });
+
+  test.describe('Export Downloads', () => {
+    test('should trigger PNG download when PNG option is clicked', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByTestId('ontology-export-graph').click();
+
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByText('PNG', { exact: true }).click(),
+      ]);
+
+      expect(download.suggestedFilename()).toMatch(/\.png$/i);
+    });
+
+    test('should trigger SVG download when SVG option is clicked', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByTestId('ontology-export-graph').click();
+
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByText('SVG', { exact: true }).click(),
+      ]);
+
+      expect(download.suggestedFilename()).toMatch(/\.svg$/i);
+    });
+  });
+
+  test.describe('Entity Panel Close', () => {
+    test('should close entity summary panel when close button is clicked', async ({
+      page,
+    }) => {
+      test.slow();
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+      await page.getByTestId('fit-view').click();
+
+      await clickFirstGraphNode(page);
+
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).toBeVisible();
+      await page.getByTestId('drawer-close-icon').click();
+      await expect(
+        page.getByTestId('entity-summary-panel-container')
+      ).not.toBeVisible();
+    });
+  });
+
+  test.describe('Filter Combinations', () => {
+    test('should retain relation type filter after glossary filter is cleared and re-applied', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await page.getByTestId('search-dropdown-Relationship Type').click();
+      await page.getByTestId('drop-down-menu').getByText('Synonym').click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '0 Relations'
+      );
+
+      await page.getByTestId('search-dropdown-Glossary').click();
+      await page.getByTestId(glossary.responseData.id).click();
+      await page.getByTestId('update-btn').click();
+      await waitForGraphLoaded(page);
+
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        '0 Relations'
+      );
+    });
+  });
+
+  test.describe('Stats Accuracy', () => {
+    test('should show 2 terms and 1 relation for the test glossary', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      const stats = page.getByTestId('ontology-explorer-stats');
+      await expect(stats).toContainText('2 Terms');
+      await expect(stats).toContainText('1 Relations');
+    });
+
+    test('should show 2 terms and 0 relations for glossary2', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, glossary2.responseData.id);
+      await waitForGraphLoaded(page);
+
+      const stats = page.getByTestId('ontology-explorer-stats');
+      await expect(stats).toContainText('2 Terms');
+      await expect(stats).toContainText('0 Relations');
+    });
+  });
+
+  test.describe('Glossary Dropdown Search', () => {
+    test('should filter glossary options by name in the dropdown search', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByTestId('search-dropdown-Glossary').click();
+      await expect(page.getByTestId('drop-down-menu')).toBeVisible();
+
+      const searchInput = page
+        .getByTestId('drop-down-menu')
+        .locator('input[type="text"]');
+      await searchInput.fill(glossary.data.displayName ?? glossary.data.name);
+
+      await expect(page.getByTestId(glossary.responseData.id)).toBeVisible();
+
+      await page.getByTestId('close-btn').click();
+    });
+
+    test('should show no results when search does not match any glossary', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await page.getByTestId('search-dropdown-Glossary').click();
+      await expect(page.getByTestId('drop-down-menu')).toBeVisible();
+
+      const searchInput = page
+        .getByTestId('drop-down-menu')
+        .locator('input[type="text"]');
+      await searchInput.fill('__nonexistent_glossary_xyz__');
+
+      await expect(
+        page.getByTestId(glossary.responseData.id)
+      ).not.toBeVisible();
+
+      await page.getByTestId('close-btn').click();
     });
   });
 });
@@ -977,5 +1297,93 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
     await expect(
       page.getByTestId('ontology-graph-hierarchy-empty')
     ).not.toBeVisible();
+  });
+});
+
+test.describe('Ontology Explorer - Cross Glossary Edges', () => {
+  const crossGlossary1 = new Glossary();
+  const crossTerm1 = new GlossaryTerm(crossGlossary1);
+  const crossGlossary2 = new Glossary();
+  const crossTerm2 = new GlossaryTerm(crossGlossary2);
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    await crossGlossary1.create(apiContext);
+    await crossTerm1.create(apiContext);
+    await crossGlossary2.create(apiContext);
+    await crossTerm2.create(apiContext);
+
+    await crossTerm1.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/relatedTerms/0',
+        value: {
+          relationType: 'relatedTo',
+          term: {
+            id: crossTerm2.responseData.id,
+            type: 'glossaryTerm',
+            name: crossTerm2.responseData.name,
+            displayName: crossTerm2.responseData.displayName,
+            fullyQualifiedName: crossTerm2.responseData.fullyQualifiedName,
+          },
+        },
+      },
+    ]);
+
+    await apiContext.dispose();
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    if (crossTerm1.responseData?.id) {
+      await crossTerm1.delete(apiContext);
+    }
+    if (crossTerm2.responseData?.id) {
+      await crossTerm2.delete(apiContext);
+    }
+    if (crossGlossary1.responseData?.id) {
+      await crossGlossary1.delete(apiContext);
+    }
+    if (crossGlossary2.responseData?.id) {
+      await crossGlossary2.delete(apiContext);
+    }
+
+    await apiContext.dispose();
+    await page.close();
+  });
+
+  test('Cross Glossary view should show edges between terms from different glossaries', async ({
+    page,
+  }) => {
+    test.slow();
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+
+    await page.getByTestId('search-dropdown-Glossary').click();
+    await page.getByTestId(crossGlossary1.responseData.id).click();
+    await page.getByTestId(crossGlossary2.responseData.id).click();
+    await page.getByTestId('update-btn').click();
+    await waitForGraphLoaded(page);
+
+    await page.getByTestId('view-mode-select').click();
+    await page.getByRole('option', { name: 'Cross Glossary' }).click();
+    await waitForGraphLoaded(page);
+
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /[1-9]\d*\s*Relations?/i
+    );
   });
 });

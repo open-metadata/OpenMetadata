@@ -13,6 +13,12 @@
 
 import { expect, Page } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
+import {
+  countCsvResponseRows,
+  getExportCount,
+  getExportModalContent,
+  openExportScopeModal,
+} from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
 const navigateToExplorePage = async (page: Page) => {
@@ -21,21 +27,11 @@ const navigateToExplorePage = async (page: Page) => {
   await expect(page.getByTestId('explore-page')).toBeVisible();
 };
 
-const getExportModalContent = (page: Page) =>
-  page.getByTestId('export-scope-modal').locator('.ant-modal-content');
-
-const openExportScopeModal = async (page: Page) => {
-  await page.getByTestId('export-search-results-button').click();
-  await expect(getExportModalContent(page)).toBeVisible();
-  await expect(
-    getExportModalContent(page).getByRole('button', { name: 'Export' })
-  ).toBeEnabled();
-};
-
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test.beforeEach(async ({ page }) => {
     await navigateToExplorePage(page);
   });
+
   test('Export button opens scope modal with correct options', async ({
     page,
   }) => {
@@ -57,11 +53,15 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       await expect(modalContent.getByText('Export Scope')).toBeVisible();
     });
 
-    await test.step('Modal shows Visible results and All matching assets options', async () => {
+    await test.step('Modal shows tab-specific scope and All matching assets options', async () => {
       const modalContent = getExportModalContent(page);
 
-      await expect(modalContent.getByText('Visible results')).toBeVisible();
-      await expect(modalContent.getByText('All matching assets')).toBeVisible();
+      await expect(
+        modalContent.getByTestId('export-scope-visible-card')
+      ).toBeVisible();
+      await expect(
+        modalContent.getByTestId('export-scope-all-card')
+      ).toBeVisible();
     });
 
     await test.step('All matching assets is selected by default', async () => {
@@ -70,10 +70,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       ).toBeChecked();
     });
 
-    await test.step('Selecting Visible results checks the visible radio', async () => {
+    await test.step('Selecting the tab-scope card checks the visible radio', async () => {
       const modalContent = getExportModalContent(page);
 
-      await modalContent.getByText('Visible results').click();
+      await modalContent.locator('input[value="visible"]').click();
       await expect(
         modalContent.locator('input[value="visible"]')
       ).toBeChecked();
@@ -88,91 +88,80 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('All matching assets export calls API with dataAsset index', async ({
-    page,
-  }) => {
-    await openExportScopeModal(page);
-
-    await test.step('All matching assets radio is pre-selected', async () => {
-      await expect(
-        getExportModalContent(page).locator('input[value="all"]')
-      ).toBeChecked();
-    });
-
-    await test.step('Clicking Export calls /search/export with index=dataAsset', async () => {
-      const exportApiPromise = page.waitForRequest(
-        (req) =>
-          req.url().includes('/api/v1/search/export') && req.method() === 'GET'
-      );
-
-      await getExportModalContent(page)
-        .getByRole('button', { name: 'Export' })
-        .click();
-
-      const request = await exportApiPromise;
-
-      expect(request.url()).toContain('index=dataAsset');
-    });
-  });
-
-  test('Visible results export calls API with size param', async ({ page }) => {
-    await openExportScopeModal(page);
-
-    await test.step('Select Visible results scope', async () => {
-      const modalContent = getExportModalContent(page);
-
-      await modalContent.getByText('Visible results').click();
-      await expect(
-        modalContent.locator('input[value="visible"]')
-      ).toBeChecked();
-    });
-
-    await test.step('Clicking Export calls /search/export with size param', async () => {
-      const exportApiPromise = page.waitForRequest(
-        (req) =>
-          req.url().includes('/api/v1/search/export') && req.method() === 'GET'
-      );
-
-      await getExportModalContent(page)
-        .getByRole('button', { name: 'Export' })
-        .click();
-
-      const request = await exportApiPromise;
-      const url = request.url();
-
-      expect(url).toContain('index=');
-      expect(url).toContain('size=');
-    });
-  });
-
-  test('Visible results export on page 2 sends correct from offset', async ({
+  test('Search mode visible export downloads CSV with tab-specific row count', async ({
     page,
   }) => {
     test.slow();
 
-    // Navigate to page 2 via URL so parsedSearch.page = 2
-    await page.goto(`${page.url().replace(/\?.*/, '')}?page=2&size=15`);
+    await page.goto('/explore/tables?search=sample_data');
     await expect(page.getByTestId('explore-page')).toBeVisible();
 
+    const countApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+
     await openExportScopeModal(page);
-    await getExportModalContent(page).getByText('Visible results').click();
+    await countApiPromise;
 
-    await test.step('Export request includes from= offset matching page 2', async () => {
-      const exportApiPromise = page.waitForRequest(
-        (req) =>
-          req.url().includes('/api/v1/search/export') && req.method() === 'GET'
-      );
+    const modalContent = getExportModalContent(page);
 
-      await getExportModalContent(page)
-        .getByRole('button', { name: 'Export' })
-        .click();
+    await modalContent.locator('input[value="visible"]').click();
 
-      const request = await exportApiPromise;
-      const url = request.url();
+    const expectedCount =
+      await test.step('Read displayed count from Visible Results card', () =>
+        getExportCount(page, 'export-scope-visible-count'));
 
-      // page=2, size=15 → from=15
-      expect(url).toContain('from=15');
-      expect(url).toContain('size=');
+    const exportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/export') &&
+        response.status() === 200
+    );
+
+    await modalContent.getByRole('button', { name: 'Export' }).click();
+
+    await test.step('CSV row count matches the displayed tab count', async () => {
+      const csvText = await (await exportResponsePromise).text();
+
+      expect(countCsvResponseRows(csvText)).toBe(expectedCount);
+    });
+  });
+
+  test('Browse mode visible export downloads CSV with current page row count', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const countApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+
+    await openExportScopeModal(page);
+    await countApiPromise;
+
+    const modalContent = getExportModalContent(page);
+
+    await modalContent.locator('input[value="visible"]').click();
+
+    const expectedCount =
+      await test.step('Read displayed count from Visible Results card', () =>
+        getExportCount(page, 'export-scope-visible-count'));
+
+    const exportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/export') &&
+        response.status() === 200
+    );
+
+    await modalContent.getByRole('button', { name: 'Export' }).click();
+
+    await test.step('CSV row count matches the displayed page count', async () => {
+      const csvText = await (await exportResponsePromise).text();
+
+      expect(countCsvResponseRows(csvText)).toBe(expectedCount);
     });
   });
 
@@ -190,10 +179,19 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       });
     });
 
+    const countApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+
     await openExportScopeModal(page);
+    await countApiPromise;
+
+    const modalContent = getExportModalContent(page);
 
     await test.step('Export button becomes disabled and shows loading after click', async () => {
-      const exportButton = getExportModalContent(page).getByRole('button', {
+      const exportButton = modalContent.getByRole('button', {
         name: 'Export',
       });
 
@@ -268,41 +266,11 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Export downloads CSV and closes modal', async ({ page }) => {
+  test('Export downloads CSV with correct filename and closes modal', async ({
+    page,
+  }) => {
     test.slow();
 
-    await page.route('**/api/v1/search/export?*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/csv',
-        headers: {
-          'Content-Disposition': 'attachment; filename="search_export.csv"',
-        },
-        body: 'Entity Type,Service Name,Service Type,FQN,Name,Display Name,Description,Owners,Tags,Glossary Terms,Domains,Tier\ntable,mysql,Mysql,sample_data.ecommerce_db.shopify.dim_address,dim_address,dim_address,,,,,,',
-      });
-    });
-
-    await openExportScopeModal(page);
-
-    await test.step('Export button shows loading state while downloading', async () => {
-      await page.route('**/api/v1/search/export?*', async (route) => {
-        await new Promise<void>((resolve) => setTimeout(resolve, 1500));
-        await route.fulfill({
-          status: 200,
-          contentType: 'text/csv',
-          body: 'Entity Type\ntable',
-        });
-      });
-
-      const exportButton = getExportModalContent(page).getByRole('button', {
-        name: 'Export',
-      });
-
-      await exportButton.click();
-      await expect(exportButton).toHaveClass(/ant-btn-loading/);
-    });
-
-    // Re-open modal for download verification after loading state test
     await openExportScopeModal(page);
 
     await test.step('Clicking Export triggers CSV download with correct filename', async () => {
