@@ -19,10 +19,10 @@ import {
   clickOutside,
   getDefaultAdminAPIContext,
   redirectToHomePage,
+  visitOwnProfilePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { updateJWTTokenExpiryTime } from '../../utils/login';
-import { visitUserProfilePage } from '../../utils/user';
 
 const user = new UserClass();
 const CREDENTIALS = user.data;
@@ -180,11 +180,25 @@ test.describe('Login flow should work properly', () => {
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
       await page1.waitForTimeout(3 * 60 * 1000);
 
-      await redirectToHomePage(page1);
+      await page1.bringToFront();
+      await visitOwnProfilePage(page1);
+      await waitForAllLoadersToDisappear(page1);
+      await expect(page1.getByTestId('user-display-name')).toHaveText(
+        testUser.responseData.displayName ?? testUser.responseData.name
+      );
 
-      await visitUserProfilePage(page1, testUser.responseData.name);
-      await redirectToHomePage(page2);
-      await visitUserProfilePage(page2, testUser.responseData.name);
+      await page2.bringToFront();
+      await page2.evaluate(() => {
+        document.dispatchEvent(
+          new Event('visibilitychange', { bubbles: true })
+        );
+      });
+
+      await visitOwnProfilePage(page2);
+      await waitForAllLoadersToDisappear(page2);
+      await expect(page2.getByTestId('user-display-name')).toHaveText(
+        testUser.responseData.displayName ?? testUser.responseData.name
+      );
 
       await page1.close();
       await page2.close();
