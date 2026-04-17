@@ -8592,10 +8592,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
 
-      // Load raw JSON from database
-      LOG.debug("Loading entity by name from database: {} {}", entityType, fqn);
+      // Load raw JSON from database. User entities store nameHash off the lowercased FQN —
+      // UserDAO.findEntityByName lowercases the input. We call dao.findByName directly here
+      // to stay in the JSON-only path, so mirror the same case-fold for user types.
+      String lookupFqn = "user".equals(entityType) ? fqn.toLowerCase() : fqn;
+      LOG.debug("Loading entity by name from database: {} {}", entityType, lookupFqn);
       String json =
-          dao.findByName(dao.getTableName(), dao.getNameHashColumn(), fqn, dao.getCondition(ALL));
+          dao.findByName(
+              dao.getTableName(), dao.getNameHashColumn(), lookupFqn, dao.getCondition(ALL));
       if (json == null) {
         throw new EntityNotFoundException(
             String.format("Entity not found: %s %s", entityType, fqn));
