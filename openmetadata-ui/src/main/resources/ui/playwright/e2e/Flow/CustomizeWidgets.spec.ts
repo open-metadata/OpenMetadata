@@ -655,6 +655,7 @@ test('My Tasks Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
       urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
       apiResponseUrl: '/api/v1/feed',
       searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
+      emptyStateTestId: 'my-task-empty-state',
     });
   });
 

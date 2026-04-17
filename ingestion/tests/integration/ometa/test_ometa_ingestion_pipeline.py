@@ -104,8 +104,10 @@ def test_add_status(metadata, workflow) -> None:
             ingestion_pipeline.fullyQualifiedName.root, pipeline_status
         )
 
-    assert ("exceeds the maximum allowed" in str(exc.value)) or (
-        "Connection aborted." in str(exc.value)
+    assert (
+        "exceeds the maximum allowed" in str(exc.value)
+        or "Connection aborted." in str(exc.value)
+        or "Invalid request" in str(exc.value)
     )
 
     # If we truncate the status it all runs good

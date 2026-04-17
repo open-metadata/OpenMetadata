@@ -27,7 +27,6 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useSnackbar } from 'notistack';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
 import {
@@ -61,8 +60,6 @@ const AddAnnouncementModal: FC<Props> = ({
   entityFQN,
   showToastInSnackbar = false,
 }) => {
-  const { currentUser } = useApplicationStore();
-
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
@@ -85,7 +82,6 @@ const AddAnnouncementModal: FC<Props> = ({
         : showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const announcementData: CreateThread = {
-        from: currentUser?.name as string,
         message: title,
         about: getEntityFeedLink(entityType, entityFQN),
         announcementDetails: {
@@ -151,13 +147,15 @@ const AddAnnouncementModal: FC<Props> = ({
       open={open}
       title={t('message.make-an-announcement')}
       width={720}
-      onCancel={onCancel}>
+      onCancel={onCancel}
+    >
       <Form<CreateAnnouncement>
         data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleCreateAnnouncement}>
+        onFinish={handleCreateAnnouncement}
+      >
         <Form.Item
           label={`${t('label.title')}:`}
           messageVariables={{ fieldName: 'title' }}
@@ -168,7 +166,8 @@ const AddAnnouncementModal: FC<Props> = ({
               max: 124,
               min: 5,
             },
-          ]}>
+          ]}
+        >
           <Input placeholder={t('label.announcement-title')} type="text" />
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
@@ -182,7 +181,8 @@ const AddAnnouncementModal: FC<Props> = ({
               {
                 required: true,
               },
-            ]}>
+            ]}
+          >
             <DatePicker className="w-full" />
           </Form.Item>
           <Form.Item
@@ -195,7 +195,8 @@ const AddAnnouncementModal: FC<Props> = ({
               {
                 required: true,
               },
-            ]}>
+            ]}
+          >
             <DatePicker className="w-full" />
           </Form.Item>
         </Space>

@@ -34,7 +34,6 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
@@ -59,7 +58,6 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
-  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -115,7 +113,6 @@ const RequestTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
     const data: CreateThread = {
-      from: currentUser?.name as string,
       message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
@@ -196,7 +193,8 @@ const RequestTag = () => {
             <div className="m-t-0 request-tags" key="request-tags">
               <Typography.Paragraph
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+              >
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}
@@ -208,13 +206,15 @@ const RequestTag = () => {
                   suggestTags: [],
                 }}
                 layout="vertical"
-                onFinish={onCreateTask}>
+                onFinish={onCreateTask}
+              >
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.task-entity', {
                     entity: t('label.title'),
                   })}:`}
-                  name="title">
+                  name="title"
+                >
                   <Input
                     disabled
                     placeholder={`${t('label.task-entity', {
@@ -233,7 +233,8 @@ const RequestTag = () => {
                         fieldText: t('label.assignee-plural'),
                       }),
                     },
-                  ]}>
+                  ]}
+                >
                   <Assignees
                     options={options}
                     value={assignees}
@@ -246,7 +247,8 @@ const RequestTag = () => {
                   label={`${t('label.suggest-entity', {
                     entity: t('label.tag-plural'),
                   })}:`}
-                  name="suggestTags">
+                  name="suggestTags"
+                >
                   <TagSuggestion />
                 </Form.Item>
 
@@ -254,7 +256,8 @@ const RequestTag = () => {
                   <Space
                     className="w-full justify-end"
                     data-testid="cta-buttons"
-                    size={16}>
+                    size={16}
+                  >
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
@@ -262,7 +265,8 @@ const RequestTag = () => {
                       data-testid="submit-tag-request"
                       htmlType="submit"
                       loading={isLoading}
-                      type="primary">
+                      type="primary"
+                    >
                       {suggestion ? t('label.suggest') : t('label.save')}
                     </Button>
                   </Space>

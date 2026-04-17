@@ -18,7 +18,6 @@ import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
@@ -44,7 +43,6 @@ const AnnouncementDrawer: FC<Props> = ({
   showToastInSnackbar = false,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
     useState<boolean>(false);
   const [refetchThread, setRefetchThread] = useState<boolean>(false);
@@ -54,7 +52,8 @@ const AnnouncementDrawer: FC<Props> = ({
       align="start"
       className="justify-between"
       data-testid="title"
-      style={{ width: '100%' }}>
+      style={{ width: '100%' }}
+    >
       <Typography.Text className="font-medium break-all">
         {t('label.announcement-plural')}
       </Typography.Text>
@@ -73,7 +72,6 @@ const AnnouncementDrawer: FC<Props> = ({
   const postFeedHandler = async (value: string, id: string): Promise<void> => {
     const data = {
       message: value,
-      from: currentUser?.name,
     } as Post;
 
     try {
@@ -118,15 +116,18 @@ const AnnouncementDrawer: FC<Props> = ({
       placement="right"
       title={title}
       width={576}
-      onClose={onClose}>
+      onClose={onClose}
+    >
       <div className="d-flex justify-end">
         <Tooltip
-          title={!createPermission && t('message.no-permission-to-view')}>
+          title={!createPermission && t('message.no-permission-to-view')}
+        >
           <Button
             data-testid="add-announcement"
             disabled={!createPermission}
             type="primary"
-            onClick={handleOpenAnnouncementModal}>
+            onClick={handleOpenAnnouncementModal}
+          >
             {t('label.add-entity', { entity: t('label.announcement') })}
           </Button>
         </Tooltip>
