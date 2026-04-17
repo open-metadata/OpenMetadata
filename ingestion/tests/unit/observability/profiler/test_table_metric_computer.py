@@ -360,20 +360,20 @@ class TestSAPHanaTableMetricComputer:
             )
         )
         sql_upper = sql.upper()
-        has_m_tables_source = (
-            'FROM "SYS"."M_TABLES"' in sql_upper or "FROM SYS.M_TABLES" in sql_upper
-        )
-        has_tables_source = (
-            'FROM "SYS"."TABLES"' in sql_upper or "FROM SYS.TABLES" in sql_upper
-        )
-        assert "WITH" in sql_upper, f"Expected WITH clause in query, got: {sql}"
+        normalized_sql = " ".join(sql_upper.split())
+        sql_without_quotes = normalized_sql.replace('"', "")
+        assert "WITH " in normalized_sql, f"Expected WITH clause in query, got: {sql}"
         assert (
-            sql_upper.count(" AS (") >= 2
+            sql_without_quotes.count(" AS (") >= 2
         ), f"Expected two CTE definitions in query, got: {sql}"
-        assert has_m_tables_source, f"Expected M_TABLES source in query, got: {sql}"
-        assert has_tables_source, f"Expected TABLES source in query, got: {sql}"
         assert (
-            "LEFT OUTER JOIN" in sql_upper or "LEFT JOIN" in sql_upper
+            "FROM SYS.M_TABLES" in sql_without_quotes
+        ), f"Expected M_TABLES source in query, got: {sql}"
+        assert (
+            "FROM SYS.TABLES" in sql_without_quotes
+        ), f"Expected TABLES source in query, got: {sql}"
+        assert (
+            "LEFT OUTER JOIN" in normalized_sql or "LEFT JOIN" in normalized_sql
         ), f"TABLES CTE must be LEFT JOINed, got: {sql}"
 
     def test_compute_returns_none_for_nonexistent_table(self):
