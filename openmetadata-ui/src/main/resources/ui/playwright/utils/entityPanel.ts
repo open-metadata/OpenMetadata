@@ -112,6 +112,7 @@ export const openEntitySummaryPanel = async ({
     .filter({
       has: page.getByTestId('entity-link').filter({ hasText: entityName }),
     })
+    .getByTestId('description-text')
     .click();
 };
 // ... (lines 48-468 unchanged)
