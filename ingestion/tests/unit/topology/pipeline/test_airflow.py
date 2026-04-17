@@ -419,7 +419,15 @@ class TestAirflow(TestCase):
         # Build a mock that chains through any SQLAlchemy query method and returns
         # our fake rows on the first .all() call, then [] to stop pagination.
         mock_q = MagicMock()
-        for method in ("join", "outerjoin", "filter", "order_by", "limit", "offset", "group_by"):
+        for method in (
+            "join",
+            "outerjoin",
+            "filter",
+            "order_by",
+            "limit",
+            "offset",
+            "group_by",
+        ):
             getattr(mock_q, method).return_value = mock_q
         mock_q.subquery.return_value = MagicMock()
         mock_q.all.side_effect = [
@@ -442,6 +450,11 @@ class TestAirflow(TestCase):
         self.assertEqual(PipelineState.Active.value, by_id["dag_active"].state)
         self.assertEqual(PipelineState.Inactive.value, by_id["dag_inactive"].state)
         self.assertEqual(PipelineState.Active.value, by_id["dag_null"].state)
+
+        # Regression guard for #27148: is_paused must come from the main query,
+        # never via a per-row scalar() lookup.
+        mock_q.scalar.assert_not_called()
+        self.assertEqual(2, mock_session.query.call_count)
 
     def test_get_schedule_interval_with_import_error(self):
         """
