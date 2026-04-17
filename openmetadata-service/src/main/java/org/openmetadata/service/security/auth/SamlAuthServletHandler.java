@@ -39,6 +39,7 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.RedirectUriValidator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.TokenUtil;
@@ -50,6 +51,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String SESSION_USER_ID = "userId";
   private static final String SESSION_USERNAME = "username";
   private static final String SESSION_REDIRECT_URI = "redirectUri";
+  private static final String SESSION_SAML_REQUEST_ID = "samlAuthnRequestId";
 
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
@@ -118,8 +120,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (callbackUrl == null) {
         callbackUrl = req.getParameter("redirectUri");
       }
+      HttpSession session = req.getSession(true);
       if (callbackUrl != null) {
-        req.getSession(true).setAttribute(SESSION_REDIRECT_URI, callbackUrl);
+        String trustedCallback = SamlSettingsHolder.getInstance().getRelayState();
+        if (RedirectUriValidator.isSafe(callbackUrl, trustedCallback, buildBaseRequestUrl(req))) {
+          session.setAttribute(SESSION_REDIRECT_URI, callbackUrl);
+        } else {
+          LOG.warn("[SAML] Ignoring disallowed callback URL from login request");
+        }
       }
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
@@ -127,6 +135,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
       auth.login();
+      String authnRequestId = auth.getLastRequestId();
+      if (authnRequestId != null) {
+        session.setAttribute(SESSION_SAML_REQUEST_ID, authnRequestId);
+      }
 
     } catch (SAMLException e) {
       LOG.error("Error initiating SAML login", e);
@@ -137,6 +149,17 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
+  private String buildBaseRequestUrl(HttpServletRequest req) {
+    int port = req.getServerPort();
+    String scheme = req.getScheme();
+    boolean defaultPort =
+        ("http".equalsIgnoreCase(scheme) && port == 80)
+            || ("https".equalsIgnoreCase(scheme) && port == 443);
+    return defaultPort
+        ? String.format("%s://%s", scheme, req.getServerName())
+        : String.format("%s://%s:%d", scheme, req.getServerName(), port);
+  }
+
   @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
@@ -145,7 +168,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
 
       Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
-      auth.processResponse();
+      HttpSession preAuthSession = req.getSession(false);
+      String expectedRequestId =
+          preAuthSession == null
+              ? null
+              : (String) preAuthSession.getAttribute(SESSION_SAML_REQUEST_ID);
+      if (preAuthSession != null) {
+        preAuthSession.removeAttribute(SESSION_SAML_REQUEST_ID);
+      }
+      auth.processResponse(expectedRequestId);
 
       if (!auth.isAuthenticated()) {
         throw new AuthenticationException("SAML authentication failed");
@@ -227,15 +258,23 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       // Get stored redirect URI from session
       String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
-      LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+      LOG.debug("SAML Callback - redirectUri from session");
 
+      String trustedCallback = SamlSettingsHolder.getInstance().getRelayState();
+      boolean trusted =
+          redirectUri != null
+              && RedirectUriValidator.isSafe(
+                  redirectUri, trustedCallback, buildBaseRequestUrl(req));
       String callbackUrl;
-      if (redirectUri != null) {
+      if (trusted) {
         callbackUrl =
             redirectUri
                 + "?id_token="
                 + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);
       } else {
+        if (redirectUri != null) {
+          LOG.warn("[SAML] Ignoring disallowed redirect URI on callback");
+        }
         callbackUrl =
             "/auth/callback?id_token="
                 + URLEncoder.encode(jwtAuthMechanism.getJWTToken(), StandardCharsets.UTF_8);

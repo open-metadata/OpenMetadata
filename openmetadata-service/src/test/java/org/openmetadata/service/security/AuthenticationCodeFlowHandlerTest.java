@@ -573,7 +573,7 @@ class AuthenticationCodeFlowHandlerTest {
     when(request.getSession(false)).thenReturn(null);
     when(request.getSession(true)).thenReturn(session);
     when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
-        .thenReturn("https://app.example.com/post-login");
+        .thenReturn("https://openmetadata.example.com/post-login");
     when(session.getAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE))
         .thenReturn(null);
     when(session.getId()).thenReturn("session-id");
@@ -583,7 +583,7 @@ class AuthenticationCodeFlowHandlerTest {
     verify(session)
         .setAttribute(
             AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI,
-            "https://app.example.com/post-login");
+            "https://openmetadata.example.com/post-login");
     ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
     verify(response).sendRedirect(redirectCaptor.capture());
     String location = redirectCaptor.getValue();

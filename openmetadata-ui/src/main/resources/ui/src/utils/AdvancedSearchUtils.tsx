@@ -148,15 +148,28 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   return <></>;
 };
 
-export const getSearchLabel = (itemLabel: string, searchKey: string) => {
-  const regex = new RegExp(searchKey, 'gi');
-  if (searchKey) {
-    const result = itemLabel.replace(regex, (match) => `<mark>${match}</mark>`);
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    return result;
-  } else {
+export const getSearchLabel = (
+  itemLabel: string,
+  searchKey: string
+): React.ReactNode => {
+  if (!searchKey) {
     return itemLabel;
   }
+  const segments = itemLabel.split(new RegExp(`(${escapeRegExp(searchKey)})`, 'gi'));
+  if (segments.length <= 1) {
+    return itemLabel;
+  }
+
+  return segments.map((segment, index) =>
+    index % 2 === 1 ? (
+      <mark key={`m-${index}`}>{segment}</mark>
+    ) : (
+      <React.Fragment key={`s-${index}`}>{segment}</React.Fragment>
+    )
+  );
 };
 
 export const generateSearchDropdownLabel = (
@@ -189,11 +202,7 @@ export const generateSearchDropdownLabel = (
             ellipsis
             className="dropdown-option-label"
             title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
+            <span>{getSearchLabel(option.label, searchKey)}</span>
           </Typography.Text>
           {option.description && (
             <Typography.Text

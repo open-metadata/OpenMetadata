@@ -139,6 +139,9 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.impersonatedBy() != null) {
+      checkImpersonationAuthorization(subjectContext);
+    }
     if (subjectContext.isAdmin()) {
       return;
     }
@@ -157,6 +160,9 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public void authorizeAdminOrBot(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.impersonatedBy() != null) {
+      checkImpersonationAuthorization(subjectContext);
+    }
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       return;
     }

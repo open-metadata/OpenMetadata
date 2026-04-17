@@ -22,10 +22,12 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
+import org.openmetadata.service.security.RedirectUriValidator;
 
 /**
  * This Servlet initiates a login and sends a login request to the IDP. After a successful processing it redirects user
@@ -34,26 +36,51 @@ import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 @Slf4j
 @WebServlet("/api/v1/saml/login")
 public class SamlLoginServlet extends HttpServlet {
+  public static final String SESSION_SAML_REQUEST_ID = "samlAuthnRequestId";
+
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     try {
-      checkAndStoreRedirectUriInSession(request);
+      HttpSession session = request.getSession(true);
+      checkAndStoreRedirectUriInSession(request, session);
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(request);
       javax.servlet.http.HttpServletResponse wrappedResponse =
           new HttpServletResponseWrapper(response);
       Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
       auth.login();
+      String authnRequestId = auth.getLastRequestId();
+      if (authnRequestId != null) {
+        session.setAttribute(SESSION_SAML_REQUEST_ID, authnRequestId);
+      }
     } catch (SAMLException ex) {
       LOG.error("Error initiating SAML login", ex);
       throw new ServletException("Error initiating SAML login", ex);
     }
   }
 
-  private void checkAndStoreRedirectUriInSession(HttpServletRequest request) {
+  private void checkAndStoreRedirectUriInSession(HttpServletRequest request, HttpSession session) {
     String redirectUri = request.getParameter("callback");
-    if (redirectUri != null) {
-      request.getSession().setAttribute(SESSION_REDIRECT_URI, redirectUri);
+    if (redirectUri == null) {
+      return;
     }
+    String trustedCallback = SamlSettingsHolder.getInstance().getRelayState();
+    String baseRequestUrl = buildBaseRequestUrl(request);
+    if (RedirectUriValidator.isSafe(redirectUri, trustedCallback, baseRequestUrl)) {
+      session.setAttribute(SESSION_REDIRECT_URI, redirectUri);
+    } else {
+      LOG.warn("[SAML] Ignoring disallowed callback URL from login request");
+    }
+  }
+
+  private String buildBaseRequestUrl(HttpServletRequest req) {
+    int port = req.getServerPort();
+    String scheme = req.getScheme();
+    boolean defaultPort =
+        ("http".equalsIgnoreCase(scheme) && port == 80)
+            || ("https".equalsIgnoreCase(scheme) && port == 443);
+    return defaultPort
+        ? String.format("%s://%s", scheme, req.getServerName())
+        : String.format("%s://%s:%d", scheme, req.getServerName(), port);
   }
 }

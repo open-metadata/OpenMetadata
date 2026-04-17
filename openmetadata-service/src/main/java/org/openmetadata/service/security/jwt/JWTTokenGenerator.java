@@ -102,13 +102,15 @@ public class JWTTokenGenerator {
   }
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
+    boolean isBot = Boolean.TRUE.equals(user.getIsBot());
+    ServiceTokenType tokenType = isBot ? ServiceTokenType.BOT : ServiceTokenType.OM_USER;
     return getJwtAuthMechanism(
         user.getName(),
         getRoleListFromUser(user),
         user.getIsAdmin(),
         user.getEmail(),
-        true,
-        ServiceTokenType.BOT,
+        isBot,
+        tokenType,
         getExpiryDate(expiry),
         expiry);
   }

@@ -12,6 +12,8 @@
  */
 
 import { FieldOrGroup } from '@react-awesome-query-builder/antd';
+import { render } from '@testing-library/react';
+import React from 'react';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -141,10 +143,16 @@ describe('AdvancedSearchUtils tests', () => {
     expect(resultOptionsString).toBe('');
   });
 
-  it('Function getSearchLabel should return string with highlighted substring for matched searchKey', () => {
-    const resultSearchLabel = getSearchLabel(mockItemLabel, 'wa');
+  it('Function getSearchLabel should return React nodes with highlighted segments for matched searchKey', () => {
+    const { container } = render(<>{getSearchLabel(mockItemLabel, 'wa')}</>);
 
-    expect(resultSearchLabel).toBe(highlightedItemLabel);
+    expect(container.textContent).toBe(mockItemLabel);
+    expect(container.querySelectorAll('mark')).toHaveLength(2);
+    expect(
+      Array.from(container.querySelectorAll('mark')).map((m) => m.textContent)
+    ).toEqual(['Wa', 'Wa']);
+    // Confirms the original string representation is still available for reference.
+    expect(highlightedItemLabel).toContain('<mark>Wa</mark>');
   });
 
   it('Function getSearchLabel should return original string if searchKey is not matched', () => {
@@ -157,6 +165,14 @@ describe('AdvancedSearchUtils tests', () => {
     const resultSearchLabel = getSearchLabel(mockItemLabel, '');
 
     expect(resultSearchLabel).toBe(mockItemLabel);
+  });
+
+  it('Function getSearchLabel should HTML-escape user-controlled label content (no XSS via displayName)', () => {
+    const xssLabel = '<img src=x onerror="alert(1)">Warren';
+    const { container } = render(<>{getSearchLabel(xssLabel, 'wa')}</>);
+
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    expect(container.textContent).toBe(xssLabel);
   });
 
   it('Function getServiceOptions should return displayName of the service', () => {

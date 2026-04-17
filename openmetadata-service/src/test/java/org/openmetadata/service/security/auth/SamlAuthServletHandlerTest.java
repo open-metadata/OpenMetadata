@@ -124,13 +124,16 @@ class SamlAuthServletHandlerTest {
 
   @Test
   void testHandleLogin_WithCallbackParameter() {
-    // Test parameter precedence: 'callback' parameter is used
-    String callbackUrl = "https://example.com/callback";
+    // Relative paths are always trusted by the allowlist validator.
+    String callbackUrl = "/saml/callback";
     when(request.getParameter("callback")).thenReturn(callbackUrl);
-    when(request.getParameter("redirectUri")).thenReturn("https://example.com/other");
+    when(request.getParameter("redirectUri")).thenReturn("/saml/other");
 
     try (MockedStatic<SamlSettingsHolder> samlMock = mockStatic(SamlSettingsHolder.class)) {
       samlMock.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
+      samlMock
+          .when(SamlSettingsHolder::getInstance)
+          .thenReturn(Mockito.mock(SamlSettingsHolder.class));
 
       try {
         handler.handleLogin(request, response);
@@ -144,13 +147,16 @@ class SamlAuthServletHandlerTest {
 
   @Test
   void testHandleLogin_WithRedirectUriParameter() {
-    // Test fallback: when 'callback' is null, 'redirectUri' is used
-    String redirectUri = "https://example.com/redirect";
+    // Relative paths are always trusted by the allowlist validator.
+    String redirectUri = "/saml/redirect";
     when(request.getParameter("callback")).thenReturn(null);
     when(request.getParameter("redirectUri")).thenReturn(redirectUri);
 
     try (MockedStatic<SamlSettingsHolder> samlMock = mockStatic(SamlSettingsHolder.class)) {
       samlMock.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
+      samlMock
+          .when(SamlSettingsHolder::getInstance)
+          .thenReturn(Mockito.mock(SamlSettingsHolder.class));
 
       try {
         handler.handleLogin(request, response);
@@ -184,9 +190,12 @@ class SamlAuthServletHandlerTest {
 
   @Test
   void testHandleLogin_SAMLException() {
-    when(request.getParameter("callback")).thenReturn("https://example.com/callback");
+    when(request.getParameter("callback")).thenReturn("/saml/callback");
 
     try (MockedStatic<SamlSettingsHolder> samlMock = mockStatic(SamlSettingsHolder.class)) {
+      samlMock
+          .when(SamlSettingsHolder::getInstance)
+          .thenReturn(Mockito.mock(SamlSettingsHolder.class));
       // Simulate SAML error by returning null which causes NPE in Auth constructor
       samlMock.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
 

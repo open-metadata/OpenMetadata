@@ -77,7 +77,7 @@
         "strictMode": {
           "description": "Only accept valid signed and encrypted assertions if the relevant flags are set",
           "type": "boolean",
-          "default": false
+          "default": true
         },
         "validateXml": {
           "description": "In case of strict mode whether to validate XML format.",
@@ -107,12 +107,12 @@
         "wantMessagesSigned": {
           "description": "SP requires the messages received to be signed.",
           "type": "boolean",
-          "default": false
+          "default": true
         },
         "wantAssertionsSigned": {
           "description": "SP requires the assertions received to be signed.",
           "type": "boolean",
-          "default": false
+          "default": true
         },
         "wantAssertionEncrypted": {
           "description": "SP requires the assertion received to be encrypted.",

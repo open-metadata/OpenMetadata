@@ -168,33 +168,47 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
           : '';
 
-        const breadcrumbEle = breadcrumbsData
-          ? `<div class="d-flex flex-wrap">
-              <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
-            </div>`
-          : '';
-
         const icon = searchClassBase.getEntityIcon(item.type ?? '');
-
         const iconString = ReactDOMServer.renderToString(icon ?? <></>);
 
-        const typeSpan = !breadcrumbEle
-          ? `<span class="text-grey-muted text-xs">${item.type}</span>`
-          : '';
-
-        const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${iconString}</div>
-          <div>
-            ${breadcrumbEle}
-            <div class="d-flex flex-col">
-              ${typeSpan}
-              <span class="font-medium truncate w-56">${item.name}</span>
-            </div>
-          </div>
-        </div>`;
-
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = result;
+        wrapper.className = 'd-flex items-center gap-2';
+
+        const iconContainer = document.createElement('div');
+        iconContainer.className = 'flex-center mention-icon-image';
+        // Safe: iconString comes from ReactDOMServer rendering a static component,
+        // never from user input.
+        iconContainer.innerHTML = iconString;
+        wrapper.appendChild(iconContainer);
+
+        const details = document.createElement('div');
+        wrapper.appendChild(details);
+
+        if (breadcrumbsData) {
+          const crumbRow = document.createElement('div');
+          crumbRow.className = 'd-flex flex-wrap';
+          const crumbSpan = document.createElement('span');
+          crumbSpan.className = 'text-grey-muted truncate w-max-200 text-xss';
+          crumbSpan.textContent = breadcrumbsData;
+          crumbRow.appendChild(crumbSpan);
+          details.appendChild(crumbRow);
+        }
+
+        const infoCol = document.createElement('div');
+        infoCol.className = 'd-flex flex-col';
+        details.appendChild(infoCol);
+
+        if (!breadcrumbsData) {
+          const typeSpan = document.createElement('span');
+          typeSpan.className = 'text-grey-muted text-xs';
+          typeSpan.textContent = item.type ?? '';
+          infoCol.appendChild(typeSpan);
+        }
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'font-medium truncate w-56';
+        nameSpan.textContent = item.name;
+        infoCol.appendChild(nameSpan);
 
         return wrapper;
       },
