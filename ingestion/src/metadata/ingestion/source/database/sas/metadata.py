@@ -368,7 +368,13 @@ class SasSource(
             break
 
         if data_store_id is None:
-            logger.error("Data store id should not be none")
+            logger.error(
+                "Failed to derive database schema for SAS table '%s' (resourceId=%s): "
+                "missing data store identifier because the expected "
+                "'dataStoreDataSets' relationship was not found.",
+                table.get("name", "<unknown>"),
+                table.get("resourceId", "<missing>"),
+            )
             return None
 
         data_store = self.sas_client.get_instance(data_store_id)
@@ -755,7 +761,7 @@ class SasSource(
                 entity=Table, fqn=source_table_fqn
             )
 
-            if source_table_entity:
+            if source_table_entity and target_table_entity:
                 yield from self.create_table_lineage(
                     source_table_entity, target_table_entity
                 )
