@@ -1,9 +1,11 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -27,6 +29,7 @@ import es.co.elastic.clients.transport.endpoints.BooleanResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -430,6 +433,34 @@ class ElasticSearchIndexManagerTest {
     assertTrue(result.isEmpty());
     verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
+  }
+
+  @Test
+  void testListIndicesByPrefix_EmptyPrefixScopesToClusterAlias() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.aliases()).thenReturn(Map.of());
+
+    indexManager.listIndicesByPrefix("");
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(
+        List.of(CLUSTER_ALIAS + IndexMapping.INDEX_NAME_SEPARATOR + "*"),
+        captor.getValue().index());
+  }
+
+  @Test
+  void testListIndicesByPrefix_EmptyPrefixWithoutClusterAliasUsesWildcard() throws IOException {
+    ElasticSearchIndexManager unscopedManager =
+        new ElasticSearchIndexManager(elasticsearchClient, "");
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.aliases()).thenReturn(Map.of());
+
+    unscopedManager.listIndicesByPrefix(null);
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(List.of("*"), captor.getValue().index());
   }
 
   @Test
