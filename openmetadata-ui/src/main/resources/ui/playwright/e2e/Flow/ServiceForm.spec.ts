@@ -466,25 +466,26 @@ test.describe(
         `pw-kafka-empty-suffix-${uuid()}`
       );
 
-      test.beforeAll('Create Kafka service with suffix set', async ({
-        browser,
-      }) => {
-        const { apiContext, afterAction } = await createNewPage(browser);
-        await kafkaService.create(apiContext);
-        await kafkaService.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/connection/config/schemaRegistryURL',
-            value: 'http://localhost:8081',
-          },
-          {
-            op: 'add',
-            path: '/connection/config/schemaRegistryTopicSuffixName',
-            value: '-value',
-          },
-        ]);
-        await afterAction();
-      });
+      test.beforeAll(
+        'Create Kafka service with suffix set',
+        async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+          await kafkaService.create(apiContext);
+          await kafkaService.patch(apiContext, [
+            {
+              op: 'add',
+              path: '/connection/config/schemaRegistryURL',
+              value: 'http://localhost:8081',
+            },
+            {
+              op: 'add',
+              path: '/connection/config/schemaRegistryTopicSuffixName',
+              value: '-value',
+            },
+          ]);
+          await afterAction();
+        }
+      );
 
       test.afterAll('Cleanup Kafka service', async ({ browser }) => {
         const { apiContext, afterAction } = await createNewPage(browser);
@@ -534,8 +535,7 @@ test.describe(
         }>;
 
         const suffixOp = patchBody.find(
-          (op) =>
-            op.path === '/connection/config/schemaRegistryTopicSuffixName'
+          (op) => op.path === '/connection/config/schemaRegistryTopicSuffixName'
         );
 
         // The fix must send an explicit empty string, not drop the field
