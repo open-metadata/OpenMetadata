@@ -15,11 +15,7 @@ import Icon from '@ant-design/icons';
 import { closeBrackets } from '@codemirror/autocomplete';
 import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
 import { EditorState, Extension } from '@codemirror/state';
-import {
-  EditorView,
-  highlightActiveLine,
-  lineNumbers,
-} from '@codemirror/view';
+import { EditorView, highlightActiveLine, lineNumbers } from '@codemirror/view';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

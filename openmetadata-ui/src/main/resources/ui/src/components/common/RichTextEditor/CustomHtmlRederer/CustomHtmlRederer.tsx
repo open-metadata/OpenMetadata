@@ -78,10 +78,7 @@ export const CodeMirrorLanguageAliases: Readonly<Record<string, string>> = {
   cpp: 'cpp',
 };
 
-const runHighlight = (
-  code: string,
-  langName: string
-): React.ReactElement[] => {
+const runHighlight = (code: string, langName: string): React.ReactElement[] => {
   const fragments: React.ReactElement[] = [];
   const langExt = getLanguageExtensionByName(langName);
 
