@@ -235,12 +235,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     handlePagingChange: handleIngestionPagingChange,
   } = ingestionPagingInfo;
 
-  const {
-    paging: _paging,
-    currentPage,
-    handlePageChange,
-    handlePagingChange,
-  } = pagingInfo;
+  const { paging: _paging, handlePageChange, handlePagingChange } = pagingInfo;
 
   const {
     paging: filesPaging,
@@ -417,11 +412,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
-  const {
-    version: currentVersion,
-    deleted: _deleted,
-    id: serviceId,
-  } = useMemo(() => serviceDetails, [serviceDetails]);
+  const { version: currentVersion, id: serviceId } = useMemo(
+    () => serviceDetails,
+    [serviceDetails]
+  );
 
   const fetchServicePermission = useCallback(async () => {
     setIsLoading(true);
@@ -1654,7 +1648,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     );
   }, [
     currentUser,
-    currentPage,
     serviceDetails,
     isAdminUser,
     serviceCategory,

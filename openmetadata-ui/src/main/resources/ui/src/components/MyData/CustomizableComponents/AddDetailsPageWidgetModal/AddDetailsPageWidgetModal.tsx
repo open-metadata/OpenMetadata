@@ -65,7 +65,8 @@ function AddDetailsPageWidgetModal({
     () =>
       sortBy(widgetsList, 'name')?.map((widget) => {
         const scaleFactor =
-          maxGridSizeSupport / customizeMyDataPageClassBase.landingPageMaxGridSize;
+          maxGridSizeSupport /
+          customizeMyDataPageClassBase.landingPageMaxGridSize;
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: GridSizes) => ({
             label: (

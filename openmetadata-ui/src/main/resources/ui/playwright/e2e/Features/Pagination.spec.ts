@@ -284,8 +284,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         state: 'detached',
       });
 
-      const databaseResponsePromise =
-        page.waitForResponse(searchApiMatcher);
+      const databaseResponsePromise = page.waitForResponse(searchApiMatcher);
       await page.getByTestId('details').click();
       const response2 = await databaseResponsePromise;
       expect(response2.status()).toBe(200);

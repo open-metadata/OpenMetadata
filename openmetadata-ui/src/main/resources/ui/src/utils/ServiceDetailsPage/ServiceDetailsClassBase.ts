@@ -105,7 +105,7 @@ class ServiceDetailsClassBase {
   }
 
   public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
-    if (!tab || tab !== EntityTabs.DETAILS) {
+    if (tab && tab !== EntityTabs.DETAILS) {
       return [];
     }
 
