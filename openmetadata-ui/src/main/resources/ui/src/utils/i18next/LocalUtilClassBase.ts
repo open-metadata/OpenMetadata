@@ -41,7 +41,7 @@ const LOCALE_LOADERS: Record<
 class LocalUtilClassBase {
   private static _instance: LocalUtilClassBase;
 
-  static async loadLocales(locale: string): Promise<void> {
+  async loadLocales(locale: string): Promise<void> {
     if (i18next.hasResourceBundle(locale, 'translation')) {
       return;
     }

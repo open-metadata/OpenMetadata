@@ -56,18 +56,6 @@ export default defineConfig(({ mode }) => {
             );
         },
       },
-      {
-        name: 'html-cache-buster',
-        transformIndexHtml(html: string) {
-          // APP_VERSION is injected by the Maven build
-          const appVersion = process.env.APP_VERSION || 'unknown';
-          return html.replaceAll(
-            /(href|src)="([^"]+\.(?:js|css))(\?[^"]*)?"/g,
-            (_, attr, pathInternal, qs) =>
-              `${attr}="${pathInternal}${qs ? qs + '&' : '?'}v=${appVersion}"`
-          );
-        },
-      },
       tailwindcss(),
       react(),
       svgr(),
@@ -185,7 +173,7 @@ export default defineConfig(({ mode }) => {
       minify: mode === 'production' ? 'esbuild' : false,
       cssMinify: 'esbuild',
       cssCodeSplit: true,
-      reportCompressedSize: true,
+      reportCompressedSize: false,
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {

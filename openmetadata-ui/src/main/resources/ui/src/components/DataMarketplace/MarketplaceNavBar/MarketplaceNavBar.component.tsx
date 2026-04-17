@@ -58,7 +58,7 @@ import {
 } from '../../../utils/FeedUtils';
 import { languageSelectOptions } from '../../../utils/i18next/i18nextUtil';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { LocalUtilClassBase } from '../../../utils/i18next/LocalUtilClassBase';
+import localUtilClassBase from '../../../utils/i18next/LocalUtilClassBase';
 import { getHelpDropdownItems } from '../../../utils/NavbarUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -364,7 +364,7 @@ const MarketplaceNavBar = () => {
   }, []);
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
-    await LocalUtilClassBase.loadLocales(key);
+    await localUtilClassBase.loadLocales(key);
     await i18n.changeLanguage(key);
     navigate(0);
   }, []);

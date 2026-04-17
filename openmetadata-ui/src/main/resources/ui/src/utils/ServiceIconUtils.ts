@@ -150,7 +150,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   vertica: vertica,
   azuresql: azuresql,
   clickhouse: clickhouse,
-  databrick: databrick,
+  databricks: databrick,
   unitycatalog: unitycatalog,
   ibmdb2: ibmdb2,
   doris: doris,
@@ -217,7 +217,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   sagemaker: sagemaker,
 
   // Storage services
-  amazons3: amazons3,
+  s3: amazons3,
   gcs: gcs,
 
   // Search services
@@ -228,6 +228,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   amundsen: amundsen,
   atlas: atlas,
   alationsink: alationsink,
+  openmetadata: logo,
 
   // Drive services
   googledrive: googledrive,
