@@ -169,6 +169,8 @@ cacheMemory:
   entityCacheTTLSeconds: ${ENTITY_CACHE_TTL_SECONDS:-30}
   # Auth caches (user context + policies) — TTLs hardcoded (2min policies, 15min user context)
   authCacheMaxEntries: ${AUTH_CACHE_MAX_ENTRIES:-5000}
+  # RBAC query cache (OpenSearch role-based access control query DSL)
+  rbacCacheMaxEntries: ${RBAC_CACHE_MAX_ENTRIES:-5000}
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord

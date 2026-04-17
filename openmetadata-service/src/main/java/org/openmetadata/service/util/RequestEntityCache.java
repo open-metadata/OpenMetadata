@@ -20,12 +20,21 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * memory amplification from deep-copy operations on large entities.
  */
 public final class RequestEntityCache {
+  /**
+   * Cap per-request entity cache at 50 entries. A typical API request touches 5-20 entities.
+   * Bulk operations may touch more, but LRU eviction ensures only the most recently accessed
+   * are kept. With entities up to 2 MB, 50 entries × 2 MB = 100 MB worst-case per thread.
+   */
   private static final int MAX_ENTRIES_PER_REQUEST = 50;
+
+  private static final int INITIAL_CAPACITY = 16;
+  private static final float LOAD_FACTOR = 0.75f;
+  private static final boolean ACCESS_ORDER = true; // LRU eviction order
 
   private static final ThreadLocal<Map<EntityCacheKey, EntityInterface>> REQUEST_CACHE =
       ThreadLocal.withInitial(
           () ->
-              new LinkedHashMap<>(16, 0.75f, true) {
+              new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, ACCESS_ORDER) {
                 @Override
                 protected boolean removeEldestEntry(
                     Map.Entry<EntityCacheKey, EntityInterface> eldest) {

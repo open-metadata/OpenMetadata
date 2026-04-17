@@ -307,11 +307,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
   // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this overestimates
   // slightly — which is intentional for memory capping. Zero allocation, single field read.
-  // These caches are rebuilt via initCaches() once CacheConfiguration is available at startup.
+  // Defaults used before CacheConfiguration is loaded at startup. initCaches() replaces these.
   public static volatile LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
-      buildEntityNameCache(100 * 1024 * 1024L, 30);
+      buildEntityNameCache(
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
   public static volatile LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
-      buildEntityIdCache(100 * 1024 * 1024L, 30);
+      buildEntityIdCache(
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
 
   /**
    * Rebuild entity caches with values from {@link CacheConfiguration}. Called once during app

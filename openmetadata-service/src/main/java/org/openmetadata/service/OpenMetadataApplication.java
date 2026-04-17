@@ -140,6 +140,7 @@ import org.openmetadata.service.resources.system.DiagnosticsResource;
 import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.opensearch.OpenSearchSearchManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
@@ -275,10 +276,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // as first step register all the repositories (now they can access SearchRepository)
     Entity.initializeRepositories(catalogConfig, jdbi);
 
-    // Rebuild caches with configured limits
+    // Rebuild caches with configured limits (cacheMemory section in openmetadata.yaml)
     CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
     EntityRepository.initCaches(cacheConfig);
     SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
+    OpenSearchSearchManager.initRbacCache(cacheConfig.getRbacCacheMaxEntries());
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(

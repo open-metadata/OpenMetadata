@@ -51,6 +51,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
@@ -107,19 +108,26 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           "chart_suggest",
           "field_suggest");
 
-  // RBAC cache for new Java API
-  private static final LoadingCache<@NotNull String, @NotNull Query> RBAC_CACHE_V2 =
-      CacheBuilder.newBuilder()
-          .maximumSize(5000) // Reduced from 10K
-          .expireAfterWrite(5, TimeUnit.MINUTES)
-          .build(
-              new CacheLoader<>() {
-                @Override
-                public Query load(String key) {
-                  // Will be loaded via computeIfAbsent pattern
-                  return null;
-                }
-              });
+  // RBAC cache for new Java API — size configurable via cacheMemory.rbacCacheMaxEntries
+  private static volatile LoadingCache<@NotNull String, @NotNull Query> RBAC_CACHE_V2 =
+      buildRbacCache(CacheConfiguration.DEFAULT_RBAC_CACHE_MAX_ENTRIES);
+
+  public static void initRbacCache(int maxEntries) {
+    RBAC_CACHE_V2 = buildRbacCache(maxEntries);
+  }
+
+  private static LoadingCache<@NotNull String, @NotNull Query> buildRbacCache(int maxEntries) {
+    return CacheBuilder.newBuilder()
+        .maximumSize(maxEntries)
+        .expireAfterWrite(5, TimeUnit.MINUTES)
+        .build(
+            new CacheLoader<>() {
+              @Override
+              public Query load(String key) {
+                return null;
+              }
+            });
+  }
 
   public OpenSearchSearchManager(
       OpenSearchClient client,

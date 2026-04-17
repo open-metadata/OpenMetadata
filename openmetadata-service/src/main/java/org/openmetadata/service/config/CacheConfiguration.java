@@ -18,8 +18,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Configuration for server-side Guava caches. Each cache group can be tuned independently. Caches
- * that don't have a specific override fall back to the default values.
+ * Configuration for server-side Guava caches. Each cache group can be tuned independently.
  *
  * <p>Entity caches use weight-based eviction (bytes) because entity JSON sizes vary wildly (1KB to
  * 2MB+). Other caches use count-based eviction because they store small, fixed-size objects.
@@ -28,17 +27,33 @@ import lombok.Setter;
 @Setter
 public class CacheConfiguration {
 
+  /**
+   * 100 MB — safe for most deployments (2-8 GB heap). Customers with large heap (12 GB+) can
+   * increase to 500 MB for better cache hit rates on large Table entities.
+   */
+  public static final long DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES = 100 * 1024 * 1024L;
+
+  /**
+   * 30 seconds — short TTL because entity mutations are frequent during ingestion. Matches the
+   * original value used before this configuration was introduced.
+   */
+  public static final int DEFAULT_ENTITY_CACHE_TTL_SECONDS = 30;
+
+  /** 5000 entries — sufficient for most deployments. User objects are small (~1-5 KB each). */
+  public static final int DEFAULT_AUTH_CACHE_MAX_ENTRIES = 5000;
+
+  /** 5000 entries — RBAC query objects are small. Reduced from original 10K for safety. */
+  public static final int DEFAULT_RBAC_CACHE_MAX_ENTRIES = 5000;
+
   // --- Entity JSON caches (CACHE_WITH_ID, CACHE_WITH_NAME) ---
-  // These cache serialized entity JSON strings. Sizes vary from 1KB (simple entities)
-  // to 2MB+ (tables with hundreds of columns). Weight-based eviction is required.
 
   @JsonProperty
   @Min(1)
-  private long entityCacheMaxSizeBytes = 100 * 1024 * 1024L; // 100 MB
+  private long entityCacheMaxSizeBytes = DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES;
 
   @JsonProperty
   @Min(1)
-  private int entityCacheTTLSeconds = 30;
+  private int entityCacheTTLSeconds = DEFAULT_ENTITY_CACHE_TTL_SECONDS;
 
   // --- Auth caches (SubjectCache: user context + policies) ---
   // TTLs are hardcoded (2 min for policies, 15 min for user context) because they serve
@@ -46,5 +61,11 @@ public class CacheConfiguration {
 
   @JsonProperty
   @Min(1)
-  private int authCacheMaxEntries = 5000;
+  private int authCacheMaxEntries = DEFAULT_AUTH_CACHE_MAX_ENTRIES;
+
+  // --- RBAC cache (OpenSearch query DSL for role-based access control) ---
+
+  @JsonProperty
+  @Min(1)
+  private int rbacCacheMaxEntries = DEFAULT_RBAC_CACHE_MAX_ENTRIES;
 }
