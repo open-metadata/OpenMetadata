@@ -34,26 +34,20 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-interface Service {
+/**
+ * Database service shape used when creating tables in tests. `connection.config` is intentionally
+ * loose so tests can override with MySQL, BigQuery, or other connector configs.
+ */
+export type TableServiceConfig = {
   name: string;
   serviceType: string;
   connection: {
-    config: {
-      type: string;
-      scheme: string;
-      username: string;
-      authType: { password: string };
-      hostPort: string;
-      supportsMetadataExtraction: boolean;
-      supportsDBTExtraction: boolean;
-      supportsProfiler: boolean;
-      supportsQueryComment: boolean;
-    };
+    config: Record<string, unknown>;
   };
-}
+};
 
 export class TableClass extends EntityClass {
-  service: Service;
+  service: TableServiceConfig;
   database: { name: string; service: string };
   schema: { name: string; database: string };
   columnsName: string[];
@@ -80,7 +74,11 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string, tableType?: string, service?: Partial<Service>) {
+  constructor(
+    name?: string,
+    tableType?: string,
+    service?: Partial<TableServiceConfig>
+  ) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
@@ -230,18 +228,34 @@ export class TableClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
+    // Create database service with 409 conflict handling for sharded test runs
+    let serviceResponse = await apiContext.post(
       '/api/v1/services/databaseServices',
       {
         data: this.service,
       }
     );
-    if (!serviceResponse.ok()) {
+
+    let service;
+    if (serviceResponse.status() === 409) {
+      // Service already exists, fetch it by name
+      const serviceName = this.service.name;
+      const getServiceResponse = await apiContext.get(
+        `/api/v1/services/databaseServices/name/${serviceName}`
+      );
+      if (!getServiceResponse.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing service "${serviceName}" (${getServiceResponse.status()}): ${await getServiceResponse.text()}`
+        );
+      }
+      service = await getServiceResponse.json();
+    } else if (!serviceResponse.ok()) {
       throw new Error(
         `TableClass: service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
       );
+    } else {
+      service = await serviceResponse.json();
     }
-    const service = await serviceResponse.json();
 
     const databaseResponse = await apiContext.post('/api/v1/databases', {
       data: { ...this.database, service: service.fullyQualifiedName },
@@ -496,14 +510,20 @@ export class TableClass extends EntityClass {
   async patch({
     apiContext,
     patchData,
+    queryParams,
   }: {
     apiContext: APIRequestContext;
     patchData: Operation[];
+    queryParams?: Record<string, string>;
   }) {
+    const fqn = encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    );
+    const queryString = queryParams
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : '';
     const response = await apiContext.patch(
-      `/api/v1/tables/name/${encodeURIComponent(
-        this.entityResponseData?.fullyQualifiedName ?? ''
-      )}`,
+      `/api/v1/tables/name/${fqn}${queryString}`,
       {
         data: patchData,
         headers: {

@@ -1,0 +1,1 @@
+-- Placeholder for 1.12.6 Postgres post data migration SQL script

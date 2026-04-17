@@ -383,9 +383,8 @@ export function truncateHierarchyBadgeToFitWidth(
   return `${t.slice(0, maxChars - 1)}\u2026`;
 }
 
-/** Perpendicular offset from edge — keep 0 so the label box stays vertically balanced. */
 const EDGE_LABEL_OFFSET_Y = 0;
-const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [6, 8, 0, 8];
+const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [4, 8, 4, 8];
 const EDGE_LABEL_BADGE_RADIUS = 6;
 const EDGE_LABEL_BADGE_FONT_WEIGHT = 700;
 
@@ -403,7 +402,6 @@ export function getEdgeRelationLabelStyle(
   return {
     labelText,
     labelPosition: 'center',
-    labelTextBaseline: 'middle',
     labelBackground: true,
     labelBackgroundOpacity: 1,
     labelBackgroundFill: meta
@@ -416,7 +414,6 @@ export function getEdgeRelationLabelStyle(
     labelBackgroundRadius: meta
       ? EDGE_LABEL_BADGE_RADIUS
       : EDGE_LABEL_BG_RADIUS,
-    labelBackgroundPadding: edgeLabelPadding,
     labelPadding: edgeLabelPadding,
     labelBackgroundShadowColor: meta
       ? 'transparent'
@@ -432,9 +429,8 @@ export function getEdgeRelationLabelStyle(
       ? EDGE_LABEL_BADGE_FONT_WEIGHT
       : EDGE_LABEL_FONT_WEIGHT,
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,
-    labelLineHeight: EDGE_LABEL_FONT_SIZE,
     labelLetterSpacing: EDGE_LABEL_LETTER_SPACING,
-    labelAutoRotate: false,
+    labelAutoRotate: true,
     labelOffsetY: EDGE_LABEL_OFFSET_Y,
     labelMaxWidth: 120,
   };

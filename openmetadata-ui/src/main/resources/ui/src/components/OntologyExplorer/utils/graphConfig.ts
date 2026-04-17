@@ -28,19 +28,18 @@ export const CHAR_WIDTH_ESTIMATE = 7;
 export const MODEL_NODE_MAX_WIDTH = 220;
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
-export const MIN_NODE_SPACING = 24;
-export const MIN_LINK_DISTANCE = 160;
+export const MIN_NODE_SPACING = 12;
+export const MIN_LINK_DISTANCE = 60;
 
-export const DAGRE_RANK_SEP = 150;
-export const DAGRE_NODE_SEP = 100;
-export const HIERARCHY_DAGRE_NODE_SEP = 260;
-export const HIERARCHY_DAGRE_RANK_SEP = 200;
-const CROSS_GLOSSARY_LAYOUT_EXTRA = 90;
+export const DAGRE_RANK_SEP = 40;
+export const DAGRE_NODE_SEP = 20;
+export const HIERARCHY_DAGRE_NODE_SEP = 150;
+export const HIERARCHY_DAGRE_RANK_SEP = 150;
 
 export const MIN_NODE_WIDTH = 72;
 export const BADGE_MIN_NODE_WIDTH = 100;
 
-function adaptiveSpacing(base: number, nodeCount: number): number {
+export function adaptiveSpacing(base: number, nodeCount: number): number {
   if (nodeCount <= 50) {
     return base;
   }
@@ -57,23 +56,8 @@ function adaptiveSpacing(base: number, nodeCount: number): number {
   return Math.ceil(base * 0.15);
 }
 
-function adaptiveSpacingModel(base: number, nodeCount: number): number {
-  if (nodeCount <= 80) {
-    return base;
-  }
-  if (nodeCount <= 200) {
-    return Math.ceil(base * 0.72);
-  }
-  if (nodeCount <= 1000) {
-    return Math.ceil(base * 0.48);
-  }
-
-  return Math.ceil(base * 0.32);
-}
-
 export interface GetOntologyLayoutConfigOptions {
   hasCombos: boolean;
-  focusNode?: string;
   isDataMode: boolean;
   isModelView: boolean;
   isHierarchyMode: boolean;
@@ -124,64 +108,37 @@ export function getLayoutConfig(
   nodeCount: number,
   options: GetOntologyLayoutConfigOptions
 ): LayoutConfig {
-  const { hasCombos, focusNode, isDataMode, isModelView, isHierarchyMode } =
-    options;
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
 
   const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
 
   const engineType: LayoutEngineType =
-    layoutType === LayoutEngine.Dagre ||
-    layoutType === LayoutEngine.Radial ||
-    layoutType === LayoutEngine.Circular
+    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
       ? layoutType
       : toLayoutEngineType(layoutType as LayoutType);
 
   if (!isModelView) {
     if (engineType === LayoutEngine.Dagre) {
-      const baseNodeSep =
-        COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA;
-      const baseRankSep =
-        COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA;
-
-      let nodesep = adaptiveSpacing(baseNodeSep, nodeCount);
-      let ranksep = adaptiveSpacing(baseRankSep, nodeCount);
-
-      if (isHierarchyMode) {
-        nodesep = Math.max(
-          nodesep,
-          adaptiveSpacing(HIERARCHY_DAGRE_NODE_SEP, nodeCount)
-        );
-        ranksep = Math.max(
-          ranksep,
-          adaptiveSpacing(HIERARCHY_DAGRE_RANK_SEP, nodeCount)
-        );
-      }
+      const baseSep = isHierarchyMode
+        ? HIERARCHY_DAGRE_NODE_SEP
+        : DAGRE_NODE_SEP;
+      const baseRank = isHierarchyMode
+        ? HIERARCHY_DAGRE_RANK_SEP
+        : DAGRE_RANK_SEP;
 
       return {
         type: LayoutEngine.Dagre,
         animation: false,
         rankdir: 'TB',
-        nodesep,
-        ranksep,
+        nodesep: adaptiveSpacing(baseSep, nodeCount),
+        ranksep: adaptiveSpacing(baseRank, nodeCount),
         preventOverlap: true,
         nodeSize: baseNodeSize,
       };
     }
 
-    if (engineType === LayoutEngine.Radial) {
-      return {
-        type: LayoutEngine.Radial,
-        animation: false,
-        ...(focusNode && !isDataMode && { focusNode }),
-        unitRadius: isDataMode ? 220 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 150,
-        preventOverlap: true,
-        nodeSize: isDataMode ? 20 : 40,
-        nodeSpacing: isDataMode ? 30 : MIN_NODE_SPACING,
-        linkDistance: isDataMode ? 220 : 200,
-        strictRadial: false,
-        maxIteration: 1000,
-        sortBy: 'degree',
-      };
+    if (isDataMode && engineType === LayoutEngine.Circular) {
+      return { type: 'preset', animation: false };
     }
 
     if (engineType === LayoutEngine.Circular) {
@@ -209,34 +166,11 @@ export function getLayoutConfig(
     };
   }
 
-  if (engineType === LayoutEngine.Radial) {
-    const unitRadius = adaptiveSpacingModel(
-      nodeCount <= 2 ? MIN_LINK_DISTANCE : 140,
-      nodeCount
-    );
-
-    return {
-      type: LayoutEngine.Radial,
-      animation: false,
-      ...(focusNode && { focusNode }),
-      unitRadius,
-      preventOverlap: true,
-      nodeSize: baseNodeSize,
-      nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
-      linkDistance: adaptiveSpacingModel(200, nodeCount),
-      strictRadial: false,
-      maxIteration: nodeCount > 500 ? 600 : 1000,
-      sortBy: 'degree',
-    };
-  }
-
+  // Model-view Circular: positions are pre-computed by positionCircularNodes in
+  // useOntologyGraph and baked into node.style.x/y before draw(). Use 'preset'
+  // so G6 reads those coordinates directly — same pattern as KnowledgeGraph.
   if (engineType === LayoutEngine.Circular) {
-    return {
-      type: LayoutEngine.Circular,
-      animation: false,
-      nodeSize: baseNodeSize,
-      nodeSpacing: adaptiveSpacingModel(MIN_NODE_SPACING, nodeCount),
-    };
+    return { type: 'preset', animation: false };
   }
 
   return {
