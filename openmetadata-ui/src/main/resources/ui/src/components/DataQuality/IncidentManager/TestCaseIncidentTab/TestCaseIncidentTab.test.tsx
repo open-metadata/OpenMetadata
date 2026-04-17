@@ -96,7 +96,8 @@ describe('TestCaseIssueTab', () => {
       undefined,
       undefined,
       'testCase',
-      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between'
+      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+      'open'
     );
   });
 
@@ -122,7 +123,8 @@ describe('TestCaseIssueTab', () => {
       undefined,
       undefined,
       'testCase',
-      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between'
+      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+      'closed'
     );
   });
 
