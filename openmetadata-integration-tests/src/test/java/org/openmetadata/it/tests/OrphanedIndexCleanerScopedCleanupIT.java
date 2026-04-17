@@ -138,30 +138,39 @@ public class OrphanedIndexCleanerScopedCleanupIT {
         "Foreign orphan " + FOREIGN_ORPHAN + " must not appear in stats");
   }
 
+  /**
+   * Read-only assertion that orphan discovery only looks at indices under the cluster prefix.
+   *
+   * <p>We deliberately avoid calling {@link OrphanedIndexCleaner#cleanupOrphanedIndices} here:
+   * that is a destructive, globally-scoped operation and would race with other ITs that may
+   * create temporary {@code _rebuild_} indices under the same shared {@code openmetadata_*}
+   * namespace. Since cleanup = discovery + per-index delete, verifying discovery is scoped is
+   * sufficient for the 403-prevention guarantee; per-index deletion is covered by unit tests.
+   */
   @Test
   @Order(3)
-  void cleanupOrphanedIndicesOnlyDeletesClusterScopedOrphans() throws Exception {
+  void findOrphanedRebuildIndicesOnlyDiscoversClusterScopedOrphans() {
     SearchClient client = Entity.getSearchRepository().getSearchClient();
     OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
 
-    OrphanedIndexCleaner.CleanupResult result = cleaner.cleanupOrphanedIndices(client);
+    List<OrphanedIndexCleaner.OrphanedIndex> orphans = cleaner.findOrphanedRebuildIndices(client);
 
     assertTrue(
-        result.deletedIndices().contains(OUR_ORPHAN),
+        orphans.stream().anyMatch(o -> o.indexName().equals(OUR_ORPHAN)),
         "Expected our-prefix orphan "
             + OUR_ORPHAN
-            + " to be deleted, got "
-            + result.deletedIndices());
+            + " to be discovered, got "
+            + orphans.stream().map(OrphanedIndexCleaner.OrphanedIndex::indexName).toList());
     assertFalse(
-        result.deletedIndices().contains(FOREIGN_ORPHAN),
-        "Foreign orphan " + FOREIGN_ORPHAN + " must not be deleted");
-    for (String deleted : result.deletedIndices()) {
+        orphans.stream().anyMatch(o -> o.indexName().equals(FOREIGN_ORPHAN)),
+        "Foreign orphan " + FOREIGN_ORPHAN + " must not be discovered (cross-tenant leak)");
+    for (OrphanedIndexCleaner.OrphanedIndex orphan : orphans) {
       assertTrue(
-          deleted.startsWith(CLUSTER_ALIAS + "_"),
-          "Deleted index " + deleted + " is outside cluster prefix");
+          orphan.indexName().startsWith(CLUSTER_ALIAS + "_"),
+          "Discovered orphan " + orphan.indexName() + " is outside cluster prefix");
     }
-    assertTrue(indexExists(FOREIGN_ORPHAN), "Foreign orphan must still exist after cleanup");
-    assertTrue(indexExists(FOREIGN_LIVE), "Foreign live index must still exist after cleanup");
+    assertTrue(indexExists(FOREIGN_ORPHAN), "Foreign orphan must still exist (never touched)");
+    assertTrue(indexExists(FOREIGN_LIVE), "Foreign live index must still exist (never touched)");
   }
 
   private static void createIndex(String name) throws Exception {

@@ -586,7 +586,9 @@ class ElasticSearchIndexManagerTest {
 
     var captor = forClass(GetAliasRequest.class);
     verify(indicesClient).getAlias(captor.capture());
-    assertEquals(List.of(CLUSTER_ALIAS + "_*"), captor.getValue().index());
+    assertEquals(
+        List.of(CLUSTER_ALIAS + IndexMapping.INDEX_NAME_SEPARATOR + "*"),
+        captor.getValue().index());
   }
 
   @Test
