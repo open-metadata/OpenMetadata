@@ -650,13 +650,16 @@ export const MOCKED_GLOSSARY_TERMS = [
     children: [],
     relatedTerms: [
       {
-        id: '2a5a09ac-1c9a-42b8-bdf2-4adb4f141f55',
-        type: 'glossaryTerm',
-        name: 'Business Customer',
-        fullyQualifiedName: 'Customer.Business Customer',
-        description: 'Business Customer',
-        displayName: 'Business Customer',
-        deleted: false,
+        relationType: 'relatedTo',
+        term: {
+          id: '2a5a09ac-1c9a-42b8-bdf2-4adb4f141f55',
+          type: 'glossaryTerm',
+          name: 'Business Customer',
+          fullyQualifiedName: 'Customer.Business Customer',
+          description: 'Business Customer',
+          displayName: 'Business Customer',
+          deleted: false,
+        },
       },
     ],
     references: [
@@ -765,13 +768,16 @@ export const MOCKED_GLOSSARY_TERMS_TREE = [
         references: [{ endpoint: 'https://www.google.com', name: 'google' }],
         relatedTerms: [
           {
-            deleted: false,
-            description: 'Business Customer',
-            displayName: 'Business Customer',
-            fullyQualifiedName: 'Customer.Business Customer',
-            id: '2a5a09ac-1c9a-42b8-bdf2-4adb4f141f55',
-            name: 'Business Customer',
-            type: 'glossaryTerm',
+            relationType: 'relatedTo',
+            term: {
+              deleted: false,
+              description: 'Business Customer',
+              displayName: 'Business Customer',
+              fullyQualifiedName: 'Customer.Business Customer',
+              id: '2a5a09ac-1c9a-42b8-bdf2-4adb4f141f55',
+              name: 'Business Customer',
+              type: 'glossaryTerm',
+            },
           },
         ],
         reviewers: [],

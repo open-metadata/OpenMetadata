@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -67,20 +68,26 @@ public class VectorDocBuilder {
       EntityInterface entity, EmbeddingClient embeddingClient) {
     Map<String, Object> doc = new HashMap<>(buildEmbeddingFields(entity, embeddingClient));
 
-  private static final Map<String, BodyTextExtractor> BODY_TEXT_EXTRACTORS =
-      new ConcurrentHashMap<>();
-
-  /**
-   * Register a custom {@link BodyTextExtractor} for an entity type. The registry is consulted by
-   * {@link #buildBodyText(EntityInterface, String)} before the default description-based logic,
-   * so callers can cleanly override body text for their own entity types without patching this
-   * class. Registration is idempotent (last writer wins) and thread-safe.
-   */
-  public static void registerBodyTextExtractor(String entityType, BodyTextExtractor extractor) {
-    if (entityType == null || entityType.isBlank() || extractor == null) {
-      return;
+    if (entity instanceof GlossaryTerm term) {
+      List<TermRelation> relatedTerms = term.getRelatedTerms();
+      if (relatedTerms != null && !relatedTerms.isEmpty()) {
+        List<Map<String, Object>> relatedTermDocs = new ArrayList<>();
+        for (TermRelation rel : relatedTerms) {
+          EntityReference ref = rel.getTerm();
+          if (ref == null) continue;
+          Map<String, Object> refMap = new HashMap<>();
+          if (ref.getId() != null) refMap.put("id", ref.getId().toString());
+          if (ref.getName() != null) refMap.put("name", ref.getName());
+          if (ref.getType() != null) refMap.put("type", ref.getType());
+          if (ref.getFullyQualifiedName() != null)
+            refMap.put("fullyQualifiedName", ref.getFullyQualifiedName());
+          relatedTermDocs.add(refMap);
+        }
+        doc.put("relatedTerms", relatedTermDocs);
+      }
     }
-    BODY_TEXT_EXTRACTORS.put(entityType, extractor);
+
+    return List.of(doc);
   }
 
   /**
@@ -179,7 +186,7 @@ public class VectorDocBuilder {
       List<String> synonyms =
           term.getSynonyms() != null ? term.getSynonyms() : Collections.emptyList();
       parts.add("synonyms: " + joinOrEmpty(synonyms));
-      List<EntityReference> relatedTerms =
+      List<TermRelation> relatedTerms =
           term.getRelatedTerms() != null ? term.getRelatedTerms() : Collections.emptyList();
       List<String> relatedTermFqns =
           relatedTerms.stream()

@@ -12,11 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class VectorDocBuilderTest {
@@ -222,89 +224,92 @@ class VectorDocBuilderTest {
   }
 
   @Test
-  void testRegisterCustomExtractorIsUsed() {
-    String type = "customExtractorTest_" + UUID.randomUUID();
-    VectorDocBuilder.registerBodyTextExtractor(
-        type, entity -> "custom body for " + entity.getName());
+  void testBuildEmbeddingFieldsWithGlossaryTermRelations() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue metric");
 
-    Table table = createTestTable("ext_table", null, "original desc");
-    String body = VectorDocBuilder.buildBodyText(table, type);
+    EntityReference ref1 = new EntityReference();
+    ref1.setId(UUID.randomUUID());
+    ref1.setType("glossaryTerm");
+    ref1.setName("profit");
+    ref1.setDisplayName("Profit");
+    ref1.setFullyQualifiedName("finance.profit");
 
-    assertEquals("custom body for ext_table", body);
+    EntityReference ref2 = new EntityReference();
+    ref2.setId(UUID.randomUUID());
+    ref2.setType("glossaryTerm");
+    ref2.setName("cost");
+    ref2.setDisplayName("Cost");
+    ref2.setFullyQualifiedName("finance.cost");
+
+    TermRelation rel1 = new TermRelation().withTerm(ref1).withRelationType("broader");
+    TermRelation rel2 = new TermRelation().withTerm(ref2).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel1, rel2));
+
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
+
+    assertNotNull(fields);
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("finance.profit"));
+    assertTrue(textToEmbed.contains("finance.cost"));
+    assertTrue(textToEmbed.contains("relatedTerms:"));
   }
 
   @Test
-  void testCustomExtractorReturningNullFallsBackToDefault() {
-    String type = "nullExtractorTest_" + UUID.randomUUID();
-    VectorDocBuilder.registerBodyTextExtractor(type, entity -> null);
+  void testBuildEmbeddingFieldsWithGlossaryTermNoRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setRelatedTerms(null);
 
-    Table table = createTestTable("fallback_table", null, "fallback desc");
-    String body = VectorDocBuilder.buildBodyText(table, type);
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
 
-    assertTrue(body.contains("fallback desc"));
+    assertNotNull(fields);
+    assertNotNull(fields.get("textToEmbed"));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertTrue(textToEmbed.contains("relatedTerms:"));
+    assertFalse(textToEmbed.contains("finance."));
   }
 
   @Test
-  void testCustomExtractorThrowingFallsBackToDefault() {
-    String type = "throwExtractorTest_" + UUID.randomUUID();
-    VectorDocBuilder.registerBodyTextExtractor(
-        type,
-        entity -> {
-          throw new RuntimeException("boom");
-        });
+  void testGlossaryTermMetaLightIncludesRelatedTerms() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
 
-    Table table = createTestTable("err_table", null, "safe desc");
-    String body = VectorDocBuilder.buildBodyText(table, type);
+    EntityReference ref = new EntityReference();
+    ref.setId(UUID.randomUUID());
+    ref.setType("glossaryTerm");
+    ref.setName("profit");
+    ref.setFullyQualifiedName("finance.profit");
 
-    assertTrue(body.contains("safe desc"));
+    TermRelation rel = new TermRelation().withTerm(ref).withRelationType("synonym");
+    term.setRelatedTerms(List.of(rel));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(term, "glossaryTerm");
+
+    assertTrue(metaLight.contains("relatedTerms:"));
+    assertTrue(metaLight.contains("finance.profit"));
   }
 
   @Test
-  void testRegisterExtractorIgnoresNullAndBlank() {
-    String type = "ignoreTest_" + UUID.randomUUID();
+  void testGlossaryTermWithSynonymsInMetaLight() {
+    GlossaryTerm term = createTestGlossaryTerm("revenue", "Revenue", "Annual revenue");
+    term.setSynonyms(List.of("income", "earnings"));
 
-    VectorDocBuilder.registerBodyTextExtractor(null, entity -> "nope");
-    VectorDocBuilder.registerBodyTextExtractor("", entity -> "nope");
-    VectorDocBuilder.registerBodyTextExtractor("  ", entity -> "nope");
-    VectorDocBuilder.registerBodyTextExtractor(type, null);
+    String metaLight = VectorDocBuilder.buildMetaLightText(term, "glossaryTerm");
 
-    Table table = createTestTable("guard_table", null, "default desc");
-    String body = VectorDocBuilder.buildBodyText(table, type);
-
-    assertTrue(body.contains("default desc"));
+    assertTrue(metaLight.contains("synonyms:"));
+    assertTrue(metaLight.contains("income"));
+    assertTrue(metaLight.contains("earnings"));
   }
 
-  @Test
-  void testVectorBodyTextContributorRegister() {
-    String type = "contributorTest_" + UUID.randomUUID();
-
-    VectorBodyTextContributor contributor =
-        new VectorBodyTextContributor() {
-          @Override
-          public String entityType() {
-            return type;
-          }
-
-          @Override
-          public VectorDocBuilder.BodyTextExtractor extractor() {
-            return entity -> "contributed: " + entity.getName();
-          }
-        };
-
-    contributor.register();
-
-    Table table = createTestTable("contrib_table", null, "ignored");
-    String body = VectorDocBuilder.buildBodyText(table, type);
-
-    assertEquals("contributed: contrib_table", body);
-  }
-
-  @Test
-  void testBuildBodyTextWithNullEntityType() {
-    Table table = createTestTable("null_type_table", null, "some desc");
-    String body = VectorDocBuilder.buildBodyText(table, null);
-
-    assertTrue(body.contains("some desc"));
+  private GlossaryTerm createTestGlossaryTerm(String name, String displayName, String description) {
+    GlossaryTerm term = new GlossaryTerm();
+    term.setId(UUID.randomUUID());
+    term.setName(name);
+    term.setDisplayName(displayName);
+    term.setDescription(description);
+    term.setFullyQualifiedName("glossary." + name);
+    term.setDeleted(false);
+    return term;
   }
 
   @Test

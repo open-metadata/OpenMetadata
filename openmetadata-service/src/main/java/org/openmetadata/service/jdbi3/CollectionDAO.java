@@ -80,6 +80,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -490,6 +491,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchIndexFailureDAO searchIndexFailureDAO();
+
+  @CreateSqlObject
+  SearchIndexRetryQueueDAO searchIndexRetryQueueDAO();
 
   @CreateSqlObject
   SearchIndexServerStatsDAO searchIndexServerStatsDAO();
@@ -2296,6 +2300,26 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')) = :relationType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+                + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+                + "AND json->>'relationType' = :relationType",
+        connectionType = POSTGRES)
+    int deleteWithRelationType(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType);
 
     // Delete all the entity relationship fromID --- relation --> entity of type toEntity
     @SqlUpdate(
@@ -5543,6 +5567,12 @@ public interface CollectionDAO {
           if (!isTransientDeadlock(ex) || attempt == TAG_USAGE_MAX_ATTEMPTS) {
             throw ex;
           }
+          try {
+            Thread.sleep(20L + (long) (Math.random() * 80));
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw ex;
+          }
           long retryCount = TAG_USAGE_DEADLOCK_RETRY_COUNT.incrementAndGet();
           TAG_USAGE_LOG.debug(
               "Retrying tag_usage batch after transient deadlock (attempt {}/{}), total retries={}",
@@ -8770,6 +8800,8 @@ public interface CollectionDAO {
             case OPEN_LINEAGE_SETTINGS -> JsonUtils.readValue(json, OpenLineageSettings.class);
             case TEAMS_APP_CONFIGURATION -> JsonUtils.readValue(json, TeamsAppConfiguration.class);
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
+            case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
+                json, GlossaryTermRelationSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

@@ -20,6 +20,7 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -83,6 +84,10 @@ public class RdfRepository {
     return INSTANCE;
   }
 
+  public static RdfRepository getInstanceOrNull() {
+    return INSTANCE;
+  }
+
   public static void reset() {
     if (INSTANCE != null) {
       INSTANCE.close();
@@ -92,6 +97,13 @@ public class RdfRepository {
 
   public boolean isEnabled() {
     return config.getEnabled() != null && config.getEnabled() && storageService != null;
+  }
+
+  public String getBaseUri() {
+    if (config.getBaseUri() == null) {
+      throw new IllegalStateException("RDF baseUri is not configured");
+    }
+    return config.getBaseUri().toString();
   }
 
   public void createOrUpdate(EntityInterface entity) {
@@ -733,7 +745,7 @@ public class RdfRepository {
 
     } catch (Exception e) {
       LOG.error("Error executing SPARQL query with inference", e);
-      throw new RuntimeException("Failed to execute query with inference: " + e.getMessage(), e);
+      throw new RuntimeException("Failed to execute query with inference", e);
     }
   }
 
@@ -1348,6 +1360,38 @@ public class RdfRepository {
   }
 
   private String extractPredicateName(String predicateUri) {
+    // Map standard vocabulary predicates back to our relation type names
+    if (predicateUri != null) {
+      // SKOS predicates
+      if (predicateUri.endsWith("#exactMatch") || predicateUri.endsWith("/exactMatch")) {
+        return "synonym";
+      }
+      if (predicateUri.endsWith("#broader") || predicateUri.endsWith("/broader")) {
+        return "broader";
+      }
+      if (predicateUri.endsWith("#narrower") || predicateUri.endsWith("/narrower")) {
+        return "narrower";
+      }
+      if (predicateUri.endsWith("#related") || predicateUri.endsWith("/related")) {
+        return "related";
+      }
+      // RDFS predicates
+      if (predicateUri.endsWith("#seeAlso") || predicateUri.endsWith("/seeAlso")) {
+        return "seeAlso";
+      }
+      if (predicateUri.endsWith("#subClassOf") || predicateUri.endsWith("/subClassOf")) {
+        return "broader"; // treat rdfs:subClassOf as broader
+      }
+      // PROV-O predicates
+      if (predicateUri.endsWith("#wasDerivedFrom") || predicateUri.endsWith("/wasDerivedFrom")) {
+        return "calculatedFrom"; // map prov:wasDerivedFrom back to calculatedFrom
+      }
+      if (predicateUri.endsWith("#wasInfluencedBy") || predicateUri.endsWith("/wasInfluencedBy")) {
+        return "usedToCalculate"; // map prov:wasInfluencedBy back to usedToCalculate
+      }
+    }
+
+    // Extract local name from URI
     if (predicateUri.contains("#")) {
       return predicateUri.substring(predicateUri.lastIndexOf('#') + 1);
     } else if (predicateUri.contains("/")) {

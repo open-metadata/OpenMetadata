@@ -102,10 +102,10 @@ describe('getGlossaryTermDetailPageTabs', () => {
   });
 
   describe('non-version view', () => {
-    it('returns 5 tabs when isVersionView is false', () => {
+    it('returns 6 tabs when isVersionView is false', () => {
       const tabs = getGlossaryTermDetailPageTabs(mockProps);
 
-      expect(tabs).toHaveLength(5);
+      expect(tabs).toHaveLength(6);
     });
 
     it('first tab key is OVERVIEW', () => {
@@ -153,6 +153,7 @@ describe('getGlossaryTermDetailPageTabs', () => {
         EntityTabs.GLOSSARY_TERMS,
         EntityTabs.ASSETS,
         EntityTabs.ACTIVITY_FEED,
+        EntityTabs.RELATIONS_GRAPH,
         EntityTabs.CUSTOM_PROPERTIES,
       ]);
     });

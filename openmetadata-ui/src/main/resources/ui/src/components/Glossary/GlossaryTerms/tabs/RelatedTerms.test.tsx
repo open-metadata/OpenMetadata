@@ -110,6 +110,7 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 

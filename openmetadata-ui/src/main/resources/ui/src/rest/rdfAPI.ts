@@ -14,12 +14,15 @@
 import { GraphEdge, GraphFilterOptions } from '../types/knowledgeGraph.types';
 import APIClient from './index';
 
-interface GraphNode {
+export interface GraphNode {
   id: string;
   label: string;
   type: string;
-  group: string;
+  group?: string;
   title?: string;
+  fullyQualifiedName?: string;
+  description?: string;
+  isolated?: boolean;
 }
 
 export interface GraphData {

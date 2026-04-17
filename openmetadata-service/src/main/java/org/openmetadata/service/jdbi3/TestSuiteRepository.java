@@ -68,6 +68,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -508,11 +509,23 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               .getSearchIndexFactory()
               .buildIndex(entity.getBasicEntityReference().getType(), entityInterface);
       Map<String, Object> doc = index.buildSearchIndexDoc();
-      searchClient.updateEntity(
-          indexMapping.getIndexName(searchRepository.getClusterAlias()),
-          entity.getBasicEntityReference().getId().toString(),
-          doc,
-          "ctx._source.testSuite = params.testSuite;");
+      try {
+        searchClient.updateEntity(
+            indexMapping.getIndexName(searchRepository.getClusterAlias()),
+            entity.getBasicEntityReference().getId().toString(),
+            doc,
+            "ctx._source.testSuite = params.testSuite;");
+      } catch (Exception e) {
+        SearchIndexRetryQueue.enqueue(
+            entity.getBasicEntityReference().getId().toString(),
+            entityInterface.getFullyQualifiedName(),
+            entity.getBasicEntityReference().getType(),
+            SearchIndexRetryQueue.failureReason("postCreate.updateTestSuiteIndex", e));
+        LOG.error(
+            "Failed to update search index for entity [{}] in postCreate: {}",
+            entity.getBasicEntityReference().getId(),
+            e.getMessage());
+      }
     }
   }
 
