@@ -1436,7 +1436,19 @@ export function useOntologyGraph({
 
     if (canPatchInPlace) {
       try {
-        graph.updateNodeData(graphData.nodes ?? []);
+        let nodesToUpdate = graphData.nodes ?? [];
+        if (isDataMode) {
+          nodesToUpdate = nodesToUpdate.map((node) => {
+            const style = node.style as Record<string, unknown> | undefined;
+            if (!style || (!('x' in style) && !('y' in style))) {
+              return node;
+            }
+            const { x: _x, y: _y, ...restStyle } = style;
+
+            return { ...node, style: restStyle };
+          });
+        }
+        graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
         graph.draw();
 
@@ -1612,7 +1624,19 @@ export function useOntologyGraph({
     if (assetFingerprintChanged && !termFingerprintChanged && topologySynced) {
       assetFingerprintRef.current = newAssetFingerprint;
       try {
-        graph.updateNodeData(graphData.nodes ?? []);
+        let nodesToUpdate = graphData.nodes ?? [];
+        if (isDataMode) {
+          nodesToUpdate = nodesToUpdate.map((node) => {
+            const style = node.style as Record<string, unknown> | undefined;
+            if (!style || (!('x' in style) && !('y' in style))) {
+              return node;
+            }
+            const { x: _x, y: _y, ...restStyle } = style;
+
+            return { ...node, style: restStyle };
+          });
+        }
+        graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
         graph.draw();
       } catch {
@@ -1657,6 +1681,25 @@ export function useOntologyGraph({
 
         setClickedEdgeIdRef.current(null);
 
+        const preUpdateTermPositions: Record<string, [number, number]> = {};
+        if (isDataMode && !termFingerprintChanged) {
+          const termIds = new Set(
+            inputNodesRef.current
+              .filter((n) => n.type !== 'dataAsset' && n.type !== 'metric')
+              .map((n) => n.id)
+          );
+          termIds.forEach((id) => {
+            try {
+              const pos = graph.getElementPosition(id);
+              if (pos) {
+                preUpdateTermPositions[id] = [pos[0], pos[1]];
+              }
+            } catch {
+              // not yet positioned
+            }
+          });
+        }
+
         graph.setData(graphData);
 
         if (
@@ -1667,7 +1710,34 @@ export function useOntologyGraph({
         } else if (isModelViewLocal && layoutType === LayoutEngine.Circular) {
           positionCircularNodes(graph);
         } else if (hasBakedPositions) {
-          applyBakedPositions(graph, graphData.nodes ?? []);
+          if (
+            isDataMode &&
+            !termFingerprintChanged &&
+            Object.keys(preUpdateTermPositions).length > 0
+          ) {
+            const updates = (graphData.nodes ?? [])
+              .map((node) => {
+                const snapshotPos = preUpdateTermPositions[String(node.id)];
+                if (!snapshotPos) {
+                  return null;
+                }
+
+                return {
+                  id: node.id,
+                  style: {
+                    ...((node.style as Record<string, unknown>) ?? {}),
+                    x: snapshotPos[0],
+                    y: snapshotPos[1],
+                  },
+                };
+              })
+              .filter((u): u is NonNullable<typeof u> => u !== null);
+            if (updates.length > 0) {
+              graph.updateNodeData(updates);
+            }
+          } else {
+            applyBakedPositions(graph, graphData.nodes ?? []);
+          }
         } else {
           graph.setLayout(layoutOptions);
           try {
