@@ -1455,9 +1455,7 @@ test.describe('Glossary tests', () => {
 
       // Delete A (succeeds - not mocked, real deletion)
       await selectActiveGlossary(page, glossaryA.data.displayName);
-      const glossaryARefetch = waitForGlossaryListRefetch(page);
       await initiateDelete(page);
-      await glossaryARefetch;
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await expectGlossaryNotVisible(page, glossaryA.data.displayName);
 
