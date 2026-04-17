@@ -3099,6 +3099,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     clearRelationshipsForUpdateMany(updatedEntities);
     storeRelationshipsInternal(updatedEntities);
 
+    // Drop every cached variant for each updated entity so the next GET rebuilds from the
+    // freshly-stored row + relationships. writeThroughCacheMany only populates Redis base
+    // entries; Guava and bundle caches still serve pre-update tags/owners/etc. until TTL.
+    for (T entity : updatedEntities) {
+      invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+
     // 3. Batch cache writes
     writeThroughCacheMany(updatedEntities, true);
 
