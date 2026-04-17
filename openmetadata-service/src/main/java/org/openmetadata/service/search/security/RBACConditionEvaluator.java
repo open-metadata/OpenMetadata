@@ -349,21 +349,42 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
+    OMQueryBuilder domainStructuralExemption = buildDomainStructuralExemption();
     if (user == null || nullOrEmpty(user.getDomains())) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery);
-    } else {
-      List<OMQueryBuilder> domainQueries = new ArrayList<>();
-      for (EntityReference domain : user.getDomains()) {
-        String domainId = domain.getId().toString();
-        domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
-      }
-      domainQueries.add(
+      OMQueryBuilder noDomainAssigned =
           queryBuilderFactory
               .boolQuery()
-              .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id"))));
-      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
+              .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id")));
+      collector.addMust(
+          queryBuilderFactory
+              .boolQuery()
+              .should(List.of(noDomainAssigned, domainStructuralExemption)));
+      return;
     }
+    List<OMQueryBuilder> domainQueries = new ArrayList<>();
+    for (EntityReference domain : user.getDomains()) {
+      String domainId = domain.getId().toString();
+      domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
+    }
+    domainQueries.add(
+        queryBuilderFactory
+            .boolQuery()
+            .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id"))));
+    domainQueries.add(domainStructuralExemption);
+    collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
+  }
+
+  private OMQueryBuilder buildDomainStructuralExemption() {
+    var searchRepository = Entity.getSearchRepository();
+    List<String> exemptIndices = new ArrayList<>();
+    for (String entityType : List.of(Entity.DOMAIN, Entity.DATA_PRODUCT)) {
+      if (searchRepository == null) {
+        exemptIndices.add(entityType.toLowerCase());
+        continue;
+      }
+      exemptIndices.add(searchRepository.getIndexOrAliasName(entityType));
+    }
+    return queryBuilderFactory.termsQuery("_index", exemptIndices);
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {
