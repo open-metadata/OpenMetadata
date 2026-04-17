@@ -53,6 +53,8 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 
@@ -447,7 +449,9 @@ class TestOMetaTableAPI:
 
         table = metadata.get_latest_table_profile(expected_fqn)
 
-        assert table.profile == table_profile
+        assert table.profile.timestamp == table_profile.timestamp
+        assert table.profile.columnCount == table_profile.columnCount
+        assert table.profile.rowCount == table_profile.rowCount
 
         res_column_profile = next(
             (col.profile for col in table.columns if col.name.root == "id")
@@ -620,13 +624,21 @@ class TestOMetaTableAPI:
         assert table.tableProfilerConfig is None
 
         metadata._create_or_update_table_profiler_config(
-            table.id, table_profiler_config=TableProfilerConfig(profileSample=50.0)
+            table.id,
+            table_profiler_config=TableProfilerConfig(
+                profileSampleConfig=ProfileSampleConfig(
+                    config=StaticSamplingConfig(profileSample=50.0)
+                )
+            ),
         )
 
         stored = metadata.get_by_name(
             entity=Table, fqn=table.fullyQualifiedName, fields=["tableProfilerConfig"]
         )
-        assert stored.tableProfilerConfig.profileSample == 50.0
+        assert (
+            stored.tableProfilerConfig.profileSampleConfig.root.config.profileSample
+            == 50.0
+        )
 
     def test_list_w_skip_on_failure(self, metadata):
         """

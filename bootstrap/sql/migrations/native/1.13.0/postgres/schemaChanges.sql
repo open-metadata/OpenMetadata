@@ -151,6 +151,83 @@ WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole'
 ON CONFLICT DO NOTHING;
 
+-- Migrate profiler sampling config: move flat profileSample/profileSampleType/samplingMethodType
+-- into the new profileSampleConfig structure. Default to STATIC since DYNAMIC is new.
+
+-- Profiler configs are stored in entity_extension table, not in entity json columns.
+-- Extension keys: table.tableProfilerConfig, database.databaseProfilerConfig, databaseSchema.databaseSchemaProfilerConfig
+-- The json column in entity_extension contains the config object directly (flat root-level fields).
+
+-- entity_extension: build profileSampleConfig from existing flat fields (skip if already migrated)
+UPDATE entity_extension
+SET json = jsonb_set(
+    json::jsonb,
+    '{profileSampleConfig}',
+    jsonb_build_object(
+        'sampleConfigType', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{samplingMethodType}'
+        )
+    )
+)::json
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND json::jsonb #>> '{profileSample}' IS NOT NULL
+  AND json::jsonb #> '{profileSampleConfig}' IS NULL;
+
+-- entity_extension: remove old flat fields
+UPDATE entity_extension
+SET json = (json::jsonb #- '{profileSample}'
+                        #- '{profileSampleType}'
+                        #- '{samplingMethodType}')::json
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND (json::jsonb #>> '{profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{samplingMethodType}' IS NOT NULL);
+
+-- ingestion_pipeline_entity (profiler pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{sourceConfig,config,profileSampleConfig}',
+    jsonb_build_object(
+        'sampleConfigType', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{sourceConfig,config,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{sourceConfig,config,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json #>> '{pipelineType}' = 'profiler'
+  AND json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{sourceConfig,config,profileSampleConfig}' IS NULL;
+
+-- ingestion_pipeline_entity (profiler pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{sourceConfig,config,profileSample}'
+                        #- '{sourceConfig,config,profileSampleType}'
+                        #- '{sourceConfig,config,samplingMethodType}')::json
+WHERE json #>> '{pipelineType}' = 'profiler'
+  AND (json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);
+
 -- RDF distributed indexing state tables
 CREATE TABLE IF NOT EXISTS rdf_index_job (
     id VARCHAR(36) NOT NULL,

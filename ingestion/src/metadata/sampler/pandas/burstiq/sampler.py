@@ -20,11 +20,8 @@ from typing import Callable, Iterator, List, Optional
 
 import pandas as pd
 
-from metadata.generated.schema.entity.data.table import (
-    DataType,
-    ProfileSampleType,
-    TableData,
-)
+from metadata.generated.schema.entity.data.table import DataType, TableData
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.source.database.burstiq.client import BurstIQClient
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -81,8 +78,9 @@ class BurstIQSampler(SamplerInterface):
             return self._cached_frames
 
         chain = self.entity.name.root
-        sample = self.sample_config.profileSample
-        sample_type = self.sample_config.profileSampleType
+        static = self.sample_config.get_static_config()
+        sample = static.profileSample if static else None
+        sample_type = static.profileSampleType if static else None
 
         if sample and sample_type == ProfileSampleType.ROWS:
             total_limit: Optional[int] = int(sample)

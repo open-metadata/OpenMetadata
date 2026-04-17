@@ -21,20 +21,15 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchema,
     DatabaseSchemaProfilerConfig,
 )
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-    Table,
-    TableProfilerConfig,
-)
+from metadata.generated.schema.entity.data.table import Table, TableProfilerConfig
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
     SampleDataStorageConfig,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
-)
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.profiler.api.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
@@ -63,8 +58,13 @@ class ProfilerInterfaceTest(TestCase):
             columns=[],
             tableProfilerConfig=TableProfilerConfig(
                 sampleDataCount=101,
-                profileSample=11,
-                profileSampleType=ProfileSampleType.PERCENTAGE,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType="STATIC",
+                    config={
+                        "profileSample": 11,
+                        "profileSampleType": "PERCENTAGE",
+                    },
+                ),
             ),
             service=EntityReference(
                 id="ba451e8a-5069-4a45-ac38-95421bbdcb5a",
@@ -88,7 +88,10 @@ class ProfilerInterfaceTest(TestCase):
 
         cls.schema_profiler_config = DatabaseSchemaProfilerConfig(
             sampleDataCount=102,
-            profileSample=12,
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType="STATIC",
+                config={"profileSample": 12, "profileSampleType": "PERCENTAGE"},
+            ),
             sampleDataStorageConfig=cls.schema_storage_config,
         )
 
@@ -118,7 +121,10 @@ class ProfilerInterfaceTest(TestCase):
 
         cls.database_profiler_config = DatabaseProfilerConfig(
             sampleDataCount=202,
-            profileSample=22,
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType="STATIC",
+                config={"profileSample": 22, "profileSampleType": "PERCENTAGE"},
+            ),
             sampleDataStorageConfig=cls.database_storage_config,
         )
 
@@ -156,66 +162,50 @@ class ProfilerInterfaceTest(TestCase):
         )
 
     def test_get_profile_sample_configs(self):
-        source_config = DatabaseServiceProfilerPipeline()
-
-        expected = SampleConfig(
-            profileSample=11,
-            profileSampleType=ProfileSampleType.PERCENTAGE,
-        )
+        # Pipeline has no profileSampleConfig set — resolution should fall through
+        # to table config which has profileSample=11
         actual = get_profile_sample_config(
             entity=self.table,
             schema_entity=self.schema_entity,
             database_entity=self.database_entity,
             entity_config=None,
-            default_sample_config=SampleConfig(
-                profileSample=source_config.profileSample,
-                profileSampleType=source_config.profileSampleType,
-                samplingMethodType=source_config.samplingMethodType,
-            ),
+            default_sample_config=SampleConfig(),
         )
-        self.assertEqual(expected, actual)
+        static = actual.get_static_config()
+        self.assertIsNotNone(static)
+        self.assertEqual(static.profileSample, 11)
+        self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
 
         profiler = TableConfig(
             profileSample=11,
             profileSampleType=ProfileSampleType.PERCENTAGE,
             fullyQualifiedName="demo",
         )
-        expected = SampleConfig(
-            profileSample=11,
-            profileSampleType=ProfileSampleType.PERCENTAGE,
-        )
         actual = get_profile_sample_config(
             entity=self.table,
             schema_entity=self.schema_entity,
             database_entity=self.database_entity,
             entity_config=profiler,
-            default_sample_config=SampleConfig(
-                profileSample=source_config.profileSample,
-                profileSampleType=source_config.profileSampleType,
-                samplingMethodType=source_config.samplingMethodType,
-            ),
+            default_sample_config=SampleConfig(),
         )
-        self.assertEqual(expected, actual)
+        static = actual.get_static_config()
+        self.assertIsNotNone(static)
+        self.assertEqual(static.profileSample, 11)
+        self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
 
-        profiler = None
-        expected = SampleConfig(
-            profileSample=22,
-            profileSampleType=ProfileSampleType.PERCENTAGE,
-        )
         table_copy = deepcopy(self.table)
         table_copy.tableProfilerConfig = None
         actual = get_profile_sample_config(
             entity=table_copy,
             schema_entity=None,
             database_entity=self.database_entity,
-            entity_config=profiler,
-            default_sample_config=SampleConfig(
-                profileSample=source_config.profileSample,
-                profileSampleType=source_config.profileSampleType,
-                samplingMethodType=source_config.samplingMethodType,
-            ),
+            entity_config=None,
+            default_sample_config=SampleConfig(),
         )
-        self.assertEqual(expected, actual)
+        static = actual.get_static_config()
+        self.assertIsNotNone(static)
+        self.assertEqual(static.profileSample, 22)
+        self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
 
     def test_get_sample_data_count_config(self):
         entity_config = TableConfig(

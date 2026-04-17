@@ -17,7 +17,8 @@ for the profiler
 from sqlalchemy import Table, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -32,14 +33,15 @@ class MssqlSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
+        static = self.sample_config.get_static_config()
         if self.entity.tableType != TableType.View:
-            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 return selectable.tablesample(
-                    text(f"{self.sample_config.profileSample or 100} PERCENT")
+                    text(f"{static.profileSample or 100} PERCENT")
                 )
 
             return selectable.tablesample(
-                text(f"{int(self.sample_config.profileSample or 100)} ROWS")
+                text(f"{int(static.profileSample or 100 if static else 100)} ROWS")
             )
         return selectable
 

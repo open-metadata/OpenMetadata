@@ -31,7 +31,14 @@ from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
 )
-from metadata.sampler.models import DatabaseAndSchemaConfig, SampleConfig, TableConfig
+from metadata.sampler.models import (
+    DatabaseAndSchemaConfig,
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+    TableConfig,
+)
 
 
 def get_sample_storage_config(
@@ -96,6 +103,55 @@ def get_storage_config_for_table(
     return None
 
 
+def _resolve_profile_sample_config(
+    entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],
+    table_profiler_config,
+    schema_profiler_config,
+    database_profiler_config,
+    default_sample_config: Optional[SampleConfig],
+) -> Optional[ProfileSampleConfig]:
+    """Resolve profileSampleConfig through the config hierarchy.
+
+    Checks profileSampleConfig first, then falls back to flat profileSample
+    fields on manual config models (TableConfig, DatabaseAndSchemaConfig).
+    """
+    for config in (
+        entity_config,
+        table_profiler_config,
+        schema_profiler_config,
+        database_profiler_config,
+        default_sample_config,
+    ):
+        if not config:
+            continue
+        try:
+            psc = config.profileSampleConfig
+            if psc:
+                unwrapped = psc.root if hasattr(psc, "root") else psc
+                if isinstance(unwrapped, ProfileSampleConfig):
+                    return unwrapped
+                return ProfileSampleConfig.model_validate(
+                    unwrapped.model_dump()
+                    if hasattr(unwrapped, "model_dump")
+                    else unwrapped
+                )
+        except AttributeError:
+            pass
+        try:
+            if config.profileSample:
+                return ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=config.profileSample,
+                        profileSampleType=config.profileSampleType,
+                        samplingMethodType=config.samplingMethodType,
+                    ),
+                )
+        except AttributeError:
+            pass
+    return None
+
+
 def get_profile_sample_config(
     entity: Table,
     schema_entity: Optional[DatabaseSchema],
@@ -109,25 +165,15 @@ def get_profile_sample_config(
         database_entity=database_entity
     )
 
-    for config in (
-        entity_config,
-        entity.tableProfilerConfig,
-        schema_profiler_config,
-        database_profiler_config,
-        default_sample_config,
-    ):
-        try:
-            if config and config.profileSample:
-                return SampleConfig(
-                    profileSample=config.profileSample,
-                    profileSampleType=config.profileSampleType,
-                    samplingMethodType=config.samplingMethodType,
-                    randomizedSample=config.randomizedSample,
-                )
-        except AttributeError:
-            pass
+    profile_sample_config = _resolve_profile_sample_config(
+        entity_config=entity_config,
+        table_profiler_config=entity.tableProfilerConfig,
+        schema_profiler_config=schema_profiler_config,
+        database_profiler_config=database_profiler_config,
+        default_sample_config=default_sample_config,
+    )
 
-    return SampleConfig()
+    return SampleConfig(profileSampleConfig=profile_sample_config)
 
 
 def get_sample_query(

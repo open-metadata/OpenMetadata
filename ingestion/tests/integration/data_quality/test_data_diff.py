@@ -15,11 +15,7 @@ from sqlalchemy.sql import sqltypes
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-    Table,
-    TableProfilerConfig,
-)
+from metadata.generated.schema.entity.data.table import Table, TableProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -30,6 +26,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 
@@ -93,8 +90,13 @@ class TestParameters(BaseModel):
                     passedRows=IsApprox(59, delta=60) & IsPositiveInt,
                 ),
                 TableProfilerConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=10,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType="STATIC",
+                        config={
+                            "profileSample": 10,
+                            "profileSampleType": "PERCENTAGE",
+                        },
+                    ),
                 ),
             ),
             (
@@ -118,8 +120,13 @@ class TestParameters(BaseModel):
                     passedRows=IsApprox(10, delta=15) & IsPositiveInt,
                 ),
                 TableProfilerConfig(
-                    profileSampleType=ProfileSampleType.ROWS,
-                    profileSample=10,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType="STATIC",
+                        config={
+                            "profileSample": 10,
+                            "profileSampleType": "ROWS",
+                        },
+                    ),
                 ),
             ),
             (
@@ -349,8 +356,13 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Success,
                 ),
                 TableProfilerConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=10,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType="STATIC",
+                        config={
+                            "profileSample": 10,
+                            "profileSampleType": "PERCENTAGE",
+                        },
+                    ),
                 ),
             ),
             (

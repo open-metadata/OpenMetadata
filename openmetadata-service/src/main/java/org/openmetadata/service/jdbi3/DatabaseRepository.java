@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -54,7 +55,9 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -345,11 +348,20 @@ public class DatabaseRepository extends EntityRepository<Database> {
       UUID databaseId, DatabaseProfilerConfig databaseProfilerConfig) {
     // Validate the request content
     Database database = find(databaseId, Include.NON_DELETED);
-    if (databaseProfilerConfig.getProfileSampleType() != null
-        && databaseProfilerConfig.getProfileSample() != null) {
-      EntityUtil.validateProfileSample(
-          databaseProfilerConfig.getProfileSampleType().toString(),
-          databaseProfilerConfig.getProfileSample());
+    ProfileSampleConfig profileSampleConfig = databaseProfilerConfig.getProfileSampleConfig();
+    if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+      ProfileSampleConfig.SampleConfigType sampleConfigType =
+          profileSampleConfig.getSampleConfigType();
+      if (!nullOrEmpty(sampleConfigType)
+          && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+        StaticSamplingConfig staticConfig =
+            JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+        if (staticConfig.getProfileSampleType() != null
+            && staticConfig.getProfileSample() != null) {
+          EntityUtil.validateProfileSample(
+              staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+        }
+      }
     }
 
     daoCollection

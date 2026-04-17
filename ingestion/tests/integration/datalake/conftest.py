@@ -18,10 +18,10 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
-    ProfileSampleType,
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.models import PartitionProfilerConfig
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow

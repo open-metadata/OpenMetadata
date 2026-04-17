@@ -52,11 +52,11 @@
       "title": "Profile Sample"
     },
     "profileSampleType": {
-      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
+      "$ref": "../type/basic.json#/definitions/profileSampleType",
       "title": "Profile Sample Type"
     },
     "samplingMethodType": {
-      "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
+      "$ref": "../type/basic.json#/definitions/samplingMethodType",
       "title": "Sampling Method Type"
     },
     "testCases": {

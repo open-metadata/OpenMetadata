@@ -44,7 +44,7 @@ from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
 )
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
@@ -141,6 +141,19 @@ class ProfilerSource(ProfilerSourceInterface):
 
         return config_copy
 
+    def _build_default_sample_config(self) -> SampleConfig:
+        """Build a SampleConfig from the pipeline's profileSampleConfig."""
+        profile_sample_config = None
+        raw = self.source_config.profileSampleConfig if self.source_config else None
+        if raw:
+            profile_sample_config = ProfileSampleConfig.model_validate(raw.model_dump())
+        return SampleConfig(
+            profileSampleConfig=profile_sample_config,
+            randomizedSample=self.source_config.randomizedSample
+            if self.source_config
+            else False,
+        )
+
     @inject
     def create_profiler_interface(
         self,
@@ -177,12 +190,7 @@ class ProfilerSource(ProfilerSourceInterface):
             schema_entity=schema_entity,
             database_entity=database_entity,
             table_config=config,
-            default_sample_config=SampleConfig(
-                profileSample=self.source_config.profileSample,
-                profileSampleType=self.source_config.profileSampleType,
-                samplingMethodType=self.source_config.samplingMethodType,
-                randomizedSample=self.source_config.randomizedSample,
-            ),
+            default_sample_config=self._build_default_sample_config(),
             # TODO: Change this when we have the processing engine configuration implemented. Right now it does nothing.
             processing_engine=self.get_processing_engine(self.source_config),
         )
