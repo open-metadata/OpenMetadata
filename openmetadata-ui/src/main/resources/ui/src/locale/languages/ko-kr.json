@@ -3023,7 +3023,7 @@
     "remove-lineage-edge": "계보 엣지 제거",
     "rename-entity": "{{entity}}의 이름과 표시 이름을 변경합니다.",
     "request-approval-message": "다음에 대한 승인 요청:",
-    "request-approval-notification": "Approval required for",
+    "request-approval-notification": "승인 필요：",
     "request-description": "요청 설명",
     "request-description-message": "다음에 대한 요청 설명:",
     "request-tags-message": "다음에 대한 태그 요청:",

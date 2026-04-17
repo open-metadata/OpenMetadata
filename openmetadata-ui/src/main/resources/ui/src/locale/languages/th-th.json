@@ -3023,7 +3023,7 @@
     "remove-lineage-edge": "ลบขอบลำดับชั้น",
     "rename-entity": "เปลี่ยนชื่อและชื่อแสดงสำหรับ {{entity}}",
     "request-approval-message": "คำขออนุมัติสำหรับ",
-    "request-approval-notification": "Approval required for",
+    "request-approval-notification": "ต้องการการอนุมัติสำหรับ",
     "request-description": "คำอธิบายคำขอ",
     "request-description-message": "คำอธิบายคำขอสำหรับ",
     "request-tags-message": "แท็กคำขอสำหรับ",

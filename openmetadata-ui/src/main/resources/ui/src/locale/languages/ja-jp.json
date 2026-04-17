@@ -3023,7 +3023,7 @@
     "remove-lineage-edge": "リネージ接続を削除",
     "rename-entity": "{{entity}} の名前と表示名を変更します。",
     "request-approval-message": "承認リクエスト：",
-    "request-approval-notification": "Approval required for",
+    "request-approval-notification": "承認が必要です：",
     "request-description": "リクエストの説明",
     "request-description-message": "次の内容に関するリクエストの説明：",
     "request-tags-message": "次の内容に関するタグのリクエスト：",

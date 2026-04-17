@@ -3023,7 +3023,7 @@
     "remove-lineage-edge": "Удалить связь между объектами",
     "rename-entity": "Измените имя и отображаемое имя для объекта «{{entity}}».",
     "request-approval-message": "Задача на согласование для",
-    "request-approval-notification": "Approval required for",
+    "request-approval-notification": "Требуется одобрение для",
     "request-description": "Запросить описание",
     "request-description-message": "Запрос описания",
     "request-tags-message": "Запрос тегов",
