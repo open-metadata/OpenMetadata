@@ -111,7 +111,7 @@ export const createCustomMetric = async ({
     await page.click(`[title="${metric.column}"]`);
   }
   if (metric.expression) {
-    await page.click('.CodeMirror-scroll');
+    await page.click('.cm-scroller');
     await page.keyboard.type(metric.expression);
   }
   const createMetricResponse = page.waitForResponse(

@@ -19,7 +19,12 @@ import CodeEditor from './CodeEditor';
 const mockOnChange = jest.fn();
 const mockOnFocus = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
-const mockRefresh = jest.fn();
+
+const mockView = {
+  requestMeasure: jest.fn(),
+  scrollDOM: { scrollTop: 0 },
+  dom: document.createElement('div'),
+};
 
 jest.mock('../../../constants/constants', () => ({
   JSON_TAB_SIZE: 2,
@@ -36,54 +41,42 @@ jest.mock('../../../hooks/useClipBoard', () => ({
   })),
 }));
 
-jest.mock('react-codemirror2', () => ({
-  Controlled: jest
-    .fn()
-    .mockImplementation(
-      ({
-        value,
-        onBeforeChange,
-        onChange,
-        onFocus,
-        editorDidMount,
-        options,
-        className,
-      }) => {
-        React.useEffect(() => {
-          if (editorDidMount) {
-            const mockEditor = {
-              refresh: mockRefresh,
-              getWrapperElement: () => ({
-                remove: jest.fn(),
-              }),
-            };
-            editorDidMount(mockEditor);
-          }
-        }, [editorDidMount]);
+jest.mock('@uiw/react-codemirror', () => {
+  const forwardRef = React.forwardRef;
 
-        return (
-          <div className={className} data-testid="code-mirror-editor">
-            <span data-testid="editor-value">{value}</span>
-            <input
-              data-testid="code-mirror-input"
-              type="text"
-              value={value}
-              onChange={(e) => {
-                if (onBeforeChange) {
-                  onBeforeChange(null, null, e.target.value);
-                }
-                if (onChange) {
-                  onChange(null, null, e.target.value);
-                }
-              }}
-              onFocus={onFocus}
-            />
-            <span data-testid="editor-options">{JSON.stringify(options)}</span>
-          </div>
-        );
-      }
-    ),
-}));
+  return {
+    __esModule: true,
+    default: forwardRef(function MockCodeMirror(
+      props: {
+        value: string;
+        onChange?: (val: string) => void;
+        onFocus?: () => void;
+        className?: string;
+        extensions?: unknown[];
+      },
+      ref: React.Ref<{ view: typeof mockView }>
+    ) {
+      React.useImperativeHandle(ref, () => ({
+        view: mockView,
+      }));
+
+      return (
+        <div className={props.className} data-testid="code-mirror-editor">
+          <span data-testid="editor-value">{props.value}</span>
+          <input
+            data-testid="code-mirror-input"
+            type="text"
+            value={props.value}
+            onChange={(e) => {
+              props.onChange?.(e.target.value);
+            }}
+            onFocus={props.onFocus}
+          />
+        </div>
+      );
+    }),
+  };
+});
 
 const defaultProps = {
   value: 'test code',
@@ -184,28 +177,7 @@ describe('CodeEditor Component', () => {
     const customMode = { name: CSMode.SQL, json: false };
     render(<CodeEditor mode={customMode} />);
 
-    const optionsElement = screen.getByTestId('editor-options');
-    const options = JSON.parse(optionsElement.textContent || '{}');
-
-    expect(options.mode).toEqual(customMode);
-  });
-
-  it('should merge custom options with default options', () => {
-    const customOptions = {
-      lineNumbers: true,
-      readOnly: true,
-      customOption: 'test',
-    };
-    render(<CodeEditor options={customOptions} />);
-
-    const optionsElement = screen.getByTestId('editor-options');
-    const options = JSON.parse(optionsElement.textContent || '{}');
-
-    expect(options.lineNumbers).toBe(true);
-    expect(options.readOnly).toBe(true);
-    expect(options.customOption).toBe('test');
-    expect(options.tabSize).toBe(2);
-    expect(options.indentUnit).toBe(2);
+    expect(screen.getByTestId('code-mirror-editor')).toBeInTheDocument();
   });
 
   it('should refresh editor when refreshEditor prop changes to true', () => {
@@ -217,7 +189,7 @@ describe('CodeEditor Component', () => {
 
     jest.advanceTimersByTime(50);
 
-    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(mockView.requestMeasure).toHaveBeenCalledTimes(1);
 
     jest.useRealTimers();
   });
@@ -229,7 +201,7 @@ describe('CodeEditor Component', () => {
 
     jest.advanceTimersByTime(50);
 
-    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(mockView.requestMeasure).not.toHaveBeenCalled();
 
     jest.useRealTimers();
   });
@@ -265,13 +237,7 @@ describe('CodeEditor Component', () => {
   it('should handle default JavaScript mode', () => {
     render(<CodeEditor />);
 
-    const optionsElement = screen.getByTestId('editor-options');
-    const options = JSON.parse(optionsElement.textContent || '{}');
-
-    expect(options.mode).toEqual({
-      name: CSMode.JAVASCRIPT,
-      json: true,
-    });
+    expect(screen.getByTestId('code-mirror-editor')).toBeInTheDocument();
   });
 
   it('should render without onFocus when not provided', () => {

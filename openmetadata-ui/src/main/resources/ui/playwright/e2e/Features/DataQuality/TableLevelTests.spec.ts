@@ -903,10 +903,10 @@ test.describe(
         ).toBeVisible();
 
         await page.click('#testCaseFormV1_params_strategy');
-        await page.locator('.CodeMirror-scroll').click();
+        await page.locator('.cm-scroller').click();
         await page
           .getByTestId('code-mirror-container')
-          .getByRole('textbox')
+          .locator('.cm-content')
           .fill(testCase.sqlQuery);
         await page.getByLabel('Strategy').click();
         await page.getByTitle('ROWS').click();
@@ -951,10 +951,10 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', testCase.displayName);
 
-        await page.locator('.CodeMirror-scroll').click();
+        await page.locator('.cm-scroller').click();
         await page
           .getByTestId('code-mirror-container')
-          .getByRole('textbox')
+          .locator('.cm-content')
           .fill(' update');
         await page.getByTestId('edit-test-form').getByText('ROWS').click();
         await page.getByTitle('COUNT').click();

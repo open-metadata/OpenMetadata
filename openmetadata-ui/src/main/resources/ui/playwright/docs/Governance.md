@@ -220,7 +220,7 @@
 | 191 | **Custom properties without custom property config** - sqlQuery shows scrollable CodeMirror container and no expand toggle | SqlQuery shows scrollable CodeMirror container and no expand toggle |
 | | ↳ *Create sqlQuery property* | |
 | | ↳ *Set multi-line SQL value* | |
-| | ↳ *Verify .CodeMirror-scroll is height-constrained and scrollable* | |
+| | ↳ *Verify .cm-scroller is height-constrained and scrollable* | |
 | | ↳ *Verify expand/collapse toggle is hidden* | |
 | | ↳ *Cleanup property* | |
 
