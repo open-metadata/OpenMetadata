@@ -64,23 +64,11 @@ public class SamlLoginServlet extends HttpServlet {
     if (redirectUri == null) {
       return;
     }
-    String trustedCallback = SamlSettingsHolder.getInstance().getRelayState();
-    String baseRequestUrl = buildBaseRequestUrl(request);
-    if (RedirectUriValidator.isSafe(redirectUri, trustedCallback, baseRequestUrl)) {
+    String trustedCallback = SamlSettingsHolder.getConfiguredRelayState();
+    if (RedirectUriValidator.isSafe(redirectUri, trustedCallback)) {
       session.setAttribute(SESSION_REDIRECT_URI, redirectUri);
     } else {
       LOG.warn("[SAML] Ignoring disallowed callback URL from login request");
     }
-  }
-
-  private String buildBaseRequestUrl(HttpServletRequest req) {
-    int port = req.getServerPort();
-    String scheme = req.getScheme();
-    boolean defaultPort =
-        ("http".equalsIgnoreCase(scheme) && port == 80)
-            || ("https".equalsIgnoreCase(scheme) && port == 443);
-    return defaultPort
-        ? String.format("%s://%s", scheme, req.getServerName())
-        : String.format("%s://%s:%d", scheme, req.getServerName(), port);
   }
 }

@@ -234,9 +234,7 @@ RE_GROUPS = re.compile(r"^/v1/groups$")
 RE_GROUP_CONNECTORS = re.compile(r"^/v1/groups/(?P<group_id>[^/]+)/connectors$")
 RE_CONNECTOR = re.compile(r"^/v1/connectors/(?P<connector_id>[^/]+)$")
 RE_DESTINATION = re.compile(r"^/v1/destinations/(?P<dest_id>[^/]+)$")
-RE_CONNECTOR_SCHEMAS = re.compile(
-    r"^/v1/connectors/(?P<connector_id>[^/]+)/schemas$"
-)
+RE_CONNECTOR_SCHEMAS = re.compile(r"^/v1/connectors/(?P<connector_id>[^/]+)/schemas$")
 RE_COLUMN_LINEAGE = re.compile(
     r"^/v1/connectors/(?P<connector_id>[^/]+)"
     r"/schemas/(?P<schema>[^/]+)"
@@ -278,9 +276,7 @@ class FivetranMockHandler(BaseHTTPRequestHandler):
         cursor = params.get("cursor", [None])[0]
         if self.__class__.paginate_groups:
             if cursor is None:
-                self._respond_paginated(
-                    [GROUP_PAGE_1, GROUP_HVA], next_cursor="page2"
-                )
+                self._respond_paginated([GROUP_PAGE_1, GROUP_HVA], next_cursor="page2")
             else:
                 self._respond_paginated([GROUP_PAGE_2], next_cursor=None)
         else:

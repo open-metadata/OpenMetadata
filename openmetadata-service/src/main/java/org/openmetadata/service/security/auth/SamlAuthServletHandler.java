@@ -122,8 +122,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
       HttpSession session = req.getSession(true);
       if (callbackUrl != null) {
-        String trustedCallback = SamlSettingsHolder.getInstance().getRelayState();
-        if (RedirectUriValidator.isSafe(callbackUrl, trustedCallback, buildBaseRequestUrl(req))) {
+        String trustedCallback = SamlSettingsHolder.getConfiguredRelayState();
+        if (RedirectUriValidator.isSafe(callbackUrl, trustedCallback)) {
           session.setAttribute(SESSION_REDIRECT_URI, callbackUrl);
         } else {
           LOG.warn("[SAML] Ignoring disallowed callback URL from login request");
@@ -147,17 +147,6 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       LOG.error("Error handling SAML login", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
     }
-  }
-
-  private String buildBaseRequestUrl(HttpServletRequest req) {
-    int port = req.getServerPort();
-    String scheme = req.getScheme();
-    boolean defaultPort =
-        ("http".equalsIgnoreCase(scheme) && port == 80)
-            || ("https".equalsIgnoreCase(scheme) && port == 443);
-    return defaultPort
-        ? String.format("%s://%s", scheme, req.getServerName())
-        : String.format("%s://%s:%d", scheme, req.getServerName(), port);
   }
 
   @Override
@@ -260,11 +249,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
       LOG.debug("SAML Callback - redirectUri from session");
 
-      String trustedCallback = SamlSettingsHolder.getInstance().getRelayState();
+      String trustedCallback = SamlSettingsHolder.getConfiguredRelayState();
       boolean trusted =
-          redirectUri != null
-              && RedirectUriValidator.isSafe(
-                  redirectUri, trustedCallback, buildBaseRequestUrl(req));
+          redirectUri != null && RedirectUriValidator.isSafe(redirectUri, trustedCallback);
       String callbackUrl;
       if (trusted) {
         callbackUrl =
@@ -274,6 +261,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       } else {
         if (redirectUri != null) {
           LOG.warn("[SAML] Ignoring disallowed redirect URI on callback");
+          req.getSession().removeAttribute(SESSION_REDIRECT_URI);
         }
         callbackUrl =
             "/auth/callback?id_token="

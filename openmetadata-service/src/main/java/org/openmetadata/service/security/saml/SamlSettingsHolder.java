@@ -23,7 +23,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.SamlSecurityConfig;
@@ -37,9 +36,9 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 public class SamlSettingsHolder {
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
+  private static volatile String relayState;
   private Map<String, Object> samlData;
   private SettingsBuilder builder;
-  @Getter private String relayState;
 
   private SamlSettingsHolder() {
     samlData = new HashMap<>();
@@ -48,6 +47,14 @@ public class SamlSettingsHolder {
 
   public static SamlSettingsHolder getInstance() {
     return new SamlSettingsHolder();
+  }
+
+  public String getRelayState() {
+    return relayState;
+  }
+
+  public static String getConfiguredRelayState() {
+    return relayState;
   }
 
   public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig)

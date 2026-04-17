@@ -197,5 +197,5 @@ ingestion/.claude/agents
 # Connector audit working files — per-session, never committed
 .claude/audit-results/
 .claude/connector-audit.json
-
+.claude/scheduled_tasks.lock
 test-results/

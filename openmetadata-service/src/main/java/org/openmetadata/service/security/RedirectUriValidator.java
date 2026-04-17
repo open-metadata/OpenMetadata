@@ -64,6 +64,11 @@ public final class RedirectUriValidator {
       LOG.warn("Rejecting redirect URI with unsupported scheme or missing host");
       return false;
     }
+    int candidatePort = effectivePort(scheme, uri.getPort());
+    if (allowedBaseUrls == null) {
+      LOG.warn("Rejecting redirect URI (no allowlist configured)");
+      return false;
+    }
     for (String base : allowedBaseUrls) {
       if (CommonUtil.nullOrEmpty(base)) {
         continue;
@@ -73,9 +78,10 @@ public final class RedirectUriValidator {
         if (baseUri.getHost() == null) {
           continue;
         }
+        int basePort = effectivePort(baseUri.getScheme(), baseUri.getPort());
         if (scheme.equalsIgnoreCase(baseUri.getScheme())
             && host.equalsIgnoreCase(baseUri.getHost())
-            && uri.getPort() == baseUri.getPort()) {
+            && candidatePort == basePort) {
           return true;
         }
       } catch (URISyntaxException ignored) {
@@ -84,5 +90,19 @@ public final class RedirectUriValidator {
     }
     LOG.warn("Rejecting redirect URI (host not in allowlist)");
     return false;
+  }
+
+  private static int effectivePort(String scheme, int port) {
+    if (port != -1) {
+      return port;
+    }
+    if (scheme == null) {
+      return -1;
+    }
+    return switch (scheme.toLowerCase(Locale.ROOT)) {
+      case "https" -> 443;
+      case "http" -> 80;
+      default -> -1;
+    };
   }
 }
