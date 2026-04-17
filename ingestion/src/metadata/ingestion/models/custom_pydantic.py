@@ -55,15 +55,12 @@ class BaseModel(PydanticBaseModel):
         if "hostPort" in self.__pydantic_fields__:
             raw = getattr(self, "hostPort", None)
             if isinstance(raw, str) and "://" in raw:
-                try:
-                    from metadata.utils.db_utils import clean_host_port
+                from metadata.utils.db_utils import clean_host_port
 
-                    object.__setattr__(self, "hostPort", clean_host_port(raw))
-                except Exception:
-                    logger.warning(
-                        "Failed to clean hostPort '%s'; leaving as-is",
-                        raw[:50],
-                    )
+                # Let ValueError propagate: if clean_host_port cannot parse
+                # the input (e.g. non-numeric port), the user must fix their
+                # config rather than silently getting a broken hostPort.
+                object.__setattr__(self, "hostPort", clean_host_port(raw))
 
         try:
             for field in self.__pydantic_fields__:
