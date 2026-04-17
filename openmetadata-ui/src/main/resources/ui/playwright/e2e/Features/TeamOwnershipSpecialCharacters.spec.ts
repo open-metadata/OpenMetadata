@@ -66,7 +66,9 @@ test.describe(
   { tag: ['@Ownership', '@Teams'] },
   () => {
     test.beforeAll('Create teams and table', async ({ browser }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await specialCharTeam.create(apiContext);
       await shortTeam.create(apiContext);
       await longTeam.create(apiContext);
@@ -75,7 +77,9 @@ test.describe(
     });
 
     test.afterAll('Delete teams and table', async ({ browser }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await specialCharTeam.delete(apiContext);
       await shortTeam.delete(apiContext);
       await longTeam.delete(apiContext);
