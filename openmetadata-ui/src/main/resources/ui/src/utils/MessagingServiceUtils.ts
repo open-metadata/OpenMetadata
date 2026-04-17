@@ -58,6 +58,7 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
 
     case MessagingServiceType.Redpanda:
       schema = redpandaConnection;
+      // Same rationale as Kafka: preserve an explicit empty value instead of falling back to schema default.
       Object.assign(uiSchema, {
         schemaRegistryTopicSuffixName: { 'ui:emptyValue': '' },
       });
