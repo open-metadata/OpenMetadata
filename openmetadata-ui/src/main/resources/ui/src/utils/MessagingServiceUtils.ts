@@ -41,6 +41,18 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
   switch (type) {
     case MessagingServiceType.Kafka:
       schema = kafkaConnection;
+      /**
+       * By default, rjsf may treat an empty text input as `undefined` and omit the field
+       * from the submitted payload. Since the Kafka connection schema has a default
+       * `schemaRegistryTopicSuffixName` of "-value", omitting the field causes the
+       * value to be restored to the default after saving.
+       *
+       * Setting `ui:emptyValue` ensures a cleared input is persisted as an explicit
+       * empty string.
+       */
+      Object.assign(uiSchema, {
+        schemaRegistryTopicSuffixName: { 'ui:emptyValue': '' },
+      });
 
       break;
 
