@@ -94,6 +94,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
@@ -138,6 +139,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -216,6 +218,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -300,18 +303,61 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
 
-  public static final LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
-      CacheBuilder.newBuilder()
-          .maximumSize(20000)
-          .expireAfterWrite(30, TimeUnit.SECONDS)
-          .recordStats()
-          .build(new EntityLoaderWithName());
-  public static final LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
-      CacheBuilder.newBuilder()
-          .maximumSize(20000)
-          .expireAfterWrite(30, TimeUnit.SECONDS)
-          .recordStats()
-          .build(new EntityLoaderWithId());
+  private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
+
+  // Conservative upper-bound weight for a String: length() * 2 (UTF-16 worst-case) + 40 (header).
+  // On Java 21 with compact strings, LATIN1 content uses fewer bytes, so this overestimates
+  // slightly — which is intentional for memory capping. Zero allocation, single field read.
+  // Defaults used before CacheConfiguration is loaded at startup. initCaches() replaces these.
+  public static volatile LoadingCache<Pair<String, String>, String> CACHE_WITH_NAME =
+      buildEntityNameCache(
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
+  public static volatile LoadingCache<Pair<String, UUID>, String> CACHE_WITH_ID =
+      buildEntityIdCache(
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
+          CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
+
+  /**
+   * Rebuild entity caches with values from {@link CacheConfiguration}. Called once during app
+   * startup after the configuration is loaded. Safe to call multiple times — subsequent calls
+   * replace the caches (old entries are lost, which is fine during initialization).
+   */
+  public static void initCaches(CacheConfiguration config) {
+    CACHE_WITH_NAME =
+        buildEntityNameCache(
+            config.getEntityCacheMaxSizeBytes(), config.getEntityCacheTTLSeconds());
+    CACHE_WITH_ID =
+        buildEntityIdCache(config.getEntityCacheMaxSizeBytes(), config.getEntityCacheTTLSeconds());
+    LOG.info(
+        "Entity caches initialized: maxWeight={}MB, ttl={}s",
+        config.getEntityCacheMaxSizeBytes() / (1024 * 1024),
+        config.getEntityCacheTTLSeconds());
+  }
+
+  private static LoadingCache<Pair<String, String>, String> buildEntityNameCache(
+      long maxWeightBytes, int ttlSeconds) {
+    return CacheBuilder.newBuilder()
+        .maximumWeight(maxWeightBytes)
+        .weigher(
+            (Weigher<Pair<String, String>, String>)
+                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+        .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+        .recordStats()
+        .build(new EntityLoaderWithName());
+  }
+
+  private static LoadingCache<Pair<String, UUID>, String> buildEntityIdCache(
+      long maxWeightBytes, int ttlSeconds) {
+    return CacheBuilder.newBuilder()
+        .maximumWeight(maxWeightBytes)
+        .weigher(
+            (Weigher<Pair<String, UUID>, String>)
+                (key, value) -> value.length() * 2 + STRING_OBJECT_OVERHEAD_BYTES)
+        .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+        .recordStats()
+        .build(new EntityLoaderWithId());
+  }
 
   private static final int DEFAULT_FIELD_FETCH_POOL_SIZE =
       Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
@@ -9780,6 +9826,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final ConcurrentHashMap<String, DistributionSummary> SUCCESS_RATE_SUMMARIES =
       new ConcurrentHashMap<>();
 
+  private static final int MAX_CONCURRENT_BULK_JOBS = 100;
+  private static final Semaphore BULK_JOB_PERMITS = new Semaphore(MAX_CONCURRENT_BULK_JOBS);
+
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
       UriInfo uriInfo,
       List<T> entities,
@@ -9788,26 +9837,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
 
+    // Acquire a permit before scheduling — Semaphore is thread-safe and avoids TOCTOU races
+    if (!BULK_JOB_PERMITS.tryAcquire()) {
+      throw new jakarta.ws.rs.WebApplicationException(
+          "Too many concurrent bulk jobs (max " + MAX_CONCURRENT_BULK_JOBS + "). Retry later.",
+          jakarta.ws.rs.core.Response.Status.TOO_MANY_REQUESTS);
+    }
+
     String jobId = UUID.randomUUID().toString();
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
-    CompletableFuture<BulkOperationResult> job =
-        CompletableFuture.supplyAsync(
-            () -> {
-              try {
-                return bulkCreateOrUpdateEntitiesSequential(
-                    uriInfo, entities, userName, existingByFqn);
-              } catch (Exception e) {
-                LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
-                BulkOperationResult errorResult = new BulkOperationResult();
-                errorResult.setStatus(ApiStatus.FAILURE);
-                errorResult.setNumberOfRowsFailed(entities.size());
-                errorResult.setNumberOfRowsPassed(0);
-                return errorResult;
-              }
-            },
-            BulkExecutor.getInstance().getExecutor());
+    CompletableFuture<BulkOperationResult> job;
+    try {
+      job =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return bulkCreateOrUpdateEntitiesSequential(
+                      uriInfo, entities, userName, existingByFqn);
+                } catch (Exception e) {
+                  LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
+                  BulkOperationResult errorResult = new BulkOperationResult();
+                  errorResult.setStatus(ApiStatus.FAILURE);
+                  errorResult.setNumberOfRowsFailed(entities.size());
+                  errorResult.setNumberOfRowsPassed(0);
+                  return errorResult;
+                }
+              },
+              BulkExecutor.getInstance().getExecutor());
+    } catch (Exception e) {
+      BULK_JOB_PERMITS.release();
+      throw e;
+    }
 
     // Merge auth failures into the final result so polling clients see the complete picture
     CompletableFuture<BulkOperationResult> mergedJob =
@@ -9834,9 +9896,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     BULK_JOBS.put(jobId, mergedJob);
 
     mergedJob.whenComplete(
-        (result, throwable) ->
-            CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
-                .execute(() -> BULK_JOBS.remove(jobId)));
+        (result, throwable) -> {
+          BULK_JOB_PERMITS.release();
+          CompletableFuture.delayedExecutor(5, TimeUnit.MINUTES)
+              .execute(() -> BULK_JOBS.remove(jobId));
+        });
 
     return mergedJob;
   }
