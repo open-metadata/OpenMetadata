@@ -158,7 +158,11 @@ class JSONDataFrameReader(DataFrameReader):
             return False
 
     def _read_json_smart(
-        self, file_obj_getter, key: str, bucket_name: str
+        self,
+        file_obj_getter,
+        key: str,
+        bucket_name: str,
+        file_size: Optional[int] = None,
     ) -> DatalakeColumnWrapper:
         """
         Smart JSON reading with automatic format detection and streaming.
@@ -179,7 +183,7 @@ class JSONDataFrameReader(DataFrameReader):
                 dataframes=chunk_generator, raw_data=None, columns=None
             )
 
-        file_size_mb = self._get_file_size_mb(key, bucket_name)
+        file_size_mb = self._get_file_size_mb(key, bucket_name, file_size=file_size)
         if file_size_mb > (MAX_FILE_SIZE_FOR_PREVIEW / (1024 * 1024)):
             logger.info(
                 f"Large JSON file ({file_size_mb:.2f} MB). Streaming with ijson."
@@ -223,7 +227,9 @@ class JSONDataFrameReader(DataFrameReader):
             finally:
                 response["Body"].close()
 
-        return self._read_json_smart(get_stream, key, bucket_name)
+        return self._read_json_smart(
+            get_stream, key, bucket_name, file_size=self._file_size
+        )
 
     @_read_json_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -271,7 +277,10 @@ class JSONDataFrameReader(DataFrameReader):
 
         return self._read_json_smart(get_stream, key, bucket_name)
 
-    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
+    def _read(
+        self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__
+    ) -> DatalakeColumnWrapper:
+        self._file_size = file_size
         return self._read_json_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

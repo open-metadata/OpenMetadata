@@ -13,7 +13,7 @@
 Datalake S3 Client
 """
 from functools import partial
-from typing import Callable, Iterable, Optional, Set
+from typing import Callable, Iterable, Optional, Set, Tuple
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
@@ -35,8 +35,16 @@ class DatalakeS3Client(DatalakeBaseClient):
         if not config.securityConfig:
             raise RuntimeError("S3Config securityConfig can't be None.")
 
-        s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
-        return cls(client=s3_client)
+        aws_client = AWSClient(config.securityConfig)
+        session = aws_client.create_session()
+        if config.securityConfig.endPointURL:
+            s3_client = session.client(
+                service_name="s3",
+                endpoint_url=str(config.securityConfig.endPointURL),
+            )
+        else:
+            s3_client = session.client(service_name="s3")
+        return cls(client=s3_client, session=session)
 
     def update_client_database(self, config, database_name: str):
         # For the S3 Client we don't need to do anything when changing the database
@@ -57,7 +65,7 @@ class DatalakeS3Client(DatalakeBaseClient):
         bucket_name: str,
         prefix: Optional[str],
         skip_cold_storage: bool = False,
-    ) -> Iterable[str]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:
         kwargs = {"Bucket": bucket_name}
 
         if prefix:
@@ -76,7 +84,7 @@ class DatalakeS3Client(DatalakeBaseClient):
                         f"(StorageClass: {storage_class}, ArchiveStatus: {archive_status})"
                     )
                     continue
-            yield key["Key"]
+            yield key["Key"], key.get("Size")
 
     def get_folders_prefix(
         self, bucket_name: str, prefix: Optional[str]

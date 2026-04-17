@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
-from metadata.readers.file.s3 import return_s3_storage_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -116,9 +115,10 @@ class DSVDataFrameReader(DataFrameReader):
         config_source: ConfigSource,
         client: Optional[Any],
         separator: str = CSV_SEPARATOR,
+        session: Optional[Any] = None,
     ):
         self.separator = separator
-        super().__init__(config_source, client)
+        super().__init__(config_source, client, session=session)
 
     def read_from_pandas(
         self,
@@ -173,12 +173,32 @@ class DSVDataFrameReader(DataFrameReader):
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
         compression = "gzip" if key.endswith(".gz") else None
 
-        storage_options = return_s3_storage_options(self.config_source)
-        path = f"s3://{bucket_name}/{key}"
-        return self.read_from_pandas(
-            path=path, storage_options=storage_options, compression=compression
+        def chunk_generator():
+            response = self.client.get_object(Bucket=bucket_name, Key=key)
+            try:
+                with pd.read_csv(
+                    response["Body"],
+                    sep=self.separator,
+                    chunksize=CHUNKSIZE,
+                    compression=compression,
+                    encoding_errors="ignore",
+                    escapechar="\\",
+                ) as reader:
+                    for chunks in reader:
+                        fixed = self._fix_malformed_quoted_chunk(
+                            chunk_list=[chunks], separator=self.separator
+                        )
+                        if fixed:
+                            yield fixed[0]
+            finally:
+                response["Body"].close()
+
+        return DatalakeColumnWrapper(
+            dataframes=chunk_generator, columns=None, raw_data=None
         )
 
     @_read_dsv_dispatch.register
