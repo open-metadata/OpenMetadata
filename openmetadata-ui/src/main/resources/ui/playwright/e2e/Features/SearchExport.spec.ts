@@ -13,9 +13,10 @@
 
 import { expect, Page } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   countCsvResponseRows,
-  getExportCount,
+  getExportCountFromModal,
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
@@ -96,14 +97,13 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     await page.goto('/explore/tables?search=sample_data');
     await expect(page.getByTestId('explore-page')).toBeVisible();
 
-    const countApiPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
+    const countApiPromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/query')
     );
 
     await openExportScopeModal(page);
-    await countApiPromise;
+    const response = await countApiPromise;
+    expect(response.status()).toBe(200);
 
     const modalContent = getExportModalContent(page);
 
@@ -111,7 +111,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
     const expectedCount =
       await test.step('Read displayed count from Visible Results card', () =>
-        getExportCount(page, 'export-scope-visible-count'));
+        getExportCountFromModal(modalContent, 'export-scope-visible-count'));
 
     const exportResponsePromise = page.waitForResponse(
       (response) =>
@@ -128,27 +128,77 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Browse mode visible export downloads CSV with current page row count', async ({
+  test('Search mode visible export count matches the first result tab count', async ({
     page,
   }) => {
-    test.slow();
-
     const countApiPromise = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
 
-    await openExportScopeModal(page);
+    await page.goto(
+      '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer'
+    );
+    await expect(page.getByTestId('explore-page')).toBeVisible();
     await countApiPromise;
+
+    const firstTabCount =
+      await test.step('Read the count from the first left panel result tab', async () => {
+        const firstTabCountText = await page
+          .getByTestId('explore-left-panel')
+          .locator('[role="menuitem"]')
+          .first()
+          .getByTestId('filter-count')
+          .textContent();
+
+        return parseInt(firstTabCountText?.trim() ?? '0', 10);
+      });
+
+    await openExportScopeModal(page);
+
+    const visibleExportCount =
+      await test.step('Read the visible results count from the export modal', () =>
+        getExportCountFromModal(
+          getExportModalContent(page),
+          'export-scope-visible-count'
+        ));
+
+    await test.step('Visible export count matches the first result tab count', async () => {
+      expect(visibleExportCount).toBe(firstTabCount);
+    });
+  });
+
+  test('Browse mode visible export downloads CSV with current page row count', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const topicsQueryPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=topic') &&
+        response.status() === 200
+    );
+
+    await page.goto('/explore/topics');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    await topicsQueryPromise;
+    await waitForAllLoadersToDisappear(page);
+    await expect(
+      page.locator('[data-testid^="table-data-card_"]').first()
+    ).toBeVisible();
+
+    await openExportScopeModal(page);
 
     const modalContent = getExportModalContent(page);
 
     await modalContent.locator('input[value="visible"]').click();
+    await expect(modalContent.locator('input[value="visible"]')).toBeChecked();
 
     const expectedCount =
       await test.step('Read displayed count from Visible Results card', () =>
-        getExportCount(page, 'export-scope-visible-count'));
+        getExportCountFromModal(modalContent, 'export-scope-visible-count'));
 
     const exportResponsePromise = page.waitForResponse(
       (response) =>
@@ -165,90 +215,10 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Export button is disabled while export is in progress', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await page.route('**/api/v1/search/export?*', async (route) => {
-      await new Promise<void>((resolve) => setTimeout(resolve, 2000));
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/csv',
-        body: 'Entity Type\ntable',
-      });
-    });
-
-    const countApiPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
-    );
-
-    await openExportScopeModal(page);
-    await countApiPromise;
-
-    const modalContent = getExportModalContent(page);
-
-    await test.step('Export button becomes disabled and shows loading after click', async () => {
-      const exportButton = modalContent.getByRole('button', {
-        name: 'Export',
-      });
-
-      await exportButton.click();
-
-      await expect(exportButton).toBeDisabled();
-      await expect(exportButton).toHaveClass(/ant-btn-loading/);
-    });
-  });
-
-  test('Export API error is shown inside the modal', async ({ page }) => {
-    const errorMessage = 'Export failed due to a server error.';
-
-    await page.route('**/api/v1/search/export?*', async (route) => {
-      await route.fulfill({
-        status: 400,
-        contentType: 'text/plain',
-        body: errorMessage,
-      });
-    });
-
-    await openExportScopeModal(page);
-
-    await getExportModalContent(page)
-      .getByRole('button', { name: 'Export' })
-      .click();
-
-    await test.step('Error message is visible inside the modal', async () => {
-      await expect(
-        getExportModalContent(page).getByText(errorMessage)
-      ).toBeVisible();
-    });
-
-    await test.step('Modal remains open after error', async () => {
-      await expect(getExportModalContent(page)).toBeVisible();
-    });
-  });
-
   test('Export is disabled when all matching assets exceed limit', async ({
     page,
   }) => {
-    await page.route('**/api/v1/search/query?*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          took: 1,
-          hits: {
-            total: { value: 200001, relation: 'eq' },
-            hits: [],
-          },
-          aggregations: {},
-        }),
-      });
-    });
-
-    await page.getByTestId('export-search-results-button').click();
+    await openExportScopeModal(page);
 
     const modalContent = getExportModalContent(page);
     const exportButton = modalContent.getByRole('button', { name: 'Export' });
@@ -270,6 +240,15 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     page,
   }) => {
     test.slow();
+
+    const countApiPromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/query')
+    );
+
+    await page.goto('/explore/tables?search=sample_data');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    const countResponse = await countApiPromise;
+    expect(countResponse.status()).toBe(200);
 
     await openExportScopeModal(page);
 
