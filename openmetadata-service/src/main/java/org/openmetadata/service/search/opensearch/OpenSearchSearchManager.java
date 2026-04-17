@@ -877,32 +877,35 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                 .collect(Collectors.joining(","));
 
     try {
-      Query cachedRbacQuery =
-          RBAC_CACHE_V2.get(
-              cacheKey,
-              () -> {
-                OMQueryBuilder rbacQueryBuilder =
-                    rbacConditionEvaluator.evaluateConditions(subjectContext);
-                if (rbacQueryBuilder != null) {
-                  return ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-                }
-                return null;
-              });
+      // Guava Cache forbids null values, so we check getIfPresent first, then build and cache.
+      Query cachedRbacQuery = RBAC_CACHE_V2.getIfPresent(cacheKey);
+      if (cachedRbacQuery == null) {
+        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        if (rbacQueryBuilder != null) {
+          cachedRbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
+          if (cachedRbacQuery != null) {
+            RBAC_CACHE_V2.put(cacheKey, cachedRbacQuery);
+          }
+        }
+      }
 
-      Query existingQuery = requestBuilder.query();
-      if (existingQuery != null) {
-        Query combinedQuery =
-            Query.of(
-                q ->
-                    q.bool(
-                        b -> {
-                          b.must(existingQuery);
-                          b.filter(cachedRbacQuery);
-                          return b;
-                        }));
-        requestBuilder.query(combinedQuery);
-      } else {
-        requestBuilder.query(cachedRbacQuery);
+      if (cachedRbacQuery != null) {
+        Query rbacQuery = cachedRbacQuery;
+        Query existingQuery = requestBuilder.query();
+        if (existingQuery != null) {
+          Query combinedQuery =
+              Query.of(
+                  q ->
+                      q.bool(
+                          b -> {
+                            b.must(existingQuery);
+                            b.filter(rbacQuery);
+                            return b;
+                          }));
+          requestBuilder.query(combinedQuery);
+        } else {
+          requestBuilder.query(rbacQuery);
+        }
       }
     } catch (Exception e) {
       LOG.warn("RBAC cache miss, building query directly", e);

@@ -9848,22 +9848,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
-    CompletableFuture<BulkOperationResult> job =
-        CompletableFuture.supplyAsync(
-            () -> {
-              try {
-                return bulkCreateOrUpdateEntitiesSequential(
-                    uriInfo, entities, userName, existingByFqn);
-              } catch (Exception e) {
-                LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
-                BulkOperationResult errorResult = new BulkOperationResult();
-                errorResult.setStatus(ApiStatus.FAILURE);
-                errorResult.setNumberOfRowsFailed(entities.size());
-                errorResult.setNumberOfRowsPassed(0);
-                return errorResult;
-              }
-            },
-            BulkExecutor.getInstance().getExecutor());
+    CompletableFuture<BulkOperationResult> job;
+    try {
+      job =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return bulkCreateOrUpdateEntitiesSequential(
+                      uriInfo, entities, userName, existingByFqn);
+                } catch (Exception e) {
+                  LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
+                  BulkOperationResult errorResult = new BulkOperationResult();
+                  errorResult.setStatus(ApiStatus.FAILURE);
+                  errorResult.setNumberOfRowsFailed(entities.size());
+                  errorResult.setNumberOfRowsPassed(0);
+                  return errorResult;
+                }
+              },
+              BulkExecutor.getInstance().getExecutor());
+    } catch (Exception e) {
+      BULK_JOB_PERMITS.release();
+      throw e;
+    }
 
     // Merge auth failures into the final result so polling clients see the complete picture
     CompletableFuture<BulkOperationResult> mergedJob =
