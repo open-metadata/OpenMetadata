@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=too-many-lines
 """
 Airflow source to extract metadata from OM UI
 """
@@ -337,6 +338,13 @@ class AirflowSource(PipelineServiceSource):
         serialized_tasks_ids = {task.task_id for task in serialized_tasks}
         result: Dict[str, List[OMTaskInstance]] = defaultdict(list)
 
+        # Short-circuit: avoid building and executing a query with an empty
+        # IN(...) list - unnecessary DB round-trip and rejected by some SQL
+        # dialects. Caller (yield_pipeline_status) already guards this, but
+        # defend at the boundary as well.
+        if not run_ids:
+            return result
+
         try:
             task_instance_list = (
                 self.session.query(
@@ -388,7 +396,8 @@ class AirflowSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Tried to get TaskInstances for run_ids. The run_id column might not be available in older Airflow DB schemas - {exc}."
+                f"Tried to get TaskInstances for run_ids. The run_id column "
+                f"might not be available in older Airflow DB schemas - {exc}."
             )
 
         return result
@@ -404,21 +413,15 @@ class AirflowSource(PipelineServiceSource):
             # DB round trip entirely.
             task_names = self.context.get().task_names
             eligible_runs = [
-                dag_run
-                for dag_run in dag_run_list
-                if dag_run.run_id and task_names
+                dag_run for dag_run in dag_run_list if dag_run.run_id and task_names
             ]
 
             # Chunk run_ids so we never send an unbounded IN(...) list to the
             # DB and so we can stream per-run statuses without buffering every
             # TaskInstance for the whole DAG in memory at once. A failure in
             # one chunk is logged and the remaining chunks still emit.
-            for start in range(
-                0, len(eligible_runs), _TASK_INSTANCE_RUN_ID_CHUNK_SIZE
-            ):
-                chunk = eligible_runs[
-                    start : start + _TASK_INSTANCE_RUN_ID_CHUNK_SIZE
-                ]
+            for start in range(0, len(eligible_runs), _TASK_INSTANCE_RUN_ID_CHUNK_SIZE):
+                chunk = eligible_runs[start : start + _TASK_INSTANCE_RUN_ID_CHUNK_SIZE]
                 try:
                     tasks_by_run_id = self.get_task_instances(
                         dag_id=pipeline_details.dag_id,
@@ -426,13 +429,19 @@ class AirflowSource(PipelineServiceSource):
                         serialized_tasks=pipeline_details.tasks,
                     )
                 except Exception as chunk_exc:
+                    # Preserve pre-PR safe-fallback behaviour: if the bulk
+                    # TaskInstance fetch fails for this chunk, still yield a
+                    # PipelineStatus per DagRun with an empty task list
+                    # instead of silently dropping whole runs. This matches
+                    # the prior per-run loop where a DB error produced empty
+                    # tasks but runs were still emitted.
                     logger.debug(traceback.format_exc())
                     logger.warning(
                         f"Failed TaskInstance chunk for "
                         f"{pipeline_details.dag_id} "
                         f"(runs {start}-{start + len(chunk)}) - {chunk_exc}"
                     )
-                    continue
+                    tasks_by_run_id = {}
 
                 for dag_run in chunk:
                     tasks = tasks_by_run_id.get(dag_run.run_id, [])

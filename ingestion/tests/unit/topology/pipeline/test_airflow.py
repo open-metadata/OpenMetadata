@@ -1333,13 +1333,14 @@ class TestAirflow(TestCase):
         self.assertEqual(result["run_1"][0].state, "success")
         self.assertEqual(result["run_2"][0].state, "failed")
 
-    def test_get_task_instances_unknown_run_id_not_in_result(self):
+    def test_get_task_instances_stray_run_id_grouped_separately(self):
         """
-        Negative-data test: if the DB somehow returns a TaskInstance whose
-        run_id is not in the requested run_ids list (e.g. stale cache / race
-        with a delete), it is still grouped under its own key and the caller
-        yield_pipeline_status safely ignores it via tasks_by_run_id.get(run_id, []).
-        No exception, no data for the requested runs lost.
+        Negative-data test: if the DB returns a TaskInstance whose run_id is
+        not in the requested run_ids list (e.g. stale cache / race with a
+        delete), it is grouped under its own key in the returned dict.
+        yield_pipeline_status then safely ignores it via
+        tasks_by_run_id.get(run_id, []) so no data for the requested runs is
+        lost and no exception propagates.
         """
         from unittest.mock import MagicMock
 
@@ -1377,9 +1378,18 @@ class TestAirflow(TestCase):
         finally:
             self.airflow._session = original_session
 
-        # Requested run is populated; caller uses .get(run_id, []) for stray
+        # Requested run is populated
         self.assertIn("run_requested", result)
         self.assertEqual(len(result["run_requested"]), 1)
+        self.assertEqual(result["run_requested"][0].task_id, "task_a")
+
+        # Stray run is grouped under its own key (not merged with a requested
+        # run, not dropped silently). yield_pipeline_status's
+        # tasks_by_run_id.get(run_id, []) lookup means it's safely ignored
+        # by the caller.
+        self.assertIn("run_stray", result)
+        self.assertEqual(len(result["run_stray"]), 1)
+        self.assertEqual(result["run_stray"][0].task_id, "task_a")
 
     def test_yield_pipeline_status_chunks_run_ids(self):
         """
@@ -1395,7 +1405,9 @@ class TestAirflow(TestCase):
         """
         from unittest.mock import MagicMock, patch
 
-        from metadata.ingestion.source.pipeline.airflow import metadata as airflow_module
+        from metadata.ingestion.source.pipeline.airflow import (
+            metadata as airflow_module,
+        )
 
         total_runs = 125
         chunk_size = 50
@@ -1433,7 +1445,9 @@ class TestAirflow(TestCase):
         ), patch.object(
             self.airflow, "get_task_instances", side_effect=fake_get_task_instances
         ), patch.object(
-            self.airflow, "context", MagicMock(get=MagicMock(return_value=context_value))
+            self.airflow,
+            "context",
+            MagicMock(get=MagicMock(return_value=context_value)),
         ), patch.object(
             self.airflow, "metadata", MagicMock()
         ), patch(
@@ -1468,13 +1482,17 @@ class TestAirflow(TestCase):
     def test_yield_pipeline_status_chunk_failure_does_not_block_other_chunks(self):
         """
         If one chunk's get_task_instances call raises, yield_pipeline_status
-        must log the failure and keep processing the remaining chunks. The
-        runs in the failed chunk produce no statuses, but the rest of the
-        DAG still gets its statuses ingested.
+        must log the failure and keep processing the remaining chunks. To
+        preserve the pre-PR safe-fallback behaviour, the failed chunk's runs
+        still produce PipelineStatus objects with empty task lists (instead
+        of being silently dropped) - matching the prior per-run loop where a
+        DB error produced empty tasks but runs were still emitted.
         """
         from unittest.mock import MagicMock, patch
 
-        from metadata.ingestion.source.pipeline.airflow import metadata as airflow_module
+        from metadata.ingestion.source.pipeline.airflow import (
+            metadata as airflow_module,
+        )
 
         total_runs = 30
         chunk_size = 10  # -> 3 chunks of 10
@@ -1514,7 +1532,9 @@ class TestAirflow(TestCase):
         ), patch.object(
             self.airflow, "get_task_instances", side_effect=fake_get_task_instances
         ), patch.object(
-            self.airflow, "context", MagicMock(get=MagicMock(return_value=context_value))
+            self.airflow,
+            "context",
+            MagicMock(get=MagicMock(return_value=context_value)),
         ), patch.object(
             self.airflow, "metadata", MagicMock()
         ), patch(
@@ -1529,13 +1549,25 @@ class TestAirflow(TestCase):
         # All 3 chunks were attempted even though the middle one raised
         self.assertEqual(call_counter["n"], 3)
 
-        # Chunks 1 (runs 0-9) and 3 (runs 20-29) produced statuses; chunk 2
-        # (runs 10-19) was skipped. Total = 20 successful statuses, no lefts.
-        self.assertEqual(len(results), 20)
+        # All 30 statuses are emitted: good chunks with whatever tasks they
+        # returned, failed chunk with empty task lists. None dropped.
+        self.assertEqual(len(results), total_runs)
         for either in results:
             self.assertIsNone(either.left)
             self.assertIsNotNone(either.right)
 
-        yielded_run_ids = {either.right.pipeline_status.executionId for either in results}
-        expected_run_ids = {f"run_{i}" for i in list(range(0, 10)) + list(range(20, 30))}
-        self.assertEqual(yielded_run_ids, expected_run_ids)
+        yielded_run_ids = {
+            either.right.pipeline_status.executionId for either in results
+        }
+        self.assertEqual(yielded_run_ids, {f"run_{i}" for i in range(total_runs)})
+
+        # Runs in the failed middle chunk have empty taskStatus lists
+        failed_chunk_runs = {f"run_{i}" for i in range(10, 20)}
+        failed_statuses = [
+            e.right.pipeline_status
+            for e in results
+            if e.right.pipeline_status.executionId in failed_chunk_runs
+        ]
+        self.assertEqual(len(failed_statuses), 10)
+        for status in failed_statuses:
+            self.assertEqual(status.taskStatus, [])
