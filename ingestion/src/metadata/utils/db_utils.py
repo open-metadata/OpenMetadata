@@ -16,7 +16,6 @@ Helpers module for db sources
 import time
 import traceback
 from typing import Iterable, List, Union
-from urllib.parse import urlparse
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -34,6 +33,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
+from metadata.ingestion.models.custom_pydantic import _strip_hostport_scheme
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -52,45 +52,14 @@ def clean_host_port(host_port: str) -> str:
     Users sometimes enter a full URL (e.g. 'http://localhost:3306')
     instead of just 'localhost:3306'. This strips the scheme to avoid
     ValueError when parsing host and port.
+
+    Delegates to the stdlib-only helper colocated with ``BaseModel`` so the
+    behaviour stays in lockstep with Pydantic's ``model_post_init`` hook.
     """
-    host_port = host_port.strip()
-    if "://" not in host_port:
-        return host_port.rstrip("/")
-
-    parsed = urlparse(host_port)
-    hostname = parsed.hostname or ""
-    safe_label = (
-        f"{parsed.scheme}://{hostname}"
-        if parsed.scheme and hostname
-        else "URL with scheme"
-    )
-    logger.warning(
-        "The hostPort '%s' contains a URL scheme. "
-        "Expected format is 'hostname[:port]' (e.g. 'localhost:3306'). "
-        "Stripping the scheme prefix.",
-        safe_label,
-    )
-    try:
-        port = parsed.port
-    except ValueError as exc:
-        raise ValueError(
-            f"Invalid hostPort '{safe_label}'. Expected format is "
-            "'hostname[:port]' (e.g. 'localhost:3306')."
-        ) from exc
-
-    if not hostname:
-        # urlparse couldn't extract hostname (e.g. jdbc:postgresql://host:5432)
-        # Fall back to stripping everything before the last ://
-        raw = host_port.rsplit("://", 1)[-1]
-        raw = raw.split("/", 1)[0]
-        raw = raw.split("?", 1)[0]
-        raw = raw.split("#", 1)[0]
-        if "@" in raw:
-            raw = raw.rsplit("@", 1)[-1]
-        return raw
-
-    host = f"[{hostname}]" if ":" in hostname else hostname
-    return f"{host}:{port}" if port is not None else host
+    value = host_port.strip()
+    if "://" not in value:
+        return value.rstrip("/")
+    return _strip_hostport_scheme(value)
 
 
 def get_host_from_host_port(uri: str) -> str:

@@ -18,6 +18,7 @@ be self-sufficient with only pydantic at import time.
 import json
 import logging
 from typing import Any, Callable, Dict, Literal, Optional, Union
+from urllib.parse import urlparse
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import WrapSerializer, model_validator
@@ -32,6 +33,55 @@ logger = logging.getLogger("metadata")
 
 SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
+
+
+def _strip_hostport_scheme(raw: str) -> str:
+    """
+    Strip an accidental URL scheme from a hostPort string.
+
+    Self-contained helper that depends only on the standard library so
+    ``model_post_init`` never drags heavy ``metadata.*`` imports into the
+    bootstrap path of every generated Connection class.
+
+    Raises ValueError if the scheme carries a non-numeric port so the user
+    gets a clear error instead of a silently broken hostPort.
+    """
+    value = raw.strip()
+    if "://" not in value:
+        return value
+
+    parsed = urlparse(value)
+    hostname = parsed.hostname or ""
+    safe_label = (
+        f"{parsed.scheme}://{hostname}"
+        if parsed.scheme and hostname
+        else "URL with scheme"
+    )
+    logger.warning(
+        "The hostPort '%s' contains a URL scheme. Expected format is "
+        "'hostname[:port]' (e.g. 'localhost:3306'). Stripping the scheme prefix.",
+        safe_label,
+    )
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid hostPort '{safe_label}'. Expected format is "
+            "'hostname[:port]' (e.g. 'localhost:3306')."
+        ) from exc
+
+    if not hostname:
+        # urlparse couldn't extract a hostname (e.g. 'jdbc:postgresql://host:5432/db')
+        # Fall back to stripping scheme and any trailing path/query/fragment/userinfo.
+        tail = value.rsplit("://", 1)[-1]
+        for sep in ("/", "?", "#"):
+            tail = tail.split(sep, 1)[0]
+        if "@" in tail:
+            tail = tail.rsplit("@", 1)[-1]
+        return tail
+
+    host = f"[{hostname}]" if ":" in hostname else hostname
+    return f"{host}:{port}" if port is not None else host
 
 
 class BaseModel(PydanticBaseModel):
@@ -55,12 +105,10 @@ class BaseModel(PydanticBaseModel):
         if "hostPort" in self.__pydantic_fields__:
             raw = getattr(self, "hostPort", None)
             if isinstance(raw, str) and "://" in raw:
-                from metadata.utils.db_utils import clean_host_port
-
-                # Let ValueError propagate: if clean_host_port cannot parse
-                # the input (e.g. non-numeric port), the user must fix their
-                # config rather than silently getting a broken hostPort.
-                object.__setattr__(self, "hostPort", clean_host_port(raw))
+                # Let ValueError propagate: if the hostPort cannot be parsed
+                # (e.g. non-numeric port), the user must fix their config
+                # rather than silently getting a broken hostPort.
+                object.__setattr__(self, "hostPort", _strip_hostport_scheme(raw))
 
         try:
             for field in self.__pydantic_fields__:
