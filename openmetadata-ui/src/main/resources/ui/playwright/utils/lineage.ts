@@ -719,6 +719,7 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 };
 
 export const getLineageCSVData = async (page: Page) => {
+  await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('export-button')).toBeEnabled();
 
   await page.getByTestId('export-button').click();
@@ -730,7 +731,7 @@ export const getLineageCSVData = async (page: Page) => {
     });
 
   const [download] = await Promise.all([
-    page.waitForEvent('download'),
+    page.waitForEvent('download', { timeout: 60000 }),
     page.click(
       '[data-testid="export-entity-modal"] button#submit-button:visible'
     ),

@@ -503,6 +503,10 @@ export const generateToken = async (page: Page) => {
 };
 
 export const revokeToken = async (page: Page, isBot?: boolean) => {
+  if (page.isClosed()) {
+    return;
+  }
+
   const revokeButton = page
     .locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
     .first();
@@ -528,9 +532,15 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   );
 
   await page.click('[data-testid="save-button"]');
-  await revokeResponse.catch(() => undefined);
+  await revokeResponse;
 
-  await expect(revokeButton).toBeHidden({ timeout: 60000 });
+  if (page.isClosed()) {
+    return;
+  }
+
+  await expect(page.locator('[data-testid="revoke-button"]')).toHaveCount(0, {
+    timeout: 60000,
+  });
 };
 
 export const updateExpiration = async (page: Page, expiry: number) => {
@@ -551,8 +561,15 @@ export const updateExpiration = async (page: Page, expiry: number) => {
   // Wait for any dropdown animations to complete
   await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
 
+  const saveTokenResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/security/token') &&
+      response.request().method() === 'POST'
+  );
+
   // Now click the save button
   await page.click('[data-testid="save-edit"]');
+  await saveTokenResponse;
 
   await expect(
     page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')

@@ -156,21 +156,26 @@ const BotListV1 = ({
   const getBotsByBotUserNames = async (botUserNames: string[]) => {
     const include = getBotIncludeFilter();
     const botsByBotUserName = new Map<string, Bot>();
-    const matchedBotsResponse = await Promise.allSettled(
-      botUserNames.map((name) =>
-        getBotByName(name, {
-          include,
-        })
-      )
-    );
+    const batchSize = 10;
 
-    matchedBotsResponse.forEach((response) => {
-      if (response.status !== 'fulfilled') {
-        return;
-      }
+    for (let index = 0; index < botUserNames.length; index += batchSize) {
+      const batch = botUserNames.slice(index, index + batchSize);
+      const matchedBotsResponse = await Promise.allSettled(
+        batch.map((name) =>
+          getBotByName(name, {
+            include,
+          })
+        )
+      );
 
-      botsByBotUserName.set(response.value.name, response.value);
-    });
+      matchedBotsResponse.forEach((response) => {
+        if (response.status !== 'fulfilled') {
+          return;
+        }
+
+        botsByBotUserName.set(response.value.name, response.value);
+      });
+    }
 
     return botsByBotUserName;
   };
@@ -374,6 +379,7 @@ const BotListV1 = ({
           should: [
             { wildcard: { 'name.keyword': wildcardPattern } },
             { wildcard: { 'displayName.keyword': wildcardPattern } },
+            { wildcard: { 'fullyQualifiedName.keyword': wildcardPattern } },
             { wildcard: { 'email.keyword': wildcardPattern } },
           ],
           minimum_should_match: 1,
@@ -538,7 +544,7 @@ const BotListV1 = ({
             paging,
             pagingHandler: handleBotPageChange,
             onShowSizeChange: handlePageSizeChange,
-            showPagination,
+            showPagination: showPagination && !searchTerm,
           }}
           dataSource={searchedData}
           loading={loading}

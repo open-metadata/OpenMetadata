@@ -49,11 +49,9 @@ export const getCreatedBot = async (
   }
 ) => {
   // Click on created Bot name
-  const fetchResponse = page.waitForResponse(
-    `/api/v1/bots/name/${encodeURIComponent(botName)}?*`
-  );
   await page.getByTestId(`bot-link-${botDisplayName ?? botName}`).click();
-  await fetchResponse;
+
+  await expect(page.getByTestId('token-expiry')).toBeVisible();
 };
 
 export const createBot = async (page: Page) => {
@@ -71,9 +69,16 @@ export const createBot = async (page: Page) => {
 
   await page.locator(descriptionBox).fill(BOT_DETAILS.description);
 
-  const saveResponse = page.waitForResponse('/api/v1/bots');
+  const saveResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/bots') &&
+      response.request().method() === 'POST'
+  );
   await page.click('[data-testid="save-user"]');
-  await saveResponse;
+  const createBotResponse = await saveResponse;
+
+  expect(createBotResponse.status()).toBeGreaterThanOrEqual(200);
+  expect(createBotResponse.status()).toBeLessThan(300);
 
   // Verify bot is getting added in the bots listing page
   await expect(
@@ -83,9 +88,6 @@ export const createBot = async (page: Page) => {
   await expect(
     page.getByRole('cell', { name: BOT_DETAILS.description })
   ).toBeVisible();
-
-  // Get created bot
-  await getCreatedBot(page, { botName });
 
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 

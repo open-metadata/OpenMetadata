@@ -1532,6 +1532,8 @@ export const editAnnouncement = async (
   page: Page,
   data: { title: string; description: string }
 ) => {
+  await waitForAllLoadersToDisappear(page);
+
   // Open announcement drawer via manage button
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1553,7 +1555,7 @@ export const editAnnouncement = async (
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
 
   // Click the edit message button in the popover
-  await page.click('[data-testid="edit-message"]');
+  await page.getByTestId('edit-message').first().click();
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
