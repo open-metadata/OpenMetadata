@@ -736,10 +736,15 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
   const hasValue = Array.isArray(value) && value.length > 0;
   if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
+    // Query Builder represents some operators (e.g. between) as nested arrays: [[from, to]].
+    // For custom properties we want to pass the operator value through unchanged so the
+    // underlying range builder can see both bounds.
+    const extensionValue = hasValue ? value[0] : null;
+
     return buildExtensionQuery(
       extensionPropertyName,
       entityType,
-      hasValue ? value[0] : null,
+      extensionValue,
       op,
       not
     );
@@ -882,7 +887,14 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
         return;
       }
 
-      if (value && Array.isArray(value[0])) {
+      // Query Builder uses nested arrays for a few cases:
+      // - multiselect values: [[v1, v2, ...]]
+      // - range operators (between): [[from, to]]
+      // Only expand the nested array into multiple rules for multiselect operators.
+      const isMultiSelectOperator =
+        operator?.startsWith('multiselect_') || operator?.startsWith('select_');
+
+      if (isMultiSelectOperator && value && Array.isArray(value[0])) {
         // Check if this is a multiselect equals operator that should use AND logic
         const useAndLogic =
           operator === 'multiselect_equals' ||
