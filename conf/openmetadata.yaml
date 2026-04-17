@@ -162,6 +162,16 @@ qos:
   maxSuspendedRequestCount: ${QOS_MAX_SUSPENDED_REQUEST_COUNT:-1000}
   maxSuspendSeconds: ${QOS_MAX_SUSPEND_SECONDS:-30}
 
+cacheMemory:
+  # Entity JSON caches (CACHE_WITH_ID, CACHE_WITH_NAME) — weight-based eviction.
+  # Entity JSON can range from 1KB to 2MB+. Increase on high-memory deployments for better hit rates.
+  entityCacheMaxSizeBytes: ${ENTITY_CACHE_MAX_SIZE_BYTES:-104857600}  # 100 MB
+  entityCacheTTLSeconds: ${ENTITY_CACHE_TTL_SECONDS:-30}
+  # Auth caches (user context + policies) — TTLs hardcoded (2min policies, 15min user context)
+  authCacheMaxEntries: ${AUTH_CACHE_MAX_ENTRIES:-5000}
+  # RBAC query cache (OpenSearch role-based access control query DSL)
+  rbacCacheMaxEntries: ${RBAC_CACHE_MAX_ENTRIES:-5000}
+
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 # Set LOG_FORMAT=json for structured logs. The default text format preserves legacy output.
