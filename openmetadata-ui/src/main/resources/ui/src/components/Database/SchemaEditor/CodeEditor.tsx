@@ -11,27 +11,19 @@
  *  limitations under the License.
  */
 
+import { closeBrackets } from '@codemirror/autocomplete';
+import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
+import { EditorState, Extension } from '@codemirror/state';
+import { EditorView, highlightActiveLine } from '@codemirror/view';
 import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { Editor, EditorChange } from 'codemirror';
-import 'codemirror/addon/edit/closebrackets.js';
-import 'codemirror/addon/edit/matchbrackets.js';
-import 'codemirror/addon/fold/brace-fold';
-import 'codemirror/addon/fold/foldgutter.css';
-import 'codemirror/addon/fold/foldgutter.js';
-import 'codemirror/addon/selection/active-line';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/mode/clike/clike';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/mode/python/python';
-import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/copy-left.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
-import { CSMode } from '../../../enums/codemirror.enum';
+import { CSMode, getLanguageExtension } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
 import './schema-editor.less';
@@ -52,57 +44,44 @@ const CodeEditor = ({
   refreshEditor,
   title,
 }: SchemaEditorProps) => {
-  const wrapperRef = useRef<CodeMirror | null>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const { t } = useTranslation();
-  const defaultOptions = {
-    tabSize: JSON_TAB_SIZE,
-    indentUnit: JSON_TAB_SIZE,
-    indentWithTabs: false,
-    lineNumbers: false,
-    lineWrapping: false,
-    styleActiveLine: true,
-    matchBrackets: true,
-    autoCloseBrackets: true,
-    foldGutter: true,
-    mode,
-    readOnly: false,
-    ...options,
-  };
+
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
-  // Store the CodeMirror editor instance
-  const editorInstance = useRef<Editor | null>(null);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
-  const handleEditorInputBeforeChange = (
-    _editor: Editor,
-    _data: EditorChange,
-    value: string
-  ): void => {
-    setInternalValue(getSchemaEditorValue(value));
-  };
-  const handleEditorInputChange = (
-    _editor: Editor,
-    _data: EditorChange,
-    value: string
-  ): void => {
-    if (!isUndefined(onChange)) {
-      onChange(getSchemaEditorValue(value));
-    }
-  };
+  const isReadOnly = options?.readOnly === true;
 
-  const editorWillUnmount = useCallback(() => {
-    if (editorInstance.current) {
-      const editorWrapper = editorInstance.current.getWrapperElement();
-      if (editorWrapper) {
-        editorWrapper.remove();
+  const extensions: Extension[] = useMemo(() => {
+    const exts: Extension[] = [
+      getLanguageExtension(mode),
+      EditorState.tabSize.of(JSON_TAB_SIZE),
+      indentUnit.of(' '.repeat(JSON_TAB_SIZE)),
+      highlightActiveLine(),
+      bracketMatching(),
+      closeBrackets(),
+      foldGutter(),
+    ];
+
+    if (isReadOnly) {
+      exts.push(EditorView.editable.of(false));
+      exts.push(EditorState.readOnly.of(true));
+    }
+
+    return exts;
+  }, [mode, isReadOnly]);
+
+  const handleChange = useCallback(
+    (val: string) => {
+      setInternalValue(getSchemaEditorValue(val));
+      if (!isUndefined(onChange)) {
+        onChange(getSchemaEditorValue(val));
       }
-    }
-    if (wrapperRef.current) {
-      (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
-    }
-  }, [editorInstance, wrapperRef]);
+    },
+    [onChange]
+  );
 
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
@@ -110,12 +89,11 @@ const CodeEditor = ({
 
   useEffect(() => {
     if (refreshEditor) {
-      // CodeMirror can't measure its container if hidden (e.g., in an inactive tab with display: none).
-      // When the tab becomes visible, the browser may not have finished layout/reflow when this runs.
-      // Delaying refresh by 50ms ensures the editor is visible and DOM is ready for CodeMirror to re-render.
-      // This is a common workaround for editors inside tabbed interfaces.
       setTimeout(() => {
-        editorInstance.current?.refresh();
+        const view = editorRef.current?.view;
+        if (view) {
+          view.requestMeasure();
+        }
       }, 50);
     }
   }, [refreshEditor]);
@@ -145,16 +123,12 @@ const CodeEditor = ({
       }
       title={title}>
       <CodeMirror
+        basicSetup={false}
         className={editorClass}
-        editorDidMount={(editor) => {
-          editorInstance.current = editor;
-        }}
-        editorWillUnmount={editorWillUnmount}
-        options={defaultOptions}
-        ref={wrapperRef}
+        extensions={extensions}
+        ref={editorRef}
         value={internalValue}
-        onBeforeChange={handleEditorInputBeforeChange}
-        onChange={handleEditorInputChange}
+        onChange={handleChange}
         {...(onFocus && { onFocus })}
       />
     </Card>

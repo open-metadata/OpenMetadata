@@ -12,27 +12,23 @@
  */
 
 import Icon from '@ant-design/icons';
+import { closeBrackets } from '@codemirror/autocomplete';
+import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
+import { EditorState, Extension } from '@codemirror/state';
+import {
+  EditorView,
+  highlightActiveLine,
+  lineNumbers,
+} from '@codemirror/view';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { Editor, EditorChange } from 'codemirror';
-import 'codemirror/addon/edit/closebrackets.js';
-import 'codemirror/addon/edit/matchbrackets.js';
-import 'codemirror/addon/fold/brace-fold';
-import 'codemirror/addon/fold/foldgutter.css';
-import 'codemirror/addon/fold/foldgutter.js';
-import 'codemirror/addon/selection/active-line';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/mode/clike/clike';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/mode/python/python';
-import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
-import { CSMode } from '../../../enums/codemirror.enum';
+import { CSMode, getLanguageExtension } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
 import './schema-editor.less';
@@ -53,77 +49,67 @@ const SchemaEditor = ({
   refreshEditor,
 }: SchemaEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<CodeMirror | null>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const { t } = useTranslation();
-  const defaultOptions = {
-    tabSize: JSON_TAB_SIZE,
-    indentUnit: JSON_TAB_SIZE,
-    indentWithTabs: false,
-    lineNumbers: true,
-    lineWrapping: true,
-    styleActiveLine: true,
-    matchBrackets: true,
-    autoCloseBrackets: true,
-    foldGutter: true,
-    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-    mode,
-    readOnly: false,
-    ...options,
-  };
+
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
-  const editorInstance = useRef<Editor | null>(null);
   const wasHiddenRef = useRef(false);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
-  const handleEditorInputBeforeChange = (
-    _editor: Editor,
-    _data: EditorChange,
-    value: string
-  ): void => {
-    setInternalValue(getSchemaEditorValue(value));
-  };
-  const handleEditorInputChange = (
-    _editor: Editor,
-    _data: EditorChange,
-    value: string
-  ): void => {
-    if (!isUndefined(onChange)) {
-      onChange(getSchemaEditorValue(value));
+  const isReadOnly = options?.readOnly === true;
+
+  const extensions: Extension[] = useMemo(() => {
+    const exts: Extension[] = [
+      getLanguageExtension(mode),
+      EditorState.tabSize.of(JSON_TAB_SIZE),
+      indentUnit.of(' '.repeat(JSON_TAB_SIZE)),
+      lineNumbers(),
+      EditorView.lineWrapping,
+      highlightActiveLine(),
+      bracketMatching(),
+      closeBrackets(),
+      foldGutter(),
+    ];
+
+    if (isReadOnly) {
+      exts.push(EditorView.editable.of(false));
+      exts.push(EditorState.readOnly.of(true));
     }
-  };
+
+    return exts;
+  }, [mode, isReadOnly]);
+
+  const handleChange = useCallback(
+    (val: string) => {
+      setInternalValue(getSchemaEditorValue(val));
+      if (!isUndefined(onChange)) {
+        onChange(getSchemaEditorValue(val));
+      }
+    },
+    [onChange]
+  );
 
   const refreshAndResetScroll = useCallback(() => {
-    if (!editorInstance.current) {
+    const view = editorRef.current?.view;
+    if (!view) {
       return;
     }
-    editorInstance.current.scrollTo(0, 0);
-    editorInstance.current.refresh();
+    view.scrollDOM.scrollTop = 0;
+    view.requestMeasure();
     requestAnimationFrame(() => {
-      editorInstance.current?.scrollTo(0, 0);
+      const v = editorRef.current?.view;
+      if (v) {
+        v.scrollDOM.scrollTop = 0;
+      }
     });
   }, []);
-
-  const editorWillUnmount = useCallback(() => {
-    if (editorInstance.current) {
-      const editorWrapper = editorInstance.current.getWrapperElement();
-      if (editorWrapper) {
-        editorWrapper.remove();
-      }
-    }
-    if (wrapperRef.current) {
-      (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
-    }
-  }, [editorInstance, wrapperRef]);
 
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
 
-  // Auto-detect display:none → visible transitions (e.g. Ant Design tab switches).
-  // When a parent sets display:none, boundingClientRect collapses to 0.
-  // When it becomes visible again, we refresh CodeMirror and reset scroll.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) {
@@ -150,7 +136,6 @@ const SchemaEditor = ({
     return () => observer.disconnect();
   }, [refreshAndResetScroll]);
 
-  // Explicit refresh via prop (kept for backwards compatibility).
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (refreshEditor) {
@@ -184,16 +169,12 @@ const SchemaEditor = ({
       )}
 
       <CodeMirror
+        basicSetup={false}
         className={editorClass}
-        editorDidMount={(editor) => {
-          editorInstance.current = editor;
-        }}
-        editorWillUnmount={editorWillUnmount}
-        options={defaultOptions}
-        ref={wrapperRef}
+        extensions={extensions}
+        ref={editorRef}
         value={internalValue}
-        onBeforeChange={handleEditorInputBeforeChange}
-        onChange={handleEditorInputChange}
+        onChange={handleChange}
         {...(onFocus && { onFocus })}
       />
     </div>

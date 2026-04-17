@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
+import { Extension } from '@codemirror/state';
 import { ReactNode } from 'react';
-import { CSMode } from '../../../enums/codemirror.enum';
+import { CSModeConfig } from '../../../enums/codemirror.enum';
 
-export type Mode = {
-  name: CSMode;
-  json?: boolean;
-};
+export type Mode = CSModeConfig;
 
 export interface SchemaEditorProps {
   value?: string;
@@ -26,11 +24,15 @@ export interface SchemaEditorProps {
   mode?: Mode;
   readOnly?: boolean;
   options?: {
-    [key: string]: string | boolean | Array<string>;
+    lineNumbers?: boolean;
+    lineWrapping?: boolean;
+    readOnly?: boolean;
+    [key: string]: string | boolean | Array<string> | undefined;
   };
   editorClass?: string;
   showCopyButton?: boolean;
   onChange?: (value: string) => void;
   onFocus?: () => void;
   title?: ReactNode;
+  extensions?: Extension[];
 }

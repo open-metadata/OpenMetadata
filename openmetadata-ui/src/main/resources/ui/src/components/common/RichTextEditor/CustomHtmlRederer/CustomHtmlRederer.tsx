@@ -23,13 +23,8 @@ import {
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
-import CodeMirror from 'codemirror';
-import 'codemirror/addon/runmode/runmode';
-import 'codemirror/mode/clike/clike';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/mode/python/python';
-import 'codemirror/mode/sql/sql';
-import 'codemirror/mode/yaml/yaml';
+import { highlightCode } from '@codemirror/language';
+import { classHighlighter } from '@lezer/highlight';
 
 import katex from 'katex';
 import React from 'react';
@@ -39,6 +34,7 @@ import {
   markdownTextAndIdRegex,
   MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
+import { getLanguageExtensionByName } from '../../../../enums/codemirror.enum';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import {
@@ -46,6 +42,84 @@ import {
   OpenTagToken,
   TextToken,
 } from './CustomHtmlRederer.interface';
+
+const getHTMLTokens = (node: MdNode): HTMLToken[] => {
+  const blockNode = node as CodeBlockMdNode;
+
+  // Parse inline markdown to html string
+  const htmlContent = MarkdownToHTMLConverter.makeHtml(blockNode.literal ?? '');
+
+  return [
+    {
+      type: 'openTag',
+      tagName: 'div',
+      outerNewLine: true,
+      classNames: ['admonition', `admonition_${blockNode.info}`],
+    },
+    {
+      type: 'html',
+      content: htmlContent,
+      outerNewLine: true,
+    },
+    { type: 'closeTag', tagName: 'div', outerNewLine: true },
+  ];
+};
+
+export const CodeMirrorLanguageAliases: Readonly<Record<string, string>> = {
+  c: 'c',
+  'c++': 'cpp',
+  java: 'java',
+  csharp: 'csharp',
+  scala: 'scala',
+  kotlin: 'kotlin',
+  objectivec: 'objectivec',
+  'objectivec++': 'objectivec++',
+  js: 'javascript',
+  py: 'python',
+  cpp: 'cpp',
+};
+
+const runHighlight = (
+  code: string,
+  langName: string
+): React.ReactElement[] => {
+  const fragments: React.ReactElement[] = [];
+  const langExt = getLanguageExtensionByName(langName);
+
+  if (!langExt) {
+    fragments.push(<React.Fragment>{code}</React.Fragment>);
+
+    return fragments;
+  }
+
+  const lang = langExt.language;
+  const tree = lang.parser.parse(code);
+  let pos = 0;
+
+  highlightCode(
+    code,
+    tree,
+    classHighlighter,
+    (text: string, classes: string) => {
+      if (classes) {
+        fragments.push(<span className={classes}>{text}</span>);
+      } else {
+        fragments.push(<React.Fragment>{text}</React.Fragment>);
+      }
+      pos += text.length;
+    },
+    () => {
+      fragments.push(<br />);
+      pos++;
+    }
+  );
+
+  if (pos < code.length) {
+    fragments.push(<React.Fragment>{code.slice(pos)}</React.Fragment>);
+  }
+
+  return fragments;
+};
 
 const getHTMLTokens = (node: MdNode): HTMLToken[] => {
   const blockNode = node as CodeBlockMdNode;
@@ -115,7 +189,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     const infoWords = info ? info.split(/\s+/) : [];
     const preClasses = ['relative', 'code-block'];
 
-    const codeAttrs: Record<string, any> = {};
+    const codeAttrs: Record<string, string | number> = {};
 
     const codeText = node.literal ?? '';
 
@@ -123,30 +197,16 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       codeAttrs['data-backticks'] = fenceLength;
     }
     const lang = (infoWords?.[0] && infoWords[0]) || null;
-    const codeFragments: React.ReactElement[] = [];
+    let codeFragments: React.ReactElement[];
     if (codeText && lang) {
-      // normalize CodeMirror language (mode) specifier
-      const cmLang = CodeMirrorLanguageAliases[lang] || lang;
+      const resolvedLang = CodeMirrorLanguageAliases[lang] || lang;
 
-      // set attributes
-      preClasses.push('cm-s-default', `lang-${cmLang}`);
-      codeAttrs['data-language'] = cmLang;
+      preClasses.push('cm-s-default', `lang-${resolvedLang}`);
+      codeAttrs['data-language'] = resolvedLang;
 
-      // apply highlight
-      CodeMirror.runMode(codeText, cmLang, (text, style) => {
-        if (style) {
-          const className = style
-            .split(/\s+/g)
-            .map((s) => `cm-${s}`)
-            .join(' ');
-          codeFragments.push(<span className={className}>{text}</span>);
-        } else {
-          codeFragments.push(<React.Fragment>{text}</React.Fragment>);
-        }
-      });
+      codeFragments = runHighlight(codeText, resolvedLang);
     } else {
-      // plain code block
-      codeFragments.push(<React.Fragment>{codeText}</React.Fragment>);
+      codeFragments = [<React.Fragment>{codeText}</React.Fragment>];
     }
 
     return [
