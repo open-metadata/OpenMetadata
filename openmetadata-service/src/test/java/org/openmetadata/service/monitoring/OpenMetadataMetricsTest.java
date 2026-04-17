@@ -22,7 +22,7 @@ class OpenMetadataMetricsTest {
   }
 
   @Test
-  void dbConnectionsTotalReflectsHikariCPPoolSize() {
+  void dbPoolConnectionsGaugeReflectsHikariCPPoolSize() {
     AtomicInteger activeConnections = new AtomicInteger(5);
     AtomicInteger idleConnections = new AtomicInteger(15);
 
@@ -47,7 +47,7 @@ class OpenMetadataMetricsTest {
   }
 
   @Test
-  void dbConnectionsTotalReturnsZeroWithoutHikariCP() {
+  void dbPoolConnectionsGaugeReturnsZeroWithoutHikariCP() {
     new OpenMetadataMetrics(registry);
 
     Gauge total = registry.find("db.pool.connections").gauge();
@@ -56,7 +56,7 @@ class OpenMetadataMetricsTest {
   }
 
   @Test
-  void prometheusScrapeExposesDbConnectionsTotal() {
+  void prometheusScrapeExposesDbPoolConnectionsGauge() {
     PrometheusMeterRegistry promRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
 
     AtomicInteger activeConnections = new AtomicInteger(3);
