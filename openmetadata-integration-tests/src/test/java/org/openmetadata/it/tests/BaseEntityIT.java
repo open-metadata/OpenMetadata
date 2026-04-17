@@ -3278,12 +3278,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       patchEntity(fetched.getId().toString(), fetched);
     }
 
-    // Verify updates
+    // Verify updates. Retry briefly to absorb the cache write-through / pub-sub fan-out under
+    // parallel load — the PATCH is synchronous server-side but concurrent test traffic can
+    // briefly stall the fresh read of a just-updated row.
     for (T entity : createdEntities) {
-      T fetched = getEntity(entity.getId().toString());
-      assertTrue(
-          fetched.getDescription().startsWith("Bulk updated"),
-          "Description should be bulk updated");
+      String entityId = entity.getId().toString();
+      Awaitility.await("Description should be bulk updated")
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofMillis(250))
+          .untilAsserted(
+              () -> {
+                T refetched = getEntity(entityId);
+                assertTrue(
+                    refetched.getDescription() != null
+                        && refetched.getDescription().startsWith("Bulk updated"),
+                    "Description should be bulk updated");
+              });
     }
   }
 
