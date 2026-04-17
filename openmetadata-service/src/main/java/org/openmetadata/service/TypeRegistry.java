@@ -48,6 +48,14 @@ public class TypeRegistry {
 
   private static final TypeRegistry INSTANCE = new TypeRegistry();
 
+  private TypeRepository typeRepository;
+
+  /** Tracks when each entity type was last refreshed from DB, for TTL-based staleness detection */
+  protected static final Map<String, Long> TYPE_LAST_REFRESHED = new ConcurrentHashMap<>();
+
+  private static final long REFRESH_INTERVAL_MS = 900_000; // 15 minutes
+  private static final long CACHE_MISS_DEBOUNCE_MS = 30_000; // 30 seconds
+
   private TypeRegistry() {
     /* Singleton instance */
   }
@@ -57,6 +65,7 @@ public class TypeRegistry {
   }
 
   public final void initialize(TypeRepository repository) {
+    this.typeRepository = repository;
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
     List<Type> types = JsonUtils.getTypes();
@@ -89,13 +98,15 @@ public class TypeRegistry {
     TYPES.put(type.getName(), type);
 
     // Store custom properties added to a type
-    for (CustomProperty property : type.getCustomProperties()) {
+    for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       TypeRegistry.instance().addCustomProperty(type.getName(), property.getName(), property);
     }
+    TYPE_LAST_REFRESHED.put(type.getName(), System.currentTimeMillis());
   }
 
   public void removeType(String typeName) {
     var removedType = TYPES.remove(typeName);
+    TYPE_LAST_REFRESHED.remove(typeName);
     LOG.info("Deleted type {}", typeName);
 
     // Cleanup custom properties for removed type using Optional for cleaner null handling
@@ -131,7 +142,52 @@ public class TypeRegistry {
 
   public Schema getSchema(String entityType, String propertyName) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
-    return CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
+    Schema schema = CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
+    if (isTypeStale(entityType) || (schema == null && shouldRefreshOnMiss(entityType))) {
+      refreshTypeFromDB(entityType);
+      schema = CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
+    }
+    return schema;
+  }
+
+  private static boolean isTypeStale(String entityType) {
+    Long lastRefreshed = TYPE_LAST_REFRESHED.get(entityType);
+    return lastRefreshed == null
+        || (System.currentTimeMillis() - lastRefreshed) > REFRESH_INTERVAL_MS;
+  }
+
+  private static boolean shouldRefreshOnMiss(String entityType) {
+    Long lastRefreshed = TYPE_LAST_REFRESHED.get(entityType);
+    return lastRefreshed == null
+        || (System.currentTimeMillis() - lastRefreshed) > CACHE_MISS_DEBOUNCE_MS;
+  }
+
+  private void refreshTypeFromDB(String entityType) {
+    if (typeRepository == null) {
+      LOG.warn("TypeRepository not yet initialized, cannot refresh type '{}' from DB", entityType);
+      return;
+    }
+    try {
+      EntityUtil.Fields fields = typeRepository.getFields(PROPERTIES_FIELD);
+      Type type = typeRepository.getByName(null, entityType, fields);
+
+      // Clear stale custom property entries before re-adding fresh data from DB
+      String prefix = getCustomPropertyFQNPrefix(entityType) + Entity.SEPARATOR;
+      CUSTOM_PROPERTIES.keySet().removeIf(fqn -> fqn.startsWith(prefix));
+      CUSTOM_PROPERTY_SCHEMAS.keySet().removeIf(fqn -> fqn.startsWith(prefix));
+
+      addType(type);
+      LOG.info(
+          "Refreshed type '{}' from DB into TypeRegistry cache ({} custom properties)",
+          entityType,
+          listOrEmpty(type.getCustomProperties()).size());
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Type '{}' not found in DB during cache refresh", entityType);
+      TYPE_LAST_REFRESHED.put(entityType, System.currentTimeMillis());
+    } catch (Exception e) {
+      LOG.warn("Failed to refresh type '{}' from DB: {}", entityType, e.getMessage());
+      TYPE_LAST_REFRESHED.put(entityType, System.currentTimeMillis());
+    }
   }
 
   public void validateCustomProperties(Type type) {
@@ -160,6 +216,10 @@ public class TypeRegistry {
   public static String getCustomPropertyType(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
+    if (isTypeStale(entityType) || (property == null && shouldRefreshOnMiss(entityType))) {
+      TypeRegistry.instance().refreshTypeFromDB(entityType);
+      property = CUSTOM_PROPERTIES.get(fqn);
+    }
     if (property == null) {
       throw EntityNotFoundException.byMessage(
           CatalogExceptionMessage.entityNotFound(propertyName, entityType));
@@ -170,6 +230,10 @@ public class TypeRegistry {
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
+    if (isTypeStale(entityType) || (property == null && shouldRefreshOnMiss(entityType))) {
+      TypeRegistry.instance().refreshTypeFromDB(entityType);
+      property = CUSTOM_PROPERTIES.get(fqn);
+    }
     if (property != null
         && property.getCustomPropertyConfig() != null
         && property.getCustomPropertyConfig().getConfig() != null) {
