@@ -2033,6 +2033,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         findUserInPaginatedResults(user1.getId(), "domain", testDomain().getName()),
         "User in domain should be in filtered list");
+
+    // Also assert that we can search for users without any domain (domain=null)
+    // This specifically tests the issue #27190 where filtering without a domain was throwing a 500 error
+    assertTrue(
+        findUserInPaginatedResults(user2.getId(), "domain", "null"),
+        "User without domain should be in filtered list with domain=null");
   }
 
   @Test
