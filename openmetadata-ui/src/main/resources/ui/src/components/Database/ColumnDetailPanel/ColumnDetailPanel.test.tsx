@@ -62,7 +62,8 @@ jest.mock('antd', () => ({
         data-testid={props['data-testid'] || 'button'}
         disabled={disabled}
         onClick={onClick}
-        {...props}>
+        {...props}
+      >
         {children}
       </button>
     )),
@@ -135,33 +136,6 @@ jest.mock('@mui/material', () => ({
   }),
 }));
 
-jest.mock('@mui/material/styles', () => ({
-  ...jest.requireActual('@mui/material/styles'),
-  styled: jest.fn().mockImplementation((component) => {
-    return jest.fn().mockImplementation((props) => {
-      const Component = component;
-
-      return <Component {...props} />;
-    });
-  }),
-  useTheme: jest.fn().mockReturnValue({
-    spacing: (value: number) => `${value * 8}px`,
-    typography: {
-      pxToRem: (value: number) => `${value / 16}rem`,
-    },
-    palette: {
-      allShades: {
-        gray: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          600: '#757575',
-          900: '#212121',
-        },
-      },
-    },
-  }),
-}));
-
 jest.mock('@mui/icons-material', () => ({
   HelpOutlineIcon: jest
     .fn()
@@ -202,7 +176,8 @@ jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
             data-testid="update-description"
             onClick={async () => {
               await onDescriptionUpdate('Updated description');
-            }}>
+            }}
+          >
             Update Description
           </button>
         )}
@@ -229,7 +204,8 @@ jest.mock('../../common/TagsSection/TagsSection', () => ({
             } catch {
               // Error is handled by the component
             }
-          }}>
+          }}
+        >
           Update Tags
         </button>
       )}
@@ -256,7 +232,8 @@ jest.mock('../../common/GlossaryTermsSection/GlossaryTermsSection', () => ({
             } catch {
               // Error is handled by the component
             }
-          }}>
+          }}
+        >
           Update Glossary Terms
         </button>
       )}
