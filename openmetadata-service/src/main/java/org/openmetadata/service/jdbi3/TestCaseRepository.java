@@ -42,7 +42,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.sql.SQLException;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -1027,22 +1029,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
 
     String tableName = daoCollection.testCaseDAO().getTableName();
-    if (nullOrEmpty(excludedTestCaseIds)) {
-      daoCollection
-          .relationshipDAO()
-          .bulkInsertAllToRelationship(
-              testSuite.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal(), tableName);
-    } else {
-      daoCollection
-          .relationshipDAO()
-          .bulkInsertAllToRelationshipWithExclusions(
-              excludedTestCaseIds.stream().map(UUID::toString).toList(),
-              testSuite.getId(),
-              TEST_SUITE,
-              TEST_CASE,
-              Relationship.CONTAINS.ordinal(),
-              tableName);
-    }
+    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that
+    // collide with concurrent test-case creation. MySQL raises "Deadlock found when trying
+    // to get lock" intermittently under IT parallel load. Retry a few times before giving up.
+    executeWithDeadlockRetry(
+        () -> {
+          if (nullOrEmpty(excludedTestCaseIds)) {
+            daoCollection
+                .relationshipDAO()
+                .bulkInsertAllToRelationship(
+                    testSuite.getId(),
+                    TEST_SUITE,
+                    TEST_CASE,
+                    Relationship.CONTAINS.ordinal(),
+                    tableName);
+          } else {
+            daoCollection
+                .relationshipDAO()
+                .bulkInsertAllToRelationshipWithExclusions(
+                    excludedTestCaseIds.stream().map(UUID::toString).toList(),
+                    testSuite.getId(),
+                    TEST_SUITE,
+                    TEST_CASE,
+                    Relationship.CONTAINS.ordinal(),
+                    tableName);
+          }
+          return null;
+        });
 
     List<EntityReference> updatedTestCaseReferences =
         findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
@@ -1062,6 +1075,44 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     updateLogicalTestSuite(testSuite.getId());
 
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private static final int MAX_DEADLOCK_RETRIES = 3;
+
+  private <T> T executeWithDeadlockRetry(Supplier<T> operation) {
+    RuntimeException lastError = null;
+    for (int attempt = 1; attempt <= MAX_DEADLOCK_RETRIES; attempt++) {
+      try {
+        return operation.get();
+      } catch (RuntimeException ex) {
+        if (!isDeadlock(ex) || attempt == MAX_DEADLOCK_RETRIES) {
+          throw ex;
+        }
+        lastError = ex;
+        LOG.warn(
+            "Retrying bulk test-case insert after deadlock (attempt {}/{})",
+            attempt,
+            MAX_DEADLOCK_RETRIES);
+      }
+    }
+    throw lastError == null ? new IllegalStateException("Deadlock retry failed") : lastError;
+  }
+
+  private static boolean isDeadlock(Throwable throwable) {
+    Throwable root = throwable;
+    while (root.getCause() != null) {
+      root = root.getCause();
+    }
+    if (root instanceof SQLException sqlException) {
+      String sqlState = sqlException.getSQLState();
+      int errorCode = sqlException.getErrorCode();
+      return "40001".equals(sqlState)
+          || "40P01".equals(sqlState)
+          || errorCode == 1213
+          || errorCode == 1205;
+    }
+    String message = root.getMessage();
+    return message != null && message.contains("Deadlock found when trying to get lock");
   }
 
   @Transaction
