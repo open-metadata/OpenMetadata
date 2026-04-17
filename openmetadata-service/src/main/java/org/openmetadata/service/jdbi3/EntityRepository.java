@@ -2727,6 +2727,116 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Invalidate cache entries for every descendant of {@code oldPrefix} in the given entity type's
+   * DB table. Called by rename-cascade flows (e.g. DomainRepository.updateName) right before the
+   * bulk {@code UPDATE ... WHERE fqnHash LIKE 'oldPrefix.%'} so downstream reads don't see the
+   * stale (pre-rename) FQN on the children.
+   *
+   * <p>Publishes pub/sub for each descendant so peer OM instances drop their Guava entries too.
+   *
+   * @param entityType type name (e.g. {@code domain}, {@code dataProduct}, {@code tag})
+   * @param oldPrefix fully qualified name prefix the rename is moving away from
+   */
+  public static void invalidateCacheForRenameCascade(String entityType, String oldPrefix) {
+    if (entityType == null || nullOrEmpty(oldPrefix)) {
+      return;
+    }
+    EntityRepository<?> repo;
+    try {
+      repo = Entity.getEntityRepository(entityType);
+    } catch (Exception e) {
+      return;
+    }
+    if (repo == null || repo.getDao() == null) {
+      return;
+    }
+    List<EntityDAO.EntityIdFqnPair> affected;
+    try {
+      affected = repo.getDao().listDescendantIdFqnByPrefix(oldPrefix);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to enumerate descendants for cache invalidation: type={} prefix={}",
+          entityType,
+          oldPrefix,
+          e);
+      return;
+    }
+    if (affected.isEmpty()) {
+      return;
+    }
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    for (EntityDAO.EntityIdFqnPair row : affected) {
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
+      if (row.fqn != null) {
+        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, row.fqn));
+      }
+      if (cachedEntityDao != null) {
+        cachedEntityDao.invalidateBase(entityType, row.id);
+        if (row.fqn != null) {
+          cachedEntityDao.invalidateByName(entityType, row.fqn);
+        }
+      }
+      if (cachedRelationshipDao != null) {
+        cachedRelationshipDao.invalidateOwners(entityType, row.id);
+        cachedRelationshipDao.invalidateDomains(entityType, row.id);
+        cachedRelationshipDao.invalidateContainer(entityType, row.id);
+      }
+      if (cachedReadBundle != null) {
+        cachedReadBundle.invalidate(entityType, row.id);
+      }
+      if (pubsub != null) {
+        pubsub.publish(entityType, row.id, row.fqn, "rename-cascade");
+      }
+    }
+    LOG.info(
+        "Invalidated cache for {} descendants of rename cascade: type={} prefix={}",
+        affected.size(),
+        entityType,
+        oldPrefix);
+  }
+
+  /**
+   * Full local + cross-instance cache eviction for a single entity. Used by code paths that
+   * update a referring entity indirectly (e.g. data-product domain change updates the linked
+   * tables; a tag delete affects policies that embed it). Does the same work as
+   * {@link #invalidateCache(EntityInterface)} but doesn't require the full entity POJO — the
+   * {@code (type, id, fqn)} triple is enough to drop every cached variant.
+   */
+  public static void invalidateCacheForEntity(String entityType, UUID id, String fqn) {
+    if (entityType == null || id == null) {
+      return;
+    }
+    CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+    if (fqn != null) {
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+    }
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao != null) {
+      cachedEntityDao.invalidateBase(entityType, id);
+      if (fqn != null) {
+        cachedEntityDao.invalidateByName(entityType, fqn);
+      }
+    }
+    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    if (cachedRelationshipDao != null) {
+      cachedRelationshipDao.invalidateOwners(entityType, id);
+      cachedRelationshipDao.invalidateDomains(entityType, id);
+      cachedRelationshipDao.invalidateContainer(entityType, id);
+    }
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      cachedReadBundle.invalidate(entityType, id);
+    }
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(entityType, id, fqn, "ref-change");
+    }
+  }
+
+  /**
    * Invoked by {@link org.openmetadata.service.cache.CacheInvalidationPubSub} when another OM
    * instance signals an entity change. Evicts this instance's per-process Guava caches so the next
    * read pulls fresh data. Does not touch Redis — the writer already invalidated shared keys
@@ -3453,6 +3563,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setChangeDescription(cd);
     dao.update(entity.getId(), entity.getFullyQualifiedName(), JsonUtils.pojoToJson(entity));
+    // Direct dao.update skips invalidateCachesAfterStore, so drop every cached variant so the
+    // next read picks up the new changeSummary instead of serving stale JSON.
+    invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -3878,6 +3991,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entity.setUpdatedAt(System.currentTimeMillis());
           entity.setDeleted(true);
           repository.dao.update(entity);
+          invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
         } else {
           // Hard delete
           EntityInterface entity = repository.find(entityId, Include.ALL);
@@ -8072,6 +8186,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Evict the Guava L1 so future reads reload from Redis/DB.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
+      // getByName(oldFqn) misses and falls through to a 404 from DB.
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, originalFqn));
+      }
 
       // Critical: drop Redis *base* entries for the entity BEFORE scheduling the async
       // writeThroughCache. Between the sync DB commit and the async re-read, a concurrent GET
@@ -8083,6 +8202,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         cachedEntityDao.invalidateBase(entityType, id);
         if (fqn != null) {
           cachedEntityDao.invalidateByName(entityType, fqn);
+        }
+        if (originalFqn != null && !originalFqn.equals(fqn)) {
+          cachedEntityDao.invalidateByName(entityType, originalFqn);
         }
       }
 
@@ -8107,6 +8229,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       var pubsub = CacheBundle.getCacheInvalidationPubSub();
       if (pubsub != null) {
         pubsub.publish(entityType, id, fqn, "update");
+        if (originalFqn != null && !originalFqn.equals(fqn)) {
+          pubsub.publish(entityType, id, originalFqn, "rename-old");
+        }
       }
     }
 

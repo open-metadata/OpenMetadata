@@ -5912,6 +5912,16 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     String findDefaultPersona();
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id FROM persona_entity WHERE JSON_EXTRACT(json, '$.default') = true AND id != :excludeId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id FROM persona_entity WHERE json->>'default' = 'true' AND id != :excludeId",
+        connectionType = POSTGRES)
+    List<String> findOtherDefaultPersonaIds(@Bind("excludeId") String excludeId);
+
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE persona_entity SET json = JSON_SET(json, '$.default', false) WHERE JSON_EXTRACT(json, '$.default') = true AND id != :excludeId",
