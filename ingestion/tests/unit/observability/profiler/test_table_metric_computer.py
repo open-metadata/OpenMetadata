@@ -360,23 +360,36 @@ class TestSAPHanaTableMetricComputer:
             )
         )
         sql_upper = sql.upper()
+        assert "WITH" in sql_upper, f"Expected WITH clause in query, got: {sql}"
         assert (
-            sql_upper.count("WITH") >= 1
-            or sql_upper.count("AS (") >= 2
-            or sql_upper.count("AS \n(") >= 2
-        ), f"Expected two CTEs in query, got: {sql}"
-        assert "M_TABLES" in sql, "CTE must reference SYS.M_TABLES"
+            "M_TABLES" in sql_upper
+        ), f"Expected M_TABLES CTE definition in query, got: {sql}"
+        assert (
+            "TABLES" in sql_upper
+        ), f"Expected TABLES CTE definition in query, got: {sql}"
         assert (
             "LEFT OUTER JOIN" in sql_upper or "LEFT JOIN" in sql_upper
         ), f"TABLES CTE must be LEFT JOINed, got: {sql}"
 
     def test_compute_returns_none_for_nonexistent_table(self):
-        """When table not found in either system view, execute().first() returns None."""
+        """When table absent from HANA system views, compute returns None and
+        still queries using uppercased identifiers expected by the catalog."""
         session = _build_mock_session()
         session.execute.return_value.first.return_value = None
         computer = _build_computer(session, SAPHanaTableMetricComputer)
         result = computer.compute()
+        sql = str(
+            session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
         assert result is None
+        assert (
+            "TEST_SCHEMA" in sql
+        ), f"Nonexistent-table lookup must use uppercased schema, got: {sql}"
+        assert (
+            "TEST_TABLE" in sql
+        ), f"Nonexistent-table lookup must use uppercased table, got: {sql}"
 
     def test_compute_includes_column_count_and_names(self):
         """Result query must include columnCount and columnNames labels."""

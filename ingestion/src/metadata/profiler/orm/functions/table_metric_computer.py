@@ -793,6 +793,11 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
     """SAP HANA Table Metric Computer"""
 
     def compute(self):
+        if not self.schema_name or not self.table_name:
+            logger.warning(
+                "Missing schema or table name for HANA table metric computation"
+            )
+            return None
         # HANA system catalog stores identifiers in uppercase
         schema_upper = self.schema_name.upper()
         table_upper = self.table_name.upper()
