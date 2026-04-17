@@ -562,17 +562,12 @@ export const verifyWidgetEntityNavigation = async (
 
     // Navigate back to home for next tests
     await redirectToHomePage(page);
+  } else if (emptyStateTestId) {
+    await expect(page.getByTestId(emptyStateTestId)).toBeVisible();
   } else {
-    // Check for empty state if no entities
-    const emptyState = widget.locator('[data-testid="widget-empty-state"]');
-
-    await expect(emptyState).toBeVisible();
-
-    if (emptyStateTestId) {
-      const emptyStateComponent = page.getByTestId(emptyStateTestId);
-
-      await expect(emptyStateComponent).toBeVisible();
-    }
+    await expect(
+      widget.locator('[data-testid="widget-empty-state"]')
+    ).toBeVisible();
   }
 };
 
