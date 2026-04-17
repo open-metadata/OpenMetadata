@@ -109,15 +109,21 @@ const AppDetails = () => {
       });
       setAppData(data);
 
-      const schema = await applicationsClassBase.importSchema(fqn);
-
-      setJsonSchema(schema);
+      try {
+        const schema = await applicationsClassBase.importSchema(fqn);
+        setJsonSchema(schema);
+      } catch {
+        setJsonSchema(undefined);
+        showErrorToast(
+          t('message.no-application-schema-found', { appName: fqn })
+        );
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setLoadingState((prev) => ({ ...prev, isFetchLoading: false }));
     }
-  }, [fqn, setLoadingState]);
+  }, [fqn, setLoadingState, t]);
 
   const onBrowseAppsClick = () => {
     navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));

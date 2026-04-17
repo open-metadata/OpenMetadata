@@ -61,85 +61,42 @@ class RdfPropertyMapperTest {
   class ChangeDescriptionTests {
 
     @Test
-    @DisplayName("ChangeDescription should be stored as structured RDF, not JSON literal")
-    void testChangeDescriptionStructured() throws Exception {
+    @DisplayName("ChangeDescription should be ignored during RDF field processing")
+    void testChangeDescriptionIsIgnored() throws Exception {
       ObjectNode changeDesc = objectMapper.createObjectNode();
       changeDesc.put("previousVersion", 1.0);
 
-      ArrayNode fieldsAdded = objectMapper.createArrayNode();
-      ObjectNode addedField = objectMapper.createObjectNode();
-      addedField.put("name", "description");
-      addedField.put("newValue", "New description value");
-      fieldsAdded.add(addedField);
-      changeDesc.set("fieldsAdded", fieldsAdded);
+      ObjectNode entityJson = objectMapper.createObjectNode();
+      entityJson.set("changeDescription", changeDesc);
 
-      ArrayNode fieldsUpdated = objectMapper.createArrayNode();
-      ObjectNode updatedField = objectMapper.createObjectNode();
-      updatedField.put("name", "tags");
-      updatedField.put("oldValue", "[]");
-      updatedField.put("newValue", "[\"PII\"]");
-      fieldsUpdated.add(updatedField);
-      changeDesc.set("fieldsUpdated", fieldsUpdated);
+      invokePrivate(
+          "processContextMappings",
+          new Class[] {Map.class, JsonNode.class, Resource.class, Model.class},
+          Map.of("changeDescription", Map.of("@id", "om:hasChangeDescription", "@type", "@json")),
+          entityJson,
+          entityResource,
+          model);
 
-      // Use reflection to call the private method
-      java.lang.reflect.Method method =
-          RdfPropertyMapper.class.getDeclaredMethod(
-              "addChangeDescription", JsonNode.class, Resource.class, Model.class);
-      method.setAccessible(true);
-      method.invoke(propertyMapper, changeDesc, entityResource, model);
-
-      // Verify structured RDF was created
-      Property hasChangeDesc = model.createProperty(OM_NS, "hasChangeDescription");
-      assertTrue(
-          model.contains(entityResource, hasChangeDesc),
-          "Entity should have hasChangeDescription property");
-
-      // Find the change description resource
-      Resource changeDescResource =
-          model.listObjectsOfProperty(entityResource, hasChangeDesc).next().asResource();
-
-      // Verify type
-      assertTrue(
-          model.contains(
-              changeDescResource, RDF.type, model.createResource(OM_NS + "ChangeDescription")),
-          "ChangeDescription should have correct type");
-
-      // Verify previousVersion is stored as a typed literal, not JSON
-      Property prevVersion = model.createProperty(OM_NS, "previousVersion");
-      assertTrue(
-          model.contains(changeDescResource, prevVersion),
-          "ChangeDescription should have previousVersion");
-
-      // Verify fieldsAdded are stored as structured nodes
-      Property fieldsAddedProp = model.createProperty(OM_NS, "fieldsAdded");
-      assertTrue(
-          model.contains(changeDescResource, fieldsAddedProp),
-          "ChangeDescription should have fieldsAdded");
-
-      // Verify the field change has a name property (not stored as JSON blob)
-      Resource fieldChangeResource =
-          model.listObjectsOfProperty(changeDescResource, fieldsAddedProp).next().asResource();
-      Property fieldNameProp = model.createProperty(OM_NS, "fieldName");
-      assertTrue(
-          model.contains(fieldChangeResource, fieldNameProp),
-          "FieldChange should have fieldName property");
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasChangeDescription")),
+          "ChangeDescription helper nodes should not be emitted into RDF");
     }
 
     @Test
-    @DisplayName("Empty ChangeDescription should not create any triples")
-    void testEmptyChangeDescription() throws Exception {
+    @DisplayName("Structured property dispatch should ignore changeDescription")
+    void testStructuredDispatchIgnoresChangeDescription() throws Exception {
       ObjectNode changeDesc = objectMapper.createObjectNode();
 
-      java.lang.reflect.Method method =
-          RdfPropertyMapper.class.getDeclaredMethod(
-              "addChangeDescription", JsonNode.class, Resource.class, Model.class);
-      method.setAccessible(true);
-      method.invoke(propertyMapper, changeDesc, entityResource, model);
+      invokePrivate(
+          "addStructuredProperty",
+          new Class[] {String.class, JsonNode.class, Resource.class, Model.class},
+          "changeDescription",
+          changeDesc,
+          entityResource,
+          model);
 
-      Property hasChangeDesc = model.createProperty(OM_NS, "hasChangeDescription");
-      assertTrue(
-          model.contains(entityResource, hasChangeDesc),
-          "Entity should still have hasChangeDescription for empty change");
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasChangeDescription")));
     }
   }
 
@@ -148,7 +105,7 @@ class RdfPropertyMapperTest {
   class VotesTests {
 
     @Test
-    @DisplayName("Votes should be stored as structured RDF with upVotes/downVotes as integers")
+    @DisplayName("Votes should keep counts but omit voter relationship edges")
     void testVotesStructured() throws Exception {
       ObjectNode votes = objectMapper.createObjectNode();
       votes.put("upVotes", 10);
@@ -192,9 +149,12 @@ class RdfPropertyMapperTest {
       stmt = model.getProperty(votesResource, downVotesProp);
       assertEquals(2, stmt.getInt(), "downVotes should be 2");
 
-      // Verify upVoters are stored as entity references
+      // Verify individual voter references are not stored as graph edges
       Property upVotersProp = model.createProperty(OM_NS, "upVoters");
-      assertTrue(model.contains(votesResource, upVotersProp), "Votes should have upVoters");
+      assertFalse(model.contains(votesResource, upVotersProp), "Votes should not expose upVoters");
+      assertFalse(
+          model.contains(votesResource, model.createProperty(OM_NS, "downVoters")),
+          "Votes should not expose downVoters");
     }
   }
 
@@ -823,11 +783,12 @@ class RdfPropertyMapperTest {
               .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "hasVotes"))
               .next()
               .asResource();
-      assertTrue(
+      assertFalse(
           model.contains(
               votesResource,
               model.createProperty(OM_NS, "downVoters"),
-              model.createResource(BASE_URI + "entity/user/" + reviewerId)));
+              model.createResource(BASE_URI + "entity/user/" + reviewerId)),
+          "Vote helpers should not emit voter references");
 
       ObjectNode extension = objectMapper.createObjectNode();
       extension.put("threshold", 2.5);
@@ -868,7 +829,7 @@ class RdfPropertyMapperTest {
           changeDescription,
           entityResource,
           model);
-      assertTrue(
+      assertFalse(
           model.contains(entityResource, model.createProperty(OM_NS, "hasChangeDescription")));
 
       ObjectNode votes = objectMapper.createObjectNode();

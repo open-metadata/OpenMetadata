@@ -1076,3 +1076,56 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
         assert len(columns) == 1
         assert columns[0].description is None
+
+    def test_yield_lineage_emits_both_paths_when_upstream_datasources_and_tables_present(
+        self,
+    ):
+        """
+        When an embedded datasource has both upstreamDatasources and upstreamTables,
+        lineage must be emitted for both paths, not just upstreamDatasources.
+        """
+        upstream_table = UpstreamTable(
+            id="tbl-001",
+            luid="tbl-luid-001",
+            name="direct_table",
+        )
+        mock_datamodel = DataSource(
+            id="ds-embedded",
+            name="Embedded Datasource",
+            upstreamDatasources=[
+                DataSource(id="ds-published", name="Published Datasource")
+            ],
+            upstreamTables=[upstream_table],
+        )
+        mock_dashboard = TableauDashboard(
+            id="wb-001",
+            name="Test Workbook",
+            dataModels=[mock_datamodel],
+        )
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Embedded Datasource",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_data_model_entity
+        ):
+            with patch.object(
+                self.tableau, "_get_datamodel_table_lineage", return_value=iter([])
+            ) as mock_datasource_lineage:
+                with patch.object(
+                    self.tableau, "_get_table_datamodel_lineage", return_value=iter([])
+                ) as mock_table_lineage:
+                    list(self.tableau.yield_dashboard_lineage_details(mock_dashboard))
+                    mock_datasource_lineage.assert_called_once()
+                    mock_table_lineage.assert_called_once()
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.tableau.chart_source_state = set()
+        list(self.tableau.yield_dashboard_chart(MOCK_DASHBOARD))
+        assert len(self.tableau.chart_source_state) == 3
+        for fqn in self.tableau.chart_source_state:
+            assert "tableau_source_test" in fqn
