@@ -462,6 +462,11 @@ class TopologyRunnerMixin(Generic[C]):
             stage=stage, entity_name=entity_name
         )
 
+        if stage.source_state:
+            source_state_set = getattr(self, stage.source_state, None)
+            if source_state_set is not None:
+                source_state_set.add(entity_fqn)
+
         # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
         same_fingerprint = False

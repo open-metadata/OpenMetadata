@@ -92,6 +92,13 @@ class NodeStage(BaseModel, Generic[T]):
         description="Enable this to get the entity from cached state in the context",
     )
 
+    # Source state tracking for mark-as-deleted
+    source_state: Optional[str] = Field(
+        None,
+        description="Attribute name on the source for tracking entity FQNs seen during ingestion. "
+        "Used by mark_*_as_deleted post-process to identify stale entities.",
+    )
+
 
 class TopologyNode(BaseModel):
     """

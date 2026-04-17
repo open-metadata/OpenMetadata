@@ -142,6 +142,7 @@ class DashboardServiceTopology(ServiceTopology):
                 consumer=["dashboard_service"],
                 nullable=True,
                 use_cache=True,
+                source_state="datamodel_source_state",
             )
         ],
     )
@@ -174,6 +175,7 @@ class DashboardServiceTopology(ServiceTopology):
                 store_all_in_context=True,
                 clear_context=True,
                 use_cache=True,
+                source_state="datamodel_source_state",
             ),
             NodeStage(
                 type_=Dashboard,
@@ -181,6 +183,7 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
                 use_cache=True,
+                source_state="dashboard_source_state",
             ),
             NodeStage(
                 type_=AddLineageRequest,
