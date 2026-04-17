@@ -165,6 +165,7 @@ test.describe('Login flow should work properly', () => {
 
     const testUser = new UserClass();
     await testUser.create(apiContext);
+    await testUser.setAdminRole(apiContext);
 
     await test.step('Login and wait for refresh call is made', async () => {
       // User login
