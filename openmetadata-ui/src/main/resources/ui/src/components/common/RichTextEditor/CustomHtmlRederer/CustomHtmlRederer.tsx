@@ -16,6 +16,7 @@
  * @see {@link https://github.com/nhn/tui.editor/blob/master/docs/en/custom-html-renderer.md}
  */
 
+import { classHighlighter, highlightCode } from '@lezer/highlight';
 import {
   CodeBlockMdNode,
   CustomHTMLRenderer,
@@ -23,7 +24,6 @@ import {
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
-import { classHighlighter, highlightCode } from '@lezer/highlight';
 
 import katex from 'katex';
 import React from 'react';
