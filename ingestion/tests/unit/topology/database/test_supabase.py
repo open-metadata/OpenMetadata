@@ -320,3 +320,29 @@ class SupabaseUnitTest(TestCase):
         assert isinstance(
             self.supabase_source.service_connection, SupabaseConnection
         )
+
+    def test_system_schemas_are_filtered(self):
+        """get_schema_names must exclude all Supabase system schemas."""
+        all_schemas = [
+            "public",
+            "auth",
+            "storage",
+            "realtime",
+            "extensions",
+            "graphql",
+            "graphql_public",
+            "supabase_functions",
+            "supabase_migrations",
+            "pg_catalog",
+            "information_schema",
+            "myapp",
+        ]
+        mock_inspector = types.SimpleNamespace()
+        mock_inspector.get_schema_names = lambda: all_schemas
+
+        with patch.object(
+            type(self.supabase_source), "inspector", new_callable=lambda: property(lambda self: mock_inspector)
+        ):
+            result = list(self.supabase_source.get_schema_names())
+
+        assert result == ["public", "myapp"]

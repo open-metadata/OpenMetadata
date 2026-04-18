@@ -29,11 +29,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
 from metadata.ingestion.source.database.supabase.queries import (
     SUPABASE_GET_DB_NAMES,
     SUPABASE_SCHEMA_COMMENTS,
+    SUPABASE_SYSTEM_SCHEMAS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -43,7 +43,7 @@ from metadata.utils.sqlalchemy_utils import get_schema_descriptions
 logger = ingestion_logger()
 
 
-class SupabaseSource(PostgresSource, MultiDBSource):
+class SupabaseSource(PostgresSource):
     """
     Implements metadata extraction for Supabase.
 
@@ -63,6 +63,11 @@ class SupabaseSource(PostgresSource, MultiDBSource):
                 f"Expected SupabaseConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_schema_names(self) -> Iterable[str]:
+        for schema_name in self.inspector.get_schema_names():
+            if schema_name.lower() not in SUPABASE_SYSTEM_SCHEMAS:
+                yield schema_name
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map = get_schema_descriptions(
