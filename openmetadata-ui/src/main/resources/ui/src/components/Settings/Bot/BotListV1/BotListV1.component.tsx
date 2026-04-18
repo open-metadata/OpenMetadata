@@ -89,6 +89,8 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
+  const BOT_SEARCH_PAGE_SIZE = 100;
+  const BOT_SEARCH_CONCURRENCY = 10;
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -156,28 +158,63 @@ const BotListV1 = ({
   const getBotsByBotUserNames = async (botUserNames: string[]) => {
     const include = getBotIncludeFilter();
     const botsByBotUserName = new Map<string, Bot>();
-    const batchSize = 10;
+    const workerCount = Math.min(BOT_SEARCH_CONCURRENCY, botUserNames.length);
+    let currentIndex = 0;
 
-    for (let index = 0; index < botUserNames.length; index += batchSize) {
-      const batch = botUserNames.slice(index, index + batchSize);
-      const matchedBotsResponse = await Promise.allSettled(
-        batch.map((name) =>
-          getBotByName(name, {
-            include,
-          })
-        )
-      );
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (currentIndex < botUserNames.length) {
+          const botIndex = currentIndex;
+          currentIndex += 1;
+          const botName = botUserNames[botIndex];
 
-      matchedBotsResponse.forEach((response) => {
-        if (response.status !== 'fulfilled') {
-          return;
+          try {
+            const bot = await getBotByName(botName, {
+              include,
+            });
+
+            botsByBotUserName.set(bot.name, bot);
+          } catch {
+            continue;
+          }
         }
-
-        botsByBotUserName.set(response.value.name, response.value);
-      });
-    }
+      })
+    );
 
     return botsByBotUserName;
+  };
+
+  const getSearchMatchedBotUsers = async (
+    text: string,
+    queryFilter: Record<string, unknown>
+  ) => {
+    const usersByName = new Map<string, User>();
+    let pageNumber = 1;
+    let totalMatches = 0;
+
+    do {
+      const response = await searchQuery({
+        query: text,
+        pageNumber,
+        pageSize: BOT_SEARCH_PAGE_SIZE,
+        includeDeleted: showDeleted,
+        queryFilter,
+        searchIndex: SearchIndex.USER,
+        trackTotalHits: true,
+      });
+      const users = formatUsersResponse(response.hits.hits);
+
+      users.forEach((user) => {
+        if (user.name) {
+          usersByName.set(user.name, user);
+        }
+      });
+
+      totalMatches = response.hits.total.value ?? usersByName.size;
+      pageNumber += 1;
+    } while ((pageNumber - 1) * BOT_SEARCH_PAGE_SIZE < totalMatches);
+
+    return Array.from(usersByName.values());
   };
 
   /**
@@ -349,16 +386,9 @@ const BotListV1 = ({
       });
     };
 
-    const matchedUsersBySearchQuery = await searchQuery({
-      query: text,
-      pageNumber: 1,
-      pageSize: 100,
-      includeDeleted: showDeleted,
-      queryFilter: getTermQuery({ isBot: true }),
-      searchIndex: SearchIndex.USER,
-    });
-    const matchedBotUsers = formatUsersResponse(
-      matchedUsersBySearchQuery.hits.hits
+    const matchedBotUsers = await getSearchMatchedBotUsers(
+      text,
+      getTermQuery({ isBot: true })
     );
     const matchedBots = await getMatchedBots(matchedBotUsers);
 
@@ -368,28 +398,18 @@ const BotListV1 = ({
 
     const escapedText = escapeESReservedCharacters(text);
     const wildcardPattern = `*${escapedText}*`;
-    const matchedUsersByWildcardFilter = await searchQuery({
-      query: '*',
-      pageNumber: 1,
-      pageSize: 100,
-      includeDeleted: showDeleted,
-      queryFilter: {
-        bool: {
-          must: [{ term: { isBot: true } }],
-          should: [
-            { wildcard: { 'name.keyword': wildcardPattern } },
-            { wildcard: { 'displayName.keyword': wildcardPattern } },
-            { wildcard: { 'fullyQualifiedName.keyword': wildcardPattern } },
-            { wildcard: { 'email.keyword': wildcardPattern } },
-          ],
-          minimum_should_match: 1,
-        },
+    const fallbackMatchedBotUsers = await getSearchMatchedBotUsers('*', {
+      bool: {
+        must: [{ term: { isBot: true } }],
+        should: [
+          { wildcard: { 'name.keyword': wildcardPattern } },
+          { wildcard: { 'displayName.keyword': wildcardPattern } },
+          { wildcard: { 'fullyQualifiedName.keyword': wildcardPattern } },
+          { wildcard: { 'email.keyword': wildcardPattern } },
+        ],
+        minimum_should_match: 1,
       },
-      searchIndex: SearchIndex.USER,
     });
-    const fallbackMatchedBotUsers = formatUsersResponse(
-      matchedUsersByWildcardFilter.hits.hits
-    );
 
     return getMatchedBots(fallbackMatchedBotUsers);
   };
