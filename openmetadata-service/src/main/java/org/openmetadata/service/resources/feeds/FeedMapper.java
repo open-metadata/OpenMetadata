@@ -19,7 +19,7 @@ public class FeedMapper {
         .withId(randomUUID)
         .withThreadTs(System.currentTimeMillis())
         .withMessage(create.getMessage())
-        .withCreatedBy(create.getFrom())
+        .withCreatedBy(user)
         .withAbout(create.getAbout())
         .withAddressedTo(create.getAddressedTo())
         .withReactions(Collections.emptyList())
