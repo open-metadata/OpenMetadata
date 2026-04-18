@@ -110,17 +110,27 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
     }
   };
 
+  const profileSampleType =
+    profilerConfig?.profileSampleConfig?.config?.profileSampleType ??
+    ProfileSampleType.Percentage;
+
   const uiSchema = useMemo(
     () => ({
-      'ui:order': ['profileSampleType', '*'],
-      profileSample: {
-        'ui:widget':
-          profilerConfig?.profileSampleType === ProfileSampleType.Percentage
-            ? 'range'
-            : 'updown',
+      profileSampleConfig: {
+        'ui:order': ['sampleConfigType', 'config', '*'],
+        sampleConfigType: { 'ui:widget': 'hidden' },
+        config: {
+          'ui:order': ['profileSampleType', 'profileSample', '*'],
+          profileSample: {
+            'ui:widget':
+              profileSampleType === ProfileSampleType.Percentage
+                ? 'range'
+                : 'updown',
+          },
+        },
       },
     }),
-    [profilerConfig]
+    [profileSampleType]
   );
 
   useEffect(() => {

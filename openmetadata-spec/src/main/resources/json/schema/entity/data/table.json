@@ -12,21 +12,13 @@
   ],
   "definitions": {
     "profileSampleType": {
-      "description": "Type of Profile Sample (percentage or rows)",
-      "type": "string",
-      "enum": [
-        "PERCENTAGE",
-        "ROWS"
-      ],
-      "default": "PERCENTAGE"
+      "$ref": "../../type/basic.json#/definitions/profileSampleType"
     },
     "samplingMethodType": {
-      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
-      "type": "string",
-      "enum": [
-        "BERNOULLI",
-        "SYSTEM"
-      ]
+      "$ref": "../../type/basic.json#/definitions/samplingMethodType"
+    },
+    "profileSampleConfig": {
+      "$ref": "../../type/samplingConfig.json#/definitions/profileSampleConfig"
     },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
@@ -839,17 +831,6 @@
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
       "description": "This schema defines the type for Table profile config.",
       "properties": {
-        "profileSampleType": {
-          "$ref": "#/definitions/profileSampleType"
-        },
-        "profileSample": {
-          "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
-          "type": "number",
-          "default": null
-        },
-        "samplingMethodType": {
-          "$ref": "#/definitions/samplingMethodType"
-        },
         "sampleDataCount": {
           "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
@@ -902,6 +883,9 @@
           "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
           "$ref": "#/definitions/sparkTableProfilerConfig",
           "default": null
+        },
+        "profileSampleConfig": {
+          "$ref": "#/definitions/profileSampleConfig"
         }
       }
     },
@@ -913,17 +897,6 @@
         "timestamp": {
           "description": "Timestamp on which profile is taken.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
-        },
-        "profileSample": {
-          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-          "type": "number",
-          "default": null
-        },
-        "profileSampleType": {
-          "$ref": "#/definitions/profileSampleType"
-        },
-        "samplingMethodType": {
-          "$ref": "#/definitions/samplingMethodType"
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -949,6 +922,14 @@
             "$ref": "#/definitions/customMetricProfile"
           },
           "default": null
+        },
+        "profileSample": {
+          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
+          "type": "number",
+          "default": null
+        },
+        "profileSampleType": {
+          "$ref": "#/definitions/profileSampleType"
         }
       },
       "required": [

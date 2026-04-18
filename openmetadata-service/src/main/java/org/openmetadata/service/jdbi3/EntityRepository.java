@@ -2287,6 +2287,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 fetchLimit);
 
     List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
+    setFieldsInBulk(putFields, entities);
     hydrateHistoryEntities(entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
@@ -2325,14 +2326,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Hook to hydrate entities returned from {@link #listEntityHistoryByTimestamp(long, long, String,
-   * String, int)}.
+   * Hook called after {@link #setFieldsInBulk} for entities returned from {@link
+   * #listEntityHistoryByTimestamp(long, long, String, String, int)}.
    *
-   * <p>Default behavior is intentionally lightweight: return the historical snapshots as stored in
-   * the extension table and avoid expensive relationship re-hydration for each row.
+   * <p>Subclasses may override to perform additional, entity-specific hydration of history
+   * snapshots without overriding the core field-population logic in {@code setFieldsInBulk}.
    */
   protected void hydrateHistoryEntities(List<T> entities) {
-    // Historical snapshots are already serialized versions; avoid N+1 hydration on /history.
+    // No additional hydration by default.
   }
 
   private String decodeAndValidateCursor(String cursor) {
