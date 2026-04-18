@@ -485,19 +485,41 @@ class ReindexingOrchestratorTest {
     invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
 
     verify(retryQueueDAO).deleteByStatuses(anyList());
-    verify(retryQueueDAO, never()).deleteByEntityTypes(anyList());
+    verify(retryQueueDAO, never()).deleteByEntityTypesAndStatuses(anyList(), anyList());
   }
 
   @Test
-  void cleanupRetryQueuePreflightDeletesByEntityTypesForPartialReindex() throws Exception {
+  void cleanupRetryQueuePreflightDeletesByEntityTypesAndPurgeableStatusesForPartialReindex()
+      throws Exception {
     EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("table", "dashboard"));
-    when(retryQueueDAO.deleteByEntityTypes(anyList())).thenReturn(10);
+    when(retryQueueDAO.deleteByEntityTypesAndStatuses(anyList(), anyList())).thenReturn(10);
     setField("jobData", jobData);
 
     invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
 
-    verify(retryQueueDAO).deleteByEntityTypes(anyList());
+    verify(retryQueueDAO).deleteByEntityTypesAndStatuses(anyList(), anyList());
     verify(retryQueueDAO, never()).deleteByStatuses(anyList());
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightPartialReindexPreservesInProgressRows() throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("table"));
+    final List<String>[] capturedStatuses = new List[1];
+    when(retryQueueDAO.deleteByEntityTypesAndStatuses(anyList(), anyList()))
+        .thenAnswer(
+            inv -> {
+              capturedStatuses[0] = inv.getArgument(1);
+              return 5;
+            });
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    assertNotNull(capturedStatuses[0]);
+    assertFalse(
+        capturedStatuses[0].contains(
+            org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_IN_PROGRESS),
+        "IN_PROGRESS rows must not be deleted during partial reindex");
   }
 
   @Test
@@ -508,7 +530,7 @@ class ReindexingOrchestratorTest {
     invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
 
     verify(retryQueueDAO, never()).deleteByStatuses(anyList());
-    verify(retryQueueDAO, never()).deleteByEntityTypes(anyList());
+    verify(retryQueueDAO, never()).deleteByEntityTypesAndStatuses(anyList(), anyList());
   }
 
   @Test
@@ -519,19 +541,19 @@ class ReindexingOrchestratorTest {
     invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
 
     verify(retryQueueDAO, never()).deleteByStatuses(anyList());
-    verify(retryQueueDAO, never()).deleteByEntityTypes(anyList());
+    verify(retryQueueDAO, never()).deleteByEntityTypesAndStatuses(anyList(), anyList());
   }
 
   @Test
   void cleanupRetryQueuePreflightSwallowsDaoExceptionAndContinues() throws Exception {
     EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("table"));
-    when(retryQueueDAO.deleteByEntityTypes(anyList()))
+    when(retryQueueDAO.deleteByEntityTypesAndStatuses(anyList(), anyList()))
         .thenThrow(new RuntimeException("DB error"));
     setField("jobData", jobData);
 
     invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
 
-    verify(retryQueueDAO).deleteByEntityTypes(anyList());
+    verify(retryQueueDAO).deleteByEntityTypesAndStatuses(anyList(), anyList());
   }
 
   @Test

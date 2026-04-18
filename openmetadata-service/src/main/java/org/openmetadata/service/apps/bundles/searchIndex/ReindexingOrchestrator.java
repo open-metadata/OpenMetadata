@@ -179,7 +179,8 @@ public class ReindexingOrchestrator {
         int deleted =
             collectionDAO
                 .searchIndexRetryQueueDAO()
-                .deleteByEntityTypes(new ArrayList<>(requestedEntities));
+                .deleteByEntityTypesAndStatuses(
+                    new ArrayList<>(requestedEntities), ALL_PURGEABLE_STATUSES);
         LOG.info(
             "Preflight: cleared {} rows from search_index_retry_queue for {} entity type(s)",
             deleted,

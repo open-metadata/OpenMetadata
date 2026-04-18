@@ -11040,8 +11040,13 @@ public interface CollectionDAO {
             + "WHERE status = 'SEARCH_UNAVAILABLE'")
     int resetSearchUnavailableToPending();
 
-    @SqlUpdate("DELETE FROM search_index_retry_queue WHERE entityType IN (<entityTypes>)")
-    int deleteByEntityTypes(@BindList("entityTypes") List<String> entityTypes);
+    @SqlUpdate(
+        "DELETE FROM search_index_retry_queue "
+            + "WHERE entityType IN (<entityTypes>) "
+            + "AND status IN (<statuses>)")
+    int deleteByEntityTypesAndStatuses(
+        @BindList("entityTypes") List<String> entityTypes,
+        @BindList("statuses") List<String> statuses);
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
