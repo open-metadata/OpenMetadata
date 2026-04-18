@@ -445,13 +445,14 @@ const BotListV1 = ({
 
   const handleSearch = async (text: string) => {
     setSearchTerm(text);
+    const normalizedSearchTerm = text.trim();
 
-    handlePageChange(INITIAL_PAGING_VALUE, {
-      cursorType: null,
-      cursorValue: undefined,
-    });
-
-    if (!text) {
+    if (!normalizedSearchTerm) {
+      latestSearchRequest.current += 1;
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       setSearchedData(botUsers);
       setLoading(false);
 
@@ -459,7 +460,7 @@ const BotListV1 = ({
     }
 
     setLoading(true);
-    await runActiveSearch(text);
+    await runActiveSearch(normalizedSearchTerm);
     setLoading(false);
   };
 
@@ -574,7 +575,7 @@ const BotListV1 = ({
             paging,
             pagingHandler: handleBotPageChange,
             onShowSizeChange: handlePageSizeChange,
-            showPagination: showPagination && !searchTerm,
+            showPagination: showPagination && !searchTerm.trim(),
           }}
           dataSource={searchedData}
           loading={loading}

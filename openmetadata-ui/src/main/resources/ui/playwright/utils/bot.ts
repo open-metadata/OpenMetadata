@@ -162,23 +162,31 @@ export const verifyBotSearch = async (page: Page) => {
   const createdBotLink = page.getByTestId(
     `bot-link-${BOT_DETAILS.updatedBotName}`
   );
+  const nonMatchingSearchTerm = `${BOT_DETAILS.updatedBotName}-no-match`;
 
-  await searchInput.fill(BOT_DETAILS.updatedBotName);
+  const searchBotAndWait = async (searchTerm: string) => {
+    await searchInput.clear();
+    await searchInput.fill(searchTerm);
+    await waitForAllLoadersToDisappear(page);
+  };
+
+  await searchBotAndWait(BOT_DETAILS.updatedBotName);
   await expect(createdBotLink).toBeVisible();
 
-  await searchInput.clear();
-  await searchInput.fill(BOT_DETAILS.botEmail);
+  await searchBotAndWait(BOT_DETAILS.botEmail);
   await expect(createdBotLink).toBeVisible();
 
-  await searchInput.clear();
-  await searchInput.fill('test');
+  await searchBotAndWait('test');
   await expect(createdBotLink).toBeVisible();
 
-  await searchInput.clear();
-  await searchInput.fill('hello');
+  await searchBotAndWait('hello');
   await expect(createdBotLink).toBeVisible();
 
+  await searchBotAndWait(nonMatchingSearchTerm);
+  await expect(createdBotLink).not.toBeVisible();
+
   await searchInput.clear();
+  await waitForAllLoadersToDisappear(page);
   await expect(createdBotLink).toBeVisible();
 };
 
