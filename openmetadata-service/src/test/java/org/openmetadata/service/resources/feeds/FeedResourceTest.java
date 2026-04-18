@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
 import static org.openmetadata.schema.type.TaskType.RequestTag;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -227,7 +226,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   void post_feedWithoutAbout_4xx() {
     // Create thread without addressed to entity in the request
-    CreateThread create = create().withFrom(USER.getName()).withAbout(null);
+    CreateThread create = create().withAbout(null);
     assertResponse(
         () -> createThread(create, USER_AUTH_HEADERS),
         BAD_REQUEST,
@@ -237,7 +236,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   void post_feedWithInvalidAbout_4xx() {
     // Create thread without addressed to entity in the request
-    CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
+    CreateThread create = create().withAbout("<>"); // Invalid EntityLink
 
     String failureReason =
         "[about must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
@@ -259,29 +258,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void post_feedWithoutMessage_4xx() {
-    CreateThread create = create().withFrom(USER.getName()).withMessage(null);
+    CreateThread create = create().withMessage(null);
     assertResponseContains(
         () -> createThread(create, USER_AUTH_HEADERS),
         BAD_REQUEST,
         "[query param message must not be null]");
-  }
-
-  @Test
-  void post_feedWithoutFrom_4xx() {
-    CreateThread create = create().withFrom(null);
-    assertResponseContains(
-        () -> createThread(create, USER_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[query param from must not be null]");
-  }
-
-  @Test
-  void post_feedWithNonExistentFrom_404() {
-    CreateThread create = create().withFrom(NON_EXISTENT_ENTITY.toString());
-    assertResponse(
-        () -> createThread(create, USER_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -931,28 +912,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void post_addPostWithoutFrom_4xx() {
-    // Add post to a thread without from field
-    CreatePost createPost = createPost(null).withFrom(null);
-
-    assertResponseContains(
-        () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[query param from must not be null]");
-  }
-
-  @Test
-  void post_addPostWithNonExistentFrom_404() {
-    // Add post to a thread with non-existent from user
-
-    CreatePost createPost = createPost(null).withFrom(NON_EXISTENT_ENTITY.toString());
-    assertResponse(
-        () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
-  }
-
-  @Test
   void post_validAddPost_200() throws HttpResponseException {
     Thread thread = createAndCheck(create(), USER_AUTH_HEADERS);
     // Add 10 posts and validate
@@ -1005,11 +964,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // Create thread without AI
     CreateThread create =
-        new CreateThread()
-            .withFrom(USER.getName())
-            .withMessage("message")
-            .withAbout(about)
-            .withType(ThreadType.Chatbot);
+        new CreateThread().withMessage("message").withAbout(about).withType(ThreadType.Chatbot);
     Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(thread);
 
@@ -1156,7 +1111,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     patchThread(updated.getId(), originalJson, updated, ADMIN_AUTH_HEADERS);
     updated = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
     // verify that the "About" is not changed
-    validateThread(updated, thread.getMessage(), thread.getCreatedBy(), originalAbout);
+    validateThread(updated, thread.getMessage(), originalAbout);
   }
 
   @Test
@@ -1213,9 +1168,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String team2 = TABLE2.getOwners().get(0).getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
-        create()
-            .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName()))
-            .withFrom(ADMIN_USER_NAME),
+        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())),
         ADMIN_AUTH_HEADERS);
 
     // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is
@@ -1256,9 +1209,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String team2 = TABLE2.getOwners().get(0).getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
-        create()
-            .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName()))
-            .withFrom(ADMIN_USER_NAME),
+        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())),
         ADMIN_AUTH_HEADERS);
 
     // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is
@@ -1459,7 +1410,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void delete_post_unauthorized_403() throws HttpResponseException {
     // Create a thread and add a post as admin user
     Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
-    CreatePost createPost = createPost(null).withFrom(ADMIN_USER_NAME);
+    CreatePost createPost = createPost(null);
     thread = addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
     assertEquals(1, thread.getPosts().size());
 
@@ -1478,7 +1429,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void delete_thread_unauthorized_403() throws HttpResponseException {
     // Create a thread as admin user
     CreateThread create = create();
-    Thread thread = createAndCheck(create.withFrom(ADMIN_USER_NAME), ADMIN_AUTH_HEADERS);
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
     assertNotNull(thread);
 
     // delete the thread using a different user who is not an admin
@@ -2101,11 +2052,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     // Validate returned thread from POST
     Thread thread = createThread(create, authHeaders);
-    validateThread(thread, create.getMessage(), create.getFrom(), create.getAbout());
+    validateThread(thread, create.getMessage(), create.getAbout());
 
     // Validate returned thread again from GET
     Thread getThread = getThread(thread.getId(), authHeaders);
-    validateThread(getThread, create.getMessage(), create.getFrom(), create.getAbout());
+    validateThread(getThread, create.getMessage(), create.getAbout());
     return thread;
   }
 
@@ -2113,27 +2064,27 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     Thread returnedThread = addPost(thread.getId(), create, authHeaders);
     // Last post is the newly added one
-    validatePost(thread, returnedThread, create.getFrom(), create.getMessage());
+    validatePost(thread, returnedThread, create.getMessage());
 
     Thread getThread = getThread(thread.getId(), authHeaders);
-    validatePost(thread, getThread, create.getFrom(), create.getMessage());
+    validatePost(thread, getThread, create.getMessage());
     return returnedThread;
   }
 
-  private void validateThread(Thread thread, String message, String from, String about) {
+  private void validateThread(Thread thread, String message, String about) {
     assertNotNull(thread.getId());
     assertEquals(message, thread.getMessage());
-    assertEquals(from, thread.getCreatedBy());
+    assertNotNull(thread.getCreatedBy());
     assertEquals(about, thread.getAbout());
   }
 
-  private void validatePost(Thread expected, Thread actual, String from, String message) {
+  private void validatePost(Thread expected, Thread actual, String message) {
     // Make sure the post added is as expected
     Post actualPost =
         actual
             .getPosts()
             .get(actual.getPosts().size() - 1); // Last post was newly added to the thread
-    assertEquals(from, actualPost.getFrom());
+    assertNotNull(actualPost.getFrom());
     assertEquals(message, actualPost.getMessage());
     assertNotNull(actualPost.getPostTs());
 
@@ -2165,12 +2116,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   public CreateThread create() {
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
-    return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
+    return new CreateThread().withMessage("message").withAbout(about);
   }
 
   public CreatePost createPost(String message) {
     message = StringUtils.isNotEmpty(message) ? message : "message";
-    return new CreatePost().withFrom(USER.getName()).withMessage(message);
+    return new CreatePost().withMessage(message);
   }
 
   public Thread getThread(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -2472,7 +2423,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withSuggestion(newValue);
     CreateThread create =
         new CreateThread()
-            .withFrom(fromUser)
             .withAbout(about)
             .withMessage("Message")
             .withTaskDetails(taskDetails)
@@ -2498,7 +2448,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withSuggestion(newValue);
     CreateThread create =
         new CreateThread()
-            .withFrom(fromUser)
             .withAbout(about)
             .withMessage("Message")
             .withTaskDetails(taskDetails)
@@ -2516,7 +2465,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     CreateThread create =
         new CreateThread()
-            .withFrom(fromUser)
             .withMessage(message)
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -2534,7 +2482,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     CreateThread create =
         new CreateThread()
-            .withFrom(fromUser)
             .withMessage(message)
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -2548,7 +2495,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     CreateThread create =
         new CreateThread()
-            .withFrom(fromUser)
             .withMessage(message)
             .withAbout(about)
             .withType(ThreadType.Chatbot)
@@ -2613,7 +2559,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     for (int i = 0; i < 50; i++) {
       createThreads.add(
           new CreateThread()
-              .withFrom(USER.getName())
               .withMessage("Concurrent task " + i)
               .withAbout(about)
               .withType(ThreadType.Task)

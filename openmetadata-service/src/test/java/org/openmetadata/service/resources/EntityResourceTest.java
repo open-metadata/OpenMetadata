@@ -4302,8 +4302,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add a conversation thread for the entity
     FeedResourceTest feedTest = new FeedResourceTest();
     String about = String.format("<#E::%s::%s>", entityType, entity.getFullyQualifiedName());
-    CreateThread createThread =
-        new CreateThread().withFrom(USER1.getName()).withMessage("message").withAbout(about);
+    CreateThread createThread = new CreateThread().withMessage("message").withAbout(about);
     Thread thread = feedTest.createAndCheck(createThread, ADMIN_AUTH_HEADERS);
 
     // Add task thread for the entity from user1 to user2

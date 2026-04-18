@@ -3525,7 +3525,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       CreateThread createThread =
           new CreateThread()
               .withMessage("Please approve this description update")
-              .withFrom(USER1.getName())
               .withAbout(entityLink)
               .withTaskDetails(taskDetails)
               .withType(ThreadType.Task);
