@@ -70,7 +70,8 @@
         "MicrosoftFabric",
         "BurstIQ",
         "Informix",
-        "Iomete"
+        "Iomete",
+        "Supabase"
       ],
       "javaEnums": [
         {
@@ -216,6 +217,9 @@
         },
         {
           "name": "Cockroach"
+        },
+        {
+          "name": "Supabase"
         },
         {
           "name": "SSAS"
@@ -390,6 +394,9 @@
             },
             {
               "$ref": "./connections/database/cockroachConnection.json"
+            },
+            {
+              "$ref": "./connections/database/supabaseConnection.json"
             },
             {
               "$ref": "./connections/database/ssasConnection.json"

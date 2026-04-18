@@ -284,6 +284,7 @@ plugins: Dict[str, Set[str]] = {
     "great-expectations": {VERSIONS["great-expectations"]},
     "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
+    "supabase": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
         "psycopg2-binary",
