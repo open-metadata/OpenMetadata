@@ -218,6 +218,47 @@ test.describe(
         }
       });
 
+      test('User with TEST_CASE.VIEW_ALL can view library test SQL expression in UI', async ({
+        viewResultsPage,
+      }) => {
+        const sqlExpression = 'SELECT COUNT(*) FROM {table}';
+        let testDefinitionRequestUrl = '';
+
+        await viewResultsPage.route(
+          '**/api/v1/dataQuality/testDefinitions/*',
+          async (route) => {
+            const response = await route.fetch();
+            const responseBody = await response.json();
+            testDefinitionRequestUrl = route.request().url();
+
+            await route.fulfill({
+              response,
+              json: {
+                ...responseBody,
+                sqlExpression,
+              },
+            });
+          }
+        );
+
+        await visitTestCaseDetailsPage(viewResultsPage);
+
+        await expect(
+          viewResultsPage.getByTestId('test-case-result-tab-container')
+        ).toBeVisible();
+        expect(decodeURIComponent(testDefinitionRequestUrl)).toContain(
+          'sqlExpression'
+        );
+        await expect(viewResultsPage.getByText('SQL Expression')).toBeVisible();
+        await expect(
+          viewResultsPage.getByTestId('sql-expression-container')
+        ).toContainText(sqlExpression);
+
+        await viewResultsPage.unroute(
+          '**/api/v1/dataQuality/testDefinitions/*'
+        );
+      });
+
       test('User with TABLE.VIEW_TESTS can view test case and results in UI (alternative)', async ({
         tableEditResultsPage,
       }) => {
