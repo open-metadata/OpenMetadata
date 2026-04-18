@@ -30,13 +30,13 @@ import {
   OntologyGraphData,
   OntologyNode,
 } from '../OntologyExplorer.interface';
-import { computeGraphSearchHighlight } from '../utils/graphSearchHighlight';
 import {
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
   GLOSSARY_COLORS,
   METRIC_NODE_TYPE,
 } from '../utils/graphBuilders';
+import { computeGraphSearchHighlight } from '../utils/graphSearchHighlight';
 import { buildHierarchyGraphs } from '../utils/hierarchyGraphBuilder';
 import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
 

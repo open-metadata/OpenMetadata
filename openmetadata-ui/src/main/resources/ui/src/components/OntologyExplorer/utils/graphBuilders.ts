@@ -166,7 +166,8 @@ export function convertRdfGraphToOntologyGraph(
     const existingEdge = edgeMap.get(nodePairKey);
     if (
       !existingEdge ||
-      (existingEdge.relationType === 'relatedTo' && relationType !== 'relatedTo')
+      (existingEdge.relationType === 'relatedTo' &&
+        relationType !== 'relatedTo')
     ) {
       edgeMap.set(nodePairKey, {
         from: edge.from,

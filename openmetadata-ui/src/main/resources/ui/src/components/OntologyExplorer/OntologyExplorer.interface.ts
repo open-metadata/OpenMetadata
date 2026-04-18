@@ -14,7 +14,10 @@
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
-import { LayoutType, type LayoutEngineType } from './OntologyExplorer.constants';
+import {
+  LayoutType,
+  type LayoutEngineType,
+} from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 

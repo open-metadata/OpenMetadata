@@ -166,10 +166,12 @@ async function fetchRdfGraphData(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const MAX_SAFE_PAGES = 100;
   try {
-    const allNodes: Parameters<typeof convertRdfGraphToOntologyGraph>[0]['nodes'] =
-      [];
-    const allEdges: Parameters<typeof convertRdfGraphToOntologyGraph>[0]['edges'] =
-      [];
+    const allNodes: Parameters<
+      typeof convertRdfGraphToOntologyGraph
+    >[0]['nodes'] = [];
+    const allEdges: Parameters<
+      typeof convertRdfGraphToOntologyGraph
+    >[0]['edges'] = [];
     let offset = 0;
     let source: string | undefined;
     let pages = 0;

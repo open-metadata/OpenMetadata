@@ -29,7 +29,10 @@ import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntit
 import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';
 import GraphSettingsPanel from './GraphSettingsPanel';
-import { DEFAULT_FILTERS, useOntologyExplorer } from './hooks/useOntologyExplorer';
+import {
+  DEFAULT_FILTERS,
+  useOntologyExplorer,
+} from './hooks/useOntologyExplorer';
 import NodeContextMenu from './NodeContextMenu';
 import OntologyControlButtons from './OntologyControlButtons';
 import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
@@ -205,8 +208,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             hasRelationFilter
               ? t('message.no-relations-for-selected-filter')
               : hasActiveFilter
-                ? t('message.no-data-available-for-selected-filter')
-                : t('message.no-glossary-terms-found')
+              ? t('message.no-data-available-for-selected-filter')
+              : t('message.no-glossary-terms-found')
           }
           testId="ontology-graph-empty"
         />
