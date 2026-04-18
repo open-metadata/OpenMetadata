@@ -637,7 +637,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new ConstraintViolationExceptionMapper());
     // Restore dropwizard default exception mappers
     environment.jersey().register(new LoggingExceptionMapper<>() {});
-    environment.jersey().register(new JsonProcessingExceptionMapper(true));
+    environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
   }
