@@ -104,10 +104,14 @@ export const ExtraInfoLabel = ({
   return (
     <div className="d-flex align-start extra-info-container">
       <Typography.Text
-        className="whitespace-nowrap text-sm d-flex flex-col gap-2 w-full"
+        className="text-sm d-flex flex-col gap-2 w-full"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
-          <span className="extra-info-label-heading">{label}</span>
+          <Typography.Text
+            className="extra-info-label-heading"
+            ellipsis={{ tooltip: true }}>
+            {label}
+          </Typography.Text>
         )}
 
         <Typography.Text
@@ -140,7 +144,11 @@ export const ExtraInfoLink = ({
       'w-48': ellipsis,
     })}>
     {!isEmpty(label) && (
-      <span className="extra-info-label-heading  m-r-xss">{label}</span>
+      <Typography.Text
+        className="extra-info-label-heading m-r-xss"
+        ellipsis={{ tooltip: true }}>
+        {label}
+      </Typography.Text>
     )}
     <div className="d-flex items-center gap-1">
       <Tooltip title={value}>
