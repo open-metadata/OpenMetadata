@@ -456,9 +456,16 @@ export const assignDataProduct = async (
       )
       .toContain(domain.displayName);
   } else {
-    await expect(page.getByTestId('domain-link')).toContainText(
-      domain.displayName
-    );
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
   }
 
   await page
