@@ -76,6 +76,7 @@ from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
     get_manifest,
 )
+from metadata.utils.storage_utils import DEFAULT_EXCLUDE_SEGMENTS
 
 logger = ingestion_logger()
 
@@ -85,14 +86,8 @@ OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 # Safety limit for the number of keys scanned per glob entry.
 MAX_KEYS_PER_GLOB = 100_000
 
-# Path segments excluded by default during glob discovery (Spark/Delta internals).
-DEFAULT_EXCLUDE_PATHS = {
-    "_delta_log",
-    "_temporary",
-    "_spark_metadata",
-    ".tmp",
-    "_SUCCESS",
-}
+# Re-export for backwards compatibility with tests that import from here.
+DEFAULT_EXCLUDE_PATHS = DEFAULT_EXCLUDE_SEGMENTS
 
 _GLOB_CHARS = ("*", "?")
 

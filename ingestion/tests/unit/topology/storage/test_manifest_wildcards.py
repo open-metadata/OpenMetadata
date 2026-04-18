@@ -624,15 +624,16 @@ class TestContainerFilterAppliesToManifestEntries:
 
 
 class TestIsExcludedArtifact:
-    """Per-artifact unit coverage for S3Source._is_excluded_artifact. A
-    sentinel file matched by this helper must never be picked for schema
-    inference or used as a depth-scan candidate."""
+    """Per-artifact unit coverage for ``is_excluded_artifact`` in
+    ``metadata.utils.storage_utils``. A sentinel file matched by this
+    helper must never be picked for schema inference or used as a
+    depth-scan candidate."""
 
     @staticmethod
     def _excluded(key):
-        from metadata.ingestion.source.storage.s3.metadata import S3Source
+        from metadata.utils.storage_utils import is_excluded_artifact
 
-        return S3Source._is_excluded_artifact(key)
+        return is_excluded_artifact(key)
 
     def test_regular_parquet_is_not_excluded(self):
         assert not self._excluded("data/events/part-00000.parquet")

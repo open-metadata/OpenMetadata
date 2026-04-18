@@ -65,6 +65,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
+from metadata.utils.storage_utils import COLD_STORAGE_CLASSES, is_excluded_artifact
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 
 logger = ingestion_logger()
@@ -347,7 +348,7 @@ class S3Source(StorageServiceSource):
                     if entry
                     and entry.get("Key")
                     and len(entry.get("Key").split("/")) > total_depth
-                    and not self._is_excluded_artifact(entry.get("Key"))
+                    and not is_excluded_artifact(entry.get("Key"))
                 }
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
@@ -558,13 +559,12 @@ class S3Source(StorageServiceSource):
         exclusions (Delta log, Spark temp, etc.) are handled by the
         caller via ManifestEntry.excludePaths.
         """
-        cold_classes = {"GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"}
         for obj in list_s3_objects(self.s3_client, Bucket=bucket_name, Prefix=prefix):
             key = obj.get("Key", "")
             if not key or key.endswith("/"):
                 continue
             storage_class = obj.get("StorageClass", "STANDARD")
-            if storage_class in cold_classes:
+            if storage_class in COLD_STORAGE_CLASSES:
                 continue
             yield key, obj.get("Size", 0)
 
@@ -711,7 +711,7 @@ class S3Source(StorageServiceSource):
                 if entry
                 and entry.get("Key")
                 and not entry.get("Key").endswith("/")
-                and not self._is_excluded_artifact(entry.get("Key"))
+                and not is_excluded_artifact(entry.get("Key"))
             ]
             # Prefer files that match the requested structureFormat
             # extension when one is set; fall back to any remaining file
@@ -741,30 +741,6 @@ class S3Source(StorageServiceSource):
                 f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}"
             )
             return None
-
-    @staticmethod
-    def _is_excluded_artifact(key: str) -> bool:
-        """Return True if ``key`` looks like a Spark/Delta sentinel
-        artifact that must not be used for schema inference."""
-        # Segment-based checks: any path component matching one of these
-        # means the file lives under a Spark/Delta internal directory.
-        sentinel_segments = {
-            "_delta_log",
-            "_temporary",
-            "_spark_metadata",
-            ".tmp",
-        }
-        if set(key.split("/")) & sentinel_segments:
-            return True
-        # Leaf-name checks: match the file name itself, not the path.
-        leaf = key.rsplit("/", 1)[-1]
-        if leaf == "_SUCCESS" or leaf.startswith("_SUCCESS."):
-            return True
-        if leaf.startswith("_committed_") or leaf.startswith("_started_"):
-            return True
-        if leaf.endswith(".crc"):
-            return True
-        return False
 
     def get_aws_bucket_region(self, bucket_name: str) -> str:
         """
@@ -885,14 +861,13 @@ class S3Source(StorageServiceSource):
         try:
             metadata_config = StorageContainerConfig.model_validate(content)
         except ValidationError as exc:
-            # Render Pydantic errors compactly — one line per bad field.
-            details = "; ".join(
-                f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}"
-                for err in exc.errors()
+            from metadata.ingestion.models.custom_pydantic import (
+                format_validation_error,
             )
+
             msg = (
                 f"Bucket manifest {manifest_uri} does not match the expected "
-                f"schema: {details}. This bucket will use the defaultManifest "
+                f"schema: {format_validation_error(exc)}. This bucket will use the defaultManifest "
                 f"fallback if one is configured; otherwise no nested "
                 f"containers will be ingested."
             )
