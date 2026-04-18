@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -60,6 +61,7 @@ class ReindexingOrchestratorTest {
   private CollectionDAO collectionDAO;
   private CollectionDAO.AppExtensionTimeSeries appExtensionTimeSeriesDao;
   private CollectionDAO.SearchIndexFailureDAO searchIndexFailureDAO;
+  private CollectionDAO.SearchIndexRetryQueueDAO retryQueueDAO;
   private SearchRepository searchRepository;
   private SearchClient searchClient;
   private OrchestratorContext context;
@@ -71,6 +73,7 @@ class ReindexingOrchestratorTest {
     collectionDAO = mock(CollectionDAO.class);
     appExtensionTimeSeriesDao = mock(CollectionDAO.AppExtensionTimeSeries.class);
     searchIndexFailureDAO = mock(CollectionDAO.SearchIndexFailureDAO.class);
+    retryQueueDAO = mock(CollectionDAO.SearchIndexRetryQueueDAO.class);
     searchRepository = mock(SearchRepository.class);
     searchClient = mock(SearchClient.class);
     context = mock(OrchestratorContext.class);
@@ -84,6 +87,7 @@ class ReindexingOrchestratorTest {
             .withConfig(new HashMap<>());
     when(collectionDAO.appExtensionTimeSeriesDao()).thenReturn(appExtensionTimeSeriesDao);
     when(collectionDAO.searchIndexFailureDAO()).thenReturn(searchIndexFailureDAO);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
     when(searchIndexFailureDAO.deleteAll()).thenReturn(0);
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(context.getJobRecord()).thenReturn(appRunRecord);
@@ -470,6 +474,85 @@ class ReindexingOrchestratorTest {
 
       assertEquals("http://localhost:8585", invokePrivate("getInstanceUrl", new Class<?>[0]));
     }
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightDeletesAllPurgeableStatusesForFullReindex() throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("all"));
+    when(retryQueueDAO.deleteByStatuses(anyList())).thenReturn(42);
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    verify(retryQueueDAO).deleteByStatuses(anyList());
+    verify(retryQueueDAO, never()).deleteByEntityTypes(anyList());
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightDeletesByEntityTypesForPartialReindex() throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("table", "dashboard"));
+    when(retryQueueDAO.deleteByEntityTypes(anyList())).thenReturn(10);
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    verify(retryQueueDAO).deleteByEntityTypes(anyList());
+    verify(retryQueueDAO, never()).deleteByStatuses(anyList());
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightSkipsWhenEntitiesEmpty() throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of());
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    verify(retryQueueDAO, never()).deleteByStatuses(anyList());
+    verify(retryQueueDAO, never()).deleteByEntityTypes(anyList());
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightSkipsWhenEntitiesNull() throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(null);
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    verify(retryQueueDAO, never()).deleteByStatuses(anyList());
+    verify(retryQueueDAO, never()).deleteByEntityTypes(anyList());
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightSwallowsDaoExceptionAndContinues() throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("table"));
+    when(retryQueueDAO.deleteByEntityTypes(anyList()))
+        .thenThrow(new RuntimeException("DB error"));
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    verify(retryQueueDAO).deleteByEntityTypes(anyList());
+  }
+
+  @Test
+  void cleanupRetryQueuePreflightAllPurgeableStatusesIncludesSearchUnavailable()
+      throws Exception {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("all"));
+    final List<String>[] capturedStatuses = new List[1];
+    when(retryQueueDAO.deleteByStatuses(anyList()))
+        .thenAnswer(
+            inv -> {
+              capturedStatuses[0] = inv.getArgument(0);
+              return 0;
+            });
+    setField("jobData", jobData);
+
+    invokePrivate("cleanupRetryQueuePreFlight", new Class<?>[0]);
+
+    assertNotNull(capturedStatuses[0]);
+    assertTrue(
+        capturedStatuses[0].contains(
+            org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE));
   }
 
   private MockedConstruction<OrphanedIndexCleaner> mockOrphanCleaner() {

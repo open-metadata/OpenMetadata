@@ -174,7 +174,10 @@ public final class SearchIndexRetryQueue {
 
   private static BatchUpsertEntry toBatchEntry(PendingEntry entry) {
     return new BatchUpsertEntry(
-        entry.entityId(), entry.entityFqn(), entry.failureReason(), entry.status(),
+        entry.entityId(),
+        entry.entityFqn(),
+        entry.failureReason(),
+        entry.status(),
         entry.entityType());
   }
 

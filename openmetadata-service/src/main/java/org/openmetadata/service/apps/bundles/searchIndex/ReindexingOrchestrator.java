@@ -169,12 +169,12 @@ public class ReindexingOrchestrator {
       if (requestedEntities == null || requestedEntities.isEmpty()) {
         return;
       }
-      boolean isFullReindex =
-          requestedEntities.stream().anyMatch(e -> ALL.equalsIgnoreCase(e));
+      boolean isFullReindex = requestedEntities.stream().anyMatch(e -> ALL.equalsIgnoreCase(e));
       if (isFullReindex) {
         int deleted =
             collectionDAO.searchIndexRetryQueueDAO().deleteByStatuses(ALL_PURGEABLE_STATUSES);
-        LOG.info("Preflight: cleared {} rows from search_index_retry_queue (full reindex)", deleted);
+        LOG.info(
+            "Preflight: cleared {} rows from search_index_retry_queue (full reindex)", deleted);
       } else {
         int deleted =
             collectionDAO
