@@ -35,8 +35,10 @@ def druid_container():
 
         @retry(wait=wait_fixed(3), stop=stop_after_delay(180))
         def _wait_for_broker():
-            resp = requests.get(f"http://{host}:{port}/status/health")
-            assert resp.status_code == 200 and resp.text == "true"
+            resp = requests.get(
+                f"http://{host}:{port}/status/health", timeout=(5, 10)
+            )
+            assert resp.status_code == 200 and resp.text.strip() == "true"
 
         _wait_for_broker()
         yield container

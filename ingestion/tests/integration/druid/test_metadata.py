@@ -1,5 +1,3 @@
-import pytest
-
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
