@@ -8267,11 +8267,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, originalFqn));
       }
 
-      // Critical: drop Redis *base* entries for the entity BEFORE scheduling the async
-      // writeThroughCache. Between the sync DB commit and the async re-read, a concurrent GET
-      // would otherwise hit stale JSON in Redis (base hash field) and serve old values -
-      // including old owners/domains consumed by downstream inheritance. Deleting first means
-      // the next read misses, goes to DB, and populates fresh.
+      // Critical: drop Redis *base* entries for the entity BEFORE writeThroughCache repopulates.
+      // A concurrent GET arriving between the DB commit and the repopulate would otherwise hit
+      // stale JSON in Redis (base hash field) and serve old values — including old owners /
+      // domains consumed by downstream inheritance. Deleting first means the next read misses,
+      // goes to DB, and populates fresh.
       var cachedEntityDao = CacheBundle.getCachedEntityDao();
       if (cachedEntityDao != null) {
         cachedEntityDao.invalidateBase(entityType, id);
@@ -8297,7 +8297,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         cachedReadBundle.invalidate(entityType, id);
       }
 
-      // Kick off the async repopulate; correctness no longer depends on when it completes.
+      // Synchronous repopulate: the write path holds the request thread until Redis is updated,
+      // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
 

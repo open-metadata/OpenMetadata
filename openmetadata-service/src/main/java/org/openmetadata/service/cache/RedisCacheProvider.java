@@ -270,7 +270,29 @@ public class RedisCacheProvider implements CacheProvider {
 
   private void awaitAll(List<RedisFuture<?>> futures) {
     long timeoutMs = Math.max(1000L, (long) config.redis.commandTimeoutMs * 10);
-    LettuceFutures.awaitAll(timeoutMs, TimeUnit.MILLISECONDS, futures.toArray(new RedisFuture[0]));
+    RedisFuture<?>[] array = futures.toArray(new RedisFuture[0]);
+    boolean completed = LettuceFutures.awaitAll(timeoutMs, TimeUnit.MILLISECONDS, array);
+    int failed = 0;
+    for (RedisFuture<?> f : array) {
+      if (!f.isDone() || f.isCancelled()) {
+        failed++;
+        continue;
+      }
+      try {
+        f.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted awaiting Redis pipeline", e);
+      } catch (Exception e) {
+        failed++;
+      }
+    }
+    if (!completed || failed > 0) {
+      throw new IllegalStateException(
+          String.format(
+              "Redis pipeline batch did not complete cleanly (completed=%s, failed=%d, total=%d, timeoutMs=%d)",
+              completed, failed, array.length, timeoutMs));
+    }
   }
 
   @Override

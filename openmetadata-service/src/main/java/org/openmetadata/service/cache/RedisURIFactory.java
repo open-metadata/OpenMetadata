@@ -31,8 +31,11 @@ final class RedisURIFactory {
     RedisURI.Builder builder;
     if (url.startsWith("redis://") || url.startsWith("rediss://")) {
       RedisURI parsed = RedisURI.create(url);
+      // Carry the scheme's SSL flag forward — rediss:// must keep TLS even if useSSL is unset.
       builder =
-          RedisURI.Builder.redis(parsed.getHost(), parsed.getPort()).withTimeout(connectTimeout);
+          RedisURI.Builder.redis(parsed.getHost(), parsed.getPort())
+              .withTimeout(connectTimeout)
+              .withSsl(parsed.isSsl());
     } else if (url.contains(":")) {
       String[] parts = url.split(":");
       builder =
