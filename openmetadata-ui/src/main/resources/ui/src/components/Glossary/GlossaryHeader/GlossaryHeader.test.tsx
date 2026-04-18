@@ -229,6 +229,30 @@ describe('GlossaryHeader component', () => {
     expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
   });
 
+  it('should render import and export when entity-level EditAll is true despite no global permission', async () => {
+    // Simulate a role with conditional EditAll (e.g. isOwner())
+    // Global permissions do not grant All/EditAll
+    mockGlossaryTermPermission.All = false;
+    mockGlossaryTermPermission.EditAll = false;
+    // Entity-level permissions evaluate conditions and grant EditAll
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+    mockContext.type = EntityType.GLOSSARY;
+    render(
+      <GlossaryHeader
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('manage-button'));
+    });
+
+    expect(screen.queryByText('label.import')).toBeInTheDocument();
+    expect(screen.queryByText('label.export')).toBeInTheDocument();
+  });
+
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
     mockContext.type = EntityType.GLOSSARY_TERM;
     mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
