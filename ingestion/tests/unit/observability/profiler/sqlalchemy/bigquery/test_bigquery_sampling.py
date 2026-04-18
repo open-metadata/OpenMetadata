@@ -12,7 +12,6 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
@@ -22,12 +21,18 @@ from metadata.generated.schema.security.credentials.gcpCredentials import GCPCre
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.orm.functions.table_metric_computer import TableType
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -115,7 +120,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
             table_type=TableType.Regular,
         )
@@ -150,7 +161,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=view_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -186,7 +203,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=view_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,
@@ -216,7 +239,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,
