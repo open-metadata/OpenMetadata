@@ -19,6 +19,8 @@ import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getAuthContext,
+  getToken,
   redirectToHomePage,
   removeLandingBanner,
   uuid,
@@ -411,7 +413,6 @@ test.describe('Mention notifications in Notification Box', () => {
 
     await apiContext.post('/api/v1/feed', {
       data: {
-        from: adminUser.responseData.name,
         message: 'Initial conversation thread for mention test',
         about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
         type: 'Conversation',
@@ -429,6 +430,30 @@ test.describe('Mention notifications in Notification Box', () => {
 
     await test.step('User1 mentions admin user in a reply', async () => {
       await entity.visitEntityPage(user1Page);
+
+      const token = await getToken(user1Page);
+      const apiContext = await getAuthContext(token);
+      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+        `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
+      )}&type=Conversation&limit=25`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(feedUrl);
+            const data = await response.json();
+
+            return (data.data ?? []).some((thread: { message?: string }) =>
+              thread.message?.includes(
+                'Initial conversation thread for mention test'
+              )
+            );
+          },
+          { timeout: 60_000, intervals: [2_000] }
+        )
+        .toBe(true);
+
+      await apiContext.dispose();
 
       await user1Page.getByTestId('activity_feed').click();
 
