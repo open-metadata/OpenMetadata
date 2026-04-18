@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/api/attachments/createAsset.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAssetRequest",
+  "description": "Schema for creating a new asset record after file upload. The asset record will be updated with the URL and status once the upload is complete.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.attachments.CreateAsset",
+  "properties": {
+    "fileName": {
+      "type": "string",
+      "description": "The original file name of the asset."
+    },
+    "contentType": {
+      "type": "string",
+      "description": "MIME type of the asset."
+    },
+    "size": {
+      "type": "number",
+      "description": "File size in bytes."
+    },
+    "assetType": {
+      "description": "Type of the asset.",
+      "$ref": "../../attachments/asset.json#/definitions/assetType"
+    },
+    "entityLink": {
+      "description": "Link to the entity that this asset belongs to.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "required": ["fileName", "entityLink"],
+  "additionalProperties": false
+}

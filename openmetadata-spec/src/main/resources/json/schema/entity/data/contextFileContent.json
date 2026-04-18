@@ -1,0 +1,108 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/contextFileContent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContextFileContent",
+  "$comment": "@om-entity-type",
+  "description": "A stored content snapshot for a ContextFile.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.ContextFileContent",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the content snapshot.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the content snapshot.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name of the content snapshot.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the content snapshot.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the content snapshot.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "contextFile": {
+      "description": "The file this content snapshot belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "assetId": {
+      "description": "Reference to the Asset entity storing the actual file blob.",
+      "type": "string"
+    },
+    "contentType": {
+      "description": "MIME type of the stored content.",
+      "type": "string"
+    },
+    "size": {
+      "description": "Content size in bytes.",
+      "type": "number"
+    },
+    "checksum": {
+      "description": "SHA-256 checksum of the stored content.",
+      "type": "string"
+    },
+    "sourceVersion": {
+      "description": "Provider revision or version token for synced files.",
+      "type": "string"
+    },
+    "ingestedAt": {
+      "description": "Time the content snapshot was ingested.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "isCurrent": {
+      "description": "Whether this is the current content snapshot for the file.",
+      "type": "boolean",
+      "default": true
+    },
+    "processingStatus": {
+      "description": "Processing status for this content snapshot.",
+      "$ref": "./contextFile.json#/definitions/processingStatus"
+    },
+    "processingError": {
+      "description": "Processing failure details for this snapshot.",
+      "type": "string"
+    },
+    "extractedText": {
+      "description": "Canonical extracted text for this content snapshot.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "contextFile"],
+  "additionalProperties": false
+}

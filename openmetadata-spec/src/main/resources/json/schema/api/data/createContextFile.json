@@ -1,0 +1,86 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createContextFile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateContextFile",
+  "description": "Request to create a file in the Context Center Drive.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateContextFile",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name of the file.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name (original filename or user-provided title).",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the file.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "fileType": {
+      "description": "Type of file.",
+      "$ref": "../../entity/data/contextFile.json#/definitions/fileType"
+    },
+    "fileSize": {
+      "description": "File size in bytes.",
+      "type": "number"
+    },
+    "contentType": {
+      "description": "MIME type.",
+      "type": "string"
+    },
+    "fileExtension": {
+      "description": "File extension.",
+      "type": "string"
+    },
+    "assetId": {
+      "description": "Reference to Asset entity in S3.",
+      "type": "string"
+    },
+    "processingStatus": {
+      "description": "Processing status.",
+      "$ref": "../../entity/data/contextFile.json#/definitions/processingStatus"
+    },
+    "sourceType": {
+      "description": "How the file was added.",
+      "$ref": "../../entity/data/contextFile.json#/definitions/sourceType"
+    },
+    "sourceId": {
+      "description": "ID in external source system.",
+      "type": "string"
+    },
+    "sourceUrl": {
+      "description": "URL in external source system.",
+      "type": "string",
+      "format": "uri"
+    },
+    "folder": {
+      "description": "Parent folder fully qualified name.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "owners": {
+      "description": "Owners of this file.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this file.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domains": {
+      "description": "Domains this file belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createFolder.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateFolder",
+  "description": "Request to create a folder in the Context Center Drive.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateFolder",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name of the folder.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name of the folder.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the folder.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "icon": {
+      "description": "Optional icon identifier.",
+      "type": "string"
+    },
+    "color": {
+      "description": "Optional color for folder icon.",
+      "type": "string"
+    },
+    "parent": {
+      "description": "Parent folder fully qualified name.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "owners": {
+      "description": "Owners of this folder.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this folder.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domains": {
+      "description": "Domains this folder belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

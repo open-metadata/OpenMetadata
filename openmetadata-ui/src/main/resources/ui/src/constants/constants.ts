@@ -13,6 +13,11 @@
 
 import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
+
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
+export const CREATE_PAGE_HASH = 'create';
+export const SHORT_DELAY = 3000;
+export const LONG_DELAY = 10000;
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { Status } from '../generated/entity/applications/appRunRecord';
@@ -158,6 +163,12 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
   KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
+  KNOWLEDGE_CENTER: '/knowledge-center',
+  KNOWLEDGE_PAGE: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}`,
+  KNOWLEDGE_PAGE_WITH_TAB: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  KNOWLEDGE_PAGE_WITH_SUB_TAB: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  KNOWLEDGE_PAGE_VERSION: `/knowledge-center/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  KNOWLEDGE_CENTER_FILTER: '/knowledge-center-filter',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,

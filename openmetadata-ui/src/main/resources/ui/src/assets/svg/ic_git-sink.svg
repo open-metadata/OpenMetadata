@@ -1,0 +1,8 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Git branching icon -->
+  <circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="17" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="12" cy="17" r="2" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M7 9V12C7 13.5 8 14 9 14.5L12 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M17 9V12C17 13.5 16 14 15 14.5L12 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

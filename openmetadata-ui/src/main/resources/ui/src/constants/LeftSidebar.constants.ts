@@ -74,6 +74,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
   },
   {
+    key: ROUTES.KNOWLEDGE_CENTER,
+    title: 'label.knowledge-center',
+    redirect_url: ROUTES.KNOWLEDGE_CENTER,
+    icon: ExploreIcon,
+    dataTestId: 'app-bar-item-knowledge-center',
+  },
+  {
     key: ROUTES.PLATFORM_LINEAGE,
     title: 'label.lineage',
     redirect_url: ROUTES.PLATFORM_LINEAGE,

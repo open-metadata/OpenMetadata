@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createPage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreatePage",
+  "description": "Schema for a Page Request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreatePage",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name of Page belongs to",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this query.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Knowledge Page.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owner of this entity",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this tag.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the tag.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
+    },
+    "tags": {
+      "description": "Tags for this Page",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "pageType" : {
+      "description": "Type of the Page.",
+      "$ref": "../../entity/data/page.json#/definitions/pageType"
+    },
+    "page" : {
+      "description": "Knowledge Page Schema",
+      "oneOf": [
+        {
+          "$ref": "../../entity/data/quickLink.json"
+        },
+        {
+          "$ref": "../../entity/data/article.json"
+        }
+      ]
+    },
+    "relatedEntities": {
+      "description": "Related Entities for the Knowledge Page",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "parent": {
+      "description": "Parent Knowledge Page.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "domains" : {
+      "description": "Fully qualified name of the domains the Knowledge Page belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["name", "pageType", "page"],
+  "additionalProperties": false
+}

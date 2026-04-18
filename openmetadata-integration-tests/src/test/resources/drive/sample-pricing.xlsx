@@ -1,0 +1,3 @@
+PK
+This is a small spreadsheet fixture blob stored as an .xlsx object for drive upload tests.
+The integration tests validate opaque blob storage and metadata handling, not spreadsheet parsing.

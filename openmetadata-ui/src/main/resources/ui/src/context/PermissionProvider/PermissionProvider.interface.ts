@@ -71,6 +71,7 @@ export enum ResourceEntity {
   WEBHOOK = 'webhook',
   STORAGE_SERVICE = 'storageService',
   CONTAINER = 'container',
+  KNOWLEDGE_PAGE = 'page',
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   EVENT_SUBSCRIPTION = 'eventsubscription',

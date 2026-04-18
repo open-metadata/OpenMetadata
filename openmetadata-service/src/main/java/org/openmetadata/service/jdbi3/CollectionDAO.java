@@ -376,6 +376,21 @@ public interface CollectionDAO {
   WorksheetDAO worksheetDAO();
 
   @CreateSqlObject
+  FolderDAO folderDAO();
+
+  @CreateSqlObject
+  ContextFileDAO contextFileDAO();
+
+  @CreateSqlObject
+  ContextFileContentDAO contextFileContentDAO();
+
+  @CreateSqlObject
+  KnowledgePageDAO knowledgePageDAO();
+
+  @CreateSqlObject
+  AssetDAO assetDAO();
+
+  @CreateSqlObject
   FeedDAO feedDAO();
 
   @CreateSqlObject
@@ -12368,5 +12383,174 @@ public interface CollectionDAO {
           rs.getString("pac4j_code_verifier"),
           rs.getLong("expires_at"));
     }
+  }
+
+  interface FolderDAO extends EntityDAO<org.openmetadata.schema.entity.data.Folder> {
+    @Override
+    default String getTableName() {
+      return "drive_folder";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.Folder> getEntityClass() {
+      return org.openmetadata.schema.entity.data.Folder.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface ContextFileDAO extends EntityDAO<org.openmetadata.schema.entity.data.ContextFile> {
+    @Override
+    default String getTableName() {
+      return "context_file";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.ContextFile> getEntityClass() {
+      return org.openmetadata.schema.entity.data.ContextFile.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface ContextFileContentDAO
+      extends EntityDAO<org.openmetadata.schema.entity.data.ContextFileContent> {
+    @Override
+    default String getTableName() {
+      return "context_file_content";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.ContextFileContent> getEntityClass() {
+      return org.openmetadata.schema.entity.data.ContextFileContent.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file_content "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.contextFile.id')) = :contextFileId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file_content "
+                + "WHERE json->'contextFile'->>'id' = :contextFileId",
+        connectionType = POSTGRES)
+    List<String> listByContextFileId(@Bind("contextFileId") String contextFileId);
+  }
+
+  interface KnowledgePageDAO extends EntityDAO<org.openmetadata.schema.entity.data.Page> {
+    @Override
+    default String getTableName() {
+      return "knowledge_center";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.Page> getEntityClass() {
+      return org.openmetadata.schema.entity.data.Page.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @SqlQuery(
+        "SELECT json "
+            + "FROM knowledge_center "
+            + "WHERE id NOT IN ("
+            + "    SELECT toId FROM entity_relationship WHERE (relation = 0 AND toEntity = 'page') OR (relation = 9 AND toEntity = 'page')"
+            + ")")
+    List<String> listTopLevelPages();
+
+    @SqlQuery(
+        "SELECT kc.json "
+            + "FROM knowledge_center kc "
+            + "JOIN entity_relationship er ON kc.id = er.toId "
+            + "WHERE er.fromId = :parentId "
+            + "AND (er.relation = 9 or er.relation = 0) "
+            + "AND er.toEntity = 'page'")
+    List<String> listChildren(@Bind("parentId") String parentId);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE knowledge_center SET json = :json, fqnHash = :fqnHash  WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = :json::jsonb, fqnHash = :fqnHash WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateFullyQualifiedName(
+        @Bind("id") String pageId,
+        @Bind("json") String json,
+        @BindFQN("fqnHash") String fqnHash);
+  }
+
+  interface AssetDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO asset_entity (json, fqnHash) VALUES (:json, :fqnHash)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO asset_entity (json, fqnHash) VALUES (:json :: jsonb, :fqnHash)",
+        connectionType = POSTGRES)
+    void insert(@BindFQN("fqnHash") String fqnHash, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE asset_entity SET json = :json WHERE fqnHash = :fqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE asset_entity SET json = :json::jsonb WHERE fqnHash = :fqnHash",
+        connectionType = POSTGRES)
+    void update(@Bind("json") String json, @BindFQN("fqnHash") String fqnHash);
+
+    @SqlQuery("SELECT json FROM asset_entity WHERE id = :id")
+    String getById(@Bind("id") String id);
+
+    @SqlQuery(
+        "SELECT json FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) AND fqnHash = :fqnHash")
+    List<String> getByFqnExact(
+        @Bind("assetType") String assetType, @BindFQN("fqnHash") String fullyQualifiedName);
+
+    @SqlQuery(
+        "SELECT json FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) AND fqnHash LIKE :concatFqnPrefixHash")
+    List<String> getByFqnPrefix(
+        @Bind("assetType") String assetType,
+        @org.openmetadata.service.util.jdbi.BindConcat(
+                value = "concatFqnPrefixHash",
+                parts = {":fqnPrefixHash", "%"},
+                hash = true)
+            String fqnPrefixHash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE asset_entity SET json = JSON_SET(json, '$.deleted', true) "
+                + "WHERE fqnHash LIKE :prefix",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE asset_entity SET json = jsonb_set(json, '{deleted}', 'true') "
+                + "WHERE fqnHash LIKE :prefix",
+        connectionType = POSTGRES)
+    void markDeletedByFqnPrefix(@BindFQN("prefix") String prefix);
+
+    @SqlUpdate("DELETE FROM asset_entity WHERE fqnHash LIKE :prefix")
+    void deleteByFqnPrefix(@BindFQN("prefix") String prefix);
+
+    @SqlUpdate("DELETE FROM asset_entity WHERE id = :id")
+    void delete(@Bind("id") String id);
   }
 }

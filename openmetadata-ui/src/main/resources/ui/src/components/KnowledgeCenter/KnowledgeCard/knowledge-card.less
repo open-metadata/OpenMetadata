@@ -1,0 +1,38 @@
+@import (reference) '../../../styles/variables.less';
+
+.knowledge-card {
+  padding: @padding-mlg;
+  position: relative;
+  border-radius: @border-rad-sm;
+  border-left: 4px solid transparent;
+  opacity: 0.95;
+  background-color: @grey-9 !important;
+  border: 0.5px solid @grey-15;
+  margin: 0 0 @margin-mlg;
+
+  &.highlight-card {
+    border-left: 4px solid @blue-12;
+    background: @primary-button-background !important;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .service-icon {
+    height: 16px;
+  }
+
+  .entity-summary-details {
+    font-size: 12px;
+
+    .no-owner {
+      color: @text-grey-muted;
+    }
+  }
+
+  &:hover {
+    border-color: @primary-color;
+    background-color: @primary-button-background !important;
+  }
+}

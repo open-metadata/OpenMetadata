@@ -1,0 +1,134 @@
+package org.openmetadata.service.attachments;
+
+import org.openmetadata.schema.attachments.Asset;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * In-memory implementation of AssetService for local testing and development.
+ * Stores asset contents in memory using a ConcurrentHashMap.
+ *
+ * WARNING: This implementation is NOT suitable for production use as:
+ * - Data is lost on restart
+ * - Memory usage grows with asset size
+ * - Not distributed/shared across instances
+ */
+@Slf4j
+public class InMemoryAssetService implements AssetService {
+  private final ConcurrentHashMap<String, byte[]> assetStore;
+  private final String baseUrl;
+
+  public InMemoryAssetService() {
+    this("http://localhost:8585/api/v1/assets");
+  }
+
+  public InMemoryAssetService(String baseUrl) {
+    this.assetStore = new ConcurrentHashMap<>();
+    this.baseUrl = baseUrl;
+    LOG.info("Initialized InMemoryAssetService for local testing (base URL: {})", baseUrl);
+  }
+
+  @Override
+  public CompletableFuture<String> upload(Asset asset, InputStream content) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            // Read the input stream into a byte array
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] data = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = content.read(data, 0, data.length)) != -1) {
+              buffer.write(data, 0, bytesRead);
+            }
+            byte[] assetBytes = buffer.toByteArray();
+
+            // Store in memory
+            assetStore.put(asset.getId(), assetBytes);
+
+            LOG.debug(
+                "Uploaded asset {} ({} bytes) to in-memory storage",
+                asset.getId(),
+                assetBytes.length);
+
+            return "success";
+          } catch (Exception e) {
+            LOG.error("Failed to upload asset {}: {}", asset.getId(), e.getMessage(), e);
+            throw new RuntimeException("Failed to upload asset", e);
+          }
+        });
+  }
+
+  @Override
+  public CompletableFuture<InputStream> read(Asset asset) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          byte[] assetBytes = assetStore.get(asset.getId());
+          if (assetBytes == null) {
+            LOG.warn("Asset {} not found in in-memory storage", asset.getId());
+            return null;
+          }
+
+          LOG.debug(
+              "Retrieved asset {} ({} bytes) from in-memory storage",
+              asset.getId(),
+              assetBytes.length);
+
+          return new ByteArrayInputStream(assetBytes);
+        });
+  }
+
+  @Override
+  public CompletableFuture<Void> delete(Asset asset) {
+    return CompletableFuture.runAsync(
+        () -> {
+          byte[] removed = assetStore.remove(asset.getId());
+          if (removed != null) {
+            LOG.debug(
+                "Deleted asset {} ({} bytes) from in-memory storage",
+                asset.getId(),
+                removed.length);
+          } else {
+            LOG.warn("Attempted to delete non-existent asset {}", asset.getId());
+          }
+        });
+  }
+
+  @Override
+  public String generateDownloadUrlWithExpiry(Asset asset, Duration expiry) {
+    // For in-memory storage, we just return a mock URL
+    // In a real implementation, this would require a separate endpoint to serve the assets
+    String url = baseUrl + "/" + asset.getId() + "?expiry=" + expiry.toSeconds();
+    LOG.debug("Generated mock download URL for asset {}: {}", asset.getId(), url);
+    return url;
+  }
+
+  /**
+   * Get the current size of the in-memory store (for debugging/monitoring)
+   * @return number of assets stored
+   */
+  public int getStoreSize() {
+    return assetStore.size();
+  }
+
+  /**
+   * Get the total memory used by stored assets (approximate)
+   * @return total bytes stored
+   */
+  public long getTotalBytesStored() {
+    return assetStore.values().stream().mapToLong(bytes -> bytes.length).sum();
+  }
+
+  /**
+   * Clear all assets from memory (useful for testing)
+   */
+  public void clear() {
+    int size = assetStore.size();
+    assetStore.clear();
+    LOG.info("Cleared {} assets from in-memory storage", size);
+  }
+}

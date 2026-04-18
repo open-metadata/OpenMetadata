@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="50" r="50" fill="#FDF4FF"/>
+<ellipse cx="49.3365" cy="35.3895" rx="17.2144" ry="4.39213" stroke="#BA24D5" stroke-width="3"/>
+<path d="M66.5509 64.6105C66.5509 67.0362 58.7951 69.0026 49.2277 69.0026C39.6604 69.0026 31.9045 67.0362 31.9045 64.6105" stroke="#BA24D5" stroke-width="3" stroke-linecap="round"/>
+<path d="M66.5509 45.0005C66.5509 47.4262 58.7951 49.3926 49.2277 49.3926C39.6604 49.3926 31.9045 47.4262 31.9045 45.0005" stroke="#BA24D5" stroke-width="3" stroke-linecap="round"/>
+<path d="M66.5509 55.8221C66.5509 58.2478 58.7951 60.2142 49.2277 60.2142C39.6604 60.2142 31.9045 58.2478 31.9045 55.8221" stroke="#BA24D5" stroke-width="3" stroke-linecap="round"/>
+<line x1="31.8879" y1="64.4982" x2="31.8879" y2="34.7477" stroke="#BA24D5" stroke-width="3" stroke-linecap="round"/>
+<line x1="66.5955" y1="65.3066" x2="66.5955" y2="35.3576" stroke="#BA24D5" stroke-width="3" stroke-linecap="round"/>
+<circle cx="68.0955" cy="65.25" r="11.9357" fill="white" stroke="#FDF4FF" stroke-width="2"/>
+<path d="M71.515 60.756L64.7626 70.5849" stroke="#9F1AB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M72.6986 67.2103L71.5156 60.7575L65.0679 61.968" stroke="#9F1AB1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
