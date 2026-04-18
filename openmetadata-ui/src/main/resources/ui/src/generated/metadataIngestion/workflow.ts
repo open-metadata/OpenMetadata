@@ -5540,7 +5540,9 @@ export interface Pipeline {
      */
     markDeletedContainers?: boolean;
     /**
-     * Global manifest source used when buckets do not contain their own openmetadata.json file.
+     * Global manifest source. When configured, entries here take precedence over any
+     * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+     * matches.
      */
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
     /**
@@ -7438,8 +7440,9 @@ export interface ServiceConnections {
 }
 
 /**
- * Global manifest source used when buckets do not contain their own openmetadata.json
- * file.
+ * Global manifest source. When configured, entries here take precedence over any
+ * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+ * matches.
  *
  * No manifest file available. Ingestion would look for bucket-level metadata file instead
  *
