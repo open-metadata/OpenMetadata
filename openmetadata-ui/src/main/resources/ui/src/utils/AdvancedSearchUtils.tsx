@@ -368,7 +368,17 @@ export const getServiceOptions = (
     : option.text;
 };
 
-export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+/**
+ * Convert aggregation buckets to dropdown options with original casing
+ * @param buckets - Aggregation buckets from API response
+ * @param sourceFields - Optional dot-notation path to extract original values from top_hits
+ *                      Example: 'service.displayName' or 'owners.displayName'
+ * @returns Array of SearchDropdownOption with preserved casing from _source
+ */
+export const getOptionsFromAggregationBucket = (
+  buckets: Bucket[],
+  sourceFields?: string
+): SearchDropdownOption[] => {
   if (!buckets) {
     return [];
   }
@@ -378,11 +388,42 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
       (item) =>
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
-    .map((option) => ({
-      key: option.key,
-      label: option.key,
-      count: option.doc_count ?? 0,
-    }));
+    .map((option) => {
+      // Extract original casing from top_hits sub-aggregation if available
+      const topHitsData = (option as Record<string, unknown>)[
+        'top_hits#top'
+      ] as
+        | {
+            hits?: {
+              hits?: Array<{
+                _source?: Record<string, unknown>;
+              }>;
+            };
+          }
+        | undefined;
+
+      // Get the original value from _source using dot-notation path
+      let originalValue: string | undefined;
+      if (topHitsData?.hits?.hits?.[0]?._source && sourceFields) {
+        originalValue = sourceFields
+          .split('.')
+          .reduce((obj: unknown, key: string): unknown => {
+            if (obj && typeof obj === 'object' && obj !== null && key in (obj as Record<string, unknown>)) {
+              return (obj as Record<string, unknown>)[key];
+            }
+            return undefined;
+          }, topHitsData.hits.hits[0]._source) as string | undefined;
+      }
+
+      // Fallback to bucket.key if original value not found or sourceFields not provided
+      const displayLabel = originalValue ?? (option.key as string);
+
+      return {
+        key: option.key,
+        label: displayLabel,
+        count: option.doc_count ?? 0,
+      };
+    });
 };
 
 export const getTierOptions = async (): Promise<ListValues> => {
