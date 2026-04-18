@@ -27,6 +27,11 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TEST_CASE_RESULT;
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     SearchIndex.super.removeNonIndexableFields(esDoc);
     List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
@@ -118,6 +123,9 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
       esDoc.put("database", table.getDatabase());
       esDoc.put("databaseSchema", table.getDatabaseSchema());
       esDoc.put("service", table.getService());
+      if (table.getServiceType() != null) {
+        esDoc.put("serviceType", table.getServiceType());
+      }
       esDoc.put("table", table.getEntityReference());
     } catch (EntityNotFoundException ex) {
       LOG.warn(

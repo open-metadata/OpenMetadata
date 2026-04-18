@@ -13,7 +13,7 @@ prerequisites:
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
-	playwright install --with-deps
+	playwright install chromium --with-deps
 
 .PHONY: run_e2e_tests
 run_e2e_tests: ## Run e2e tests
@@ -272,4 +272,16 @@ ui-checkstyle-playwright-changed:
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-core-components-changed
 ui-checkstyle-core-components-changed:
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
+
+# Run all full UI checkstyle operations with one command.
+.PHONY: ui-checkstyle-all
+ui-checkstyle-all:
+	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle && yarn ui-checkstyle:playwright
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
+
+# Run all changed-file UI checkstyle operations with one command.
+.PHONY: ui-checkstyle-changed
+ui-checkstyle-changed:
+	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed && yarn ui-checkstyle:playwright:changed
 	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed

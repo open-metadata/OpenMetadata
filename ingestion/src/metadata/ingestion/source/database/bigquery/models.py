@@ -46,25 +46,45 @@ class BigQueryTable(BaseModel):
     deleted: bool
 
 
-class BigQueryTableMap(BaseModel):
-    table_map: Dict[SchemaName, Dict[TableName, BigQueryTable]]
+class BigQueryTableMap:
+    """Tracks changed tables per schema using minimal memory.
 
-    def add(self, schema_name: SchemaName, table_map: Dict[TableName, BigQueryTable]):
-        """Adds a new schema table map."""
-        self.table_map[schema_name] = table_map
+    Stores only table_name -> is_deleted (bool) per schema instead of full
+    Pydantic models. With 100K+ tables, this saves ~50MB vs storing
+    BigQueryTable objects.
+    """
+
+    __slots__ = ("_table_map",)
+
+    def __init__(self):
+        self._table_map: Dict[SchemaName, Dict[TableName, bool]] = {}
+
+    def update(self, schema_name: SchemaName, table_name: TableName, deleted: bool):
+        """Add a single table entry. First-seen wins (entries ordered DESC by time)."""
+        schema_tables = self._table_map.get(schema_name)
+        if schema_tables is None:
+            self._table_map[schema_name] = {table_name: deleted}
+        elif table_name not in schema_tables:
+            schema_tables[table_name] = deleted
 
     def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
-        """Returns all deleted table names for a given schema."""
         return [
-            table.name
-            for table in self.table_map.get(schema_name, {}).values()
-            if table.deleted
+            name
+            for name, deleted in self._table_map.get(schema_name, {}).items()
+            if deleted
         ]
 
+    def get_all_deleted(self) -> Dict[SchemaName, List[TableName]]:
+        result = {}
+        for schema in self._table_map:
+            deleted = self.get_deleted(schema)
+            if deleted:
+                result[schema] = deleted
+        return result
+
     def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
-        """Returns all not deleted table names for a given schema."""
         return [
-            table.name
-            for table in self.table_map.get(schema_name, {}).values()
-            if not table.deleted
+            name
+            for name, deleted in self._table_map.get(schema_name, {}).items()
+            if not deleted
         ]

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -61,6 +62,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("mlFeatures.description");
 
   public MlModelRepository() {
     super(
@@ -69,7 +71,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         MlModel.class,
         Entity.getCollectionDAO().mlModelDAO(),
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS);
+        MODEL_UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
@@ -519,6 +522,31 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           addedList,
           deletedList,
           mlFeatureMatch);
+
+      for (MlFeature updatedFeature : listOrEmpty(updatedModel.getMlFeatures())) {
+        MlFeature storedFeature =
+            listOrEmpty(origModel.getMlFeatures()).stream()
+                .filter(feature -> mlFeatureMatch.test(feature, updatedFeature))
+                .findAny()
+                .orElse(null);
+        if (storedFeature == null) {
+          continue;
+        }
+
+        updateMlFeatureDescription(storedFeature, updatedFeature);
+      }
+    }
+
+    private void updateMlFeatureDescription(MlFeature originalFeature, MlFeature updatedFeature) {
+      if (operation.isPut() && !nullOrEmpty(originalFeature.getDescription()) && updatedByBot()) {
+        updatedFeature.setDescription(originalFeature.getDescription());
+        return;
+      }
+
+      recordChange(
+          "mlFeatures." + originalFeature.getName() + ".description",
+          originalFeature.getDescription(),
+          updatedFeature.getDescription());
     }
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) {

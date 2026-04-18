@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesS
  */
 @Slf4j
 public class PartitionWorker {
+  private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
   /** Time series entity types that need special handling */
   private static final Set<String> TIME_SERIES_ENTITIES =
@@ -505,8 +507,23 @@ public class PartitionWorker {
 
     if (failureRecorder != null && readErrorCount > 0) {
       for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
-        String entityId =
-            entityError.getEntity() != null ? entityError.getEntity().toString() : null;
+        Object rawEntity = entityError.getEntity();
+        String entityId = null;
+        if (rawEntity instanceof EntityInterface) {
+          UUID id = ((EntityInterface) rawEntity).getId();
+          if (id != null) {
+            entityId = id.toString();
+          }
+        } else if (rawEntity != null) {
+          entityId = rawEntity.toString();
+        }
+        if (entityId == null) {
+          LOG.warn(
+              "Skipping reader failure record for entityType={}: entityId is null, message={}",
+              entityType,
+              entityError.getMessage());
+          continue;
+        }
         failureRecorder.recordReaderEntityFailure(
             entityType, entityId, null, entityError.getMessage());
       }
@@ -575,7 +592,7 @@ public class PartitionWorker {
       return null;
     }
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      int cursorOffset = (int) offset - 1;
+      int cursorOffset = toCursorOffset(entityType, offset);
       ListFilter filter = new ListFilter(Include.ALL);
       String cursor =
           Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
@@ -590,6 +607,17 @@ public class PartitionWorker {
     } else {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
+  }
+
+  private int toCursorOffset(String entityType, long offset) {
+    long cursorOffset = offset - 1L;
+    if (cursorOffset > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Keyset cursor initialization for entityType %s does not support offsets above %d",
+              entityType, MAX_CURSOR_INITIALIZATION_OFFSET));
+    }
+    return Math.toIntExact(cursorOffset);
   }
 
   /**

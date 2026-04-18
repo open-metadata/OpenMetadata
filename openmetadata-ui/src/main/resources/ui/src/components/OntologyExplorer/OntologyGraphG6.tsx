@@ -20,8 +20,7 @@ import {
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  FIT_VIEW_ZOOM_OUT,
-  FIT_VIEW_ZOOM_OUT_DATA_MODE,
+  fitViewWithMinZoom,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -30,13 +29,21 @@ import {
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
 
+function writeNodePositions(
+  container: HTMLDivElement | null,
+  positions: Record<string, { x: number; y: number }>
+) {
+  if (container) {
+    container.dataset.nodePositions = JSON.stringify(positions);
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
       nodes: inputNodes,
       edges: inputEdges,
       settings,
-      nodePositions,
       selectedNodeId,
       expandedTermIds,
       glossaryColorMap,
@@ -49,6 +56,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
+      nodePositions,
     },
     ref
   ) => {
@@ -76,14 +85,19 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       selectedNodeId: selectedNodeId ?? null,
       expandedTermIds,
       clickedEdgeId,
-      nodePositions,
       glossaryColorMap,
-      layoutType,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      layoutType,
+      nodePositions,
     });
 
-    const { graphRef, extractNodePositions } = useOntologyGraph({
+    const {
+      graphRef,
+      extractNodePositions,
+      suppressEdgeCheck,
+      emitPagePositions,
+    } = useOntologyGraph({
       containerRef,
       graphData,
       inputNodes,
@@ -99,34 +113,36 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
       setClickedEdgeId,
       neighborSet,
       glossaryColorMap,
       computeNodeColor,
       assetToTermMap,
+      onPositionsReady: (positions) =>
+        writeNodePositions(containerRef.current, positions),
     });
 
     useImperativeHandle(
       ref,
       () => ({
-        fitView: () => {
+        fitView: async () => {
           const graph = graphRef.current;
           if (!graph) {
             return;
           }
-          const duration = 300;
-          const zoomAfterFit =
-            explorationMode === 'data'
-              ? FIT_VIEW_ZOOM_OUT_DATA_MODE
-              : FIT_VIEW_ZOOM_OUT;
-          graph.fitView(undefined, { duration });
-          graph.zoomBy(zoomAfterFit, { duration });
+          writeNodePositions(containerRef.current, {});
+          suppressEdgeCheck(800);
+          await fitViewWithMinZoom(graph, 300);
+          emitPagePositions(graph);
         },
         zoomIn: () => {
-          graphRef.current?.zoomBy(1.2);
+          suppressEdgeCheck();
+          graphRef.current?.zoomBy(1.2, { duration: 100 });
         },
         zoomOut: () => {
-          graphRef.current?.zoomBy(0.8);
+          suppressEdgeCheck();
+          graphRef.current?.zoomBy(0.8, { duration: 100 });
         },
         runLayout: () => {
           const graph = graphRef.current;
@@ -158,6 +174,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          // G6 only supports raster image export here; keep the SVG wrapper explicit.
           const dataUrl = await graph.toDataURL({
             mode: 'overall',
             type: 'image/png',
@@ -170,12 +187,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'ontology-graph.svg';
+          a.download = 'ontology-graph-raster.svg';
           a.click();
           URL.revokeObjectURL(url);
         },
       }),
-      [extractNodePositions, graphRef]
+      [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
 
     return (

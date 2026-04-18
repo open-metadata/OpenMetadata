@@ -341,10 +341,10 @@ public class SearchSourceBuilderFactoryTest {
         esFactory.buildDataAssetSearchBuilderV2(
             "table", "name:orders AND owner:alice", 0, 10, false, false);
 
-    assertTrue(emptyBuilder.query().isBool());
-    assertTrue(nullBuilder.query().isBool());
-    assertTrue(wildcardBuilder.query().isBool());
-    assertTrue(complexBuilder.query().isBool());
+    assertTrue(emptyBuilder.query().isFunctionScore());
+    assertTrue(nullBuilder.query().isFunctionScore());
+    assertTrue(wildcardBuilder.query().isFunctionScore());
+    assertTrue(complexBuilder.query().isFunctionScore());
     assertTrue(emptyBuilder.aggregations().isEmpty());
     assertTrue(complexBuilder.aggregations().isEmpty());
   }

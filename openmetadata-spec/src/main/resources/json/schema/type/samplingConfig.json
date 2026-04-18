@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/type/samplingConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SamplingConfig",
+  "description": "Sampling configuration types for the profiler.",
+  "definitions": {
+    "profileSampleConfig": {
+      "title": "Profile Sample Config",
+      "javaType": "org.openmetadata.schema.type.ProfileSampleConfig",
+      "description": "Profile sample configuration supporting static and dynamic sampling strategies.",
+      "type": "object",
+      "properties": {
+        "sampleConfigType": {
+          "title": "Sample Config Type",
+          "description": "Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at runtime based on row count thresholds.",
+          "type": "string",
+          "enum": ["STATIC", "DYNAMIC"],
+          "default": "STATIC"
+        },
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./dynamicSamplingConfig.json"
+            },
+            {
+              "$ref": "./staticSamplingConfig.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

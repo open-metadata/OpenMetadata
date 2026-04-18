@@ -31,8 +31,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.glue.metadata import GlueSource
-from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
+from metadata.ingestion.source.database.glue.models import (
+    DatabasePage,
+    GlueSchema,
+    TablePage,
+)
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -187,6 +192,29 @@ class GlueUnitTest(TestCase):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
             self.glue_source.get_database_schema_names()
         )
+
+    def test_database_schema_names_filters_other_catalogs_before_schema_filter(self):
+        self.glue_source.source_config.schemaFilterPattern = FilterPattern(
+            includes=["default"]
+        )
+        self.glue_source._get_glue_database_and_schemas = lambda: [
+            DatabasePage(
+                DatabaseList=[
+                    GlueSchema(
+                        CatalogId=MOCK_DATABASE.name.root,
+                        Name="default",
+                        Description="current catalog schema",
+                    ),
+                    GlueSchema(
+                        CatalogId="different-catalog",
+                        Name="default",
+                        Description="other catalog schema",
+                    ),
+                ]
+            )
+        ]
+
+        assert ["default"] == list(self.glue_source.get_database_schema_names())
 
     @patch("metadata.ingestion.source.database.glue.metadata.fqn")
     def test_table_names(self, fqn):

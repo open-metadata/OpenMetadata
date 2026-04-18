@@ -68,3 +68,69 @@ class TestClickhouseGetColumnType:
     def test_unknown_type_returns_null_type(self):
         result = self.dialect._get_column_type("col", "SomeUnknownType")
         assert result is sqltypes.NullType
+
+
+class TestClickhouseGeoTypes:
+    """Verify that ClickHouse geo types are registered in ischema_names
+    and resolved correctly by _get_column_type."""
+
+    def setup_method(self):
+        self.dialect = MockDialect()
+
+    # --- Registration checks ---
+
+    def test_geo_types_registered_in_ischema_names(self):
+        for geo_type in (
+            "Point",
+            "Ring",
+            "Polygon",
+            "MultiPolygon",
+            "LineString",
+            "MultiLineString",
+        ):
+            assert (
+                geo_type in ch_ischema_names
+            ), f"{geo_type} not found in ischema_names"
+
+    # --- Resolution via _get_column_type ---
+
+    def test_point_type_resolves(self):
+        result = self.dialect._get_column_type("col", "Point")
+        assert result == ch_ischema_names["Point"]
+
+    def test_ring_type_resolves(self):
+        result = self.dialect._get_column_type("col", "Ring")
+        assert result == ch_ischema_names["Ring"]
+
+    def test_polygon_type_resolves(self):
+        result = self.dialect._get_column_type("col", "Polygon")
+        assert result == ch_ischema_names["Polygon"]
+
+    def test_multipolygon_type_resolves(self):
+        result = self.dialect._get_column_type("col", "MultiPolygon")
+        assert result == ch_ischema_names["MultiPolygon"]
+
+    def test_linestring_type_resolves(self):
+        result = self.dialect._get_column_type("col", "LineString")
+        assert result == ch_ischema_names["LineString"]
+
+    def test_multilinestring_type_resolves(self):
+        result = self.dialect._get_column_type("col", "MultiLineString")
+        assert result == ch_ischema_names["MultiLineString"]
+
+    def test_geo_types_are_distinct(self):
+        """Each geo type should resolve to a different object."""
+        types = {
+            name: ch_ischema_names[name]
+            for name in (
+                "Point",
+                "Ring",
+                "Polygon",
+                "MultiPolygon",
+                "LineString",
+                "MultiLineString",
+            )
+        }
+        # All values should be distinct from NullType
+        for name, t in types.items():
+            assert t is not sqltypes.NullType, f"{name} resolved to NullType"

@@ -12,6 +12,7 @@
  */
 import {
   LayoutEngine,
+  MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS,
   NODE_PADDING_H,
   NODE_PADDING_V,
   toLayoutEngineType,
@@ -27,13 +28,40 @@ export const CHAR_WIDTH_ESTIMATE = 7;
 export const MODEL_NODE_MAX_WIDTH = 220;
 export const COMBO_PADDING = 48;
 export const HULL_GAP = 56;
-export const MIN_NODE_SPACING = 24;
-export const MIN_LINK_DISTANCE = 160;
+export const MIN_NODE_SPACING = 12;
+export const MIN_LINK_DISTANCE = 60;
 
-/** Minimum node width so label doesn't clip. */
+export const DAGRE_RANK_SEP = 40;
+export const DAGRE_NODE_SEP = 20;
+export const HIERARCHY_DAGRE_NODE_SEP = 150;
+export const HIERARCHY_DAGRE_RANK_SEP = 150;
+
 export const MIN_NODE_WIDTH = 72;
-/** Minimum width when node shows cross-glossary badge (e.g. "[Bank] Term"). */
 export const BADGE_MIN_NODE_WIDTH = 100;
+
+export function adaptiveSpacing(base: number, nodeCount: number): number {
+  if (nodeCount <= 50) {
+    return base;
+  }
+  if (nodeCount <= 200) {
+    return Math.ceil(base * 0.7);
+  }
+  if (nodeCount <= 1000) {
+    return Math.ceil(base * 0.45);
+  }
+  if (nodeCount <= 5000) {
+    return Math.ceil(base * 0.25);
+  }
+
+  return Math.ceil(base * 0.15);
+}
+
+export interface GetOntologyLayoutConfigOptions {
+  hasCombos: boolean;
+  isDataMode: boolean;
+  isModelView: boolean;
+  isHierarchyMode: boolean;
+}
 
 export function getNodeSize(d?: LayoutNodeLike): [number, number] {
   const size = d?.data?.size;
@@ -75,81 +103,74 @@ export function truncateNodeLabelByWidth(label: string, width: number): string {
   return `${label.slice(0, maxChars - 1)}...`;
 }
 
-/**
- * Shared dagre spacing so hierarchy and overview look consistent.
- * Larger values keep edge labels clear of nodes and arrowheads off node borders.
- */
-export const DAGRE_RANK_SEP = 150;
-export const DAGRE_NODE_SEP = 100;
-/** Extra separation in hierarchy mode so glossary combo boxes do not overlap. */
-export const HIERARCHY_DAGRE_NODE_SEP = 260;
-export const HIERARCHY_DAGRE_RANK_SEP = 200;
-/** Extra separation when glossary hulls are shown so cross-glossary edges avoid overlapping nodes. */
-const CROSS_GLOSSARY_LAYOUT_EXTRA = 90;
-
 export function getLayoutConfig(
   layoutType: LayoutType | LayoutEngineType,
   nodeCount: number,
-  hasHulls = false,
-  focusNode?: string,
-  isDataMode = false,
-  isHierarchyMode = false
+  options: GetOntologyLayoutConfigOptions
 ): LayoutConfig {
-  const engineType: LayoutEngineType =
-    layoutType === LayoutEngine.Dagre ||
-    layoutType === LayoutEngine.Radial ||
-    layoutType === LayoutEngine.Circular
-      ? layoutType
-      : toLayoutEngineType(layoutType as LayoutType);
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
+
   const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
 
-  if (engineType === LayoutEngine.Dagre) {
-    let nodesep = hasHulls
-      ? COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA
-      : DAGRE_NODE_SEP;
-    let ranksep = hasHulls
-      ? COMBO_PADDING * 2 + HULL_GAP + CROSS_GLOSSARY_LAYOUT_EXTRA
-      : DAGRE_RANK_SEP;
+  const engineType: LayoutEngineType =
+    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
+      ? layoutType
+      : toLayoutEngineType(layoutType as LayoutType);
 
-    if (isHierarchyMode) {
-      nodesep = Math.max(nodesep, HIERARCHY_DAGRE_NODE_SEP);
-      ranksep = Math.max(ranksep, HIERARCHY_DAGRE_RANK_SEP);
+  if (!isModelView) {
+    if (engineType === LayoutEngine.Dagre) {
+      const baseSep = isHierarchyMode
+        ? HIERARCHY_DAGRE_NODE_SEP
+        : DAGRE_NODE_SEP;
+      const baseRank = isHierarchyMode
+        ? HIERARCHY_DAGRE_RANK_SEP
+        : DAGRE_RANK_SEP;
+
+      return {
+        type: LayoutEngine.Dagre,
+        animation: false,
+        rankdir: 'TB',
+        nodesep: adaptiveSpacing(baseSep, nodeCount),
+        ranksep: adaptiveSpacing(baseRank, nodeCount),
+        preventOverlap: true,
+        nodeSize: baseNodeSize,
+      };
+    }
+
+    if (isDataMode && engineType === LayoutEngine.Circular) {
+      return { type: 'preset', animation: false };
+    }
+
+    if (engineType === LayoutEngine.Circular) {
+      return {
+        type: LayoutEngine.Circular,
+        animation: false,
+        nodeSize: baseNodeSize,
+        nodeSpacing: MIN_NODE_SPACING,
+      };
     }
 
     return {
-      type: LayoutEngine.Dagre,
-      animation: false,
-      rankdir: 'TB',
-      nodesep,
-      ranksep,
-      preventOverlap: true,
-      nodeSize: baseNodeSize,
+      type: engineType,
     };
   }
 
-  if (engineType === LayoutEngine.Radial) {
+  if (engineType === LayoutEngine.Dagre) {
     return {
-      type: LayoutEngine.Radial,
+      type: 'antv-dagre',
       animation: false,
-      ...(focusNode && !isDataMode && { focusNode }),
-      unitRadius: isDataMode ? 220 : nodeCount <= 2 ? MIN_LINK_DISTANCE : 150,
-      preventOverlap: true,
-      nodeSize: isDataMode ? 20 : 40,
-      nodeSpacing: isDataMode ? 30 : MIN_NODE_SPACING,
-      linkDistance: isDataMode ? 220 : 200,
-      strictRadial: false,
-      maxIteration: 1000,
-      sortBy: 'degree',
+      sortByCombo: hasCombos,
+      nodeSize: baseNodeSize,
+      enableWorker: nodeCount > 250,
+      ...(hasCombos && { ranksep: MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS }),
     };
   }
 
+  // Model-view Circular: positions are pre-computed by positionCircularNodes in
+  // useOntologyGraph and baked into node.style.x/y before draw(). Use 'preset'
+  // so G6 reads those coordinates directly — same pattern as KnowledgeGraph.
   if (engineType === LayoutEngine.Circular) {
-    return {
-      type: LayoutEngine.Circular,
-      animation: false,
-      nodeSize: baseNodeSize,
-      nodeSpacing: MIN_NODE_SPACING,
-    };
+    return { type: 'preset', animation: false };
   }
 
   return {
