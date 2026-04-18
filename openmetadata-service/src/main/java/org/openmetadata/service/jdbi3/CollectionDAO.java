@@ -10926,6 +10926,17 @@ public interface CollectionDAO {
       private final java.sql.Timestamp claimedAt;
     }
 
+    /** Bean class for @BindBean compatibility in batch upserts. */
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    class BatchUpsertEntry {
+      private final String entityId;
+      private final String entityFqn;
+      private final String failureReason;
+      private final String status;
+      private final String entityType;
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
@@ -10945,6 +10956,21 @@ public interface CollectionDAO {
         @Bind("failureReason") String failureReason,
         @Bind("status") String status,
         @Bind("entityType") String entityType);
+
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
+                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
+                + "ON DUPLICATE KEY UPDATE failureReason = VALUES(failureReason), status = VALUES(status), entityType = VALUES(entityType)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
+                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
+                + "ON CONFLICT (entityId, entityFqn) DO UPDATE SET "
+                + "failureReason = EXCLUDED.failureReason, status = EXCLUDED.status, entityType = EXCLUDED.entityType",
+        connectionType = POSTGRES)
+    void batchUpsert(@BindBean List<BatchUpsertEntry> entries);
 
     @SqlQuery(
         "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
@@ -11008,6 +11034,14 @@ public interface CollectionDAO {
         "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
             + "WHERE status = 'IN_PROGRESS' AND claimedAt < :cutoff")
     int recoverStaleInProgress(@Bind("cutoff") java.sql.Timestamp cutoff);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
+            + "WHERE status = 'SEARCH_UNAVAILABLE'")
+    int resetSearchUnavailableToPending();
+
+    @SqlUpdate("DELETE FROM search_index_retry_queue WHERE entityType IN (<entityTypes>)")
+    int deleteByEntityTypes(@BindList("entityTypes") List<String> entityTypes);
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "

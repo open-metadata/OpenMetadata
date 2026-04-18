@@ -4,6 +4,7 @@ import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_FAILE
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_1;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_2;
+import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.normalize;
 
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
@@ -71,7 +72,12 @@ public class SearchIndexRetryWorker implements Managed {
   private static final List<String> ACTIVE_REINDEX_JOB_STATUSES =
       List.of("RUNNING", "READY", "STOPPING");
   private static final List<String> PURGEABLE_QUEUE_STATUSES =
-      List.of(STATUS_PENDING, STATUS_PENDING_RETRY_1, STATUS_PENDING_RETRY_2, STATUS_FAILED);
+      List.of(
+          STATUS_PENDING,
+          STATUS_PENDING_RETRY_1,
+          STATUS_PENDING_RETRY_2,
+          STATUS_FAILED,
+          STATUS_SEARCH_UNAVAILABLE);
 
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
@@ -87,6 +93,7 @@ public class SearchIndexRetryWorker implements Managed {
   private volatile long candidateTypesLastRefreshAt;
   private volatile List<String> cachedCandidateEntityTypes = Collections.emptyList();
   private final AtomicInteger consecutiveUnavailableCount = new AtomicInteger();
+  private final AtomicBoolean searchClientWasAvailable = new AtomicBoolean(true);
 
   public SearchIndexRetryWorker(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     this.collectionDAO = collectionDAO;
@@ -111,6 +118,7 @@ public class SearchIndexRetryWorker implements Managed {
       thread.start();
     }
 
+    SearchIndexRetryQueue.startFlusher(collectionDAO);
     LOG.info("Started search index retry worker with {} consumer threads", CONSUMER_THREADS);
   }
 
@@ -119,6 +127,8 @@ public class SearchIndexRetryWorker implements Managed {
     if (!running.compareAndSet(true, false)) {
       return;
     }
+
+    SearchIndexRetryQueue.stopFlusher(collectionDAO);
 
     for (Thread thread : workerThreads) {
       if (thread != null) {
@@ -580,12 +590,23 @@ public class SearchIndexRetryWorker implements Managed {
    * Returns {@code true} if the search client is reachable. When unreachable, backs off
    * exponentially (5 s → 10 s → 20 s → … → 60 s cap) so the worker does not burn retries while
    * the search cluster is down.
+   *
+   * <p>Tracks availability transitions so that {@code SEARCH_UNAVAILABLE} retry queue rows are
+   * reset to {@code PENDING} exactly once when the cluster comes back online.
    */
   private boolean waitForClientAvailability(int workerId) {
-    if (searchRepository.getSearchClient().isClientAvailable()) {
+    boolean available = searchRepository.getSearchClient().isClientAvailable();
+    boolean wasAvailable = searchClientWasAvailable.getAndSet(available);
+    SearchIndexRetryQueue.setSearchClientDown(!available);
+
+    if (available) {
       consecutiveUnavailableCount.set(0);
+      if (!wasAvailable) {
+        resetSearchUnavailableEntries();
+      }
       return true;
     }
+
     int attempt = consecutiveUnavailableCount.incrementAndGet();
     int backoffSeconds =
         Math.min(POLL_INTERVAL_SECONDS * (1 << Math.min(attempt, 4)), MAX_BACKOFF_SECONDS);
@@ -597,6 +618,18 @@ public class SearchIndexRetryWorker implements Managed {
         attempt);
     sleep(backoffSeconds);
     return false;
+  }
+
+  private void resetSearchUnavailableEntries() {
+    try {
+      int reset = collectionDAO.searchIndexRetryQueueDAO().resetSearchUnavailableToPending();
+      if (reset > 0) {
+        LOG.info(
+            "Search cluster recovered — reset {} SEARCH_UNAVAILABLE entries to PENDING", reset);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to reset SEARCH_UNAVAILABLE entries after recovery: {}", e.getMessage());
+    }
   }
 
   /**
