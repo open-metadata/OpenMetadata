@@ -19,12 +19,11 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
-  // Single-flight lock TTLs (milliseconds).
-  // loadLockTtlMs: short ceiling - if the holder crashes, a waiter takes over after this.
-  // loadLockWaitMs: total time a waiter polls for the concurrent load before giving up
-  //                 and doing its own DB load.
-  public int loadLockTtlMs = 3000;
-  public int loadLockWaitMs = 200;
+  // Single-flight bundle load uses an in-process Striped<Lock> keyed by (type, id). The
+  // stripe count caps concurrent independent loads — more stripes = less collision between
+  // unrelated entities. 512 suits a typical OM instance; bump if you see lock contention
+  // across unrelated entity IDs on a large workload.
+  public int bundleLoadLockStripes = 512;
 
   public Redis redis = new Redis();
 

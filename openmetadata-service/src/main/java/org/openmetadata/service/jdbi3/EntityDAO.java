@@ -157,9 +157,16 @@ public interface EntityDAO<T extends EntityInterface> {
    * oldPrefixHash}. Used by rename cascade flows to enumerate which children need cache
    * invalidation before an {@link #updateFqn} bulk rewrite.
    */
-  @SqlQuery(
-      "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
-          + "WHERE <nameHashColumn> LIKE :prefix")
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, json->>'fullyQualifiedName' AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix",
+      connectionType = POSTGRES)
   @RegisterRowMapper(EntityIdFqnPairMapper.class)
   List<EntityIdFqnPair> listIdFqnByPrefixHash(
       @Define("table") String table,

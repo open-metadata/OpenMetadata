@@ -1590,21 +1590,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     boolean relationsFilledFromCache = false;
     boolean tagsFilledFromCache = false;
     boolean certificationFilledFromCache = false;
-    boolean holdsLoadLock = false;
+    java.util.concurrent.locks.Lock loadLock = null;
     if (bundleCache != null) {
       CachedReadBundle.Dto initialDto;
       try (var ignored = phase("readBundleCacheGet")) {
         initialDto = bundleCache.get(entityType, entity.getId());
       }
-      // Single-flight: on a cold miss, one caller claims a short-lived Redis lock and loads from
-      // DB while other concurrent callers wait for the populate. This caps a stampede's DB hit
-      // count at 1 instead of N regardless of concurrency.
+      // Single-flight: on a cold miss, one caller per instance takes a striped in-process lock
+      // and loads + populates while other concurrent callers block on the same lock (no busy
+      // poll, no Redis round-trip). Lock is released after the populate so waiters hit the
+      // warm cache immediately on re-check. Cross-instance races are fine — Redis SET is
+      // idempotent, so parallel loads from different instances converge on the same bundle.
       if (initialDto == null) {
-        holdsLoadLock = bundleCache.tryAcquireLoadLock(entityType, entity.getId());
-        if (!holdsLoadLock) {
-          try (var ignored = phase("readBundleWaitForLoad")) {
-            initialDto = bundleCache.waitForConcurrentLoad(entityType, entity.getId());
-          }
+        loadLock = bundleCache.loadLockFor(entityType, entity.getId());
+        try (var ignored = phase("readBundleWaitForLoad")) {
+          loadLock.lock();
+        }
+        // Re-check under the lock — another thread on this instance may have just populated.
+        try (var ignored = phase("readBundleCacheGet")) {
+          initialDto = bundleCache.get(entityType, entity.getId());
         }
       }
       final CachedReadBundle.Dto dto = initialDto;
@@ -1711,8 +1715,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     } finally {
-      if (holdsLoadLock && bundleCache != null) {
-        bundleCache.releaseLoadLock(entityType, entity.getId());
+      if (loadLock != null) {
+        loadLock.unlock();
       }
     }
     return bundle;

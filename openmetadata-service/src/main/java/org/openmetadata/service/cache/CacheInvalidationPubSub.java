@@ -64,7 +64,7 @@ public class CacheInvalidationPubSub {
       return;
     }
     try {
-      RedisURI uri = buildRedisURI();
+      RedisURI uri = RedisURIFactory.build(redisConfig);
       client = RedisClient.create(uri);
 
       subConnection = client.connectPubSub();
@@ -131,37 +131,6 @@ public class CacheInvalidationPubSub {
     } catch (Exception e) {
       LOG.debug("Bad invalidation message on {}: {}", channel, message, e);
     }
-  }
-
-  private RedisURI buildRedisURI() {
-    String url = redisConfig.url;
-    RedisURI.Builder builder;
-    if (url.startsWith("redis://") || url.startsWith("rediss://")) {
-      RedisURI uri = RedisURI.create(url);
-      builder =
-          RedisURI.Builder.redis(uri.getHost(), uri.getPort())
-              .withTimeout(Duration.ofMillis(redisConfig.connectTimeoutMs));
-    } else if (url.contains(":")) {
-      String[] parts = url.split(":");
-      builder =
-          RedisURI.Builder.redis(parts[0], Integer.parseInt(parts[1]))
-              .withTimeout(Duration.ofMillis(redisConfig.connectTimeoutMs));
-    } else {
-      builder =
-          RedisURI.Builder.redis(url).withTimeout(Duration.ofMillis(redisConfig.connectTimeoutMs));
-    }
-    if (redisConfig.authType == CacheConfig.AuthType.PASSWORD) {
-      if (redisConfig.username != null && redisConfig.passwordRef != null) {
-        builder.withAuthentication(redisConfig.username, redisConfig.passwordRef);
-      } else if (redisConfig.passwordRef != null) {
-        builder.withPassword(redisConfig.passwordRef.toCharArray());
-      }
-    }
-    if (redisConfig.useSSL) {
-      builder.withSsl(true);
-    }
-    builder.withDatabase(redisConfig.database);
-    return builder.build();
   }
 
   private static String generateInstanceId() {

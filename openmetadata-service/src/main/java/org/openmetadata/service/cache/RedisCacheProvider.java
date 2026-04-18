@@ -1,5 +1,6 @@
 package org.openmetadata.service.cache;
 
+import io.lettuce.core.LettuceFutures;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisURI;
@@ -35,7 +36,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   private void initialize() {
     try {
-      RedisURI uri = buildRedisURI();
+      RedisURI uri = RedisURIFactory.build(config.redis);
       initializeStandalone(uri);
       available = true;
       LOG.info(
@@ -44,47 +45,6 @@ public class RedisCacheProvider implements CacheProvider {
       LOG.error("Failed to initialize Redis cache provider", e);
       available = false;
     }
-  }
-
-  private RedisURI buildRedisURI() {
-    String url = config.redis.url;
-    RedisURI.Builder builder;
-
-    if (url.startsWith("redis://") || url.startsWith("rediss://")) {
-      RedisURI uri = RedisURI.create(url);
-      builder =
-          RedisURI.Builder.redis(uri.getHost(), uri.getPort())
-              .withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
-    } else if (url.contains(":")) {
-      String[] parts = url.split(":");
-      String host = parts[0];
-      int port = Integer.parseInt(parts[1]);
-      builder =
-          RedisURI.Builder.redis(host, port)
-              .withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
-    } else {
-      builder =
-          RedisURI.Builder.redis(url).withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
-    }
-
-    if (config.redis.authType == CacheConfig.AuthType.PASSWORD) {
-      if (config.redis.username != null) {
-        builder.withAuthentication(config.redis.username, getPassword());
-      } else if (config.redis.passwordRef != null) {
-        builder.withPassword(getPassword().toCharArray());
-      }
-    }
-
-    if (config.redis.useSSL) {
-      builder.withSsl(true);
-    }
-
-    builder.withDatabase(config.redis.database);
-    return builder.build();
-  }
-
-  private String getPassword() {
-    return config.redis.passwordRef != null ? config.redis.passwordRef : "";
   }
 
   private void initializeStandalone(RedisURI uri) {
@@ -308,11 +268,9 @@ public class RedisCacheProvider implements CacheProvider {
     }
   }
 
-  private void awaitAll(List<RedisFuture<?>> futures) throws Exception {
+  private void awaitAll(List<RedisFuture<?>> futures) {
     long timeoutMs = Math.max(1000L, (long) config.redis.commandTimeoutMs * 10);
-    for (RedisFuture<?> f : futures) {
-      f.get(timeoutMs, TimeUnit.MILLISECONDS);
-    }
+    LettuceFutures.awaitAll(timeoutMs, TimeUnit.MILLISECONDS, futures.toArray(new RedisFuture[0]));
   }
 
   @Override
