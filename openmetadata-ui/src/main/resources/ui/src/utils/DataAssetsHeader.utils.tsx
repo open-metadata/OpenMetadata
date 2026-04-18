@@ -146,7 +146,7 @@ export const ExtraInfoLink = ({
     {!isEmpty(label) && (
       <Typography.Text
         className="extra-info-label-heading m-r-xss"
-        ellipsis={{ tooltip: true }}>
+        ellipsis={ellipsis ? { tooltip: true } : false}>
         {label}
       </Typography.Text>
     )}
