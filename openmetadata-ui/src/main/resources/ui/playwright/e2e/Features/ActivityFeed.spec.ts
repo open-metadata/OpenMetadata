@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -19,6 +19,8 @@ import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getAuthContext,
+  getToken,
   redirectToHomePage,
   removeLandingBanner,
   uuid,
@@ -429,6 +431,28 @@ test.describe('Mention notifications in Notification Box', () => {
 
     await test.step('User1 mentions admin user in a reply', async () => {
       await entity.visitEntityPage(user1Page);
+
+      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+        `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
+      )}&type=Conversation&limit=25`;
+
+      await expect
+        .poll(
+          async () => {
+            const token = await getToken(user1Page);
+            const apiContext = await getAuthContext(token);
+            const response = await apiContext.get(feedUrl);
+            const data = await response.json();
+
+            return (data.data ?? []).some((thread: { message?: string }) =>
+              thread.message?.includes(
+                'Initial conversation thread for mention test'
+              )
+            );
+          },
+          { timeout: 60_000, intervals: [2_000] }
+        )
+        .toBe(true);
 
       await user1Page.getByTestId('activity_feed').click();
 
