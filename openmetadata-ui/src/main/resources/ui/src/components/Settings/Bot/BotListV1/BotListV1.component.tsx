@@ -91,6 +91,8 @@ const BotListV1 = ({
   const latestSearchRequest = useRef(0);
   const BOT_SEARCH_PAGE_SIZE = 100;
   const BOT_SEARCH_CONCURRENCY = 10;
+  const MAX_BOT_SEARCH_PAGES = 5;
+  const MAX_BOT_USER_RESOLUTION = BOT_SEARCH_PAGE_SIZE * MAX_BOT_SEARCH_PAGES;
 
   const getBotIncludeFilter = useCallback(
     () => (showDeleted ? Include.Deleted : Include.NonDeleted),
@@ -136,7 +138,7 @@ const BotListV1 = ({
           bool: {
             must: [{ term: { isBot: true } }],
             should: bots.map((bot) => ({
-              term: { name: bot.name },
+              term: { 'name.keyword': bot.name },
             })),
             minimum_should_match: 1,
           },
@@ -192,7 +194,7 @@ const BotListV1 = ({
     let pageNumber = 1;
     let totalMatches = 0;
 
-    do {
+    while (pageNumber <= MAX_BOT_SEARCH_PAGES) {
       const response = await searchQuery({
         query: text,
         pageNumber,
@@ -211,10 +213,91 @@ const BotListV1 = ({
       });
 
       totalMatches = response.hits.total.value ?? usersByName.size;
+      if (!users.length || pageNumber * BOT_SEARCH_PAGE_SIZE >= totalMatches) {
+        break;
+      }
+
       pageNumber += 1;
-    } while ((pageNumber - 1) * BOT_SEARCH_PAGE_SIZE < totalMatches);
+    }
 
     return Array.from(usersByName.values());
+  };
+
+  const searchBots = async (text: string) => {
+    const getMatchedBots = async (matchedBotUsers: User[]) => {
+      const matchedBotUserNames = Array.from(
+        new Set(
+          matchedBotUsers
+            .map((botUser) => botUser.name)
+            .filter((name): name is string => Boolean(name))
+        )
+      ).slice(0, MAX_BOT_USER_RESOLUTION);
+      const botsByBotUserName = matchedBotUserNames.length
+        ? await getBotsByBotUserNames(matchedBotUserNames)
+        : new Map<string, Bot>();
+      const matchedBotUsersByName = new Map(
+        matchedBotUsers.map((botUser) => [botUser.name, botUser])
+      );
+
+      return matchedBotUserNames.flatMap((botUserName) => {
+        const matchedBot = botsByBotUserName.get(botUserName);
+
+        if (!matchedBot) {
+          return [];
+        }
+
+        return [
+          enrichBotWithMatchedUser(
+            matchedBot,
+            matchedBotUsersByName.get(botUserName)
+          ),
+        ];
+      });
+    };
+
+    const matchedBotUsers = await getSearchMatchedBotUsers(
+      text,
+      getTermQuery({ isBot: true })
+    );
+    const matchedBots = await getMatchedBots(matchedBotUsers);
+
+    if (matchedBots.length) {
+      return matchedBots;
+    }
+
+    const escapedText = escapeESReservedCharacters(text);
+    const wildcardPattern = `*${escapedText}*`;
+    const fallbackMatchedBotUsers = await getSearchMatchedBotUsers('*', {
+      bool: {
+        must: [{ term: { isBot: true } }],
+        should: [
+          { wildcard: { 'name.keyword': wildcardPattern } },
+          { wildcard: { 'displayName.keyword': wildcardPattern } },
+          { wildcard: { 'fullyQualifiedName.keyword': wildcardPattern } },
+          { wildcard: { 'email.keyword': wildcardPattern } },
+        ],
+        minimum_should_match: 1,
+      },
+    });
+
+    return getMatchedBots(fallbackMatchedBotUsers);
+  };
+
+  const runActiveSearch = async (activeSearchTerm: string) => {
+    const searchRequestId = ++latestSearchRequest.current;
+
+    try {
+      const matchedBots = await searchBots(activeSearchTerm);
+
+      if (searchRequestId === latestSearchRequest.current) {
+        setSearchedData(matchedBots);
+      }
+    } catch (error) {
+      if (searchRequestId === latestSearchRequest.current) {
+        showErrorToast((error as AxiosError).message);
+        setSearchedData([]);
+      }
+    }
   };
 
   /**
@@ -234,10 +317,16 @@ const BotListV1 = ({
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       const botsWithUsers = await enrichBotsWithBotUsers(data);
+      const activeSearchTerm = searchTerm.trim();
 
       handlePagingChange(paging);
       setBotUsers(botsWithUsers);
-      setSearchedData(botsWithUsers);
+      if (activeSearchTerm) {
+        await runActiveSearch(activeSearchTerm);
+      } else {
+        setSearchedData(botsWithUsers);
+      }
+
       if (!showDeleted && isEmpty(botsWithUsers)) {
         setHandleErrorPlaceholder(true);
       } else {
@@ -354,68 +443,7 @@ const BotListV1 = ({
     fetchBots(showDeleted);
   }, [selectedUser]);
 
-  const searchBots = async (text: string) => {
-    const getMatchedBots = async (matchedBotUsers: User[]) => {
-      const matchedBotUserNames = Array.from(
-        new Set(
-          matchedBotUsers
-            .map((botUser) => botUser.name)
-            .filter((name): name is string => Boolean(name))
-        )
-      );
-      const botsByBotUserName = matchedBotUserNames.length
-        ? await getBotsByBotUserNames(matchedBotUserNames)
-        : new Map<string, Bot>();
-      const matchedBotUsersByName = new Map(
-        matchedBotUsers.map((botUser) => [botUser.name, botUser])
-      );
-
-      return matchedBotUserNames.flatMap((botUserName) => {
-        const matchedBot = botsByBotUserName.get(botUserName);
-
-        if (!matchedBot) {
-          return [];
-        }
-
-        return [
-          enrichBotWithMatchedUser(
-            matchedBot,
-            matchedBotUsersByName.get(botUserName)
-          ),
-        ];
-      });
-    };
-
-    const matchedBotUsers = await getSearchMatchedBotUsers(
-      text,
-      getTermQuery({ isBot: true })
-    );
-    const matchedBots = await getMatchedBots(matchedBotUsers);
-
-    if (matchedBots.length) {
-      return matchedBots;
-    }
-
-    const escapedText = escapeESReservedCharacters(text);
-    const wildcardPattern = `*${escapedText}*`;
-    const fallbackMatchedBotUsers = await getSearchMatchedBotUsers('*', {
-      bool: {
-        must: [{ term: { isBot: true } }],
-        should: [
-          { wildcard: { 'name.keyword': wildcardPattern } },
-          { wildcard: { 'displayName.keyword': wildcardPattern } },
-          { wildcard: { 'fullyQualifiedName.keyword': wildcardPattern } },
-          { wildcard: { 'email.keyword': wildcardPattern } },
-        ],
-        minimum_should_match: 1,
-      },
-    });
-
-    return getMatchedBots(fallbackMatchedBotUsers);
-  };
-
   const handleSearch = async (text: string) => {
-    const searchRequestId = ++latestSearchRequest.current;
     setSearchTerm(text);
 
     handlePageChange(INITIAL_PAGING_VALUE, {
@@ -430,27 +458,9 @@ const BotListV1 = ({
       return;
     }
 
-    try {
-      setLoading(true);
-      const matchedBots = await searchBots(text);
-
-      if (searchRequestId !== latestSearchRequest.current) {
-        return;
-      }
-
-      setSearchedData(matchedBots);
-    } catch (error) {
-      if (searchRequestId !== latestSearchRequest.current) {
-        return;
-      }
-
-      showErrorToast((error as AxiosError).message);
-      setSearchedData([]);
-    } finally {
-      if (searchRequestId === latestSearchRequest.current) {
-        setLoading(false);
-      }
-    }
+    setLoading(true);
+    await runActiveSearch(text);
+    setLoading(false);
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
