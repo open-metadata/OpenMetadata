@@ -1,6 +1,5 @@
 openmetadata-ingestion
 groq
-google-genai
 requests
 pandas
 matplotlib
