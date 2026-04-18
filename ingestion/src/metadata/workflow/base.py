@@ -12,10 +12,12 @@
 Base workflow definition.
 """
 
+import json
 import traceback
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
@@ -212,14 +214,24 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def workflow_steps(self) -> List[Step]:
         """Steps to report status from"""
 
+    def _step_meets_success_threshold(self, step: Step) -> bool:
+        """True iff the step has no failures, or its success ratio meets the workflow's threshold.
+
+        Shared by `raise_from_status_internal` (which raises on failure) and
+        `write_status_file` (which reports the CLI's observable success/failure state).
+        """
+        status = step.get_status()
+        if not status.failures:
+            return True
+        return status.calculate_success() >= self.workflow_config.successThreshold
+
     def raise_from_status_internal(self, raise_warnings=False) -> None:
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
         for step in self.workflow_steps():
-            if (
-                step.get_status().failures
-                and step.get_status().calculate_success() < self.workflow_config.successThreshold
-            ):
-                raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
+            if not self._step_meets_success_threshold(step):
+                raise WorkflowExecutionError(
+                    f"{step.name} reported errors: {Summary.from_step(step)}"
+                )
 
             if raise_warnings and step.status.warnings:
                 raise WorkflowExecutionError(f"{step.name} reported warning: {Summary.from_step(step)}")
@@ -400,3 +412,31 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             start_time,
             self._is_debug_enabled(),
         )
+
+    def write_status_file(self, path: Path) -> None:
+        """Serialize per-step status to JSON at the given path.
+
+        The `success` field mirrors the CLI's exit-code semantic: True iff every
+        step meets its success threshold (the same condition under which
+        `raise_from_status_internal` does NOT raise).
+
+        Shape:
+            {
+              "pipeline_type": str,
+              "ingestion_pipeline_fqn": str | None,
+              "success": bool,
+              "steps": [<StepSummary dicts>]
+            }
+        """
+        ingestion_status = self.build_ingestion_status()
+        success = all(
+            self._step_meets_success_threshold(step)
+            for step in self.workflow_steps()
+        )
+        payload = {
+            "pipeline_type": self.config.source.type,
+            "ingestion_pipeline_fqn": self.config.ingestionPipelineFQN,
+            "success": success,
+            "steps": ingestion_status.model_dump(),
+        }
+        path.write_text(json.dumps(payload, indent=2, default=str))
