@@ -704,3 +704,11 @@ class GrafanaUnitTest(TestCase):
 
         parsed_response = GrafanaDashboardResponse(**complete_json)
         self.assertEqual(parsed_response, expected_output)
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.grafana.chart_source_state = set()
+        list(self.grafana.yield_dashboard_chart(MOCK_DASHBOARD_RESPONSE))
+        assert len(self.grafana.chart_source_state) == 3
+        for fqn in self.grafana.chart_source_state:
+            assert "mock_grafana" in fqn
