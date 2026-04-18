@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -411,7 +411,6 @@ test.describe('Mention notifications in Notification Box', () => {
 
     await apiContext.post('/api/v1/feed', {
       data: {
-        from: adminUser.responseData.name,
         message: 'Initial conversation thread for mention test',
         about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
         type: 'Conversation',
