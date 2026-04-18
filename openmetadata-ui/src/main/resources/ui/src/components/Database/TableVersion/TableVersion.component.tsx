@@ -130,7 +130,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
       currentPage,
       showPagination,
       isLoading: columnsLoading,
-      isNumberBased: Boolean(searchText),
+      isNumberBased: true,
       pageSize,
       paging,
       pagingHandler: handleColumnsPageChange,
