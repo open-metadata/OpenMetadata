@@ -632,7 +632,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       // Create a conversation thread via API so we can post replies in the tests
       await apiContext.post('/api/v1/feed', {
         data: {
-          from: adminUser.responseData.name,
           message: 'Initial conversation for Chinese character encoding test',
           about: `<#E::databaseSchema::${schemaFqn}>`,
           type: 'Conversation',
