@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "You haven't viewed any data assets recently. Explore to find something interesting!",
     "no-reference-available": "No references available.",
     "no-related-terms-available": "No related terms available.",
+    "no-relations-for-selected-filter": "No relations found for the selected relation types. Try selecting different types.",
     "no-relations-found": "No relations found for this term",
     "no-retry-queue-records": "No live indexing retry records found. All entities are indexed successfully.",
     "no-roles-assigned": "No roles assigned",

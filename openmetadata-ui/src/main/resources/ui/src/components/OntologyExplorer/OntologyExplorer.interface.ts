@@ -14,7 +14,10 @@
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
-import type { LayoutEngineType } from './OntologyExplorer.constants';
+import {
+  LayoutType,
+  type LayoutEngineType,
+} from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 
@@ -60,10 +63,8 @@ export interface OntologyGraphData {
   edges: OntologyEdge[];
 }
 
-import { LayoutType } from './OntologyExplorer.constants';
 import type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 
-export type LayoutAlgorithm = LayoutType;
 export type { LayoutEngineType } from './OntologyExplorer.constants';
 export type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 export type GraphViewMode = 'overview' | 'hierarchy' | 'crossGlossary';
@@ -144,7 +145,6 @@ export interface FilterToolbarProps {
 export interface GraphSettingsPanelProps {
   settings: GraphSettings;
   onSettingsChange: (settings: GraphSettings) => void;
-  isDataMode?: boolean;
 }
 
 export interface NodeContextMenuProps {
