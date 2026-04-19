@@ -37,6 +37,10 @@ jest.mock('../../../utils/ServiceUtils', () => ({
   processDocMarkdown: jest.fn((content: string) => content),
 }));
 
+jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockReturnValue(<div className="service-doc-content" />)
+);
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     i18n: {
@@ -56,8 +60,6 @@ const mockGetActiveFieldNameForAppDocs =
 const mockScrollIntoView = jest.fn();
 const mockQuerySelector = jest.fn();
 const mockQuerySelectorAll = jest.fn();
-const mockSetAttribute = jest.fn();
-const mockRemoveAttribute = jest.fn();
 
 Object.defineProperty(window, 'requestAnimationFrame', {
   writable: true,
@@ -74,13 +76,9 @@ Object.defineProperty(document, 'querySelectorAll', {
   value: mockQuerySelectorAll,
 });
 
-const createMockElement = (
-  setAttribute = mockSetAttribute,
-  removeAttribute = mockRemoveAttribute
-) => ({
+const createMockElement = () => ({
   scrollIntoView: mockScrollIntoView,
-  setAttribute,
-  removeAttribute,
+  dataset: {} as DOMStringMap,
 });
 
 const defaultProps = {
@@ -161,25 +159,25 @@ describe('ServiceDocPanel Component', () => {
     it('should handle fetch failures gracefully', async () => {
       mockFetchMarkdownFile.mockRejectedValue(new Error('Network error'));
 
-      const { container } = render(<ServiceDocPanel {...defaultProps} />);
+      render(<ServiceDocPanel {...defaultProps} />);
 
       await waitFor(() => {
-        const docContent = container.querySelector('.service-doc-content');
-
-        expect(docContent).not.toBeNull();
-        expect(docContent?.innerHTML).toBe('');
+        expect(screen.getByTestId('service-requirements')).toBeInTheDocument();
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
       });
     });
   });
 
   describe('Field Highlighting', () => {
     beforeEach(() => {
-      const mockElement = createMockElement();
-      mockQuerySelector.mockReturnValue(mockElement);
+      mockQuerySelector.mockReturnValue(createMockElement());
       mockQuerySelectorAll.mockReturnValue([createMockElement()]);
     });
 
     it('should highlight and scroll to active field', async () => {
+      const mockElement = createMockElement();
+      mockQuerySelector.mockReturnValue(mockElement);
+
       render(
         <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
       );
@@ -191,10 +189,7 @@ describe('ServiceDocPanel Component', () => {
           behavior: 'smooth',
           inline: 'center',
         });
-        expect(mockSetAttribute).toHaveBeenCalledWith(
-          'data-highlighted',
-          'true'
-        );
+        expect(mockElement.dataset.highlighted).toBe('true');
       });
     });
 
@@ -221,6 +216,7 @@ describe('ServiceDocPanel Component', () => {
 
     it('should clean up previous highlights before highlighting new element', async () => {
       const previousElement = createMockElement();
+      previousElement.dataset.highlighted = 'true';
       const currentElement = createMockElement();
 
       mockQuerySelectorAll.mockReturnValue([previousElement]);
@@ -234,13 +230,8 @@ describe('ServiceDocPanel Component', () => {
         expect(mockQuerySelectorAll).toHaveBeenCalledWith(
           '[data-highlighted="true"]'
         );
-        expect(previousElement.removeAttribute).toHaveBeenCalledWith(
-          'data-highlighted'
-        );
-        expect(currentElement.setAttribute).toHaveBeenCalledWith(
-          'data-highlighted',
-          'true'
-        );
+        expect(previousElement.dataset.highlighted).toBe('false');
+        expect(currentElement.dataset.highlighted).toBe('true');
       });
     });
 
