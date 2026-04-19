@@ -9,7 +9,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollector;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
@@ -18,7 +18,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public record DeltaProcessingStep(
-    DataInsightsEntityEnricherProcessor enricher, Processor entityProcessor, Sink searchIndexSink) {
+    DataInsightsEntityEnricher enricher, Processor entityProcessor, Sink searchIndexSink) {
 
   @SuppressWarnings("unchecked")
   public void execute(

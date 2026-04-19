@@ -20,7 +20,7 @@ import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
 import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsWorkflow;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.steps.DeltaProcessingStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.steps.RetentionCleanupStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.steps.RollForwardStep;
@@ -45,7 +45,7 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
   private final SearchRepository searchRepository;
 
   private DataInsightsSearchInterface searchInterface;
-  private DataInsightsEntityEnricherProcessor entityEnricher;
+  private DataInsightsEntityEnricher entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
 
@@ -71,7 +71,7 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
   protected void initialize() {
     searchInterface = searchFactory.createSearchInterface();
     int totalRecords = config.dataAssetTypes().size() * 1000;
-    entityEnricher = new DataInsightsEntityEnricherProcessor(totalRecords);
+    entityEnricher = new DataInsightsEntityEnricher(totalRecords);
     entityProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
     searchIndexSink = searchFactory.createIndexSink(totalRecords);
   }
@@ -144,7 +144,8 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
     }
     ListFilter filter = new ListFilter();
     if (dataAssetsConfig != null && dataAssetsConfig.getServiceFilter() != null) {
-      filter = filter.addQueryParam("service", dataAssetsConfig.getServiceFilter().getServiceName());
+      filter =
+          filter.addQueryParam("service", dataAssetsConfig.getServiceFilter().getServiceName());
     }
     return filter;
   }

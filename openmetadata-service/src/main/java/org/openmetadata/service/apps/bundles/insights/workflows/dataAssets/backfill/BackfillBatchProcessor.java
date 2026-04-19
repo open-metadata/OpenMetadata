@@ -17,7 +17,7 @@ import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollector;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -29,7 +29,7 @@ public final class BackfillBatchProcessor {
 
   private static final int BULK_FLUSH_SIZE = 10_000;
 
-  private final DataInsightsEntityEnricherProcessor enricher;
+  private final DataInsightsEntityEnricher enricher;
   private final Processor entityProcessor;
   private final Sink searchIndexSink;
   private final CollectionDAO collectionDAO;
@@ -37,7 +37,7 @@ public final class BackfillBatchProcessor {
   private final String entityType;
 
   public BackfillBatchProcessor(
-      DataInsightsEntityEnricherProcessor enricher,
+      DataInsightsEntityEnricher enricher,
       Processor entityProcessor,
       Sink searchIndexSink,
       CollectionDAO collectionDAO,

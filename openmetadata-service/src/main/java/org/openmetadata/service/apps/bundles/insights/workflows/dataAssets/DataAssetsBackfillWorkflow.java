@@ -16,7 +16,7 @@ import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsW
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.BackfillBatchProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.BackfillTimeline;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.BackfillVersionScanner;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -34,7 +34,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
   private final SearchRepository searchRepository;
 
   private DataInsightsSearchInterface searchInterface;
-  private DataInsightsEntityEnricherProcessor enricher;
+  private DataInsightsEntityEnricher enricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
 
@@ -59,7 +59,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
   protected void initialize() throws IOException {
     searchInterface = searchFactory.createSearchInterface();
     int totalRecords = config.dataAssetTypes().size() * 1000;
-    enricher = new DataInsightsEntityEnricherProcessor(totalRecords);
+    enricher = new DataInsightsEntityEnricher(totalRecords);
     entityProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
     searchIndexSink = searchFactory.createIndexSink(totalRecords);
 
@@ -68,13 +68,10 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
   @Override
   protected void run() throws Exception {
-    ProcessingPeriod period =
-        config.backfillPeriod().orElse(config.steadyStatePeriod());
+    ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
 
-    LocalDate windowEnd =
-        LocalDate.ofEpochDay(period.endTimestamp() / 86_400_000L);
-    LocalDate windowStart =
-        LocalDate.ofEpochDay(period.startTimestamp() / 86_400_000L);
+    LocalDate windowEnd = LocalDate.ofEpochDay(period.endTimestamp() / 86_400_000L);
+    LocalDate windowStart = LocalDate.ofEpochDay(period.startTimestamp() / 86_400_000L);
 
     for (String entityType : config.dataAssetTypes()) {
       if (stopped) break;

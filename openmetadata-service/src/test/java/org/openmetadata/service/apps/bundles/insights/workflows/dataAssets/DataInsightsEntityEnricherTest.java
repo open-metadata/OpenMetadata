@@ -1,4 +1,4 @@
-package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
+package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,16 +31,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 @ExtendWith(MockitoExtension.class)
-class DataInsightsEntityEnricherProcessorTest {
+class DataInsightsEntityEnricherTest {
 
-  private DataInsightsEntityEnricherProcessor processor;
+  private DataInsightsEntityEnricher processor;
   private Method enrichEntityMethod;
 
   @BeforeEach
   void setUp() throws Exception {
-    processor = new DataInsightsEntityEnricherProcessor(100);
+    processor = new DataInsightsEntityEnricher(100);
     enrichEntityMethod =
-        DataInsightsEntityEnricherProcessor.class.getDeclaredMethod(
+        DataInsightsEntityEnricher.class.getDeclaredMethod(
             "enrichEntity", Map.class, Map.class);
     enrichEntityMethod.setAccessible(true);
   }
@@ -216,7 +216,7 @@ class DataInsightsEntityEnricherProcessorTest {
 
   private void invokeStripNestedColumnChildren(Map<String, Object> entityMap) throws Exception {
     Method stripMethod =
-        DataInsightsEntityEnricherProcessor.class.getDeclaredMethod(
+        DataInsightsEntityEnricher.class.getDeclaredMethod(
             "stripNestedColumnChildren", Map.class);
     stripMethod.setAccessible(true);
     stripMethod.invoke(null, entityMap);

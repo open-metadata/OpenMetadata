@@ -1,4 +1,4 @@
-package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
+package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
@@ -30,12 +30,12 @@ import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 @Slf4j
-public class DataInsightsEntityEnricherProcessor {
+public class DataInsightsEntityEnricher {
 
   private final StepStats stats = new StepStats();
   private static final Set<String> NON_TIER_ENTITIES = Set.of("tag", "glossaryTerm", "dataProduct");
 
-  public DataInsightsEntityEnricherProcessor(int total) {
+  public DataInsightsEntityEnricher(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
@@ -62,7 +62,7 @@ public class DataInsightsEntityEnricherProcessor {
                       entity.getFullyQualifiedName(), e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
-          "[DataInsightsEntityEnricherProcessor] Single entity enrichment failed. Details: {}",
+          "[DataInsightsEntityEnricher] Single entity enrichment failed. Details: {}",
           JsonUtils.pojoToJson(error));
       updateStats(0, 1);
       throw new SearchIndexException(error);
