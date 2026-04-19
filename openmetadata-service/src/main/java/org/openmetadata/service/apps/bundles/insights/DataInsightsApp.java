@@ -55,8 +55,8 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
-  @Getter private Long timestamp;
-  @Getter private int batchSize;
+  private Long timestamp;
+  private int batchSize;
 
   public record Backfill(String startDate, String endDate) {}
 
@@ -67,7 +67,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   private Optional<Boolean> recreateDataAssetsIndex;
 
-  @Getter private Optional<Backfill> backfill;
+  private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
   private volatile DataAssetsWorkflow activeDataAssetsWorkflow;

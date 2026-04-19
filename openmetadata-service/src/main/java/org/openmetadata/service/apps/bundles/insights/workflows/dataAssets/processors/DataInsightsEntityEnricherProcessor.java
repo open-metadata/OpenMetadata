@@ -1,11 +1,9 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
-import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.HashMap;
@@ -26,14 +24,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class DataInsightsEntityEnricherProcessor {
@@ -45,8 +39,8 @@ public class DataInsightsEntityEnricherProcessor {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
-  public Map<String, Object> enrichSingle(
-      EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
+  public Map<String, Object> enrichSingle(EntityInterface entity, Map<String, Object> contextData)
+      throws SearchIndexException {
     try {
       Map<String, Object> versionMap = new HashMap<>();
       versionMap.put("versionEntity", entity);
