@@ -56,6 +56,10 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+)
 
 mock_bq_config = {
     "source": {
@@ -663,6 +667,63 @@ class BigqueryUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+
+    def test_stored_procedures_queries_include_function_routine_type(self):
+        """
+        BigQuery routines include user-defined FUNCTIONs in addition to
+        PROCEDURE and TABLE FUNCTION. Both query constants must filter on
+        all three routine_types so user-defined functions are ingested.
+        """
+        for query in (
+            BIGQUERY_GET_STORED_PROCEDURES,
+            BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+        ):
+            assert "'PROCEDURE'" in query
+            assert "'TABLE FUNCTION'" in query
+            assert "'FUNCTION'" in query
+
+    def test_get_stored_procedures_ingests_user_defined_functions(self):
+        """
+        User-defined functions (routine_type = FUNCTION) returned by the
+        INFORMATION_SCHEMA.ROUTINES query are yielded alongside procedures
+        and table functions.
+        """
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.storedProcedureFilterPattern = None
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
+        proc_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
+        table_fn_row = {
+            "name": "my_table_fn",
+            "definition": "SELECT 1",
+            "language": "SQL",
+        }
+        udf_row = {
+            "name": "my_udf",
+            "definition": "RETURN x + 1",
+            "language": "SQL",
+        }
+
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [
+            proc_row,
+            table_fn_row,
+            udf_row,
+        ]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.bq_source.engine = mock_engine
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        names = {r.name for r in results}
+        assert names == {"my_proc", "my_table_fn", "my_udf"}
+        query_str = str(mock_conn.execute.call_args[0][0])
+        assert "'FUNCTION'" in query_str
 
     @patch("metadata.utils.credentials.auth.default")
     def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
