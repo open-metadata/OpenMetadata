@@ -9,6 +9,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.ResultList;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.MILLISECONDS_IN_A_DAY;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
@@ -39,6 +43,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
   private DataInsightsEntityEnricher enricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
+  private final Set<String> completedEntityTypes = Collections.synchronizedSet(new HashSet<>());
 
   public DataAssetsBackfillWorkflow(
       InsightsConfig config,
@@ -75,10 +80,22 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     LocalDate windowEnd = LocalDate.ofEpochDay(period.endTimestamp() / MILLISECONDS_IN_A_DAY);
     LocalDate windowStart = LocalDate.ofEpochDay(period.startTimestamp() / MILLISECONDS_IN_A_DAY);
 
+    Set<String> alreadyDone = config.backfillCompletedTypes().orElse(Set.of());
+
     for (String entityType : config.dataAssetTypes()) {
       if (stopped) break;
+      if (alreadyDone.contains(entityType)) {
+        LOG.info("[BackfillWorkflow] Skipping already completed entity type: {}", entityType);
+        completedEntityTypes.add(entityType);
+        continue;
+      }
       processEntityType(entityType, windowStart, windowEnd, period.startTimestamp());
+      completedEntityTypes.add(entityType);
     }
+  }
+
+  public Set<String> getCompletedEntityTypes() {
+    return Collections.unmodifiableSet(completedEntityTypes);
   }
 
   private void processEntityType(

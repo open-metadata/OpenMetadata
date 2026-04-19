@@ -20,7 +20,8 @@ public record InsightsConfig(
     Optional<ProcessingPeriod> backfillPeriod,
     ProcessingPeriod steadyStatePeriod,
     Set<String> dataAssetTypes,
-    Set<String> dataQualityEntities) {
+    Set<String> dataQualityEntities,
+    Optional<Set<String>> backfillCompletedTypes) {
 
   private static final int DEFAULT_RETENTION_DAYS = 30;
 
@@ -78,7 +79,8 @@ public record InsightsConfig(
         backfillPeriod,
         steadyState,
         DATA_ASSET_TYPES,
-        DATA_QUALITY_ENTITIES);
+        DATA_QUALITY_ENTITIES,
+        Optional.empty());
   }
 
   public boolean shouldRecreateDataAssets() {

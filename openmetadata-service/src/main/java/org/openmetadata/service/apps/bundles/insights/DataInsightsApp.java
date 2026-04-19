@@ -36,6 +36,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsBackfillWorkflow;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexLifecycleManager;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
@@ -56,6 +58,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   public record Backfill(String startDate, String endDate) {}
 
+  private App appEntity;
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
   private DataQualityConfig dataQualityConfig;
@@ -195,6 +198,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
+    this.appEntity = app;
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
     JsonUtils.validateJsonSchema(config, DataInsightsAppConfig.class);
@@ -260,11 +264,19 @@ public class DataInsightsApp extends AbstractNativeApplication {
       this.activeWorkflows = workflows;
 
       List<WorkflowResult> results = new ArrayList<>();
+      DataAssetsBackfillWorkflow backfillWorkflow = null;
       for (InsightsWorkflow workflow : workflows) {
         if (stopped) break;
+        if (workflow instanceof DataAssetsBackfillWorkflow w) {
+          backfillWorkflow = w;
+        }
         results.add(workflow.execute());
       }
       this.activeWorkflows = null;
+
+      if (backfillWorkflow != null) {
+        persistBackfillProgress(jobExecutionContext, backfillWorkflow.getCompletedEntityTypes());
+      }
 
       updateJobFromResults(results);
       updateJobStatus();
@@ -297,6 +309,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
     boolean recreate =
         recreateDataAssetsIndex.isPresent() && Boolean.TRUE.equals(recreateDataAssetsIndex.get());
 
+    Optional<Set<String>> completedTypes = readBackfillCompletedTypes();
+
     return new InsightsConfig(
         dataAssetsConfig,
         costAnalysisConfig,
@@ -307,7 +321,47 @@ public class DataInsightsApp extends AbstractNativeApplication {
         backfillPeriod,
         steadyState,
         dataAssetTypes,
-        dataQualityEntities);
+        dataQualityEntities,
+        completedTypes);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Optional<Set<String>> readBackfillCompletedTypes() {
+    if (appEntity == null) return Optional.empty();
+    try {
+      AppRepository appRepository =
+          (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      Optional<AppRunRecord> lastRun = appRepository.getLatestAppRunsOptional(appEntity);
+      if (lastRun.isEmpty() || lastRun.get().getSuccessContext() == null) return Optional.empty();
+      Object raw =
+          lastRun.get().getSuccessContext().getAdditionalProperties().get("backfillProgress");
+      if (!(raw instanceof java.util.Map<?, ?> map)) return Optional.empty();
+      Object types = map.get("completedEntityTypes");
+      if (!(types instanceof java.util.Collection<?> col)) return Optional.empty();
+      return Optional.of(
+          col.stream().map(Object::toString).collect(java.util.stream.Collectors.toSet()));
+    } catch (Exception e) {
+      LOG.warn("[DataInsights] Could not read backfill progress from last run: {}", e.getMessage());
+      return Optional.empty();
+    }
+  }
+
+  private void persistBackfillProgress(
+      JobExecutionContext jobExecutionContext, Set<String> completedTypes) {
+    try {
+      AppRunRecord appRecord = getJobRecord(jobExecutionContext);
+      SuccessContext ctx =
+          appRecord.getSuccessContext() != null
+              ? appRecord.getSuccessContext()
+              : new SuccessContext();
+      ctx.withAdditionalProperty(
+          "backfillProgress",
+          java.util.Map.of("completedEntityTypes", completedTypes));
+      appRecord.setSuccessContext(ctx);
+      pushAppStatusUpdates(jobExecutionContext, appRecord, true);
+    } catch (Exception e) {
+      LOG.warn("[DataInsights] Could not persist backfill progress: {}", e.getMessage());
+    }
   }
 
   private void updateJobFromResults(List<WorkflowResult> results) {
