@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "נתיב URL עבור לוגו סרגל הניווט.",
     "custom-properties-description": " לכוד מטא-דאטה מותאמים אישית להעשרת נכסי הנתונים שלך על ידי הרחבת התכונות.",
     "custom-property-is-set-to-message": "{{fieldName}} מוגדר ל",
-    "custom-property-name-validation": "השם חייב להתחיל באות קטנה ללא רווח, קו תחתון או נקודות.",
+    "custom-property-name-validation": "השם אינו יכול להכיל '::'.",
     "custom-property-update": "עדכון המאפיין המותאם אישית '{{propertyName}}' ב{{entityName}} הוא {{status}}",
     "customize-brand-description": "התאם את חוויית המשתמש של {{brandName}} לצרכי הארגון והצוות שלך.",
     "customize-entity-landing-page-header-for-persona": "התאם אישית את חוויית דף הישות של {{entity}} עבור הפרסונה <0>{{persona}}</0>",

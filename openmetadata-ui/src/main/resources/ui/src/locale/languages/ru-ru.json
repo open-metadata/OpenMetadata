@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "URL-путь для логотипа панели навигации.",
     "custom-properties-description": "Создавайте и настраивайте новые поля для объектов",
     "custom-property-is-set-to-message": "Значение поля {{fieldName}} изменено на",
-    "custom-property-name-validation": "Имя должно начинаться со строчной буквы без пробелов, подчеркивания и точек.",
+    "custom-property-name-validation": "Имя не должно содержать '::'.",
     "custom-property-update": "Обновление дополнительного поля '{{propertyName}}' в {{entityName}} в статусе {{status}}",
     "customize-brand-description": "Настройте UX {{brandName}} под ваши потребности",
     "customize-entity-landing-page-header-for-persona": "Персонализируйте страницу объекта «{{entity}}» для персоны <0>{{persona}}</0>",

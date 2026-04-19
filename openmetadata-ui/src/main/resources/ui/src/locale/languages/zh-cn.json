@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "导航栏 Logo 指向的 URL 地址",
     "custom-properties-description": " 获取自定义元数据, 通过扩展属性来丰富数据资产",
     "custom-property-is-set-to-message": "{{fieldName}}设置为",
-    "custom-property-name-validation": "命名首字母必须是小写字母不能为空格、下划线或点号",
+    "custom-property-name-validation": "名称不能包含 '::'。",
     "custom-property-update": "自定义属性'{{propertyName}}'在{{entityName}}中的更新{{status}}",
     "customize-brand-description": "自定义 {{brandName}}, 以满足您的组织和团队需求",
     "customize-entity-landing-page-header-for-persona": "为<0>{{persona}}</0>角色个性化{{entity}}实体页面体验",
