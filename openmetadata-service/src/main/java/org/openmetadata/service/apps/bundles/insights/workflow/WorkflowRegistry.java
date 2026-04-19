@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
+import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsBackfillWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataQuality.DataQualityWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -28,9 +30,8 @@ public final class WorkflowRegistry {
       workflows.add(new DataAssetsWorkflow(config, searchFactory, collectionDAO, searchRepository));
     }
 
-    // TODO(Phase 11): add WebAnalyticsWorkflow and CostAnalysisWorkflow
-    // once those classes extend AbstractInsightsWorkflow.
-
+    workflows.add(new WebAnalyticsWorkflow(config));
+    workflows.add(new CostAnalysisWorkflow(config, collectionDAO));
     workflows.add(new DataQualityWorkflow(config, collectionDAO, searchRepository));
 
     return workflows;

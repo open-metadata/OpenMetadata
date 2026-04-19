@@ -280,14 +280,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
         createDataQualityDataIndex();
       }
 
-      // WebAnalytics and CostAnalysis: migrated to AbstractInsightsWorkflow in Phase 11
-      WorkflowStats webAnalyticsStats = processWebAnalytics();
-      updateJobStatsWithWorkflowStats(webAnalyticsStats);
-
-      WorkflowStats costAnalysisStats = processCostAnalysis();
-      updateJobStatsWithWorkflowStats(costAnalysisStats);
-
-      // DataAssets + DataQuality via WorkflowRegistry
       List<InsightsWorkflow> workflows =
           WorkflowRegistry.createWorkflows(config, searchFactory, collectionDAO, searchRepository);
 
@@ -306,8 +298,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
       this.activeDataAssetsWorkflow = null;
 
       updateJobFromResults(results);
-
-      handleLegacyWorkflowFailures(webAnalyticsStats, costAnalysisStats);
       updateJobStatus();
     } catch (Exception ex) {
       IndexingError indexingError =
@@ -366,56 +356,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void handleLegacyWorkflowFailures(
-      WorkflowStats webAnalyticsStats, WorkflowStats costAnalysisStats) {
-    if (webAnalyticsStats.hasFailed() || costAnalysisStats.hasFailed()) {
-      String errorMessage = "Errors Found:\n";
-      for (WorkflowStats stats : List.of(webAnalyticsStats, costAnalysisStats)) {
-        if (stats.hasFailed()) {
-          errorMessage = String.format("%s\n  %s\n", errorMessage, stats.getName());
-          for (String failure : stats.getFailures()) {
-            errorMessage = String.format("%s    - %s\n", errorMessage, failure);
-          }
-        }
-      }
-      IndexingError indexingError =
-          new IndexingError()
-              .withErrorSource(IndexingError.ErrorSource.JOB)
-              .withMessage(errorMessage);
-      LOG.error(indexingError.getMessage());
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(indexingError);
-    }
-  }
-
-  private WorkflowStats processWebAnalytics() {
-    WebAnalyticsWorkflow workflow =
-        new WebAnalyticsWorkflow(webAnalyticsConfig, timestamp, batchSize, backfill);
-    WorkflowStats workflowStats = workflow.getWorkflowStats();
-    workflow.process();
-    return workflowStats;
-  }
-
-  private WorkflowStats processCostAnalysis() {
-    CostAnalysisWorkflow workflow =
-        new CostAnalysisWorkflow(costAnalysisConfig, timestamp, batchSize, backfill);
-    WorkflowStats workflowStats = workflow.getWorkflowStats();
-    try {
-      workflow.process();
-    } catch (SearchIndexException ex) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(ex.getIndexingError());
-    }
-    return workflowStats;
-  }
-
-  private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
-    for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-      String stepName = entry.getKey();
-      StepStats stats = entry.getValue();
-      updateStats(stepName, stats);
-    }
-  }
 
   private void updateJobStatus() {
     if (stopped) {

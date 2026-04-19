@@ -3,28 +3,25 @@ package org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.TIMESTAMP_KEY;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEntityViewReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
-import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
-import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.processors.CreateReportDataProcessor;
 import org.openmetadata.service.apps.bundles.insights.sinks.ReportDataSink;
+import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
-import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
+import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.processors.WebAnalyticsEntityViewProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.processors.WebAnalyticsUserActivityAggregator;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.processors.WebAnalyticsUserActivityProcessor;
@@ -34,15 +31,9 @@ import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 
 @Slf4j
-public class WebAnalyticsWorkflow {
-  private final Long startTimestamp;
-  private final Long endTimestamp;
-  private final int batchSize;
-  private final AppAnalyticsConfig webAnalyticsConfig;
+public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
+
   private static final int WEB_ANALYTIC_EVENTS_RETENTION_DAYS = 7;
-  private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
-  private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
-  private WebAnalyticsUserActivityProcessor webAnalyticsUserActivityProcessor;
 
   public record UserActivityData(
       String userName,
@@ -53,298 +44,163 @@ public class WebAnalyticsWorkflow {
       int totalSessions,
       Long lastSession) {}
 
-  @Getter private final WorkflowStats workflowStats = new WorkflowStats("WebAnalyticsWorkflow");
   public static final String USER_ACTIVITY_DATA_KEY = "userActivityData";
   public static final String USER_ACTIVITY_REPORT_DATA_KEY = "userActivityReportData";
   public static final String ENTITY_VIEW_REPORT_DATA_KEY = "entityViewReportData";
 
-  public WebAnalyticsWorkflow(
-      AppAnalyticsConfig webAnalyticsConfig,
-      Long timestamp,
-      int batchSize,
-      Optional<DataInsightsApp.Backfill> backfill) {
-    if (backfill.isPresent()) {
-      Long oldestPossibleTimestamp =
-          TimestampUtils.getStartOfDayTimestamp(
-              TimestampUtils.subtractDays(timestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
+  private final InsightsConfig config;
+  private final long startTimestamp;
+  private final long endTimestamp;
 
-      this.endTimestamp =
-          TimestampUtils.getEndOfDayTimestamp(
-              Collections.max(
-                  List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
-      this.startTimestamp =
-          TimestampUtils.getStartOfDayTimestamp(
-              Collections.max(
-                  List.of(
-                      TimestampUtils.getTimestampFromDateString(backfill.get().startDate()),
-                      oldestPossibleTimestamp)));
+  private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
+  private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
+  private WebAnalyticsUserActivityProcessor webAnalyticsUserActivityProcessor;
 
-      if (oldestPossibleTimestamp.equals(endTimestamp)) {
-        LOG.warn(
-            "Backfill won't happen because the set date is before the limit of {}",
-            oldestPossibleTimestamp);
-      }
+  public WebAnalyticsWorkflow(InsightsConfig config) {
+    super("WebAnalyticsWorkflow");
+    this.config = config;
+
+    if (config.backfillPeriod().isPresent()) {
+      this.endTimestamp = config.backfillPeriod().get().endTimestamp();
+      this.startTimestamp = config.backfillPeriod().get().startTimestamp();
     } else {
-      this.endTimestamp =
-          TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
+      long ts = config.steadyStatePeriod().endTimestamp();
+      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(ts, 1));
       this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
     }
-    this.batchSize = batchSize;
-    this.webAnalyticsConfig = webAnalyticsConfig;
   }
 
-  private void initialize() {
-    Long pointerTimestamp = this.endTimestamp;
+  @Override
+  protected boolean isEnabled() {
+    return config.webAnalyticsConfig() != null
+        && Boolean.TRUE.equals(config.webAnalyticsConfig().getEnabled());
+  }
 
-    while (pointerTimestamp > startTimestamp) {
+  @Override
+  protected void initialize() {
+    long pointer = this.endTimestamp;
+    while (pointer > startTimestamp) {
       sources.add(
           new PaginatedWebAnalyticEventDataSource(
-              batchSize,
-              TimestampUtils.getStartOfDayTimestamp(pointerTimestamp),
-              pointerTimestamp));
-      pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
+              config.batchSize(),
+              TimestampUtils.getStartOfDayTimestamp(pointer),
+              pointer));
+      pointer = TimestampUtils.subtractDays(pointer, 1);
     }
-
-    int total = 0;
-    for (PaginatedWebAnalyticEventDataSource source : sources) {
-      total += source.getTotalRecords();
-    }
-
-    workflowStats.setWorkflowStatsTotalRecords(total);
-
+    int total = sources.stream().mapToInt(PaginatedWebAnalyticEventDataSource::getTotalRecords).sum();
     webAnalyticsEntityViewProcessor = new WebAnalyticsEntityViewProcessor(total);
     webAnalyticsUserActivityProcessor = new WebAnalyticsUserActivityProcessor(total);
   }
 
-  public void process() {
-    if (!webAnalyticsConfig.getEnabled()) {
-      return;
-    }
-    LOG.info("[Data Insights] Processing App Analytics.");
-    initialize();
-    Map<String, Object> contextData = new HashMap<>();
+  @Override
+  protected void run() {
+    int totalSuccess = 0;
+    int totalFailed = 0;
+    List<String> errors = new ArrayList<>();
 
     for (PaginatedWebAnalyticEventDataSource source : sources) {
-      // TODO: Could the size of the Maps be an issue?
+      if (stopped) break;
       Map<UUID, UserActivityData> userActivityData = new HashMap<>();
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData = new HashMap<>();
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData = new HashMap<>();
-      Long referenceTimestamp = source.getStartTs();
+      long referenceTimestamp = source.getStartTs();
 
-      // Delete the records of the days we are going to process
-      deleteReportDataRecordsAtDate(
-          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
-      deleteReportDataRecordsAtDate(
-          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
+      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
+      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
 
+      Map<String, Object> contextData = new HashMap<>();
       contextData.put(TIMESTAMP_KEY, referenceTimestamp);
       contextData.put(USER_ACTIVITY_DATA_KEY, userActivityData);
       contextData.put(USER_ACTIVITY_REPORT_DATA_KEY, userActivityReportData);
       contextData.put(ENTITY_VIEW_REPORT_DATA_KEY, entityViewReportData);
 
-      // Process Raw WebAnalyticEventData
-      // Fills the entityViewReportData and userActivityData Maps
-      Optional<String> processEventsError = processEvents(source, contextData);
-
-      if (processEventsError.isPresent()) {
-        LOG.debug(processEventsError.get());
+      Optional<String> eventsError = processEvents(source, contextData);
+      if (eventsError.isPresent()) {
+        totalFailed++;
+        errors.add(eventsError.get());
         continue;
       }
-
-      // Process each Report.
-      Optional<String> processEntityViewDataError =
-          processEntityViewData(entityViewReportData, contextData);
-
-      processEntityViewDataError.ifPresent(LOG::debug);
-
-      Optional<String> processUserActivityError =
-          processUserActivityData(userActivityData, userActivityReportData, contextData);
-
-      processUserActivityError.ifPresent(LOG::debug);
+      processEntityViewData(entityViewReportData, contextData).ifPresent(errors::add);
+      processUserActivityData(userActivityData, userActivityReportData, contextData).ifPresent(errors::add);
+      totalSuccess++;
     }
 
-    // Prune WebAnalyticEvents older than retentionDays
     pruneWebAnalyticEvents();
+    stats().record(new StepResult("web-analytics", totalSuccess, totalFailed, errors));
   }
 
-  // TODO: How to better divide the two flows while keeping stats consistent and avoiding breaking
-  // one flow if
-  // the other one errors.
   private Optional<String> processEvents(
       PaginatedWebAnalyticEventDataSource source, Map<String, Object> contextData) {
-    Optional<String> error = Optional.empty();
-
-    String keysetCursor = null;
+    String cursor = null;
     while (true) {
       try {
-        ResultList<WebAnalyticEventData> resultList = source.readNextKeyset(keysetCursor);
-        keysetCursor = resultList.getPaging().getAfter();
+        ResultList<WebAnalyticEventData> resultList = source.readNextKeyset(cursor);
+        cursor = resultList.getPaging().getAfter();
         if (!resultList.getData().isEmpty()) {
           webAnalyticsEntityViewProcessor.process(resultList, contextData);
           webAnalyticsUserActivityProcessor.process(resultList, contextData);
         }
         source.updateStats(resultList.getData().size(), 0);
-        if (keysetCursor == null) {
-          break;
-        }
+        if (cursor == null) break;
       } catch (SearchIndexException ex) {
-        source.updateStats(
-            ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-        error =
-            Optional.of(
-                String.format("Failed processing events from %s: %s", source.getName(), ex));
-        workflowStats.addFailure(error.get());
-        break;
-      } finally {
-        updateWorkflowStats(source.getName(), source.getStats());
+        source.updateStats(ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
+        return Optional.of(String.format("Failed processing events from %s: %s", source.getName(), ex));
       }
     }
-    return error;
+    return Optional.empty();
   }
 
   private Optional<String> processEntityViewData(
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData,
       Map<String, Object> contextData) {
-    Optional<String> error = Optional.empty();
-
-    CreateReportDataProcessor createReportDataProcessor =
-        new CreateReportDataProcessor(
-            entityViewReportData.size(),
-            "[WebAnalyticsWorkflow] Entity View Report Data Processor",
-            ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
-
-    Optional<List<ReportData>> entityViewReportDataList = Optional.empty();
-
-    // Process EntityView ReportData
     try {
-      entityViewReportDataList =
-          Optional.of(
-              createReportDataProcessor.process(
-                  entityViewReportData.values().stream().toList(), contextData));
-    } catch (SearchIndexException ex) {
-      error = Optional.of(String.format("Failed Processing Entity View Data: %s", ex.getMessage()));
-      workflowStats.addFailure(error.get());
-    } finally {
-      updateWorkflowStats(
-          createReportDataProcessor.getName(), createReportDataProcessor.getStats());
-    }
-
-    // Sink EntityView ReportData
-    if (entityViewReportDataList.isPresent()) {
-      ReportDataSink reportDataSink =
-          new ReportDataSink(
-              entityViewReportDataList.get().size(),
-              "[WebAnalyticsWorkflow] Entity View Report Data Sink",
+      CreateReportDataProcessor processor =
+          new CreateReportDataProcessor(entityViewReportData.size(),
+              "[WebAnalyticsWorkflow] Entity View Report Data Processor",
               ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
-
-      try {
-        reportDataSink.write(entityViewReportDataList.get());
-      } catch (SearchIndexException ex) {
-        error = Optional.of(String.format("Failed Sinking Entity View Data: %s", ex.getMessage()));
-        workflowStats.addFailure(error.get());
-      } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
-      }
+      List<ReportData> reportData =
+          processor.process(entityViewReportData.values().stream().toList(), contextData);
+      new ReportDataSink(reportData.size(),
+          "[WebAnalyticsWorkflow] Entity View Report Data Sink",
+          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA).write(reportData);
+    } catch (SearchIndexException ex) {
+      return Optional.of(String.format("Failed processing entity view data: %s", ex.getMessage()));
     }
-
-    return error;
+    return Optional.empty();
   }
 
   private Optional<String> processUserActivityData(
       Map<UUID, UserActivityData> userActivityData,
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData,
       Map<String, Object> contextData) {
-    Optional<String> error = Optional.empty();
-
-    WebAnalyticsUserActivityAggregator webAnalyticsUserActivityAggregator =
-        new WebAnalyticsUserActivityAggregator(userActivityData.size());
-
-    // Aggregate UserActivity Data
     try {
-      webAnalyticsUserActivityAggregator.process(userActivityData, contextData);
-    } catch (SearchIndexException ex) {
-      error =
-          Optional.of(String.format("Failed Aggregating User Activity Data: %s", ex.getMessage()));
-      workflowStats.addFailure(error.get());
-    } finally {
-      updateWorkflowStats(
-          webAnalyticsUserActivityAggregator.getName(),
-          webAnalyticsUserActivityAggregator.getStats());
-    }
-
-    CreateReportDataProcessor createReportdataProcessor =
-        new CreateReportDataProcessor(
-            userActivityReportData.size(),
-            "[WebAnalyticsWorkflow] User Activity Report Data Processor",
-            ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
-    Optional<List<ReportData>> userActivityReportDataList = Optional.empty();
-
-    // Process UserActivity ReportData
-    try {
-      userActivityReportDataList =
-          Optional.of(
-              createReportdataProcessor.process(
-                  userActivityReportData.values().stream().toList(), contextData));
-
-    } catch (SearchIndexException ex) {
-      error =
-          Optional.of(
-              String.format("Failed Processing User Activity Report Data: %s", ex.getMessage()));
-      workflowStats.addFailure(error.get());
-    } finally {
-      updateWorkflowStats(
-          createReportdataProcessor.getName(), createReportdataProcessor.getStats());
-    }
-
-    if (userActivityReportDataList.isPresent()) {
-      ReportDataSink reportDataSink =
-          new ReportDataSink(
-              userActivityReportDataList.get().size(),
-              "[WebAnalyticsWorkflow] User Activity Report Data Sink",
+      new WebAnalyticsUserActivityAggregator(userActivityData.size()).process(userActivityData, contextData);
+      CreateReportDataProcessor processor =
+          new CreateReportDataProcessor(userActivityReportData.size(),
+              "[WebAnalyticsWorkflow] User Activity Report Data Processor",
               ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
-      try {
-        reportDataSink.write(userActivityReportDataList.get());
-      } catch (SearchIndexException ex) {
-        error =
-            Optional.of(
-                String.format("Failed Sinking User Activity Report Data: %s", ex.getMessage()));
-        workflowStats.addFailure(error.get());
-      } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
-      }
+      List<ReportData> reportData =
+          processor.process(userActivityReportData.values().stream().toList(), contextData);
+      new ReportDataSink(reportData.size(),
+          "[WebAnalyticsWorkflow] User Activity Report Data Sink",
+          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA).write(reportData);
+    } catch (SearchIndexException ex) {
+      return Optional.of(String.format("Failed processing user activity data: %s", ex.getMessage()));
     }
-
-    return error;
+    return Optional.empty();
   }
 
-  private void deleteReportDataRecordsAtDate(
-      Long timestamp, ReportData.ReportDataType reportDataType) {
-    String timestampString = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
+  private void deleteReportDataRecordsAtDate(long timestamp, ReportData.ReportDataType type) {
+    String date = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
-        .deleteReportDataAtDate(reportDataType, timestampString);
+        .deleteReportDataAtDate(type, date);
   }
 
   private void pruneWebAnalyticEvents() {
     for (WebAnalyticEventType eventType : WebAnalyticEventType.values()) {
       ((WebAnalyticEventRepository) Entity.getEntityRepository(Entity.WEB_ANALYTIC_EVENT))
           .deleteWebAnalyticEventData(
-              eventType,
-              TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
+              eventType, TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
     }
-  }
-
-  private void updateWorkflowStats(String stepName, StepStats newStepStats) {
-    workflowStats.updateWorkflowStepStats(stepName, newStepStats);
-
-    int currentSuccess =
-        workflowStats.getWorkflowStepStats().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
-            .sum();
-    int currentFailed =
-        workflowStats.getWorkflowStepStats().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
-            .sum();
-
-    workflowStats.updateWorkflowStats(currentSuccess, currentFailed);
   }
 }
