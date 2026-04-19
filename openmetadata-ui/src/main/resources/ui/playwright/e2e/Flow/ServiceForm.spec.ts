@@ -457,7 +457,7 @@ test.describe(
       });
     });
 
-    // Regression coverage for issue #25434 (PR #27015):
+    // Regression coverage for issue #25434:
     // Clearing `schemaRegistryTopicSuffixName` on a Kafka connection must
     // send an empty string to the backend instead of dropping the field,
     // so the cleared value is persisted on reload.
