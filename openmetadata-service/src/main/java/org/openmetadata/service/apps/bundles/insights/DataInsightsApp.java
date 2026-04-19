@@ -35,6 +35,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
+import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
+import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriodFactory;
+import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
@@ -383,26 +387,35 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processDataQuality() {
-    for (String entityType : dataQualityEntities) {
-      DataQualityWorkflow workflow =
-          new DataQualityWorkflow(
-              dataQualityConfig,
-              timestamp,
-              batchSize,
-              backfill,
-              entityType,
-              collectionDAO,
-              searchRepository);
+    ProcessingPeriod steadyState = ProcessingPeriodFactory.forSteadyState(timestamp, 30);
+    Optional<ProcessingPeriod> backfillPeriod =
+        backfill.map(b -> ProcessingPeriodFactory.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
 
-      try {
-        workflow.process();
-      } catch (SearchIndexException ex) {
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-        jobData.setFailure(ex.getIndexingError());
-      }
+    InsightsConfig insightsConfig =
+        new InsightsConfig(
+            dataAssetsConfig,
+            costAnalysisConfig,
+            dataQualityConfig,
+            webAnalyticsConfig,
+            batchSize,
+            false,
+            backfillPeriod,
+            steadyState,
+            dataAssetTypes,
+            dataQualityEntities);
+
+    DataQualityWorkflow workflow =
+        new DataQualityWorkflow(insightsConfig, collectionDAO, searchRepository);
+    WorkflowResult result = workflow.execute();
+
+    if (result.failed() && !result.failures().isEmpty()) {
+      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setFailure(result.failures().get(0));
     }
 
-    return DataQualityWorkflow.getWorkflowStats();
+    WorkflowStats stats = new WorkflowStats("DataQualityWorkflow");
+    result.stepStats().forEach(stats::updateWorkflowStepStats);
+    return stats;
   }
 
   private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {

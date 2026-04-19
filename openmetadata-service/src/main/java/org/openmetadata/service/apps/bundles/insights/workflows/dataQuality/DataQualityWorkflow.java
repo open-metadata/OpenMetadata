@@ -6,24 +6,20 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
-import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
-import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
-import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
-import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
+import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
+import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
+import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
+import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -33,188 +29,115 @@ import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProc
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
 
 @Slf4j
-public class DataQualityWorkflow {
-  public static final String DATA_STREAM_KEY = "DataStreamKey";
-  private final int retentionDays = 30;
-  private final Long startTimestamp;
-  private final Long endTimestamp;
-  private final int batchSize;
-  private final DataQualityConfig dataQualityConfig;
+public class DataQualityWorkflow extends AbstractInsightsWorkflow {
 
-  private final SearchRepository searchRepository;
+  private final InsightsConfig config;
   private final CollectionDAO collectionDAO;
-  private final List<PaginatedEntityTimeSeriesSource> sources = new ArrayList<>();
-
-  String entityType;
-
-  Processor entityProcessor;
-  Sink searchIndexSink;
-
-  @Getter
-  private static final WorkflowStats workflowStats = new WorkflowStats("DataQualityWorkflow");
+  private final SearchRepository searchRepository;
 
   public DataQualityWorkflow(
-      DataQualityConfig dataQualityConfig,
-      Long timestamp,
-      int batchSize,
-      Optional<DataInsightsApp.Backfill> backfill,
-      String entityType,
-      CollectionDAO collectionDAO,
-      SearchRepository searchRepository) {
-    if (backfill.isPresent()) {
-      Long oldestPossibleTimestamp =
-          TimestampUtils.getStartOfDayTimestamp(
-              TimestampUtils.subtractDays(timestamp, retentionDays));
-
-      this.endTimestamp =
-          TimestampUtils.getEndOfDayTimestamp(
-              Collections.max(
-                  List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
-      this.startTimestamp =
-          TimestampUtils.getStartOfDayTimestamp(
-              Collections.max(
-                  List.of(
-                      TimestampUtils.getTimestampFromDateString(backfill.get().startDate()),
-                      oldestPossibleTimestamp)));
-
-      if (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp))) {
-        LOG.warn(
-            "Backfill won't happen because the set date is before the limit of {}",
-            oldestPossibleTimestamp);
-      }
-    } else {
-      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(timestamp);
-      this.startTimestamp =
-          TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
-    }
-
-    this.batchSize = batchSize;
-    this.searchRepository = searchRepository;
+      InsightsConfig config, CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super("DataQualityWorkflow");
+    this.config = config;
     this.collectionDAO = collectionDAO;
-    this.entityType = entityType;
-    this.dataQualityConfig = dataQualityConfig;
+    this.searchRepository = searchRepository;
   }
 
-  public String getIndexNameByType(String entityType) {
-    IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
-    return indexMapping.getIndexName(searchRepository.getClusterAlias());
+  @Override
+  protected boolean isEnabled() {
+    return config.dataQualityConfig() != null && Boolean.TRUE.equals(config.dataQualityConfig().getEnabled());
   }
 
-  private void initialize() {
+  @Override
+  protected void initialize() {}
+
+  @Override
+  protected void run() throws Exception {
+    for (String entityType : config.dataQualityEntities()) {
+      if (stopped) break;
+      processEntityType(entityType);
+    }
+  }
+
+  private void processEntityType(String entityType) {
+    ProcessingPeriod period =
+        config.backfillPeriod().orElse(config.steadyStatePeriod());
+    long startTs = period.startTimestamp();
+    long endTs = period.endTimestamp();
+
     int totalRecords =
         getInitialStatsForEntities(Set.of(entityType)).getJobStats().getTotalRecords();
 
-    List<String> fields = List.of("*");
     PaginatedEntityTimeSeriesSource source =
-        new PaginatedEntityTimeSeriesSource(
-            entityType, batchSize, fields, startTimestamp, endTimestamp);
-    sources.add(source);
+        new PaginatedEntityTimeSeriesSource(entityType, config.batchSize(), List.of("*"), startTs, endTs);
 
+    Processor entityProcessor;
+    Sink searchIndexSink;
+    int payloadSize = searchRepository.getSearchConfiguration().getPayLoadSize();
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      this.entityProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
-      this.searchIndexSink =
-          new OpenSearchIndexSink(
-              searchRepository,
-              totalRecords,
-              searchRepository.getSearchConfiguration().getPayLoadSize());
+      entityProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
+      searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords, payloadSize);
     } else {
-      this.entityProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
-      this.searchIndexSink =
-          new ElasticSearchIndexSink(
-              searchRepository,
-              totalRecords,
-              searchRepository.getSearchConfiguration().getPayLoadSize());
+      entityProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
+      searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords, payloadSize);
     }
-  }
 
-  private void deleteDataBeforeInserting(String indexName) throws SearchIndexException {
+    String indexName = getIndexNameByType(entityType);
     try {
       searchRepository
           .getSearchClient()
-          .deleteByRangeQuery(indexName, "@timestamp", null, startTimestamp, null, endTimestamp);
-    } catch (Exception rx) {
-      throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
+          .deleteByRangeQuery(indexName, "@timestamp", null, startTs, null, endTs);
+    } catch (Exception ex) {
+      LOG.warn("[DataQualityWorkflow] Could not clear index {} before insert: {}", indexName, ex.getMessage());
     }
-  }
 
-  public void process() throws SearchIndexException {
-    if (!dataQualityConfig.getEnabled()) {
-      return;
-    }
-    LOG.info("[Data Insights] Processing Data Quality Insights.");
-    initialize();
     Map<String, Object> contextData = new HashMap<>();
+    contextData.put(START_TIMESTAMP_KEY, startTs);
+    contextData.put(END_TIMESTAMP_KEY, endTs);
+    contextData.put(ENTITY_TYPE_KEY, entityType);
 
-    contextData.put(START_TIMESTAMP_KEY, startTimestamp);
-    contextData.put(END_TIMESTAMP_KEY, endTimestamp);
+    int totalSuccess = 0;
+    int totalFailed = 0;
+    List<String> errors = new ArrayList<>();
+    String keysetCursor = null;
 
-    for (PaginatedEntityTimeSeriesSource source : sources) {
-
-      deleteDataBeforeInserting(getIndexNameByType(source.getEntityType()));
-      contextData.put(ENTITY_TYPE_KEY, entityType);
-
-      String keysetCursor = null;
-      while (true) {
-        try {
-          ResultList<? extends EntityTimeSeriesInterface> resultList =
-              source.readNextKeyset(keysetCursor);
-          keysetCursor = resultList.getPaging().getAfter();
-          processEntity(resultList, contextData, source);
-          if (keysetCursor == null) {
-            break;
+    while (true) {
+      try {
+        ResultList<? extends EntityTimeSeriesInterface> resultList =
+            source.readNextKeyset(keysetCursor);
+        keysetCursor = resultList.getPaging().getAfter();
+        if (!resultList.getData().isEmpty()) {
+          List<TaggedOperation<?>> taggedOps = new ArrayList<>();
+          for (EntityTimeSeriesInterface entity : resultList.getData()) {
+            @SuppressWarnings("unchecked")
+            Object op = entityProcessor.process(entity, contextData);
+            taggedOps.add(new TaggedOperation<>(op, entity.getEntityReference()));
           }
-        } catch (SearchIndexException ex) {
-          source.updateStats(
-              ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage =
-              String.format("Failed processing Data from %s: %s", source.getEntityType(), ex);
-          workflowStats.addFailure(errorMessage);
-          break;
-        } finally {
-          updateWorkflowStats("[DataQualityWorkflow] " + source.getEntityType(), source.getStats());
+          searchIndexSink.write(taggedOps);
+          totalSuccess += resultList.getData().size();
+          source.updateStats(resultList.getData().size(), 0);
         }
+        if (keysetCursor == null) break;
+      } catch (SearchIndexException ex) {
+        totalFailed += ex.getIndexingError().getFailedCount() != null
+            ? ex.getIndexingError().getFailedCount() : 1;
+        errors.add(entityType + ": " + ex.getMessage());
+        source.updateStats(
+            ex.getIndexingError().getSuccessCount() != null ? ex.getIndexingError().getSuccessCount() : 0,
+            ex.getIndexingError().getFailedCount() != null ? ex.getIndexingError().getFailedCount() : 1);
+        break;
       }
     }
+
+    stats().record(new StepResult("data-quality-" + entityType, totalSuccess, totalFailed, errors));
   }
 
-  @SuppressWarnings("unchecked")
-  private void processEntity(
-      ResultList<? extends EntityTimeSeriesInterface> resultList,
-      Map<String, Object> contextData,
-      Source<?> paginatedSource)
-      throws SearchIndexException {
-    if (!resultList.getData().isEmpty()) {
-      LOG.debug(
-          "[DataQualityWorkflow] Processing a Batch of Size: {}, EntityType: {}",
-          resultList.getData().size(),
-          contextData.get(ENTITY_TYPE_KEY));
-      List<TaggedOperation<?>> taggedOps = new ArrayList<>();
-      for (EntityTimeSeriesInterface entity : resultList.getData()) {
-        Object op = entityProcessor.process(entity, contextData);
-        taggedOps.add(new TaggedOperation<>(op, entity.getEntityReference()));
-      }
-      searchIndexSink.write(taggedOps);
-      paginatedSource.updateStats(resultList.getData().size(), 0);
-    }
-  }
-
-  private void updateWorkflowStats(String stepName, StepStats newStepStats) {
-    workflowStats.updateWorkflowStepStats(stepName, newStepStats);
-
-    int currentSuccess =
-        workflowStats.getWorkflowStepStats().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
-            .sum();
-    int currentFailed =
-        workflowStats.getWorkflowStepStats().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
-            .sum();
-
-    workflowStats.updateWorkflowStats(currentSuccess, currentFailed);
+  private String getIndexNameByType(String entityType) {
+    IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
+    return indexMapping.getIndexName(searchRepository.getClusterAlias());
   }
 }
