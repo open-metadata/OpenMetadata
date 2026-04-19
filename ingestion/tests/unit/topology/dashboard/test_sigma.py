@@ -324,13 +324,15 @@ class SigmaUnitTest(TestCase):
         Test query-based lineage when queries are available
         """
         # Setup mocks
-        self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
-        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
-
-        # Mock metadata methods
-        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
-        self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
-        self.sigma.metadata.search_in_any_service = MagicMock(return_value=MOCK_TABLE_ENTITY)
+        self.sigma.client.get_workbook_queries = (
+            lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        )
+        self.sigma.data_models = [
+            Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
+        ]
+        self.sigma.metadata.search_in_any_service = MagicMock(
+            return_value=MOCK_TABLE_ENTITY
+        )
 
         # Execute
         results = list(
@@ -349,11 +351,9 @@ class SigmaUnitTest(TestCase):
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
         self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
-        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
-
-        # Mock metadata methods
-        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
-        self.sigma._get_table_entity_from_node = MagicMock(return_value=MOCK_TABLE_ENTITY)
+        self.sigma.data_models = [
+            Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
+        ]
 
         # Execute
         results = list(  # noqa: F841
@@ -373,7 +373,9 @@ class SigmaUnitTest(TestCase):
 
         self.sigma.client.get_workbook_queries = lambda *_: queries_response
         self.sigma.client.get_lineage_details = lambda *_: None
-        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
+        self.sigma.data_models = [
+            Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
+        ]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
@@ -384,6 +386,40 @@ class SigmaUnitTest(TestCase):
         # Verify file-based lineage was attempted (get_lineage_details called)
         # but no lineage created since get_lineage_details returns None
         self.assertEqual(len(results), 0)
+
+    def test_nonviz_elements_skipped_in_lineage(self):
+        """
+        Test that non-visualization elements (text boxes, dividers, controls)
+        are skipped in both the query-based and file-based lineage paths to
+        avoid Sigma API 500 errors on elements with no upstream data.
+        """
+        # A non-viz element has no vizualizationType
+        non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
+
+        # Test 1: query-based path
+        self.sigma.client.get_workbook_queries = (
+            lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        )
+        self.sigma.data_models = [non_viz_element]
+        self.sigma._get_datamodel = MagicMock()
+
+        results = list(
+            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
+        )
+        # No lineage should be yielded and _get_datamodel should never be called
+        self.assertEqual(results, [])
+        self.sigma._get_datamodel.assert_not_called()
+
+        # Test 2: file-based fallback path
+        self.sigma.client.get_workbook_queries = lambda *_: None
+        self.sigma.data_models = [non_viz_element]
+        self.sigma._get_datamodel = MagicMock()
+
+        results = list(
+            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
+        )
+        self.assertEqual(results, [])
+        self.sigma._get_datamodel.assert_not_called()
 
     def test_get_column_info_with_truncation(self):
         """
