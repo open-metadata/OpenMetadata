@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "ナビゲーションバーのロゴ用の URL パス",
     "custom-properties-description": "属性を拡張して、データアセットに独自のメタデータを追加できます。",
     "custom-property-is-set-to-message": "{{fieldName}} に設定されています",
-    "custom-property-name-validation": "名前は小文字で始まり、スペース、アンダースコア、ドットを含めることはできません。",
+    "custom-property-name-validation": "名前に '::' を含めることはできません。",
     "custom-property-update": "カスタムプロパティ '{{propertyName}}' の {{entityName}} に対する更新は {{status}} です",
     "customize-brand-description": "{{brandName}} の UX を組織やチームのニーズに合わせて調整します。",
     "customize-entity-landing-page-header-for-persona": "{{entity}} エンティティページの体験を <0>{{persona}}</0> ペルソナ向けにパーソナライズします",

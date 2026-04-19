@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "내비게이션 바 로고의 URL 경로입니다.",
     "custom-properties-description": "속성을 확장하여 데이터 자산을 풍부하게 하는 사용자 정의 메타데이터를 캡처합니다.",
     "custom-property-is-set-to-message": "{{fieldName}}이(가) 다음으로 설정되었습니다",
-    "custom-property-name-validation": "이름은 소문자로 시작해야 하며 공백, 밑줄 또는 점이 없어야 합니다.",
+    "custom-property-name-validation": "이름에는 '::'가 포함되어서는 안 됩니다.",
     "custom-property-update": "{{entityName}}의 사용자 정의 속성 '{{propertyName}}' 업데이트가 {{status}}입니다",
     "customize-brand-description": "조직 및 팀의 요구에 맞게 {{brandName}} UX를 맞춤 설정하세요.",
     "customize-entity-landing-page-header-for-persona": "<0>{{persona}}</0> 페르소나를 위한 {{entity}} 엔티티 페이지 경험을 개인화하세요.",

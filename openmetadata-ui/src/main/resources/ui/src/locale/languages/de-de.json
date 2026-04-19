@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "URL-Pfad für das Navbar-Logo.",
     "custom-properties-description": "Erfassen Sie benutzerdefinierte Metadaten, um Ihre Datenobjekte durch die Erweiterung der Attribute zu bereichern.",
     "custom-property-is-set-to-message": "{{fieldName}} ist gesetzt auf",
-    "custom-property-name-validation": "Der Name muss mit Kleinbuchstaben beginnen und darf keine Leerzeichen, Unterstriche oder Punkte enthalten.",
+    "custom-property-name-validation": "Der Name darf nicht '::' enthalten.",
     "custom-property-update": "Aktualisierung der benutzerdefinierten Eigenschaft '{{propertyName}}' in {{entityName}} ist {{status}}",
     "customize-brand-description": "Passen Sie die {{brandName}}-Benutzeroberfläche an Ihre Organisations- und Teambedürfnisse an.",
     "customize-entity-landing-page-header-for-persona": "Personalisieren Sie die {{entity}}-Entitätsseite für die <0>{{persona}}</0>-Persona",

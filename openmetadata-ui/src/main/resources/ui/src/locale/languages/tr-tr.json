@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "Gezinme çubuğu logosu için URL yolu.",
     "custom-properties-description": "Nitelikleri genişleterek veri varlıklarınızı zenginleştirmek için özel metadata yakalayın.",
     "custom-property-is-set-to-message": "{{fieldName}} şuna ayarlandı:",
-    "custom-property-name-validation": "Ad küçük harfle başlamalı ve boşluk, alt çizgi veya nokta içermemelidir.",
+    "custom-property-name-validation": "İsim '::' içermemelidir.",
     "custom-property-update": "{{entityName}} içindeki '{{propertyName}}' özel özelliği güncellemesi {{status}}",
     "customize-brand-description": "{{brandName}} kullanıcı deneyimini kurumsal ve ekip ihtiyaçlarınıza göre uyarlayın.",
     "customize-entity-landing-page-header-for-persona": "<0>{{persona}}</0> personası için {{entity}} Varlık Sayfası deneyimini kişiselleştirin",

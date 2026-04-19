@@ -34,6 +34,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
@@ -383,6 +384,66 @@ class PartitionWorkerTest {
     assertEquals("table", contextCaptor.getValue().get("entityType"));
     assertEquals(Boolean.FALSE, contextCaptor.getValue().get("recreateIndex"));
     assertEquals(statsTracker, contextCaptor.getValue().get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
+  }
+
+  @Test
+  void processBatchExtractsIdFromEntityInterfaceForReaderFailure() throws Exception {
+    IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
+    StageStatsTracker statsTracker = mock(StageStatsTracker.class);
+    PartitionWorker batchWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+
+    UUID errorEntityId = UUID.randomUUID();
+    EntityInterface failingEntity = mock(EntityInterface.class);
+    when(failingEntity.getId()).thenReturn(errorEntityId);
+    EntityInterface successEntity = mock(EntityInterface.class);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(successEntity));
+    resultList.setErrors(
+        List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
+    resultList.setWarningsCount(0);
+    resultList.setPaging(new Paging().withAfter("next-cursor"));
+
+    try (MockedConstruction<PaginatedEntitiesSource> ignored =
+        mockConstruction(
+            PaginatedEntitiesSource.class,
+            (mock, context) -> doReturn(resultList).when(mock).readNextKeyset("cursor-1"))) {
+
+      invokeProcessBatch(batchWorker, "table", "cursor-1", 2, statsTracker);
+    }
+
+    verify(failureRecorder)
+        .recordReaderEntityFailure("table", errorEntityId.toString(), null, "reader failure");
+  }
+
+  @Test
+  void processBatchSkipsReaderFailureWhenEntityInterfaceHasNullId() throws Exception {
+    IndexingFailureRecorder failureRecorder = mock(IndexingFailureRecorder.class);
+    StageStatsTracker statsTracker = mock(StageStatsTracker.class);
+    PartitionWorker batchWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, null, false, failureRecorder);
+
+    EntityInterface failingEntity = mock(EntityInterface.class);
+    when(failingEntity.getId()).thenReturn(null);
+    EntityInterface successEntity = mock(EntityInterface.class);
+
+    ResultList<EntityInterface> resultList = new ResultList<>();
+    resultList.setData(List.of(successEntity));
+    resultList.setErrors(
+        List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
+    resultList.setWarningsCount(0);
+    resultList.setPaging(new Paging().withAfter("next-cursor"));
+
+    try (MockedConstruction<PaginatedEntitiesSource> ignored =
+        mockConstruction(
+            PaginatedEntitiesSource.class,
+            (mock, context) -> doReturn(resultList).when(mock).readNextKeyset("cursor-1"))) {
+
+      invokeProcessBatch(batchWorker, "table", "cursor-1", 2, statsTracker);
+    }
+
+    verifyNoInteractions(failureRecorder);
   }
 
   @Test

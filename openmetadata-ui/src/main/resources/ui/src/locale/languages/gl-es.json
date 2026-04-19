@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "Ruta URL para o logotipo da barra de navegación.",
     "custom-properties-description": "Captura metadatos personalizados para enriquecer os teus activos de datos estendendo os atributos.",
     "custom-property-is-set-to-message": "{{fieldName}} está configurado para",
-    "custom-property-name-validation": "O nome debe comezar en minúscula sen espazos, subliñados nin puntos.",
+    "custom-property-name-validation": "O nome non debe conter '::'.",
     "custom-property-update": "A actualización da propiedade personalizada '{{propertyName}}' en {{entityName}} está {{status}}",
     "customize-brand-description": "Adapta a experiencia de usuario de {{brandName}} ás necesidades da túa organización e equipo.",
     "customize-entity-landing-page-header-for-persona": "Personaliza a experiencia da páxina de entidade {{entity}} para a persoa <0>{{persona}}</0>",
