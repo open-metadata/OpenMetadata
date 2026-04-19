@@ -6,6 +6,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.AppAna
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.service.Entity;
 
@@ -46,11 +47,10 @@ public record InsightsConfig(
       Set.of(Entity.TEST_CASE_RESULT, Entity.TEST_CASE_RESOLUTION_STATUS);
 
   public static InsightsConfig from(DataInsightsAppConfig appConfig, long currentTimestamp) {
-    var moduleConfig = appConfig.getModuleConfiguration();
+    ModuleConfiguration moduleConfig = appConfig.getModuleConfiguration();
 
     boolean recreate =
-        appConfig.getRecreateDataAssetsIndex() != null
-            && appConfig.getRecreateDataAssetsIndex();
+        appConfig.getRecreateDataAssetsIndex() != null && appConfig.getRecreateDataAssetsIndex();
 
     int batchSize = appConfig.getBatchSize() != null ? appConfig.getBatchSize() : 1000;
 

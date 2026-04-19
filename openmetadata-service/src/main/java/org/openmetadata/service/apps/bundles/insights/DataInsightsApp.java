@@ -10,7 +10,6 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
@@ -38,21 +37,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
-import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexLifecycleManager;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
-import org.openmetadata.service.apps.bundles.insights.workflow.InsightsWorkflow;
-import org.openmetadata.service.apps.bundles.insights.workflow.WorkflowRegistry;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
+import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
-import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
-import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflow.InsightsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflow.WorkflowRegistry;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataQuality.DataQualityWorkflow;
-import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
-import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -273,8 +267,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       SearchComponentFactory searchFactory = new SearchComponentFactory(searchRepository);
 
       if (config.shouldRecreateDataAssets()) {
-        new IndexLifecycleManager(
-                searchFactory.createSearchInterface(), config.dataAssetTypes())
+        new IndexLifecycleManager(searchFactory.createSearchInterface(), config.dataAssetTypes())
             .deleteAll();
         deleteDataQualityDataIndex();
         createDataQualityDataIndex();
@@ -324,8 +317,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     ProcessingPeriod steadyState = ProcessingPeriod.forSteadyState(timestamp, 30);
     Optional<ProcessingPeriod> backfillPeriod =
-        backfill.map(
-            b -> ProcessingPeriod.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
+        backfill.map(b -> ProcessingPeriod.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
     boolean recreate =
         recreateDataAssetsIndex.isPresent() && Boolean.TRUE.equals(recreateDataAssetsIndex.get());
 
@@ -355,7 +347,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setFailure(firstFailure);
     }
   }
-
 
   private void updateJobStatus() {
     if (stopped) {
