@@ -367,6 +367,9 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
       }
     }
 
+    boolQueryBuilder.must(
+        Query.of(q -> q.term(t -> t.field("deleted").value(FieldValue.of(false)))));
+
     searchRequestBuilder.query(Query.of(q -> q.bool(boolQueryBuilder.build())));
 
     if (!dataInsightChartName
