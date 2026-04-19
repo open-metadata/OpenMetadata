@@ -175,22 +175,22 @@ class SigmaSource(DashboardServiceSource):
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(str(chart.elementId)),
-                        displayName=chart.name or f"Element {chart.elementId}",
-                        chartType=get_standard_chart_type(chart.vizualizationType),
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
-                        sourceUrl=SourceUrl(dashboard_details.url),
-                        description=(
-                            Markdown(dashboard_details.description)
-                            if dashboard_details.description
-                            else None
-                        ),
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(str(chart.elementId)),
+                    displayName=chart.name or f"Element {chart.elementId}",
+                    chartType=get_standard_chart_type(chart.vizualizationType),
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
+                    sourceUrl=SourceUrl(dashboard_details.url),
+                    description=(
+                        Markdown(dashboard_details.description)
+                        if dashboard_details.description
+                        else None
+                    ),
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
