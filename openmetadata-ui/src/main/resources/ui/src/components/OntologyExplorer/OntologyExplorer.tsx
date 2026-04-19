@@ -13,7 +13,6 @@
 
 import {
   Card,
-  Divider,
   Input,
   SlideoutMenu,
   Tabs,
@@ -205,8 +204,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   entityId: propEntityId,
   glossaryId,
   className,
-  showHeader = true,
   height = 'calc(100vh - 200px)',
+  onStatsChange,
+  onLoadingChange,
 }) => {
   const { t } = useTranslation();
   const graphRef = useRef<OntologyGraphHandle | null>(null);
@@ -218,6 +218,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     scope === 'term' ? contextData?.data?.glossary?.id : undefined;
 
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
   const [assetGraphData, setAssetGraphData] =
     useState<OntologyGraphData | null>(null);
@@ -225,6 +226,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const [expandedTermIds, setExpandedTermIds] = useState<Set<string>>(
     new Set()
   );
+  const [loadingTermIds, setLoadingTermIds] = useState<Set<string>>(new Set());
   const [rdfEnabled, setRdfEnabled] = useState<boolean | null>(null);
   const [dataSource, setDataSource] = useState<'rdf' | 'database'>('database');
   const [relationTypes, setRelationTypes] = useState<
@@ -243,6 +245,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     Record<string, number>
   >({});
   const [hasMoreTerms, setHasMoreTerms] = useState(false);
+  const [dataModeRefreshKey, setDataModeRefreshKey] = useState(0);
 
   const graphDataRef = useRef<OntologyGraphData | null>(null);
   const explorationModeRef = useRef<ExplorationMode>('model');
@@ -266,6 +269,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     ...DEFAULT_FILTERS,
   });
   const dataModeInitialLoadUsesSpinnerRef = useRef(false);
+  const dataModeAbortGenRef = useRef(0);
+  const hasEnteredDataModeRef = useRef(false);
 
   useEffect(() => {
     graphDataRef.current = graphData;
@@ -315,6 +320,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           ...node,
           assetCount: termAssetCounts[node.id] ?? 0,
           loadedAssetCount: loadedAssetCountPerTerm[node.id] ?? 0,
+          isLoadingAssets: loadingTermIds.has(node.id),
         };
       });
 
@@ -353,6 +359,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     explorationMode,
     termAssetCounts,
     loadedAssetCountPerTerm,
+    loadingTermIds,
   ]);
 
   const filteredGraphData = useMemo(() => {
@@ -524,7 +531,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return undefined;
     }
     const engine = toLayoutEngineType(settings.layout);
-    if (engine !== LayoutEngine.Circular && engine !== LayoutEngine.Radial) {
+    if (engine !== LayoutEngine.Circular) {
       return undefined;
     }
 
@@ -711,6 +718,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         return;
       }
 
+      setLoadingTermIds((prev) => new Set(prev).add(termNode.id));
+
       const size = Math.max(1, pageSize);
       const pageNumber = Math.floor(fromOffset / size) + 1;
 
@@ -790,6 +799,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           isAxiosError(error) ? error : String(error),
           t('server.entity-fetch-error')
         );
+      } finally {
+        setLoadingTermIds((prev) => {
+          const next = new Set(prev);
+          next.delete(termNode.id);
+
+          return next;
+        });
       }
     },
     [t]
@@ -1259,8 +1275,64 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         Object.entries(counts).slice(0, DATA_MODE_MAX_RENDER_COUNT)
       );
 
+      const baseGraph = buildGraphFromCounts(termCounts);
+
+      const savedGraph = savedModelGraphRef.current;
+      if (savedGraph && savedGraph.edges.length > 0) {
+        const fqnSet = new Set(
+          baseGraph.nodes
+            .map((n) => n.fullyQualifiedName)
+            .filter((fqn): fqn is string => Boolean(fqn))
+        );
+        const uuidToFqn = new Map<string, string>();
+        savedGraph.nodes.forEach((n) => {
+          if (n.id && n.fullyQualifiedName) {
+            uuidToFqn.set(n.id, n.fullyQualifiedName);
+          }
+        });
+
+        const existingEdgeKeys = new Set(
+          baseGraph.edges.map((e) => `${e.from}-${e.to}`)
+        );
+        const termTermEdges: OntologyEdge[] = [];
+
+        savedGraph.edges.forEach((edge) => {
+          if (edge.relationType === 'parentOf') {
+            return;
+          }
+          const fromFqn = uuidToFqn.get(edge.from);
+          const toFqn = uuidToFqn.get(edge.to);
+          if (
+            !fromFqn ||
+            !toFqn ||
+            !fqnSet.has(fromFqn) ||
+            !fqnSet.has(toFqn)
+          ) {
+            return;
+          }
+          const key = `${fromFqn}-${toFqn}`;
+          if (!existingEdgeKeys.has(key)) {
+            existingEdgeKeys.add(key);
+            termTermEdges.push({
+              from: fromFqn,
+              to: toFqn,
+              label: edge.label,
+              relationType: edge.relationType,
+            });
+          }
+        });
+
+        return {
+          graphData: {
+            nodes: baseGraph.nodes,
+            edges: [...baseGraph.edges, ...termTermEdges],
+          },
+          termCounts,
+        };
+      }
+
       return {
-        graphData: buildGraphFromCounts(termCounts),
+        graphData: baseGraph,
         termCounts,
       };
     },
@@ -1421,6 +1493,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         setAssetGraphData(null);
         setTermAssetCounts({});
         setGraphData(mergedData);
+        lastLoadCompletedRef.current = Date.now();
       } catch (error) {
         showErrorToast(
           isAxiosError(error) ? error : String(error),
@@ -1449,6 +1522,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return;
     }
 
+    const gen = dataModeAbortGenRef.current;
     const useSpinner = dataModeInitialLoadUsesSpinnerRef.current;
     if (useSpinner) {
       dataModeInitialLoadUsesSpinnerRef.current = false;
@@ -1467,9 +1541,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
 
       await fetchTermAssetCounts(termNodes, glossaryFilterIds);
+      if (dataModeAbortGenRef.current !== gen) {
+        return;
+      }
       setAssetGraphData(null);
     } finally {
-      if (useSpinner) {
+      if (useSpinner && dataModeAbortGenRef.current === gen) {
         setLoading(false);
       }
     }
@@ -1514,6 +1591,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   useEffect(() => {
     if (explorationMode !== 'data') {
+      dataModeAbortGenRef.current++;
+      if (hasEnteredDataModeRef.current) {
+        setLoading(false);
+        hasEnteredDataModeRef.current = false;
+      }
       setAssetGraphData(null);
       dataModeInitialLoadUsesSpinnerRef.current = false;
       if (isInGlobalDataModeRef.current && savedModelGraphRef.current) {
@@ -1524,6 +1606,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
       return;
     }
+
+    hasEnteredDataModeRef.current = true;
 
     if (scope !== 'global') {
       // Scoped data mode: fetch counts for existing model-mode graph
@@ -1538,7 +1622,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     const glossaryFilterIds = withoutOntologyAutocompleteAll(
       filters.glossaryIds
     );
+    const gen = ++dataModeAbortGenRef.current;
     setLoading(true);
+    setGraphData(null);
     setTermAssetCounts({});
     loadDataModeTerms(glossaryFilterIds)
       .then(
@@ -1546,19 +1632,27 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           graphData: OntologyGraphData;
           termCounts: Record<string, number>;
         }) => {
+          if (dataModeAbortGenRef.current !== gen) {
+            return;
+          }
           setGraphData(result.graphData);
           setTermAssetCounts(result.termCounts);
           setAssetGraphData(null);
         }
       )
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (dataModeAbortGenRef.current === gen) {
+          setLoading(false);
+        }
+      });
   }, [
     explorationMode,
     scope,
     filters.glossaryIds,
     loadAssetsForDataMode,
     loadDataModeTerms,
+    dataModeRefreshKey,
   ]);
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
     setGraphData((prev) => {
@@ -1652,12 +1746,20 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }, []);
 
   const handleExportPng = useCallback(async () => {
-    await graphRef.current?.exportAsPng();
-  }, []);
+    try {
+      await graphRef.current?.exportAsPng();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   const handleExportSvg = useCallback(async () => {
-    await graphRef.current?.exportAsSvg();
-  }, []);
+    try {
+      await graphRef.current?.exportAsSvg();
+    } catch {
+      showErrorToast(t('server.unexpected-error'));
+    }
+  }, [t]);
 
   // Resolve the single glossary ID applicable in the current scope so we know
   // which glossary to export as an ontology file.
@@ -1806,12 +1908,28 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
+    if (explorationMode === 'data') {
+      if (scope === 'global') {
+        setDataModeRefreshKey((k) => k + 1);
+      } else {
+        dataModeInitialLoadUsesSpinnerRef.current = true;
+        loadAssetsForDataMode();
+      }
+
+      return;
+    }
     if (scope === 'global') {
       fetchAllGlossaryData();
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     }
-  }, [scope, glossaryId, fetchAllGlossaryData]);
+  }, [
+    explorationMode,
+    scope,
+    glossaryId,
+    fetchAllGlossaryData,
+    loadAssetsForDataMode,
+  ]);
 
   const handleScrollNearEdge = useCallback(() => {
     const activeGlossaryFilter =
@@ -1819,6 +1937,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     if (
       explorationMode === 'data' ||
+      filters.viewMode !== 'overview' ||
       activeGlossaryFilter ||
       !hasMoreTerms ||
       isLoadingMoreRef.current ||
@@ -1829,7 +1948,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
 
     isLoadingMoreRef.current = true;
-    setLoading(true);
+    setIsLoadingMore(true);
     loadNextTermPage()
       .then((terms) => {
         const newPageData = buildGraphFromAllTerms(terms, glossaries);
@@ -1863,11 +1982,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       .finally(() => {
         lastLoadCompletedRef.current = Date.now();
         isLoadingMoreRef.current = false;
-        setLoading(false);
+        setIsLoadingMore(false);
       });
   }, [
     explorationMode,
     filters.glossaryIds,
+    filters.viewMode,
     hasMoreTerms,
     scope,
     loadNextTermPage,
@@ -2009,6 +2129,142 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return items;
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
+
+  useEffect(() => {
+    onStatsChange?.(statsItems);
+  }, [statsItems, onStatsChange]);
+
+  const renderGraphContent = () => {
+    const hasNoVisibleNodes =
+      !graphDataToShow || graphDataToShow.nodes.length === 0;
+
+    if (loading && hasNoVisibleNodes) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-loading">
+          <div
+            aria-label={t('label.loading')}
+            className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+            role="status"
+          />
+          <Typography as="p" className="tw:mt-4 tw:text-tertiary">
+            {t('label.loading-graph')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (
+      isHierarchyView &&
+      hierarchyGraphData !== null &&
+      hierarchyGraphData.edges.length === 0
+    ) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-hierarchy-empty">
+          <Typography as="p" className="tw:text-center tw:text-tertiary">
+            {t('message.no-hierarchical-relations-found')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      const hasActiveFilter =
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
+        withoutOntologyAutocompleteAll(filters.relationTypes).length > 0;
+
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
+          data-testid="ontology-graph-empty">
+          <Typography as="p" className="tw:text-center tw:text-tertiary">
+            {hasActiveFilter
+              ? t('message.no-data-available-for-selected-filter')
+              : t('message.no-glossary-terms-found')}
+          </Typography>
+        </div>
+      );
+    }
+
+    if (!graphDataToShow) {
+      return null;
+    }
+
+    return (
+      <>
+        {filters.searchQuery.trim() ? (
+          <div
+            aria-hidden
+            className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
+            data-testid="ontology-search-overlay"
+          />
+        ) : null}
+        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+          <OntologyGraph
+            edges={graphDataToShow.edges}
+            expandedTermIds={
+              explorationMode === 'data' ? expandedTermIds : undefined
+            }
+            explorationMode={isHierarchyView ? 'hierarchy' : explorationMode}
+            focusNodeId={
+              explorationMode === 'data'
+                ? selectedNode?.id ?? entityId
+                : entityId
+            }
+            glossaryColorMap={glossaryColorMap}
+            graphSearchHighlight={graphSearchHighlight}
+            hierarchyCombos={
+              isHierarchyView && hierarchyGraphData
+                ? hierarchyGraphData.combos.map((c) => ({
+                    id: c.id,
+                    label: c.label,
+                    glossaryId: c.glossaryId,
+                  }))
+                : undefined
+            }
+            nodePositions={hierarchyBakedPositions}
+            nodes={graphDataToShow.nodes}
+            ref={graphRef}
+            selectedNodeId={
+              explorationMode === 'data' && expandedTermIds.size > 1
+                ? null
+                : selectedNode?.id
+            }
+            settings={settings}
+            onNodeClick={handleGraphNodeClick}
+            onNodeContextMenu={handleGraphNodeContextMenu}
+            onNodeDoubleClick={handleGraphNodeDoubleClick}
+            onPaneClick={handleGraphPaneClick}
+            onScrollNearEdge={handleScrollNearEdge}
+          />
+          {isLoadingMore && (
+            <>
+              <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
+              <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
+                <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
+                  <div
+                    aria-label={t('label.loading')}
+                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
+                    role="status"
+                  />
+                  <Typography size="text-sm" weight="medium">
+                    {t('label.loading-more-terms')}
+                  </Typography>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div
       className={classNames(
@@ -2018,59 +2274,31 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
-      {showHeader && (
+      {scope === 'global' && (
         <Card
-          className="tw:mb-4 tw:flex tw:flex-col tw:px-5 tw:py-3"
+          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-none"
           data-testid="ontology-explorer-header">
-          <Typography size="text-sm" weight="medium">
-            {t('label.ontology-explorer')}
-          </Typography>
-          {filteredGraphData && statsItems.length > 0 && (
-            <div
-              className="tw:flex tw:flex-wrap tw:items-center tw:gap-2"
-              data-testid="ontology-explorer-stats">
-              {statsItems.map((item, index) => (
-                <React.Fragment key={`${item}-${index}`}>
-                  {index > 0 ? (
-                    <Divider
-                      className="tw:h-4 tw:self-center"
-                      orientation="vertical"
-                    />
-                  ) : null}
-                  <Typography
-                    data-testid={
-                      index === 0 ? 'ontology-explorer-stats-item' : undefined
-                    }
-                    size="text-sm"
-                    weight="regular">
-                    {item}
-                  </Typography>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
+          <FilterToolbar
+            filters={filters}
+            glossaries={glossaries}
+            relationTypes={relationTypes}
+            viewModeDisabled={explorationMode === 'data'}
+            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onFiltersChange={handleFiltersChange}
+            onViewModeChange={handleViewModeChange}
+          />
         </Card>
       )}
 
       <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
-        <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-          {/* Top filter bar — only on the standalone global page */}
-          {scope === 'global' && (
-            <div className="tw:absolute tw:left-0 tw:right-0 tw:top-0 tw:z-1 tw:px-4 tw:pt-5">
-              <Card className="tw:rounded-md tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-sm">
-                <FilterToolbar
-                  filters={filters}
-                  glossaries={glossaries}
-                  relationTypes={relationTypes}
-                  viewModeDisabled={explorationMode === 'data'}
-                  onClearAll={() => setFilters(DEFAULT_FILTERS)}
-                  onFiltersChange={handleFiltersChange}
-                  onViewModeChange={handleViewModeChange}
-                />
-              </Card>
-            </div>
-          )}
-
+        <div
+          className={classNames(
+            'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
+            'tw:border tw:border-utility-gray-blue-100',
+            scope === 'global'
+              ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
+              : 'tw:rounded-lg'
+          )}>
           {/* Bottom center: Mode tabs + Search in Graph + Settings */}
           <Card
             className={classNames(
@@ -2085,14 +2313,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   handleModeChange(key as ExplorationMode);
                 }
               }}>
-              <Tabs.List
-                items={[
-                  { label: t('label.model'), id: 'model' },
-                  { label: t('label.data'), id: 'data' },
-                ]}
-                size="sm"
-                type="button-border"
-              />
+              <Tabs.List size="sm" type="button-border">
+                <Tabs.Item id="model" label={t('label.model')} />
+                <Tabs.Item
+                  className={(state) =>
+                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                  }
+                  id="data"
+                  isDisabled={loading || isLoadingMore}
+                  label={t('label.data')}
+                />
+              </Tabs.List>
               <Tabs.Panel className="tw:hidden" id="model" />
               <Tabs.Panel className="tw:hidden" id="data" />
             </Tabs>
@@ -2121,6 +2352,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               }
             />
             <GraphSettingsPanel
+              isDataMode={explorationMode === 'data'}
               settings={settings}
               onSettingsChange={handleSettingsChange}
             />
@@ -2146,93 +2378,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               ONTOLOGY_GRAPH_BACKDROP_CLASS,
               'tw:overflow-hidden'
             )}>
-            {loading ? (
-              <div
-                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-                data-testid="ontology-graph-loading">
-                <div
-                  aria-label={t('label.loading')}
-                  className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"
-                  role="status"
-                />
-                <Typography as="p" className="tw:mt-4 tw:text-tertiary">
-                  {t('label.loading-graph')}
-                </Typography>
-              </div>
-            ) : isHierarchyView &&
-              hierarchyGraphData !== null &&
-              hierarchyGraphData.edges.length === 0 ? (
-              <div
-                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-                data-testid="ontology-graph-hierarchy-empty">
-                <Typography as="p" className="tw:text-center tw:text-tertiary">
-                  {t('message.no-hierarchical-relations-found')}
-                </Typography>
-              </div>
-            ) : !graphDataToShow || graphDataToShow.nodes.length === 0 ? (
-              <div
-                className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-                data-testid="ontology-graph-empty">
-                <Typography as="p" className="tw:text-center tw:text-tertiary">
-                  {withoutOntologyAutocompleteAll(filters.glossaryIds).length >
-                    0 ||
-                  withoutOntologyAutocompleteAll(filters.relationTypes).length >
-                    0
-                    ? t('message.no-data-available-for-selected-filter')
-                    : t('message.no-glossary-terms-found')}
-                </Typography>
-              </div>
-            ) : (
-              <>
-                {filters.searchQuery.trim() ? (
-                  <div
-                    aria-hidden
-                    className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-1 tw:bg-gray-950/6"
-                  />
-                ) : null}
-                <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
-                  <OntologyGraph
-                    edges={graphDataToShow.edges}
-                    expandedTermIds={
-                      explorationMode === 'data' ? expandedTermIds : undefined
-                    }
-                    explorationMode={
-                      isHierarchyView ? 'hierarchy' : explorationMode
-                    }
-                    focusNodeId={
-                      explorationMode === 'data'
-                        ? selectedNode?.id ?? entityId
-                        : entityId
-                    }
-                    glossaryColorMap={glossaryColorMap}
-                    graphSearchHighlight={graphSearchHighlight}
-                    hierarchyCombos={
-                      isHierarchyView && hierarchyGraphData
-                        ? hierarchyGraphData.combos.map((c) => ({
-                            id: c.id,
-                            label: c.label,
-                            glossaryId: c.glossaryId,
-                          }))
-                        : undefined
-                    }
-                    nodePositions={hierarchyBakedPositions}
-                    nodes={graphDataToShow.nodes}
-                    ref={graphRef}
-                    selectedNodeId={
-                      explorationMode === 'data' && expandedTermIds.size > 1
-                        ? null
-                        : selectedNode?.id
-                    }
-                    settings={settings}
-                    onNodeClick={handleGraphNodeClick}
-                    onNodeContextMenu={handleGraphNodeContextMenu}
-                    onNodeDoubleClick={handleGraphNodeDoubleClick}
-                    onPaneClick={handleGraphPaneClick}
-                    onScrollNearEdge={handleScrollNearEdge}
-                  />
-                </div>
-              </>
-            )}
+            {renderGraphContent()}
           </div>
 
           {selectedNode && (

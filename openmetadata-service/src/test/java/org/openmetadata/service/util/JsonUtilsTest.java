@@ -224,4 +224,52 @@ class JsonUtilsTest {
                     JsonNode.class));
     assertTrue(exception.getMessage() != null && !exception.getMessage().isBlank());
   }
+
+  /**
+   * Companion to {@link #testApplyPatchReplaceMissingLeafTreatsAsAdd()} which tests nested paths.
+   * This test covers top-level paths where the parent is the root object. The bug was that
+   * parentPath="" was converted to "/" and Json.createPointer("/") matches the empty-string key, not
+   * the root, so the conversion was skipped.
+   */
+  @Test
+  void testApplyPatchReplaceTopLevelMissingField_treatsAsAdd() {
+    // Plain JSON: {"name":"test"} — no "displayName" key
+    JsonNode original = JsonUtils.readTree("{\"name\":\"test\"}");
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/displayName", "New Display Name");
+
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+
+    assertEquals("New Display Name", updated.get("displayName").asText());
+    assertEquals("test", updated.get("name").asText());
+  }
+
+  /**
+   * End-to-end test with a real entity that has {@code @JsonInclude(NON_NULL)}. When displayName is
+   * null, it's excluded from serialization. A PATCH with op:replace on /displayName must succeed
+   * (converted to add). This is the exact scenario the UI triggers when the search index enriches
+   * displayName but the DB entity has it as null.
+   */
+  @Test
+  void testApplyPatchReplaceOnNullDisplayName_entityWithNonNullAnnotation() {
+    org.openmetadata.schema.tests.TestCase testCase = new org.openmetadata.schema.tests.TestCase();
+    testCase.setId(UUID.randomUUID());
+    testCase.setName("my_test_case");
+    testCase.setFullyQualifiedName("svc.db.schema.table.my_test_case");
+    testCase.setEntityLink("<#E::table::svc.db.schema.table>");
+    // displayName is null — excluded by @JsonInclude(NON_NULL)
+
+    String json = JsonUtils.pojoToJson(testCase);
+    assertFalse(json.contains("\"displayName\""), "NON_NULL should exclude null displayName");
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/displayName", "New Display Name");
+
+    org.openmetadata.schema.tests.TestCase result =
+        JsonUtils.applyPatch(
+            testCase, patchBuilder.build(), org.openmetadata.schema.tests.TestCase.class);
+
+    assertEquals("New Display Name", result.getDisplayName());
+  }
 }

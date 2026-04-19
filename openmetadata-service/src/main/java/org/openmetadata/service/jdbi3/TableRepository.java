@@ -96,7 +96,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.PipelineObservability;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -161,6 +163,7 @@ public class TableRepository extends EntityRepository<Table> {
   private static final String DEFAULT_SCHEMA_FIELDS = "database,service,serviceType";
 
   public static final String COLUMN_FIELD = "columns";
+  public static final String TABLE_CONSTRAINTS_FIELD = "tableConstraints";
   public static final String CUSTOM_METRICS = "customMetrics";
   private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
@@ -307,7 +310,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void clearFields(Table table, Fields fields) {
     table.setTableConstraints(
-        fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+        fields.contains(TABLE_CONSTRAINTS_FIELD) ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
     table.setSchemaDefinition(
@@ -954,11 +957,20 @@ public class TableRepository extends EntityRepository<Table> {
           validateColumn(table, columnProfilerConfig.getColumnName());
         }
       }
-      if (tableProfilerConfig.getProfileSampleType() != null
-          && tableProfilerConfig.getProfileSample() != null) {
-        EntityUtil.validateProfileSample(
-            tableProfilerConfig.getProfileSampleType().toString(),
-            tableProfilerConfig.getProfileSample());
+      ProfileSampleConfig profileSampleConfig = tableProfilerConfig.getProfileSampleConfig();
+      if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+        ProfileSampleConfig.SampleConfigType sampleConfigType =
+            profileSampleConfig.getSampleConfigType();
+        if (!nullOrEmpty(sampleConfigType)
+            && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+          StaticSamplingConfig staticConfig =
+              JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+          if (staticConfig.getProfileSampleType() != null
+              && staticConfig.getProfileSample() != null) {
+            EntityUtil.validateProfileSample(
+                staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+          }
+        }
       }
     }
 
@@ -1379,7 +1391,7 @@ public class TableRepository extends EntityRepository<Table> {
         get(
             null,
             tableId,
-            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD)),
+            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
 
@@ -2308,7 +2320,8 @@ public class TableRepository extends EntityRepository<Table> {
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
-          "tableConstraints", () -> updateTableConstraints(origTable, updatedTable, operation));
+          TABLE_CONSTRAINTS_FIELD,
+          () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
@@ -2417,7 +2430,7 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange(
-          "tableConstraints",
+          TABLE_CONSTRAINTS_FIELD,
           origConstraints,
           updatedConstraints,
           added,
