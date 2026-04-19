@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -30,7 +32,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
-  static final String BOT_UPDATE_FIELDS = "botUser";
+  static final String BOT_USER_FIELD = "botUser";
+  static final String BOT_UPDATE_FIELDS = BOT_USER_FIELD;
 
   public BotRepository() {
     super(
@@ -45,12 +48,56 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {
+    // Always populate botUser on single-entity GET to preserve backward-compatible behavior for
+    // existing callers of GET /bots/{id} and GET /bots/name/{name}. The list path (bulk) is opt-in
+    // via ?fields=botUser.
     entity.withBotUser(getBotUser(entity));
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<Bot> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    if (fields.contains(BOT_USER_FIELD)) {
+      fetchAndSetBotUsers(entities);
+    }
+    super.setFieldsInBulk(fields, entities);
+  }
+
+  private void fetchAndSetBotUsers(List<Bot> bots) {
+    Map<UUID, EntityReference> botUserMap = batchFetchBotUsers(bots);
+    for (Bot bot : bots) {
+      EntityReference botUserRef = botUserMap.get(bot.getId());
+      if (botUserRef == null) {
+        botUserRef = getBotUser(bot);
+      }
+      bot.withBotUser(botUserRef);
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchBotUsers(List<Bot> bots) {
+    Map<UUID, EntityReference> botUserMap = new HashMap<>();
+    if (bots == null || bots.isEmpty()) {
+      return botUserMap;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(bots), Relationship.CONTAINS.ordinal(), Entity.USER);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID botId = UUID.fromString(record.getFromId());
+      EntityReference userRef =
+          Entity.getEntityReferenceById(
+              Entity.USER, UUID.fromString(record.getToId()), Include.NON_DELETED);
+      botUserMap.put(botId, userRef);
+    }
+    return botUserMap;
+  }
+
+  @Override
   public void clearFields(Bot entity, Fields fields) {
-    /* Do nothing */
+    /* Do nothing — botUser is always returned on single-entity GET (see setFields). */
   }
 
   @Override
