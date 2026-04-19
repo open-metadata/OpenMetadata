@@ -209,7 +209,7 @@ describe('ServiceDocPanel Component', () => {
           'root/config/database'
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(
-          '[data-id="config.database"]'
+          `[data-id="${CSS.escape('config.database')}"]`
         );
       });
     });
@@ -284,7 +284,7 @@ describe('ServiceDocPanel Component', () => {
           'root/application/config'
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(
-          '[data-id="application.config"]'
+          `[data-id="${CSS.escape('application.config')}"]`
         );
       });
     });
