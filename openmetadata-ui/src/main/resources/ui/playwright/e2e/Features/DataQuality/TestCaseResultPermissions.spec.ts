@@ -241,7 +241,16 @@ test.describe(
           }
         );
 
+        const testDefinitionResponse = viewResultsPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
+            response.url().includes('sqlExpression') &&
+            response.ok()
+        );
+
         await visitTestCaseDetailsPage(viewResultsPage);
+        await testDefinitionResponse;
+        await waitForAllLoadersToDisappear(viewResultsPage);
 
         await expect(
           viewResultsPage.getByTestId('test-case-result-tab-container')
@@ -249,10 +258,12 @@ test.describe(
         expect(decodeURIComponent(testDefinitionRequestUrl)).toContain(
           'sqlExpression'
         );
-        await expect(viewResultsPage.getByText('SQL Expression')).toBeVisible();
-        await expect(
-          viewResultsPage.getByTestId('sql-expression-container')
-        ).toContainText(sqlExpression);
+        const sqlExpressionContainer = viewResultsPage.getByTestId(
+          'sql-expression-container'
+        );
+        await expect(sqlExpressionContainer).toBeVisible({ timeout: 15000 });
+        await expect(sqlExpressionContainer).toContainText('SQL Expression');
+        await expect(sqlExpressionContainer).toContainText(sqlExpression);
 
         await viewResultsPage.unroute(
           '**/api/v1/dataQuality/testDefinitions/*'
