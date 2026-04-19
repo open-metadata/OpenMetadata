@@ -17,7 +17,7 @@ from sqlalchemy import Table as SqaTable
 from sqlalchemy import func
 from sqlalchemy.orm import Query
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
@@ -64,26 +65,25 @@ class PostgresSampler(SQASampler):
         )
         self.sampling_fn = func.bernoulli
         self.sampling_method_type = SamplingMethodType.BERNOULLI
-        if (
-            sample_config
-            and sample_config.samplingMethodType == SamplingMethodType.SYSTEM
-        ):
-            self.sampling_fn = func.system
+        if sample_config:
+            static = sample_config.get_static_config()
+            if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
+                self.sampling_fn = func.system
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for postgres
         Args:
             selectable (Table): _description_
         """
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-            return selectable.tablesample(
-                self.sampling_fn(self.sample_config.profileSample or 100)
-            )
+        static = self.sample_config.get_static_config()
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+            return selectable.tablesample(self.sampling_fn(static.profileSample or 100))
 
         return selectable
 
     def get_sample_query(self, *, column=None) -> Query:
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+        static = self.sample_config.get_static_config()
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return self._base_sample_query(column).cte(
                 f"{self.get_sampler_table_name()}_rnd"
             )
