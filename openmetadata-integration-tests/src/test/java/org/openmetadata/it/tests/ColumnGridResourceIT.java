@@ -1487,27 +1487,41 @@ public class ColumnGridResourceIT {
 
     waitForSearchIndexRefresh();
 
-    // Search with all lowercase
-    ColumnGridResponse lowerResponse =
-        getColumnGrid(
-            client,
-            "entityTypes=table&columnNamePattern=casemixcol&serviceName=" + service.getName());
+    await("Wait for lowercase pattern search to find mixed-case column")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse lowerResponse =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&columnNamePattern=casemixcol&serviceName="
+                          + service.getName());
 
-    assertNotNull(lowerResponse);
-    boolean foundLower =
-        lowerResponse.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName));
-    assertTrue(foundLower, "Lowercase search should find the mixed-case column");
+              assertNotNull(lowerResponse);
+              assertTrue(
+                  lowerResponse.getColumns().stream()
+                      .anyMatch(c -> c.getColumnName().equals(colName)),
+                  "Lowercase search should find the mixed-case column");
+            });
 
-    // Search with all uppercase
-    ColumnGridResponse upperResponse =
-        getColumnGrid(
-            client,
-            "entityTypes=table&columnNamePattern=CASEMIXCOL&serviceName=" + service.getName());
+    await("Wait for uppercase pattern search to find mixed-case column")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse upperResponse =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&columnNamePattern=CASEMIXCOL&serviceName="
+                          + service.getName());
 
-    assertNotNull(upperResponse);
-    boolean foundUpper =
-        upperResponse.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName));
-    assertTrue(foundUpper, "Uppercase search should find the mixed-case column");
+              assertNotNull(upperResponse);
+              assertTrue(
+                  upperResponse.getColumns().stream()
+                      .anyMatch(c -> c.getColumnName().equals(colName)),
+                  "Uppercase search should find the mixed-case column");
+            });
   }
 
   @Test
@@ -1529,18 +1543,26 @@ public class ColumnGridResourceIT {
 
     waitForSearchIndexRefresh();
 
-    ColumnGridResponse response =
-        getColumnGrid(
-            client,
-            "entityTypes=table&columnNamePattern=regex_target&serviceName=" + service.getName());
+    await("Wait for pattern search to exclude non-matching columns")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&columnNamePattern=regex_target&serviceName="
+                          + service.getName());
 
-    assertNotNull(response);
-    boolean foundMatch =
-        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(matchCol));
-    boolean foundNoMatch =
-        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(noMatchCol));
-    assertTrue(foundMatch, "Matching column should be in results");
-    assertFalse(foundNoMatch, "Non-matching column from same table should be excluded");
+              assertNotNull(response);
+              assertTrue(
+                  response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(matchCol)),
+                  "Matching column should be in results");
+              assertFalse(
+                  response.getColumns().stream()
+                      .anyMatch(c -> c.getColumnName().equals(noMatchCol)),
+                  "Non-matching column from same table should be excluded");
+            });
   }
 
   @Test
@@ -1563,19 +1585,26 @@ public class ColumnGridResourceIT {
     waitForSearchIndexRefresh();
 
     // Search for "col.with" — dot should be literal, not wildcard
-    ColumnGridResponse response =
-        getColumnGrid(
-            client,
-            "entityTypes=table&columnNamePattern=col.with&serviceName=" + service.getName());
+    await("Wait for pattern search with special chars")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&columnNamePattern=col.with&serviceName="
+                          + service.getName());
 
-    assertNotNull(response);
-    boolean foundDotCol =
-        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colWithDot));
-    boolean foundNoDotCol =
-        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colNoDot));
-    assertTrue(foundDotCol, "Column with literal dot should match");
-    assertFalse(
-        foundNoDotCol, "Column without dot should not match — dot must be literal, not wildcard");
+              assertNotNull(response);
+              assertTrue(
+                  response.getColumns().stream()
+                      .anyMatch(c -> c.getColumnName().equals(colWithDot)),
+                  "Column with literal dot should match");
+              assertFalse(
+                  response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colNoDot)),
+                  "Column without dot should not match — dot must be literal, not wildcard");
+            });
   }
 
   @Test
@@ -1613,7 +1642,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col1, col2))
         .execute();
 
-    // Table 2: same column name as col1 but WITHOUT tag
+    // Table 2: untagged column whose name also matches the pattern
     Column col3 =
         Columns.build(untaggedMatchCol).withType(ColumnDataType.VARCHAR).withLength(255).create();
     Tables.create()
@@ -1624,36 +1653,46 @@ public class ColumnGridResourceIT {
 
     waitForSearchIndexRefresh();
 
-    ColumnGridResponse response =
-        getColumnGrid(
-            client,
-            "entityTypes=table&tags=PII.Sensitive&columnNamePattern=pat_tag_match&serviceName="
-                + service.getName());
+    await("Wait for pattern + tag filter result")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&tags=PII.Sensitive&columnNamePattern=pat_tag_match&serviceName="
+                          + service.getName());
 
-    assertNotNull(response);
+              assertNotNull(response);
 
-    // Should find taggedMatchCol (matches pattern AND has tag)
-    // Should NOT find taggedNoMatchCol (has tag but doesn't match pattern)
-    // Should NOT find untaggedMatchCol (matches pattern but no tag)
-    boolean foundTaggedMatch = false;
-    boolean foundTaggedNoMatch = false;
-    boolean foundUntaggedMatch = false;
+              // Should find taggedMatchCol (matches pattern AND has tag)
+              // Should NOT find taggedNoMatchCol (has tag but doesn't match pattern)
+              // Should NOT find untaggedMatchCol (matches pattern but no tag)
+              boolean foundTaggedMatch = false;
+              boolean foundTaggedNoMatch = false;
+              boolean foundUntaggedMatch = false;
 
-    for (ColumnGridItem item : response.getColumns()) {
-      if (item.getColumnName().equals(taggedMatchCol)) {
-        foundTaggedMatch = true;
-      }
-      if (item.getColumnName().equals(taggedNoMatchCol)) {
-        foundTaggedNoMatch = true;
-      }
-      if (item.getColumnName().equals(untaggedMatchCol)) {
-        foundUntaggedMatch = true;
-      }
-    }
+              for (ColumnGridItem item : response.getColumns()) {
+                if (item.getColumnName().equals(taggedMatchCol)) {
+                  foundTaggedMatch = true;
+                }
+                if (item.getColumnName().equals(taggedNoMatchCol)) {
+                  foundTaggedNoMatch = true;
+                }
+                if (item.getColumnName().equals(untaggedMatchCol)) {
+                  foundUntaggedMatch = true;
+                }
+              }
 
-    assertTrue(foundTaggedMatch, "Column with tag AND matching pattern should be in results");
-    assertFalse(foundTaggedNoMatch, "Column with tag but NOT matching pattern should be excluded");
-    assertFalse(foundUntaggedMatch, "Column matching pattern but WITHOUT tag should be excluded");
+              assertTrue(
+                  foundTaggedMatch, "Column with tag AND matching pattern should be in results");
+              assertFalse(
+                  foundTaggedNoMatch,
+                  "Column with tag but NOT matching pattern should be excluded");
+              assertFalse(
+                  foundUntaggedMatch, "Column matching pattern but WITHOUT tag should be excluded");
+            });
   }
 
   @Test
