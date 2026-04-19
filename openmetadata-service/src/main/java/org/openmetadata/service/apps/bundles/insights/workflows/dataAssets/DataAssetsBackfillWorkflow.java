@@ -1,18 +1,23 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.MILLISECONDS_IN_A_DAY;
+
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.ResultList;
-import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.MILLISECONDS_IN_A_DAY;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
@@ -21,18 +26,18 @@ import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFact
 import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.BackfillBatchProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.BackfillTimeline;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.BackfillVersionScanner;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill.VersionRecord;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
-  private static final int RETENTION_DAYS = 30;
+  // Small batch size keeps per-batch entity heap bounded: 50 × ~50KB = ~2.5MB peak
+  private static final int BACKFILL_BATCH_SIZE = 50;
 
   private final InsightsConfig config;
   private final SearchComponentFactory searchFactory;
@@ -41,7 +46,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
   private DataInsightsSearchInterface searchInterface;
   private DataInsightsEntityEnricher enricher;
-  private Processor entityProcessor;
+  private AbstractDataInsightsBulkProcessor<?> bulkProcessor;
   private Sink searchIndexSink;
   private final Set<String> completedEntityTypes = Collections.synchronizedSet(new HashSet<>());
 
@@ -67,7 +72,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     searchInterface = searchFactory.createSearchInterface();
     int totalRecords = config.dataAssetTypes().size() * 1000;
     enricher = new DataInsightsEntityEnricher(totalRecords);
-    entityProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
+    bulkProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
     searchIndexSink = searchFactory.createIndexSink(totalRecords);
 
     preCreateDailyIndices();
@@ -103,16 +108,13 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     String clusterAlias = searchInterface.getClusterAlias();
     LOG.info("[BackfillWorkflow] Processing entity type: {}", entityType);
 
-    BackfillTimeline timeline =
-        new BackfillVersionScanner(entityType, windowStartTs, config.batchSize(), collectionDAO)
-            .scan();
-
     BackfillBatchProcessor processor =
         new BackfillBatchProcessor(
-            enricher, entityProcessor, searchIndexSink, collectionDAO, clusterAlias, entityType);
+            enricher, bulkProcessor, searchIndexSink, collectionDAO, clusterAlias, entityType);
 
+    // Single pass: fetch version metadata inline per batch — no global BackfillTimeline held.
     PaginatedEntitiesSource source =
-        new PaginatedEntitiesSource(entityType, config.batchSize(), List.of("*"));
+        new PaginatedEntitiesSource(entityType, BACKFILL_BATCH_SIZE, List.of("*"));
     String cursor = null;
 
     while (true) {
@@ -126,11 +128,55 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
       cursor = batch.getPaging().getAfter();
 
       if (!batch.getData().isEmpty()) {
+        // Version metadata scoped to this batch only — GC-eligible after processBatch() returns.
+        BackfillTimeline batchTimeline =
+            fetchVersionsForBatch(batch.getData(), entityType, windowStartTs);
         processor.processBatch(
-            new ArrayList<>(batch.getData()), timeline, windowStart, windowEnd, stats());
+            new ArrayList<>(batch.getData()), batchTimeline, windowStart, windowEnd, stats());
       }
       if (cursor == null) break;
     }
+  }
+
+  /**
+   * Fetches and deduplicates version metadata for the given entity batch.
+   * Equivalent to BackfillVersionScanner.scan() but scoped to one batch,
+   * so the resulting map is GC-eligible as soon as the batch is processed.
+   */
+  private BackfillTimeline fetchVersionsForBatch(
+      List<? extends EntityInterface> batch, String entityType, long windowStartTs) {
+    List<String> changedIds = new ArrayList<>();
+    for (EntityInterface entity : batch) {
+      Long updatedAt = entity.getUpdatedAt();
+      if (updatedAt != null && updatedAt >= windowStartTs) {
+        changedIds.add(entity.getId().toString());
+      }
+    }
+
+    Map<UUID, List<VersionRecord>> rawTimeline = new HashMap<>();
+    if (!changedIds.isEmpty()) {
+      List<CollectionDAO.EntityVersionRecord> rows =
+          collectionDAO
+              .entityExtensionDAO()
+              .getVersionMetadataForEntities(changedIds, entityType + ".version");
+      for (CollectionDAO.EntityVersionRecord row : rows) {
+        rawTimeline
+            .computeIfAbsent(row.entityId(), k -> new ArrayList<>())
+            .add(new VersionRecord(row.entityId(), row.extensionKey(), row.updatedAt()));
+      }
+    }
+
+    // Deduplicate: keep only the latest VersionRecord per entity per day.
+    Map<UUID, List<VersionRecord>> timeline = new HashMap<>();
+    for (Map.Entry<UUID, List<VersionRecord>> entry : rawTimeline.entrySet()) {
+      LinkedHashMap<LocalDate, VersionRecord> dayMap = new LinkedHashMap<>();
+      for (VersionRecord v : entry.getValue()) {
+        dayMap.putIfAbsent(toLocalDate(v.updatedAt()), v);
+      }
+      timeline.put(entry.getKey(), new ArrayList<>(dayMap.values()));
+    }
+
+    return new BackfillTimeline(timeline, Map.of());
   }
 
   private void preCreateDailyIndices() throws IOException {
@@ -151,5 +197,9 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     }
     LOG.info("[BackfillWorkflow] Pre-created {} daily indices", created);
     searchInterface.waitForYellow();
+  }
+
+  private static LocalDate toLocalDate(long epochMillis) {
+    return Instant.ofEpochMilli(epochMillis).atZone(ZoneOffset.UTC).toLocalDate();
   }
 }

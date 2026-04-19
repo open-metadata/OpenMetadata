@@ -10,6 +10,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeri
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 
@@ -25,7 +26,7 @@ public final class SearchComponentFactory {
     return searchRepository;
   }
 
-  public Processor createDataInsightsProcessor(int totalRecords) {
+  public AbstractDataInsightsBulkProcessor<?> createDataInsightsProcessor(int totalRecords) {
     return switch (searchRepository.getSearchType()) {
       case OPENSEARCH -> new DataInsightsOpenSearchProcessor(totalRecords);
       default -> new DataInsightsElasticSearchProcessor(totalRecords);

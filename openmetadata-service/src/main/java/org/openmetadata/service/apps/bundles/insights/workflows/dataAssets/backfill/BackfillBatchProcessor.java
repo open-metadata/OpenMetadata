@@ -16,21 +16,21 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollector;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 
 @Slf4j
 public final class BackfillBatchProcessor {
 
-  private static final int BULK_FLUSH_SIZE = 10_000;
+  // Bounded flush size: 500 × ~20KB = ~10MB peak vs previous 10,000 × ~20KB = ~200MB.
+  private static final int BULK_FLUSH_SIZE = 500;
 
   private final DataInsightsEntityEnricher enricher;
-  private final Processor entityProcessor;
+  private final AbstractDataInsightsBulkProcessor<?> bulkProcessor;
   private final Sink searchIndexSink;
   private final CollectionDAO collectionDAO;
   private final String clusterAlias;
@@ -38,13 +38,13 @@ public final class BackfillBatchProcessor {
 
   public BackfillBatchProcessor(
       DataInsightsEntityEnricher enricher,
-      Processor entityProcessor,
+      AbstractDataInsightsBulkProcessor<?> bulkProcessor,
       Sink searchIndexSink,
       CollectionDAO collectionDAO,
       String clusterAlias,
       String entityType) {
     this.enricher = enricher;
-    this.entityProcessor = entityProcessor;
+    this.bulkProcessor = bulkProcessor;
     this.searchIndexSink = searchIndexSink;
     this.collectionDAO = collectionDAO;
     this.clusterAlias = clusterAlias;
@@ -59,14 +59,14 @@ public final class BackfillBatchProcessor {
       LocalDate windowEnd,
       WorkflowStatsCollector stats) {
 
-    // 1. Compute spans and collect version keys needed
+    // 1. Compute spans and collect version keys needed for this batch.
     Map<UUID, List<Span>> entitySpans = new HashMap<>();
     Set<String> versionKeysNeeded = new HashSet<>();
 
     for (EntityInterface entity : batch) {
       UUID id = entity.getId();
       List<VersionRecord> versions = timeline.versionTimeline().getOrDefault(id, List.of());
-      LocalDate createdAt = toLocalDate(entity.getUpdatedAt()); // best proxy available
+      LocalDate createdAt = toLocalDate(entity.getUpdatedAt());
 
       List<Span> spans =
           new SpanBuilder(entity, versions, createdAt, windowStart, windowEnd).build();
@@ -79,7 +79,7 @@ public final class BackfillBatchProcessor {
       }
     }
 
-    // 2. Batch-fetch historical version snapshots from entity_extension
+    // 2. Batch-fetch historical version snapshots — one DB round-trip per batch.
     Map<UUID, String> versionJsonMap = new HashMap<>();
     if (!versionKeysNeeded.isEmpty()) {
       Map<UUID, String> idToExtension = new HashMap<>();
@@ -91,7 +91,8 @@ public final class BackfillBatchProcessor {
           collectionDAO.entityExtensionDAO().batchGetByIdAndExtension(idToExtension));
     }
 
-    // 3. Enrich each span once, write to every day in the span
+    // 3. Enrich each span ONCE, inject @timestamp per day via string replace.
+    //    This eliminates the O(spans × days) HashMap copies from the previous approach.
     List<TaggedOperation<?>> opsBuffer = new ArrayList<>();
     int totalSuccess = 0;
     int totalFailed = 0;
@@ -103,13 +104,20 @@ public final class BackfillBatchProcessor {
         EntityInterface version = resolveVersion(entity, span, versionJsonMap);
         if (version == null) continue;
 
-        Map<String, Object> enriched;
+        String baseDocJson;
+        String entityId;
         try {
           Map<String, Object> enrichCtx =
               Map.of(
                   org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY,
                   entityType);
-          enriched = enricher.enrichSingle(version, enrichCtx);
+          Map<String, Object> enriched = enricher.enrichSingle(version, enrichCtx);
+          entityId = (String) enriched.get("id");
+          // Use 0L as a placeholder: the literal "\"@timestamp\":0" appears exactly once
+          // in the serialized JSON and is safely replaced per day below.
+          enriched.put("@timestamp", 0L);
+          baseDocJson = JsonUtils.pojoToJson(enriched);
+          // Allow the Map to be GC'd immediately — we only need the JSON string.
         } catch (Exception e) {
           totalFailed++;
           errors.add(id + ": " + e.getMessage());
@@ -117,24 +125,16 @@ public final class BackfillBatchProcessor {
         }
 
         for (LocalDate day = span.startDay(); !day.isAfter(span.endDay()); day = day.plusDays(1)) {
-          Map<String, Object> doc = new HashMap<>(enriched);
-          doc.put("@timestamp", day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli());
-
           DailyIndex dayIndex = new DailyIndex(clusterAlias, entityType, day);
-          Map<String, Object> contextData =
-              Map.of(DataAssetsWorkflow.DATA_STREAM_KEY, dayIndex.name());
+          long ts = dayIndex.startOfDayTimestamp();
 
-          try {
-            List<?> ops = (List<?>) entityProcessor.process(List.of(doc), contextData);
-            for (Object op : ops) {
-              opsBuffer.add(new TaggedOperation<>(op, version.getEntityReference()));
-            }
-            if (opsBuffer.size() >= BULK_FLUSH_SIZE) {
-              flush(opsBuffer);
-            }
-          } catch (SearchIndexException e) {
-            totalFailed++;
-            errors.add(id + ": " + e.getMessage());
+          // O(1) string replace — no new Map, no re-serialization per day.
+          String dayJson = baseDocJson.replace("\"@timestamp\":0", "\"@timestamp\":" + ts);
+
+          Object op = bulkProcessor.buildOp(dayIndex.name(), entityId, dayJson);
+          opsBuffer.add(new TaggedOperation<>(op, version.getEntityReference()));
+          if (opsBuffer.size() >= BULK_FLUSH_SIZE) {
+            flush(opsBuffer);
           }
         }
         totalSuccess++;

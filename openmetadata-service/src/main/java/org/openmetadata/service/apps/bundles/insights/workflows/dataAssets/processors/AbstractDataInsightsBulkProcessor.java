@@ -26,6 +26,10 @@ public abstract class AbstractDataInsightsBulkProcessor<T>
 
   protected abstract T buildIndexOperation(String index, String entityId, String docJson);
 
+  public T buildOp(String index, String entityId, String docJson) {
+    return buildIndexOperation(index, entityId, docJson);
+  }
+
   @Override
   public List<T> process(List<Map<String, Object>> input, Map<String, Object> contextData)
       throws SearchIndexException {
