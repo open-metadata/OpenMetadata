@@ -95,6 +95,9 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
     ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
     List<String> fields = List.of("*");
     ListFilter filter = getListFilter(entityType);
+    // Apply delta filter: only read entities changed since the last successful run.
+    // On the first-ever run lastRunTimestamp is absent, so the full catalog is scanned.
+    config.lastRunTimestamp().ifPresent(filter::addUpdatedAfter);
     PaginatedEntitiesSource source =
         new PaginatedEntitiesSource(entityType, config.batchSize(), fields, filter)
             .withName("[DataAssetsWorkflow] " + entityType);

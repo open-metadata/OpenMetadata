@@ -74,6 +74,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition(tableName));
     conditions.add(getNameFilterCondition());
+    conditions.add(getUpdatedAfterCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -785,5 +786,17 @@ public class ListFilter extends Filter<ListFilter> {
     name = escapeApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
+  }
+
+  public ListFilter addUpdatedAfter(long timestamp) {
+    queryParams.put("updatedAfter", String.valueOf(timestamp));
+    return this;
+  }
+
+  private String getUpdatedAfterCondition(String tableName) {
+    String updatedAfter = queryParams.get("updatedAfter");
+    if (updatedAfter == null) return "";
+    String prefix = tableName != null ? tableName + "." : "";
+    return String.format("%supdatedAt > %s", prefix, updatedAfter);
   }
 }

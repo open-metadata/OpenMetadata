@@ -310,6 +310,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
         recreateDataAssetsIndex.isPresent() && Boolean.TRUE.equals(recreateDataAssetsIndex.get());
 
     Optional<Set<String>> completedTypes = readBackfillCompletedTypes();
+    Optional<Long> lastRunTs = readLastRunTimestamp();
 
     return new InsightsConfig(
         dataAssetsConfig,
@@ -322,7 +323,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
         steadyState,
         dataAssetTypes,
         dataQualityEntities,
-        completedTypes);
+        completedTypes,
+        lastRunTs);
   }
 
   @SuppressWarnings("unchecked")
@@ -342,6 +344,21 @@ public class DataInsightsApp extends AbstractNativeApplication {
           col.stream().map(Object::toString).collect(java.util.stream.Collectors.toSet()));
     } catch (Exception e) {
       LOG.warn("[DataInsights] Could not read backfill progress from last run: {}", e.getMessage());
+      return Optional.empty();
+    }
+  }
+
+  private Optional<Long> readLastRunTimestamp() {
+    if (appEntity == null) return Optional.empty();
+    try {
+      AppRepository appRepository =
+          (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      Optional<AppRunRecord> lastRun = appRepository.getLatestAppRunsOptional(appEntity);
+      return lastRun
+          .filter(r -> r.getStartTime() != null)
+          .map(AppRunRecord::getStartTime);
+    } catch (Exception e) {
+      LOG.warn("[DataInsights] Could not read last run timestamp: {}", e.getMessage());
       return Optional.empty();
     }
   }
@@ -454,6 +471,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     // Update Run Record with Status
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
+
+    // Persist the run start time so the next run can use it as lastRunTimestamp for delta queries
+    if (timestamp != null) {
+      appRecord.setStartTime(timestamp);
+    }
 
     // Update Error
     if (jobData.getFailure() != null) {

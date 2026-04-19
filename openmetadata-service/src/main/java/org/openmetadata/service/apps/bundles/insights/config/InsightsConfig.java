@@ -21,7 +21,8 @@ public record InsightsConfig(
     ProcessingPeriod steadyStatePeriod,
     Set<String> dataAssetTypes,
     Set<String> dataQualityEntities,
-    Optional<Set<String>> backfillCompletedTypes) {
+    Optional<Set<String>> backfillCompletedTypes,
+    Optional<Long> lastRunTimestamp) {
 
   private static final int DEFAULT_RETENTION_DAYS = 30;
 
@@ -80,6 +81,7 @@ public record InsightsConfig(
         steadyState,
         DATA_ASSET_TYPES,
         DATA_QUALITY_ENTITIES,
+        Optional.empty(),
         Optional.empty());
   }
 
