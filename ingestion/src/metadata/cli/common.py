@@ -13,14 +13,23 @@
 Handle workflow execution
 """
 
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from metadata.workflow.base import BaseWorkflow
 
 
-def execute_workflow(workflow: BaseWorkflow, config_dict: Dict[str, Any]) -> None:
-    """Execute the workflow and raise if needed"""
-    workflow.execute()
-    workflow.stop()
+def execute_workflow(
+    workflow: BaseWorkflow,
+    config_dict: Dict[str, Any],
+    status_file: Optional[Path] = None,
+) -> None:
+    """Execute the workflow, write status file if requested, raise on failure if configured."""
+    try:
+        workflow.execute()
+    finally:
+        workflow.stop()
+        if status_file is not None:
+            workflow.write_status_file(status_file)
     if config_dict.get("workflowConfig", {}).get("raiseOnError", True):
         workflow.raise_from_status()
