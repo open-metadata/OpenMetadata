@@ -50,7 +50,11 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.orm.registry import (
+    COMPLEX_TYPE_METRICS,
+    NOT_COMPUTE,
+    is_complex_type,
+)
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.logger import profiler_logger
 
@@ -374,11 +378,22 @@ class Profiler(Generic[TMetric]):
         if self.source_config and not self.source_config.computeColumnMetrics:
             return column_metrics_for_thread_pool
 
+        # Regular columns: fully profiled (not in NOT_COMPUTE, not complex)
         columns = [
             column
             for column in self.columns
             if column.type.__class__.__name__ not in NOT_COMPUTE
+            and not is_complex_type(column.type.__class__.__name__)
         ]
+
+        # Complex type columns: only safe metrics (nullCount, valuesCount)
+        # See: https://github.com/open-metadata/OpenMetadata/issues/15627
+        complex_columns = [
+            column
+            for column in self.columns
+            if is_complex_type(column.type.__class__.__name__)
+        ]
+
         static_metrics = [
             ThreadPoolMetrics(
                 metrics=[
@@ -443,6 +458,28 @@ class Profiler(Generic[TMetric]):
                     )
                 )
 
+        # Add safe metrics for complex type columns
+        for column in complex_columns:
+            safe_metrics = [
+                metric
+                for metric in self.metric_filter.get_column_metrics(
+                    StaticMetric,
+                    column,
+                    self.profiler_interface.table_entity.serviceType,
+                )
+                if not metric.is_window_metric()
+                and metric.name() in COMPLEX_TYPE_METRICS
+            ]
+            if safe_metrics:
+                column_metrics_for_thread_pool.append(
+                    ThreadPoolMetrics(
+                        metrics=safe_metrics,
+                        metric_type=MetricTypes.Static,
+                        column=column,
+                        table=self.table,
+                    )
+                )
+
         return column_metrics_for_thread_pool
 
     def profile_entity(self) -> None:
@@ -467,6 +504,9 @@ class Profiler(Generic[TMetric]):
         """Run the whole profiling using multithreading"""
         self.profile_entity()
         for column in self.columns:
+            # Skip composed/hybrid metrics for columns that are fully excluded
+            if column.type.__class__.__name__ in NOT_COMPUTE:
+                continue
             self.run_composed_metrics(column)
             self.run_hybrid_metrics(column)
 
