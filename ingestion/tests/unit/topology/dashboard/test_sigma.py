@@ -330,6 +330,10 @@ class SigmaUnitTest(TestCase):
         self.sigma.data_models = [
             Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
         ]
+
+        # Mock metadata methods
+        self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
+        self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
         self.sigma.metadata.search_in_any_service = MagicMock(
             return_value=MOCK_TABLE_ENTITY
         )
