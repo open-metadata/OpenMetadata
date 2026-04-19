@@ -1350,6 +1350,46 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT id, extension, "
+                + "CAST(JSON_EXTRACT(json, '$.updatedAt') AS UNSIGNED) AS updated_at "
+                + "FROM entity_extension "
+                + "WHERE id IN (<ids>) AND extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "ORDER BY id, updated_at DESC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, extension, "
+                + "(json->>'updatedAt')::bigint AS updated_at "
+                + "FROM entity_extension "
+                + "WHERE id IN (<ids>) AND extension LIKE :extensionPrefix || '.%' "
+                + "ORDER BY id, updated_at DESC",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityVersionRecordMapper.class)
+    List<EntityVersionRecord> getVersionMetadataForEntities(
+        @BindList("ids") List<String> ids, @Bind("extensionPrefix") String extensionPrefix);
+
+    default Map<UUID, String> batchGetByIdAndExtension(Map<UUID, String> idToExtension) {
+      if (idToExtension.isEmpty()) {
+        return Map.of();
+      }
+      Map<String, List<String>> byExtension = new HashMap<>();
+      for (var entry : idToExtension.entrySet()) {
+        byExtension
+            .computeIfAbsent(entry.getValue(), k -> new ArrayList<>())
+            .add(entry.getKey().toString());
+      }
+      Map<UUID, String> result = new HashMap<>();
+      for (var entry : byExtension.entrySet()) {
+        List<ExtensionRecordWithId> rows = getExtensionBatch(entry.getValue(), entry.getKey());
+        for (ExtensionRecordWithId row : rows) {
+          result.put(row.id(), row.extensionJson());
+        }
+      }
+      return result;
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT json FROM ("
                 + "SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
@@ -1446,6 +1486,8 @@ public interface CollectionDAO {
 
   record ExtensionRecord(String extensionName, String extensionJson) {}
 
+  record EntityVersionRecord(UUID entityId, String extensionKey, long updatedAt) {}
+
   record ExtensionRecordWithId(UUID id, String extensionName, String extensionJson) {}
 
   class ExtensionMapper implements RowMapper<ExtensionRecord> {
@@ -1473,6 +1515,16 @@ public interface CollectionDAO {
     private String extension;
     private String json;
     private String jsonschema;
+  }
+
+  class EntityVersionRecordMapper implements RowMapper<EntityVersionRecord> {
+    @Override
+    public EntityVersionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntityVersionRecord(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("extension"),
+          rs.getLong("updated_at"));
+    }
   }
 
   class ExtensionWithIdAndSchemaRowMapper implements RowMapper<ExtensionWithIdAndSchemaObject> {
