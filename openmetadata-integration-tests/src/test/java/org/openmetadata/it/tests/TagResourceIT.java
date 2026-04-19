@@ -1070,6 +1070,82 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     }
   }
 
+  @Test
+  void test_tagUsageCountReflectsActualAssets(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.shortPrefix("usage_count_tag"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for usage count verification");
+    Tag tag = createEntity(request);
+
+    Tag initialFetch = client.tags().get(tag.getId().toString(), "usageCount");
+    assertEquals(0, initialFetch.getUsageCount(), "Usage count must be 0 before applying tag");
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "usage_count_svc");
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createDatabaseSchema(ns, database.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("table_one"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    createTable.setTags(List.of(tagLabel));
+    SdkClients.adminClient().tables().create(createTable);
+
+    Tag afterOneAsset = client.tags().get(tag.getId().toString(), "usageCount");
+    assertEquals(1, afterOneAsset.getUsageCount(), "Usage count must be 1 after tagging one table");
+
+    org.openmetadata.schema.api.data.CreateTable createTable2 =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable2.setName(ns.shortPrefix("table_two"));
+    createTable2.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable2.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    createTable2.setTags(List.of(tagLabel));
+    SdkClients.adminClient().tables().create(createTable2);
+
+    Tag afterTwoAssets = client.tags().get(tag.getId().toString(), "usageCount");
+    assertEquals(
+        2, afterTwoAssets.getUsageCount(), "Usage count must be 2 after tagging two tables");
+
+    Tag fetchedViaList =
+        client
+            .tags()
+            .list(
+                new ListParams()
+                    .setFields("usageCount")
+                    .setParent(classification.getFullyQualifiedName()))
+            .getData()
+            .stream()
+            .filter(t -> t.getId().equals(tag.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        2,
+        fetchedViaList.getUsageCount(),
+        "Usage count in list response (batchFetchUsageCounts path) must match");
+  }
+
   private org.openmetadata.schema.entity.services.DatabaseService createDatabaseService(
       TestNamespace ns, String serviceName) {
     org.openmetadata.schema.api.services.CreateDatabaseService createService =

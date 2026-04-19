@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.BadCursorException;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TagRepositoryUnitTest {
   private static final TagRepository tagRepository;
@@ -267,6 +269,76 @@ public class TagRepositoryUnitTest {
     assertEquals(tag.getRecognizers().get(29), thirdPage.getData().get(9));
     assertNotNull(thirdPage.getPaging().getBefore());
     assertNull(thirdPage.getPaging().getAfter());
+  }
+
+  // ===================================================================
+  // USAGE COUNT QUERY TESTS — verifies batchFetchUsageCounts uses correct hash
+  //
+  // tag_usage.tagFQNHash stores hashes produced by FullyQualifiedName.buildHash:
+  // each FQN segment is hashed individually and joined with ".".
+  // e.g. "PII.Sensitive" → hash("PII") + "." + hash("Sensitive")
+  //
+  // The original bug used MySQL's MD5(fullFqnString) directly in the SQL, which
+  // computes MD5("PII.Sensitive") — a flat 32-char hex string that never matches
+  // any row, returning usageCount = 0 for every tag.
+  // ===================================================================
+
+  private static final TagRepository realTagRepository;
+
+  static {
+    realTagRepository = Mockito.mock(TagRepository.class);
+    when(realTagRepository.buildUsageCountQuery(Mockito.anyList())).thenCallRealMethod();
+  }
+
+  @Test
+  void test_usageCountQuery_containsCorrectHashNotRawFqn() {
+    String tagFqn = "PII.Sensitive";
+    String query = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
+    String expectedHash = FullyQualifiedName.buildHash(tagFqn);
+
+    assertTrue(query.contains(expectedHash), "Query must embed the buildHash result, not the raw FQN");
+    assertTrue(expectedHash.contains("."), "buildHash of a multi-segment FQN must contain '.'");
+  }
+
+  @Test
+  void test_usageCountQuery_doesNotContainRawFqnAsHash() {
+    String tagFqn = "PII.Sensitive";
+    String query = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
+
+    // The raw FQN appears once as the SELECT label — but must NOT appear inside tagFQNHash = '...'
+    // (which would be the broken MD5(fqn) pattern — a flat hash with no dot)
+    String expectedHash = FullyQualifiedName.buildHash(tagFqn);
+    String brokenPattern = "tagFQNHash = '" + tagFqn + "'";
+    assertTrue(!query.contains(brokenPattern), "Query must not use raw FQN as the hash value");
+    assertTrue(query.contains("tagFQNHash = '" + expectedHash + "'"), "Query must use buildHash result for tagFQNHash comparison");
+  }
+
+  @Test
+  void test_usageCountQuery_multipleTagsUnionAll() {
+    List<String> tagFqns = List.of("PII.Sensitive", "PII.Personal", "Tier.Tier1");
+    String query = realTagRepository.buildUsageCountQuery(tagFqns);
+
+    assertEquals(2, countOccurrences(query, "UNION ALL"), "3 tags must produce 2 UNION ALL joins");
+    for (String fqn : tagFqns) {
+      String hash = FullyQualifiedName.buildHash(fqn);
+      assertTrue(query.contains(hash), "Query must contain the correct hash for: " + fqn);
+    }
+  }
+
+  @Test
+  void test_usageCountQuery_emptyList_returnsEmptyString() {
+    String query = realTagRepository.buildUsageCountQuery(List.of());
+    assertTrue(query.isEmpty(), "Empty tag list must produce empty query string");
+  }
+
+  private static int countOccurrences(String text, String pattern) {
+    int count = 0;
+    int idx = 0;
+    while ((idx = text.indexOf(pattern, idx)) != -1) {
+      count++;
+      idx += pattern.length();
+    }
+    return count;
   }
 
   @Test
