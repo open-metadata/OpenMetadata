@@ -1,15 +1,11 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.services.SecurityService;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class SecurityServiceIndex implements SearchIndex {
+public class SecurityServiceIndex implements TaggableIndex, ServiceBackedIndex, LineageIndex {
   final Set<String> excludeSecurityServiceFields =
       Set.of("connection", "changeDescription", "incrementalChangeDescription");
   final SecurityService securityService;
@@ -24,25 +20,21 @@ public class SecurityServiceIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.SECURITY_SERVICE;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeSecurityServiceFields;
   }
 
+  @Override
+  public Object getIndexServiceType() {
+    return securityService.getServiceType();
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags =
-        new ParseTags(Entity.getEntityTags(Entity.SECURITY_SERVICE, securityService));
-    List<TagLabel> tags = new ArrayList<>();
-
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(securityService, Entity.SECURITY_SERVICE);
-    doc.putAll(commonAttributes);
-    doc.put("tags", tags);
-    doc.put("serviceType", securityService.getServiceType());
-    doc.put("entityType", Entity.SECURITY_SERVICE);
-    doc.put("upstreamLineage", SearchIndex.getLineageData(securityService.getEntityReference()));
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-
     return doc;
   }
 

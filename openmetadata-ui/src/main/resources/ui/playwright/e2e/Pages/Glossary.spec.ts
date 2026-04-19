@@ -569,7 +569,11 @@ test.describe('Glossary tests', () => {
           )
           .waitFor();
 
-        const patchRequest = page.waitForResponse(`/api/v1/dashboards/*`);
+        const patchRequest = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/dashboards/') &&
+            res.request().method() === 'PATCH'
+        );
 
         await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 

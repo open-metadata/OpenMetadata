@@ -18,6 +18,9 @@ import static org.mockito.Mockito.*;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.NamespaceableResource;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import java.time.Instant;
@@ -38,15 +41,27 @@ class CronOMJobReconcilerTest {
 
   @Mock private Context<CronOMJobResource> context;
   @Mock private KubernetesClient client;
+  @Mock private MixedOperation mixedOp;
+  @Mock private NamespaceableResource namespaceable;
+  @Mock private Resource resource;
 
   private CronOMJobReconciler reconciler;
   private CronOMJobResource cronOMJob;
 
+  @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
     reconciler = new CronOMJobReconciler();
     cronOMJob = createTestCronOMJob("test-cronjob", "0 * * * *");
-    when(context.getClient()).thenReturn(client);
+
+    // Stub the client chain so tests that reach the happy path
+    // (time-dependent) don't NPE. Lenient because most tests
+    // return early before calling context.getClient().
+    lenient().when(context.getClient()).thenReturn(client);
+    lenient().when(client.resources(any(Class.class))).thenReturn(mixedOp);
+    lenient().when(mixedOp.inNamespace(any())).thenReturn(mixedOp);
+    lenient().when(mixedOp.resource(any())).thenReturn(namespaceable);
+    lenient().when(namespaceable.create()).thenReturn(null);
   }
 
   @Test

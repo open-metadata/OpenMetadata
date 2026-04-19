@@ -38,12 +38,12 @@ import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const user1 = new UserClass();
-const user2 = new UserClass();
-const user3 = new UserClass();
-const users = [user1, user2, user3];
-const table1 = new TableClass();
-const tablePagination = new TableClass();
+let user1: UserClass;
+let user2: UserClass;
+let user3: UserClass;
+let users: UserClass[] = [];
+let table1: TableClass;
+let tablePagination: TableClass;
 const PAGINATION_INCIDENT_COUNT = 22;
 
 test.describe.configure({ mode: 'serial' });
@@ -74,6 +74,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     test.slow();
 
     const { afterAction, apiContext, page } = await performAdminLogin(browser);
+
+    user1 = new UserClass();
+    user2 = new UserClass();
+    user3 = new UserClass();
+    users = [user1, user2, user3];
+    table1 = new TableClass();
+    tablePagination = new TableClass();
 
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
@@ -115,7 +122,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    for (const entity of [...users, table1]) {
+    for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }
     await afterAction();
@@ -260,8 +267,26 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await addMentionCommentInFeed(page, 'admin', true);
 
       await waitForAllLoadersToDisappear(adminPage);
+      const notificationResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('filterType=ASSIGNED_TO') &&
+          response.request().method() === 'GET'
+      );
       await adminPage.getByRole('button', { name: 'Notifications' }).click();
+      const notification = await notificationResponse;
+      expect(notification.status()).toBe(200);
+
+      const mentionResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('filterType=MENTIONS') &&
+          response.request().method() === 'GET'
+      );
       await adminPage.getByText('Mentions').click();
+      const mention = await mentionResponse;
+      expect(mention.status()).toBe(200);
+
       await waitForAllLoadersToDisappear(adminPage);
 
       await expect(adminPage.getByLabel('Mentions')).toContainText(
