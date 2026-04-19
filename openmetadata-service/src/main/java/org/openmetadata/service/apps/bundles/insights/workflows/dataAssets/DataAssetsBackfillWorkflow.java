@@ -7,6 +7,8 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.ResultList;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.MILLISECONDS_IN_A_DAY;
+
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
@@ -63,15 +65,15 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     entityProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
     searchIndexSink = searchFactory.createIndexSink(totalRecords);
 
-    preCrateDailyIndices();
+    preCreateDailyIndices();
   }
 
   @Override
   protected void run() throws Exception {
     ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
 
-    LocalDate windowEnd = LocalDate.ofEpochDay(period.endTimestamp() / 86_400_000L);
-    LocalDate windowStart = LocalDate.ofEpochDay(period.startTimestamp() / 86_400_000L);
+    LocalDate windowEnd = LocalDate.ofEpochDay(period.endTimestamp() / MILLISECONDS_IN_A_DAY);
+    LocalDate windowStart = LocalDate.ofEpochDay(period.startTimestamp() / MILLISECONDS_IN_A_DAY);
 
     for (String entityType : config.dataAssetTypes()) {
       if (stopped) break;
@@ -114,10 +116,10 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     }
   }
 
-  private void preCrateDailyIndices() throws IOException {
+  private void preCreateDailyIndices() throws IOException {
     ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
-    LocalDate end = LocalDate.ofEpochDay(period.endTimestamp() / 86_400_000L);
-    LocalDate start = LocalDate.ofEpochDay(period.startTimestamp() / 86_400_000L);
+    LocalDate end = LocalDate.ofEpochDay(period.endTimestamp() / MILLISECONDS_IN_A_DAY);
+    LocalDate start = LocalDate.ofEpochDay(period.startTimestamp() / MILLISECONDS_IN_A_DAY);
     String clusterAlias = searchInterface.getClusterAlias();
 
     int created = 0;
@@ -125,12 +127,12 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
       for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
         DailyIndex index = new DailyIndex(clusterAlias, entityType, day);
         if (!searchInterface.dailyIndexExists(index)) {
-          // Index template auto-applies mappings on first write; no explicit create needed.
-          // The write itself will create the index with correct mappings.
+          searchInterface.createDailyIndex(index);
           created++;
         }
       }
     }
-    LOG.info("[BackfillWorkflow] Pre-checked {} daily indices", created);
+    LOG.info("[BackfillWorkflow] Pre-created {} daily indices", created);
+    searchInterface.waitForYellow();
   }
 }

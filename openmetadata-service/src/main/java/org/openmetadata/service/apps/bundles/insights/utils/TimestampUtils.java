@@ -10,7 +10,7 @@ public class TimestampUtils {
   public static final String START_TIMESTAMP_KEY = "startTimestamp";
   public static final String END_TIMESTAMP_KEY = "endTimestamp";
   public static final String TIMESTAMP_KEY = "@timestamp";
-  private static final Long MILLISECONDS_IN_A_DAY = (long) 1000 * 60 * 60 * 24;
+  public static final long MILLISECONDS_IN_A_DAY = 1000L * 60 * 60 * 24;
 
   public static Long getStartOfDayTimestamp(Long timestamp) {
     return (int) (timestamp / MILLISECONDS_IN_A_DAY) * MILLISECONDS_IN_A_DAY;

@@ -177,4 +177,20 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
       }
     }
   }
+
+  @Override
+  public void createDailyIndex(DailyIndex index) throws IOException {
+    try {
+      performRequest("PUT", "/" + index.name());
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusCode() != 400) {
+        throw e;
+      }
+    }
+  }
+
+  @Override
+  public void waitForYellow() throws IOException {
+    performRequest("GET", "/_cluster/health?wait_for_status=yellow&timeout=60s");
+  }
 }

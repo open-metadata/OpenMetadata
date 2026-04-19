@@ -173,6 +173,20 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
+  public void createDailyIndex(DailyIndex index) throws IOException {
+    var response = performRequest("PUT", "/" + index.name());
+    if (response.getStatus() != 200 && response.getStatus() != 400) {
+      throw new IOException(
+          "Failed to create index " + index.name() + ": HTTP " + response.getStatus());
+    }
+  }
+
+  @Override
+  public void waitForYellow() throws IOException {
+    performRequest("GET", "/_cluster/health?wait_for_status=yellow&timeout=60s");
+  }
+
+  @Override
   public String buildMapping(
       String entityType,
       IndexMapping entityIndexMapping,

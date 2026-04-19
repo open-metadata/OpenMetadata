@@ -101,6 +101,12 @@ public interface DataInsightsSearchInterface {
 
   void deleteDailyIndex(DailyIndex index) throws IOException;
 
+  /** Creates the daily index if it does not already exist. Index template auto-applies mappings. */
+  void createDailyIndex(DailyIndex index) throws IOException;
+
+  /** Blocks until cluster health reaches at least Yellow or the 60-second timeout expires. */
+  void waitForYellow() throws IOException;
+
   default String getStringWithClusterAlias(String s) {
     return getStringWithClusterAlias(getClusterAlias(), s);
   }
