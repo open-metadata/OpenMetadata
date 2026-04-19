@@ -61,7 +61,7 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
     }
   }
 
-  private void processEntityType(String entityType) {
+  private void processEntityType(String entityType) throws Exception {
     ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
     long startTs = period.startTimestamp();
     long endTs = period.endTimestamp();
@@ -77,16 +77,9 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
     Sink searchIndexSink = searchFactory.createIndexSink(totalRecords);
 
     String indexName = getIndexNameByType(entityType);
-    try {
-      searchRepository
-          .getSearchClient()
-          .deleteByRangeQuery(indexName, "@timestamp", null, startTs, null, endTs);
-    } catch (Exception ex) {
-      LOG.warn(
-          "[DataQualityWorkflow] Could not clear index {} before insert: {}",
-          indexName,
-          ex.getMessage());
-    }
+    searchRepository
+        .getSearchClient()
+        .deleteByRangeQuery(indexName, "@timestamp", null, startTs, null, endTs);
 
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(START_TIMESTAMP_KEY, startTs);
