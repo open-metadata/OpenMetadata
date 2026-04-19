@@ -244,7 +244,7 @@ test.describe(
         const testDefinitionResponse = viewResultsPage.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
-            response.url().includes('sqlExpression') &&
+            response.request().method() === 'GET' &&
             response.ok()
         );
 

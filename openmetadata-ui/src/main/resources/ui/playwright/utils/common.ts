@@ -511,7 +511,8 @@ export const assignDataProduct = async (
     .getByTestId('data-product-dropdown-actions')
     .getByTestId('saveAssociatedTag')
     .click();
-  await patchReq;
+  const patchResponse = await patchReq;
+  expect(patchResponse.status()).toBe(200);
 
   if (pollForInheritance) {
     for (const dataProduct of dataProducts) {
