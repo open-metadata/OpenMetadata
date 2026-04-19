@@ -1,9 +1,16 @@
 package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.EntityIndexMap;
@@ -14,7 +21,10 @@ import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 
+@Slf4j
 public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private final OpenSearchClient client;
   private final String resourcePath = "/dataInsights/opensearch";
   private final String clusterAlias;
@@ -88,6 +98,77 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   @Override
   public void deleteDataAssetDataStream(String name) throws IOException {
     performRequest("DELETE", String.format("/_data_stream/%s", name));
+  }
+
+  @Override
+  public boolean dailyIndexExists(DailyIndex index) throws IOException {
+    var response = performRequest("HEAD", "/" + index.name());
+    return response.getStatus() == 200;
+  }
+
+  @Override
+  public List<DailyIndex> listDailyIndices(String clusterAlias, String entityType)
+      throws IOException {
+    String base = "di-data-assets-" + entityType.toLowerCase() + "-*";
+    String pattern = (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
+    var response = performRequest("GET", "/_cat/indices/" + pattern + "?format=json&h=index");
+    if (response.getStatus() == 404) {
+      return List.of();
+    }
+    String body =
+        response
+            .getBody()
+            .map(
+                b -> {
+                  try (InputStream is = b.body()) {
+                    return new String(is.readAllBytes());
+                  } catch (IOException e) {
+                    return "[]";
+                  }
+                })
+            .orElse("[]");
+    List<Map<String, String>> rows =
+        MAPPER.readValue(body, new TypeReference<List<Map<String, String>>>() {});
+    List<DailyIndex> result = new ArrayList<>();
+    for (Map<String, String> row : rows) {
+      String indexName = row.get("index");
+      if (indexName != null) {
+        try {
+          result.add(DailyIndex.parse(clusterAlias, entityType, indexName));
+        } catch (Exception e) {
+          LOG.warn("Skipping unparseable index name: {}", indexName);
+        }
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public void rollForward(DailyIndex from, DailyIndex to) throws IOException {
+    String body =
+        """
+        {
+          "source": {
+            "index": "%s",
+            "query": { "bool": { "must_not": [{ "term": { "deleted": true } }] } }
+          },
+          "dest": { "index": "%s" },
+          "script": {
+            "source": "ctx._source['@timestamp'] = params.ts",
+            "params": { "ts": %d }
+          }
+        }"""
+            .formatted(from.name(), to.name(), to.startOfDayTimestamp());
+    performRequest("POST", "/_reindex?wait_for_completion=true&refresh=true", body);
+  }
+
+  @Override
+  public void deleteDailyIndex(DailyIndex index) throws IOException {
+    var response = performRequest("DELETE", "/" + index.name());
+    if (response.getStatus() != 200 && response.getStatus() != 404) {
+      throw new IOException(
+          "Failed to delete index " + index.name() + ": HTTP " + response.getStatus());
+    }
   }
 
   @Override

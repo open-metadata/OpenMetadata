@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public interface DataInsightsSearchInterface {
@@ -92,6 +93,14 @@ public interface DataInsightsSearchInterface {
   Boolean dataAssetDataStreamExists(String name) throws IOException;
 
   String getClusterAlias();
+
+  boolean dailyIndexExists(DailyIndex index) throws IOException;
+
+  List<DailyIndex> listDailyIndices(String clusterAlias, String entityType) throws IOException;
+
+  void rollForward(DailyIndex from, DailyIndex to) throws IOException;
+
+  void deleteDailyIndex(DailyIndex index) throws IOException;
 
   default String getStringWithClusterAlias(String s) {
     return getStringWithClusterAlias(getClusterAlias(), s);
