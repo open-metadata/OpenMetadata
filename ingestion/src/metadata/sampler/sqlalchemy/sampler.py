@@ -23,9 +23,9 @@ from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
-    ProfileSampleType,
     TableData,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.orm.functions.modulo import ModuloFn
@@ -157,16 +157,23 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
+        static = self.sample_config.get_static_config()
         with self.session_factory() as client:
-            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 rnd = self._base_sample_query(
                     column,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
-                return session_query.where(
-                    rnd.c.random <= self.sample_config.profileSample
-                ).cte(f"{self.get_sampler_table_name()}_sample")
+                session_query = session_query.where(
+                    rnd.c.random <= static.profileSample
+                )
+                if (
+                    static.profileSample == 100
+                    and self.sample_config.randomizedSample is True
+                ):
+                    session_query = session_query.order_by(rnd.c.random)
+                return session_query.cte(f"{self.get_sampler_table_name()}_sample")
 
             table_query = client.query(self.raw_dataset)
             if self.partition_details:
@@ -174,15 +181,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             session_query = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self.sample_config.randomizedSample is True
                 else None,
             )
             query = (
                 session_query.order_by(RANDOM_LABEL)
-                if self.sample_config.randomizedSample
+                if self.sample_config.randomizedSample is True
                 else session_query
             )
-            return query.limit(self.sample_config.profileSample).cte(
+            return query.limit(static.profileSample if static else None).cte(
                 f"{self.get_sampler_table_name()}_rnd"
             )
 
@@ -194,9 +201,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profileSample or (
-            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
-            and self.sample_config.profileSample == 100
+        static = self.sample_config.get_static_config()
+        if (
+            not static
+            or not static.profileSample
+            or (
+                static.profileSampleType == ProfileSampleType.PERCENTAGE
+                and static.profileSample == 100
+                and self.sample_config.randomizedSample is not True
+            )
         ):
             if self.partition_details:
                 return self._partitioned_table()
@@ -217,7 +230,6 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._fetch_sample_data_from_user_query()
 
-        # Add new RandomNumFn column
         ds = self.get_dataset()
         if not columns:
             sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]

@@ -61,7 +61,6 @@ const TableConstraintsModal = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRelatedColumnLoading, setIsRelatedColumnLoading] =
     useState<boolean>(false);
-  const [searchValue, setSearchValue] = useState<string>('');
   const [relatedColumns, setRelatedColumns] = useState<SelectOptions[]>([]);
   const constraintType = Form.useWatch('constraintType', form);
 
@@ -100,7 +99,6 @@ const TableConstraintsModal = ({
         return [...acc, ...columnOption];
       }, []);
 
-      setSearchValue(value);
       setRelatedColumns(allColumns);
     } catch (error) {
       showErrorToast(
@@ -122,12 +120,13 @@ const TableConstraintsModal = ({
     const foreignConstraints: TableConstraintForm[] =
       form.getFieldValue('foreignConstraints');
     const distConstraints: string[] = form.getFieldValue('distConstraints');
+    const clusterConstraints: string[] =
+      form.getFieldValue('clusterConstraints');
     const sortConstraints: string[] = form.getFieldValue('sortConstraints');
     const uniqueConstraints: string[] = form.getFieldValue('uniqueConstraints');
 
     try {
       setIsLoading(true);
-      await form.validateFields();
       const foreignConstraintFilteredData = foreignConstraints
         .filter((obj) => !Object.values(obj).includes(undefined))
         .map((item) => ({
@@ -143,6 +142,10 @@ const TableConstraintsModal = ({
           ConstraintType.PrimaryKey
         ),
         ...createTableConstraintObject(distConstraints, ConstraintType.DistKey),
+        ...createTableConstraintObject(
+          clusterConstraints,
+          ConstraintType.ClusterKey
+        ),
         ...createTableConstraintObject(sortConstraints, ConstraintType.SortKey),
         ...createTableConstraintObject(
           uniqueConstraints,
@@ -152,8 +155,6 @@ const TableConstraintsModal = ({
       ];
 
       await onSave(allConstraintsData);
-    } catch (_) {
-      // Nothing here
     } finally {
       setIsLoading(false);
     }
@@ -202,6 +203,7 @@ const TableConstraintsModal = ({
           primary: TableConstraint;
           foreign: TableConstraint[];
           dist: TableConstraint;
+          cluster: TableConstraint;
           sort: TableConstraint;
           unique: TableConstraint;
         },
@@ -211,6 +213,8 @@ const TableConstraintsModal = ({
           return { ...acc, primary: cv };
         } else if (cv.constraintType === ConstraintType.DistKey) {
           return { ...acc, dist: cv };
+        } else if (cv.constraintType === ConstraintType.ClusterKey) {
+          return { ...acc, cluster: cv };
         } else if (cv.constraintType === ConstraintType.SortKey) {
           return { ...acc, sort: cv };
         } else if (cv.constraintType === ConstraintType.Unique) {
@@ -219,36 +223,40 @@ const TableConstraintsModal = ({
 
         return { ...acc, foreign: [...acc.foreign, cv] };
       },
-      { primary: {}, dist: {}, sort: {}, unique: {}, foreign: [] }
+      {
+        primary: {},
+        dist: {},
+        cluster: {},
+        sort: {},
+        unique: {},
+        foreign: [],
+      }
     );
 
-    const filteredConstraints = !isEmpty(constraintFormData?.foreign)
-      ? constraintFormData?.foreign.map((item) => ({
-          columns: item.columns?.[0],
-          relationshipType: item.relationshipType,
-          referredColumns: item.referredColumns?.[0],
-        }))
-      : [
+    const filteredConstraints = isEmpty(constraintFormData?.foreign)
+      ? [
           {
             columns: undefined,
             relationshipType: undefined,
             referredColumns: undefined,
           },
-        ];
+        ]
+      : constraintFormData?.foreign.map((item) => ({
+          columns: item.columns?.[0],
+          relationshipType: item.relationshipType,
+          referredColumns: item.referredColumns?.[0],
+        }));
 
     form.setFieldsValue({
       foreignConstraints: filteredConstraints,
       primaryConstraints: constraintFormData?.primary.columns,
       distConstraints: constraintFormData?.dist.columns,
+      clusterConstraints: constraintFormData?.cluster.columns,
       sortConstraints: constraintFormData?.sort.columns,
       uniqueConstraints: constraintFormData?.unique.columns,
       constraintType: ConstraintType.PrimaryKey,
     });
   }, [constraint]);
-
-  useEffect(() => {
-    getSearchResults(searchValue);
-  }, []);
 
   const translatedRelationShipTypeOptions = useMemo(
     () =>
@@ -402,6 +410,30 @@ const TableConstraintsModal = ({
                 placeholder={t('label.select-entity', {
                   entity: t('label.entity-key-plural', {
                     entity: t('label.dist'),
+                  }),
+                })}
+              />
+            </Form.Item>
+          </div>
+        )}
+
+        {constraintType === ConstraintType.ClusterKey && (
+          <div className="table-constraint-form-container">
+            <Form.Item
+              className="w-full"
+              label={t('label.entity-key-plural', {
+                entity: t('label.cluster'),
+              })}
+              name="clusterConstraints">
+              <Select
+                allowClear
+                autoClearSearchValue
+                data-testid="cluster-constraint-type-select"
+                mode="multiple"
+                options={tableColumnNameOptions}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.entity-key-plural', {
+                    entity: t('label.cluster'),
                   }),
                 })}
               />

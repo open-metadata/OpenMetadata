@@ -1,9 +1,12 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.SneakyThrows;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
@@ -14,7 +17,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
-public record TestCaseIndex(TestCase testCase) implements SearchIndex {
+public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   private static final Set<String> excludeFields =
       Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
@@ -24,8 +27,13 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TEST_CASE;
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
-    SearchIndex.super.removeNonIndexableFields(esDoc);
+    TaggableIndex.super.removeNonIndexableFields(esDoc);
     List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
     if (testSuites != null) {
       for (Map<String, Object> testSuite : testSuites) {
@@ -36,11 +44,6 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
 
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
-    doc.put("entityType", Entity.TEST_CASE);
-    doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
-    doc.put("tags", testCase.getTags());
-    doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
     try {
@@ -61,19 +64,32 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {
-    // denormalize the parent relationships for search
-    EntityReference testSuiteEntityReference = testCase.getTestSuite();
-    if (testSuiteEntityReference == null) {
-      return;
+    // Denormalize parent relationships and inherit domains from the linked table.
+    // addTestSuiteParentEntityRelations already fetches the Table with "domains",
+    // so we reuse it to avoid an extra DB query per test case.
+    EntityInterface linkedTable = denormalizeTestSuiteParents(doc, testCase);
+
+    if (nullOrEmpty(testCase.getDomains())
+        && linkedTable != null
+        && !nullOrEmpty(linkedTable.getDomains())) {
+      doc.put("domains", getEntitiesWithDisplayName(linkedTable.getDomains()));
     }
-    TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
+  }
+
+  private EntityInterface denormalizeTestSuiteParents(Map<String, Object> doc, TestCase testCase) {
+    EntityReference testSuiteRef = testCase.getTestSuite();
+    if (testSuiteRef == null) {
+      return null;
+    }
+    TestSuite testSuite = Entity.getEntityOrNull(testSuiteRef, "", Include.ALL);
     if (testSuite == null) {
-      return;
+      return null;
     }
     EntityReference entityReference = testSuite.getBasicEntityReference();
-    if (entityReference != null) {
-      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    if (entityReference == null) {
+      return null;
     }
+    return TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
   public static Map<String, Float> getFields() {

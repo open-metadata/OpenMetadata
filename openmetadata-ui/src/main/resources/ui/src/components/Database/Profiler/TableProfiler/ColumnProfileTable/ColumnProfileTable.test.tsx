@@ -11,23 +11,31 @@
  *  limitations under the License.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { ColumnsType } from 'antd/lib/table';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ColumnProfile } from '../../../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import ColumnProfileTable from './ColumnProfileTable';
 
+let capturedColumns: ColumnsType<{ profile?: ColumnProfile }> = [];
+
 jest.mock('../../../../common/Table/Table', () =>
-  jest.fn().mockImplementation(({ searchProps }) => (
-    <div>
-      <input
-        data-testid="searchbar"
-        value={searchProps?.value ?? ''}
-        onChange={(e) => searchProps?.onSearch?.(e.target.value)}
-      />
-      <div>Table</div>
-    </div>
-  ))
+  jest.fn().mockImplementation(({ columns, searchProps }) => {
+    capturedColumns = columns ?? [];
+
+    return (
+      <div>
+        <input
+          data-testid="searchbar"
+          value={searchProps?.value ?? ''}
+          onChange={(e) => searchProps?.onSearch?.(e.target.value)}
+        />
+        <div>Table</div>
+      </div>
+    );
+  })
 );
 
 jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
@@ -59,7 +67,25 @@ jest.mock(
 jest.mock('../../../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
-  calculatePercentage: jest.fn().mockReturnValue('50%'),
+  calculatePercentage: jest
+    .fn()
+    .mockImplementation(
+      (
+        numerator: number,
+        denominator: number,
+        precision: number,
+        format: boolean
+      ) => {
+        if (denominator === 0) {
+          return format ? '0%' : 0;
+        }
+        const value = parseFloat(
+          ((numerator / denominator) * 100).toFixed(precision)
+        );
+
+        return format ? `${value}%` : value;
+      }
+    ),
 }));
 
 jest.mock('../../../../../utils/TableUtils', () => ({
@@ -267,4 +293,82 @@ describe('Test ColumnProfileTable component', () => {
       fields: expect.any(String),
     });
   });
+});
+
+describe('ColumnProfileTable proportion column renders', () => {
+  const proportionColumnKeys = [
+    'nullProportion',
+    'uniqueProportion',
+    'distinctProportion',
+  ] as const;
+
+  beforeEach(async () => {
+    cleanup();
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+  });
+
+  it.each(proportionColumnKeys)(
+    'should show "0%" instead of "--" when %s is 0',
+    (field) => {
+      const col = capturedColumns.find((c) => c.key === field);
+      const renderFn = col?.render as (
+        profile: ColumnProfile | undefined
+      ) => string;
+
+      expect(renderFn({ [field]: 0 } as unknown as ColumnProfile)).toBe('0%');
+    }
+  );
+
+  it.each(proportionColumnKeys)('should show "--" when %s is null', (field) => {
+    const col = capturedColumns.find((c) => c.key === field);
+    const renderFn = col?.render as (
+      profile: ColumnProfile | undefined
+    ) => string;
+
+    expect(renderFn({ [field]: null } as unknown as ColumnProfile)).toBe('--');
+  });
+
+  it.each(proportionColumnKeys)(
+    'should show "--" when %s is undefined',
+    (field) => {
+      const col = capturedColumns.find((c) => c.key === field);
+      const renderFn = col?.render as (
+        profile: ColumnProfile | undefined
+      ) => string;
+
+      expect(renderFn({} as ColumnProfile)).toBe('--');
+      expect(renderFn(undefined)).toBe('--');
+    }
+  );
+
+  it.each(proportionColumnKeys)(
+    'should show correct percentage for a normal value when %s is 0.5',
+    (field) => {
+      const col = capturedColumns.find((c) => c.key === field);
+      const renderFn = col?.render as (
+        profile: ColumnProfile | undefined
+      ) => string;
+
+      expect(renderFn({ [field]: 0.5 } as unknown as ColumnProfile)).toBe(
+        '50%'
+      );
+    }
+  );
+
+  it.each(proportionColumnKeys)(
+    'should not round small values (%s = 0.001) to 0%',
+    (field) => {
+      const col = capturedColumns.find((c) => c.key === field);
+      const renderFn = col?.render as (
+        profile: ColumnProfile | undefined
+      ) => string;
+
+      // 0.001 * 100 = 0.1 → rounds to 0.1%, not 0%
+      expect(renderFn({ [field]: 0.001 } as unknown as ColumnProfile)).toBe(
+        '0.1%'
+      );
+    }
+  );
 });

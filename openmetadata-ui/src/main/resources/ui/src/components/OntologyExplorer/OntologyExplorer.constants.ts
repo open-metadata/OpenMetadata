@@ -438,13 +438,11 @@ export const MODEL_ANTV_DAGRE_RANKSEP_WITH_COMBOS = 100;
 
 export enum LayoutType {
   Hierarchical = 'hierarchical',
-  Radial = 'radial',
   Circular = 'circular',
 }
 
 export enum LayoutEngine {
   Dagre = 'dagre',
-  Radial = 'radial',
   Circular = 'circular',
 }
 
@@ -460,7 +458,7 @@ export function toLayoutEngineType(layout: LayoutType): LayoutEngineType {
 
 export const COMBO_LABEL_PADDING_TOP_BOTTOM = 10;
 export const DATA_MODE_TERM_NODE_SIZE = 30;
-export const DATA_MODE_TERM_H_SPACING = 160;
+export const DATA_MODE_TERM_H_SPACING = 480;
 export const DATA_MODE_TERM_V_SPACING = 160;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
 /** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */

@@ -313,7 +313,7 @@ export const transformToG6Format = (data: GraphData | null): G6GraphData => {
     // the reversed travel direction automatically curves them to opposite
     // visual sides. A larger offset (60) ensures paths are visually distinct.
     const curveOffset: number | undefined = isBidirectional ? 60 : undefined;
-    // For bidirectional edges, anchor the label near the source node (0.25)
+    // For bidirectional edges, anchor the label near the source node (0.35)
     // so each label sits at a physically different location (one near node A,
     // the other near node B) instead of both crowding the centre.
     const labelPlacement: number | undefined = isBidirectional

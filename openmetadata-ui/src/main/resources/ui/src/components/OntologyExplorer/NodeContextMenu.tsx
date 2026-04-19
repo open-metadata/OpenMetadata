@@ -131,6 +131,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
   return (
     <div
       className="tw:fixed tw:z-1050 tw:min-w-45 tw:rounded-lg tw:bg-white tw:py-1 tw:shadow-[0_3px_6px_-4px_rgba(0,0,0,.12),0_6px_16px_rgba(0,0,0,.08)]"
+      data-testid="node-context-menu"
       ref={menuRef}
       style={{ top: position.y, left: position.x }}>
       {menuItems.map((item) => (
@@ -139,6 +140,7 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
           <Button
             className="tw:w-full tw:justify-start tw:rounded-none"
             color="tertiary"
+            data-testid={`context-menu-${item.key}`}
             isDisabled={item.disabled}
             size="sm"
             onClick={() => !item.disabled && handleMenuClick(item.key)}>

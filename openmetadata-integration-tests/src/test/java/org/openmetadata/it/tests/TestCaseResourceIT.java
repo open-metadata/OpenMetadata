@@ -4373,4 +4373,51 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               }
             });
   }
+
+  /**
+   * Verifies that PATCH with op:replace on displayName succeeds even when the test case was created
+   * without a displayName. The search index sets displayName to the entity name, so the UI sends
+   * op:replace. The server must handle this gracefully (converting replace→add when the path is
+   * absent in the persisted entity).
+   */
+  @Test
+  void test_patchDisplayName_replaceOnMissingField_succeeds(TestNamespace ns) throws Exception {
+    // Create a test case WITHOUT displayName
+    CreateTestCase createRequest = createMinimalRequest(ns);
+    TestCase created = createEntity(createRequest);
+    assertNotNull(created.getId());
+    // displayName should be null after creation (not set)
+
+    // Simulate what the UI does: send a PATCH with op:replace for displayName
+    String patchBody =
+        "[{\"op\":\"replace\",\"path\":\"/displayName\"," + "\"value\":\"Updated Display Name\"}]";
+
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    String url = String.format("%s/v1/dataQuality/testCases/%s", baseUrl, created.getId());
+
+    java.net.http.HttpRequest request =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json-patch+json")
+            .timeout(java.time.Duration.ofSeconds(30))
+            .method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString(patchBody))
+            .build();
+
+    java.net.http.HttpResponse<String> response =
+        java.net.http.HttpClient.newHttpClient()
+            .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "PATCH replace on missing displayName should succeed (converted to add). "
+            + "Response: "
+            + response.body());
+
+    // Verify the displayName was actually set
+    TestCase updated = getEntity(created.getId().toString());
+    assertEquals("Updated Display Name", updated.getDisplayName());
+  }
 }
