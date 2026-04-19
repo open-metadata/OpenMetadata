@@ -20,6 +20,11 @@
     word-break: break-word;
     overflow-wrap: break-word;
 
+    .ProseMirror > *:not(section),
+    section > * {
+      padding: @padding-xss @padding-lg;
+    }
+
     h1,
     h2,
     h3,
@@ -28,7 +33,7 @@
     h6 {
       margin: 0 !important;
       border: none;
-      padding: 16px 0 4px;
+      padding: @padding-md @padding-lg @padding-xss !important;
       color: @text-color;
     }
 
@@ -130,16 +135,8 @@
       font-weight: 500;
     }
 
-    & > * {
-      padding: 4px 24px;
-    }
-
     section {
       padding: 0;
-
-      & > * {
-        padding: 4px 24px;
-      }
     }
 
     section[data-highlighted='true'] {

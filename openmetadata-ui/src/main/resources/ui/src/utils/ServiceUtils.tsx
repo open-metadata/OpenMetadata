@@ -20,7 +20,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
-import { MARKDOWN_MATCH_ID } from '../constants/regex.constants';
+import {
+  MARKDOWN_MATCH_ID,
+  SECTION_BLOCK_REGEX,
+} from '../constants/regex.constants';
 import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
@@ -675,8 +678,6 @@ export const validateServiceName = async (
   return null;
 };
 
-const SECTION_BLOCK_REGEX = /\$\$section\n([\s\S]*?)\n\$\$/g;
-
 /**
  * Converts markdown that uses $$section blocks into sanitizable HTML with
  * <section data-id="..."> wrappers. Used by both ServiceDocPanel and SSODocPanel.
@@ -696,7 +697,7 @@ export const processDocMarkdown = (markdown: string): string => {
     }
 
     const sectionContent = match[1];
-    const idMatch = sectionContent.match(MARKDOWN_MATCH_ID);
+    const idMatch = MARKDOWN_MATCH_ID.exec(sectionContent);
     const id = idMatch ? idMatch[1] : '';
     const cleanContent = sectionContent.replace(MARKDOWN_MATCH_ID, '').trim();
 

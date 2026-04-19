@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import DOMPurify from 'dompurify';
 import { first, last, noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +28,7 @@ import {
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
 interface ServiceDocPanelProp {
   serviceName: string;
@@ -106,20 +106,18 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),
         isEnglishLanguage
-          ? Promise.reject('')
+          ? Promise.reject(new Error('Fallback not needed for English locale'))
           : fetchMarkdownFile(fallbackFilePath),
       ]);
 
       if (translation.status === 'fulfilled') {
         response = translation.value;
-      } else {
-        if (fallbackTranslation.status === 'fulfilled') {
-          response = fallbackTranslation.value;
-        }
+      } else if (fallbackTranslation.status === 'fulfilled') {
+        response = fallbackTranslation.value;
       }
 
       setMarkdownContent(response);
-    } catch (error) {
+    } catch {
       setMarkdownContent('');
     } finally {
       setIsLoading(false);
@@ -149,7 +147,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           '[data-highlighted="true"]'
         );
         previousHighlighted.forEach((el) => {
-          el.removeAttribute('data-highlighted');
+          (el as HTMLElement).dataset.highlighted = 'false';
         });
 
         const element = document.querySelector(`[data-id="${fieldName}"]`);
@@ -159,17 +157,14 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
             behavior: 'smooth',
             inline: 'center',
           });
-          element.setAttribute('data-highlighted', 'true');
+          (element as HTMLElement).dataset.highlighted = 'true';
         }
       });
     }
   }, [activeField, serviceType, isMarkdownReady]);
 
   const processedHtml = useMemo(
-    () =>
-      DOMPurify.sanitize(processDocMarkdown(markdownContent), {
-        ADD_ATTR: ['data-id', 'data-highlighted', 'target'],
-      }),
+    () => processDocMarkdown(markdownContent),
     [markdownContent]
   );
 
@@ -186,10 +181,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
             />
           )}
         </div>
-
-        <div
+        <RichTextEditorPreviewerV1
           className="service-doc-content"
-          dangerouslySetInnerHTML={{ __html: processedHtml }}
+          enableSeeMoreVariant={false}
+          extensionOptions={{ enableSectionNode: true }}
+          markdown={processedHtml}
         />
       </>
     );

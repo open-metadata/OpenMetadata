@@ -41,6 +41,7 @@ import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/
 import slashCommand from '../components/BlockEditor/Extensions/slash-command';
 import { getSuggestionItems } from '../components/BlockEditor/Extensions/slash-command/items';
 import renderItems from '../components/BlockEditor/Extensions/slash-command/renderItems';
+import SectionNode from '../components/BlockEditor/Extensions/SectionNode';
 import TextHighlightView from '../components/BlockEditor/Extensions/text-highlight-view';
 import { TrailingNode } from '../components/BlockEditor/Extensions/trailing-node';
 import { DROP_CURSOR_COLOR } from '../constants/BlockEditor.constants';
@@ -222,6 +223,7 @@ export class BlockEditorExtensionsClassBase {
       utilityExtensions = true,
       tableExtensions = true,
       advancedContextExtensions = true,
+      enableSectionNode = false,
     } = options ?? {};
 
     return [
@@ -233,6 +235,7 @@ export class BlockEditorExtensionsClassBase {
       ...(utilityExtensions ? this.getUtilityExtensions() : []),
       ...(tableExtensions ? this.getTableExtensions() : []),
       ...(advancedContextExtensions ? this.getAdvancedContentExtensions() : []),
+      ...(enableSectionNode ? [SectionNode] : []),
     ];
   }
 
