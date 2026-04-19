@@ -6,7 +6,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
-import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,8 +39,6 @@ import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexLifecycleManager;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
-import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
-import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflow.InsightsWorkflow;
@@ -99,22 +96,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private DataInsightsSearchInterface getSearchInterface() {
-    DataInsightsSearchInterface searchInterface;
-
-    if (searchRepository
-        .getSearchType()
-        .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
-      searchInterface =
-          new ElasticSearchDataInsightsClient(
-              (Rest5Client) searchRepository.getSearchClient().getLowLevelClient(),
-              searchRepository.getClusterAlias());
-    } else {
-      searchInterface =
-          new OpenSearchDataInsightsClient(
-              searchRepository.getSearchClient().getHighLevelClient(),
-              searchRepository.getClusterAlias());
-    }
-    return searchInterface;
+    return new SearchComponentFactory(searchRepository).createSearchInterface();
   }
 
   public static String getDataStreamName(String prefix, String dataAssetType) {

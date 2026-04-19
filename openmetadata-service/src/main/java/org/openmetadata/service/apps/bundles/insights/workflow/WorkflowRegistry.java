@@ -25,14 +25,15 @@ public final class WorkflowRegistry {
     List<InsightsWorkflow> workflows = new ArrayList<>();
 
     if (config.shouldRecreateDataAssets()) {
-      workflows.add(new DataAssetsBackfillWorkflow(config, searchFactory, collectionDAO, searchRepository));
+      workflows.add(
+          new DataAssetsBackfillWorkflow(config, searchFactory, collectionDAO, searchRepository));
     } else {
       workflows.add(new DataAssetsWorkflow(config, searchFactory, collectionDAO, searchRepository));
     }
 
     workflows.add(new WebAnalyticsWorkflow(config));
     workflows.add(new CostAnalysisWorkflow(config, collectionDAO));
-    workflows.add(new DataQualityWorkflow(config, collectionDAO, searchRepository));
+    workflows.add(new DataQualityWorkflow(config, collectionDAO, searchFactory));
 
     return workflows;
   }

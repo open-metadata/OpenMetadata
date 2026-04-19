@@ -12,21 +12,16 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
+import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
-import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
-import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
-import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
@@ -37,19 +32,22 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
 
   private final InsightsConfig config;
   private final CollectionDAO collectionDAO;
+  private final SearchComponentFactory searchFactory;
   private final SearchRepository searchRepository;
 
   public DataQualityWorkflow(
-      InsightsConfig config, CollectionDAO collectionDAO, SearchRepository searchRepository) {
+      InsightsConfig config, CollectionDAO collectionDAO, SearchComponentFactory searchFactory) {
     super("DataQualityWorkflow");
     this.config = config;
     this.collectionDAO = collectionDAO;
-    this.searchRepository = searchRepository;
+    this.searchFactory = searchFactory;
+    this.searchRepository = searchFactory.getSearchRepository();
   }
 
   @Override
   protected boolean isEnabled() {
-    return config.dataQualityConfig() != null && Boolean.TRUE.equals(config.dataQualityConfig().getEnabled());
+    return config.dataQualityConfig() != null
+        && Boolean.TRUE.equals(config.dataQualityConfig().getEnabled());
   }
 
   @Override
@@ -64,8 +62,7 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
   }
 
   private void processEntityType(String entityType) {
-    ProcessingPeriod period =
-        config.backfillPeriod().orElse(config.steadyStatePeriod());
+    ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
     long startTs = period.startTimestamp();
     long endTs = period.endTimestamp();
 
@@ -73,18 +70,11 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
         getInitialStatsForEntities(Set.of(entityType)).getJobStats().getTotalRecords();
 
     PaginatedEntityTimeSeriesSource source =
-        new PaginatedEntityTimeSeriesSource(entityType, config.batchSize(), List.of("*"), startTs, endTs);
+        new PaginatedEntityTimeSeriesSource(
+            entityType, config.batchSize(), List.of("*"), startTs, endTs);
 
-    Processor entityProcessor;
-    Sink searchIndexSink;
-    int payloadSize = searchRepository.getSearchConfiguration().getPayLoadSize();
-    if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      entityProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
-      searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords, payloadSize);
-    } else {
-      entityProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
-      searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords, payloadSize);
-    }
+    Processor entityProcessor = searchFactory.createEntityTimeSeriesProcessor(totalRecords);
+    Sink searchIndexSink = searchFactory.createIndexSink(totalRecords);
 
     String indexName = getIndexNameByType(entityType);
     try {
@@ -92,7 +82,10 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
           .getSearchClient()
           .deleteByRangeQuery(indexName, "@timestamp", null, startTs, null, endTs);
     } catch (Exception ex) {
-      LOG.warn("[DataQualityWorkflow] Could not clear index {} before insert: {}", indexName, ex.getMessage());
+      LOG.warn(
+          "[DataQualityWorkflow] Could not clear index {} before insert: {}",
+          indexName,
+          ex.getMessage());
     }
 
     Map<String, Object> contextData = new HashMap<>();
@@ -123,12 +116,18 @@ public class DataQualityWorkflow extends AbstractInsightsWorkflow {
         }
         if (keysetCursor == null) break;
       } catch (SearchIndexException ex) {
-        totalFailed += ex.getIndexingError().getFailedCount() != null
-            ? ex.getIndexingError().getFailedCount() : 1;
+        totalFailed +=
+            ex.getIndexingError().getFailedCount() != null
+                ? ex.getIndexingError().getFailedCount()
+                : 1;
         errors.add(entityType + ": " + ex.getMessage());
         source.updateStats(
-            ex.getIndexingError().getSuccessCount() != null ? ex.getIndexingError().getSuccessCount() : 0,
-            ex.getIndexingError().getFailedCount() != null ? ex.getIndexingError().getFailedCount() : 1);
+            ex.getIndexingError().getSuccessCount() != null
+                ? ex.getIndexingError().getSuccessCount()
+                : 0,
+            ex.getIndexingError().getFailedCount() != null
+                ? ex.getIndexingError().getFailedCount()
+                : 1);
         break;
       }
     }
