@@ -43,7 +43,6 @@ import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflow.InsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflow.WorkflowRegistry;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -67,7 +66,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
-  private volatile DataAssetsWorkflow activeDataAssetsWorkflow;
+  private volatile List<InsightsWorkflow> activeWorkflows;
 
   public final Set<String> dataAssetTypes =
       Set.of(
@@ -258,19 +257,14 @@ public class DataInsightsApp extends AbstractNativeApplication {
       List<InsightsWorkflow> workflows =
           WorkflowRegistry.createWorkflows(config, searchFactory, collectionDAO, searchRepository);
 
-      this.activeDataAssetsWorkflow =
-          workflows.stream()
-              .filter(w -> w instanceof DataAssetsWorkflow)
-              .map(w -> (DataAssetsWorkflow) w)
-              .findFirst()
-              .orElse(null);
+      this.activeWorkflows = workflows;
 
       List<WorkflowResult> results = new ArrayList<>();
       for (InsightsWorkflow workflow : workflows) {
         if (stopped) break;
         results.add(workflow.execute());
       }
-      this.activeDataAssetsWorkflow = null;
+      this.activeWorkflows = null;
 
       updateJobFromResults(results);
       updateJobStatus();
@@ -345,9 +339,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   protected void stop() {
     this.stopped = true;
-    DataAssetsWorkflow active = this.activeDataAssetsWorkflow;
+    List<InsightsWorkflow> active = this.activeWorkflows;
     if (active != null) {
-      active.stop();
+      active.forEach(InsightsWorkflow::stop);
     }
   }
 
