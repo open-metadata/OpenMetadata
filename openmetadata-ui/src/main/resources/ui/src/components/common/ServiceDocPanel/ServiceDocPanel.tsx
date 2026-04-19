@@ -150,7 +150,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           (el as HTMLElement).dataset.highlighted = 'false';
         });
 
-        const element = document.querySelector(`[data-id="${fieldName}"]`);
+        const element = document.querySelector(`[data-id="${CSS.escape(fieldName)}"]`);
         if (element) {
           element.scrollIntoView({
             block: fieldName === 'selected-entity' ? 'start' : 'center',
