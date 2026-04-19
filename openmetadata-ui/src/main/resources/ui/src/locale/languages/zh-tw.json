@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "導覽列標誌的 URL 路徑。",
     "custom-properties-description": "透過擴充屬性來擷取自訂元資料，以豐富您的資料資產。",
     "custom-property-is-set-to-message": "{{fieldName}} 已設定為",
-    "custom-property-name-validation": "名稱必須以小寫字母開頭，不含空格、底線或點。",
+    "custom-property-name-validation": "名稱不能包含 '::'。",
     "custom-property-update": "{{entityName}} 中的自訂屬性 '{{propertyName}}' 更新 {{status}}",
     "customize-brand-description": "量身打造 {{brandName}} 的使用者體驗，以滿足您的組織和團隊需求。",
     "customize-entity-landing-page-header-for-persona": "為 <0>{{persona}}</0> 角色個人化 {{entity}} 實體頁面體驗",

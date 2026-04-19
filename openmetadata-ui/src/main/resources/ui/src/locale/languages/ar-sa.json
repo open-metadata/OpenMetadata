@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "مسار رابط شعار شريط التنقل.",
     "custom-properties-description": "التقط بيانات وصفية مخصصة لإثراء أصول البيانات الخاصة بك عن طريق توسيع السمات.",
     "custom-property-is-set-to-message": "تم تعيين {{fieldName}} إلى",
-    "custom-property-name-validation": "يجب أن يبدأ الاسم بحرف صغير بدون مسافة أو شرطة سفلية أو نقاط.",
+    "custom-property-name-validation": "يجب ألا يحتوي الاسم على '::'.",
     "custom-property-update": "تحديث الخاصية المخصصة '{{propertyName}}' في {{entityName}} هو {{status}}",
     "customize-brand-description": "قم بتخصيص تجربة مستخدم {{brandName}} لتناسب احتياجات مؤسستك وفريقك.",
     "customize-entity-landing-page-header-for-persona": "تخصيص تجربة صفحة كيان {{entity}} لشخصية <0>{{persona}}</0>",

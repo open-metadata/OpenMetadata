@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "URL path for the navbar logo.",
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
     "custom-property-is-set-to-message": "{{fieldName}} is set to",
-    "custom-property-name-validation": "Name must start with lower case with no space, underscore, or dots.",
+    "custom-property-name-validation": "Name must not contain '::'.",
     "custom-property-update": "Custom property '{{propertyName}}' update in {{entityName}} is {{status}}",
     "customize-brand-description": "Tailor the {{brandName}} UX to suit your organizational and team needs.",
     "customize-entity-landing-page-header-for-persona": "Personalize the {{entity}} Entity Page experience for the <0>{{persona}}</0> persona",
