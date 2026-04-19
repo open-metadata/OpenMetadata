@@ -123,12 +123,12 @@ test.beforeAll('setup', async ({ browser }) => {
 test.afterAll('cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
 
-  await table?.delete(apiContext);
-  await domain?.delete(apiContext);
-  await glossaryTerm?.delete(apiContext);
-  await glossary?.delete(apiContext);
-  await tag?.delete(apiContext);
-  await classification?.delete(apiContext);
+  await table.delete(apiContext);
+  await domain.delete(apiContext);
+  await glossaryTerm.delete(apiContext);
+  await glossary.delete(apiContext);
+  await tag.delete(apiContext);
+  await classification.delete(apiContext);
 
   await afterAction();
 });
