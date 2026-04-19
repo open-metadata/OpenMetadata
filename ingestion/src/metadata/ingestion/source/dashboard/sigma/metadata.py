@@ -261,7 +261,13 @@ class SigmaSource(DashboardServiceSource):
         """
         for data_model in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
+                # Skip non-visualization elements to avoid Sigma API 500 errors.
+                if not data_model.vizualizationType:
+                    continue
+
+                data_model_entity = self._get_datamodel(
+                    datamodel_id=data_model.elementId
+                )
                 if not data_model_entity:
                     continue
 
@@ -360,7 +366,15 @@ class SigmaSource(DashboardServiceSource):
 
         for data_model in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
+                # (Fix #2) Skip non-visualization elements (text boxes, dividers,
+                # buttons, controls) to avoid Sigma API 500 errors on elements
+                # that carry no upstream lineage.
+                if not data_model.vizualizationType:
+                    continue
+
+                data_model_entity = self._get_datamodel(
+                    datamodel_id=data_model.elementId
+                )
                 if not data_model_entity:
                     continue
 
