@@ -16,8 +16,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollector;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.workflows.interfaces.Sink;
@@ -35,6 +37,7 @@ public final class BackfillBatchProcessor {
   private final CollectionDAO collectionDAO;
   private final String clusterAlias;
   private final String entityType;
+  private final List<String> entityFields;
 
   public BackfillBatchProcessor(
       DataInsightsEntityEnricher enricher,
@@ -42,13 +45,15 @@ public final class BackfillBatchProcessor {
       Sink searchIndexSink,
       CollectionDAO collectionDAO,
       String clusterAlias,
-      String entityType) {
+      String entityType,
+      List<String> entityFields) {
     this.enricher = enricher;
     this.bulkProcessor = bulkProcessor;
     this.searchIndexSink = searchIndexSink;
     this.collectionDAO = collectionDAO;
     this.clusterAlias = clusterAlias;
     this.entityType = entityType;
+    this.entityFields = entityFields;
   }
 
   @SuppressWarnings("unchecked")
@@ -109,8 +114,8 @@ public final class BackfillBatchProcessor {
         try {
           Map<String, Object> enrichCtx =
               Map.of(
-                  org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY,
-                  entityType);
+                  ReindexingUtil.ENTITY_TYPE_KEY, entityType,
+                  DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY, entityFields);
           Map<String, Object> enriched = enricher.enrichSingle(version, enrichCtx);
           entityId = (String) enriched.get("id");
           // Use 0L as a placeholder: the literal "\"@timestamp\":0" appears exactly once

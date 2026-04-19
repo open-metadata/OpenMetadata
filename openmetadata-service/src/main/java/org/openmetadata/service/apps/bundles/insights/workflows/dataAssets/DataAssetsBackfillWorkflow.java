@@ -108,13 +108,25 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     String clusterAlias = searchInterface.getClusterAlias();
     LOG.info("[BackfillWorkflow] Processing entity type: {}", entityType);
 
+    // Use the DI-configured field list rather than "*" to prevent expansion of expensive
+    // relationship fields. For example, databaseSchema with "*" triggers
+    // DatabaseSchemaRepository.setFields() which fetches all table EntityReferences via
+    // findTo(), causing ~15MB/entity heap spikes with large catalogs.
+    // getEntityAttributeFields() returns exactly the fields DI charts query against —
+    // the same fields the steady-state enricher retains via retainAll() — so no chart
+    // data or querying capability is lost.
+    List<String> diFields =
+        searchInterface.getEntityAttributeFields(
+            searchInterface.readDataInsightsSearchConfiguration(), entityType);
+
     BackfillBatchProcessor processor =
         new BackfillBatchProcessor(
-            enricher, bulkProcessor, searchIndexSink, collectionDAO, clusterAlias, entityType);
+            enricher, bulkProcessor, searchIndexSink, collectionDAO, clusterAlias, entityType,
+            diFields);
 
     // Single pass: fetch version metadata inline per batch — no global BackfillTimeline held.
     PaginatedEntitiesSource source =
-        new PaginatedEntitiesSource(entityType, BACKFILL_BATCH_SIZE, List.of("*"));
+        new PaginatedEntitiesSource(entityType, BACKFILL_BATCH_SIZE, diFields);
     String cursor = null;
 
     while (true) {
