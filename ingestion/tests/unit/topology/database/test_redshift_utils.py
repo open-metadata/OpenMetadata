@@ -16,7 +16,10 @@ from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
+    _get_args_and_kwargs,
+    _update_coltype,
     get_view_definition,
+    ischema_names,
 )
 
 
@@ -300,6 +303,87 @@ class TestGetAllRelationInfoCache(unittest.TestCase):
         self.assertEqual({k.name for k in r2}, {"t2"})
 
         self.assertEqual(self.mock_connection.execute.call_count, 2)
+
+
+class TestRedshiftColumnTypeParsing(unittest.TestCase):
+    """Test Redshift column type argument parsing."""
+
+    def test_timestamp_without_time_zone_precision_uses_keyword_argument(self):
+        """Timestamp precision must not be passed as positional timezone."""
+        args, kwargs = _get_args_and_kwargs(
+            "0", "timestamp without time zone", "timestamp(0) without time zone"
+        )
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": False})
+
+        coltype = _update_coltype(
+            ischema_names["timestamp without time zone"],
+            args,
+            kwargs,
+            "timestamp without time zone",
+            "created_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertFalse(coltype.timezone)
+
+    def test_timestamp_with_time_zone_precision_uses_keyword_argument(self):
+        """Timestamp with time zone keeps precision and timezone keywords."""
+        args, kwargs = _get_args_and_kwargs(
+            "0", "timestamp with time zone", "timestamp(0) with time zone"
+        )
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": True})
+
+        coltype = _update_coltype(
+            ischema_names["timestamp with time zone"],
+            args,
+            kwargs,
+            "timestamp with time zone",
+            "created_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertTrue(coltype.timezone)
+
+    def test_time_without_time_zone_precision_uses_keyword_argument(self):
+        """Time precision must not be passed as positional timezone."""
+        args, kwargs = _get_args_and_kwargs(
+            "0", "time without time zone", "time(0) without time zone"
+        )
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": False})
+
+        coltype = _update_coltype(
+            ischema_names["time without time zone"],
+            args,
+            kwargs,
+            "time without time zone",
+            "started_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertFalse(coltype.timezone)
+
+    def test_numeric_and_character_varying_positional_arguments_are_unchanged(self):
+        """Non-time types keep their established positional parsing."""
+        numeric_args, numeric_kwargs = _get_args_and_kwargs(
+            "10,2", "numeric", "numeric(10,2)"
+        )
+        varchar_args, varchar_kwargs = _get_args_and_kwargs(
+            "255", "character varying", "character varying(255)"
+        )
+
+        self.assertEqual(numeric_args, (10, 2))
+        self.assertEqual(numeric_kwargs, {})
+        self.assertEqual(varchar_args, (255,))
+        self.assertEqual(varchar_kwargs, {})
 
 
 if __name__ == "__main__":
