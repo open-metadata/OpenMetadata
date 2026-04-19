@@ -8,6 +8,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getI
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,7 +41,10 @@ import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriodFactory;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexLifecycleManager;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
+import org.openmetadata.service.apps.bundles.insights.workflow.InsightsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflow.WorkflowRegistry;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
@@ -262,61 +266,48 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
-      initializeJob();
-
-      LOG.info("Executing DataInsights Job with JobData: {}", jobData);
+      timestamp = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
+      LOG.info("Executing DataInsights Job with JobData: {}", jobData);
 
-      String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+      InsightsConfig config = resolveConfig(jobExecutionContext);
+      SearchComponentFactory searchFactory = new SearchComponentFactory(searchRepository);
 
-      if (!runType.equals(ON_DEMAND_JOB)) {
-        backfill = Optional.empty();
-        recreateDataAssetsIndex = Optional.empty();
-      }
-
-      if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
-        deleteDataAssetsDataStream();
-        createOrUpdateDataAssetsDataStream();
+      if (config.shouldRecreateDataAssets()) {
+        IndexLifecycleManager.deleteAllDataAssetIndices(
+            searchFactory.createSearchInterface(), config.dataAssetTypes());
         deleteDataQualityDataIndex();
         createDataQualityDataIndex();
       }
 
+      // WebAnalytics and CostAnalysis: migrated to AbstractInsightsWorkflow in Phase 11
       WorkflowStats webAnalyticsStats = processWebAnalytics();
       updateJobStatsWithWorkflowStats(webAnalyticsStats);
 
       WorkflowStats costAnalysisStats = processCostAnalysis();
       updateJobStatsWithWorkflowStats(costAnalysisStats);
 
-      WorkflowStats dataAssetsStats = processDataAssets();
-      updateJobStatsWithWorkflowStats(dataAssetsStats);
+      // DataAssets + DataQuality via WorkflowRegistry
+      List<InsightsWorkflow> workflows =
+          WorkflowRegistry.createWorkflows(config, searchFactory, collectionDAO, searchRepository);
 
-      WorkflowStats dataQualityStats = processDataQuality();
-      updateJobStatsWithWorkflowStats(dataQualityStats);
+      this.activeDataAssetsWorkflow =
+          workflows.stream()
+              .filter(w -> w instanceof DataAssetsWorkflow)
+              .map(w -> (DataAssetsWorkflow) w)
+              .findFirst()
+              .orElse(null);
 
-      if (webAnalyticsStats.hasFailed()
-          || costAnalysisStats.hasFailed()
-          || dataAssetsStats.hasFailed()) {
-        String errorMessage = "Errors Found:\n";
-
-        for (WorkflowStats stats : List.of(webAnalyticsStats, costAnalysisStats, dataAssetsStats)) {
-          if (stats.hasFailed()) {
-            errorMessage = String.format("%s\n  %s\n", errorMessage, stats.getName());
-            for (String failure : stats.getFailures()) {
-              errorMessage = String.format("%s    - %s\n", errorMessage, failure);
-            }
-          }
-        }
-
-        IndexingError indexingError =
-            new IndexingError()
-                .withErrorSource(IndexingError.ErrorSource.JOB)
-                .withMessage(errorMessage);
-        LOG.error(indexingError.getMessage());
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-        jobData.setFailure(indexingError);
+      List<WorkflowResult> results = new ArrayList<>();
+      for (InsightsWorkflow workflow : workflows) {
+        if (stopped) break;
+        results.add(workflow.execute());
       }
+      this.activeDataAssetsWorkflow = null;
 
+      updateJobFromResults(results);
+
+      handleLegacyWorkflowFailures(webAnalyticsStats, costAnalysisStats);
       updateJobStatus();
     } catch (Exception ex) {
       IndexingError indexingError =
@@ -334,8 +325,67 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void initializeJob() {
-    timestamp = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
+  private InsightsConfig resolveConfig(JobExecutionContext ctx) {
+    String runType = (String) ctx.getJobDetail().getJobDataMap().get("triggerType");
+    if (!ON_DEMAND_JOB.equals(runType)) {
+      backfill = Optional.empty();
+      recreateDataAssetsIndex = Optional.empty();
+    }
+
+    ProcessingPeriod steadyState = ProcessingPeriodFactory.forSteadyState(timestamp, 30);
+    Optional<ProcessingPeriod> backfillPeriod =
+        backfill.map(
+            b -> ProcessingPeriodFactory.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
+    boolean recreate =
+        recreateDataAssetsIndex.isPresent() && Boolean.TRUE.equals(recreateDataAssetsIndex.get());
+
+    return new InsightsConfig(
+        dataAssetsConfig,
+        costAnalysisConfig,
+        dataQualityConfig,
+        webAnalyticsConfig,
+        batchSize,
+        recreate,
+        backfillPeriod,
+        steadyState,
+        dataAssetTypes,
+        dataQualityEntities);
+  }
+
+  private void updateJobFromResults(List<WorkflowResult> results) {
+    IndexingError firstFailure = null;
+    for (WorkflowResult result : results) {
+      result.stepStats().forEach((stepName, stepStats) -> updateStats(stepName, stepStats));
+      if (result.failed() && firstFailure == null && !result.failures().isEmpty()) {
+        firstFailure = result.failures().get(0);
+      }
+    }
+    if (firstFailure != null) {
+      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setFailure(firstFailure);
+    }
+  }
+
+  private void handleLegacyWorkflowFailures(
+      WorkflowStats webAnalyticsStats, WorkflowStats costAnalysisStats) {
+    if (webAnalyticsStats.hasFailed() || costAnalysisStats.hasFailed()) {
+      String errorMessage = "Errors Found:\n";
+      for (WorkflowStats stats : List.of(webAnalyticsStats, costAnalysisStats)) {
+        if (stats.hasFailed()) {
+          errorMessage = String.format("%s\n  %s\n", errorMessage, stats.getName());
+          for (String failure : stats.getFailures()) {
+            errorMessage = String.format("%s    - %s\n", errorMessage, failure);
+          }
+        }
+      }
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.JOB)
+              .withMessage(errorMessage);
+      LOG.error(indexingError.getMessage());
+      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setFailure(indexingError);
+    }
   }
 
   private WorkflowStats processWebAnalytics() {
@@ -350,83 +400,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
     CostAnalysisWorkflow workflow =
         new CostAnalysisWorkflow(costAnalysisConfig, timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
-
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
     }
-
     return workflowStats;
-  }
-
-  private WorkflowStats processDataAssets() {
-    ProcessingPeriod steadyState = ProcessingPeriodFactory.forSteadyState(timestamp, 30);
-    Optional<ProcessingPeriod> backfillPeriod =
-        backfill.map(b -> ProcessingPeriodFactory.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
-
-    InsightsConfig insightsConfig =
-        new InsightsConfig(
-            dataAssetsConfig,
-            costAnalysisConfig,
-            dataQualityConfig,
-            webAnalyticsConfig,
-            batchSize,
-            false,
-            backfillPeriod,
-            steadyState,
-            dataAssetTypes,
-            dataQualityEntities);
-
-    SearchComponentFactory searchFactory = new SearchComponentFactory(searchRepository);
-    DataAssetsWorkflow workflow =
-        new DataAssetsWorkflow(insightsConfig, searchFactory, collectionDAO, searchRepository);
-
-    this.activeDataAssetsWorkflow = workflow;
-    WorkflowResult result = workflow.execute();
-    this.activeDataAssetsWorkflow = null;
-
-    if (result.failed() && !result.failures().isEmpty()) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(result.failures().get(0));
-    }
-
-    WorkflowStats stats = new WorkflowStats("DataAssetsWorkflow");
-    result.stepStats().forEach(stats::updateWorkflowStepStats);
-    return stats;
-  }
-
-  private WorkflowStats processDataQuality() {
-    ProcessingPeriod steadyState = ProcessingPeriodFactory.forSteadyState(timestamp, 30);
-    Optional<ProcessingPeriod> backfillPeriod =
-        backfill.map(b -> ProcessingPeriodFactory.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
-
-    InsightsConfig insightsConfig =
-        new InsightsConfig(
-            dataAssetsConfig,
-            costAnalysisConfig,
-            dataQualityConfig,
-            webAnalyticsConfig,
-            batchSize,
-            false,
-            backfillPeriod,
-            steadyState,
-            dataAssetTypes,
-            dataQualityEntities);
-
-    DataQualityWorkflow workflow =
-        new DataQualityWorkflow(insightsConfig, collectionDAO, searchRepository);
-    WorkflowResult result = workflow.execute();
-
-    if (result.failed() && !result.failures().isEmpty()) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(result.failures().get(0));
-    }
-
-    WorkflowStats stats = new WorkflowStats("DataQualityWorkflow");
-    result.stepStats().forEach(stats::updateWorkflowStepStats);
-    return stats;
   }
 
   private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
