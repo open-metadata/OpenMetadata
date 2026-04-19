@@ -2460,7 +2460,7 @@
     "custom-monogram-url-path-message": "URL-pad voor het navigatiebalk-logo.",
     "custom-properties-description": "Leg aangepaste metadata vast om uw data-assets te verrijken door het uitbreiden van de attributen.",
     "custom-property-is-set-to-message": "{{fieldName}} is set to",
-    "custom-property-name-validation": "De naam moet beginnen met een kleine letter zonder spaties, underscores of punten.",
+    "custom-property-name-validation": "De naam mag geen '::' bevatten.",
     "custom-property-update": "Aangepaste eigenschap '{{propertyName}}' update in {{entityName}} is {{status}}",
     "customize-brand-description": "De {{brandName}} UX aanpassen aan de behoeften van uw organisatie en team.",
     "customize-entity-landing-page-header-for-persona": "Personaliseer de {{entity}} entiteitspagina-ervaring voor de <0>{{persona}}</0> persona",
