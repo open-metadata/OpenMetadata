@@ -72,7 +72,8 @@ class WorkflowStatsCollectorTest {
   @Test
   void buildResultIsImmutable() {
     WorkflowResult result = collector.buildResult();
-    assertThrows(UnsupportedOperationException.class, () -> result.failures().add(new IndexingError()));
+    assertThrows(
+        UnsupportedOperationException.class, () -> result.failures().add(new IndexingError()));
     assertThrows(UnsupportedOperationException.class, () -> result.stepStats().put("x", null));
   }
 }

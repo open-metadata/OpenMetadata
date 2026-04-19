@@ -39,7 +39,8 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 @Slf4j
 public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
 
-  public static final String AGGREGATED_COST_ANALYSIS_DATA_MAP_KEY = "aggregatedCostAnalysisDataMap";
+  public static final String AGGREGATED_COST_ANALYSIS_DATA_MAP_KEY =
+      "aggregatedCostAnalysisDataMap";
 
   public record CostAnalysisTableData(
       Table table, Optional<LifeCycle> oLifeCycle, Optional<Double> oSize) {}
@@ -91,14 +92,18 @@ public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
         filter.addQueryParam("database", databaseService.getFullyQualifiedName());
         sources.add(
             new PaginatedEntitiesSource(Entity.TABLE, config.batchSize(), List.of("*"), filter)
-                .withName(String.format("[CostAnalysisWorkflow] %s", databaseService.getFullyQualifiedName())));
-        total += ((TableRepository) Entity.getEntityRepository(Entity.TABLE)).getDao().listCount(filter);
+                .withName(
+                    String.format(
+                        "[CostAnalysisWorkflow] %s", databaseService.getFullyQualifiedName())));
+        total +=
+            ((TableRepository) Entity.getEntityRepository(Entity.TABLE)).getDao().listCount(filter);
       }
       if (cursor == null) break;
     }
     databaseServiceTablesProcessor = new DatabaseServiceTablesProcessor(total);
     rawCostAnalysisReportDataProcessor = new RawCostAnalysisReportDataProcessor(total);
-    aggregatedCostAnalysisReportDataProcessor = new AggregatedCostAnalysisReportDataProcessor(total);
+    aggregatedCostAnalysisReportDataProcessor =
+        new AggregatedCostAnalysisReportDataProcessor(total);
   }
 
   @Override
@@ -107,7 +112,8 @@ public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
 
     long pointer = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
     while (pointer >= startTimestamp) {
-      deleteReportDataRecordsAtDate(pointer, ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
+      deleteReportDataRecordsAtDate(
+          pointer, ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
       pointer = TimestampUtils.subtractDays(pointer, 1);
     }
     deleteReportDataRecords(ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
@@ -119,7 +125,8 @@ public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
     for (PaginatedEntitiesSource source : sources) {
       if (stopped) break;
       List<RawCostAnalysisReportData> rawList = new ArrayList<>();
-      Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>> aggregatedMap = new HashMap<>();
+      Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>> aggregatedMap =
+          new HashMap<>();
       contextData.put(TIMESTAMP_KEY, startTimestamp);
       contextData.put(AGGREGATED_COST_ANALYSIS_DATA_MAP_KEY, aggregatedMap);
 
@@ -136,7 +143,8 @@ public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
           source.updateStats(resultList.getData().size(), 0);
           if (cursor == null) break;
         } catch (SearchIndexException ex) {
-          source.updateStats(ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
+          source.updateStats(
+              ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
           errors.add(String.format("Failed processing %s: %s", source.getName(), ex));
           sourceError = true;
           totalFailed++;
@@ -158,13 +166,16 @@ public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
       List<RawCostAnalysisReportData> rawList, Map<String, Object> contextData) {
     try {
       CreateReportDataProcessor processor =
-          new CreateReportDataProcessor(rawList.size(),
+          new CreateReportDataProcessor(
+              rawList.size(),
               "[CostAnalysisWorkflow] Raw Cost Analysis Report Data Processor",
               ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
       List<ReportData> reportData = processor.process(rawList, contextData);
-      new ReportDataSink(reportData.size(),
-          "[CostAnalysisWorkflow] Raw Cost Analysis Report Data Sink",
-          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA).write(reportData);
+      new ReportDataSink(
+              reportData.size(),
+              "[CostAnalysisWorkflow] Raw Cost Analysis Report Data Sink",
+              ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA)
+          .write(reportData);
     } catch (SearchIndexException ex) {
       return Optional.of(String.format("Failed processing raw cost analysis: %s", ex.getMessage()));
     }
@@ -180,15 +191,19 @@ public class CostAnalysisWorkflow extends AbstractInsightsWorkflow {
       List<AggregatedCostAnalysisReportData> aggregatedList =
           aggregator.process(aggregatedMap, contextData);
       CreateReportDataProcessor processor =
-          new CreateReportDataProcessor(aggregatedList.size(),
+          new CreateReportDataProcessor(
+              aggregatedList.size(),
               "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Processor",
               ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
       List<ReportData> reportData = processor.process(aggregatedList, contextData);
-      new ReportDataSink(reportData.size(),
-          "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Sink",
-          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA).write(reportData);
+      new ReportDataSink(
+              reportData.size(),
+              "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Sink",
+              ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA)
+          .write(reportData);
     } catch (SearchIndexException ex) {
-      return Optional.of(String.format("Failed processing aggregated cost analysis: %s", ex.getMessage()));
+      return Optional.of(
+          String.format("Failed processing aggregated cost analysis: %s", ex.getMessage()));
     }
     return Optional.empty();
   }

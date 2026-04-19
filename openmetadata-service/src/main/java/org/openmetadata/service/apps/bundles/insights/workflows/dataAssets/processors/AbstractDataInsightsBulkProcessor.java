@@ -30,7 +30,8 @@ public abstract class AbstractDataInsightsBulkProcessor<T>
   public List<T> process(List<Map<String, Object>> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String index = (String) contextData.get(DATA_STREAM_KEY);
-    LOG.debug("[DataInsightsProcessor] Processing batch of size: {}, index: {}", input.size(), index);
+    LOG.debug(
+        "[DataInsightsProcessor] Processing batch of size: {}, index: {}", input.size(), index);
     try {
       List<T> operations = new ArrayList<>(input.size());
       for (Map<String, Object> entity : input) {

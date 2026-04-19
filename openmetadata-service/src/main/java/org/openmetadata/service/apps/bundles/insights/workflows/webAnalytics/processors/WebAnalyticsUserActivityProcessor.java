@@ -88,7 +88,7 @@ public class WebAnalyticsUserActivityProcessor
 
         String team = null;
         if (!userDetails.getTeams().isEmpty()) {
-          team = userDetails.getTeams().get(0).getName();
+          team = userDetails.getTeams().getFirst().getName();
         }
 
         WebAnalyticsWorkflow.UserActivityData userActivityData =

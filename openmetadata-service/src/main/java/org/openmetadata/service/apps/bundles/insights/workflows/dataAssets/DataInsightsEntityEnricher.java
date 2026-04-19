@@ -162,7 +162,7 @@ public class DataInsightsEntityEnricher {
     String team = null;
     Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
     if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
-      EntityReference entityOwner = oEntityOwners.get().get(0);
+      EntityReference entityOwner = oEntityOwners.get().getFirst();
       String ownerType = entityOwner.getType();
       if (ownerType.equals(Entity.TEAM)) {
         team = entityOwner.getName();
@@ -178,7 +178,7 @@ public class DataInsightsEntityEnricher {
             List<EntityReference> teams = owner.getTeams();
 
             if (!teams.isEmpty()) {
-              team = teams.get(0).getName();
+              team = teams.getFirst().getName();
             }
           }
         } catch (EntityNotFoundException ex) {
@@ -223,7 +223,7 @@ public class DataInsightsEntityEnricher {
     // We can directly get the first element if the list is not empty since there can only be ONE
     // Tier tag.
     if (!tierTags.isEmpty()) {
-      entityTier = Optional.of(tierTags.get(0));
+      entityTier = Optional.of(tierTags.getFirst());
     }
 
     return entityTier;

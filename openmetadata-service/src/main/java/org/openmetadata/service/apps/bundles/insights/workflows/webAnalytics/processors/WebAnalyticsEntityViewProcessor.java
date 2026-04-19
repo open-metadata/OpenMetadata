@@ -112,7 +112,7 @@ public class WebAnalyticsEntityViewProcessor
 
           // Fill Owner.
           if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
-            EntityReference entityOwner = oEntityOwners.get().get(0);
+            EntityReference entityOwner = oEntityOwners.get().getFirst();
 
             // Skip the Event if Entity Owner is the same as the User from the Event since we are
             // not counting
@@ -196,7 +196,7 @@ public class WebAnalyticsEntityViewProcessor
     // We can directly get the first element if the list is not empty since there can only be ONE
     // Tier tag.
     if (!tierTags.isEmpty()) {
-      entityTier = Optional.of(tierTags.get(0));
+      entityTier = Optional.of(tierTags.getFirst());
     }
 
     return entityTier;

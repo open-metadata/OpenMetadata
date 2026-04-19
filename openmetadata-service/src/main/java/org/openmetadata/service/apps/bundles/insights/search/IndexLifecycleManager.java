@@ -20,8 +20,7 @@ public record IndexLifecycleManager(
       try {
         searchInterface.deleteDataAssetDataStream(streamName);
       } catch (IOException e) {
-        LOG.warn(
-            "Could not delete data stream {} (may not exist): {}", streamName, e.getMessage());
+        LOG.warn("Could not delete data stream {} (may not exist): {}", streamName, e.getMessage());
       }
 
       for (DailyIndex index : searchInterface.listDailyIndices(clusterAlias, entityType)) {

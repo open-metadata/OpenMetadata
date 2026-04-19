@@ -43,7 +43,8 @@ class RetentionCleanupStepTest {
 
     verify(searchInterface).deleteDailyIndex(expired);
     verify(searchInterface, never()).deleteDailyIndex(fresh);
-    assertEquals(1, stats.buildResult().stepStats().get("retention-cleanup-table").getSuccessRecords());
+    assertEquals(
+        1, stats.buildResult().stepStats().get("retention-cleanup-table").getSuccessRecords());
   }
 
   @Test
@@ -54,6 +55,7 @@ class RetentionCleanupStepTest {
     new RetentionCleanupStep(searchInterface, RETENTION_DAYS).execute(today, stats);
 
     verify(searchInterface, never()).deleteDailyIndex(any());
-    assertEquals(0, stats.buildResult().stepStats().get("retention-cleanup-table").getSuccessRecords());
+    assertEquals(
+        0, stats.buildResult().stepStats().get("retention-cleanup-table").getSuccessRecords());
   }
 }

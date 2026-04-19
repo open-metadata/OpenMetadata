@@ -10,8 +10,7 @@ import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollect
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public record RetentionCleanupStep(
-    DataInsightsSearchInterface searchInterface, int retentionDays) {
+public record RetentionCleanupStep(DataInsightsSearchInterface searchInterface, int retentionDays) {
 
   private static final Logger LOG = LoggerFactory.getLogger(RetentionCleanupStep.class);
 

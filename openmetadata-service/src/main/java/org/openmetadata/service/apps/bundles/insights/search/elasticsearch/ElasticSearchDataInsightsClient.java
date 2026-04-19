@@ -115,9 +115,11 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   public List<DailyIndex> listDailyIndices(String clusterAlias, String entityType)
       throws IOException {
     String base = "di-data-assets-" + entityType.toLowerCase() + "-*";
-    String pattern = (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
+    String pattern =
+        (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
     try {
-      Response response = performRequest("GET", "/_cat/indices/" + pattern + "?format=json&h=index");
+      Response response =
+          performRequest("GET", "/_cat/indices/" + pattern + "?format=json&h=index");
       String body;
       try {
         body = EntityUtils.toString(response.getEntity());

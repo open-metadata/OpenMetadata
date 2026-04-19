@@ -17,7 +17,8 @@ public record RollForwardStep(DataInsightsSearchInterface searchInterface) {
     DailyIndex yesterday = today.previous();
 
     if (!searchInterface.dailyIndexExists(yesterday)) {
-      LOG.info("[RollForward] No previous index for {}. Skipping roll-forward.", today.entityType());
+      LOG.info(
+          "[RollForward] No previous index for {}. Skipping roll-forward.", today.entityType());
       stats.record(new StepResult("roll-forward-" + today.entityType(), 0, 0, List.of()));
       return;
     }

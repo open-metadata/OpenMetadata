@@ -1521,9 +1521,7 @@ public interface CollectionDAO {
     @Override
     public EntityVersionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new EntityVersionRecord(
-          UUID.fromString(rs.getString("id")),
-          rs.getString("extension"),
-          rs.getLong("updated_at"));
+          UUID.fromString(rs.getString("id")), rs.getString("extension"), rs.getLong("updated_at"));
     }
   }
 

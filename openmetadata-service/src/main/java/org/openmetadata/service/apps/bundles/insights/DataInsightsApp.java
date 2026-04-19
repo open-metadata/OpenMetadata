@@ -321,7 +321,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     for (WorkflowResult result : results) {
       result.stepStats().forEach((stepName, stepStats) -> updateStats(stepName, stepStats));
       if (result.failed() && firstFailure == null && !result.failures().isEmpty()) {
-        firstFailure = result.failures().get(0);
+        firstFailure = result.failures().getFirst();
       }
     }
     if (firstFailure != null) {

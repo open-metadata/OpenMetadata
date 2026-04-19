@@ -6,8 +6,8 @@ import org.openmetadata.schema.entity.applications.configuration.internal.AppAna
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
-import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.service.Entity;
 
 public record InsightsConfig(

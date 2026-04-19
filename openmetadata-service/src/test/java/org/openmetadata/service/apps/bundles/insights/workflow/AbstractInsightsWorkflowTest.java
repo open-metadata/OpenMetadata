@@ -122,7 +122,13 @@ class AbstractInsightsWorkflowTest {
   @Test
   void cleanupCalledEvenWhenRunThrows() {
     Runnable cleanup = mock(Runnable.class);
-    workflow(true, () -> { throw new RuntimeException("fail"); }, cleanup).execute();
+    workflow(
+            true,
+            () -> {
+              throw new RuntimeException("fail");
+            },
+            cleanup)
+        .execute();
     verify(cleanup, times(1)).run();
   }
 

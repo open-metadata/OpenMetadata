@@ -110,7 +110,8 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   public List<DailyIndex> listDailyIndices(String clusterAlias, String entityType)
       throws IOException {
     String base = "di-data-assets-" + entityType.toLowerCase() + "-*";
-    String pattern = (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
+    String pattern =
+        (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
     var response = performRequest("GET", "/_cat/indices/" + pattern + "?format=json&h=index");
     if (response.getStatus() == 404) {
       return List.of();

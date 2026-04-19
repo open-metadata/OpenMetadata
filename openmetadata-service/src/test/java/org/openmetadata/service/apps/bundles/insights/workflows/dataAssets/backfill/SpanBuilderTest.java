@@ -92,9 +92,10 @@ class SpanBuilderTest {
     LocalDate change1 = LocalDate.of(2026, 2, 1);
     LocalDate change2 = LocalDate.of(2026, 3, 1);
     UUID id = UUID.randomUUID();
-    List<VersionRecord> versions = List.of(
-        new VersionRecord(id, "table.version.0.3", toMs(change2)),
-        new VersionRecord(id, "table.version.0.2", toMs(change1)));
+    List<VersionRecord> versions =
+        List.of(
+            new VersionRecord(id, "table.version.0.3", toMs(change2)),
+            new VersionRecord(id, "table.version.0.2", toMs(change1)));
 
     List<Span> spans =
         new SpanBuilder(entity, versions, WINDOW_START, WINDOW_START, WINDOW_END).build();

@@ -47,8 +47,10 @@ class ProcessingPeriodTest {
     long now = System.currentTimeMillis();
     long fiveDaysAgoMs = TimestampUtils.subtractDays(now, 5);
     String fiveDaysAgo = TimestampUtils.timestampToString(fiveDaysAgoMs, "yyyy-MM-dd");
-    String tomorrow = TimestampUtils.timestampToString(TimestampUtils.addDays(now, 1), "yyyy-MM-dd");
-    ProcessingPeriod period = ProcessingPeriod.forBackfill(fiveDaysAgo, tomorrow, now, RETENTION_DAYS);
+    String tomorrow =
+        TimestampUtils.timestampToString(TimestampUtils.addDays(now, 1), "yyyy-MM-dd");
+    ProcessingPeriod period =
+        ProcessingPeriod.forBackfill(fiveDaysAgo, tomorrow, now, RETENTION_DAYS);
     long expectedStart =
         TimestampUtils.getStartOfDayTimestamp(
             TimestampUtils.getTimestampFromDateString(fiveDaysAgo));

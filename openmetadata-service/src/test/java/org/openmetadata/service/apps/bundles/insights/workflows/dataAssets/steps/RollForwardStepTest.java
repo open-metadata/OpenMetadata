@@ -57,6 +57,7 @@ class RollForwardStepTest {
     when(searchInterface.dailyIndexExists(today.previous())).thenReturn(true);
     doThrow(new IOException("ES unreachable")).when(searchInterface).rollForward(any(), any());
 
-    assertThrows(IOException.class, () -> new RollForwardStep(searchInterface).execute(today, stats));
+    assertThrows(
+        IOException.class, () -> new RollForwardStep(searchInterface).execute(today, stats));
   }
 }

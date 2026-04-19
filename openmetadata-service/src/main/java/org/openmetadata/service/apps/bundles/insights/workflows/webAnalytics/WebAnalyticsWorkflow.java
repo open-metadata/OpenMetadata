@@ -82,12 +82,11 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
     while (pointer > startTimestamp) {
       sources.add(
           new PaginatedWebAnalyticEventDataSource(
-              config.batchSize(),
-              TimestampUtils.getStartOfDayTimestamp(pointer),
-              pointer));
+              config.batchSize(), TimestampUtils.getStartOfDayTimestamp(pointer), pointer));
       pointer = TimestampUtils.subtractDays(pointer, 1);
     }
-    int total = sources.stream().mapToInt(PaginatedWebAnalyticEventDataSource::getTotalRecords).sum();
+    int total =
+        sources.stream().mapToInt(PaginatedWebAnalyticEventDataSource::getTotalRecords).sum();
     webAnalyticsEntityViewProcessor = new WebAnalyticsEntityViewProcessor(total);
     webAnalyticsUserActivityProcessor = new WebAnalyticsUserActivityProcessor(total);
   }
@@ -105,8 +104,10 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData = new HashMap<>();
       long referenceTimestamp = source.getStartTs();
 
-      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
-      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
+      deleteReportDataRecordsAtDate(
+          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
+      deleteReportDataRecordsAtDate(
+          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
 
       Map<String, Object> contextData = new HashMap<>();
       contextData.put(TIMESTAMP_KEY, referenceTimestamp);
@@ -121,7 +122,8 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
         continue;
       }
       processEntityViewData(entityViewReportData, contextData).ifPresent(errors::add);
-      processUserActivityData(userActivityData, userActivityReportData, contextData).ifPresent(errors::add);
+      processUserActivityData(userActivityData, userActivityReportData, contextData)
+          .ifPresent(errors::add);
       totalSuccess++;
     }
 
@@ -143,8 +145,10 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
         source.updateStats(resultList.getData().size(), 0);
         if (cursor == null) break;
       } catch (SearchIndexException ex) {
-        source.updateStats(ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-        return Optional.of(String.format("Failed processing events from %s: %s", source.getName(), ex));
+        source.updateStats(
+            ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
+        return Optional.of(
+            String.format("Failed processing events from %s: %s", source.getName(), ex));
       }
     }
     return Optional.empty();
@@ -155,14 +159,17 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
       Map<String, Object> contextData) {
     try {
       CreateReportDataProcessor processor =
-          new CreateReportDataProcessor(entityViewReportData.size(),
+          new CreateReportDataProcessor(
+              entityViewReportData.size(),
               "[WebAnalyticsWorkflow] Entity View Report Data Processor",
               ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
       List<ReportData> reportData =
           processor.process(entityViewReportData.values().stream().toList(), contextData);
-      new ReportDataSink(reportData.size(),
-          "[WebAnalyticsWorkflow] Entity View Report Data Sink",
-          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA).write(reportData);
+      new ReportDataSink(
+              reportData.size(),
+              "[WebAnalyticsWorkflow] Entity View Report Data Sink",
+              ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)
+          .write(reportData);
     } catch (SearchIndexException ex) {
       return Optional.of(String.format("Failed processing entity view data: %s", ex.getMessage()));
     }
@@ -174,18 +181,23 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData,
       Map<String, Object> contextData) {
     try {
-      new WebAnalyticsUserActivityAggregator(userActivityData.size()).process(userActivityData, contextData);
+      new WebAnalyticsUserActivityAggregator(userActivityData.size())
+          .process(userActivityData, contextData);
       CreateReportDataProcessor processor =
-          new CreateReportDataProcessor(userActivityReportData.size(),
+          new CreateReportDataProcessor(
+              userActivityReportData.size(),
               "[WebAnalyticsWorkflow] User Activity Report Data Processor",
               ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
       List<ReportData> reportData =
           processor.process(userActivityReportData.values().stream().toList(), contextData);
-      new ReportDataSink(reportData.size(),
-          "[WebAnalyticsWorkflow] User Activity Report Data Sink",
-          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA).write(reportData);
+      new ReportDataSink(
+              reportData.size(),
+              "[WebAnalyticsWorkflow] User Activity Report Data Sink",
+              ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)
+          .write(reportData);
     } catch (SearchIndexException ex) {
-      return Optional.of(String.format("Failed processing user activity data: %s", ex.getMessage()));
+      return Optional.of(
+          String.format("Failed processing user activity data: %s", ex.getMessage()));
     }
     return Optional.empty();
   }
@@ -200,7 +212,8 @@ public class WebAnalyticsWorkflow extends AbstractInsightsWorkflow {
     for (WebAnalyticEventType eventType : WebAnalyticEventType.values()) {
       ((WebAnalyticEventRepository) Entity.getEntityRepository(Entity.WEB_ANALYTIC_EVENT))
           .deleteWebAnalyticEventData(
-              eventType, TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
+              eventType,
+              TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
     }
   }
 }

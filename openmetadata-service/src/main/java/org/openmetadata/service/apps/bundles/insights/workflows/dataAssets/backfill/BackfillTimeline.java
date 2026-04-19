@@ -7,5 +7,4 @@ import java.util.Set;
 import java.util.UUID;
 
 public record BackfillTimeline(
-    Map<UUID, List<VersionRecord>> versionTimeline,
-    Map<LocalDate, Set<UUID>> creationsPerDay) {}
+    Map<UUID, List<VersionRecord>> versionTimeline, Map<LocalDate, Set<UUID>> creationsPerDay) {}

@@ -513,7 +513,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       targetKpi = String.format("%.2f", validKpi.getTargetValue());
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
-        isTargetMet = result.getTargetResult().get(0).getTargetMet();
+        isTargetMet = result.getTargetResult().getFirst().getTargetMet();
         criteria = DataInsightDescriptionAndOwnerTemplate.KpiCriteria.IN_PROGRESS;
         if (isTargetMet) {
           criteria = DataInsightDescriptionAndOwnerTemplate.KpiCriteria.MET;

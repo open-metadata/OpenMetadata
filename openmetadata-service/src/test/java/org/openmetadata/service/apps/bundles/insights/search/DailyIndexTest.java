@@ -68,7 +68,8 @@ class DailyIndexTest {
   @Test
   void startOfDayTimestampIsUtcMidnight() {
     DailyIndex index = new DailyIndex("", "table", LocalDate.of(2026, 4, 17));
-    long expected = LocalDate.of(2026, 4, 17).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+    long expected =
+        LocalDate.of(2026, 4, 17).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
     assertEquals(expected, index.startOfDayTimestamp());
   }
 

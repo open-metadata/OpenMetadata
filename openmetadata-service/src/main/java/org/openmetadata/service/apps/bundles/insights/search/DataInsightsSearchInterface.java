@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
-import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public interface DataInsightsSearchInterface {
