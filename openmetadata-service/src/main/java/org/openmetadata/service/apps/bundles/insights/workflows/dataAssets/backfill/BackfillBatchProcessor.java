@@ -87,7 +87,8 @@ public final class BackfillBatchProcessor {
         String[] parts = key.split("\\|", 2);
         idToExtension.put(UUID.fromString(parts[0]), parts[1]);
       }
-      versionJsonMap.putAll(collectionDAO.entityExtensionDAO().batchGetByIdAndExtension(idToExtension));
+      versionJsonMap.putAll(
+          collectionDAO.entityExtensionDAO().batchGetByIdAndExtension(idToExtension));
     }
 
     // 3. Enrich each span once, write to every day in the span
@@ -104,9 +105,11 @@ public final class BackfillBatchProcessor {
 
         Map<String, Object> enriched;
         try {
-          List<Map<String, Object>> enrichedList = enricher.enrichSingle(version, Map.of());
-          if (enrichedList.isEmpty()) continue;
-          enriched = enrichedList.get(0);
+          Map<String, Object> enrichCtx =
+              Map.of(
+                  org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY,
+                  entityType);
+          enriched = enricher.enrichSingle(version, enrichCtx);
         } catch (Exception e) {
           totalFailed++;
           errors.add(id + ": " + e.getMessage());
@@ -118,7 +121,8 @@ public final class BackfillBatchProcessor {
           doc.put("@timestamp", day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli());
 
           DailyIndex dayIndex = new DailyIndex(clusterAlias, entityType, day);
-          Map<String, Object> contextData = Map.of(DataAssetsWorkflow.DATA_STREAM_KEY, dayIndex.name());
+          Map<String, Object> contextData =
+              Map.of(DataAssetsWorkflow.DATA_STREAM_KEY, dayIndex.name());
 
           try {
             List<?> ops = (List<?>) entityProcessor.process(List.of(doc), contextData);
@@ -157,13 +161,19 @@ public final class BackfillBatchProcessor {
     if (span.extensionKey() == null) return currentEntity;
     String json = versionJsonMap.get(currentEntity.getId());
     if (json == null) {
-      LOG.debug("[BackfillBatch] Missing version {} for entity {}", span.extensionKey(), currentEntity.getId());
+      LOG.debug(
+          "[BackfillBatch] Missing version {} for entity {}",
+          span.extensionKey(),
+          currentEntity.getId());
       return null;
     }
     try {
       return JsonUtils.readValue(json, currentEntity.getClass());
     } catch (Exception e) {
-      LOG.warn("[BackfillBatch] Could not deserialise version for {}: {}", currentEntity.getId(), e.getMessage());
+      LOG.warn(
+          "[BackfillBatch] Could not deserialise version for {}: {}",
+          currentEntity.getId(),
+          e.getMessage());
       return null;
     }
   }

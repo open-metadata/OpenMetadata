@@ -42,8 +42,8 @@ public record DeltaProcessingStep(
 
           for (EntityInterface entity : batch.getData()) {
             try {
-              List<Map<String, Object>> enriched = enricher.enrichSingle(entity, contextData);
-              List<?> ops = (List<?>) entityProcessor.process(enriched, contextData);
+              Map<String, Object> enriched = enricher.enrichSingle(entity, contextData);
+              List<?> ops = (List<?>) entityProcessor.process(List.of(enriched), contextData);
               EntityReference ref = entity.getEntityReference();
               for (Object op : ops) {
                 taggedOps.add(new TaggedOperation<>(op, ref));

@@ -36,8 +36,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
-public class DataInsightsEntityEnricherProcessor
-    implements Processor<List<Map<String, Object>>, ResultList<? extends EntityInterface>> {
+public class DataInsightsEntityEnricherProcessor {
 
   private final StepStats stats = new StepStats();
   private static final Set<String> NON_TIER_ENTITIES = Set.of("tag", "glossaryTerm", "dataProduct");
@@ -46,51 +45,16 @@ public class DataInsightsEntityEnricherProcessor
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
-  @Override
-  public List<Map<String, Object>> process(
-      ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
-      throws SearchIndexException {
-    List<Map<String, Object>> enrichedMaps;
-    try {
-      enrichedMaps =
-          input.getData().stream()
-              .flatMap(
-                  entity ->
-                      getEntityVersions(entity, contextData).stream()
-                          .flatMap(
-                              entityVersionMap ->
-                                  generateDailyEntitySnapshots(
-                                      enrichEntity(entityVersionMap, contextData))
-                                      .stream()))
-              .toList();
-      updateStats(input.getData().size(), 0);
-    } catch (Exception e) {
-      IndexingError error =
-          new IndexingError()
-              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
-              .withSubmittedCount(input.getData().size())
-              .withFailedCount(input.getData().size())
-              .withSuccessCount(0)
-              .withMessage(
-                  String.format("Entities Enricher Encountered Failure: %s", e.getMessage()))
-              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
-      LOG.debug(
-          "[DataInsightsEntityEnricherProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
-      updateStats(0, input.getData().size());
-      throw new SearchIndexException(error);
-    }
-    return enrichedMaps;
-  }
-
-  public List<Map<String, Object>> enrichSingle(
+  public Map<String, Object> enrichSingle(
       EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
     try {
-      return getEntityVersions(entity, contextData).stream()
-          .flatMap(
-              entityVersionMap ->
-                  generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData))
-                      .stream())
-          .toList();
+      Map<String, Object> versionMap = new HashMap<>();
+      versionMap.put("versionEntity", entity);
+      versionMap.put("startTimestamp", contextData.get(START_TIMESTAMP_KEY));
+      versionMap.put("endTimestamp", contextData.get(END_TIMESTAMP_KEY));
+      Map<String, Object> enriched = enrichEntity(versionMap, contextData);
+      updateStats(1, 0);
+      return enriched;
     } catch (Exception e) {
       IndexingError error =
           new IndexingError()
@@ -111,75 +75,6 @@ public class DataInsightsEntityEnricherProcessor
     }
   }
 
-  private List<Map<String, Object>> getEntityVersions(
-      EntityInterface entity, Map<String, Object> contextData) {
-    String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-    Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
-    Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
-
-    // Skip version history queries for entities unchanged during the window (N+1 optimization).
-    Long updatedAt = entity.getUpdatedAt();
-    if (updatedAt != null) {
-      Long entityUpdatedDay = TimestampUtils.getStartOfDayTimestamp(updatedAt);
-      if (entityUpdatedDay < startTimestamp) {
-        Map<String, Object> versionMap = new HashMap<>();
-        versionMap.put("endTimestamp", endTimestamp);
-        versionMap.put("startTimestamp", startTimestamp);
-        versionMap.put("versionEntity", entity);
-        return List.of(versionMap);
-      }
-    }
-
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-
-    Long pointerTimestamp = endTimestamp;
-    List<Map<String, Object>> entityVersions = new java.util.ArrayList<>();
-    boolean historyDone = false;
-    int nextOffset = 0;
-
-    while (!historyDone) {
-      EntityRepository.EntityHistoryWithOffset entityHistoryWithOffset =
-          entityRepository.listVersionsWithOffset(entity.getId(), 100, nextOffset);
-      List<Object> versions = entityHistoryWithOffset.entityHistory().getVersions();
-      if (versions.isEmpty()) {
-        break;
-      }
-      nextOffset = entityHistoryWithOffset.nextOffset();
-
-      for (Object version : versions) {
-        EntityInterface versionEntity =
-            JsonUtils.readOrConvertValue(
-                version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-        Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
-        if (versionTimestamp > pointerTimestamp) {
-          continue;
-        } else if (versionTimestamp < startTimestamp) {
-          Map<String, Object> versionMap = new HashMap<>();
-
-          versionMap.put("endTimestamp", pointerTimestamp);
-          versionMap.put("startTimestamp", startTimestamp);
-          versionMap.put("versionEntity", versionEntity);
-
-          entityVersions.add(versionMap);
-          historyDone = true;
-          break;
-        } else {
-          Map<String, Object> versionMap = new HashMap<>();
-
-          versionMap.put("endTimestamp", pointerTimestamp);
-          versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
-          versionMap.put("versionEntity", versionEntity);
-
-          entityVersions.add(versionMap);
-          pointerTimestamp =
-              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
-        }
-      }
-    }
-
-    return entityVersions;
-  }
-
   private Map<String, Object> enrichEntity(
       Map<String, Object> entityVersionMap, Map<String, Object> contextData) {
     EntityInterface entity = (EntityInterface) entityVersionMap.get("versionEntity");
@@ -187,7 +82,10 @@ public class DataInsightsEntityEnricherProcessor
     Long endTimestamp = (Long) entityVersionMap.get("endTimestamp");
 
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
-    entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
+    List<String> fields = (List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY);
+    if (fields != null) {
+      entityMap.keySet().retainAll(fields);
+    }
     stripNestedColumnChildren(entityMap);
 
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
@@ -337,33 +235,10 @@ public class DataInsightsEntityEnricherProcessor
     return entityTier;
   }
 
-  private List<Map<String, Object>> generateDailyEntitySnapshots(
-      Map<String, Object> entityVersionMap) {
-    Long startTimestamp = (Long) entityVersionMap.remove("startTimestamp");
-    Long endTimestamp = (Long) entityVersionMap.remove("endTimestamp");
-
-    List<Map<String, Object>> dailyEntitySnapshots = new java.util.ArrayList<>();
-
-    Long pointerTimestamp = endTimestamp;
-
-    while (pointerTimestamp >= startTimestamp) {
-      Map<String, Object> dailyEntitySnapshot = new HashMap<>(entityVersionMap);
-
-      dailyEntitySnapshot.put(
-          TIMESTAMP_KEY, TimestampUtils.getStartOfDayTimestamp(pointerTimestamp));
-      dailyEntitySnapshots.add(dailyEntitySnapshot);
-
-      pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
-    }
-    return dailyEntitySnapshots;
-  }
-
-  @Override
   public synchronized void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
 
-  @Override
   public StepStats getStats() {
     return stats;
   }
