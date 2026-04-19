@@ -19,7 +19,7 @@ import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvid
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { SearchRequest } from '../generated/search/searchRequest';
+import { AggregationRequest } from '../generated/search/aggregationRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
@@ -196,18 +196,18 @@ export const getAggregateFieldOptions = (
 
 /**
  * Posts aggregate field options request with parameters in the body.
- * @param {SearchRequest} body - The search request body containing the parameters.
+ * @param {AggregationRequest} body - The aggregation request body containing the parameters.
  * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
  * containing the aggregate field options.
  */
 export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
-}: SearchRequest) => {
+}: AggregationRequest) => {
   const withWildCardValue = fieldValue
     ? `.*${escapeESReservedCharacters(fieldValue)}.*`
     : '.*';
-  const body: SearchRequest = {
+  const body: AggregationRequest = {
     fieldValue: withWildCardValue,
     ...rest,
   };

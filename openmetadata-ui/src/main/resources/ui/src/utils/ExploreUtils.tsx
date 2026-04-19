@@ -374,7 +374,8 @@ export const getAggregationOptions = async (
         fieldValue: value,
         query: filter,
         size,
-      } as SearchRequest)
+        ...(sourceFields ? { sourceFields: [sourceFields] } : {}),
+      })
     : getAggregateFieldOptions(
         index,
         key,

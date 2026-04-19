@@ -368,13 +368,65 @@ export const getServiceOptions = (
     : option.text;
 };
 
-/**
- * Convert aggregation buckets to dropdown options with original casing
- * @param buckets - Aggregation buckets from API response
- * @param sourceFields - Optional dot-notation path to extract original values from top_hits
- *                      Example: 'service.displayName' or 'owners.displayName'
- * @returns Array of SearchDropdownOption with preserved casing from _source
- */
+const flattenStringValues = (value: unknown): string[] => {
+  if (typeof value === 'string') {
+    return [value];
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => flattenStringValues(item));
+};
+
+const getValueFromSourcePath = (
+  value: unknown,
+  pathSegments: string[]
+): unknown => {
+  if (pathSegments.length === 0) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => getValueFromSourcePath(entry, pathSegments))
+      .filter((entry) => entry !== undefined);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const [currentSegment, ...remainingSegments] = pathSegments;
+
+  if (!(currentSegment in value)) {
+    return undefined;
+  }
+
+  return getValueFromSourcePath(
+    (value as Record<string, unknown>)[currentSegment],
+    remainingSegments
+  );
+};
+
+const getDisplayLabel = (sourceValue: unknown, bucketKey: string): string => {
+  if (typeof sourceValue === 'string') {
+    return sourceValue;
+  }
+
+  const candidates = flattenStringValues(sourceValue);
+  if (candidates.length === 0) {
+    return bucketKey;
+  }
+
+  const matchingCandidate = candidates.find(
+    (candidate) => candidate.toLowerCase() === bucketKey.toLowerCase()
+  );
+
+  return matchingCandidate ?? candidates[0];
+};
+
 export const getOptionsFromAggregationBucket = (
   buckets: Bucket[],
   sourceFields?: string
@@ -389,7 +441,6 @@ export const getOptionsFromAggregationBucket = (
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
     .map((option) => {
-      // Extract original casing from top_hits sub-aggregation if available
       const topHitsData = (option as Record<string, unknown>)[
         'top_hits#top'
       ] as
@@ -401,22 +452,15 @@ export const getOptionsFromAggregationBucket = (
             };
           }
         | undefined;
+      const bucketKey = option.key as string;
+      const sourcePath = sourceFields?.split('.') ?? [];
+      const topHitSource = topHitsData?.hits?.hits?.[0]?._source;
+      const sourceValue =
+        topHitSource && sourcePath.length > 0
+          ? getValueFromSourcePath(topHitSource, sourcePath)
+          : undefined;
 
-      // Get the original value from _source using dot-notation path
-      let originalValue: string | undefined;
-      if (topHitsData?.hits?.hits?.[0]?._source && sourceFields) {
-        originalValue = sourceFields
-          .split('.')
-          .reduce((obj: unknown, key: string): unknown => {
-            if (obj && typeof obj === 'object' && obj !== null && key in (obj as Record<string, unknown>)) {
-              return (obj as Record<string, unknown>)[key];
-            }
-            return undefined;
-          }, topHitsData.hits.hits[0]._source) as string | undefined;
-      }
-
-      // Fallback to bucket.key if original value not found or sourceFields not provided
-      const displayLabel = originalValue ?? (option.key as string);
+      const displayLabel = getDisplayLabel(sourceValue, bucketKey);
 
       return {
         key: option.key,
