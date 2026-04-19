@@ -49,15 +49,13 @@ export const saveAndTriggerDataContractValidation = async (
     .waitFor({ state: 'visible' });
 
   await page.getByTestId('contract-run-now-button').click();
-  // Use validate response to get the resultId of the newly triggered execution.
-  const runNowData = await (await runNowResponse).json();
+  await runNowResponse;
 
   await page.reload();
 
   await waitForAllLoadersToDisappear(page);
 
-  // Prefer validate response; fall back to save response if latestResult is missing.
-  return 'latestResult' in runNowData ? runNowData : responseData;
+  return responseData;
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
@@ -91,7 +89,6 @@ export const validateDataContractInsideBundleTestSuites = async (
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
-  resultId: string,
   maxConsecutiveErrors = 3
 ) => {
   const { apiContext } = await getApiContext(page);
@@ -103,37 +100,18 @@ export const waitForDataContractExecution = async (
     .poll(
       async () => {
         try {
-          const [latestResultResponse, specificResultResponse] =
-            await Promise.all([
-              apiContext
-                .get(`/api/v1/dataContracts/${contractId}/results/latest`)
-                .then((res) => (res.ok() ? res.json() : null))
-                .catch(() => null),
-              apiContext
-                .get(`/api/v1/dataContracts/${contractId}/results/${resultId}`)
-                .then((res) => (res.ok() ? res.json() : null))
-                .catch(() => null),
-            ]);
+          // Poll the contract entity — latestResult.status is what the backend updates
+          // and what the UI reads. Avoids coupling to a resultId that may be stale.
+          const contractResponse = await apiContext
+            .get(`/api/v1/dataContracts/${contractId}`)
+            .then((res) => (res.ok() ? res.json() : null))
+            .catch(() => null);
 
-          consecutiveErrors = 0; // Reset error counter on success
+          consecutiveErrors = 0;
 
-          const latestStatus = latestResultResponse?.contractExecutionStatus;
-          const specificStatus =
-            specificResultResponse?.contractExecutionStatus;
+          const status = contractResponse?.latestResult?.status;
 
-          if (
-            latestStatus &&
-            terminalStatusPattern.test(latestStatus) &&
-            latestResultResponse?.id === resultId
-          ) {
-            return latestStatus;
-          }
-
-          if (specificStatus && terminalStatusPattern.test(specificStatus)) {
-            return specificStatus;
-          }
-
-          return latestStatus ?? specificStatus ?? 'Running';
+          return status ?? 'Running';
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {

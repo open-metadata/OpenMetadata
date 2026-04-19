@@ -26,7 +26,7 @@
     <meta
       property="og:image"
       content="${basePath}favicons/android-icon-192x192.png" />
-    <script>
+    <script nonce="${cspNonce}">
       window.BASE_PATH = '${basePath}';
     </script>
 
@@ -89,7 +89,7 @@
       href="${basePath}favicons/favicon-16x16.png" />
     <link rel="manifest" href="${basePath}manifest.json" />
 
-    <script>
+    <script nonce="${cspNonce}">
       let images = [
         '${basePath}images/governance.png',
         '${basePath}images/data-collaboration.png',
@@ -102,21 +102,21 @@
       });
     </script>
 
-    <script id="google-tag-manager">
+    <script id="google-tag-manager" nonce="${cspNonce}">
       let isSandbox = location.host === 'sandbox.open-metadata.org';
 
       if (isSandbox) {
-        // Google Tag Manager
-        const gtmTagScript = document.createElement('script');
-        gtmTagScript.innerHTML = `
-                    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-                    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-                    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-                    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-                    })(window,document,'script','dataLayer','GTM-554C968W');
-                `;
-        gtmTagScript.id = 'gtm-init';
-        document.head.appendChild(gtmTagScript);
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          'gtm.start': new Date().getTime(),
+          event: 'gtm.js'
+        });
+
+        const gtmScript = document.createElement('script');
+        gtmScript.async = true;
+        gtmScript.setAttribute('nonce', '${cspNonce}');
+        gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
+        document.head.appendChild(gtmScript);
       }
     </script>
 

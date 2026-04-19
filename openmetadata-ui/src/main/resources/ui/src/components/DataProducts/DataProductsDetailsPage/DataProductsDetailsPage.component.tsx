@@ -21,7 +21,7 @@ import { isEmpty, toLower, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -136,6 +136,10 @@ const DataProductsDetailsPage = ({
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
+  const location = useLocation();
+  const fromMarketplace =
+    (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
+    false;
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
@@ -240,10 +244,17 @@ const DataProductsDetailsPage = ({
       });
     }
 
-    items.push({
-      name: t('label.data-product-plural'),
-      url: dataProductBasePath,
-    });
+    items.push(
+      fromMarketplace
+        ? {
+            name: t('label.data-marketplace'),
+            url: ROUTES.DATA_MARKETPLACE,
+          }
+        : {
+            name: t('label.data-product-plural'),
+            url: dataProductBasePath,
+          }
+    );
 
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
@@ -253,7 +264,13 @@ const DataProductsDetailsPage = ({
     }
 
     return items;
-  }, [dataProduct.domains, isMarketplace, dataProductBasePath, t]);
+  }, [
+    dataProduct.domains,
+    isMarketplace,
+    fromMarketplace,
+    dataProductBasePath,
+    t,
+  ]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 

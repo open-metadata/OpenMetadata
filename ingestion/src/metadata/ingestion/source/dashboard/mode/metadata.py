@@ -269,15 +269,15 @@ class ModeSource(DashboardServiceSource):
                     chart_url = (
                         f"{clean_uri(self.service_connection.hostPort)}{chart_path}"
                     )
-                    yield Either(
-                        right=CreateChartRequest(
-                            name=EntityName(chart.get(client.TOKEN)),
-                            displayName=chart_name,
-                            chartType=ChartType.Other,
-                            sourceUrl=SourceUrl(chart_url),
-                            service=self.context.get().dashboard_service,
-                        )
+                    chart_request = CreateChartRequest(
+                        name=EntityName(chart.get(client.TOKEN)),
+                        displayName=chart_name,
+                        chartType=ChartType.Other,
+                        sourceUrl=SourceUrl(chart_url),
+                        service=self.context.get().dashboard_service,
                     )
+                    yield Either(right=chart_request)
+                    self.register_record_chart(chart_request=chart_request)
                 except Exception as exc:
                     name = chart_name if chart_name else ""
                     yield Either(
