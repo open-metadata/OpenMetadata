@@ -40,6 +40,7 @@ import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriodFactory;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
@@ -361,29 +362,39 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processDataAssets() {
-    DataAssetsWorkflow workflow =
-        new DataAssetsWorkflow(
+    ProcessingPeriod steadyState = ProcessingPeriodFactory.forSteadyState(timestamp, 30);
+    Optional<ProcessingPeriod> backfillPeriod =
+        backfill.map(b -> ProcessingPeriodFactory.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
+
+    InsightsConfig insightsConfig =
+        new InsightsConfig(
             dataAssetsConfig,
-            timestamp,
+            costAnalysisConfig,
+            dataQualityConfig,
+            webAnalyticsConfig,
             batchSize,
-            backfill,
+            false,
+            backfillPeriod,
+            steadyState,
             dataAssetTypes,
-            collectionDAO,
-            searchRepository,
-            getSearchInterface());
-    WorkflowStats workflowStats = workflow.getWorkflowStats();
+            dataQualityEntities);
+
+    SearchComponentFactory searchFactory = new SearchComponentFactory(searchRepository);
+    DataAssetsWorkflow workflow =
+        new DataAssetsWorkflow(insightsConfig, searchFactory, collectionDAO, searchRepository);
 
     this.activeDataAssetsWorkflow = workflow;
-    try {
-      workflow.process();
-    } catch (SearchIndexException ex) {
+    WorkflowResult result = workflow.execute();
+    this.activeDataAssetsWorkflow = null;
+
+    if (result.failed() && !result.failures().isEmpty()) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(ex.getIndexingError());
-    } finally {
-      this.activeDataAssetsWorkflow = null;
+      jobData.setFailure(result.failures().get(0));
     }
 
-    return workflowStats;
+    WorkflowStats stats = new WorkflowStats("DataAssetsWorkflow");
+    result.stepStats().forEach(stats::updateWorkflowStepStats);
+    return stats;
   }
 
   private WorkflowStats processDataQuality() {
@@ -441,9 +452,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   protected void stop() {
     this.stopped = true;
-    DataAssetsWorkflow workflow = this.activeDataAssetsWorkflow;
-    if (workflow != null) {
-      workflow.stop();
+    DataAssetsWorkflow active = this.activeDataAssetsWorkflow;
+    if (active != null) {
+      active.stop();
     }
   }
 
