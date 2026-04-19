@@ -36,6 +36,7 @@ def fetch_dataframe_generator(
     config_source,
     client,
     file_fqn: DatalakeTableSchemaWrapper,
+    session=None,
     **kwargs,
 ) -> Optional[DatalakeColumnWrapper]:
     """Return the datafgrame generator
@@ -65,9 +66,15 @@ def fetch_dataframe_generator(
                 config_source=config_source,
                 client=client,
                 separator=file_fqn.separator,
+                session=session,
             )
             try:
-                return df_reader.read(key=key, bucket_name=bucket_name, **kwargs)
+                return df_reader.read(
+                    key=key,
+                    bucket_name=bucket_name,
+                    file_size=file_fqn.file_size,
+                    **kwargs,
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
@@ -89,6 +96,7 @@ def fetch_dataframe_first_chunk(
     client,
     file_fqn: DatalakeTableSchemaWrapper,
     fetch_raw_data: bool = False,
+    session=None,
     **kwargs,
 ) -> Optional["DataFrame"]:
     """
@@ -109,10 +117,14 @@ def fetch_dataframe_first_chunk(
                 config_source=config_source,
                 client=client,
                 separator=file_fqn.separator,
+                session=session,
             )
             try:
                 df_wrapper: DatalakeColumnWrapper = df_reader.read_first_chunk(
-                    key=key, bucket_name=bucket_name, **kwargs
+                    key=key,
+                    bucket_name=bucket_name,
+                    file_size=file_fqn.file_size,
+                    **kwargs,
                 )
                 dataframes = df_wrapper.dataframes
                 # Handle callable (generator function) - call it to get the iterator

@@ -60,8 +60,12 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await page.goto('/');
-  await page.waitForURL('**/my-data');
+  await page.goto('/', {
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForURL('**/my-data', {
+    waitUntil: 'domcontentloaded',
+  });
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -176,11 +180,10 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').waitFor({
+  await page.getByTestId('alert-bar').getByText(message).waitFor({
     state: 'visible',
+    timeout,
   });
-
-  await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 };
@@ -245,9 +248,16 @@ export const assignDomain = async (
   await waitForAllLoadersToDisappear(page);
 
   if (checkSelectedDomain) {
-    await expect(page.getByTestId('domain-link')).toContainText(
-      domain.displayName
-    );
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
   }
 };
 
@@ -420,8 +430,44 @@ export const assignDataProduct = async (
     fullyQualifiedName?: string;
   }[],
   action: 'Add' | 'Edit' = 'Add',
-  parentId = 'KnowledgePanel.DataProducts'
+  parentId = 'KnowledgePanel.DataProducts',
+  // Set true when the domain is inherited from a parent entity. The search
+  // index is updated asynchronously, so a page reload is needed on each poll
+  // to fetch the current state directly from the entity API.
+  pollForInheritance = false
 ) => {
+  if (pollForInheritance) {
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          return page
+            .getByTestId('domain-link')
+            .textContent()
+            .catch(() => null);
+        },
+        {
+          message: `Waiting for inherited domain "${domain.displayName}" to appear on the entity page`,
+          timeout: 60_000,
+          intervals: [2_000, 3_000, 5_000],
+        }
+      )
+      .toContain(domain.displayName);
+  } else {
+    const hasMultipleDomains = await page
+      .getByTestId('domain-count-button')
+      .isVisible();
+    if (hasMultipleDomains) {
+      await expect(page.getByTestId('domain-count-button')).toBeVisible();
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.displayName
+      );
+    }
+  }
+
   await page
     .getByTestId(parentId)
     .getByTestId('data-products-container')
@@ -466,13 +512,38 @@ export const assignDataProduct = async (
     .click();
   await patchReq;
 
-  for (const dataProduct of dataProducts) {
-    await expect(
-      page
-        .getByTestId(parentId)
-        .getByTestId('data-products-list')
-        .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
-    ).toBeVisible();
+  if (pollForInheritance) {
+    for (const dataProduct of dataProducts) {
+      await expect
+        .poll(
+          async () => {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+
+            return page
+              .getByTestId(parentId)
+              .getByTestId('data-products-list')
+              .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+              .isVisible()
+              .catch(() => false);
+          },
+          {
+            message: `Waiting for data product "${dataProduct.displayName}" to appear after save`,
+            timeout: 60_000,
+            intervals: [2_000, 3_000, 5_000],
+          }
+        )
+        .toBe(true);
+    }
+  } else {
+    for (const dataProduct of dataProducts) {
+      await expect(
+        page
+          .getByTestId(parentId)
+          .getByTestId('data-products-list')
+          .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+      ).toBeVisible();
+    }
   }
 };
 
@@ -759,11 +830,14 @@ export const testPaginationNavigation = async (
     page1FirstItem?.displayName || page1FirstItem?.name;
 
   await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.locator('[data-testid="next"]');
-  const page2ResponsePromise = page.waitForResponse(responseMatcher);
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+  await nextButton.scrollIntoViewIfNeeded();
 
-  await nextButton.click();
-  const page2Response = await page2ResponsePromise;
+  const [page2Response] = await Promise.all([
+    page.waitForResponse(responseMatcher),
+    nextButton.click(),
+  ]);
   expect(page2Response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);

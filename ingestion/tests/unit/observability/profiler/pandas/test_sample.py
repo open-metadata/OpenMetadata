@@ -34,7 +34,12 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 
@@ -175,7 +180,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=cls.table_entity,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
             cls.datalake_profiler_interface = PandasProfilerInterface(
                 service_connection_config=DatalakeConnection(configSource={}),
@@ -211,7 +221,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
             random_sample = sampler.get_dataset()
             res = sum(len(r) for r in random_sample())
@@ -245,7 +260,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
             datalake_profiler_interface = PandasProfilerInterface(
                 service_connection_config=DatalakeConnection(configSource={}),
@@ -326,7 +346,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(profileSample=50.0),
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
             )
             sample_data = sampler.fetch_sample_data()
 
@@ -358,7 +383,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                default_sample_config=SampleConfig(profileSample=50.0),
+                default_sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(profileSample=50.0),
+                    )
+                ),
                 sample_query="`age` > 30",
             )
             sample_data = sampler.fetch_sample_data()

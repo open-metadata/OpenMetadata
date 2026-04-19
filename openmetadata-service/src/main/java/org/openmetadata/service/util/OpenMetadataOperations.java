@@ -954,6 +954,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("create indexes.");
       searchRepository.createIndexes();
       searchRepository.createOrUpdateIndexTemplates();
@@ -1035,6 +1036,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Running Flowable schema upgrade.");
+      WorkflowHandler.initialize(config, true);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
@@ -1369,6 +1372,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           autoTune);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
@@ -1949,6 +1954,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           endDate);
       parseConfig();
       CollectionRegistry.initialize();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
