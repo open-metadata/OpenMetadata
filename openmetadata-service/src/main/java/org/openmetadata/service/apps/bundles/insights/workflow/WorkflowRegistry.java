@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsBackfillWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataQuality.DataQualityWorkflow;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -21,9 +22,11 @@ public final class WorkflowRegistry {
 
     List<InsightsWorkflow> workflows = new ArrayList<>();
 
-    // TODO(Phase 10): replace DataAssetsWorkflow with DataAssetsBackfillWorkflow
-    // when config.shouldRecreateDataAssets() is true.
-    workflows.add(new DataAssetsWorkflow(config, searchFactory, collectionDAO, searchRepository));
+    if (config.shouldRecreateDataAssets()) {
+      workflows.add(new DataAssetsBackfillWorkflow(config, searchFactory, collectionDAO, searchRepository));
+    } else {
+      workflows.add(new DataAssetsWorkflow(config, searchFactory, collectionDAO, searchRepository));
+    }
 
     // TODO(Phase 11): add WebAnalyticsWorkflow and CostAnalysisWorkflow
     // once those classes extend AbstractInsightsWorkflow.

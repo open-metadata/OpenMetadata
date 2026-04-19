@@ -2,27 +2,22 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.step
 
 import java.io.IOException;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
-public final class RollForwardStep {
+public record RollForwardStep(DataInsightsSearchInterface searchInterface) {
 
-  private final DataInsightsSearchInterface searchInterface;
-
-  public RollForwardStep(DataInsightsSearchInterface searchInterface) {
-    this.searchInterface = searchInterface;
-  }
+  private static final Logger LOG = LoggerFactory.getLogger(RollForwardStep.class);
 
   public void execute(DailyIndex today, WorkflowStatsCollector stats) throws IOException {
     DailyIndex yesterday = today.previous();
 
     if (!searchInterface.dailyIndexExists(yesterday)) {
-      LOG.info(
-          "[RollForward] No previous index for {}. Skipping roll-forward.", today.entityType());
+      LOG.info("[RollForward] No previous index for {}. Skipping roll-forward.", today.entityType());
       stats.record(new StepResult("roll-forward-" + today.entityType(), 0, 0, List.of()));
       return;
     }

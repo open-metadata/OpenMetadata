@@ -38,7 +38,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
-import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriodFactory;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexLifecycleManager;
@@ -274,8 +273,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
       SearchComponentFactory searchFactory = new SearchComponentFactory(searchRepository);
 
       if (config.shouldRecreateDataAssets()) {
-        IndexLifecycleManager.deleteAllDataAssetIndices(
-            searchFactory.createSearchInterface(), config.dataAssetTypes());
+        new IndexLifecycleManager(
+                searchFactory.createSearchInterface(), config.dataAssetTypes())
+            .deleteAll();
         deleteDataQualityDataIndex();
         createDataQualityDataIndex();
       }
@@ -332,10 +332,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
       recreateDataAssetsIndex = Optional.empty();
     }
 
-    ProcessingPeriod steadyState = ProcessingPeriodFactory.forSteadyState(timestamp, 30);
+    ProcessingPeriod steadyState = ProcessingPeriod.forSteadyState(timestamp, 30);
     Optional<ProcessingPeriod> backfillPeriod =
         backfill.map(
-            b -> ProcessingPeriodFactory.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
+            b -> ProcessingPeriod.forBackfill(b.startDate(), b.endDate(), timestamp, 30));
     boolean recreate =
         recreateDataAssetsIndex.isPresent() && Boolean.TRUE.equals(recreateDataAssetsIndex.get());
 

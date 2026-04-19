@@ -5,14 +5,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 
-class ProcessingPeriodFactoryTest {
+class ProcessingPeriodTest {
 
   private static final int RETENTION_DAYS = 30;
 
   @Test
   void steadyStateStartIsStartOfYesterday() {
     long now = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
-    ProcessingPeriod period = ProcessingPeriodFactory.forSteadyState(now, RETENTION_DAYS);
+    ProcessingPeriod period = ProcessingPeriod.forSteadyState(now, RETENTION_DAYS);
     long expectedStart = TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(now, 1));
     assertEquals(expectedStart, period.startTimestamp());
   }
@@ -20,7 +20,7 @@ class ProcessingPeriodFactoryTest {
   @Test
   void steadyStateEndIsEndOfToday() {
     long now = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
-    ProcessingPeriod period = ProcessingPeriodFactory.forSteadyState(now, RETENTION_DAYS);
+    ProcessingPeriod period = ProcessingPeriod.forSteadyState(now, RETENTION_DAYS);
     long expectedEnd = TimestampUtils.getEndOfDayTimestamp(now);
     assertEquals(expectedEnd, period.endTimestamp());
   }
@@ -28,7 +28,7 @@ class ProcessingPeriodFactoryTest {
   @Test
   void steadyStateRetentionDaysPreserved() {
     long now = System.currentTimeMillis();
-    ProcessingPeriod period = ProcessingPeriodFactory.forSteadyState(now, RETENTION_DAYS);
+    ProcessingPeriod period = ProcessingPeriod.forSteadyState(now, RETENTION_DAYS);
     assertEquals(RETENTION_DAYS, period.retentionDays());
   }
 
@@ -37,11 +37,8 @@ class ProcessingPeriodFactoryTest {
     long now = System.currentTimeMillis();
     long oldestAllowed =
         TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(now, RETENTION_DAYS));
-    // Request a start date that is before the retention limit
-    String tooOldStart = "2000-01-01";
-    String validEnd = "2026-04-17";
     ProcessingPeriod period =
-        ProcessingPeriodFactory.forBackfill(tooOldStart, validEnd, now, RETENTION_DAYS);
+        ProcessingPeriod.forBackfill("2000-01-01", "2026-04-17", now, RETENTION_DAYS);
     assertEquals(oldestAllowed, period.startTimestamp());
   }
 
@@ -51,8 +48,7 @@ class ProcessingPeriodFactoryTest {
     long fiveDaysAgoMs = TimestampUtils.subtractDays(now, 5);
     String fiveDaysAgo = TimestampUtils.timestampToString(fiveDaysAgoMs, "yyyy-MM-dd");
     String tomorrow = TimestampUtils.timestampToString(TimestampUtils.addDays(now, 1), "yyyy-MM-dd");
-    ProcessingPeriod period =
-        ProcessingPeriodFactory.forBackfill(fiveDaysAgo, tomorrow, now, RETENTION_DAYS);
+    ProcessingPeriod period = ProcessingPeriod.forBackfill(fiveDaysAgo, tomorrow, now, RETENTION_DAYS);
     long expectedStart =
         TimestampUtils.getStartOfDayTimestamp(
             TimestampUtils.getTimestampFromDateString(fiveDaysAgo));
@@ -63,7 +59,7 @@ class ProcessingPeriodFactoryTest {
   void backfillRetentionDaysPreserved() {
     long now = System.currentTimeMillis();
     ProcessingPeriod period =
-        ProcessingPeriodFactory.forBackfill("2026-04-01", "2026-04-17", now, RETENTION_DAYS);
+        ProcessingPeriod.forBackfill("2026-04-01", "2026-04-17", now, RETENTION_DAYS);
     assertEquals(RETENTION_DAYS, period.retentionDays());
   }
 }

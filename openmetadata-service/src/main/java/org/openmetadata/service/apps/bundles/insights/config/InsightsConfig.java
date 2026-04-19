@@ -55,13 +55,13 @@ public record InsightsConfig(
     int batchSize = appConfig.getBatchSize() != null ? appConfig.getBatchSize() : 1000;
 
     ProcessingPeriod steadyState =
-        ProcessingPeriodFactory.forSteadyState(currentTimestamp, DEFAULT_RETENTION_DAYS);
+        ProcessingPeriod.forSteadyState(currentTimestamp, DEFAULT_RETENTION_DAYS);
 
     Optional<ProcessingPeriod> backfillPeriod = Optional.empty();
     if (appConfig.getBackfillConfiguration() != null) {
       backfillPeriod =
           Optional.of(
-              ProcessingPeriodFactory.forBackfill(
+              ProcessingPeriod.forBackfill(
                   appConfig.getBackfillConfiguration().getStartDate(),
                   appConfig.getBackfillConfiguration().getEndDate(),
                   currentTimestamp,

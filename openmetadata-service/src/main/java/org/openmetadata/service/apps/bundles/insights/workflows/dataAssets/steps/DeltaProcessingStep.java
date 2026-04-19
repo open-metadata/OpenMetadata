@@ -17,20 +17,8 @@ import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
-public final class DeltaProcessingStep {
-
-  private final DataInsightsEntityEnricherProcessor enricher;
-  private final Processor entityProcessor;
-  private final Sink searchIndexSink;
-
-  public DeltaProcessingStep(
-      DataInsightsEntityEnricherProcessor enricher,
-      Processor entityProcessor,
-      Sink searchIndexSink) {
-    this.enricher = enricher;
-    this.entityProcessor = entityProcessor;
-    this.searchIndexSink = searchIndexSink;
-  }
+public record DeltaProcessingStep(
+    DataInsightsEntityEnricherProcessor enricher, Processor entityProcessor, Sink searchIndexSink) {
 
   @SuppressWarnings("unchecked")
   public void execute(
@@ -77,13 +65,16 @@ public final class DeltaProcessingStep {
 
         if (keysetCursor == null) break;
       } catch (SearchIndexException ex) {
-        int failed = ex.getIndexingError().getFailedCount() != null
-            ? ex.getIndexingError().getFailedCount() : 1;
+        int failed =
+            ex.getIndexingError().getFailedCount() != null
+                ? ex.getIndexingError().getFailedCount()
+                : 1;
         totalFailed += failed;
         errors.add(source.getEntityType() + ": " + ex.getMessage());
         source.updateStats(
             ex.getIndexingError().getSuccessCount() != null
-                ? ex.getIndexingError().getSuccessCount() : 0,
+                ? ex.getIndexingError().getSuccessCount()
+                : 0,
             failed);
         break;
       }

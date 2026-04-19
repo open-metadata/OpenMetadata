@@ -3,22 +3,17 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.step
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.stats.StepResult;
 import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
-public final class RetentionCleanupStep {
+public record RetentionCleanupStep(
+    DataInsightsSearchInterface searchInterface, int retentionDays) {
 
-  private final DataInsightsSearchInterface searchInterface;
-  private final int retentionDays;
-
-  public RetentionCleanupStep(DataInsightsSearchInterface searchInterface, int retentionDays) {
-    this.searchInterface = searchInterface;
-    this.retentionDays = retentionDays;
-  }
+  private static final Logger LOG = LoggerFactory.getLogger(RetentionCleanupStep.class);
 
   public void execute(DailyIndex today, WorkflowStatsCollector stats) throws IOException {
     LocalDate cutoff = today.date().minusDays(retentionDays);
