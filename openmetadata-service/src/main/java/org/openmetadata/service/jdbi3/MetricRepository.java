@@ -449,7 +449,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    return new MetricCsv(user).importCsv(csv, dryRun);
+    return new MetricCsv(user, resolveDomainScope(name)).importCsv(csv, dryRun);
   }
 
   @Override
@@ -461,17 +461,30 @@ public class MetricRepository extends EntityRepository<Metric> {
       boolean recursive,
       CsvImportProgressCallback callback)
       throws IOException {
-    return new MetricCsv(user).importCsv(csv, dryRun);
+    return new MetricCsv(user, resolveDomainScope(name)).importCsv(csv, dryRun, callback);
   }
 
   private List<Metric> getMetricsForExport(String name) {
     Fields fields = new Fields(allowedFields, "owners,reviewers,relatedMetrics,tags,domains");
-    if (name == null || name.isBlank() || "*".equals(name)) {
+    EntityReference domain = resolveDomainScope(name);
+    if (domain == null) {
       return listAll(fields, new ListFilter(NON_DELETED));
     }
-    // Otherwise, treat name as a domain FQN and filter to metrics owned by that domain
-    ListFilter filter = new ListFilter(NON_DELETED).addQueryParam("domain", name);
+    ListFilter filter =
+        new ListFilter(NON_DELETED).addQueryParam("domainId", domain.getId().toString());
     return listAll(fields, filter);
+  }
+
+  /**
+   * Resolves the {name} path parameter passed to the CSV endpoints into a Domain reference, or
+   * null for platform-wide ("*", null, blank). Throws if the name does not match a known Domain
+   * so the caller fails fast with a clear error instead of silently returning everything.
+   */
+  private EntityReference resolveDomainScope(String name) {
+    if (name == null || name.isBlank() || "*".equals(name)) {
+      return null;
+    }
+    return Entity.getEntityReferenceByName(Entity.DOMAIN, name, NON_DELETED);
   }
 
   public static class MetricCsv extends EntityCsv<Metric> {
@@ -483,8 +496,15 @@ public class MetricRepository extends EntityRepository<Metric> {
       HEADERS = DOCUMENTATION.getHeaders();
     }
 
+    private final EntityReference defaultDomain;
+
     MetricCsv(String user) {
+      this(user, null);
+    }
+
+    MetricCsv(String user, EntityReference defaultDomain) {
       super(METRIC, HEADERS, user);
+      this.defaultDomain = defaultDomain;
     }
 
     @Override
@@ -524,6 +544,10 @@ public class MetricRepository extends EntityRepository<Metric> {
                         Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
                         Pair.of(13, TagLabel.TagSource.GLOSSARY))))
             .withDomains(getDomains(printer, csvRecord, 14));
+
+        if (defaultDomain != null && nullOrEmpty(metric.getDomains())) {
+          metric.setDomains(List.of(defaultDomain));
+        }
 
         if (processRecord) {
           createEntity(printer, csvRecord, metric);
