@@ -27,9 +27,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import BrandImage from '../../../common/BrandImage/BrandImage';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import AppLogo from '../AppLogo/AppLogo.component';

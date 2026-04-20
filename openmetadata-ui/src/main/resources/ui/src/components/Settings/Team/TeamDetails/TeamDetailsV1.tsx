@@ -68,13 +68,13 @@ import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/Add
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   EXTENSION_POINTS,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
