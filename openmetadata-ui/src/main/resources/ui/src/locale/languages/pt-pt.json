@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "Ainda não visualizou nenhum ativo de dados recentemente. Explore para encontrar algo interessante!",
     "no-reference-available": "Nenhuma referência disponível.",
     "no-related-terms-available": "Nenhum termo relacionado disponível.",
+    "no-relations-for-selected-filter": "Não foram encontradas relações para os tipos de relação selecionados. Tente selecionar tipos diferentes.",
     "no-relations-found": "Não foram encontradas relações para este termo",
     "no-retry-queue-records": "Nenhum registo de tentativa de indexação em direto encontrado. Todas as entidades foram indexadas com sucesso.",
     "no-roles-assigned": "Nenhum papel atribuído",

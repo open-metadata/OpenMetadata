@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "Son zamanlarda herhangi bir veri varlığı görüntülemediniz. İlginç bir şey bulmak için keşfedin!",
     "no-reference-available": "Kullanılabilir referans yok.",
     "no-related-terms-available": "Kullanılabilir ilgili terim yok.",
+    "no-relations-for-selected-filter": "Seçilen ilişki türleri için ilişki bulunamadı. Farklı türler seçmeyi deneyin.",
     "no-relations-found": "Bu terim için ilişki bulunamadı",
     "no-retry-queue-records": "Canlı endeksleme yeniden deneme kaydı bulunamadı. Tüm varlıklar başarıyla endekslendi.",
     "no-roles-assigned": "Atanmış rol yok",

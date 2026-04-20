@@ -56,6 +56,7 @@ const MarketplaceIcon = createIconWithStroke(
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+  [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
