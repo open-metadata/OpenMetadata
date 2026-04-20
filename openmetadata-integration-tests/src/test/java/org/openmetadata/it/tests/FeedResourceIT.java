@@ -54,6 +54,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class FeedResourceIT {
 
   private static final String ADMIN_USER = "admin";
+  private static final String TEST_USER = "test";
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -680,7 +681,6 @@ public class FeedResourceIT {
     Thread taskThread =
         createThread(
             new CreateThread()
-                .withFrom(TEST_USER)
                 .withMessage("Task assigned to admin")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -723,7 +723,6 @@ public class FeedResourceIT {
     Thread taskThread =
         createThread(
             new CreateThread()
-                .withFrom(ADMIN_USER)
                 .withMessage("Task created by admin")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -774,7 +773,6 @@ public class FeedResourceIT {
     Thread relevantTask =
         createThread(
             new CreateThread()
-                .withFrom(ADMIN_USER)
                 .withMessage("Task relevant to test user")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -783,7 +781,6 @@ public class FeedResourceIT {
     Thread unrelatedTask =
         createThread(
             new CreateThread()
-                .withFrom(ADMIN_USER)
                 .withMessage("Task unrelated to test user")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -826,7 +823,6 @@ public class FeedResourceIT {
     Thread openTask =
         createThread(
             new CreateThread()
-                .withFrom(TEST_USER)
                 .withMessage("Open task for status filter")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -835,7 +831,6 @@ public class FeedResourceIT {
     Thread closedTask =
         createThread(
             new CreateThread()
-                .withFrom(TEST_USER)
                 .withMessage("Closed task for status filter")
                 .withAbout(about)
                 .withType(ThreadType.Task)
