@@ -1048,4 +1048,275 @@ public class ElasticSearchClient implements SearchClient {
       LOG.debug("ESLineageGraphBuilder already initialized or newClient is null");
     }
   }
+
+  // ===================== Knowledge Center page hierarchy =====================
+
+  @Override
+  @lombok.SneakyThrows
+  public org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchy(String parentFqn, String pageType, int offset, int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchyForActivePage(
+          String activeFqn, String pageType, int offset, int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
+  }
+
+  private org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      getPageHierarchyFromSearch(String parentFqn, String pageType, int offset, int limit)
+          throws java.io.IOException {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query boolQuery =
+        buildPageHierarchyBoolQuery(parentFqn, pageType);
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .from(offset)
+                    .size(limit));
+
+    es.co.elastic.clients.elasticsearch.core.SearchResponse<
+            es.co.elastic.clients.json.JsonData>
+        searchResponse =
+            newClient.search(searchRequest, es.co.elastic.clients.json.JsonData.class);
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        processPageHierarchyHits(searchResponse);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new org.openmetadata.schema.utils.ResultList<>(
+        pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      getPageHierarchyFromSearchForActivePage(
+          String activeFqn, String pageType, int offset, int limit) throws java.io.IOException {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query boolQuery =
+        buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .from(offset)
+                    .size(limit));
+
+    es.co.elastic.clients.elasticsearch.core.SearchResponse<
+            es.co.elastic.clients.json.JsonData>
+        searchResponse =
+            newClient.search(searchRequest, es.co.elastic.clients.json.JsonData.class);
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        processPageHierarchyHits(searchResponse);
+    pageHierarchies = buildPageNestedSearchHierarchy(pageHierarchies);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new org.openmetadata.schema.utils.ResultList<>(
+        pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildPageHierarchyBoolQuery(
+      String parentFqn, String pageType) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
+        new es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder();
+
+    if (org.openmetadata.common.utils.CommonUtil.nullOrEmpty(parentFqn)) {
+      boolQueryBuilder.must(
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("fqnDepth")
+                              .value(
+                                  es.co.elastic.clients.elasticsearch._types.FieldValue.of(1)))));
+    } else {
+      int parentDepth =
+          org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
+      boolQueryBuilder.must(
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
+      boolQueryBuilder.must(
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("fqnDepth")
+                              .value(
+                                  es.co.elastic.clients.elasticsearch._types.FieldValue.of(
+                                      parentDepth + 1)))));
+    }
+
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("pageType")
+                              .value(
+                                  es.co.elastic.clients.elasticsearch._types.FieldValue.of(
+                                      pageType)))));
+    }
+
+    return es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+        q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query
+      buildPageHierarchyBoolQueryForActivePage(String activeFqn, String pageType) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
+        new es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder();
+
+    String rootParentFqn =
+        org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
+    boolQueryBuilder.should(
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("fqnDepth")
+                            .value(es.co.elastic.clients.elasticsearch._types.FieldValue.of(1)))));
+    boolQueryBuilder.should(
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+            q -> q.prefix(p -> p.field("fullyQualifiedName").value(rootParentFqn + "."))));
+    boolQueryBuilder.minimumShouldMatch("1");
+
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("pageType")
+                              .value(
+                                  es.co.elastic.clients.elasticsearch._types.FieldValue.of(
+                                      pageType)))));
+    }
+
+    return es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+        q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
+      processPageHierarchyHits(
+          es.co.elastic.clients.elasticsearch.core.SearchResponse<
+                  es.co.elastic.clients.json.JsonData>
+              searchResponse)
+          throws java.io.IOException {
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        new java.util.ArrayList<>();
+
+    if (searchResponse != null && searchResponse.hits() != null) {
+      for (es.co.elastic.clients.elasticsearch.core.search.Hit<
+              es.co.elastic.clients.json.JsonData>
+          hit : searchResponse.hits().hits()) {
+        if (hit.source() != null) {
+          java.util.Map<String, Object> sourceMap = EsUtils.jsonDataToMap(hit.source());
+          org.openmetadata.schema.entity.data.PageHierarchy page =
+              org.openmetadata.service.util.SearchUtils.getPageHierarchy(sourceMap);
+          page.setChildrenCount(getChildrenCountForPage(page));
+          pageHierarchies.add(page);
+        }
+      }
+    }
+
+    return pageHierarchies;
+  }
+
+  private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
+      buildPageNestedSearchHierarchy(
+          java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchyList) {
+    java.util.Map<java.util.UUID, org.openmetadata.schema.entity.data.PageHierarchy>
+        pageHierarchyMap =
+            pageHierarchyList.stream()
+                .collect(
+                    java.util.stream.Collectors.toMap(
+                        org.openmetadata.schema.entity.data.PageHierarchy::getId,
+                        page -> {
+                          page.setChildren(new java.util.ArrayList<>());
+                          return page;
+                        },
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new));
+
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> rootPages =
+        new java.util.ArrayList<>();
+
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchyMap.values()) {
+      java.util.UUID parentId = page.getParent() != null ? page.getParent().getId() : null;
+      org.openmetadata.schema.entity.data.PageHierarchy parentPage =
+          parentId != null ? pageHierarchyMap.get(parentId) : null;
+      if (parentPage != null) {
+        parentPage.getChildren().add(page);
+      } else {
+        rootPages.add(page);
+      }
+    }
+
+    return rootPages;
+  }
+
+  private int getChildrenCountForPage(org.openmetadata.schema.entity.data.PageHierarchy parentPage)
+      throws java.io.IOException {
+    String parentFqn = parentPage.getFullyQualifiedName();
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query childCountQuery =
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(
+                            es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                                m ->
+                                    m.prefix(
+                                        p ->
+                                            p.field("fullyQualifiedName")
+                                                .value(parentFqn + "."))))));
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest childCountSearchRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(childCountQuery)
+                    .size(0));
+
+    es.co.elastic.clients.elasticsearch.core.SearchResponse<es.co.elastic.clients.json.JsonData>
+        childCountSearchResponse =
+            newClient.search(
+                childCountSearchRequest, es.co.elastic.clients.json.JsonData.class);
+
+    if (childCountSearchResponse != null
+        && childCountSearchResponse.hits() != null
+        && childCountSearchResponse.hits().total() != null) {
+      return (int) childCountSearchResponse.hits().total().value();
+    }
+    return 0;
+  }
 }

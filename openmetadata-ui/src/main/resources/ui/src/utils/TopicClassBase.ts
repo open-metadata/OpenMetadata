@@ -160,6 +160,14 @@ class TopicClassBase {
         y: 6,
         static: false,
       },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 7,
+        static: false,
+      },
     ];
   }
 
@@ -185,6 +193,13 @@ class TopicClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        name: i18n.t('label.knowledge-page-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
     ];
   }
 

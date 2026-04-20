@@ -1,0 +1,22 @@
+{
+  "createClassification": {
+    "name": "KnowledgeCenter",
+    "description": "Category describing the knowledge center articles or quickLinks. E.g., How-To-Guide, Quick-Link etc.",
+    "provider": "system",
+    "mutuallyExclusive": "false"
+  },
+  "createTags": [
+    {
+      "name": "Article",
+      "description": "Knowledge Article."
+    },
+    {
+      "name": "QuickLink",
+      "description": "Knowledge Quick Link."
+    },
+    {
+      "name": "HowToGuide",
+      "description": "How To Guide Quick Link or Article Tag."
+    }
+  ]
+}

@@ -134,6 +134,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static GenericContainer<?> SEARCH_CONTAINER;
   private static GenericContainer<?> FUSEKI_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
+  private static GenericContainer<?> MINIO_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static Jdbi jdbi;
 
@@ -477,6 +478,17 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     createIndices();
 
+    // Start MinIO before app boot if object storage is configured to use S3 so that the
+    // S3AssetService picks up the correct endpoint.
+    if (config.getObjectStorage() != null
+        && config.getObjectStorage().isEnabled()
+        && "s3".equalsIgnoreCase(config.getObjectStorage().getProvider())) {
+      setupMinIO();
+      if (config.getObjectStorage().getS3Configuration() != null) {
+        config.getObjectStorage().getS3Configuration().setEndpoint(getMinIOEndpoint());
+      }
+    }
+
     // Start the application
     APP.before();
 
@@ -733,6 +745,77 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     } catch (Exception e) {
       LOG.warn("Error stopping database container", e);
     }
+
+    try {
+      if (MINIO_CONTAINER != null) {
+        MINIO_CONTAINER.stop();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error stopping MinIO container", e);
+    }
+  }
+
+  // === On-demand MinIO container for object-storage tests ===
+
+  public static synchronized void setupMinIO() {
+    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
+      LOG.info("MinIO already running at {}", getMinIOEndpoint());
+      return;
+    }
+    LOG.info("Starting MinIO Testcontainer on-demand...");
+    MINIO_CONTAINER =
+        new GenericContainer<>("minio/minio:latest")
+            .withExposedPorts(9000)
+            .withEnv("MINIO_ROOT_USER", "minio")
+            .withEnv("MINIO_ROOT_PASSWORD", "minio123")
+            .withCommand("server /data")
+            .waitingFor(
+                Wait.forHttp("/minio/health/live")
+                    .forPort(9000)
+                    .forStatusCode(200)
+                    .withStartupTimeout(java.time.Duration.ofSeconds(60)));
+    MINIO_CONTAINER.start();
+
+    String endpoint = getMinIOEndpoint();
+
+    // Create the default test bucket so tests can upload immediately.
+    software.amazon.awssdk.services.s3.S3Client s3 =
+        software.amazon.awssdk.services.s3.S3Client.builder()
+            .region(software.amazon.awssdk.regions.Region.US_EAST_1)
+            .credentialsProvider(
+                software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                    software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                        "minio", "minio123")))
+            .endpointOverride(java.net.URI.create(endpoint))
+            .serviceConfiguration(
+                software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build())
+            .build();
+    try {
+      boolean exists =
+          s3.listBuckets().buckets().stream().anyMatch(b -> b.name().equals("test-bucket"));
+      if (!exists) {
+        s3.createBucket(
+            software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
+                .bucket("test-bucket")
+                .build());
+      }
+    } finally {
+      s3.close();
+    }
+
+    // Expose endpoint to tests that read a system property / env var.
+    System.setProperty("IT_MINIO_ENDPOINT", endpoint);
+
+    LOG.info("MinIO started at {}", endpoint);
+  }
+
+  public static String getMinIOEndpoint() {
+    if (MINIO_CONTAINER == null || !MINIO_CONTAINER.isRunning()) {
+      throw new IllegalStateException("MinIO container not running. Call setupMinIO() first.");
+    }
+    return "http://" + MINIO_CONTAINER.getHost() + ":" + MINIO_CONTAINER.getMappedPort(9000);
   }
 
   // === Static accessor methods for tests ===

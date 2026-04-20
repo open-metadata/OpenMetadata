@@ -1915,6 +1915,80 @@
       }
     },
     {
+      "assetType": "contextFile",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 20.0, "matchType": "exact" },
+        { "field": "name", "boost": 10.0, "matchType": "phrase" },
+        { "field": "name.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "displayName", "boost": 10.0, "matchType": "phrase" },
+        { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "description", "boost": 2.0, "matchType": "standard" },
+        { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" },
+        { "field": "extractedText", "boost": 3.0, "matchType": "standard" },
+        { "field": "fileExtension", "boost": 2.0, "matchType": "standard" }
+      ],
+      "aggregations": [
+        { "name": "fileType", "type": "terms", "field": "fileType" },
+        { "name": "processingStatus", "type": "terms", "field": "processingStatus" },
+        { "name": "sourceType", "type": "terms", "field": "sourceType" }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "extractedText"],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "folder",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 20.0, "matchType": "exact" },
+        { "field": "name", "boost": 10.0, "matchType": "phrase" },
+        { "field": "name.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "displayName", "boost": 10.0, "matchType": "phrase" },
+        { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "description", "boost": 2.0, "matchType": "standard" },
+        { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
+      "assetType": "page",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 20.0, "matchType": "exact" },
+        { "field": "name", "boost": 10.0, "matchType": "phrase" },
+        { "field": "name.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "displayName", "boost": 10.0, "matchType": "phrase" },
+        { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
+        { "field": "description", "boost": 2.0, "matchType": "standard" },
+        { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" }
+      ],
+      "aggregations": [
+        { "name": "pageType", "type": "terms", "field": "pageType" }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
       "assetType": "file",
       "searchFields": [
         {

@@ -1,36 +1,33 @@
 {
   "settings": {
+    "index": {
+      "max_ngram_diff": 7
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
+        }
+      },
+      "tokenizer": {
+        "om_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "token_chars": ["letter", "digit"]
         }
       },
       "analyzer": {
         "om_analyzer": {
           "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
-          ]
-        },
-        "om_analyzer_zh": {
-          "tokenizer": "ik_max_word",
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase", "om_stemmer"]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 2,
-          "max_gram": 10,
-          "filter": [
-            "lowercase"
-          ]
+          "type": "custom",
+          "tokenizer": "om_ngram_tokenizer",
+          "filter": ["lowercase"]
         }
       },
       "filter": {
@@ -62,7 +59,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_zh",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -215,6 +212,34 @@
         "type": "keyword"
       },
       "tags": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTerms": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "tier": {
         "properties": {
           "tagFQN": {
             "type": "keyword",

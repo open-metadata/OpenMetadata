@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC } from 'react';
-import KnowledgePages from '../components/KnowledgeCenter/KnowledgePages/KnowledgePages';
+import { Page } from '@playwright/test';
+import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 
-class EntityRightPanelClassBase {
-  public getKnowLedgeArticlesWidget(): FC<{
-    entityId: string;
-    entityType: string;
-  }> | null {
-    return KnowledgePages as unknown as FC<{
-      entityId: string;
-      entityType: string;
-    }>;
-  }
+/**
+ * Navigate to the explore page and open the right panel for the Knowledge Center entity.
+ * KC entities are not in ENDPOINT_TO_FILTER_MAP, so no category filter is applied.
+ */
+export async function navigateToKCEntity(page: Page, entityName: string) {
+  await navigateToExploreAndSelectEntity({
+    page,
+    entityName,
+    exploreTab: 'Knowledge Center',
+  });
 }
-
-const entityRightPanelClassBase = new EntityRightPanelClassBase();
-
-export default entityRightPanelClassBase;
-
-export { EntityRightPanelClassBase };

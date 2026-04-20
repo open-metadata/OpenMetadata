@@ -1081,4 +1081,275 @@ public class OpenSearchClient implements SearchClient {
       LOG.debug("OSLineageGraphBuilder already initialized or newClient is null");
     }
   }
+
+  // ===================== Knowledge Center page hierarchy =====================
+
+  @Override
+  @lombok.SneakyThrows
+  public org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchy(String parentFqn, String pageType, int offset, int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchyForActivePage(
+          String activeFqn, String pageType, int offset, int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
+  }
+
+  private org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      getPageHierarchyFromSearch(String parentFqn, String pageType, int offset, int limit)
+          throws java.io.IOException {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query boolQuery =
+        buildPageHierarchyBoolQuery(parentFqn, pageType);
+
+    os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .from(offset)
+                    .size(limit));
+
+    os.org.opensearch.client.opensearch.core.SearchResponse<
+            os.org.opensearch.client.json.JsonData>
+        searchResponse =
+            newClient.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        processPageHierarchyHits(searchResponse);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new org.openmetadata.schema.utils.ResultList<>(
+        pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      getPageHierarchyFromSearchForActivePage(
+          String activeFqn, String pageType, int offset, int limit) throws java.io.IOException {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query boolQuery =
+        buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+
+    os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    .from(offset)
+                    .size(limit));
+
+    os.org.opensearch.client.opensearch.core.SearchResponse<
+            os.org.opensearch.client.json.JsonData>
+        searchResponse =
+            newClient.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        processPageHierarchyHits(searchResponse);
+    pageHierarchies = buildPageNestedSearchHierarchy(pageHierarchies);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new org.openmetadata.schema.utils.ResultList<>(
+        pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildPageHierarchyBoolQuery(
+      String parentFqn, String pageType) {
+    os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
+        new os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder();
+
+    if (org.openmetadata.common.utils.CommonUtil.nullOrEmpty(parentFqn)) {
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("fqnDepth")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(1)))));
+    } else {
+      int parentDepth =
+          org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("fqnDepth")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(
+                                      parentDepth + 1)))));
+    }
+
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("pageType")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(
+                                      pageType)))));
+    }
+
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query
+      buildPageHierarchyBoolQueryForActivePage(String activeFqn, String pageType) {
+    os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
+        new os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder();
+
+    String rootParentFqn =
+        org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
+    boolQueryBuilder.should(
+        os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("fqnDepth")
+                            .value(os.org.opensearch.client.opensearch._types.FieldValue.of(1)))));
+    boolQueryBuilder.should(
+        os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+            q -> q.prefix(p -> p.field("fullyQualifiedName").value(rootParentFqn + "."))));
+    boolQueryBuilder.minimumShouldMatch("1");
+
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("pageType")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(
+                                      pageType)))));
+    }
+
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
+      processPageHierarchyHits(
+          os.org.opensearch.client.opensearch.core.SearchResponse<
+                  os.org.opensearch.client.json.JsonData>
+              searchResponse)
+          throws java.io.IOException {
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        new java.util.ArrayList<>();
+
+    if (searchResponse != null && searchResponse.hits() != null) {
+      for (os.org.opensearch.client.opensearch.core.search.Hit<
+              os.org.opensearch.client.json.JsonData>
+          hit : searchResponse.hits().hits()) {
+        if (hit.source() != null) {
+          java.util.Map<String, Object> sourceMap = OsUtils.jsonDataToMap(hit.source());
+          org.openmetadata.schema.entity.data.PageHierarchy page =
+              org.openmetadata.service.util.SearchUtils.getPageHierarchy(sourceMap);
+          page.setChildrenCount(getChildrenCountForPage(page));
+          pageHierarchies.add(page);
+        }
+      }
+    }
+
+    return pageHierarchies;
+  }
+
+  private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
+      buildPageNestedSearchHierarchy(
+          java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchyList) {
+    java.util.Map<java.util.UUID, org.openmetadata.schema.entity.data.PageHierarchy>
+        pageHierarchyMap =
+            pageHierarchyList.stream()
+                .collect(
+                    java.util.stream.Collectors.toMap(
+                        org.openmetadata.schema.entity.data.PageHierarchy::getId,
+                        page -> {
+                          page.setChildren(new java.util.ArrayList<>());
+                          return page;
+                        },
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new));
+
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> rootPages =
+        new java.util.ArrayList<>();
+
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchyMap.values()) {
+      java.util.UUID parentId = page.getParent() != null ? page.getParent().getId() : null;
+      org.openmetadata.schema.entity.data.PageHierarchy parentPage =
+          parentId != null ? pageHierarchyMap.get(parentId) : null;
+      if (parentPage != null) {
+        parentPage.getChildren().add(page);
+      } else {
+        rootPages.add(page);
+      }
+    }
+
+    return rootPages;
+  }
+
+  private int getChildrenCountForPage(org.openmetadata.schema.entity.data.PageHierarchy parentPage)
+      throws java.io.IOException {
+    String parentFqn = parentPage.getFullyQualifiedName();
+    os.org.opensearch.client.opensearch._types.query_dsl.Query childCountQuery =
+        os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(
+                            os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+                                m ->
+                                    m.prefix(
+                                        p ->
+                                            p.field("fullyQualifiedName")
+                                                .value(parentFqn + "."))))));
+
+    os.org.opensearch.client.opensearch.core.SearchRequest childCountSearchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(childCountQuery)
+                    .size(0));
+
+    os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
+        childCountSearchResponse =
+            newClient.search(
+                childCountSearchRequest, os.org.opensearch.client.json.JsonData.class);
+
+    if (childCountSearchResponse != null
+        && childCountSearchResponse.hits() != null
+        && childCountSearchResponse.hits().total() != null) {
+      return (int) childCountSearchResponse.hits().total().value();
+    }
+    return 0;
+  }
 }

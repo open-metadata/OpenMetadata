@@ -5,7 +5,7 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public class PageIndex implements SearchIndex {
+public class PageIndex implements TaggableIndex {
   final Page page;
 
   public PageIndex(Page page) {

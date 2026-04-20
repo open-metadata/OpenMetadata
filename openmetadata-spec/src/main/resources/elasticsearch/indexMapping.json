@@ -600,13 +600,13 @@
     "indexMappingFile": "/elasticsearch/%s/folder_search_index.json",
     "alias": "folder",
     "parentAliases": ["all"],
-    "childAliases": ["contextFile"]
+    "childAliases": []
   },
   "contextFile": {
     "indexName": "context_file_search_index",
     "indexMappingFile": "/elasticsearch/%s/context_file_search_index.json",
     "alias": "contextFile",
-    "parentAliases": ["all", "folder"],
+    "parentAliases": ["all"],
     "childAliases": []
   }
 }

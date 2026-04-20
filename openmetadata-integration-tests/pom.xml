@@ -28,6 +28,15 @@
     </dependencies>
   </dependencyManagement>
   <dependencies>
+    <!-- Force commons-compress 1.27+ so Apache POI 5.4.1's call to
+         ZipArchiveOutputStream#putArchiveEntry(ZipArchiveEntry) resolves.
+         The transitive version from Testcontainers is 1.24 which predates that overload. -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.27.1</version>
+      <scope>test</scope>
+    </dependency>
     <!-- SDK client -->
     <dependency>
       <groupId>org.open-metadata</groupId>

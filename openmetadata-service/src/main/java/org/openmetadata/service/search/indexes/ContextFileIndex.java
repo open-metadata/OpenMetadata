@@ -6,7 +6,7 @@ import java.util.Map;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.service.Entity;
 
-public class ContextFileIndex implements SearchIndex {
+public class ContextFileIndex implements TaggableIndex {
   final ContextFile file;
 
   public ContextFileIndex(ContextFile file) {

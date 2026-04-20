@@ -13,6 +13,8 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -285,6 +287,7 @@ class FolderIT {
   }
 
   @Test
+  @Execution(ExecutionMode.SAME_THREAD)
   void testDeleteFolderRecursive(TestNamespace ns) throws HttpResponseException {
     RestClient rest = RestClient.admin();
 
@@ -306,18 +309,26 @@ class FolderIT {
       assertTrue(responseBody.contains("\"recursive\":true"));
     }
 
-    // Both should be gone
+    // Both should be gone. Close each Response before opening the next so the Apache HTTP
+    // client's connection pool doesn't hold two concurrent requests — under parallel-test load
+    // the second GET can otherwise block waiting for a free connection.
     await()
-        .atMost(Duration.ofSeconds(20))
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
+              int parentStatus;
               try (Response parentResponse =
-                      rest.rawGet(PATH + "/" + parent.getId() + "?include=all");
-                  Response childResponse =
-                      rest.rawGet(PATH + "/" + child.getId() + "?include=all")) {
-                assertEquals(404, parentResponse.getStatus());
-                assertEquals(404, childResponse.getStatus());
+                  rest.rawGet(PATH + "/" + parent.getId() + "?include=all")) {
+                parentStatus = parentResponse.getStatus();
               }
+              int childStatus;
+              try (Response childResponse =
+                  rest.rawGet(PATH + "/" + child.getId() + "?include=all")) {
+                childStatus = childResponse.getStatus();
+              }
+              assertEquals(404, parentStatus);
+              assertEquals(404, childStatus);
             });
   }
 

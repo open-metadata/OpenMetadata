@@ -20,6 +20,8 @@ import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collec
 import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as IconAPIService } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
+import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/knowledge-center.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -384,6 +386,27 @@ class SearchClassBase {
           },
         ],
       },
+      {
+        title: t('label.knowledge-center'),
+        key: 'KnowledgeCenter',
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.KNOWLEDGE_PAGE],
+        },
+        icon: KnowledgeCenterIcon,
+        children: [
+          {
+            title: t('label.knowledge-page'),
+            key: EntityType.KNOWLEDGE_PAGE,
+            isLeaf: true,
+            icon: KnowledgePageIcon,
+            data: {
+              entityType: EntityType.KNOWLEDGE_PAGE,
+              isStatic: true,
+            },
+          },
+        ],
+      },
     ];
   }
 
@@ -723,7 +746,12 @@ class SearchClassBase {
   }
 
   public staticKeysHavingCounts(): string[] {
-    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
+    return [
+      EntityType.GLOSSARY_TERM,
+      EntityType.TAG,
+      EntityType.DATA_PRODUCT,
+      EntityType.KNOWLEDGE_PAGE,
+    ];
   }
 }
 
