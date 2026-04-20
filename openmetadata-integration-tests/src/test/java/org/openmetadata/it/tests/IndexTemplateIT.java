@@ -25,6 +25,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -255,8 +256,8 @@ public class IndexTemplateIT {
           "Recreated index should have om_analyzer from template");
     } finally {
       deleteIndexIfExists(searchClient, canonicalIndex);
-      Request recreateRequest = new Request("PUT", "/" + canonicalIndex);
-      searchClient.performRequest(recreateRequest);
+      Entity.getSearchRepository()
+          .createIndex(Entity.getSearchRepository().getEntityIndexMap().get("tag"));
     }
   }
 
