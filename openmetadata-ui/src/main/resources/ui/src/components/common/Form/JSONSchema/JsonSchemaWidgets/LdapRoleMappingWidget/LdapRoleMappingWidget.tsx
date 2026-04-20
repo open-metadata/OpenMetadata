@@ -101,7 +101,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     const fetchRoles = async () => {
       setIsLoadingRoles(true);
       try {
-        const roles = await searchRoles('*', 100);
+        const roles = await searchRoles('*', 1000);
         const roleOptions: RoleOption[] = roles.map((role) => ({
           label: role.displayName || role.name,
           value: role.name,

@@ -30,7 +30,7 @@ const SsoRolesSelectField = (props: FieldProps) => {
   >([]);
 
   useEffect(() => {
-    searchRoles('*', 100)
+    searchRoles('*', 1000)
       .then((roles) => {
         setRoleOptions(
           roles.map((role) => ({

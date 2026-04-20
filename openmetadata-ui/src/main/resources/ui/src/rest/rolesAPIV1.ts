@@ -31,25 +31,19 @@ const patchConfig = {
 
 export const searchRoles = async (
   query: string,
-  limit = 10
+  limit = 1000
 ): Promise<Role[]> => {
-  try {
-    const response = await searchData<SearchIndex.ROLE>(
-      query,
-      1,
-      limit,
-      '',
-      '',
-      '',
-      SearchIndex.ROLE
-    );
+  const response = await searchData<SearchIndex.ROLE>(
+    query,
+    1,
+    limit,
+    '',
+    '',
+    '',
+    SearchIndex.ROLE
+  );
 
-    return (
-      response.data.hits.hits.map((hit) => hit._source) as unknown as Role[]
-    );
-  } catch {
-    return [];
-  }
+  return response.data.hits.hits.map((hit) => hit._source) as unknown as Role[];
 };
 
 export const getRoles = async (

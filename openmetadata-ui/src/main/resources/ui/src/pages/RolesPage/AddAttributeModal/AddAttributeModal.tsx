@@ -73,7 +73,7 @@ const AddAttributeModal: FC<Props> = ({
 
           break;
         case EntityType.ROLE: {
-          const roles = await searchRoles('*', 100);
+          const roles = await searchRoles('*', 1000);
           datalist = { data: roles };
 
           break;

@@ -76,7 +76,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchRoles = async () => {
     try {
-      const data = await searchRoles('*', 100);
+      const data = await searchRoles('*', 1000);
       setRoles(data);
     } catch (err) {
       setRoles([]);

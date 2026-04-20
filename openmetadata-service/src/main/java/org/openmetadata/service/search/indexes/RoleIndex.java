@@ -7,7 +7,7 @@ import org.openmetadata.service.Entity;
 
 public class RoleIndex implements SearchIndex {
   final Role role;
-  final Set<String> excludeFields = Set.of("policy");
+  final Set<String> excludeFields = Set.of("policies");
 
   public RoleIndex(Role role) {
     this.role = role;

@@ -71,7 +71,7 @@ const UserProfileRoles = ({
 
   const fetchRoles = async () => {
     try {
-      const roles = await searchRoles('*', 100);
+      const roles = await searchRoles('*', 1000);
       setRoles(roles);
     } catch (err) {
       showErrorToast(
