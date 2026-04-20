@@ -199,6 +199,15 @@ const OntologyExplorerPage = withSuspenseFallback(
   )
 );
 
+const IdentityTrustPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "IdentityTrustPage" */ '../../pages/IdentityTrustPage/IdentityTrustPage.component'
+      )
+  )
+);
+
 const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -360,6 +369,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<OntologyExplorerPage />}
         path={ROUTES.ONTOLOGY_EXPLORER}
       />
+      <Route element={<IdentityTrustPage />} path={ROUTES.IDENTITY_TRUST} />
       <Route
         element={
           <EditConnectionFormPage

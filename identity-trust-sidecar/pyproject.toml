@@ -1,0 +1,30 @@
+ [project]
+ name = "identity-trust-sidecar"
+ version = "0.1.0"
+ description = "Metadata-sidecar for declarative identity & trust contracts in OpenMetadata."
+ readme = "README.md"
+ requires-python = ">=3.11"
+ dependencies = [
+   "pydantic>=2.6",
+   "pydantic-settings>=2.2",
+   "pyyaml>=6.0.1",
+   "requests>=2.31",
+ ]
+ 
+ [project.optional-dependencies]
+ dev = [
+   "pytest>=8.2",
+   "responses>=0.25",
+   "ruff>=0.5",
+ ]
+ 
+ [build-system]
+ requires = ["setuptools>=68"]
+ build-backend = "setuptools.build_meta"
+ 
+ [tool.setuptools]
+ package-dir = {"" = "src"}
+ 
+ [tool.pytest.ini_options]
+ testpaths = ["tests"]
+ 

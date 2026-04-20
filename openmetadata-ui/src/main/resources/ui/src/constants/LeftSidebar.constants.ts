@@ -17,6 +17,7 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as IntegrityIcon } from '../assets/svg/ic-integrity.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
@@ -168,6 +169,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.GLOSSARY,
         icon: GlossaryIcon,
         dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
+      },
+      {
+        key: ROUTES.IDENTITY_TRUST,
+        title: 'label.identity-trust',
+        redirect_url: ROUTES.IDENTITY_TRUST,
+        icon: IntegrityIcon,
+        dataTestId: `app-bar-item-${SidebarItem.IDENTITY_TRUST}`,
       },
       {
         key: ROUTES.ONTOLOGY_EXPLORER,
