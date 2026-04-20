@@ -570,13 +570,12 @@ export const verifyWidgetEntityNavigation = async (
 
     // Navigate back to home for next tests
     await redirectToHomePage(page);
+  } else if (emptyStateTestId) {
+    await expect(page.getByTestId(emptyStateTestId)).toBeVisible();
   } else {
-    // Check for empty state if no entities
-    // Use custom test ID if provided, otherwise use default
-    const emptyStateSelector = emptyStateTestId || 'widget-empty-state';
-    const emptyState = widget.locator(`[data-testid="${emptyStateSelector}"]`);
-
-    await expect(emptyState).toBeVisible();
+    await expect(
+      widget.locator('[data-testid="widget-empty-state"]')
+    ).toBeVisible();
   }
 };
 

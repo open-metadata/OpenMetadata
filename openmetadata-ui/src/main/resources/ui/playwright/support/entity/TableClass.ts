@@ -228,18 +228,34 @@ export class TableClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
+    // Create database service with 409 conflict handling for sharded test runs
+    let serviceResponse = await apiContext.post(
       '/api/v1/services/databaseServices',
       {
         data: this.service,
       }
     );
-    if (!serviceResponse.ok()) {
+
+    let service;
+    if (serviceResponse.status() === 409) {
+      // Service already exists, fetch it by name
+      const serviceName = this.service.name;
+      const getServiceResponse = await apiContext.get(
+        `/api/v1/services/databaseServices/name/${serviceName}`
+      );
+      if (!getServiceResponse.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing service "${serviceName}" (${getServiceResponse.status()}): ${await getServiceResponse.text()}`
+        );
+      }
+      service = await getServiceResponse.json();
+    } else if (!serviceResponse.ok()) {
       throw new Error(
         `TableClass: service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
       );
+    } else {
+      service = await serviceResponse.json();
     }
-    const service = await serviceResponse.json();
 
     const databaseResponse = await apiContext.post('/api/v1/databases', {
       data: { ...this.database, service: service.fullyQualifiedName },

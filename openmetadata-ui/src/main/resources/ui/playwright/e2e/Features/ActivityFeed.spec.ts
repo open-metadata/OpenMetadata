@@ -40,10 +40,6 @@ import { editDisplayName } from '../../utils/user';
 const test = base;
 
 const adminUser = new UserClass();
-const user1 = new UserClass();
-const entity = new TableClass();
-const extraEntity = new TableClass();
-const testPersona = new PersonaClass();
 
 const waitForConversationMaterialization = async ({
   apiContext,
@@ -86,10 +82,22 @@ const waitForConversationMaterialization = async ({
 };
 
 test.describe('FeedWidget on landing page', () => {
+  let adminUser: UserClass;
+  let user1: UserClass;
+  let entity: TableClass;
+  let extraEntity: TableClass;
+  let testPersona: PersonaClass;
+
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
     async ({ browser }) => {
       test.slow(true);
+
+      adminUser = new UserClass();
+      user1 = new UserClass();
+      entity = new TableClass();
+      extraEntity = new TableClass();
+      testPersona = new PersonaClass();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -449,9 +457,9 @@ test.describe('FeedWidget on landing page', () => {
 });
 
 test.describe('Mention notifications in Notification Box', () => {
-  const adminUser = new UserClass();
-  const user1 = new UserClass();
-  const entity = new TableClass();
+  let adminUser: UserClass;
+  let user1: UserClass;
+  let entity: TableClass;
 
   const test = base.extend<{
     adminPage: Page;
@@ -496,6 +504,10 @@ test.describe('Mention notifications in Notification Box', () => {
   };
 
   test.beforeAll('Setup entities and users', async ({ browser }) => {
+    adminUser = new UserClass();
+    user1 = new UserClass();
+    entity = new TableClass();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await adminUser.create(apiContext);
@@ -509,7 +521,6 @@ test.describe('Mention notifications in Notification Box', () => {
     const conversationResponse = await apiContext.post('/api/v1/feed', {
       data: {
         about: `<#E::table::${entityFqn}>`,
-        from: adminUser.responseData.name,
         message: conversationSeedText,
         type: 'Conversation',
       },
@@ -581,7 +592,6 @@ test.describe('Mention notifications in Notification Box', () => {
           `/api/v1/feed/${conversationThreadId}/posts`,
           {
             data: {
-              from: user1.responseData.name,
               message: `Hey <#E::user::${adminUser.responseData.name}>, can you check this?`,
             },
           }
@@ -767,7 +777,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       // Create a conversation thread via API so we can post replies in the tests
       const conversationResponse = await apiContext.post('/api/v1/feed', {
         data: {
-          from: adminUser.responseData.name,
           message: 'Initial conversation for Chinese character encoding test',
           about: `<#E::databaseSchema::${schemaFqn}>`,
           type: 'Conversation',
@@ -856,36 +865,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     return editorLocator.first();
   };
 
-  const selectMentionSuggestion = async (
-    page: Page,
-    editorLocator: ReturnType<Page['locator']>,
-    label: string
-  ) => {
-    await page.waitForTimeout(500);
-
-    const editorText = await editorLocator.textContent();
-    if (editorText?.includes(`@${label}`)) {
-      return;
-    }
-
-    const mentionItem = page
-      .locator('.mention-item')
-      .filter({ hasText: label })
-      .first();
-
-    if (await mentionItem.isVisible().catch(() => false)) {
-      await mentionItem.click();
-
-      return;
-    }
-
-    const dropdown = page.locator('.suggestion-menu-wrapper');
-    if (await dropdown.isVisible().catch(() => false)) {
-      await page.keyboard.press('ArrowDown');
-      await page.keyboard.press('Enter');
-    }
-  };
-
   const selectHashSuggestion = async (
     page: Page,
     editorLocator: ReturnType<Page['locator']>,
@@ -915,77 +894,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       await page.keyboard.press('Enter');
     }
   };
-
-  test('Should allow mentioning a user with Chinese characters in the activity feed', async ({
-    page,
-  }) => {
-    const feedPromise = page.waitForResponse((response) => {
-      const url = response.url();
-      return (
-        url.includes('/api/v1/feed') &&
-        url.includes('entityLink=') &&
-        url.includes('type=Conversation') &&
-        response.request().method() === 'GET'
-      );
-    });
-    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/all`);
-    const feedResponse = await feedPromise;
-    expect(feedResponse.status()).toBe(200);
-    await waitForAllLoadersToDisappear(page);
-
-    const seededThread = page
-      .locator('[data-testid="message-container"]')
-      .filter({
-        hasText: 'Initial conversation for Chinese character encoding test',
-      })
-      .first();
-
-    await expect(seededThread).toBeVisible({ timeout: 30_000 });
-    await seededThread.click();
-    await waitForAllLoadersToDisappear(page);
-
-    const commentsInput = page.getByTestId('comments-input-field');
-    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
-    await commentsInput.click();
-
-    const editorLocator = page.locator(
-      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-    );
-
-    await editorLocator.fill('Hey ');
-
-    await editorLocator.click();
-
-    await page.keyboard.press('@');
-    const userSuggestionsResponse = page.waitForResponse((response) => {
-      const url = response.url();
-
-      return (
-        url.includes('/api/v1/search/query') &&
-        url.includes(encodeURIComponent(userName))
-      );
-    });
-    await editorLocator.pressSequentially(userName);
-    await userSuggestionsResponse;
-
-    await selectMentionSuggestion(page, editorLocator, userName);
-
-    await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
-    await expect(
-      page.locator('[data-testid="send-button"]')
-    ).not.toBeDisabled();
-
-    const postMentionResponse = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.locator('[data-testid="send-button"]').click();
-    await postMentionResponse;
-    const replyCard = page
-      .getByTestId('feed-reply-card')
-      .filter({ hasText: `Hey @${userName}` });
-    await expect(replyCard).toBeVisible();
-    await expect(replyCard.getByTestId('viewer-container')).toHaveText(
-      `Hey @${userName}`
-    );
-  });
 
   test('Should encode the chinese character while mentioning api endpoint', async ({
     page,

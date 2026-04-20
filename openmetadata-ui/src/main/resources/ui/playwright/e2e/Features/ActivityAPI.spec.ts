@@ -398,7 +398,6 @@ test.describe('Activity API - Reactions', () => {
           data: {
             message: 'Test conversation for reactions',
             about: entityLink,
-            from: adminUser.responseData.name,
           },
         });
       } finally {
@@ -598,7 +597,6 @@ test.describe('Activity API - Comments', () => {
           data: {
             message: 'Test conversation for comments',
             about: entityLink,
-            from: adminUser.responseData.name,
           },
         });
       } finally {
@@ -773,7 +771,6 @@ test.describe('Activity API - Homepage Widget', () => {
         data: {
           message: 'Test conversation for homepage widget',
           about: entityLink,
-          from: adminUser.responseData.name,
         },
       });
     } finally {

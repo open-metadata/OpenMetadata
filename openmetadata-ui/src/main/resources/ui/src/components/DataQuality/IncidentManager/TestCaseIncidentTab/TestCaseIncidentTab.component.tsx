@@ -76,7 +76,7 @@ const TestCaseIncidentTab = () => {
         after,
         EntityType.TEST_CASE,
         decodedFqn,
-        statusGroup as 'open' | 'closed'
+        statusGroup
       );
     },
     [decodedFqn, getTaskData, statusGroup]

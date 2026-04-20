@@ -55,6 +55,7 @@ public class FeedResourceIT {
 
   private static final String ADMIN_USER = "admin";
   private static final String TEST_USER = "test";
+
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -70,7 +71,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test conversation thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -83,7 +83,7 @@ public class FeedResourceIT {
     assertEquals(about, thread.getAbout());
     assertEquals(ThreadType.Conversation, thread.getType());
 
-    CreatePost createPost = new CreatePost().withFrom(TEST_USER).withMessage("This is a reply");
+    CreatePost createPost = new CreatePost().withMessage("This is a reply");
 
     Thread updatedThread = addPost(thread.getId(), createPost);
 
@@ -93,7 +93,8 @@ public class FeedResourceIT {
 
     Post lastPost = updatedThread.getPosts().get(updatedThread.getPosts().size() - 1);
     assertEquals("This is a reply", lastPost.getMessage());
-    assertEquals(TEST_USER, lastPost.getFrom());
+    // Server derives 'from' from JWT identity, not client-supplied field
+    assertEquals(ADMIN_USER, lastPost.getFrom());
 
     deleteThread(thread.getId());
   }
@@ -105,7 +106,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test get thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -129,14 +129,12 @@ public class FeedResourceIT {
 
     CreateThread createThread1 =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("First thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
 
     CreateThread createThread2 =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Second thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -161,7 +159,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread to delete")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -186,7 +183,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Original message")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -194,7 +190,7 @@ public class FeedResourceIT {
     Thread thread = createThread(createThread);
 
     for (int i = 1; i <= 3; i++) {
-      CreatePost createPost = new CreatePost().withFrom(TEST_USER).withMessage("Reply " + i);
+      CreatePost createPost = new CreatePost().withMessage("Reply " + i);
       thread = addPost(thread.getId(), createPost);
     }
 
@@ -214,7 +210,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Comment on column description")
             .withAbout(columnLink)
             .withType(ThreadType.Conversation);
@@ -232,7 +227,6 @@ public class FeedResourceIT {
   void post_feedWithoutAbout_4xx(TestNamespace ns) {
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test message")
             .withAbout(null)
             .withType(ThreadType.Conversation);
@@ -247,7 +241,6 @@ public class FeedResourceIT {
   void post_feedWithInvalidAbout_4xx(TestNamespace ns) {
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test message")
             .withAbout("<>")
             .withType(ThreadType.Conversation);
@@ -262,7 +255,6 @@ public class FeedResourceIT {
   void post_feedWithoutMessage_4xx(TestNamespace ns) {
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage(null)
             .withAbout("<#E::table::test>")
             .withType(ThreadType.Conversation);
@@ -274,40 +266,9 @@ public class FeedResourceIT {
   }
 
   @Test
-  void post_feedWithoutFrom_4xx(TestNamespace ns) {
-    CreateThread createThread =
-        new CreateThread()
-            .withFrom(null)
-            .withMessage("Test message")
-            .withAbout("<#E::table::test>")
-            .withType(ThreadType.Conversation);
-
-    assertThrows(
-        Exception.class,
-        () -> createThread(createThread),
-        "Creating thread without from should fail");
-  }
-
-  @Test
-  void post_feedWithNonExistentFrom_404(TestNamespace ns) {
-    CreateThread createThread =
-        new CreateThread()
-            .withFrom("nonExistentUser")
-            .withMessage("Test message")
-            .withAbout("<#E::table::test>")
-            .withType(ThreadType.Conversation);
-
-    assertThrows(
-        Exception.class,
-        () -> createThread(createThread),
-        "Creating thread with non-existent from should fail");
-  }
-
-  @Test
   void post_feedWithNonExistentAbout_404(TestNamespace ns) {
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test message")
             .withAbout("<#E::table::invalidTableName>")
             .withType(ThreadType.Conversation);
@@ -325,68 +286,18 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
 
     Thread thread = createThread(createThread);
 
-    CreatePost createPost = new CreatePost().withFrom(ADMIN_USER).withMessage(null);
+    CreatePost createPost = new CreatePost().withMessage(null);
 
     assertThrows(
         Exception.class,
         () -> addPost(thread.getId(), createPost),
         "Adding post without message should fail");
-
-    deleteThread(thread.getId());
-  }
-
-  @Test
-  void post_addPostWithoutFrom_4xx(TestNamespace ns) throws Exception {
-    Table table = createTestTable(ns);
-    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
-
-    CreateThread createThread =
-        new CreateThread()
-            .withFrom(ADMIN_USER)
-            .withMessage("Test thread")
-            .withAbout(about)
-            .withType(ThreadType.Conversation);
-
-    Thread thread = createThread(createThread);
-
-    CreatePost createPost = new CreatePost().withFrom(null).withMessage("Reply message");
-
-    assertThrows(
-        Exception.class,
-        () -> addPost(thread.getId(), createPost),
-        "Adding post without from should fail");
-
-    deleteThread(thread.getId());
-  }
-
-  @Test
-  void post_addPostWithNonExistentFrom_404(TestNamespace ns) throws Exception {
-    Table table = createTestTable(ns);
-    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
-
-    CreateThread createThread =
-        new CreateThread()
-            .withFrom(ADMIN_USER)
-            .withMessage("Test thread")
-            .withAbout(about)
-            .withType(ThreadType.Conversation);
-
-    Thread thread = createThread(createThread);
-
-    CreatePost createPost =
-        new CreatePost().withFrom("nonExistentUser").withMessage("Reply message");
-
-    assertThrows(
-        Exception.class,
-        () -> addPost(thread.getId(), createPost),
-        "Adding post with non-existent from should fail");
 
     deleteThread(thread.getId());
   }
@@ -409,7 +320,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Please update description")
             .withAbout(about)
             .withType(ThreadType.Task)
@@ -448,7 +358,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Please update description")
             .withAbout(about)
             .withType(ThreadType.Task)
@@ -487,7 +396,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Please update description")
             .withAbout(about)
             .withType(ThreadType.Task)
@@ -515,7 +423,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Important announcement")
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -549,7 +456,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Invalid announcement")
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -568,7 +474,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Original thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -576,7 +481,7 @@ public class FeedResourceIT {
     Thread thread = createThread(createThread);
 
     for (int i = 1; i <= 3; i++) {
-      CreatePost createPost = new CreatePost().withFrom(TEST_USER).withMessage("Reply " + i);
+      CreatePost createPost = new CreatePost().withMessage("Reply " + i);
       thread = addPost(thread.getId(), createPost);
     }
 
@@ -594,14 +499,13 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread with post")
             .withAbout(about)
             .withType(ThreadType.Conversation);
 
     Thread thread = createThread(createThread);
 
-    CreatePost createPost = new CreatePost().withFrom(ADMIN_USER).withMessage("Post to delete");
+    CreatePost createPost = new CreatePost().withMessage("Post to delete");
     thread = addPost(thread.getId(), createPost);
 
     Post post = thread.getPosts().get(thread.getPosts().size() - 1);
@@ -622,7 +526,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -646,7 +549,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Original message")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -672,7 +574,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread for reactions")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -703,7 +604,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread to delete")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -740,7 +640,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread for filter test")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -782,7 +681,6 @@ public class FeedResourceIT {
     Thread taskThread =
         createThread(
             new CreateThread()
-                .withFrom(TEST_USER)
                 .withMessage("Task assigned to admin")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -825,7 +723,6 @@ public class FeedResourceIT {
     Thread taskThread =
         createThread(
             new CreateThread()
-                .withFrom(ADMIN_USER)
                 .withMessage("Task created by admin")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -876,7 +773,6 @@ public class FeedResourceIT {
     Thread relevantTask =
         createThread(
             new CreateThread()
-                .withFrom(ADMIN_USER)
                 .withMessage("Task relevant to test user")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -885,7 +781,6 @@ public class FeedResourceIT {
     Thread unrelatedTask =
         createThread(
             new CreateThread()
-                .withFrom(ADMIN_USER)
                 .withMessage("Task unrelated to test user")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -928,7 +823,6 @@ public class FeedResourceIT {
     Thread openTask =
         createThread(
             new CreateThread()
-                .withFrom(TEST_USER)
                 .withMessage("Open task for status filter")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -937,7 +831,6 @@ public class FeedResourceIT {
     Thread closedTask =
         createThread(
             new CreateThread()
-                .withFrom(TEST_USER)
                 .withMessage("Closed task for status filter")
                 .withAbout(about)
                 .withType(ThreadType.Task)
@@ -980,7 +873,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread for mentions filter")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -1011,7 +903,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread for follows filter")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -1059,7 +950,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread with many posts")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -1068,7 +958,7 @@ public class FeedResourceIT {
 
     int POST_COUNT = 10;
     for (int i = 0; i < POST_COUNT; i++) {
-      CreatePost createPost = new CreatePost().withFrom(TEST_USER).withMessage("Post " + i);
+      CreatePost createPost = new CreatePost().withMessage("Post " + i);
       addPost(thread.getId(), createPost);
     }
 
@@ -1103,14 +993,13 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread for post reactions")
             .withAbout(about)
             .withType(ThreadType.Conversation);
 
     Thread thread = createThread(createThread);
 
-    CreatePost createPost = new CreatePost().withFrom(ADMIN_USER).withMessage("Post for reactions");
+    CreatePost createPost = new CreatePost().withMessage("Post for reactions");
     thread = addPost(thread.getId(), createPost);
 
     Post post = thread.getPosts().get(thread.getPosts().size() - 1);
@@ -1139,7 +1028,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Test thread")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -1175,7 +1063,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Announcement to patch")
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -1196,7 +1083,6 @@ public class FeedResourceIT {
         createAnnouncementDetails("First announcement", 53, 55);
     CreateThread createThread1 =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Announcement One")
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -1205,7 +1091,6 @@ public class FeedResourceIT {
         createAnnouncementDetails("Second announcement", 57, 59);
     CreateThread createThread2 =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Announcement Two")
             .withAbout(about)
             .withType(ThreadType.Announcement)
@@ -1227,7 +1112,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Original message")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -1263,7 +1147,6 @@ public class FeedResourceIT {
 
       createThreads.add(
           new CreateThread()
-              .withFrom(ADMIN_USER)
               .withMessage("Concurrent task " + i)
               .withAbout(about)
               .withType(ThreadType.Task)
@@ -1298,7 +1181,6 @@ public class FeedResourceIT {
 
     CreateThread createThread1 =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("First AI query")
             .withAbout(about)
             .withType(ThreadType.Chatbot)
@@ -1312,7 +1194,6 @@ public class FeedResourceIT {
 
     CreateThread createThread2 =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Second AI query")
             .withAbout(about)
             .withType(ThreadType.Chatbot)
@@ -1336,7 +1217,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("AI thread to patch")
             .withAbout(about)
             .withType(ThreadType.Chatbot);
@@ -1375,16 +1255,18 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(botUser.getName())
             .withMessage("Task from bot")
             .withAbout(about)
             .withType(ThreadType.Task)
             .withTaskDetails(taskDetails);
 
-    assertThrows(
-        Exception.class,
-        () -> createThread(createThread),
-        "Task cannot be created by bot only by user or teams");
+    // The 'from' field was removed from the schema — server derives identity from JWT.
+    // Since we authenticate as admin (not a bot), the bot check doesn't trigger and
+    // task creation succeeds.
+    Thread thread = createThread(createThread);
+    assertNotNull(thread);
+    assertEquals(ADMIN_USER, thread.getCreatedBy());
+    deleteThread(thread.getId());
   }
 
   @Test
@@ -1404,7 +1286,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Task assigned to bot")
             .withAbout(about)
             .withType(ThreadType.Task)
@@ -1430,7 +1311,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Task to reassign")
             .withAbout(about)
             .withType(ThreadType.Task)
@@ -1462,7 +1342,6 @@ public class FeedResourceIT {
     for (int i = 1; i <= 10; i++) {
       CreateThread createThread =
           new CreateThread()
-              .withFrom(ADMIN_USER)
               .withMessage("Thread " + i)
               .withAbout(about)
               .withType(ThreadType.Conversation);
@@ -1512,7 +1391,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Thread to resolve")
             .withAbout(about)
             .withType(ThreadType.Conversation);
@@ -1541,7 +1419,6 @@ public class FeedResourceIT {
 
     CreateThread createThread =
         new CreateThread()
-            .withFrom(ADMIN_USER)
             .withMessage("Original message")
             .withAbout(about)
             .withType(ThreadType.Conversation);

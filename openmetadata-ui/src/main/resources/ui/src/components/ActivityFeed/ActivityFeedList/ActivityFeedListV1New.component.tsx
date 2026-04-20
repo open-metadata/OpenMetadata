@@ -71,26 +71,42 @@ const ActivityFeedListV1New = ({
   isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const isActivityMode = !isUndefined(activityList) && activityList.length > 0;
+  const isActivityMode = !isUndefined(activityList);
 
   useEffect(() => {
-    if (feedList && !isActivityMode) {
+    if (!isActivityMode && feedList) {
       const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
       setEntityThread(updatedFeedList);
     }
   }, [feedList, isActivityMode]);
 
   useEffect(() => {
-    if (!isActivityMode) {
+    if (isActivityMode) {
+      if (
+        onActivityClick &&
+        activityList &&
+        activityList.length > 0 &&
+        isUndefined(activeFeedId)
+      ) {
+        onActivityClick(activityList[0]);
+      }
+    } else {
       const thread = entityThread.find(
         (feed) => feed.id === selectedThread?.id
       );
-
       if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
         onFeedClick(entityThread[0]);
       }
     }
-  }, [entityThread, selectedThread, onFeedClick, isActivityMode]);
+  }, [
+    entityThread,
+    selectedThread,
+    onFeedClick,
+    isActivityMode,
+    activityList,
+    activeFeedId,
+    onActivityClick,
+  ]);
 
   useEffect(() => {
     const listToCheck = isActivityMode ? activityList : feedList;

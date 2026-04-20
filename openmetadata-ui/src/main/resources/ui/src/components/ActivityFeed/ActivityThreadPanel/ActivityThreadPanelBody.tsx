@@ -25,7 +25,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { TaskStatusGroup } from '../../../rest/tasksAPI';
@@ -56,7 +55,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   view,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const {
     tasks,
     selectedTask,
@@ -193,7 +191,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const onPostThread = async (value: string) => {
     const data = {
       message: value,
-      from: currentUser?.name ?? '',
       about: threadLink,
     };
     await createThread(data);

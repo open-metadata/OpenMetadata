@@ -63,7 +63,6 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getRandomColor,
-  Transi18next,
 } from './CommonUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
@@ -74,7 +73,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import Fqn from './Fqn';
-import { t } from './i18next/LocalUtil';
+import { t, Transi18next } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,

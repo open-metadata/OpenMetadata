@@ -649,7 +649,6 @@ test.describe('User Profile Feed Interactions', () => {
       const conversationResponse = await apiContext.post('/api/v1/feed', {
         data: {
           about: `<#E::table::${entityFqn}>`,
-          from: user3.responseData.name,
           message: seededMessage,
           type: 'Conversation',
         },
