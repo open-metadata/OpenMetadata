@@ -139,9 +139,9 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       '../../../../utils/ObservabilityRouterClassBase'
     ) as { default: { getDataQualityPagePath: jest.Mock } };
 
-    expect(
-      observabilityRouterMock.getDataQualityPagePath
-    ).toHaveBeenCalledWith('test-suites');
+    expect(observabilityRouterMock.getDataQualityPagePath).toHaveBeenCalledWith(
+      'test-suites'
+    );
     expect(mockNavigate).toHaveBeenCalledWith('/data-quality/test-suites');
   });
 
