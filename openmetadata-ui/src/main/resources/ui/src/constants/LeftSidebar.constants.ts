@@ -175,7 +175,6 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
         icon: LineageIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
-        isBeta: true,
       },
       {
         key: ROUTES.TAGS,
