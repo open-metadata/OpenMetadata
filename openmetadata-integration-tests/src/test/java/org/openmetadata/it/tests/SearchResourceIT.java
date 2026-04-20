@@ -1595,7 +1595,7 @@ public class SearchResourceIT {
                           + "&sort_field=name.keyword&sort_order=asc&from=0&size=1");
               assertEquals(200, page1.statusCode());
               String[] page1Lines = page1.body().split("\n");
-              assertTrue(page1Lines.length <= 2, "from=0&size=1 should return at most 2 lines");
+              assertEquals(2, page1Lines.length, "from=0&size=1 should return header + 1 data row");
 
               HttpResponse<String> page2 =
                   httpGetExport(
@@ -1603,13 +1603,11 @@ public class SearchResourceIT {
                           + "&sort_field=name.keyword&sort_order=asc&from=1&size=1");
               assertEquals(200, page2.statusCode());
               String[] page2Lines = page2.body().split("\n");
-              assertTrue(page2Lines.length <= 2, "from=1&size=1 should return at most 2 lines");
+              assertEquals(2, page2Lines.length, "from=1&size=1 should return header + 1 data row");
 
-              if (page1Lines.length == 2 && page2Lines.length == 2) {
-                assertFalse(
-                    page1Lines[1].equals(page2Lines[1]),
-                    "Page 1 and page 2 should return different rows");
-              }
+              assertFalse(
+                  page1Lines[1].equals(page2Lines[1]),
+                  "Page 1 and page 2 should return different rows");
             });
   }
 
