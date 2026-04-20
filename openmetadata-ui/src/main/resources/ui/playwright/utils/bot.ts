@@ -105,8 +105,13 @@ export const createBot = async (page: Page) => {
 export const deleteBot = async (page: Page) => {
   await settingClick(page, GlobalSettingOptions.BOTS);
 
-  // Click on delete button
-  await page.getByTestId(`bot-delete-${botName}`).click();
+  const updatedBotRow = page
+    .getByRole('row')
+    .filter({
+      has: page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`),
+    });
+
+  await updatedBotRow.locator('[data-testid^="bot-delete-"]').click();
 
   await page.getByTestId('hard-delete-option').click();
 
@@ -120,7 +125,9 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
+  await expect(
+    page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`)
+  ).toHaveCount(0);
 };
 
 export const updateBotDetails = async (page: Page) => {
@@ -156,11 +163,13 @@ export const updateBotDetails = async (page: Page) => {
 
   const updatedBotRow = page
     .getByRole('row')
-    .filter({ has: page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`) });
+    .filter({
+      has: page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`),
+    });
 
-  await expect(
-    updatedBotRow.getByTestId('markdown-parser')
-  ).toContainText(BOT_DETAILS.updatedDescription);
+  await expect(updatedBotRow.getByTestId('markdown-parser')).toContainText(
+    BOT_DETAILS.updatedDescription
+  );
 };
 
 export const verifyBotSearch = async (page: Page) => {
