@@ -43,7 +43,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
-      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound";
+      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,rcaExplanation,rcaGeneratedAt";
 
   public enum OperationType {
     CREATE,

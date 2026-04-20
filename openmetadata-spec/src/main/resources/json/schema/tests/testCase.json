@@ -184,6 +184,11 @@
       "description": "List of reviewers for this entity.",
       "$ref": "../type/entityReferenceList.json",
       "default": null
+    },
+    "enableRcaAnalysis": {
+      "description": "When true, the AI agent will generate a root cause analysis explanation when this test case fails during profiler ingestion.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],
