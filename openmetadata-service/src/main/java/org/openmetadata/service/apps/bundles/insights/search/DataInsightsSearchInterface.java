@@ -105,6 +105,29 @@ public interface DataInsightsSearchInterface {
 
   String getClusterAlias();
 
+  /** Search-engine-specific resource directory containing the DI index template JSON files. */
+  String resourcePath();
+
+  /**
+   * Creates or updates the component and index templates daily indices inherit from. Idempotent.
+   * Does not create any data stream.
+   */
+  default void ensureDataAssetsIndexTemplate(
+      String entityType, IndexMapping entityIndexMapping, String language) throws IOException {
+    createComponentTemplate(
+        getStringWithClusterAlias("di-data-assets-mapping"),
+        buildMapping(
+            entityType,
+            entityIndexMapping,
+            language,
+            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath()))));
+    createIndexTemplate(
+        getStringWithClusterAlias("di-data-assets"),
+        IndexTemplate.getIndexTemplateWithClusterAlias(
+            getClusterAlias(),
+            readResource(String.format("%s/indexTemplate.json", resourcePath()))));
+  }
+
   boolean dailyIndexExists(DailyIndex index) throws IOException;
 
   List<DailyIndex> listDailyIndices(String clusterAlias, String entityType) throws IOException;

@@ -13,6 +13,7 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
+import es.co.elastic.clients.elasticsearch.indices.get_mapping.IndexMappingRecord;
 import es.co.elastic.clients.json.JsonData;
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.Response;
@@ -104,19 +105,24 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     List<Map<String, String>> fields = new ArrayList<>();
     for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
       try {
-        String indexName =
+        // Trailing '*' covers both the legacy data stream (bare name) and the daily indices
+        // (di-data-assets-<type>-YYYY.MM.DD). Without it, a post-recreate cluster returns no
+        // mapping and the chart-builder autocomplete comes back empty.
+        String indexPattern =
             DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
                 + "-"
-                + type.toLowerCase();
+                + type.toLowerCase()
+                + "*";
 
-        GetMappingResponse response = client.indices().getMapping(m -> m.index(indexName));
+        GetMappingResponse response = client.indices().getMapping(m -> m.index(indexPattern));
 
-        // Iterate over all indices in the response to handle data streams
-        // where the backing index name differs from the alias (e.g., .ds-di-data-assets-database-*)
-        for (var entry : response.mappings().entrySet()) {
-          var indexMappingRecord = entry.getValue();
+        // All matching indices share the same template-derived mapping, so the first
+        // populated entry is sufficient — iterating would duplicate every field per index.
+        for (Map.Entry<String, IndexMappingRecord> entry : response.mappings().entrySet()) {
+          IndexMappingRecord indexMappingRecord = entry.getValue();
           if (indexMappingRecord != null && indexMappingRecord.mappings().properties() != null) {
             getFieldNames(indexMappingRecord.mappings().properties(), "", fields, type);
+            break;
           }
         }
       } catch (Exception e) {

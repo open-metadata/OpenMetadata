@@ -31,13 +31,12 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsBackfillWorkflow;
-import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexLifecycleManager;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
@@ -45,6 +44,8 @@ import org.openmetadata.service.apps.bundles.insights.stats.WorkflowResult;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflow.InsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflow.WorkflowRegistry;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsBackfillWorkflow;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -53,6 +54,10 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
+
+  // How many recent runs to scan when looking for the last successful run to anchor the delta
+  // query. If all of them failed, the next run falls back to a full catalog scan.
+  private static final int RECENT_RUNS_LOOKBACK = 10;
   private Long timestamp;
   private int batchSize;
 
@@ -151,7 +156,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  public void createOrUpdateDataAssetsDataStream() {
+  /**
+   * Creates or updates the component and index templates that daily DI indices inherit from.
+   * Idempotent. Does not create data streams.
+   */
+  public void ensureDataAssetsIndexTemplates() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();
@@ -163,16 +172,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       for (String dataAssetType : dataAssetTypes) {
         IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
-        String dataStreamName =
-            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
-        if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
-          searchInterface.createDataAssetsDataStream(
-              dataStreamName,
-              dataAssetType,
-              dataAssetIndex,
-              language,
-              dataAssetsConfig.getRetention());
-        }
+        searchInterface.ensureDataAssetsIndexTemplate(dataAssetType, dataAssetIndex, language);
       }
     } catch (IOException ex) {
       LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
@@ -226,7 +226,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
               new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
     }
 
-    createOrUpdateDataAssetsDataStream();
+    ensureDataAssetsIndexTemplates();
     createDataQualityDataIndex();
 
     jobData = new EventPublisherJob().withStats(new Stats());
@@ -331,8 +331,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private Optional<Set<String>> readBackfillCompletedTypes() {
     if (appEntity == null) return Optional.empty();
     try {
-      AppRepository appRepository =
-          (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       Optional<AppRunRecord> lastRun = appRepository.getLatestAppRunsOptional(appEntity);
       if (lastRun.isEmpty() || lastRun.get().getSuccessContext() == null) return Optional.empty();
       Object raw =
@@ -348,19 +347,34 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
+  /**
+   * Returns the start time of the most recent successful run, if any. Used as the lower bound
+   * for the delta query. Walking back through recent runs (rather than taking the absolute
+   * latest) means a failed or stopped run doesn't anchor the delta to its own start time, which
+   * would miss entity changes that occurred between the previous successful run and the failure.
+   */
   private Optional<Long> readLastRunTimestamp() {
     if (appEntity == null) return Optional.empty();
     try {
-      AppRepository appRepository =
-          (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      Optional<AppRunRecord> lastRun = appRepository.getLatestAppRunsOptional(appEntity);
-      return lastRun
-          .filter(r -> r.getStartTime() != null)
-          .map(AppRunRecord::getStartTime);
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      ResultList<AppRunRecord> recentRuns =
+          appRepository.listAppRuns(appEntity, RECENT_RUNS_LOOKBACK, 0);
+      return recentRuns.getData().stream()
+          .filter(DataInsightsApp::isSuccessful)
+          .filter(run -> run.getStartTime() != null)
+          .map(AppRunRecord::getStartTime)
+          .findFirst();
     } catch (Exception e) {
-      LOG.error("[DataInsights] Could not read last run timestamp from DB — falling back to full scan: {}", e.getMessage());
+      LOG.error(
+          "[DataInsights] Could not read last run timestamp from DB — falling back to full scan: {}",
+          e.getMessage());
       return Optional.empty();
     }
+  }
+
+  private static boolean isSuccessful(AppRunRecord run) {
+    AppRunRecord.Status status = run.getStatus();
+    return status == AppRunRecord.Status.SUCCESS || status == AppRunRecord.Status.COMPLETED;
   }
 
   private void persistBackfillProgress(
@@ -372,8 +386,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
               ? appRecord.getSuccessContext()
               : new SuccessContext();
       ctx.withAdditionalProperty(
-          "backfillProgress",
-          java.util.Map.of("completedEntityTypes", completedTypes));
+          "backfillProgress", java.util.Map.of("completedEntityTypes", completedTypes));
       appRecord.setSuccessContext(ctx);
       pushAppStatusUpdates(jobExecutionContext, appRecord, true);
     } catch (Exception e) {

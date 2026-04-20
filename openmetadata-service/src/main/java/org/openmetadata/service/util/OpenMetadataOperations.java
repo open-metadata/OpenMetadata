@@ -2302,20 +2302,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void createDataInsightsIndexes() {
     try {
-      LOG.info("Create Data Insights data streams and indexes...");
+      LOG.info("Create Data Insights index templates and indexes...");
 
       // Create a DataInsightsApp instance to access its cleanup methods
       DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
 
-      // Drop data assets data streams
-      LOG.info("Create/Update data assets data streams...");
-      dataInsightsApp.createOrUpdateDataAssetsDataStream();
+      // Ensure DI index templates exist so daily indices inherit the right mappings
+      LOG.info("Ensure data assets index templates...");
+      dataInsightsApp.ensureDataAssetsIndexTemplates();
 
       // Drop data quality indexes
       LOG.info("Create/Updated data quality indexes...");
       dataInsightsApp.createDataQualityDataIndex();
 
-      LOG.info("Data Insights indexes and data streams created successfully.");
+      LOG.info("Data Insights indexes created successfully.");
     } catch (Exception e) {
       LOG.warn("Failed to create some Data Insights indexes: {}", e.getMessage());
       LOG.debug("Data Insights index creation error details: ", e);

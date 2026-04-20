@@ -5,22 +5,16 @@ import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtil
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.config.InsightsConfig;
 import org.openmetadata.service.apps.bundles.insights.config.ProcessingPeriod;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.SearchComponentFactory;
 import org.openmetadata.service.apps.bundles.insights.workflow.AbstractInsightsWorkflow;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.steps.DeltaProcessingStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.steps.RetentionCleanupStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.steps.RollForwardStep;
@@ -36,8 +30,6 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
 
   public static final String DATA_STREAM_KEY = "DataStreamKey";
   public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
-  private static final String ALL_ENTITIES = "all";
-  private static final int RETENTION_DAYS = 30;
 
   private final InsightsConfig config;
   private final SearchComponentFactory searchFactory;
@@ -48,6 +40,7 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
   private DataInsightsEntityEnricher entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
+  private DataAssetsScope scope;
 
   public DataAssetsWorkflow(
       InsightsConfig config,
@@ -74,11 +67,12 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
     entityEnricher = new DataInsightsEntityEnricher(totalRecords);
     entityProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
     searchIndexSink = searchFactory.createIndexSink(totalRecords);
+    scope = DataAssetsScope.from(config);
   }
 
   @Override
   protected void run() throws Exception {
-    for (String entityType : getEntityTypesToProcess()) {
+    for (String entityType : scope.entityTypes()) {
       if (stopped) break;
       processEntityType(entityType);
     }
@@ -89,12 +83,13 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
     LocalDate today = LocalDate.now();
     DailyIndex todayIndex = new DailyIndex(clusterAlias, entityType, today);
 
-    new RetentionCleanupStep(searchInterface, RETENTION_DAYS).execute(todayIndex, stats());
+    int retentionDays = config.steadyStatePeriod().retentionDays();
+    new RetentionCleanupStep(searchInterface, retentionDays).execute(todayIndex, stats());
     new RollForwardStep(searchInterface).execute(todayIndex, stats());
 
     ProcessingPeriod period = config.backfillPeriod().orElse(config.steadyStatePeriod());
     List<String> fields = List.of("*");
-    ListFilter filter = getListFilter(entityType);
+    ListFilter filter = scope.filterFor(entityType);
     // Apply delta filter: only read entities changed since the last successful run.
     // On the first-ever run lastRunTimestamp is absent, so the full catalog is scanned.
     config.lastRunTimestamp().ifPresent(filter::addUpdatedAfter);
@@ -114,42 +109,5 @@ public class DataAssetsWorkflow extends AbstractInsightsWorkflow {
 
     new DeltaProcessingStep(entityEnricher, entityProcessor, searchIndexSink)
         .execute(source, contextData, stats());
-  }
-
-  private Set<String> getEntityTypesToProcess() {
-    DataAssetsConfig dataAssetsConfig = config.dataAssetsConfig();
-    if (dataAssetsConfig == null) return config.dataAssetTypes();
-
-    Set<String> serviceFiltered =
-        dataAssetsConfig.getServiceFilter() != null
-            ? Entity.getEntityTypeInService(dataAssetsConfig.getServiceFilter().getServiceType())
-            : Set.of(ALL_ENTITIES);
-
-    List<String> result = new ArrayList<>();
-    for (String entityType : config.dataAssetTypes()) {
-      boolean passesEntityFilter =
-          dataAssetsConfig.getEntities() == null
-              || dataAssetsConfig.getEntities().contains(ALL_ENTITIES)
-              || dataAssetsConfig.getEntities().contains(entityType);
-      boolean passesServiceFilter =
-          serviceFiltered.contains(ALL_ENTITIES) || serviceFiltered.contains(entityType);
-      if (passesEntityFilter && passesServiceFilter) {
-        result.add(entityType);
-      }
-    }
-    return Set.copyOf(result);
-  }
-
-  private ListFilter getListFilter(String entityType) {
-    DataAssetsConfig dataAssetsConfig = config.dataAssetsConfig();
-    if ("dataProduct".equals(entityType)) {
-      return new ListFilter(Include.ALL);
-    }
-    ListFilter filter = new ListFilter();
-    if (dataAssetsConfig != null && dataAssetsConfig.getServiceFilter() != null) {
-      filter =
-          filter.addQueryParam("service", dataAssetsConfig.getServiceFilter().getServiceName());
-    }
-    return filter;
   }
 }

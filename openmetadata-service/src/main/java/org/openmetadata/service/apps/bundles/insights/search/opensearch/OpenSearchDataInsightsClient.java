@@ -15,7 +15,6 @@ import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchC
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.EntityIndexMap;
 import org.openmetadata.service.apps.bundles.insights.search.IndexMappingTemplate;
-import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
@@ -37,6 +36,11 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   @Override
   public String getClusterAlias() {
     return clusterAlias;
+  }
+
+  @Override
+  public String resourcePath() {
+    return resourcePath;
   }
 
   private os.org.opensearch.client.opensearch.generic.Response performRequest(
@@ -81,17 +85,7 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
       String language,
       int retentionDays)
       throws IOException {
-    createComponentTemplate(
-        getStringWithClusterAlias("di-data-assets-mapping"),
-        buildMapping(
-            entityType,
-            entityIndexMapping,
-            language,
-            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
-    createIndexTemplate(
-        getStringWithClusterAlias("di-data-assets"),
-        IndexTemplate.getIndexTemplateWithClusterAlias(
-            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
+    ensureDataAssetsIndexTemplate(entityType, entityIndexMapping, language);
     createDataStream(name);
   }
 

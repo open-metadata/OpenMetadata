@@ -1,5 +1,8 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.backfill;
 
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -19,11 +22,11 @@ import org.openmetadata.service.apps.bundles.insights.stats.WorkflowStatsCollect
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataInsightsEntityEnricher;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public final class BackfillBatchProcessor {
@@ -109,13 +112,27 @@ public final class BackfillBatchProcessor {
         EntityInterface version = resolveVersion(entity, span, versionJsonMap);
         if (version == null) continue;
 
+        // Populate startTimestamp/endTimestamp with the span's valid-range boundaries — matches
+        // V0 semantics where each daily doc recorded the range over which its underlying entity
+        // version was valid. Without these, any chart that filters on startTimestamp/endTimestamp
+        // breaks for backfilled days.
+        long spanStartTs = span.startDay().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+        long spanEndTs =
+            span.endDay().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() - 1L;
+
         String baseDocJson;
         String entityId;
         try {
           Map<String, Object> enrichCtx =
               Map.of(
-                  ReindexingUtil.ENTITY_TYPE_KEY, entityType,
-                  DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY, entityFields);
+                  ReindexingUtil.ENTITY_TYPE_KEY,
+                  entityType,
+                  DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY,
+                  entityFields,
+                  START_TIMESTAMP_KEY,
+                  spanStartTs,
+                  END_TIMESTAMP_KEY,
+                  spanEndTs);
           Map<String, Object> enriched = enricher.enrichSingle(version, enrichCtx);
           entityId = (String) enriched.get("id");
           baseDocJson = JsonUtils.pojoToJson(enriched);

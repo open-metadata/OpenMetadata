@@ -45,6 +45,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
   private DataInsightsEntityEnricher enricher;
   private AbstractDataInsightsBulkProcessor<?> bulkProcessor;
   private Sink searchIndexSink;
+  private DataAssetsScope scope;
   private final Set<String> completedEntityTypes = Collections.synchronizedSet(new HashSet<>());
 
   public DataAssetsBackfillWorkflow(
@@ -71,6 +72,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     enricher = new DataInsightsEntityEnricher(totalRecords);
     bulkProcessor = searchFactory.createDataInsightsProcessor(totalRecords);
     searchIndexSink = searchFactory.createIndexSink(totalRecords);
+    scope = DataAssetsScope.from(config);
 
     preCreateDailyIndices();
   }
@@ -84,7 +86,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
     Set<String> alreadyDone = config.backfillCompletedTypes().orElse(Set.of());
 
-    for (String entityType : config.dataAssetTypes()) {
+    for (String entityType : scope.entityTypes()) {
       if (stopped) break;
       if (alreadyDone.contains(entityType)) {
         LOG.info("[BackfillWorkflow] Skipping already completed entity type: {}", entityType);
@@ -118,12 +120,20 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
     BackfillBatchProcessor processor =
         new BackfillBatchProcessor(
-            enricher, bulkProcessor, searchIndexSink, collectionDAO, clusterAlias, entityType,
+            enricher,
+            bulkProcessor,
+            searchIndexSink,
+            collectionDAO,
+            clusterAlias,
+            entityType,
             diFields);
 
     // Single pass: fetch version metadata inline per batch — no global BackfillTimeline held.
+    // Apply the same scope filter as steady state so serviceFilter, entities whitelist, and the
+    // dataProduct soft-delete exception behave uniformly across both workflows.
     PaginatedEntitiesSource source =
-        new PaginatedEntitiesSource(entityType, config.batchSize(), diFields);
+        new PaginatedEntitiesSource(
+            entityType, config.batchSize(), diFields, scope.filterFor(entityType));
     String cursor = null;
 
     while (true) {
@@ -195,7 +205,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
     String clusterAlias = searchInterface.getClusterAlias();
 
     int created = 0;
-    for (String entityType : config.dataAssetTypes()) {
+    for (String entityType : scope.entityTypes()) {
       for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
         DailyIndex index = new DailyIndex(clusterAlias, entityType, day);
         if (!searchInterface.dailyIndexExists(index)) {

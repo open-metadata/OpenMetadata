@@ -18,7 +18,6 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DailyIndex;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
-import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 
 @Slf4j
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
@@ -36,6 +35,11 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   @Override
   public String getClusterAlias() {
     return clusterAlias;
+  }
+
+  @Override
+  public String resourcePath() {
+    return resourcePath;
   }
 
   private Response performRequest(String method, String path) throws IOException {
@@ -79,17 +83,7 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
       String language,
       int retentionDays)
       throws IOException {
-    createComponentTemplate(
-        getStringWithClusterAlias("di-data-assets-mapping"),
-        buildMapping(
-            entityType,
-            entityIndexMapping,
-            language,
-            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
-    createIndexTemplate(
-        getStringWithClusterAlias("di-data-assets"),
-        IndexTemplate.getIndexTemplateWithClusterAlias(
-            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
+    ensureDataAssetsIndexTemplate(entityType, entityIndexMapping, language);
     createDataStream(name);
   }
 

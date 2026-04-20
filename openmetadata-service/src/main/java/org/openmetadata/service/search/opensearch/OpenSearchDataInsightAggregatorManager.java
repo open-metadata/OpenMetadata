@@ -50,6 +50,7 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.indices.GetMappingResponse;
+import os.org.opensearch.client.opensearch.indices.get_mapping.IndexMappingRecord;
 
 @Slf4j
 public class OpenSearchDataInsightAggregatorManager implements DataInsightAggregatorClient {
@@ -103,21 +104,26 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     List<Map<String, String>> fields = new ArrayList<>();
     for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
       try {
-        String indexName =
+        // Trailing '*' covers both the legacy data stream (bare name) and the daily indices
+        // (di-data-assets-<type>-YYYY.MM.DD). Without it, a post-recreate cluster returns no
+        // mapping and the chart-builder autocomplete comes back empty.
+        String indexPattern =
             DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
                 + "-"
-                + type.toLowerCase();
+                + type.toLowerCase()
+                + "*";
 
-        GetMappingResponse response = client.indices().getMapping(m -> m.index(indexName));
+        GetMappingResponse response = client.indices().getMapping(m -> m.index(indexPattern));
 
-        response
-            .result()
-            .forEach(
-                (index, indexMappings) -> {
-                  if (indexMappings.mappings().properties() != null) {
-                    getFieldNames(indexMappings.mappings().properties(), "", fields, type);
-                  }
-                });
+        // All matching indices share the same template-derived mapping, so the first
+        // populated entry is sufficient — iterating would duplicate every field per index.
+        for (Map.Entry<String, IndexMappingRecord> entry : response.result().entrySet()) {
+          IndexMappingRecord indexMappings = entry.getValue();
+          if (indexMappings.mappings().properties() != null) {
+            getFieldNames(indexMappings.mappings().properties(), "", fields, type);
+            break;
+          }
+        }
       } catch (Exception e) {
         LOG.error("Failed to get mappings for type: {}", type, e);
       }
