@@ -13,13 +13,14 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getAuthContext,
+  getToken,
   redirectToHomePage,
   removeLandingBanner,
   uuid,
@@ -34,17 +35,23 @@ import { editDisplayName } from '../../utils/user';
 
 const test = base;
 
-const adminUser = new UserClass();
-const user1 = new UserClass();
-const entity = new TableClass();
-const extraEntity = new TableClass();
-const testPersona = new PersonaClass();
-
 test.describe('FeedWidget on landing page', () => {
+  let adminUser: UserClass;
+  let user1: UserClass;
+  let entity: TableClass;
+  let extraEntity: TableClass;
+  let testPersona: PersonaClass;
+
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
     async ({ browser }) => {
       test.slow(true);
+
+      adminUser = new UserClass();
+      user1 = new UserClass();
+      entity = new TableClass();
+      extraEntity = new TableClass();
+      testPersona = new PersonaClass();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -370,9 +377,9 @@ test.describe('FeedWidget on landing page', () => {
 });
 
 test.describe('Mention notifications in Notification Box', () => {
-  const adminUser = new UserClass();
-  const user1 = new UserClass();
-  const entity = EntityDataClass.table1;
+  let adminUser: UserClass;
+  let user1: UserClass;
+  let entity: TableClass;
 
   const test = base.extend<{
     adminPage: Page;
@@ -393,11 +400,25 @@ test.describe('Mention notifications in Notification Box', () => {
   });
 
   test.beforeAll('Setup entities and users', async ({ browser }) => {
+    adminUser = new UserClass();
+    user1 = new UserClass();
+    entity = new TableClass();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await user1.create(apiContext);
+    await entity.create(apiContext);
+
+    await apiContext.post('/api/v1/feed', {
+      data: {
+        message: 'Initial conversation thread for mention test',
+        about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
+        type: 'Conversation',
+      },
+    });
+
     await afterAction();
   });
 
@@ -407,57 +428,44 @@ test.describe('Mention notifications in Notification Box', () => {
   }) => {
     test.slow();
 
-    await test.step('Admin user creates a conversation on an entity', async () => {
-      await entity.visitEntityPage(adminPage);
-      // Added a safety check on waiting for activity feed count to avoid missing feed
-      // Poll the activity feed tab count from the page until it's a valid non-negative number
-      let count = NaN;
-      const maxRetries = 30;
-      for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
-        const countText = await adminPage
-          .getByRole('tab', { name: 'Activity Feeds & Tasks' })
-          .getByTestId('count')
-          .textContent();
-        count = Number(countText ?? '0');
-        if (isNaN(count) || count <= 0) {
-          await adminPage.reload();
-          await waitForAllLoadersToDisappear(adminPage);
-        }
-      }
-
-      await adminPage.getByTestId('activity_feed').click();
-
-      await waitForAllLoadersToDisappear(adminPage);
-
-      await adminPage.getByTestId('comments-input-field').click();
-
-      await adminPage
-        .locator(
-          '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-        )
-        .fill('Initial conversation thread for mention test');
-
-      await expect(
-        adminPage.locator('[data-testid="send-button"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="send-button"]')
-      ).not.toBeDisabled();
-
-      const postConversation = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.request().method() === 'POST' &&
-          response.url().includes('/posts')
-      );
-      await adminPage.locator('[data-testid="send-button"]').click();
-      await postConversation;
-    });
-
     await test.step('User1 mentions admin user in a reply', async () => {
       await entity.visitEntityPage(user1Page);
 
+      const token = await getToken(user1Page);
+      const apiContext = await getAuthContext(token);
+      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+        `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
+      )}&type=Conversation&limit=25`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(feedUrl);
+            const data = await response.json();
+
+            return (data.data ?? []).some((thread: { message?: string }) =>
+              thread.message?.includes(
+                'Initial conversation thread for mention test'
+              )
+            );
+          },
+          { timeout: 60_000, intervals: [2_000] }
+        )
+        .toBe(true);
+
+      await apiContext.dispose();
+
       await user1Page.getByTestId('activity_feed').click();
+
+      await waitForAllLoadersToDisappear(user1Page);
+
+      const seededThread = user1Page
+        .locator('[data-testid="message-container"]')
+        .filter({ hasText: 'Initial conversation thread for mention test' })
+        .first();
+
+      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await seededThread.click();
 
       await waitForAllLoadersToDisappear(user1Page);
 
@@ -586,12 +594,12 @@ test.describe('Mention notifications in Notification Box', () => {
       await expect(message).toBeVisible();
 
       // Add reaction
-      await message.locator('[data-testid="add-reactions"]').click();
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/feed') &&
           response.request().method() === 'PATCH'
       );
+      await message.locator('[data-testid="add-reactions"]').click();
       await user1Page.locator('[title="rocket"]').click();
       await reactionResponse;
 
@@ -616,15 +624,21 @@ test.describe('Mention notifications in Notification Box', () => {
 });
 
 test.describe('Mentions: Chinese character encoding in activity feed', () => {
-  const database = new DatabaseClass();
-  const endpointName = `测试Endpoint-${uuid()}`;
-  const apiEndpoint = new ApiEndpointClass(undefined, endpointName);
+  let adminUser: UserClass;
+  let database: DatabaseClass;
+  let apiEndpoint: ApiEndpointClass;
   let schemaFqn: string;
-  const userName = `测试-${uuid()}`;
+  let userName: string;
 
   test.beforeAll(
     'Create database, schema, and user with Chinese name',
     async ({ browser }) => {
+      adminUser = new UserClass();
+      database = new DatabaseClass();
+      userName = `测试-${uuid()}`;
+      const endpointName = `测试Endpoint-${uuid()}`;
+      apiEndpoint = new ApiEndpointClass(undefined, endpointName);
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await database.create(apiContext);
@@ -643,7 +657,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       // Create a conversation thread via API so we can post replies in the tests
       await apiContext.post('/api/v1/feed', {
         data: {
-          from: adminUser.responseData.name,
           message: 'Initial conversation for Chinese character encoding test',
           about: `<#E::databaseSchema::${schemaFqn}>`,
           type: 'Conversation',
@@ -676,22 +689,19 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
     const commentsInput = page.getByTestId('comments-input-field');
-    if (!(await commentsInput.isVisible().catch(() => false))) {
-      const seededThread = page
-        .locator(
-          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-        )
-        .filter({
-          hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
-
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
-      await seededThread.click();
-      await waitForAllLoadersToDisappear(page);
-    }
-
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
     await commentsInput.click();
 
     const editorLocator = page.locator(
@@ -773,7 +783,20 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     expect(feedResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('comments-input-field').click();
+    const seededThread = page
+      .locator('[data-testid="message-container"]')
+      .filter({
+        hasText: 'Initial conversation for Chinese character encoding test',
+      })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
+    const commentsInput = page.getByTestId('comments-input-field');
+    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
+    await commentsInput.click();
 
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
@@ -788,15 +811,15 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       const url = response.url();
       return (
         url.includes('/api/v1/search/query') &&
-        url.includes(encodeURIComponent(endpointName))
+        url.includes(encodeURIComponent(apiEndpoint.entity.name))
       );
     });
 
-    await editorLocator.pressSequentially(endpointName);
+    await editorLocator.pressSequentially(apiEndpoint.entity.name);
     await endpointSuggestionsResponse;
 
     await page
-      .locator(`[data-value="#apiEndpoint/${endpointName}"]`)
+      .locator(`[data-value="#apiEndpoint/${apiEndpoint.entity.name}"]`)
       .first()
       .click();
 
@@ -842,7 +865,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     await waitForAllLoadersToDisappear(newPage);
 
     await expect(newPage.getByTestId('entity-header-display-name')).toHaveText(
-      endpointName
+      apiEndpoint.entity.name
     );
   });
 });

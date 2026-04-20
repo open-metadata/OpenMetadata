@@ -82,7 +82,7 @@ class TestBurstIQConnection(TestCase):
 
         # Verify we got results
         self.assertEqual(len(dictionaries), 1)
-        self.assertEqual(dictionaries[0]["name"], "test_dict")
+        self.assertEqual(dictionaries[0].name, "test_dict")
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
     @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
@@ -144,7 +144,7 @@ class TestBurstIQConnection(TestCase):
 
         # Verify we got results
         self.assertEqual(len(edges), 1)
-        self.assertEqual(edges[0]["name"], "test_edge")
+        self.assertEqual(edges[0].name, "test_edge")
 
     @patch(
         "metadata.ingestion.source.database.burstiq.connection.test_connection_steps"

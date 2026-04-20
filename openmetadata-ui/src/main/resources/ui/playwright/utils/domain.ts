@@ -1618,9 +1618,17 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  const patchRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/domains/') &&
+      response.request().method() === 'PATCH' &&
+      response.ok()
+  );
   await page.getByTestId('save-button').click();
   await patchRes;
+  await page.waitForURL((url) =>
+    url.pathname.includes(encodeURIComponent(newName))
+  );
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();
