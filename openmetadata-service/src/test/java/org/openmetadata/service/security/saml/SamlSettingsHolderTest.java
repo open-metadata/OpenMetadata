@@ -13,27 +13,24 @@
 
 package org.openmetadata.service.security.saml;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedConstruction;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
@@ -44,9 +41,13 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class SamlSettingsHolderTest {
 
+  private static final char[] KEYSTORE_PASSWORD = "changeit".toCharArray();
+
   @Test
-  void initDefaultSettingsClosesKeyStoreStream() throws Exception {
-    byte[] keyStoreBytes = createKeyStoreBytes("changeit".toCharArray());
+  void initDefaultSettingsLoadsKeyStoreFromFile(@TempDir Path tempDir) throws Exception {
+    Path keyStorePath = tempDir.resolve("test-keystore.jks");
+    writeEmptyKeyStore(keyStorePath);
+
     SettingsBuilder builder = mock(SettingsBuilder.class);
     when(builder.fromValues(any())).thenReturn(builder);
     when(builder.build()).thenReturn(mock(Saml2Settings.class));
@@ -55,23 +56,21 @@ class SamlSettingsHolderTest {
     setField(holder, "builder", builder);
 
     try (MockedStatic<SecurityConfigurationManager> securityConfig =
-            mockStatic(SecurityConfigurationManager.class);
-        MockedConstruction<FileInputStream> fileStreams =
-            mockConstruction(
-                FileInputStream.class,
-                (mock, context) -> delegateToKeyStoreBytes(mock, keyStoreBytes))) {
+        mockStatic(SecurityConfigurationManager.class)) {
       securityConfig
           .when(SecurityConfigurationManager::getCurrentAuthConfig)
-          .thenReturn(authenticationConfiguration());
+          .thenReturn(authenticationConfiguration(keyStorePath.toString()));
 
-      holder.initDefaultSettings(null);
+      assertDoesNotThrow(() -> holder.initDefaultSettings(null));
 
-      assertEquals(1, fileStreams.constructed().size());
-      verify(fileStreams.constructed().get(0)).close();
+      Map<String, Object> samlData = readField(holder, "samlData");
+      Object loadedKeyStore = samlData.get(SettingsBuilder.KEYSTORE_KEY);
+      assertNotNull(loadedKeyStore, "KeyStore should be loaded into samlData");
+      assertInstanceOf(KeyStore.class, loadedKeyStore);
     }
   }
 
-  private AuthenticationConfiguration authenticationConfiguration() {
+  private AuthenticationConfiguration authenticationConfiguration(String keyStoreFilePath) {
     AuthenticationConfiguration configuration = new AuthenticationConfiguration();
     configuration.setSamlConfiguration(
         new SamlSSOClientConfig()
@@ -86,11 +85,11 @@ class SamlSettingsHolderTest {
                     .withSsoLoginUrl("https://idp.example.com/sso")
                     .withNameId("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress")
                     .withIdpX509Certificate("dummy-cert"))
-            .withSecurity(securityConfig()));
+            .withSecurity(securityConfig(keyStoreFilePath)));
     return configuration;
   }
 
-  private SamlSecurityConfig securityConfig() {
+  private SamlSecurityConfig securityConfig(String keyStoreFilePath) {
     SamlSecurityConfig securityConfig = new SamlSecurityConfig();
     securityConfig.setSendSignedAuthRequest(true);
     securityConfig.setStrictMode(true);
@@ -99,47 +98,30 @@ class SamlSettingsHolderTest {
     securityConfig.setSignSpMetadata(true);
     securityConfig.setWantAssertionEncrypted(false);
     securityConfig.setSendEncryptedNameId(false);
-    securityConfig.setKeyStoreFilePath("/tmp/test-keystore.jks");
+    securityConfig.setKeyStoreFilePath(keyStoreFilePath);
     securityConfig.setKeyStoreAlias("openmetadata");
-    securityConfig.setKeyStorePassword("changeit");
+    securityConfig.setKeyStorePassword(new String(KEYSTORE_PASSWORD));
     return securityConfig;
   }
 
-  private byte[] createKeyStoreBytes(char[] password) throws Exception {
+  private static void writeEmptyKeyStore(Path path) throws Exception {
     KeyStore keyStore = KeyStore.getInstance("JKS");
-    keyStore.load(null, password);
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    keyStore.store(outputStream, password);
-    return outputStream.toByteArray();
+    keyStore.load(null, KEYSTORE_PASSWORD);
+    try (OutputStream out = Files.newOutputStream(path)) {
+      keyStore.store(out, KEYSTORE_PASSWORD);
+    }
   }
 
-  private void delegateToKeyStoreBytes(FileInputStream stream, byte[] keyStoreBytes)
-      throws IOException {
-    ByteArrayInputStream delegate = new ByteArrayInputStream(keyStoreBytes);
-    when(stream.read()).thenAnswer(invocation -> delegate.read());
-    when(stream.read(any(byte[].class)))
-        .thenAnswer(invocation -> delegate.read(invocation.getArgument(0)));
-    when(stream.read(any(byte[].class), anyInt(), anyInt()))
-        .thenAnswer(
-            invocation ->
-                delegate.read(
-                    invocation.getArgument(0),
-                    invocation.getArgument(1),
-                    invocation.getArgument(2)));
-    when(stream.skip(anyLong())).thenAnswer(invocation -> delegate.skip(invocation.getArgument(0)));
-    when(stream.available()).thenAnswer(invocation -> delegate.available());
-    doAnswer(
-            invocation -> {
-              delegate.close();
-              return null;
-            })
-        .when(stream)
-        .close();
-  }
-
-  private void setField(Object target, String fieldName, Object value) throws Exception {
+  private static void setField(Object target, String fieldName, Object value) throws Exception {
     Field field = SamlSettingsHolder.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(target, value);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> T readField(Object target, String fieldName) throws Exception {
+    Field field = SamlSettingsHolder.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return (T) field.get(target);
   }
 }
