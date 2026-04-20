@@ -87,6 +87,7 @@ class PythonDialects(Enum):
     SingleStore = "singlestore"
     SQLite = "sqlite"
     Snowflake = "snowflake"
+    Supabase = "postgresql"
     Teradata = "teradatasql"
     Timescale = "timescale"
     Trino = "trino"

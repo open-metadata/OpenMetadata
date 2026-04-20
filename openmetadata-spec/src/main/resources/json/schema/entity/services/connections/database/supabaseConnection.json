@@ -1,0 +1,127 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/supabaseConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SupabaseConnection",
+  "description": "Supabase Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SupabaseConnection",
+  "definitions": {
+    "supabaseType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Supabase"],
+      "default": "Supabase"
+    },
+    "supabaseScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["postgresql+psycopg2"],
+      "default": "postgresql+psycopg2"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/supabaseType",
+      "default": "Supabase"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/supabaseScheme",
+      "default": "postgresql+psycopg2"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Supabase. This user should have privileges to read all the metadata in Supabase.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        }
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Supabase service. Example: db.<project-ref>.supabase.co:5432",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. Defaults to 'postgres' for Supabase projects.",
+      "type": "string",
+      "default": "postgres"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Supabase. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is an optional parameter; if left blank, OpenMetadata Ingestion will scan all schemas. Note: Supabase projects contain system schemas (auth, storage, realtime, extensions) alongside your data.",
+      "type": "string"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details. Supabase requires SSL for all connections.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "sslMode": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern. Recommended to exclude Supabase system schemas: auth, storage, realtime, extensions, graphql, graphql_public, supabase_functions.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsViewLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "database"]
+}
