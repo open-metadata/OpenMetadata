@@ -55,7 +55,7 @@ MATERIALIZED_VIEW_TO_PATTERN = re.compile(
 
 
 def _strip_quotes(identifier: str) -> str:
-    return ".".join(part.strip("`\"") for part in identifier.split("."))
+    return ".".join(part.strip('`"') for part in identifier.split("."))
 
 
 def get_mv_to_target_table(query: str) -> Optional[Tuple[str, str]]:
@@ -71,6 +71,7 @@ def get_mv_to_target_table(query: str) -> Optional[Tuple[str, str]]:
     if not match:
         return None
     return _strip_quotes(match.group("mv")), _strip_quotes(match.group("target"))
+
 
 Map = create_sqlalchemy_type("Map")
 Array = create_sqlalchemy_type("Array")
