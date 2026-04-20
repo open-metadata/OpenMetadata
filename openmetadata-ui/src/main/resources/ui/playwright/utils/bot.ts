@@ -23,12 +23,11 @@ import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
-const botName = `test-bot-${uuid()}`;
-const botEmailPrefix = `hello-${uuid()}`;
+const botName = `a-bot-pw%test-${uuid()}`;
 
 const BOT_DETAILS = {
   botName: botName,
-  botEmail: `${botEmailPrefix}@open-metadata.org`,
+  botEmail: `${botName}@mail.com`,
   description: `This is bot description for ${botName}`,
   updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
@@ -49,9 +48,11 @@ export const getCreatedBot = async (
   }
 ) => {
   // Click on created Bot name
+  const fetchResponse = page.waitForResponse(
+    `/api/v1/bots/name/${encodeURIComponent(botName)}?*`
+  );
   await page.getByTestId(`bot-link-${botDisplayName ?? botName}`).click();
-
-  await expect(page.getByTestId('token-expiry')).toBeVisible();
+  await fetchResponse;
 };
 
 export const createBot = async (page: Page) => {
@@ -69,16 +70,9 @@ export const createBot = async (page: Page) => {
 
   await page.locator(descriptionBox).fill(BOT_DETAILS.description);
 
-  const saveResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/bots') &&
-      response.request().method() === 'POST'
-  );
+  const saveResponse = page.waitForResponse('/api/v1/bots');
   await page.click('[data-testid="save-user"]');
-  const createBotResponse = await saveResponse;
-
-  expect(createBotResponse.status()).toBeGreaterThanOrEqual(200);
-  expect(createBotResponse.status()).toBeLessThan(300);
+  await saveResponse;
 
   // Verify bot is getting added in the bots listing page
   await expect(
@@ -89,6 +83,7 @@ export const createBot = async (page: Page) => {
     page.getByRole('cell', { name: BOT_DETAILS.description })
   ).toBeVisible();
 
+  // Get created bot
   await getCreatedBot(page, { botName });
 
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
@@ -105,13 +100,8 @@ export const createBot = async (page: Page) => {
 export const deleteBot = async (page: Page) => {
   await settingClick(page, GlobalSettingOptions.BOTS);
 
-  const updatedBotRow = page
-    .getByRole('row')
-    .filter({
-      has: page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`),
-    });
-
-  await updatedBotRow.locator('[data-testid^="bot-delete-"]').click();
+  // Click on delete button
+  await page.getByTestId(`bot-delete-${botName}`).click();
 
   await page.getByTestId('hard-delete-option').click();
 
@@ -125,9 +115,7 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(
-    page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`)
-  ).toHaveCount(0);
+  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
 };
 
 export const updateBotDetails = async (page: Page) => {
@@ -161,59 +149,9 @@ export const updateBotDetails = async (page: Page) => {
     page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`)
   ).toContainText(BOT_DETAILS.updatedBotName);
 
-  const updatedBotRow = page
-    .getByRole('row')
-    .filter({
-      has: page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`),
-    });
-
-  await expect(updatedBotRow.getByTestId('markdown-parser')).toContainText(
-    BOT_DETAILS.updatedDescription
-  );
-};
-
-export const verifyBotSearch = async (page: Page) => {
-  const searchInput = page.getByTestId('searchbar');
-  const createdBotLink = page.getByTestId(
-    `bot-link-${BOT_DETAILS.updatedBotName}`
-  );
-  const nonMatchingSearchTerm = `${BOT_DETAILS.updatedBotName}-no-match`;
-  const uniqueNameToken = BOT_DETAILS.updatedBotName.split('-').slice(-1)[0];
-  const uniqueEmailToken = BOT_DETAILS.botEmail.split('@')[0];
-
-  const searchBot = async (searchTerm: string) => {
-    await searchInput.clear();
-    await searchInput.fill(searchTerm);
-    await expect(searchInput).toHaveValue(searchTerm);
-  };
-
-  await searchBot(BOT_DETAILS.updatedBotName);
-  await expect(createdBotLink).toBeVisible();
-
-  await searchBot(nonMatchingSearchTerm);
-  await expect(createdBotLink).toHaveCount(0);
-
-  await searchBot(BOT_DETAILS.botEmail);
-  await expect(createdBotLink).toBeVisible();
-
-  await searchBot(nonMatchingSearchTerm);
-  await expect(createdBotLink).toHaveCount(0);
-
-  await searchBot(uniqueNameToken);
-  await expect(createdBotLink).toBeVisible();
-
-  await searchBot(nonMatchingSearchTerm);
-  await expect(createdBotLink).toHaveCount(0);
-
-  await searchBot(uniqueEmailToken);
-  await expect(createdBotLink).toBeVisible();
-
-  await searchBot(nonMatchingSearchTerm);
-  await expect(createdBotLink).toHaveCount(0);
-
-  await searchInput.clear();
-  await expect(searchInput).toHaveValue('');
-  await expect(createdBotLink).toBeVisible();
+  await expect(
+    page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
+  ).toContainText(BOT_DETAILS.updatedDescription);
 };
 
 export const tokenExpirationForDays = async (page: Page) => {

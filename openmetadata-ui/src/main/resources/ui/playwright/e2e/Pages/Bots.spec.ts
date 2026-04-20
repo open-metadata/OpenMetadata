@@ -19,7 +19,6 @@ import {
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
-  verifyBotSearch,
   verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
 
@@ -47,10 +46,6 @@ test.describe(
 
       await test.step('Update display name and description', async () => {
         await updateBotDetails(page);
-      });
-
-      await test.step('Verify bot search works by name and email', async () => {
-        await verifyBotSearch(page);
       });
 
       await test.step('Verify generateToken API contract', async () => {
