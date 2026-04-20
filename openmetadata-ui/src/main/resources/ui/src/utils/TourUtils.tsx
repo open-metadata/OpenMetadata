@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
 import { EntityTabs } from '../enums/entity.enum';
 import { CurrentTourPageType } from '../enums/tour.enum';
-import { Transi18next } from './CommonUtils';
+import i18n, { Transi18next } from './i18next/LocalUtil';
 
 interface ArgObject {
   searchTerm: string;
@@ -36,7 +35,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-activity-feed"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.activity-feed-plural'),
+            text: i18n.t('label.activity-feed-plural'),
           }}
         />
       </p>
@@ -51,7 +50,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-search-for-matching-dataset"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.search'),
+            text: i18n.t('label.search'),
           }}
         />
       </p>
@@ -69,7 +68,7 @@ export const getTourSteps = ({
           renderElement={<strong />}
           values={{
             text: searchTerm,
-            enterText: i18next.t('label.enter'),
+            enterText: i18n.t('label.enter'),
           }}
         />
       </p>
@@ -92,7 +91,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-explore-summary-asset"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.explore'),
+            text: i18n.t('label.explore'),
           }}
         />
       </p>
@@ -125,7 +124,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-high-level-assets-information-step"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.schema'),
+            text: i18n.t('label.schema'),
           }}
         />
       </p>
@@ -140,7 +139,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-owner-step"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.schema'),
+            text: i18n.t('label.schema'),
           }}
         />
       </p>
@@ -155,7 +154,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-follow-step"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.schema'),
+            text: i18n.t('label.schema'),
           }}
         />
       </p>
@@ -170,7 +169,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-get-to-know-table-schema"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.schema'),
+            text: i18n.t('label.schema'),
           }}
         />
       </p>
@@ -189,7 +188,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-click-on-entity-tab"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.sample-data'),
+            text: i18n.t('label.sample-data'),
           }}
         />
       </p>
@@ -206,7 +205,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-look-at-sample-data"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.sample-data'),
+            text: i18n.t('label.sample-data'),
           }}
         />
       </p>
@@ -227,7 +226,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-click-on-entity-tab"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.data-observability'),
+            text: i18n.t('label.data-observability'),
           }}
         />
       </p>
@@ -241,8 +240,8 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-discover-data-assets-with-data-profile"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.data-entity', {
-              entity: i18next.t('label.profiler'),
+            text: i18n.t('label.data-entity', {
+              entity: i18n.t('label.profiler'),
             }),
           }}
         />
@@ -265,7 +264,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-click-on-entity-tab"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.lineage'),
+            text: i18n.t('label.lineage'),
           }}
         />
       </p>
@@ -279,7 +278,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-trace-path-across-tables"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.lineage'),
+            text: i18n.t('label.lineage'),
           }}
         />
       </p>

@@ -290,7 +290,7 @@ test.describe(
 
           await page.locator("pre[role='presentation']").last().click();
           await page.keyboard.type(
-            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100"
+            "SELECT id, name, email\n\nFROM users\n\nWHERE active = true\n\nAND department = 'engineering'\n\nORDER BY created_at DESC\n\nLIMIT 100"
           );
 
           const patchResponse = page.waitForResponse(

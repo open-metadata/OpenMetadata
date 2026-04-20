@@ -75,7 +75,6 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: ({ i18nKey }: { i18nKey: string }) => i18nKey,
   getPartialNameFromTableFQN: jest
     .fn()
     .mockImplementation((fqn: string) => fqn),

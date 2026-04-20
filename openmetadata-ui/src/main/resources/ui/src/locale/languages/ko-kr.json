@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "최근에 본 데이터 자산이 없습니다. 흥미로운 것을 찾으려면 탐색해 보세요!",
     "no-reference-available": "사용 가능한 참조가 없습니다.",
     "no-related-terms-available": "사용 가능한 관련 용어가 없습니다.",
+    "no-relations-for-selected-filter": "선택한 관계 유형에 대한 관계를 찾을 수 없습니다. 다른 유형을 선택해 보세요.",
     "no-relations-found": "이 용어에 대한 관계를 찾을 수 없습니다",
     "no-retry-queue-records": "라이브 인덱싱 재시도 레코드가 없습니다. 모든 엔터티가 성공적으로 인덱싱되었습니다.",
     "no-roles-assigned": "할당된 역할 없음",
