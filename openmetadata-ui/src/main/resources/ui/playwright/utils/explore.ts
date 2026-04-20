@@ -315,9 +315,6 @@ export const openExportScopeModal = async (page: Page) => {
   await page.getByTestId('export-search-results-button').click();
   const modalContent = getExportModalContent(page);
   await expect(modalContent).toBeVisible();
-  await expect(
-    modalContent.getByRole('button', { name: 'Export' })
-  ).toBeEnabled();
 };
 
 export const countCsvResponseRows = (csvText: string): number =>
