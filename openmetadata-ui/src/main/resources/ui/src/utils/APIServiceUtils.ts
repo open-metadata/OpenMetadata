@@ -11,21 +11,15 @@
  *  limitations under the License.
  */
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import restConnection from '../jsons/connectionSchemas/connections/api/restConnection.json';
 
 export const getAPIConfig = (type: APIServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type) {
-    case APIServiceType.REST:
-      schema = restConnection;
-
-      break;
-
-    default:
-      break;
+  if (type === APIServiceType.REST) {
+    schema = restConnection;
   }
 
   return cloneDeep({ schema, uiSchema });
