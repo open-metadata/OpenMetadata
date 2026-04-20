@@ -697,11 +697,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     async (message: string, activity: ActivityEvent) => {
       try {
         if (activityThread) {
-          // Add to existing thread
-          const updatedThread = await postFeedById(activityThread.id, {
+          await postFeedById(activityThread.id, {
             message,
           } as Post);
-          setActivityThread(updatedThread);
+          const { data: refreshedThread } = await getFeedById(activityThread.id);
+          setActivityThread(refreshedThread);
         } else {
           // Create new thread
           const threadData: CreateThread = {
