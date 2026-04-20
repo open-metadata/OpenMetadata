@@ -98,7 +98,6 @@ import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.StaticSamplingConfig;
-import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
