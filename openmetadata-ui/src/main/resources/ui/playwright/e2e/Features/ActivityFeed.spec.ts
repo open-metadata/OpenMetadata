@@ -86,10 +86,22 @@ const waitForConversationMaterialization = async ({
 };
 
 test.describe('FeedWidget on landing page', () => {
+  let adminUser: UserClass;
+  let user1: UserClass;
+  let entity: TableClass;
+  let extraEntity: TableClass;
+  let testPersona: PersonaClass;
+
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
     async ({ browser }) => {
       test.slow(true);
+
+      adminUser = new UserClass();
+      user1 = new UserClass();
+      entity = new TableClass();
+      extraEntity = new TableClass();
+      testPersona = new PersonaClass();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -449,9 +461,9 @@ test.describe('FeedWidget on landing page', () => {
 });
 
 test.describe('Mention notifications in Notification Box', () => {
-  const adminUser = new UserClass();
-  const user1 = new UserClass();
-  const entity = new TableClass();
+  let adminUser: UserClass;
+  let user1: UserClass;
+  let entity: TableClass;
 
   const test = base.extend<{
     adminPage: Page;
@@ -496,6 +508,10 @@ test.describe('Mention notifications in Notification Box', () => {
   };
 
   test.beforeAll('Setup entities and users', async ({ browser }) => {
+    adminUser = new UserClass();
+    user1 = new UserClass();
+    entity = new TableClass();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await adminUser.create(apiContext);

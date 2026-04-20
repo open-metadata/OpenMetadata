@@ -13,8 +13,6 @@
 
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import i18next from 'i18next';
-import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
@@ -33,7 +31,6 @@ import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
 import {
   Option,
   SearchSuggestions,
@@ -42,179 +39,129 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import i18n from './i18next/LocalUtil';
 import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
-
-export const getSearchAPIQueryParams = (
-  queryString: string,
-  from: number,
-  size: number,
-  filters: string,
-  sortField: string,
-  sortOrder: string,
-  searchIndex: SearchIndex | SearchIndex[],
-  onlyDeleted = false,
-  trackTotalHits = false,
-  wildcard = true
-): Record<string, string | boolean | number | string[]> => {
-  const start = (from - 1) * size;
-
-  const encodedQueryString = queryString
-    ? getEncodedFqn(escapeESReservedCharacters(queryString))
-    : '';
-
-  const query =
-    wildcard && encodedQueryString !== WILD_CARD_CHAR
-      ? `*${encodedQueryString}*`
-      : encodedQueryString;
-
-  const params: Record<string, string | boolean | number | string[]> = {
-    q: query + (filters ? ` AND ${filters}` : ''),
-    from: start,
-    size,
-    index: searchIndex,
-    deleted: onlyDeleted,
-  };
-
-  if (!isEmpty(sortField)) {
-    params.sort_field = sortField;
-  }
-
-  if (!isEmpty(sortOrder)) {
-    params.sort_order = sortOrder;
-  }
-
-  if (trackTotalHits) {
-    params.track_total_hits = trackTotalHits;
-  }
-
-  return params;
-};
-
-// will add back slash "\" before quote in string if present
-export const getQueryWithSlash = (query: string): string =>
-  query.replace(/["']/g, '\\$&');
 
 export const getGroupLabel = (index: string) => {
   let label = '';
   let GroupIcon;
   switch (index) {
     case SearchIndex.TOPIC:
-      label = i18next.t('label.topic-plural');
+      label = i18n.t('label.topic-plural');
       GroupIcon = IconTopic;
 
       break;
     case SearchIndex.DATABASE:
-      label = i18next.t('label.database-plural');
+      label = i18n.t('label.database-plural');
       GroupIcon = IconDatabase;
 
       break;
     case SearchIndex.DATABASE_SCHEMA:
-      label = i18next.t('label.database-schema-plural');
+      label = i18n.t('label.database-schema-plural');
       GroupIcon = IconDatabaseSchema;
 
       break;
     case SearchIndex.DASHBOARD:
-      label = i18next.t('label.dashboard-plural');
+      label = i18n.t('label.dashboard-plural');
       GroupIcon = IconDashboard;
 
       break;
     case SearchIndex.PIPELINE:
-      label = i18next.t('label.pipeline-plural');
+      label = i18n.t('label.pipeline-plural');
       GroupIcon = IconPipeline;
 
       break;
     case SearchIndex.MLMODEL:
-      label = i18next.t('label.ml-model-plural');
+      label = i18n.t('label.ml-model-plural');
       GroupIcon = IconMlModal;
 
       break;
     case SearchIndex.GLOSSARY_TERM:
-      label = i18next.t('label.glossary-term-plural');
+      label = i18n.t('label.glossary-term-plural');
       GroupIcon = GlossaryTermIcon;
 
       break;
     case SearchIndex.TAG:
-      label = i18next.t('label.tag-plural');
+      label = i18n.t('label.tag-plural');
       GroupIcon = IconTag;
 
       break;
     case SearchIndex.CONTAINER:
-      label = i18next.t('label.container-plural');
+      label = i18n.t('label.container-plural');
       GroupIcon = IconContainer;
 
       break;
 
     case SearchIndex.STORED_PROCEDURE:
-      label = i18next.t('label.stored-procedure-plural');
+      label = i18n.t('label.stored-procedure-plural');
       GroupIcon = IconStoredProcedure;
 
       break;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
-      label = i18next.t('label.data-model-plural');
+      label = i18n.t('label.data-model-plural');
       GroupIcon = IconDashboard;
 
       break;
 
     case SearchIndex.SEARCH_INDEX:
-      label = i18next.t('label.search-index-plural');
+      label = i18n.t('label.search-index-plural');
       GroupIcon = SearchOutlined;
 
       break;
 
     case SearchIndex.DATA_PRODUCT:
-      label = i18next.t('label.data-product-plural');
+      label = i18n.t('label.data-product-plural');
       GroupIcon = DataProductIcon;
 
       break;
 
     case SearchIndex.CHART:
-      label = i18next.t('label.chart-plural');
+      label = i18n.t('label.chart-plural');
       GroupIcon = IconChart;
 
       break;
     case SearchIndex.API_COLLECTION:
-      label = i18next.t('label.api-collection-plural');
+      label = i18n.t('label.api-collection-plural');
       GroupIcon = IconApiCollection;
 
       break;
 
     case SearchIndex.API_ENDPOINT:
-      label = i18next.t('label.api-endpoint-plural');
+      label = i18n.t('label.api-endpoint-plural');
       GroupIcon = IconApiEndpoint;
 
       break;
     case SearchIndex.METRIC:
-      label = i18next.t('label.metric-plural');
+      label = i18n.t('label.metric-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.DIRECTORY:
-      label = i18next.t('label.directory-plural');
+      label = i18n.t('label.directory-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.FILE:
-      label = i18next.t('label.file-plural');
+      label = i18n.t('label.file-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.SPREADSHEET:
-      label = i18next.t('label.spreadsheet-plural');
+      label = i18n.t('label.spreadsheet-plural');
       GroupIcon = MetricIcon;
 
       break;
     case SearchIndex.WORKSHEET:
-      label = i18next.t('label.worksheet-plural');
+      label = i18n.t('label.worksheet-plural');
       GroupIcon = MetricIcon;
 
       break;
 
     case SearchIndex.COLUMN:
-      label = i18next.t('label.column-plural');
+      label = i18n.t('label.column-plural');
       GroupIcon = ColumnIcon;
 
       break;
@@ -273,7 +220,7 @@ export const getSuggestionElement = (
       <Link
         className="text-sm no-underline"
         data-testid="data-name"
-        id={fqdn.replace(/\./g, '')}
+        id={fqdn.replaceAll('.', '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
@@ -446,16 +393,14 @@ export const getTermQuery = (
     wildcardMustNotQueries?: Record<string, string | string[]>;
   }
 ) => {
-  const termQueries = Object.entries(terms)
-    .map(([field, value]) => {
-      const nestedPath = getNestedPath(field);
-      if (Array.isArray(value)) {
-        return value.map((v) => wrapTermQuery(field, v, nestedPath));
-      }
+  const termQueries = Object.entries(terms).flatMap(([field, value]) => {
+    const nestedPath = getNestedPath(field);
+    if (Array.isArray(value)) {
+      return value.map((v) => wrapTermQuery(field, v, nestedPath));
+    }
 
-      return wrapTermQuery(field, value, nestedPath);
-    })
-    .flat();
+    return wrapTermQuery(field, value, nestedPath);
+  });
 
   const wildcardQueries = options?.wildcardTerms
     ? Object.entries(options.wildcardTerms).map(([field, value]) => ({
@@ -464,16 +409,14 @@ export const getTermQuery = (
     : [];
 
   const mustNotQueries = options?.mustNotTerms
-    ? Object.entries(options.mustNotTerms)
-        .map(([field, value]) => {
-          const nestedPath = getNestedPath(field);
-          if (Array.isArray(value)) {
-            return value.map((v) => wrapTermQuery(field, v, nestedPath));
-          }
+    ? Object.entries(options.mustNotTerms).flatMap(([field, value]) => {
+        const nestedPath = getNestedPath(field);
+        if (Array.isArray(value)) {
+          return value.map((v) => wrapTermQuery(field, v, nestedPath));
+        }
 
-          return wrapTermQuery(field, value, nestedPath);
-        })
-        .flat()
+        return wrapTermQuery(field, value, nestedPath);
+      })
     : [];
 
   const matchQueries = options?.matchTerms
@@ -519,15 +462,15 @@ export const getTermQuery = (
 
   // Handle wildcardMustNotQueries
   const wildcardMustNotQueries = options?.wildcardMustNotQueries
-    ? Object.entries(options.wildcardMustNotQueries)
-        .map(([field, value]) => {
+    ? Object.entries(options.wildcardMustNotQueries).flatMap(
+        ([field, value]) => {
           if (Array.isArray(value)) {
             return value.map((v) => ({ wildcard: { [field]: v } }));
           }
 
           return { wildcard: { [field]: value } };
-        })
-        .flat()
+        }
+      )
     : [];
 
   const allMustNotQueries = [...mustNotQueries, ...wildcardMustNotQueries];

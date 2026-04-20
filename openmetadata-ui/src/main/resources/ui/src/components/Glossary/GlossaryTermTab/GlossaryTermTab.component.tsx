@@ -89,7 +89,6 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import {
@@ -103,6 +102,7 @@ import {
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TasksUtils';

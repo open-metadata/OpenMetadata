@@ -37,8 +37,8 @@ import {
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
-const domain = new Domain();
-const dataProduct = new DataProduct([domain]);
+let domain: Domain;
+let dataProduct: DataProduct;
 
 type RestorableEntityPage = {
   endpoint: string;
@@ -307,6 +307,9 @@ const entities = [
 ] as const;
 
 test.beforeAll('setup test', async ({ browser }) => {
+  domain = new Domain();
+  dataProduct = new DataProduct([domain]);
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await domain.create(apiContext);
   await dataProduct.create(apiContext);
