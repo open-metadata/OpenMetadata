@@ -82,16 +82,31 @@ const ActivityFeedListV1New = ({
 
   useEffect(() => {
     if (isActivityMode) {
-      if (onActivityClick && activityList && activityList.length > 0 && isUndefined(activeFeedId)) {
+      if (
+        onActivityClick &&
+        activityList &&
+        activityList.length > 0 &&
+        isUndefined(activeFeedId)
+      ) {
         onActivityClick(activityList[0]);
       }
     } else {
-      const thread = entityThread.find((feed) => feed.id === selectedThread?.id);
+      const thread = entityThread.find(
+        (feed) => feed.id === selectedThread?.id
+      );
       if (onFeedClick && (isUndefined(selectedThread) || isUndefined(thread))) {
         onFeedClick(entityThread[0]);
       }
     }
-  }, [entityThread, selectedThread, onFeedClick, isActivityMode, activityList, activeFeedId, onActivityClick]);
+  }, [
+    entityThread,
+    selectedThread,
+    onFeedClick,
+    isActivityMode,
+    activityList,
+    activeFeedId,
+    onActivityClick,
+  ]);
 
   useEffect(() => {
     const listToCheck = isActivityMode ? activityList : feedList;

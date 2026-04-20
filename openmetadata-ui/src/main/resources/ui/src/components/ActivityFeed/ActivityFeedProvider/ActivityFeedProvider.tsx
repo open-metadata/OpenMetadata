@@ -700,7 +700,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           await postFeedById(activityThread.id, {
             message,
           } as Post);
-          const { data: refreshedThread } = await getFeedById(activityThread.id);
+          const { data: refreshedThread } = await getFeedById(
+            activityThread.id
+          );
           setActivityThread(refreshedThread);
         } else {
           // Create new thread

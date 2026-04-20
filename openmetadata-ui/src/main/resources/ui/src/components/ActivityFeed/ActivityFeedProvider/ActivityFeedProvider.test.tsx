@@ -314,7 +314,6 @@ describe('ActivityFeedProvider', () => {
     fireEvent.click(screen.getByTestId('post-feed'));
 
     expect(postFeedById).toHaveBeenCalledWith('123', {
-      from: 'admin',
       message: 'New Post Feed added',
     });
   });
