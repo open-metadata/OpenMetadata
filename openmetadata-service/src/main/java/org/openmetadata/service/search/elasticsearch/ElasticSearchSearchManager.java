@@ -1207,7 +1207,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         if (!sortField.equalsIgnoreCase("name.keyword")) {
           requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
         }
-        requestBuilder.sort("_id", SortOrder.Asc, null);
+        requestBuilder.sort("id.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
       }
     }
 
