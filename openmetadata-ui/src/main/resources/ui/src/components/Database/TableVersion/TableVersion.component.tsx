@@ -40,6 +40,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { searchInColumns } from '../../../utils/EntityUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
@@ -87,7 +88,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   const [searchText, setSearchText] = useState('');
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
-  const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
+  const columnsLoading = isVersionLoading;
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -101,13 +102,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
     if (!searchText) {
       return allHistoricalColumns;
     }
-    const lower = searchText.toLowerCase();
 
-    return allHistoricalColumns.filter(
-      (col) =>
-        col.name?.toLowerCase().includes(lower) ||
-        col.description?.toLowerCase().includes(lower)
-    );
+    return searchInColumns(allHistoricalColumns, searchText);
   }, [allHistoricalColumns, searchText]);
 
   const handleSearchAction = useCallback(
@@ -334,8 +330,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
       limit: pageSize,
       total: filteredHistoricalColumns.length,
     });
-    setColumnsLoading(false);
-  }, [isVersionLoading, filteredHistoricalColumns, currentPage, pageSize]);
+  }, [isVersionLoading, filteredHistoricalColumns, currentPage, pageSize, handlePagingChange]);
 
   return (
     <>
