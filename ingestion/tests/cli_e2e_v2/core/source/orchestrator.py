@@ -79,8 +79,9 @@ def ensure_baseline(
         raise SourceBaselineDrift(
             f"[{connector_name}] baseline drift detected ({len(drifts)} items):\n"
             f"{lines}\n\n"
-            f"Run to restore (LOCAL ONLY): "
-            f"python -m tests.cli_e2e_v2.core.source.apply --connector {connector_name}"
+            f"This connector runs in check_only mode — baselines must be applied "
+            f"out-of-band (e.g., re-run the test suite locally against this source "
+            f"with mode='apply' on a dedicated DB). Contact the connector owner if unsure."
         )
 
     logger.info(
