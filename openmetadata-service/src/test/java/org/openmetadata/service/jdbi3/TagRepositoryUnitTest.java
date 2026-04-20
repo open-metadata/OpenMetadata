@@ -296,7 +296,8 @@ public class TagRepositoryUnitTest {
     String query = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
     String expectedHash = FullyQualifiedName.buildHash(tagFqn);
 
-    assertTrue(query.contains(expectedHash), "Query must embed the buildHash result, not the raw FQN");
+    assertTrue(
+        query.contains(expectedHash), "Query must embed the buildHash result, not the raw FQN");
     assertTrue(expectedHash.contains("."), "buildHash of a multi-segment FQN must contain '.'");
   }
 
@@ -310,7 +311,9 @@ public class TagRepositoryUnitTest {
     String expectedHash = FullyQualifiedName.buildHash(tagFqn);
     String brokenPattern = "tagFQNHash = '" + tagFqn + "'";
     assertTrue(!query.contains(brokenPattern), "Query must not use raw FQN as the hash value");
-    assertTrue(query.contains("tagFQNHash = '" + expectedHash + "'"), "Query must use buildHash result for tagFQNHash comparison");
+    assertTrue(
+        query.contains("tagFQNHash = '" + expectedHash + "'"),
+        "Query must use buildHash result for tagFQNHash comparison");
   }
 
   @Test

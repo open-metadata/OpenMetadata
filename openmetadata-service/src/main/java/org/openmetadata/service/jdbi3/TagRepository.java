@@ -743,8 +743,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     try {
       var results =
-          Entity.getJdbi()
-              .withHandle(handle -> handle.createQuery(query).mapToMap().list());
+          Entity.getJdbi().withHandle(handle -> handle.createQuery(query).mapToMap().list());
 
       return results.stream()
           .filter(row -> row.get("tagFQN") != null)
