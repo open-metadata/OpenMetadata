@@ -76,40 +76,6 @@ test.beforeAll('setup test', async ({ browser }) => {
   await domain.create(apiContext);
   await dataProduct.create(apiContext);
 
-  await apiContext.put(`/api/v1/system/settings`, {
-    data: {
-      config_type: 'entityRulesSettings',
-      config_value: {
-        entitySemantics: DATA_ASSET_RULES.map((item) =>
-          item.name === 'Data Product Domain Validation'
-            ? { ...item, enabled: false }
-            : item
-        ),
-      },
-    },
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  await afterAction();
-});
-
-test.afterAll('restore rules', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-
-  await apiContext.put(`/api/v1/system/settings`, {
-    data: {
-      config_type: 'entityRulesSettings',
-      config_value: {
-        entitySemantics: DATA_ASSET_RULES,
-      },
-    },
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
   await afterAction();
 });
 
