@@ -125,6 +125,30 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
           .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
     }
 
+    // Cross-Origin-Embedder-Policy
+    if (webConfiguration.getCrossOriginEmbedderPolicyHeaderFactory() != null) {
+      webConfiguration
+          .getCrossOriginEmbedderPolicyHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
+
+    // Cross-Origin-Resource-Policy
+    if (webConfiguration.getCrossOriginResourcePolicyHeaderFactory() != null) {
+      webConfiguration
+          .getCrossOriginResourcePolicyHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
+
+    // Cross-Origin-Opener-Policy
+    if (webConfiguration.getCrossOriginOpenerPolicyHeaderFactory() != null) {
+      webConfiguration
+          .getCrossOriginOpenerPolicyHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
+
     // Cache-Control
     if (!nullOrEmpty(webConfiguration.getCacheControl())) {
       response.getHeaders().put(HttpHeader.CACHE_CONTROL, webConfiguration.getCacheControl());
@@ -183,6 +207,30 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
     // Permission Policy
     if (webConfiguration.getPermissionPolicyHeaderFactory() != null) {
       webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // Cross-Origin-Embedder-Policy
+    if (webConfiguration.getCrossOriginEmbedderPolicyHeaderFactory() != null) {
+      webConfiguration
+          .getCrossOriginEmbedderPolicyHeaderFactory()
+          .build()
+          .forEach(response::setHeader);
+    }
+
+    // Cross-Origin-Resource-Policy
+    if (webConfiguration.getCrossOriginResourcePolicyHeaderFactory() != null) {
+      webConfiguration
+          .getCrossOriginResourcePolicyHeaderFactory()
+          .build()
+          .forEach(response::setHeader);
+    }
+
+    // Cross-Origin-Opener-Policy
+    if (webConfiguration.getCrossOriginOpenerPolicyHeaderFactory() != null) {
+      webConfiguration
+          .getCrossOriginOpenerPolicyHeaderFactory()
+          .build()
+          .forEach(response::setHeader);
     }
 
     // Cache-Control

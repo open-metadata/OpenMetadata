@@ -205,3 +205,12 @@ class DomoDashboardUnitTest(TestCase):
                 )
                 is None
             )
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.domodashboard.chart_source_state = set()
+        with patch.object(REST, "_request", return_value=mock_data[0]):
+            list(self.domodashboard.yield_dashboard_chart(MOCK_DASHBOARD))
+        assert len(self.domodashboard.chart_source_state) > 0
+        for fqn in self.domodashboard.chart_source_state:
+            assert "domodashboard_source_test" in fqn
