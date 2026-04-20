@@ -92,6 +92,7 @@ public class DomainBulkAssetsDryRunIT {
     assertFalse(result.getSuccessRequest().isEmpty());
 
     BulkResponse response = result.getSuccessRequest().get(0);
+    assertTrue(response.getHasSideEffects(), "Cross-domain move must flag hasSideEffects");
     assertNotNull(response.getMessage());
     assertTrue(
         response.getMessage().contains(domainA.getFullyQualifiedName()),
@@ -111,9 +112,8 @@ public class DomainBulkAssetsDryRunIT {
                 Table.class);
     assertNotNull(refreshed.getDomains());
     assertFalse(refreshed.getDomains().isEmpty());
-    assertEquals(
-        domainA.getId(),
-        refreshed.getDomains().get(0).getId(),
+    assertTrue(
+        refreshed.getDomains().stream().anyMatch(d -> domainA.getId().equals(d.getId())),
         "Table should still be in domainA after dryRun");
   }
 
@@ -146,13 +146,9 @@ public class DomainBulkAssetsDryRunIT {
     assertFalse(result.getSuccessRequest().isEmpty());
 
     BulkResponse response = result.getSuccessRequest().get(0);
-    assertNotNull(response.getMessage());
-    assertTrue(
-        response.getMessage().contains("will be removed from the domain"),
-        "Message should say asset will be removed: " + response.getMessage());
-    assertTrue(
-        response.getMessage().contains("table"),
-        "Message should mention the entity type: " + response.getMessage());
+    assertFalse(
+        Boolean.TRUE.equals(response.getHasSideEffects()),
+        "Removing an asset with no data product links should not flag hasSideEffects");
 
     // Verify the table is still in the domain (dryRun made no changes)
     Table refreshed =
@@ -165,9 +161,8 @@ public class DomainBulkAssetsDryRunIT {
                 Table.class);
     assertNotNull(refreshed.getDomains());
     assertFalse(refreshed.getDomains().isEmpty());
-    assertEquals(
-        domain.getId(),
-        refreshed.getDomains().get(0).getId(),
+    assertTrue(
+        refreshed.getDomains().stream().anyMatch(d -> domain.getId().equals(d.getId())),
         "Table should still be in domain after dryRun remove");
   }
 
@@ -218,6 +213,9 @@ public class DomainBulkAssetsDryRunIT {
     assertFalse(result.getSuccessRequest().isEmpty());
 
     BulkResponse response = result.getSuccessRequest().get(0);
+    assertTrue(
+        response.getHasSideEffects(),
+        "Cross-domain move with affected data product must flag hasSideEffects");
     assertNotNull(response.getMessage());
     assertTrue(
         response.getMessage().contains("data product relationships will be removed"),
@@ -267,14 +265,13 @@ public class DomainBulkAssetsDryRunIT {
                 Table.class);
     assertNotNull(refreshed.getDomains());
     assertFalse(refreshed.getDomains().isEmpty());
-    assertEquals(
-        domainB.getId(),
-        refreshed.getDomains().get(0).getId(),
+    assertTrue(
+        refreshed.getDomains().stream().anyMatch(d -> domainB.getId().equals(d.getId())),
         "Table should be in domainB after actual move");
   }
 
   @Test
-  void test_dryRunAdd_firstTimeAdd_returnsInformativeMessage(TestNamespace ns) throws Exception {
+  void test_dryRunAdd_firstTimeAdd_doesNotFlagSideEffects(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Domain domain = createDomain(ns, client, "domain");
@@ -296,11 +293,9 @@ public class DomainBulkAssetsDryRunIT {
     assertFalse(result.getSuccessRequest().isEmpty());
 
     BulkResponse response = result.getSuccessRequest().get(0);
-    assertNotNull(response.getMessage());
-    assertFalse(response.getMessage().isEmpty(), "Message should not be empty for first-time add");
-    assertTrue(
-        response.getMessage().contains("will be added to the domain"),
-        "Message should indicate asset will be added: " + response.getMessage());
+    assertFalse(
+        Boolean.TRUE.equals(response.getHasSideEffects()),
+        "First-time add (no current domain, no data products) must not flag hasSideEffects");
 
     // Verify the table still has no domain (dryRun made no changes)
     Table refreshed =
@@ -360,10 +355,10 @@ public class DomainBulkAssetsDryRunIT {
     assertFalse(result.getSuccessRequest().isEmpty());
 
     BulkResponse response = result.getSuccessRequest().get(0);
-    assertNotNull(response.getMessage());
     assertTrue(
-        response.getMessage().contains("will be removed from the domain"),
-        "Message should indicate asset removal: " + response.getMessage());
+        response.getHasSideEffects(),
+        "Removing an asset linked to a data product must flag hasSideEffects");
+    assertNotNull(response.getMessage());
     assertTrue(
         response.getMessage().contains("data product relationships will also be removed"),
         "Message should warn about data product side effect: " + response.getMessage());

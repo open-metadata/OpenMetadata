@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 
-import { BulkOperationResult } from '../../generated/type/bulkOperationResult';
+import {
+  BulkOperationResult,
+  Response as BulkResponse,
+} from '../../generated/type/bulkOperationResult';
 
-// Domain bulk-asset dryRun returns Status.Success with side-effect text in
-// successRequest[*].message — unlike glossary tag / CSV-import dryRun, which
-// signal failures via Status / failedRequest. We match the message text
-// produced by DomainRepository.buildDryRunImpactMessage. If a structured
-// impact field is added to Response, drop this matcher.
-const DOMAIN_DRY_RUN_WARN_PHRASES = [
-  'will be moved from',
-  'data product relationships will be removed',
-  'data product relationships will also be removed',
-];
+export const getDomainDryRunImpacts = (
+  res: BulkOperationResult
+): BulkResponse[] =>
+  res.successRequest?.filter((r) => r.hasSideEffects === true) ?? [];
 
 export const hasDomainDryRunImpact = (res: BulkOperationResult): boolean =>
-  res.successRequest?.some((r) =>
-    DOMAIN_DRY_RUN_WARN_PHRASES.some((phrase) => r.message?.includes(phrase))
-  ) ?? false;
+  getDomainDryRunImpacts(res).length > 0;

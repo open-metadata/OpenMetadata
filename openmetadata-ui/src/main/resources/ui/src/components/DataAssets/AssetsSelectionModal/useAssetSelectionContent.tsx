@@ -69,7 +69,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
-import { hasDomainDryRunImpact } from '../../../utils/Domain/DomainDryRunUtils';
+import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -387,8 +387,9 @@ export const useAssetSelectionContent = ({
           const dryRunResult = await addAssetsToDomain(domainFqn, entities, {
             dryRun: true,
           });
-          if (hasDomainDryRunImpact(dryRunResult)) {
-            setDryRunWarnings(dryRunResult.successRequest);
+          const impacts = getDomainDryRunImpacts(dryRunResult);
+          if (impacts.length > 0) {
+            setDryRunWarnings(impacts);
             setPendingDomainEntities(entities);
             setIsSaveLoading(false);
 

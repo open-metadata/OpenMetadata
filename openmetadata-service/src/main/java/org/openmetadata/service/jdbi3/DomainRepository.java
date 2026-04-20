@@ -332,9 +332,15 @@ public class DomainRepository extends EntityRepository<Domain> {
         getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
     List<EntityReference> affectedDataProducts =
         getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
+    boolean isMove =
+        isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
+    boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
     String message =
         buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
-    return new BulkResponse().withRequest(ref).withMessage(message);
+    return new BulkResponse()
+        .withRequest(ref)
+        .withMessage(message)
+        .withHasSideEffects(hasSideEffects);
   }
 
   private List<EntityReference> getAffectedDataProductsForDryRun(

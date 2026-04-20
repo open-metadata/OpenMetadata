@@ -76,7 +76,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
-import { hasDomainDryRunImpact } from '../../../../utils/Domain/DomainDryRunUtils';
+import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -538,8 +538,9 @@ const AssetsTabs = forwardRef(
               entities,
               { dryRun: true }
             );
-            if (hasDomainDryRunImpact(dryRunResult)) {
-              setRemoveDryRunWarnings(dryRunResult.successRequest);
+            const impacts = getDomainDryRunImpacts(dryRunResult);
+            if (impacts.length > 0) {
+              setRemoveDryRunWarnings(impacts);
               setPendingRemoveEntities(entities);
               dryRunImpactDetected = true;
 
