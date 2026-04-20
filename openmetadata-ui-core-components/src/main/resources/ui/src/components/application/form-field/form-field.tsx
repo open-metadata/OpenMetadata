@@ -69,7 +69,8 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
             )}
 
             {helperTextType === HelperTextType.ALERT &&
-              typeof helperText === 'string' && helperText && (
+              typeof helperText === 'string' &&
+              helperText && (
                 <Alert
                   data-testid="form-item-alert"
                   title={helperText}
