@@ -996,11 +996,13 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 });
 
 test.describe('Data Contracts Semantics Rule Domain', () => {
-  const domain1 = new Domain();
-  const domain2 = new Domain();
+  let domain1: Domain;
+  let domain2: Domain;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    domain1 = new Domain();
+    domain2 = new Domain();
     await domain1.create(apiContext);
     await domain2.create(apiContext);
     await afterAction();
