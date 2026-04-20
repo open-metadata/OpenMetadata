@@ -201,6 +201,10 @@ export const renderFieldElement = (
         placeholder={placeholder}
         selectedItems={selectedAutocompleteItems}
         {...rest}
+        onBlur={() => {
+          field.onBlur();
+          onBlur?.();
+        }}
         onFocus={onFocus}
         onItemCleared={handleClear}
         onItemInserted={handleInsert}

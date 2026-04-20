@@ -68,15 +68,14 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
               <HintText isInvalid>{fieldState.error.message}</HintText>
             )}
 
-            {helperTextType === HelperTextType.ALERT &&
-              typeof helperText === 'string' &&
-              helperText && (
-                <Alert
-                  data-testid="form-item-alert"
-                  title={helperText}
-                  variant="warning"
-                />
-              )}
+            {helperTextType === HelperTextType.ALERT && helperText && (
+              <Alert
+                data-testid="form-item-alert"
+                title={typeof helperText === 'string' ? helperText : ''}
+                variant="warning">
+                {typeof helperText !== 'string' ? helperText : undefined}
+              </Alert>
+            )}
 
             {hasSeparator && <Divider />}
           </Fragment>
