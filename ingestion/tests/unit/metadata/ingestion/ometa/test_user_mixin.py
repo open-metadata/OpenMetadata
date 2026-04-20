@@ -186,7 +186,9 @@ class TestGetReferenceByNameExactMatch:
             )
 
         assert result is None
-        assert any("Failed to resolve owner reference" in r.message for r in caplog.records)
+        assert any(
+            "Failed to resolve owner reference" in r.message for r in caplog.records
+        )
         mixin._search_by_name.assert_not_called()
 
     def test_search_failure_returns_none_and_logs_warning(self, caplog):
@@ -204,7 +206,9 @@ class TestGetReferenceByNameExactMatch:
             )
 
         assert result is None
-        assert any("Failed to resolve owner reference" in r.message for r in caplog.records)
+        assert any(
+            "Failed to resolve owner reference" in r.message for r in caplog.records
+        )
 
     def test_user_exact_match_preferred_over_fuzzy(self):
         mixin = _make_mixin()
