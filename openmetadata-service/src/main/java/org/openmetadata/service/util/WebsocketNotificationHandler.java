@@ -315,11 +315,7 @@ public class WebsocketNotificationHandler {
   }
 
   public static void sendQueryRunnerCompleteNotification(
-      String jobId,
-      UUID userId,
-      String workflowId,
-      Double duration,
-      String executedQuery) {
+      String jobId, UUID userId, String workflowId, Double duration, String executedQuery) {
     QueryRunnerMessage message =
         new QueryRunnerMessage(jobId, "COMPLETED", workflowId, null, null, duration, executedQuery);
     String jsonMessage = JsonUtils.pojoToJson(message);
