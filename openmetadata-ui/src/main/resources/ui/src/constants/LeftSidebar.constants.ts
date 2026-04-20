@@ -129,13 +129,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   },
   {
     key: ROUTES.DATA_MARKETPLACE_SECTION,
-    title: 'label.data-marketplace',
+    title: 'label.data-marketplace-section',
     icon: MarketplaceIcon,
     dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
     children: [
       {
         key: ROUTES.DATA_MARKETPLACE,
-        title: 'label.data-marketplace',
+        title: 'label.overview',
         icon: MarketplaceIcon,
         redirect_url: ROUTES.DATA_MARKETPLACE,
         dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
