@@ -458,23 +458,36 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
-      String pattern = prefix + "*";
+      String pattern = buildScopedPattern(prefix);
       GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
       GetAliasResponse response = client.indices().getAlias(request);
 
       indices.addAll(response.aliases().keySet());
 
-      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+      LOG.info(
+          "Retrieved {} indices matching pattern '{}' (prefix='{}'): {}",
+          indices.size(),
+          pattern,
+          prefix,
+          indices);
     } catch (Exception e) {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
   }
 
+  private String buildScopedPattern(String prefix) {
+    if (prefix != null && !prefix.isEmpty()) {
+      return prefix + "*";
+    }
+    return clusterAlias.isEmpty() ? "*" : clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
+  }
+
   @Override
   public List<IndexStats> getAllIndexStats() throws IOException {
     List<IndexStats> result = new ArrayList<>();
-    var statsResponse = client.indices().stats(s -> s.index("*"));
+    String statsPattern = buildScopedPattern(null);
+    var statsResponse = client.indices().stats(s -> s.index(statsPattern));
     var indices = statsResponse.indices();
     for (var entry : indices.entrySet()) {
       String indexName = entry.getKey();

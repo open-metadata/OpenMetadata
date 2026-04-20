@@ -95,7 +95,9 @@ public class WorkflowHandler {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
     }
 
-    initializeExpressionMap(config);
+    if (!isMigrationContext) {
+      initializeExpressionMap(config);
+    }
     initializeNewProcessEngine(processEngineConfiguration);
   }
 

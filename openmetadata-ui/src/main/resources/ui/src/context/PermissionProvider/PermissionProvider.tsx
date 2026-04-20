@@ -24,20 +24,19 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
-import { REDIRECT_PATHNAME } from '../../constants/constants';
+import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
+import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
-
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   EntityPermissionMap,
   PermissionContextType,
