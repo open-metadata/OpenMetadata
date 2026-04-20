@@ -12,17 +12,19 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
+import { isNil } from 'lodash';
 import { useCallback, useEffect } from 'react';
+import { useAnalytics } from 'use-analytics';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import i18n from '../../utils/i18next/LocalUtil';
 import { isNewLayoutRoute } from '../../utils/LayoutUtils';
 import AppSidebar from '../AppSidebar/AppSidebar.component';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
@@ -33,11 +35,10 @@ import './app-container.less';
 const { Content } = Layout;
 
 const AppContainer = () => {
+  const location = useCustomLocation();
+  const analytics = useAnalytics();
   const { currentUser, setAppPreferences, appPreferences } =
     useApplicationStore();
-  const {
-    preferences: { language },
-  } = useCurrentUserPreferences();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const { isAuthenticated } = useApplicationStore();
@@ -87,10 +88,28 @@ const AppContainer = () => {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (language) {
-      i18n.changeLanguage(language);
+    const { pathname } = location;
+
+    if (pathname !== '/' && !isNil(analytics)) {
+      analytics.page();
     }
-  }, [language]);
+  }, [location.pathname, analytics]);
+
+  useEffect(() => {
+    const handleClickEvent = (event: MouseEvent) => {
+      const eventValue =
+        (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
+
+      if (eventValue && !isNil(analytics)) {
+        analytics.track(eventValue);
+      }
+    };
+
+    const targetNode = document.body;
+    targetNode.addEventListener('click', handleClickEvent);
+
+    return () => targetNode.removeEventListener('click', handleClickEvent);
+  }, [analytics]);
 
   return (
     <Layout>

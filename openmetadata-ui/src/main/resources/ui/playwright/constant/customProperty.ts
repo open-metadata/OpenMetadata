@@ -434,12 +434,5 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
   },
 };
 
-export const CUSTOM_PROPERTY_INVALID_NAMES = {
-  CAPITAL_CASE: 'CapitalCase',
-  WITH_UNDERSCORE: 'with_underscore',
-  WITH_DOTS: 'with.',
-  WITH_SPACE: 'with ',
-};
-
 export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
-  'Name must start with lower case with no space, underscore, or dots.';
+  "Name must not contain '::'.";

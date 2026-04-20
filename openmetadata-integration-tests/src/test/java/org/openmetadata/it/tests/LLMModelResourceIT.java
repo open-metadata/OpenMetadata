@@ -101,7 +101,7 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
 
   @Override
   protected String getEntityType() {
-    return "llmmodel";
+    return "llmModel";
   }
 
   @Override

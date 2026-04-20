@@ -236,17 +236,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public Map<String, Integer> getRelationTypeUsageCounts() {
-    Map<String, Integer> usageCounts = new HashMap<>();
-    List<EntityRelationshipRecord> records =
+    List<List<String>> rows =
         daoCollection
             .relationshipDAO()
-            .findAllByEntityTypes(entityType, entityType, Relationship.RELATED_TO.ordinal());
+            .countByRelationType(entityType, entityType, Relationship.RELATED_TO.ordinal());
 
-    for (EntityRelationshipRecord record : records) {
-      String relationType = extractRelationType(record.getJson());
-      usageCounts.merge(relationType, 1, Integer::sum);
+    Map<String, Integer> usageCounts = new HashMap<>();
+    for (List<String> row : rows) {
+      usageCounts.put(row.get(0), Integer.parseInt(row.get(1)));
     }
-
     return usageCounts;
   }
 
@@ -2488,7 +2486,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Build the parent hash for filtering
     String parentHash = parentFqn != null ? FullyQualifiedName.buildHash(parentFqn) + ".%" : "%";
 
-    // If no search query, use regular listing
+    // If no search query, use regular listing with offset-based pagination
     if (query == null || query.trim().isEmpty()) {
       ListFilter filter = new ListFilter(include);
       if (parentFqn != null) {
@@ -2498,21 +2496,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         filter.addQueryParam("entityStatus", entityStatus);
       }
 
-      // Use cursor-based pagination with limit and convert offset to cursor
-      String afterCursor = offset > 0 ? String.valueOf(offset) : null;
-      ResultList<GlossaryTerm> result =
-          listAfter(null, getFields(fieldsParam), filter, limit, afterCursor);
-
-      // Convert pagination info
-      String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-      String after =
-          result.getPaging() != null && result.getPaging().getAfter() != null
-              ? String.valueOf(offset + limit)
-              : null;
-      int total =
-          result.getPaging() != null ? result.getPaging().getTotal() : result.getData().size();
-
-      return new ResultList<>(result.getData(), before, after, total);
+      return listAfterWithOffset(null, getFields(fieldsParam), filter, limit, offset);
     }
 
     // For search queries, fetch limit+1 to determine if there are more pages
