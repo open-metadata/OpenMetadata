@@ -69,6 +69,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
+import { hasDomainDryRunImpact } from '../../../utils/Domain/DomainDryRunUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -92,16 +93,6 @@ import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.int
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './asset-selection-model.style.less';
-
-const DRY_RUN_WARN_PHRASES = [
-  'will be moved from',
-  'data product relationships will be removed',
-];
-
-const hasImpactWarning = (res: BulkOperationResult): boolean =>
-  res.successRequest?.some((r) =>
-    DRY_RUN_WARN_PHRASES.some((phrase) => r.message?.includes(phrase))
-  ) ?? false;
 
 export interface AssetSelectionContentProps {
   entityFqn: string;
@@ -396,7 +387,7 @@ export const useAssetSelectionContent = ({
           const dryRunResult = await addAssetsToDomain(domainFqn, entities, {
             dryRun: true,
           });
-          if (hasImpactWarning(dryRunResult)) {
+          if (hasDomainDryRunImpact(dryRunResult)) {
             setDryRunWarnings(dryRunResult.successRequest);
             setPendingDomainEntities(entities);
             setIsSaveLoading(false);
@@ -847,7 +838,7 @@ export const useAssetSelectionContent = ({
 
       <ConfirmationModal
         bodyText={
-          <ul className="m-0 p-l-md">
+          <ul className="m-0 p-l-md" data-testid="add-dry-run-warnings">
             {dryRunWarnings?.map((r, index) => (
               <li key={index}>{r.message}</li>
             ))}
