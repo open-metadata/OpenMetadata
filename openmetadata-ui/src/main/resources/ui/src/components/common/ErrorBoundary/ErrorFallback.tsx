@@ -27,7 +27,13 @@ const ErrorFallback: React.FC<FallbackProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const isChunkLoadError = error.message?.startsWith('Loading chunk');
+  const isChunkLoadError =
+    error?.name === 'ChunkLoadError' ||
+    error.message?.startsWith('Loading chunk') || // Legacy Webpack
+    error.message
+      ?.toLowerCase()
+      .includes('failed to fetch dynamically imported module') || // Vite
+    error.message?.toLowerCase().includes('importing a module script failed'); // Vite (Safari)
 
   const message = isChunkLoadError
     ? t('message.please-refresh-the-page')
