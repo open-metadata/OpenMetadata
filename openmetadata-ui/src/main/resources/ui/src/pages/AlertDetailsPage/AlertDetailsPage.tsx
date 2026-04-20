@@ -61,8 +61,8 @@ import {
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -308,7 +308,10 @@ function AlertDetailsPage({
       navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
-          : observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn, activeKey),
+          : observabilityRouterClassBase.getObservabilityAlertDetailsPath(
+              fqn,
+              activeKey
+            ),
         { replace: true }
       );
     },

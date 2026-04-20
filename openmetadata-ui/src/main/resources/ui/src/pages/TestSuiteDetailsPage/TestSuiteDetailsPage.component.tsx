@@ -103,7 +103,11 @@ const TestSuiteDetailsPage = () => {
   const { showModal } = useEntityExportModalProvider();
 
   const afterDeleteAction = () => {
-    navigate(observabilityRouterClassBase.getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(
+      observabilityRouterClassBase.getDataQualityPagePath(
+        DataQualityPageTabs.TEST_SUITES
+      )
+    );
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 
