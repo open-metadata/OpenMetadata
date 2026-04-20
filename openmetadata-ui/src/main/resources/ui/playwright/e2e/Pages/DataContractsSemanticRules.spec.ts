@@ -2728,7 +2728,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -2818,7 +2818,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -2907,7 +2907,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -2996,7 +2996,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        table.entityResponseData.displayName,
+        table.entityResponseData.displayName || '',
         true
       );
 
@@ -3796,6 +3796,87 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
       ).toContainText('Contract Failed');
+    });
+  });
+});
+
+test.describe('Data Contract - Semantics Fields Validation', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
+  test('Validate semantics fields', async ({ page }) => {
+    await test.step('Navigate to semantics tab', async () => {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await performInitialStepForRules(page);
+      await page.getByRole('tab', { name: 'Semantics' }).click();
+    });
+
+    await test.step('Click save and verify rule error is shown', async () => {
+      await page.getByTestId('save-semantic-button').click();
+
+      await expect(page.getByText(/rule is required/i)).toBeVisible();
+      await expect(page.getByText(/name is required/i)).toBeVisible();
+      await expect(page.getByText(/description is required/i)).toBeVisible();
+    });
+
+    await test.step('Verify delete button is not visible with only one rule', async () => {
+      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+    });
+
+    await test.step('fill the first rule completely', async () => {
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
+
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Owners',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        'Is Set'
+      );
+    });
+
+    await test.step('Add a second rule condition', async () => {
+      await page.getByTestId('add-new-rule-btn').click();
+
+      await expect(page.locator('.action--DELETE').first()).toBeVisible();
+    });
+
+    await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
+      const deleteButtons = page.locator('.action--DELETE');
+      await deleteButtons.first().click();
+
+      await expect(page.locator('.action--DELETE')).not.toBeVisible();
+      await expect(page.getByText(/rule is required/i)).toBeVisible();
+    });
+
+    await test.step('select Is Set operator and error is hidden', async () => {
+      await selectOption(
+        page,
+        page.locator('.rule--field .ant-select'),
+        'Owners',
+        true
+      );
+      await selectOption(
+        page,
+        page.locator('.rule--operator .ant-select'),
+        'Is Set'
+      );
+      await expect(page.getByText(/rule is required/i)).not.toBeVisible();
     });
   });
 });

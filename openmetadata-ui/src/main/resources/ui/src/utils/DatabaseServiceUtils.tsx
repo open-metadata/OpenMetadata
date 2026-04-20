@@ -18,7 +18,7 @@ import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -44,8 +44,8 @@ import exasolConnection from '../jsons/connectionSchemas/connections/database/ex
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
-import icebergConnection from '../jsons/connectionSchemas/connections/database/icebergConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
+import iometeConnection from '../jsons/connectionSchemas/connections/database/iometeConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
@@ -293,11 +293,6 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
-    case DatabaseServiceType.Iceberg: {
-      schema = icebergConnection;
-
-      break;
-    }
     case DatabaseServiceType.Teradata: {
       schema = teradataConnection;
 
@@ -310,6 +305,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.BurstIQ: {
       schema = burstiqConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Iomete: {
+      schema = iometeConnection;
 
       break;
     }

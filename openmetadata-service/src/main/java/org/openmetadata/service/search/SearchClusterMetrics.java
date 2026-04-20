@@ -34,7 +34,9 @@ public class SearchClusterMetrics {
   public static final long DEFAULT_HEAP_USED_BYTES = 512L * 1024 * 1024; // 512 MB
   public static final long DEFAULT_HEAP_MAX_BYTES = 1024L * 1024 * 1024; // 1 GB
   public static final long DEFAULT_MAX_CONTENT_LENGTH =
-      10 * 1024 * 1024L; // Conservative 10MB default
+      10 * 1024 * 1024L; // Conservative 10MB default (AWS OpenSearch hard limit)
+  // Safe bulk payload threshold: 90% of max_content_length to leave headroom for HTTP framing
+  public static final long DEFAULT_BULK_PAYLOAD_SIZE_BYTES = DEFAULT_MAX_CONTENT_LENGTH * 9 / 10;
 
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
@@ -445,9 +447,9 @@ public class SearchClusterMetrics {
     long usedHeap = totalHeap - freeHeap;
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
-    // Default to conservative 10MB for AWS-managed clusters if we can't fetch from cluster
-    long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
-    long maxPayloadSize = DEFAULT_MAX_CONTENT_LENGTH; // Conservative 10MB default
+    // AWS-managed clusters expose max_content_length=10MB; use 90% as bulk threshold for headroom
+    long maxContentLength = DEFAULT_MAX_CONTENT_LENGTH;
+    long maxPayloadSize = DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
     try {
       if (searchRepository != null) {
         SearchClient searchClient = searchRepository.getSearchClient();

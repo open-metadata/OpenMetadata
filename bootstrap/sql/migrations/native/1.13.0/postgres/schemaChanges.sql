@@ -150,3 +150,162 @@ FROM user_entity ue, role_entity re
 WHERE ue.name = 'mcpapplicationbot'
   AND re.name = 'ApplicationBotImpersonationRole'
 ON CONFLICT DO NOTHING;
+
+-- Migrate profiler sampling config: move flat profileSample/profileSampleType/samplingMethodType
+-- into the new profileSampleConfig structure. Default to STATIC since DYNAMIC is new.
+
+-- Profiler configs are stored in entity_extension table, not in entity json columns.
+-- Extension keys: table.tableProfilerConfig, database.databaseProfilerConfig, databaseSchema.databaseSchemaProfilerConfig
+-- The json column in entity_extension contains the config object directly (flat root-level fields).
+
+-- entity_extension: build profileSampleConfig from existing flat fields (skip if already migrated)
+UPDATE entity_extension
+SET json = jsonb_set(
+    json::jsonb,
+    '{profileSampleConfig}',
+    jsonb_build_object(
+        'sampleConfigType', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{samplingMethodType}'
+        )
+    )
+)::json
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND json::jsonb #>> '{profileSample}' IS NOT NULL
+  AND json::jsonb #> '{profileSampleConfig}' IS NULL;
+
+-- entity_extension: remove old flat fields
+UPDATE entity_extension
+SET json = (json::jsonb #- '{profileSample}'
+                        #- '{profileSampleType}'
+                        #- '{samplingMethodType}')::json
+WHERE extension IN (
+    'table.tableProfilerConfig',
+    'database.databaseProfilerConfig',
+    'databaseSchema.databaseSchemaProfilerConfig'
+)
+  AND (json::jsonb #>> '{profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{samplingMethodType}' IS NOT NULL);
+
+-- ingestion_pipeline_entity (profiler pipelines): build profileSampleConfig (skip if already migrated)
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{sourceConfig,config,profileSampleConfig}',
+    jsonb_build_object(
+        'sampleConfigType', 'STATIC',
+        'config', jsonb_build_object(
+            'profileSample', json::jsonb #> '{sourceConfig,config,profileSample}',
+            'profileSampleType', COALESCE(
+                json::jsonb #> '{sourceConfig,config,profileSampleType}',
+                '"PERCENTAGE"'::jsonb
+            ),
+            'samplingMethodType', json::jsonb #> '{sourceConfig,config,samplingMethodType}'
+        )
+    )
+)::json
+WHERE json #>> '{pipelineType}' = 'profiler'
+  AND json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+  AND json::jsonb #> '{sourceConfig,config,profileSampleConfig}' IS NULL;
+
+-- ingestion_pipeline_entity (profiler pipelines): remove old flat fields
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{sourceConfig,config,profileSample}'
+                        #- '{sourceConfig,config,profileSampleType}'
+                        #- '{sourceConfig,config,samplingMethodType}')::json
+WHERE json #>> '{pipelineType}' = 'profiler'
+  AND (json::jsonb #>> '{sourceConfig,config,profileSample}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,profileSampleType}' IS NOT NULL
+    OR json::jsonb #>> '{sourceConfig,config,samplingMethodType}' IS NOT NULL);
+
+-- RDF distributed indexing state tables
+CREATE TABLE IF NOT EXISTS rdf_index_job (
+    id VARCHAR(36) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    jobConfiguration JSONB NOT NULL,
+    totalRecords BIGINT NOT NULL DEFAULT 0,
+    processedRecords BIGINT NOT NULL DEFAULT 0,
+    successRecords BIGINT NOT NULL DEFAULT 0,
+    failedRecords BIGINT NOT NULL DEFAULT 0,
+    stats JSONB,
+    createdBy VARCHAR(256) NOT NULL,
+    createdAt BIGINT NOT NULL,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    updatedAt BIGINT NOT NULL,
+    errorMessage TEXT,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rdf_index_job_status ON rdf_index_job(status);
+CREATE INDEX IF NOT EXISTS idx_rdf_index_job_created ON rdf_index_job(createdAt DESC);
+
+CREATE TABLE IF NOT EXISTS rdf_index_partition (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    partitionIndex INT NOT NULL,
+    rangeStart BIGINT NOT NULL,
+    rangeEnd BIGINT NOT NULL,
+    estimatedCount BIGINT NOT NULL,
+    workUnits BIGINT NOT NULL,
+    priority INT NOT NULL DEFAULT 50,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    processingCursor BIGINT NOT NULL DEFAULT 0,
+    processedCount BIGINT NOT NULL DEFAULT 0,
+    successCount BIGINT NOT NULL DEFAULT 0,
+    failedCount BIGINT NOT NULL DEFAULT 0,
+    assignedServer VARCHAR(255),
+    claimedAt BIGINT,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    lastUpdateAt BIGINT,
+    lastError TEXT,
+    retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, entityType, partitionIndex),
+    CONSTRAINT fk_rdf_partition_job FOREIGN KEY (jobId) REFERENCES rdf_index_job(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_job ON rdf_index_partition(jobId);
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_status_priority ON rdf_index_partition(status, priority DESC);
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_claimable ON rdf_index_partition(jobId, status, claimableAt);
+CREATE INDEX IF NOT EXISTS idx_rdf_partition_assigned_server ON rdf_index_partition(jobId, assignedServer);
+
+CREATE TABLE IF NOT EXISTS rdf_reindex_lock (
+    lockKey VARCHAR(64) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(255) NOT NULL,
+    acquiredAt BIGINT NOT NULL,
+    lastHeartbeat BIGINT NOT NULL,
+    expiresAt BIGINT NOT NULL,
+    PRIMARY KEY (lockKey)
+);
+
+CREATE TABLE IF NOT EXISTS rdf_index_server_stats (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    processedRecords BIGINT DEFAULT 0,
+    successRecords BIGINT DEFAULT 0,
+    failedRecords BIGINT DEFAULT 0,
+    partitionsCompleted INT DEFAULT 0,
+    partitionsFailed INT DEFAULT 0,
+    lastUpdatedAt BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, serverId, entityType)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rdf_index_server_stats_job_id ON rdf_index_server_stats(jobId);

@@ -12,8 +12,11 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
@@ -27,6 +30,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -49,6 +53,22 @@ public abstract class ServiceEntityRepository<
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
     quoteFqn = true;
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors = new ArrayList<>();
+    for (PropagationDescriptor desc : super.getSearchPropagationDescriptors()) {
+      if (!desc.fieldName().equals(FIELD_DISPLAY_NAME)) {
+        descriptors.add(desc);
+      }
+    }
+    descriptors.add(
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME,
+            PropagationDescriptor.PropagationType.NESTED_FIELD,
+            "service.displayName"));
+    return descriptors;
   }
 
   @Override

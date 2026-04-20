@@ -28,12 +28,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockReturnValue('message.drag-and-drop-or-browse-csv-files-here'),
-}));
-
 describe('UploadFile Component', () => {
   const defaultProps: UploadFileProps = {
     fileType: '.csv',
@@ -44,13 +38,13 @@ describe('UploadFile Component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render the upload component with correct props', () => {
+  it('should render the upload component with correct props', async () => {
     render(<UploadFile {...defaultProps} />);
 
     expect(screen.getByTestId('upload-file-widget')).toBeInTheDocument();
     expect(screen.getByTestId('import-icon')).toBeInTheDocument();
     expect(
-      screen.getByText('message.drag-and-drop-or-browse-csv-files-here')
+      await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
     ).toBeInTheDocument();
   });
 
@@ -204,11 +198,11 @@ describe('UploadFile Component', () => {
     });
   });
 
-  it('should render browse text correctly', () => {
+  it('should render browse text correctly', async () => {
     render(<UploadFile {...defaultProps} />);
 
     expect(
-      screen.getByText('message.drag-and-drop-or-browse-csv-files-here')
+      await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
     ).toBeInTheDocument();
   });
 });

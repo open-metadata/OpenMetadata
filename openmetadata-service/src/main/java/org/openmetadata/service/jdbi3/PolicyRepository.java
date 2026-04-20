@@ -161,7 +161,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void prepare(Policy policy, boolean update) {
-    validateRules(policy);
+    validateRules(policy, update);
   }
 
   @Override
@@ -189,6 +189,10 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public void validateRules(Policy policy) {
+    validateRules(policy, false);
+  }
+
+  public void validateRules(Policy policy, boolean update) {
     List<Rule> rules = policy.getRules();
     if (nullOrEmpty(rules)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
@@ -196,7 +200,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     // Validate all the expressions in the rule
     for (Rule rule : rules) {
-      CompiledRule.validateExpression(rule.getCondition(), Boolean.class);
+      CompiledRule.validateExpression(rule.getCondition(), Boolean.class, update);
       rule.getResources().sort(String.CASE_INSENSITIVE_ORDER);
       rule.getOperations().sort(Comparator.comparing(MetadataOperation::value));
 

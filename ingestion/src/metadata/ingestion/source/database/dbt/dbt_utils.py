@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     DbtCommonEnum,
     RawQueriesEnum,
 )
+from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation
 from metadata.utils import entity_link
 from metadata.utils.logger import ingestion_logger
 
@@ -683,18 +684,55 @@ def get_manifest_column_name(manifest_node) -> Optional[str]:
 
 def generate_entity_link(dbt_test):
     """
-    Method returns entity link
+    Method returns entity link for dbt test cases.
+
+    For test cases with multiple upstream dependencies (e.g., relationship tests),
+    we must identify the primary table being tested. This is explicitly specified in
+    test_metadata.kwargs['model'] for generic tests. Using this explicit reference
+    is more reliable than guessing based on upstream order (fixes issue #24636).
     """
     manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-    entity_link_list = [
-        entity_link.get_entity_link(
-            Table,
-            fqn=table_fqn,
-            column_name=get_manifest_column_name(manifest_node),
-        )
-        for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
-    ]
-    return entity_link_list
+    upstream_list = dbt_test.get(DbtCommonEnum.UPSTREAM.value, [])
+
+    if not upstream_list:
+        return []
+
+    primary_table_fqn = None
+
+    # Try to extract the primary table from test_metadata.kwargs['model']
+    # This field contains the main table being tested (order-independent)
+    if hasattr(manifest_node, "test_metadata"):
+        kwargs = getattr(manifest_node.test_metadata, "kwargs", {})
+        if isinstance(kwargs, dict):
+            model_str = kwargs.get("model", "")
+            if model_str:
+                # Extract table name from ref() pattern
+                # Handles: ref('table'), ref("table"), ref('pkg', 'table'), ref("pkg", "table")
+                match = re.search(
+                    r"ref\(['\"](?:[^'\"]+['\"],\s*['\"])?([^'\"]+)['\"]\)",
+                    str(model_str),
+                )
+                if match:
+                    primary_table_name = match.group(1)
+                    # Find the matching FQN in upstream_list
+                    for fqn in upstream_list:
+                        if fqn.endswith(f".{primary_table_name}"):
+                            primary_table_fqn = fqn
+                            break
+
+    # Fallback: use the first upstream table if model field is not available
+    if not primary_table_fqn and upstream_list:
+        primary_table_fqn = upstream_list[0]
+
+    if not primary_table_fqn:
+        return []
+
+    entity_link_str = entity_link.get_entity_link(
+        Table,
+        fqn=primary_table_fqn,
+        column_name=get_manifest_column_name(manifest_node),
+    )
+    return [entity_link_str]
 
 
 def get_dbt_compiled_query(mnode) -> Optional[str]:
@@ -784,6 +822,30 @@ def get_data_model_path(manifest_node):
         else:
             datamodel_path = manifest_node.original_file_path
     return datamodel_path
+
+
+def get_snapshot_effective_schema_and_database(
+    manifest_node: Any,
+) -> SnapshotNodeLocation:
+    """
+    For snapshot nodes, config.target_schema and config.target_database
+    override manifest_node.schema_ and manifest_node.database respectively.
+    Returns a SnapshotNodeLocation with the resolved schema and database.
+    """
+    effective_schema: str = manifest_node.schema_
+    effective_database: Optional[str] = manifest_node.database
+    if hasattr(manifest_node, "config") and manifest_node.config:
+        if (
+            hasattr(manifest_node.config, "target_schema")
+            and manifest_node.config.target_schema
+        ):
+            effective_schema = manifest_node.config.target_schema
+        if (
+            hasattr(manifest_node.config, "target_database")
+            and manifest_node.config.target_database
+        ):
+            effective_database = manifest_node.config.target_database
+    return SnapshotNodeLocation(schema_=effective_schema, database=effective_database)
 
 
 def find_entity_by_type_and_fqn(

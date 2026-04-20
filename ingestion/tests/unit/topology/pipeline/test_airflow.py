@@ -27,10 +27,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
+from metadata.ingestion.source.pipeline.airflow.metadata import (
+    AirflowSource,
+    OMTaskInstance,
+)
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
+    AirflowTask,
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 
@@ -998,3 +1002,572 @@ class TestAirflow(TestCase):
         assert f"/dags/{quote(dag_id)}/tasks/{quote(task_id)}" in task_url
         assert "/taskinstance/list/" not in task_url
         assert "_flt_3_dag_id=" not in task_url
+
+    def test_get_task_instances_bulk_query(self):
+        """
+        Verify that get_task_instances fires a single DB query for all run_ids
+        (no N+1 per DagRun) and groups the returned rows by run_id.
+        Tasks not present in serialized_tasks are excluded from the result.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [
+            AirflowTask(task_id="task_a"),
+            AirflowTask(task_id="task_b"),
+        ]
+
+        row_run1 = MagicMock()
+        row_run1._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        row_run2 = MagicMock()
+        row_run2._asdict.return_value = {
+            "task_id": "task_b",
+            "state": "failed",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_2",
+        }
+        unknown_task_row = MagicMock()
+        unknown_task_row._asdict.return_value = {
+            "task_id": "task_unknown",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [row_run1, row_run2, unknown_task_row]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_1", "run_2"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Single DB query — not one per run_id
+        mock_session.query.assert_called_once()
+
+        # Results grouped correctly by run_id
+        self.assertIn("run_1", result)
+        self.assertIn("run_2", result)
+
+        # task_unknown is not in serialized_tasks so it must be excluded
+        self.assertEqual(len(result["run_1"]), 1)
+        self.assertEqual(result["run_1"][0].task_id, "task_a")
+        self.assertEqual(result["run_1"][0].state, "success")
+
+        self.assertEqual(len(result["run_2"]), 1)
+        self.assertEqual(result["run_2"][0].task_id, "task_b")
+        self.assertEqual(result["run_2"][0].state, "failed")
+
+    def test_get_task_instances_no_regression_vs_old_per_run_loop(self):
+        """
+        Behavioural-equivalence test against the previous per-run_id loop.
+
+        Reconstructs a realistic mixed dataset (multiple DAG runs, multiple
+        tasks per run, some renamed/removed tasks, one run with no surviving
+        tasks) and asserts that the new bulk get_task_instances produces the
+        same per-run mapping a per-run_id loop over the old single-run filter
+        would have produced. This is the no-regression check the maintainer
+        asked for, performed without needing a live Airflow DB.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [
+            AirflowTask(task_id="extract"),
+            AirflowTask(task_id="transform"),
+            AirflowTask(task_id="load"),
+        ]
+
+        def make_row(task_id, run_id, state):
+            row = MagicMock()
+            row._asdict.return_value = {
+                "task_id": task_id,
+                "state": state,
+                "start_date": None,
+                "end_date": None,
+                "run_id": run_id,
+            }
+            return row
+
+        all_rows = [
+            make_row("extract", "scheduled__1", "success"),
+            make_row("transform", "scheduled__1", "success"),
+            make_row("load", "scheduled__1", "success"),
+            make_row("extract", "scheduled__2", "success"),
+            make_row("transform", "scheduled__2", "failed"),
+            make_row("legacy_step", "scheduled__2", "success"),
+            make_row("extract", "manual__3", "running"),
+            make_row("only_old_task", "scheduled__4", "success"),
+        ]
+        run_ids = ["scheduled__1", "scheduled__2", "manual__3", "scheduled__4"]
+
+        def expected_per_run():
+            grouped = {}
+            allowed = {t.task_id for t in serialized_tasks}
+            for run_id in run_ids:
+                grouped[run_id] = [
+                    OMTaskInstance(
+                        task_id=r._asdict()["task_id"],
+                        state=r._asdict()["state"],
+                        start_date=None,
+                        end_date=None,
+                    )
+                    for r in all_rows
+                    if r._asdict()["run_id"] == run_id
+                    and r._asdict()["task_id"] in allowed
+                ]
+            return grouped
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = all_rows
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            actual = self.airflow.get_task_instances(
+                "etl_dag", run_ids, serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        expected = expected_per_run()
+
+        # Single bulk query, not one per run_id
+        mock_session.query.assert_called_once()
+        self.assertEqual(
+            set(actual.keys()), {"scheduled__1", "scheduled__2", "manual__3"}
+        )
+        for run_id in actual:
+            self.assertEqual(
+                [(t.task_id, t.state) for t in actual[run_id]],
+                [(t.task_id, t.state) for t in expected[run_id]],
+                f"Bulk query result for {run_id} diverges from per-run loop output",
+            )
+        # scheduled__4 had only a legacy task: equivalent to old loop returning []
+        self.assertEqual(actual.get("scheduled__4", []), expected["scheduled__4"])
+
+    def test_get_task_instances_returns_empty_dict_on_db_exception(self):
+        """
+        On any DB error (e.g. older Airflow schemas without run_id column) the
+        method must swallow the exception and return an empty dict so that
+        yield_pipeline_status keeps emitting per-run statuses with empty task
+        lists - matching the pre-change safe-fallback behaviour.
+        """
+        from unittest.mock import MagicMock
+
+        mock_session = MagicMock()
+        mock_session.query.side_effect = RuntimeError("simulated DB failure")
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "any_dag",
+                ["run_a", "run_b"],
+                [AirflowTask(task_id="t1")],
+            )
+        finally:
+            self.airflow._session = original_session
+
+        self.assertEqual(result, {})
+
+    def test_get_task_instances_handles_empty_run_ids(self):
+        """
+        If get_task_instances is ever called with no run_ids it must not throw
+        (some SQL dialects reject `IN ()`). yield_pipeline_status guards this
+        upstream, but the method itself should still degrade gracefully.
+        """
+        from unittest.mock import MagicMock
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances("any_dag", [], [])
+        finally:
+            self.airflow._session = original_session
+
+        self.assertEqual(result, {})
+
+    def test_get_task_instances_skips_rows_with_missing_fields(self):
+        """
+        Negative-data test: if the DB returns rows with missing task_id or
+        run_id (e.g. NULLs from a partial/corrupt Airflow schema), the
+        method must log-and-continue - the rest of the batch must still be
+        ingested. It must NOT raise and abort the whole DAG.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [
+            AirflowTask(task_id="task_a"),
+            AirflowTask(task_id="task_b"),
+        ]
+
+        good_row = MagicMock()
+        good_row._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        missing_task_id = MagicMock()
+        missing_task_id._asdict.return_value = {
+            "task_id": None,
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        missing_run_id = MagicMock()
+        missing_run_id._asdict.return_value = {
+            "task_id": "task_b",
+            "state": "failed",
+            "start_date": None,
+            "end_date": None,
+            "run_id": None,
+        }
+        second_good_row = MagicMock()
+        second_good_row._asdict.return_value = {
+            "task_id": "task_b",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_2",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [
+            good_row,
+            missing_task_id,
+            missing_run_id,
+            second_good_row,
+        ]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_1", "run_2"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Bad rows skipped, good rows kept - no exception propagated
+        self.assertEqual(set(result.keys()), {"run_1", "run_2"})
+        self.assertEqual([t.task_id for t in result["run_1"]], ["task_a"])
+        self.assertEqual([t.task_id for t in result["run_2"]], ["task_b"])
+
+    def test_get_task_instances_continues_on_malformed_row(self):
+        """
+        Negative-data test: if a single row raises while being processed
+        (e.g. ._asdict() explodes for one element), the method must log the
+        offending row and keep going for the remaining rows in the batch.
+        Preferred behaviour per maintainer review: log and move forward,
+        do NOT interrupt processing of the whole DAG.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [AirflowTask(task_id="task_a")]
+
+        good_row_before = MagicMock()
+        good_row_before._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_1",
+        }
+        broken_row = MagicMock()
+        broken_row._asdict.side_effect = RuntimeError("corrupt row")
+        good_row_after = MagicMock()
+        good_row_after._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "failed",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_2",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [good_row_before, broken_row, good_row_after]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_1", "run_2"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Both surrounding good rows must be present despite the bad one
+        self.assertEqual(set(result.keys()), {"run_1", "run_2"})
+        self.assertEqual(result["run_1"][0].state, "success")
+        self.assertEqual(result["run_2"][0].state, "failed")
+
+    def test_get_task_instances_stray_run_id_grouped_separately(self):
+        """
+        Negative-data test: if the DB returns a TaskInstance whose run_id is
+        not in the requested run_ids list (e.g. stale cache / race with a
+        delete), it is grouped under its own key in the returned dict.
+        yield_pipeline_status then safely ignores it via
+        tasks_by_run_id.get(run_id, []) so no data for the requested runs is
+        lost and no exception propagates.
+        """
+        from unittest.mock import MagicMock
+
+        serialized_tasks = [AirflowTask(task_id="task_a")]
+
+        requested_row = MagicMock()
+        requested_row._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_requested",
+        }
+        stray_row = MagicMock()
+        stray_row._asdict.return_value = {
+            "task_id": "task_a",
+            "state": "success",
+            "start_date": None,
+            "end_date": None,
+            "run_id": "run_stray",
+        }
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = [requested_row, stray_row]
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            result = self.airflow.get_task_instances(
+                "my_dag", ["run_requested"], serialized_tasks
+            )
+        finally:
+            self.airflow._session = original_session
+
+        # Requested run is populated
+        self.assertIn("run_requested", result)
+        self.assertEqual(len(result["run_requested"]), 1)
+        self.assertEqual(result["run_requested"][0].task_id, "task_a")
+
+        # Stray run is grouped under its own key (not merged with a requested
+        # run, not dropped silently). yield_pipeline_status's
+        # tasks_by_run_id.get(run_id, []) lookup means it's safely ignored
+        # by the caller.
+        self.assertIn("run_stray", result)
+        self.assertEqual(len(result["run_stray"]), 1)
+        self.assertEqual(result["run_stray"][0].task_id, "task_a")
+
+    def test_yield_pipeline_status_chunks_run_ids(self):
+        """
+        Defense-in-depth: even though run_ids is already bounded by
+        numberOfStatus upstream, yield_pipeline_status must chunk the calls
+        to get_task_instances by _TASK_INSTANCE_RUN_ID_CHUNK_SIZE so that
+        we never send an unbounded IN(...) list to the DB and so that a
+        failed chunk does not wipe out the rest of the DAG's statuses.
+
+        With 125 eligible runs and a chunk size of 50 we expect exactly
+        3 calls (50 + 50 + 25) to get_task_instances and 125 yielded
+        pipeline statuses.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from metadata.ingestion.source.pipeline.airflow import (
+            metadata as airflow_module,
+        )
+
+        total_runs = 125
+        chunk_size = 50
+        expected_calls = 3
+
+        dag_runs = []
+        for i in range(total_runs):
+            dag_run = MagicMock()
+            dag_run.dag_id = "my_dag"
+            dag_run.run_id = f"run_{i}"
+            dag_run.state = "success"
+            dag_run.logical_date = None
+            dag_run.start_date = None
+            dag_runs.append(dag_run)
+
+        pipeline_details = MagicMock()
+        pipeline_details.dag_id = "my_dag"
+        pipeline_details.tasks = [AirflowTask(task_id="t1")]
+
+        context_value = MagicMock()
+        context_value.task_names = ["t1"]
+        context_value.pipeline_service = "svc"
+        context_value.pipeline = "my_dag"
+
+        bulk_call_log = []
+
+        def fake_get_task_instances(dag_id, run_ids, serialized_tasks):
+            bulk_call_log.append(list(run_ids))
+            return {run_id: [] for run_id in run_ids}
+
+        with patch.object(
+            airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size
+        ), patch.object(
+            self.airflow, "get_pipeline_status", return_value=dag_runs
+        ), patch.object(
+            self.airflow, "get_task_instances", side_effect=fake_get_task_instances
+        ), patch.object(
+            self.airflow,
+            "context",
+            MagicMock(get=MagicMock(return_value=context_value)),
+        ), patch.object(
+            self.airflow, "metadata", MagicMock()
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+            return_value="svc.my_dag",
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
+            return_value=1,
+        ):
+            results = list(self.airflow.yield_pipeline_status(pipeline_details))
+
+        # Exactly ceil(total_runs / chunk_size) bulk queries
+        self.assertEqual(len(bulk_call_log), expected_calls)
+
+        # Every chunk respects the configured bound
+        for chunk in bulk_call_log:
+            self.assertLessEqual(len(chunk), chunk_size)
+
+        # Chunk sizes for 125 with chunk_size=50 are 50, 50, 25
+        self.assertEqual([len(c) for c in bulk_call_log], [50, 50, 25])
+
+        # Every eligible run_id is covered exactly once, in order
+        flattened = [run_id for chunk in bulk_call_log for run_id in chunk]
+        self.assertEqual(flattened, [f"run_{i}" for i in range(total_runs)])
+
+        # One PipelineStatus is yielded per eligible DagRun
+        self.assertEqual(len(results), total_runs)
+        for either in results:
+            self.assertIsNone(either.left)
+            self.assertIsNotNone(either.right)
+
+    def test_yield_pipeline_status_chunk_failure_does_not_block_other_chunks(self):
+        """
+        If one chunk's get_task_instances call raises, yield_pipeline_status
+        must log the failure and keep processing the remaining chunks. To
+        preserve the pre-PR safe-fallback behaviour, the failed chunk's runs
+        still produce PipelineStatus objects with empty task lists (instead
+        of being silently dropped) - matching the prior per-run loop where a
+        DB error produced empty tasks but runs were still emitted.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from metadata.ingestion.source.pipeline.airflow import (
+            metadata as airflow_module,
+        )
+
+        total_runs = 30
+        chunk_size = 10  # -> 3 chunks of 10
+
+        dag_runs = []
+        for i in range(total_runs):
+            dag_run = MagicMock()
+            dag_run.dag_id = "my_dag"
+            dag_run.run_id = f"run_{i}"
+            dag_run.state = "success"
+            dag_run.logical_date = None
+            dag_run.start_date = None
+            dag_runs.append(dag_run)
+
+        pipeline_details = MagicMock()
+        pipeline_details.dag_id = "my_dag"
+        pipeline_details.tasks = [AirflowTask(task_id="t1")]
+
+        context_value = MagicMock()
+        context_value.task_names = ["t1"]
+        context_value.pipeline_service = "svc"
+        context_value.pipeline = "my_dag"
+
+        call_counter = {"n": 0}
+
+        def fake_get_task_instances(dag_id, run_ids, serialized_tasks):
+            call_counter["n"] += 1
+            # Fail the middle chunk only
+            if call_counter["n"] == 2:
+                raise RuntimeError("simulated chunk failure")
+            return {run_id: [] for run_id in run_ids}
+
+        with patch.object(
+            airflow_module, "_TASK_INSTANCE_RUN_ID_CHUNK_SIZE", chunk_size
+        ), patch.object(
+            self.airflow, "get_pipeline_status", return_value=dag_runs
+        ), patch.object(
+            self.airflow, "get_task_instances", side_effect=fake_get_task_instances
+        ), patch.object(
+            self.airflow,
+            "context",
+            MagicMock(get=MagicMock(return_value=context_value)),
+        ), patch.object(
+            self.airflow, "metadata", MagicMock()
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+            return_value="svc.my_dag",
+        ), patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.datetime_to_ts",
+            return_value=1,
+        ):
+            results = list(self.airflow.yield_pipeline_status(pipeline_details))
+
+        # All 3 chunks were attempted even though the middle one raised
+        self.assertEqual(call_counter["n"], 3)
+
+        # All 30 statuses are emitted: good chunks with whatever tasks they
+        # returned, failed chunk with empty task lists. None dropped.
+        self.assertEqual(len(results), total_runs)
+        for either in results:
+            self.assertIsNone(either.left)
+            self.assertIsNotNone(either.right)
+
+        yielded_run_ids = {
+            either.right.pipeline_status.executionId for either in results
+        }
+        self.assertEqual(yielded_run_ids, {f"run_{i}" for i in range(total_runs)})
+
+        # Runs in the failed middle chunk have empty taskStatus lists
+        failed_chunk_runs = {f"run_{i}" for i in range(10, 20)}
+        failed_statuses = [
+            e.right.pipeline_status
+            for e in results
+            if e.right.pipeline_status.executionId in failed_chunk_runs
+        ]
+        self.assertEqual(len(failed_statuses), 10)
+        for status in failed_statuses:
+            self.assertEqual(status.taskStatus, [])

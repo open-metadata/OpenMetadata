@@ -42,6 +42,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Timestamp,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -126,6 +127,23 @@ class AirflowApiSource(PipelineServiceSource):
             return f"{host}/dags/{quote(dag_id)}"
         return f"{host}/dags/{quote(dag_id)}/grid"
 
+    def get_owners(self, owners: Optional[List[str]]) -> Optional[EntityReferenceList]:
+        if not self.source_config.includeOwners or not owners:
+            return None
+        refs = EntityReferenceList(root=[])
+        for owner_name in owners:
+            try:
+                ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
+                if ref:
+                    refs.root.extend(ref.root)
+            except Exception as exc:
+                logger.warning(
+                    f"Error while getting details of user {owner_name} - {exc}"
+                )
+        return refs if refs.root else None
+
     def _build_tasks(self, dag_details: AirflowApiDagDetails) -> List[Task]:
         return [
             Task(
@@ -164,6 +182,7 @@ class AirflowApiSource(PipelineServiceSource):
                 ),
                 tasks=self._build_tasks(pipeline_details),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
+                owners=self.get_owners(pipeline_details.owners),
                 scheduleInterval=pipeline_details.schedule_interval,
                 tags=get_tag_labels(
                     metadata=self.metadata,

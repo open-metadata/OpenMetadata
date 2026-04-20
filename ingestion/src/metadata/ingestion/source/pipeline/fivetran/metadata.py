@@ -169,6 +169,20 @@ class FivetranSource(PipelineServiceSource):
 
         return col_lineage_arr if col_lineage_arr else []
 
+    @staticmethod
+    def _get_database_name(details: dict) -> Optional[str]:
+        """
+        Extract the database name from a Fivetran source or destination config.
+        Different connector types store the database/catalog/project name under
+        different config keys, so we check multiple keys in priority order.
+        """
+        config = details.get("config", {})
+        for key in ("database", "catalog", "project_id", "project"):
+            value = config.get(key)
+            if value:
+                return value
+        return None
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: FivetranPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -180,10 +194,18 @@ class FivetranSource(PipelineServiceSource):
         self.client = cast(FivetranClient, self.client)
         pipeline_name = self.get_pipeline_name(pipeline_details)
 
-        source_database_name = pipeline_details.source.get("config", {}).get("database")
-        destination_database_name = pipeline_details.destination.get("config", {}).get(
-            "database"
+        source_database_name = self._get_database_name(pipeline_details.source)
+        if not source_database_name:
+            logger.debug(
+                f"Unable to determine source database name for pipeline [{pipeline_name}] lineage. Config keys: {list(pipeline_details.source.get('config', {}).keys())}."
+            )
+        destination_database_name = self._get_database_name(
+            pipeline_details.destination
         )
+        if not destination_database_name:
+            logger.debug(
+                f"Unable to determine destination database name for pipeline [{pipeline_name}] lineage. Config keys: {list(pipeline_details.destination.get('config', {}).keys())}"
+            )
 
         for schema_name, schema_data in self.client.get_connector_schema_details(
             connector_id=pipeline_details.source.get("id")

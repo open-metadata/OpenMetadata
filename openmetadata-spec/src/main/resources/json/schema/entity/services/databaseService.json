@@ -58,7 +58,6 @@
         "StarRocks",
         "UnityCatalog",
         "SAS",
-        "Iceberg",
         "Teradata",
         "SapErp",
         "Synapse",
@@ -70,7 +69,8 @@
         "Dremio",
         "MicrosoftFabric",
         "BurstIQ",
-        "Informix"
+        "Informix",
+        "Iomete"
       ],
       "javaEnums": [
         {
@@ -203,9 +203,6 @@
           "name": "SAS"
         },
         {
-          "name": "Iceberg"
-        },
-        {
           "name": "Teradata"
         },
         {
@@ -240,6 +237,9 @@
         },
         {
           "name": "Informix"
+        },
+        {
+          "name": "Iomete"
         }
       ]
     },
@@ -377,9 +377,6 @@
               "$ref": "./connections/database/sasConnection.json"
             },
             {
-              "$ref": "./connections/database/icebergConnection.json"
-            },
-            {
               "$ref": "./connections/database/teradataConnection.json"
             },
             {
@@ -414,6 +411,9 @@
             },
             {
               "$ref": "./connections/database/informixConnection.json"
+            },
+            {
+              "$ref": "./connections/database/iometeConnection.json"
             }
           ]
         }
