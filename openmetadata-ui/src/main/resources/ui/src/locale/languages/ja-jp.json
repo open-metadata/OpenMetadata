@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "最近表示したデータはありません。",
     "no-reference-available": "参照はありません。",
     "no-related-terms-available": "関連用語はありません。",
+    "no-relations-for-selected-filter": "選択したリレーションタイプに一致するリレーションが見つかりませんでした。別のタイプを選択してみてください。",
     "no-relations-found": "この用語の関係は見つかりませんでした",
     "no-retry-queue-records": "ライブインデックスのリトライレコードが見つかりません。すべてのエンティティが正常にインデックスされています。",
     "no-roles-assigned": "ロールが割り当てられていません",
