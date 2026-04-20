@@ -89,6 +89,12 @@ export const createBot = async (page: Page) => {
     page.getByRole('cell', { name: BOT_DETAILS.description })
   ).toBeVisible();
 
+  await expect
+    .poll(async () => page.getByTestId('revoke-button').count(), {
+      timeout: 30000,
+    })
+    .toBeGreaterThan(0);
+
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
   await expect(page.getByTestId('center-panel')).toContainText(
@@ -163,6 +169,8 @@ export const verifyBotSearch = async (page: Page) => {
     `bot-link-${BOT_DETAILS.updatedBotName}`
   );
   const nonMatchingSearchTerm = `${BOT_DETAILS.updatedBotName}-no-match`;
+  const uniqueNameToken = BOT_DETAILS.updatedBotName.split('-').slice(-1)[0];
+  const uniqueEmailToken = BOT_DETAILS.botEmail.split('@')[0];
 
   const searchBotAndWait = async (searchTerm: string) => {
     await searchInput.clear();
@@ -176,10 +184,10 @@ export const verifyBotSearch = async (page: Page) => {
   await searchBotAndWait(BOT_DETAILS.botEmail);
   await expect(createdBotLink).toBeVisible();
 
-  await searchBotAndWait('test');
+  await searchBotAndWait(uniqueNameToken);
   await expect(createdBotLink).toBeVisible();
 
-  await searchBotAndWait('hello');
+  await searchBotAndWait(uniqueEmailToken);
   await expect(createdBotLink).toBeVisible();
 
   await searchBotAndWait(nonMatchingSearchTerm);
