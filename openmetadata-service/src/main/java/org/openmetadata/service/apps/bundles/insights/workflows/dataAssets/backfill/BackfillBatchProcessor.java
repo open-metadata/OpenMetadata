@@ -22,6 +22,8 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 
@@ -56,13 +58,19 @@ public final class BackfillBatchProcessor {
     this.entityFields = entityFields;
   }
 
-  @SuppressWarnings("unchecked")
   public void processBatch(
       List<EntityInterface> batch,
       BackfillTimeline timeline,
       LocalDate windowStart,
       LocalDate windowEnd,
       WorkflowStatsCollector stats) {
+
+    LOG.debug(
+        "[BackfillBatch] processBatch START — entityType={} batchSize={} requestCacheSize={} inheritanceCacheSize={}",
+        entityType,
+        batch.size(),
+        RequestEntityCache.size(),
+        EntityRepository.inheritanceCacheSize());
 
     // 1. Compute spans and collect version keys needed for this batch.
     Map<UUID, List<Span>> entitySpans = new HashMap<>();
@@ -96,8 +104,9 @@ public final class BackfillBatchProcessor {
           collectionDAO.entityExtensionDAO().batchGetByIdAndExtension(idToExtension));
     }
 
-    // 3. Enrich each span ONCE, inject @timestamp per day via string replace.
-    //    This eliminates the O(spans × days) HashMap copies from the previous approach.
+    // 3. Enrich each span ONCE, then append @timestamp per day. Appending a new field is safe
+    //    because compact Jackson output always ends with '}', and we never search for a pattern
+    //    that could collide with content values.
     List<TaggedOperation<?>> opsBuffer = new ArrayList<>();
     int totalSuccess = 0;
     int totalFailed = 0;
@@ -118,11 +127,7 @@ public final class BackfillBatchProcessor {
                   DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY, entityFields);
           Map<String, Object> enriched = enricher.enrichSingle(version, enrichCtx);
           entityId = (String) enriched.get("id");
-          // Use 0L as a placeholder: the literal "\"@timestamp\":0" appears exactly once
-          // in the serialized JSON and is safely replaced per day below.
-          enriched.put("@timestamp", 0L);
           baseDocJson = JsonUtils.pojoToJson(enriched);
-          // Allow the Map to be GC'd immediately — we only need the JSON string.
         } catch (Exception e) {
           totalFailed++;
           errors.add(id + ": " + e.getMessage());
@@ -132,9 +137,8 @@ public final class BackfillBatchProcessor {
         for (LocalDate day = span.startDay(); !day.isAfter(span.endDay()); day = day.plusDays(1)) {
           DailyIndex dayIndex = new DailyIndex(clusterAlias, entityType, day);
           long ts = dayIndex.startOfDayTimestamp();
-
-          // O(1) string replace — no new Map, no re-serialization per day.
-          String dayJson = baseDocJson.replace("\"@timestamp\":0", "\"@timestamp\":" + ts);
+          String dayJson =
+              baseDocJson.substring(0, baseDocJson.length() - 1) + ",\"@timestamp\":" + ts + "}";
 
           Object op = bulkProcessor.buildOp(dayIndex.name(), entityId, dayJson);
           opsBuffer.add(new TaggedOperation<>(op, version.getEntityReference()));
@@ -148,8 +152,14 @@ public final class BackfillBatchProcessor {
     flush(opsBuffer);
 
     stats.record(new StepResult("backfill-" + entityType, totalSuccess, totalFailed, errors));
+    LOG.debug(
+        "[BackfillBatch] processBatch END — entityType={} requestCacheSize={} inheritanceCacheSize={}",
+        entityType,
+        RequestEntityCache.size(),
+        EntityRepository.inheritanceCacheSize());
   }
 
+  @SuppressWarnings("unchecked")
   private void flush(List<TaggedOperation<?>> ops) {
     if (ops.isEmpty()) return;
     try {

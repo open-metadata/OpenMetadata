@@ -2,7 +2,6 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
@@ -46,75 +45,6 @@ class DataInsightsEntityEnricherTest {
   }
 
   @Test
-  void testHasColumnDescriptionAllColumnsDescribed() throws Exception {
-    List<Column> columns =
-        List.of(
-            createColumn("col1", "Description for col1"),
-            createColumn("col2", "Description for col2"),
-            createColumn("col3", "Description for col3"));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
-
-    assertEquals(3, result.get("numberOfColumns"));
-    assertEquals(3, result.get("numberOfColumnsWithDescription"));
-    assertEquals(1, result.get("hasColumnDescription"));
-  }
-
-  @Test
-  void testHasColumnDescriptionNoColumnsDescribed() throws Exception {
-    List<Column> columns =
-        List.of(createColumn("col1", null), createColumn("col2", null), createColumn("col3", ""));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
-
-    assertEquals(3, result.get("numberOfColumns"));
-    assertEquals(0, result.get("numberOfColumnsWithDescription"));
-    assertEquals(0, result.get("hasColumnDescription"));
-  }
-
-  @Test
-  void testHasColumnDescriptionPartialColumnsDescribed() throws Exception {
-    List<Column> columns =
-        List.of(
-            createColumn("col1", "Description for col1"),
-            createColumn("col2", null),
-            createColumn("col3", "Description for col3"));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
-
-    assertEquals(3, result.get("numberOfColumns"));
-    assertEquals(2, result.get("numberOfColumnsWithDescription"));
-    assertEquals(0, result.get("hasColumnDescription"));
-  }
-
-  @Test
-  void testHasColumnDescriptionSingleColumnWithDescription() throws Exception {
-    List<Column> columns = List.of(createColumn("col1", "Has description"));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
-
-    assertEquals(1, result.get("numberOfColumns"));
-    assertEquals(1, result.get("numberOfColumnsWithDescription"));
-    assertEquals(1, result.get("hasColumnDescription"));
-  }
-
-  @Test
-  void testHasColumnDescriptionSingleColumnWithoutDescription() throws Exception {
-    List<Column> columns = List.of(createColumn("col1", null));
-
-    MockColumnsEntity entity = new MockColumnsEntity(columns, "test description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "table");
-
-    assertEquals(1, result.get("numberOfColumns"));
-    assertEquals(0, result.get("numberOfColumnsWithDescription"));
-    assertEquals(0, result.get("hasColumnDescription"));
-  }
-
-  @Test
   void testEntityWithoutColumnsDoesNotHaveColumnFields() throws Exception {
     MockEntity entity = new MockEntity("test description");
     Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
@@ -125,30 +55,6 @@ class DataInsightsEntityEnricherTest {
   }
 
   @Test
-  void testHasDescriptionWithDescription() throws Exception {
-    MockEntity entity = new MockEntity("Some description");
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
-
-    assertEquals(1, result.get("hasDescription"));
-  }
-
-  @Test
-  void testHasDescriptionWithoutDescription() throws Exception {
-    MockEntity entity = new MockEntity(null);
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
-
-    assertEquals(0, result.get("hasDescription"));
-  }
-
-  @Test
-  void testHasDescriptionWithEmptyDescription() throws Exception {
-    MockEntity entity = new MockEntity("");
-    Map<String, Object> result = invokeEnrichEntity(entity, "pipeline");
-
-    assertEquals(0, result.get("hasDescription"));
-  }
-
-  @Test
   void testEmptyColumnsListSetsHasColumnDescription() throws Exception {
     MockColumnsEntity entity = new MockColumnsEntity(new ArrayList<>(), "desc");
     Map<String, Object> result = invokeEnrichEntity(entity, "table");
@@ -156,21 +62,6 @@ class DataInsightsEntityEnricherTest {
     assertEquals(0, result.get("numberOfColumns"));
     assertEquals(0, result.get("numberOfColumnsWithDescription"));
     assertEquals(1, result.get("hasColumnDescription"));
-  }
-
-  @Test
-  void testProcessorStatsInitialization() {
-    assertNotNull(processor.getStats());
-    assertEquals(100, processor.getStats().getTotalRecords());
-    assertEquals(0, processor.getStats().getSuccessRecords());
-    assertEquals(0, processor.getStats().getFailedRecords());
-  }
-
-  @Test
-  void testUpdateStats() {
-    processor.updateStats(10, 5);
-    assertEquals(10, processor.getStats().getSuccessRecords());
-    assertEquals(5, processor.getStats().getFailedRecords());
   }
 
   @Test

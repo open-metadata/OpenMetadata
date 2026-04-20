@@ -53,6 +53,11 @@ public final class RequestEntityCache {
     REQUEST_CACHE.remove();
   }
 
+  /** Returns the number of entries currently in this thread's request-scoped cache. */
+  public static int size() {
+    return REQUEST_CACHE.get().size();
+  }
+
   /**
    * Invalidate cached shapes for a single entity across all field/include combinations. This is
    * required for same-thread read-after-write correctness (for example async jobs).

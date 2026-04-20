@@ -358,7 +358,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
           .filter(r -> r.getStartTime() != null)
           .map(AppRunRecord::getStartTime);
     } catch (Exception e) {
-      LOG.warn("[DataInsights] Could not read last run timestamp: {}", e.getMessage());
+      LOG.error("[DataInsights] Could not read last run timestamp from DB — falling back to full scan: {}", e.getMessage());
       return Optional.empty();
     }
   }

@@ -989,6 +989,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     inheritanceParentCache.remove();
   }
 
+  /** Returns the number of entries currently in this thread's inheritance resolution cache. */
+  public static int inheritanceCacheSize() {
+    return inheritanceParentCache.get().size();
+  }
+
   private EntityInterface getCachedInheritanceParent(EntityReference parentRef, String fields) {
     if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
       return null;

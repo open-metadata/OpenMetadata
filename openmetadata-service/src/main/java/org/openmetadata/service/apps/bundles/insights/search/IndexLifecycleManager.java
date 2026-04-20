@@ -17,14 +17,24 @@ public record IndexLifecycleManager(
       String streamName =
           (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
 
+      // Use wildcard to cover both the base stream and any per-day variants
+      // (e.g. di-data-assets-chart AND di-data-assets-chart-2026.03.21).
       try {
-        searchInterface.deleteDataAssetDataStream(streamName);
+        searchInterface.deleteDataAssetDataStream(streamName + "*");
       } catch (IOException e) {
-        LOG.warn("Could not delete data stream {} (may not exist): {}", streamName, e.getMessage());
+        LOG.warn("Could not delete data stream {}*: {}", streamName, e.getMessage());
       }
 
-      for (DailyIndex index : searchInterface.listDailyIndices(clusterAlias, entityType)) {
-        searchInterface.deleteDailyIndex(index);
+      try {
+        for (DailyIndex index : searchInterface.listDailyIndices(clusterAlias, entityType)) {
+          try {
+            searchInterface.deleteDailyIndex(index);
+          } catch (IOException e) {
+            LOG.warn("Could not delete daily index {}: {}", index.name(), e.getMessage());
+          }
+        }
+      } catch (IOException e) {
+        LOG.warn("Could not list daily indices for {}: {}", entityType, e.getMessage());
       }
     }
   }

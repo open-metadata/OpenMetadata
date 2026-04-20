@@ -48,6 +48,11 @@ public record InsightsConfig(
   private static final Set<String> DATA_QUALITY_ENTITIES =
       Set.of(Entity.TEST_CASE_RESULT, Entity.TEST_CASE_RESOLUTION_STATUS);
 
+  /**
+   * Constructs InsightsConfig from the raw app configuration. Note: {@code backfillCompletedTypes}
+   * and {@code lastRunTimestamp} are always empty here — they are runtime-resolved by
+   * {@code DataInsightsApp.resolveConfig()} after this method returns.
+   */
   public static InsightsConfig from(DataInsightsAppConfig appConfig, long currentTimestamp) {
     ModuleConfiguration moduleConfig = appConfig.getModuleConfiguration();
 

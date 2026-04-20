@@ -36,9 +36,6 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 @Slf4j
 public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
-  // Small batch size keeps per-batch entity heap bounded: 50 × ~50KB = ~2.5MB peak
-  private static final int BACKFILL_BATCH_SIZE = 50;
-
   private final InsightsConfig config;
   private final SearchComponentFactory searchFactory;
   private final CollectionDAO collectionDAO;
@@ -126,7 +123,7 @@ public class DataAssetsBackfillWorkflow extends AbstractInsightsWorkflow {
 
     // Single pass: fetch version metadata inline per batch — no global BackfillTimeline held.
     PaginatedEntitiesSource source =
-        new PaginatedEntitiesSource(entityType, BACKFILL_BATCH_SIZE, diFields);
+        new PaginatedEntitiesSource(entityType, config.batchSize(), diFields);
     String cursor = null;
 
     while (true) {

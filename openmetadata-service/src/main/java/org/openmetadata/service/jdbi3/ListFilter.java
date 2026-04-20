@@ -797,6 +797,6 @@ public class ListFilter extends Filter<ListFilter> {
     String updatedAfter = queryParams.get("updatedAfter");
     if (updatedAfter == null) return "";
     String prefix = tableName != null ? tableName + "." : "";
-    return String.format("%supdatedAt > %s", prefix, updatedAfter);
+    return String.format("%supdatedAt >= :updatedAfter", prefix);
   }
 }

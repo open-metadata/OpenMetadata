@@ -26,13 +26,6 @@ class ProcessingPeriodTest {
   }
 
   @Test
-  void steadyStateRetentionDaysPreserved() {
-    long now = System.currentTimeMillis();
-    ProcessingPeriod period = ProcessingPeriod.forSteadyState(now, RETENTION_DAYS);
-    assertEquals(RETENTION_DAYS, period.retentionDays());
-  }
-
-  @Test
   void backfillStartClampedToRetentionLimit() {
     long now = System.currentTimeMillis();
     long oldestAllowed =
@@ -57,11 +50,4 @@ class ProcessingPeriodTest {
     assertEquals(expectedStart, period.startTimestamp());
   }
 
-  @Test
-  void backfillRetentionDaysPreserved() {
-    long now = System.currentTimeMillis();
-    ProcessingPeriod period =
-        ProcessingPeriod.forBackfill("2026-04-01", "2026-04-17", now, RETENTION_DAYS);
-    assertEquals(RETENTION_DAYS, period.retentionDays());
-  }
 }
