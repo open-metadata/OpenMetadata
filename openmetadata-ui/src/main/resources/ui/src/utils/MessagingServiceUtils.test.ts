@@ -37,7 +37,7 @@ jest.mock(
   { virtual: true }
 );
 
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { getMessagingConfig } from './MessagingServiceUtils';
 
