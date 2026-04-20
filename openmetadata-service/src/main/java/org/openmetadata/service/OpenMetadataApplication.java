@@ -90,6 +90,7 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -139,6 +140,7 @@ import org.openmetadata.service.resources.system.DiagnosticsResource;
 import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.opensearch.OpenSearchSearchManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
@@ -150,6 +152,7 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
+import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -161,6 +164,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
@@ -271,6 +275,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // as first step register all the repositories (now they can access SearchRepository)
     Entity.initializeRepositories(catalogConfig, jdbi);
+
+    // Rebuild caches with configured limits (cacheMemory section in openmetadata.yaml)
+    CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
+    EntityRepository.initCaches(cacheConfig);
+    SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
+    OpenSearchSearchManager.initRbacCache(cacheConfig.getRbacCacheMaxEntries());
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(
@@ -627,7 +637,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new ConstraintViolationExceptionMapper());
     // Restore dropwizard default exception mappers
     environment.jersey().register(new LoggingExceptionMapper<>() {});
-    environment.jersey().register(new JsonProcessingExceptionMapper(true));
+    environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
   }
@@ -1056,6 +1066,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
+
+    CspNonceHandler cspNonceHandler = new CspNonceHandler();
+    cspNonceHandler.setHandler(environment.getApplicationContext().getHandler());
+    environment.getApplicationContext().setHandler(cspNonceHandler);
   }
 
   private void initializeWebsockets(

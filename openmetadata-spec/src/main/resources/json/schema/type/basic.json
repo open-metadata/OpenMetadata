@@ -297,6 +297,17 @@
         "enabled"
       ],
       "additionalProperties": false
+    },
+    "profileSampleType": {
+      "description": "Type of Profile Sample (percentage or rows)",
+      "type": "string",
+      "enum": ["PERCENTAGE", "ROWS"],
+      "default": "PERCENTAGE"
+    },
+    "samplingMethodType": {
+      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
+      "type": "string",
+      "enum": ["BERNOULLI", "SYSTEM"]
     }
   }
 }

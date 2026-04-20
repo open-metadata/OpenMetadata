@@ -45,6 +45,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
+import org.openmetadata.operator.util.LabelBuilder;
 
 /**
  * Test suite for PodManager.
@@ -248,6 +249,68 @@ class PodManagerTest {
   }
 
   @Test
+  void testCreateMainPodWithLongOMJobNameUsesSafePodNameAndLabels() {
+    OMJobResource omJob = createOMJobWithEmptyValueFrom("a".repeat(253));
+
+    when(podOperations.inNamespace(anyString())).thenReturn(podOperations);
+    when(podOperations.resource(any(Pod.class))).thenReturn(podResource);
+
+    Pod createdPod =
+        new PodBuilder()
+            .withNewMetadata()
+            .withName("safe-pod-main")
+            .withNamespace("test-namespace")
+            .endMetadata()
+            .build();
+
+    when(podResource.create()).thenReturn(createdPod);
+
+    podManager.createMainPod(omJob);
+
+    ArgumentCaptor<Pod> podCaptor = ArgumentCaptor.forClass(Pod.class);
+    verify(podOperations).resource(podCaptor.capture());
+
+    Pod capturedPod = podCaptor.getValue();
+    String podName = capturedPod.getMetadata().getName();
+    assertTrue(podName.length() <= 253);
+    assertTrue(podName.endsWith("-main"));
+
+    String omJobLabel = capturedPod.getMetadata().getLabels().get(LabelBuilder.LABEL_OMJOB_NAME);
+    assertEquals(63, omJobLabel.length());
+    assertTrue(omJobLabel.matches("^[a-zA-Z0-9].*[a-zA-Z0-9]$"));
+  }
+
+  @Test
+  void testCreateMainPodStripsTrailingDotAfterTruncation() {
+    OMJobResource omJob = createOMJobWithEmptyValueFrom("a".repeat(247) + ".suffix");
+
+    when(podOperations.inNamespace(anyString())).thenReturn(podOperations);
+    when(podOperations.resource(any(Pod.class))).thenReturn(podResource);
+
+    Pod createdPod =
+        new PodBuilder()
+            .withNewMetadata()
+            .withName("safe-pod-main")
+            .withNamespace("test-namespace")
+            .endMetadata()
+            .build();
+
+    when(podResource.create()).thenReturn(createdPod);
+
+    podManager.createMainPod(omJob);
+
+    ArgumentCaptor<Pod> podCaptor = ArgumentCaptor.forClass(Pod.class);
+    verify(podOperations).resource(podCaptor.capture());
+
+    String podName = podCaptor.getValue().getMetadata().getName();
+    int baseNameLastCharIndex = podName.length() - "-main".length() - 1;
+
+    assertTrue(podName.length() <= 253);
+    assertTrue(podName.endsWith("-main"));
+    assertTrue(Character.isLetterOrDigit(podName.charAt(baseNameLastCharIndex)));
+  }
+
+  @Test
   void testCreateMainPodWithTolerations() {
     OMJobResource omJob = createOMJobWithTolerations();
 
@@ -307,7 +370,6 @@ class PodManagerTest {
     verify(podOperations).resource(podCaptor.capture());
 
     Pod capturedPod = podCaptor.getValue();
-    // No tolerations set - should be null
     assertNull(capturedPod.getSpec().getTolerations());
   }
 
@@ -317,7 +379,6 @@ class PodManagerTest {
     OMJobResource omJob = createOMJobWithEmptyValueFrom();
     omJob.getStatus().setExitHandlerPodName("test-omjob-exit");
 
-    // Label-based search returns empty
     NonNamespaceOperation<Pod, PodList, PodResource> nsOps = mock(NonNamespaceOperation.class);
     when(podOperations.inNamespace(anyString())).thenReturn(nsOps);
     when(nsOps.withLabels(anyMap())).thenReturn(nsOps);
@@ -326,7 +387,6 @@ class PodManagerTest {
     emptyList.setItems(List.of());
     when(nsOps.list()).thenReturn(emptyList);
 
-    // Name-based lookup returns the pod
     Pod exitPod =
         new PodBuilder()
             .withNewMetadata()
@@ -349,7 +409,6 @@ class PodManagerTest {
   @Test
   void testFindExitHandlerPodNoFallbackWithoutStatus() {
     OMJobResource omJob = createOMJobWithEmptyValueFrom();
-    // No exitHandlerPodName set in status
 
     NonNamespaceOperation<Pod, PodList, PodResource> nsOps = mock(NonNamespaceOperation.class);
     when(podOperations.inNamespace(anyString())).thenReturn(nsOps);
@@ -483,6 +542,10 @@ class PodManagerTest {
   }
 
   private OMJobResource createOMJobWithEmptyValueFrom() {
+    return createOMJobWithEmptyValueFrom("test-omjob");
+  }
+
+  private OMJobResource createOMJobWithEmptyValueFrom(String omJobName) {
     // Create environment variables including one with empty valueFrom
     List<EnvVar> envVars =
         Arrays.asList(
@@ -518,7 +581,7 @@ class PodManagerTest {
 
     ObjectMeta metadata =
         new ObjectMetaBuilder()
-            .withName("test-omjob")
+            .withName(omJobName)
             .withNamespace("test-namespace")
             .withUid("test-uid")
             .withLabels(

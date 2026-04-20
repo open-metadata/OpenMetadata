@@ -22,7 +22,6 @@ import {
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
-  LayoutEngine,
   NODE_BORDER_COLOR,
   RELATION_COLORS,
 } from '../OntologyExplorer.constants';
@@ -328,9 +327,20 @@ export function useGraphDataBuilder({
 
       const visibleIds = new Set([...visibleTermIds, ...visibleAssetIds]);
       nodesForGraph = inputNodes.filter((n) => visibleIds.has(n.id));
-      edgesForGraph = mergedEdgesList.filter(
-        (e) => visibleIds.has(e.from) && visibleIds.has(e.to)
-      );
+      edgesForGraph = mergedEdgesList.filter((e) => {
+        if (!visibleIds.has(e.from) || !visibleIds.has(e.to)) {
+          return false;
+        }
+        const fromIsAsset = allAssetIds.has(e.from);
+        const toIsAsset = allAssetIds.has(e.to);
+        if (fromIsAsset || toIsAsset) {
+          const termId = fromIsAsset ? e.to : e.from;
+
+          return idsToExpand.has(termId);
+        }
+
+        return true;
+      });
     } else if (explorationMode === 'hierarchy') {
       nodesForGraph = inputNodes;
       edgesForGraph = inputEdges.map((e) => ({
@@ -359,7 +369,7 @@ export function useGraphDataBuilder({
             nodesForGraph.filter(
               (n) => n.type !== 'dataAsset' && n.type !== 'metric'
             ),
-            LayoutEngine.Dagre,
+            layoutType,
             termHSpacing,
             termVSpacing
           )

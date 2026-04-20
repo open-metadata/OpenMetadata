@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
@@ -39,6 +39,7 @@ import DescriptionFieldTemplate from '../../../../common/Form/JSONSchema/JSONSch
 import { FieldErrorTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
+import ProfileSampleConfigField from './ProfileSampleConfigField';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
@@ -78,7 +79,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
   const uiSchema = useMemo(() => {
-    let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
+    let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
     if (isElasticSearchPipeline) {
       commonSchema = {
         ...commonSchema,
@@ -90,6 +91,15 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       commonSchema = {
         ...commonSchema,
         ...EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
+      };
+    }
+
+    if (pipeLineType === PipelineType.Profiler) {
+      commonSchema = {
+        ...commonSchema,
+        profileSampleConfig: {
+          'ui:field': 'ProfileSampleConfigField',
+        },
       };
     }
 
@@ -140,6 +150,10 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       pipeLineType === PipelineType.Profiler
     ) {
       fields['/schemas/rootProcessingEngine'] = SparkAgentField;
+    }
+
+    if (pipeLineType === PipelineType.Profiler) {
+      fields['ProfileSampleConfigField'] = ProfileSampleConfigField;
     }
 
     return fields;
