@@ -1733,23 +1733,29 @@ public class ColumnGridResourceIT {
 
     waitForSearchIndexRefresh();
 
-    ColumnGridResponse response =
-        getColumnGrid(
-            client,
-            "entityTypes=table&glossaryTerms="
-                + term.getFullyQualifiedName()
-                + "&columnNamePattern=pg_match&serviceName="
-                + service.getName());
+    await("Wait for pattern + glossary filter result")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&glossaryTerms="
+                          + term.getFullyQualifiedName()
+                          + "&columnNamePattern=pg_match&serviceName="
+                          + service.getName());
 
-    assertNotNull(response);
+              assertNotNull(response);
 
-    boolean foundMatch =
-        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(matchCol));
-    boolean foundNoMatch =
-        response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(noMatchCol));
-
-    assertTrue(foundMatch, "Column matching both pattern and glossary should be in results");
-    assertFalse(foundNoMatch, "Column with glossary but not matching pattern should be excluded");
+              assertTrue(
+                  response.getColumns().stream().anyMatch(c -> c.getColumnName().equals(matchCol)),
+                  "Column matching both pattern and glossary should be in results");
+              assertFalse(
+                  response.getColumns().stream()
+                      .anyMatch(c -> c.getColumnName().equals(noMatchCol)),
+                  "Column with glossary but not matching pattern should be excluded");
+            });
   }
 
   @Test
@@ -1870,24 +1876,36 @@ public class ColumnGridResourceIT {
 
     waitForSearchIndexRefresh();
 
-    ColumnGridResponse response =
-        getColumnGrid(
-            client,
-            "entityTypes=table&glossaryTerms="
-                + term.getFullyQualifiedName()
-                + "&serviceName="
-                + service.getName());
+    await("Wait for glossary-filtered column to return the tagged occurrence only")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&glossaryTerms="
+                          + term.getFullyQualifiedName()
+                          + "&serviceName="
+                          + service.getName());
 
-    assertNotNull(response);
+              assertNotNull(response);
+              assertNotNull(response.getColumns());
 
-    for (ColumnGridItem item : response.getColumns()) {
-      if (item.getColumnName().equals(sharedName)) {
-        assertEquals(
-            1,
-            item.getTotalOccurrences(),
-            "Should only return the occurrence WITH the glossary term, not all with same name");
-      }
-    }
+              ColumnGridItem sharedItem =
+                  response.getColumns().stream()
+                      .filter(item -> item.getColumnName().equals(sharedName))
+                      .findFirst()
+                      .orElse(null);
+
+              assertNotNull(
+                  sharedItem,
+                  "Expected '" + sharedName + "' to be present in the glossary-filtered response");
+              assertEquals(
+                  1,
+                  sharedItem.getTotalOccurrences(),
+                  "Should only return the occurrence WITH the glossary term, not all with same name");
+            });
   }
 
   private void waitForColumnToBeIndexed(
