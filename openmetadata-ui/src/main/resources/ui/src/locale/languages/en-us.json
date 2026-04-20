@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "replies",
     "reposition": "Reposition",
     "request": "Request",
+    "request-data-access": "Request Data Access",
     "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Request Tags",

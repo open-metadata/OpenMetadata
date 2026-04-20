@@ -586,6 +586,24 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const requestDataAccessButton = useMemo(() => {
+    if (
+      !tableClassBase.getShowRequestDataAccess() ||
+      SERVICE_TYPES.includes(entityType) ||
+      deleted
+    ) {
+      return null;
+    }
+
+    return (
+      <Button
+        className="source-url-button font-semibold"
+        data-testid="request-data-access-button">
+        {t('label.request-data-access')}
+      </Button>
+    );
+  }, [entityType, deleted]);
+
   useEffect(() => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
@@ -687,6 +705,7 @@ export const DataAssetsHeader = ({
                       </Typography.Link>
                     </Tooltip>
                   )}
+                  {requestDataAccessButton}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}

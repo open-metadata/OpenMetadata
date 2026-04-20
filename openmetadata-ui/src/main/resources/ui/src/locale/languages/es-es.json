@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "respuestas",
     "reposition": "Reposicionar",
     "request": "Petición",
+    "request-data-access": "Solicitar acceso a datos",
     "request-method": "Petición Método",
     "request-schema-field": "Petición Campo del Esquema",
     "request-tag-plural": "Etiquetas de solicitud",

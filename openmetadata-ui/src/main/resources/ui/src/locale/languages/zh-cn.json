@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "回复",
     "reposition": "重新定位",
     "request": "请求",
+    "request-data-access": "请求数据访问",
     "request-method": "请求方式",
     "request-schema-field": "请求架构字段",
     "request-tag-plural": "请求补充标签",

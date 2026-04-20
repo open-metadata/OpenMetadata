@@ -216,6 +216,10 @@ class TableClassBase {
     return false;
   }
 
+  public getShowRequestDataAccess() {
+    return false;
+  }
+
   public getDummyData(): Table {
     return TABLE_DUMMY_DATA;
   }

@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "antworten",
     "reposition": "Neu positionieren",
     "request": "Anfrage",
+    "request-data-access": "Datenzugriff anfordern",
     "request-method": "Anfrage Methode",
     "request-schema-field": "Anfrage Feld Schema",
     "request-tag-plural": "Tag-Anfragen",

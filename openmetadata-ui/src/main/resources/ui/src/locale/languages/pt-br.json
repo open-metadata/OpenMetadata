@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "respostas",
     "reposition": "Reposicionar",
     "request": "Solicitação",
+    "request-data-access": "Solicitar acesso a dados",
     "request-method": "Método de solicitação",
     "request-schema-field": "Campo de esquema da requisição",
     "request-tag-plural": "Solicitar Tags",

@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "antwoorden",
     "reposition": "Herpositioneren",
     "request": "Verzoek",
+    "request-data-access": "Gegevenstoegang aanvragen",
     "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Aanvraagtags",

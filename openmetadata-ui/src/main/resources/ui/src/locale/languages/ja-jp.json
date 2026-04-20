@@ -1675,6 +1675,7 @@
     "reply-lowercase-plural": "返信",
     "reposition": "位置変更",
     "request": "リクエスト",
+    "request-data-access": "データアクセスを要求",
     "request-method": "リクエストメソッド",
     "request-schema-field": "リクエストスキーマフィールド",
     "request-tag-plural": "タグをリクエスト",
