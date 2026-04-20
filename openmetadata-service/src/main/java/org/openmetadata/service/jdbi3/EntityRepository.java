@@ -360,9 +360,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 }
               });
 
-  private static final ThreadLocal<Include> bulkInclude =
-      ThreadLocal.withInitial(() -> Include.NON_DELETED);
-
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -1912,14 +1909,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void setFieldsInBulk(Fields fields, List<T> entities, Include include) {
-    Include resolved = include != null ? include : Include.NON_DELETED;
-    Include previous = bulkInclude.get();
-    bulkInclude.set(resolved);
-    try {
-      setFieldsInBulk(fields, entities);
-    } finally {
-      bulkInclude.set(previous);
-    }
+    setFieldsInBulk(fields, entities);
   }
 
   public List<String> listAllByParentFqn(String parentFqn) {
@@ -8497,12 +8487,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void fetchAndSetFields(List<T> entities, Fields fields) {
-    fetchAndSetFields(entities, fields, bulkInclude.get());
-  }
-
-  protected void fetchAndSetFields(List<T> entities, Fields fields, Include include) {
-    Set<String> relationshipFieldsHandled =
-        fetchAndSetRelationshipFieldsInBulk(entities, fields, include);
+    Set<String> relationshipFieldsHandled = fetchAndSetRelationshipFieldsInBulk(entities, fields);
     for (Entry<String, BiConsumer<List<T>, Fields>> entry : fieldFetchers.entrySet()) {
       if (relationshipFieldsHandled.contains(entry.getKey())) {
         continue;
@@ -8511,8 +8496,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private Set<String> fetchAndSetRelationshipFieldsInBulk(
-      List<T> entities, Fields fields, Include include) {
+  private Set<String> fetchAndSetRelationshipFieldsInBulk(List<T> entities, Fields fields) {
     if (nullOrEmpty(entities) || fields == null) {
       return Collections.emptySet();
     }
@@ -8579,9 +8563,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 .findToBatchWithRelations(entityIds, entityType, outgoingRelations, ALL);
 
     Map<String, Map<UUID, EntityReference>> incomingRefsByType =
-        resolveRelationshipEntityReferencesByType(incomingRecords, true, include);
+        resolveRelationshipEntityReferencesByType(incomingRecords, true);
     Map<String, Map<UUID, EntityReference>> outgoingRefsByType =
-        resolveRelationshipEntityReferencesByType(outgoingRecords, false, include);
+        resolveRelationshipEntityReferencesByType(outgoingRecords, false);
 
     Map<UUID, List<EntityReference>> ownersByEntity = loadOwners ? new HashMap<>() : null;
     Map<UUID, List<EntityReference>> followersByEntity = loadFollowers ? new HashMap<>() : null;
@@ -8762,7 +8746,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<String, Map<UUID, EntityReference>> resolveRelationshipEntityReferencesByType(
-      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide, Include include) {
+      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide) {
     if (records == null || records.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -8786,8 +8770,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, Map<UUID, EntityReference>> refsByType = new HashMap<>();
     for (Entry<String, Set<UUID>> entry : idsByType.entrySet()) {
       List<EntityReference> refs =
-          Entity.getEntityReferencesByIdsRespectingInclude(
-              entry.getKey(), new ArrayList<>(entry.getValue()), include);
+          Entity.getEntityReferencesByIds(
+              entry.getKey(), new ArrayList<>(entry.getValue()), NON_DELETED);
       refsByType.put(
           entry.getKey(),
           refs.stream()
@@ -9000,8 +8984,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ownerIdsByType.forEach(
         (entityType, ownerIds) -> {
           var ownerRefs =
-              Entity.getEntityReferencesByIdsRespectingInclude(
-                  entityType, new ArrayList<>(ownerIds), NON_DELETED);
+              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(ownerIds), NON_DELETED);
           var refMap =
               ownerRefs.stream()
                   .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
@@ -9046,7 +9029,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .collect(Collectors.toList());
 
     Map<UUID, EntityReference> followerRefs =
-        Entity.getEntityReferencesByIds(USER, followerIds, ALL).stream()
+        Entity.getEntityReferencesByIds(USER, followerIds, NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
 
     records.forEach(
@@ -9090,7 +9073,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     upVoterIds.values().forEach(allUserIds::addAll);
     downVoterIds.values().forEach(allUserIds::addAll);
     Map<UUID, EntityReference> userRefs =
-        Entity.getEntityReferencesByIds(Entity.USER, new ArrayList<>(allUserIds), ALL).stream()
+        Entity.getEntityReferencesByIds(Entity.USER, new ArrayList<>(allUserIds), NON_DELETED)
+            .stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
 
     for (T entity : entities) {
@@ -9286,7 +9270,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     reviewerIdsByType.forEach(
         (entityType, reviewerIds) -> {
           var reviewerRefs =
-              Entity.getEntityReferencesByIdsRespectingInclude(
+              Entity.getEntityReferencesByIds(
                   entityType, new ArrayList<>(reviewerIds), NON_DELETED);
           var refMap =
               reviewerRefs.stream()
@@ -9371,7 +9355,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Batch fetch all expert references, filtering out soft-deleted users
     Map<UUID, EntityReference> expertRefs =
-        Entity.getEntityReferencesByIdsRespectingInclude(USER, expertIds, NON_DELETED).stream()
+        Entity.getEntityReferencesByIds(USER, expertIds, NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
     // Group experts by entity

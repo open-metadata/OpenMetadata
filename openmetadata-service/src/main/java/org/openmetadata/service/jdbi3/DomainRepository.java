@@ -591,9 +591,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     List<UUID> expertIds =
         records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
     Map<UUID, EntityReference> expertRefsById =
-        Entity.getEntityReferencesByIdsRespectingInclude(
-                Entity.USER, expertIds, Include.NON_DELETED)
-            .stream()
+        Entity.getEntityReferencesByIds(Entity.USER, expertIds, Include.NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
     records.forEach(

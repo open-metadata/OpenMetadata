@@ -1233,4 +1233,53 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
         listed.getExperts() == null || listed.getExperts().isEmpty(),
         "Soft-deleted expert must not appear in list endpoint");
   }
+
+  @Test
+  void softDeletedExpert_notReturnedInListWithIncludeAll(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert_all");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain include-all soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel_all"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for include-all soft-delete expert test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain listed = null;
+    ListParams params =
+        new ListParams().setFields("experts").withLimit(100).addFilter("include", "all");
+    while (listed == null) {
+      ListResponse<Domain> page = listEntities(params);
+      listed =
+          page.getData().stream()
+              .filter(d -> d.getId().equals(domain.getId()))
+              .findFirst()
+              .orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (listed != null || after == null) break;
+      params =
+          new ListParams()
+              .setFields("experts")
+              .withLimit(100)
+              .addFilter("include", "all")
+              .setAfter(after);
+    }
+    assertNotNull(listed, "Domain not found in list with include=all");
+    assertTrue(
+        listed.getExperts() == null || listed.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear even when include=all (applies to top-level only)");
+  }
 }

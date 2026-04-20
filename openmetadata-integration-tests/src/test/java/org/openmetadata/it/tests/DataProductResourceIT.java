@@ -2952,4 +2952,45 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         listed.getExperts() == null || listed.getExperts().isEmpty(),
         "Soft-deleted expert must not appear in list endpoint");
   }
+
+  @Test
+  void softDeletedOwner_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain = getOrCreateDomain(ns);
+
+    String userName = ns.shortPrefix("owner_list_user");
+    User owner =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Owner user for soft-delete list test"));
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_softdel_owner_list"))
+            .withDescription("DataProduct for soft-delete owner list test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withOwners(List.of(owner.getEntityReference()));
+    DataProduct dp = createEntity(create);
+
+    client.users().delete(owner.getId().toString());
+
+    ListParams params =
+        new ListParams()
+            .setFields("owners")
+            .withDomain(domain.getFullyQualifiedName())
+            .withLimit(100);
+    ListResponse<DataProduct> list = client.dataProducts().list(params);
+    DataProduct listed =
+        list.getData().stream()
+            .filter(p -> p.getId().equals(dp.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("DataProduct not found in list"));
+    assertTrue(
+        listed.getOwners() == null || listed.getOwners().isEmpty(),
+        "Soft-deleted owner must not appear in list endpoint");
+  }
 }
