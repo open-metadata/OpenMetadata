@@ -796,9 +796,12 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
         """Compute table metrics from SYS.M_TABLES and CREATE_TIME from SYS.TABLES."""
         if not self.schema_name or not self.table_name:
             logger.warning(
-                "Missing schema or table name for HANA table metric computation"
+                "Missing schema or table name for HANA table metric computation. "
+                "Falling back to base computation with schema_name=%r, table_name=%r",
+                self.schema_name,
+                self.table_name,
             )
-            return None
+            return super().compute()
         # HANA system catalog stores identifiers in uppercase
         schema_upper = self.schema_name.upper()
         table_upper = self.table_name.upper()
