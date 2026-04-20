@@ -35,7 +35,7 @@ SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
 
 
-def _strip_hostport_scheme(raw: str) -> str:
+def strip_hostport_scheme(raw: str) -> str:
     """
     Strip an accidental URL scheme from a hostPort string.
 
@@ -44,7 +44,9 @@ def _strip_hostport_scheme(raw: str) -> str:
     bootstrap path of every generated Connection class.
 
     Raises ValueError if the scheme carries a non-numeric port so the user
-    gets a clear error instead of a silently broken hostPort.
+    gets a clear error instead of a silently broken hostPort. This applies to
+    both standard URLs handled by ``urlparse`` and to JDBC-style URLs handled
+    by the fallback branch (e.g. ``jdbc:postgresql://host:abc/db``).
     """
     value = raw.strip()
     if "://" not in value:
@@ -78,10 +80,30 @@ def _strip_hostport_scheme(raw: str) -> str:
             tail = tail.split(sep, 1)[0]
         if "@" in tail:
             tail = tail.rsplit("@", 1)[-1]
+
+        # Validate the port in the fallback path so the same ValueError
+        # contract holds for JDBC-style URLs (e.g. 'jdbc:postgresql://host:abc').
+        fallback_port: Optional[str] = None
+        if tail.startswith("["):
+            closing = tail.find("]")
+            if closing != -1 and len(tail) > closing + 1 and tail[closing + 1] == ":":
+                fallback_port = tail[closing + 2 :]
+        elif ":" in tail:
+            fallback_port = tail.rsplit(":", 1)[1]
+        if fallback_port and not fallback_port.isdigit():
+            raise ValueError(
+                f"Invalid hostPort '{safe_label}'. Expected format is "
+                "'hostname[:port]' (e.g. 'localhost:3306')."
+            )
         return tail
 
     host = f"[{hostname}]" if ":" in hostname else hostname
     return f"{host}:{port}" if port is not None else host
+
+
+# Backwards-compatible private alias retained for any internal callers that
+# pinned to the original underscored symbol while the helper was private.
+_strip_hostport_scheme = strip_hostport_scheme
 
 
 class BaseModel(PydanticBaseModel):
@@ -108,7 +130,7 @@ class BaseModel(PydanticBaseModel):
                 # Let ValueError propagate: if the hostPort cannot be parsed
                 # (e.g. non-numeric port), the user must fix their config
                 # rather than silently getting a broken hostPort.
-                object.__setattr__(self, "hostPort", _strip_hostport_scheme(raw))
+                object.__setattr__(self, "hostPort", strip_hostport_scheme(raw))
 
         try:
             for field in self.__pydantic_fields__:

@@ -201,6 +201,12 @@ class TestDbUtils(TestCase):
         with self.assertRaises(ValueError):
             clean_host_port("http://localhost:abc")
 
+        # Non-numeric port in JDBC-style fallback also raises ValueError
+        with self.assertRaises(ValueError):
+            clean_host_port("jdbc:postgresql://host:abc/db")
+        with self.assertRaises(ValueError):
+            clean_host_port("jdbc:postgresql://[::1]:abc")
+
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_success_with_lineage_parser(
