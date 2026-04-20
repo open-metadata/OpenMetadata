@@ -398,6 +398,11 @@ class OpenlineageSource(PipelineServiceSource):
                     )
                     return f"{schema_fqn}.{table_details.name}"
                 except FQNNotFoundException:
+                    logger.debug(
+                        f"Table '{table_details.name}' in schema '{table_details.schema}' "
+                        f"not found in services {resolved_services or self.get_db_service_names()}. "
+                        "Skipping lineage edge."
+                    )
                     return None
         except Exception:
             logger.warning(
@@ -540,7 +545,7 @@ class OpenlineageSource(PipelineServiceSource):
 
         if not result:
             raise FQNNotFoundException(
-                f"Schema FQN not found within services: {services}"
+                f"Schema '{schema}' not found in services: {services}"
             )
 
         return result
@@ -640,14 +645,13 @@ class OpenlineageSource(PipelineServiceSource):
         if not om_table_fqn:
             try:
                 om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
-            except FQNNotFoundException as e:
-                return Either(
-                    left=StackTraceError(
-                        name="",
-                        error=f"Failed to get fully qualified schema name: {e}",
-                        stackTrace=traceback.format_exc(),
-                    )
+            except FQNNotFoundException:
+                logger.warning(
+                    f"Schema '{table_details.schema}' not found in configured services "
+                    f"{self.get_db_service_names()}. Skipping table creation for "
+                    f"'{table_details.name}'."
                 )
+                return None
 
             # After finding schema fqn (based on partial schema name) we know where we can create table
             # and we move forward with creating request.
@@ -1124,10 +1128,13 @@ class OpenlineageSource(PipelineServiceSource):
                         if result:
                             yield result
                     except Exception as e:
-                        logger.debug(e)
+                        logger.warning(
+                            f"Failed to parse OpenLineage event from Kafka message: {e}"
+                        )
+                        logger.debug(traceback.format_exc())
 
         except Exception as e:
-            traceback.print_exc()
+            logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
 
         finally:
@@ -1187,12 +1194,15 @@ class OpenlineageSource(PipelineServiceSource):
                             if result:
                                 yield result
                         except Exception as e:
-                            logger.debug(e)
+                            logger.warning(
+                                f"Failed to parse OpenLineage event from Kinesis record: {e}"
+                            )
+                            logger.debug(traceback.format_exc())
 
                     time.sleep(pool_timeout)
 
         except Exception as e:
-            traceback.print_exc()
+            logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:

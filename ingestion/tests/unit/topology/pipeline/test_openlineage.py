@@ -2093,6 +2093,14 @@ class OpenLineageUnitTest(unittest.TestCase):
             self.assertEqual(str(deleted_edge.toEntity.id.root), table_b_id)
             self.assertEqual(deleted_edge.toEntity.type, "table")
 
+    def test_parse_glue_table_name_trino_glue_catalog_schema(self):
+        """Trino backed by AWS Glue Data Catalog uses the public schema and underscore-separated table names.
+        Verifies the parser handles the common Glue catalog table naming pattern correctly."""
+        result = OpenlineageSource._parse_glue_table_name(
+            "table/public/order_line_items"
+        )
+        self.assertEqual(result.name, "order_line_items")
+        self.assertEqual(result.schema, "public")
 
     def test_parse_glue_table_name_happy_path(self):
         """Glue OL naming: table/{database}/{table} — source: Naming.java GlueNaming."""
