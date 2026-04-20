@@ -29,7 +29,6 @@ import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CheckFeedbackSubmitterIsReviewerImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -256,7 +255,7 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
     FlowableListener createRecognizerFeedbackTaskListener =
         new FlowableListenerBuilder()
             .event("create")
-            .implementation(CreateTaskImpl.class.getName())
+            .implementation(CreateTask.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
             .addFieldExtension(approvalThresholdExpr)
             .addFieldExtension(rejectionThresholdExpr)

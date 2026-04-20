@@ -1171,6 +1171,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
           throw new IllegalArgumentException("Assignees required for Assign operation");
         }
+        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "reassignTask");
         List<EntityReference> newAssignees =
             params.getAssignees().stream().map(this::resolveUserOrTeam).toList();
         task.setAssignees(newAssignees);
@@ -1182,6 +1183,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getPriority() == null) {
           throw new IllegalArgumentException("Priority required for UpdatePriority operation");
         }
+        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "changeTaskPriority");
         task.setPriority(params.getPriority());
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());

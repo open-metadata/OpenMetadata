@@ -3,6 +3,8 @@ package org.openmetadata.service.migration.utils.v200;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -162,6 +164,11 @@ public class MigrationUtil {
           setAboutFromEntityLink(taskJson, entityLink, suggestionJson);
         }
 
+        // Inherit domains from the target entity so domain-scoped task queries
+        // return migrated suggestions correctly.
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        setDomainsInTaskJson(taskJson, inheritedDomains);
+
         // Build payload
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
@@ -210,6 +217,7 @@ public class MigrationUtil {
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         insertTask(handle, suggestionId, taskJson.toString(), fqnHash);
+        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating suggestion: {}", e.getMessage());
@@ -305,6 +313,11 @@ public class MigrationUtil {
         // Set about and aboutFqnHash
         setAboutFromEntityLink(taskJson, aboutLink, threadJson);
 
+        // Inherit domains from the target entity so domain-scoped task queries
+        // return migrated tasks correctly.
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        setDomainsInTaskJson(taskJson, inheritedDomains);
+
         // Build payload
         ObjectNode payload = buildThreadTaskPayload(oldType, taskDetails, entityLink);
         if (payload != null) {
@@ -361,6 +374,7 @@ public class MigrationUtil {
         }
 
         insertTask(handle, threadId, taskJson.toString(), fqnHash);
+        insertTaskDomainRelationships(handle, threadId, inheritedDomains);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating thread task: {}", e.getMessage());
@@ -1031,6 +1045,142 @@ public class MigrationUtil {
     } catch (Exception e) {
       LOG.debug("Could not look up user '{}': {}", userName, e.getMessage());
       return null;
+    }
+  }
+
+  /**
+   * Resolve the domains of the target entity referenced by the task's `about` field.
+   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but using raw SQL,
+   * since migrations run before the EntityRepository layer is fully initialized for new tasks.
+   */
+  private static List<EntityReference> resolveDomainsForTaskAbout(
+      Handle handle, ObjectNode taskJson) {
+    JsonNode about = taskJson.get("about");
+    if (about == null || !about.has("type")) {
+      return Collections.emptyList();
+    }
+
+    String entityType = about.get("type").asText();
+    String entityId =
+        about.has("id") && !about.get("id").isNull() ? about.get("id").asText() : null;
+
+    if (entityId == null) {
+      return Collections.emptyList();
+    }
+
+    return queryDomainsForEntity(handle, entityId, entityType);
+  }
+
+  /**
+   * Query the entity_relationship table for any DOMAIN --HAS--> entity rows
+   * and join with domain_entity to build EntityReferences.
+   */
+  private static List<EntityReference> queryDomainsForEntity(
+      Handle handle, String entityId, String entityType) {
+    try {
+      List<Map<String, Object>> rows =
+          handle
+              .createQuery(
+                  "SELECT d.json AS domainJson FROM entity_relationship er "
+                      + "JOIN domain_entity d ON d.id = er.fromId "
+                      + "WHERE er.toId = :entityId "
+                      + "AND er.toEntity = :entityType "
+                      + "AND er.fromEntity = :domainEntity "
+                      + "AND er.relation = :hasRelation")
+              .bind("entityId", entityId)
+              .bind("entityType", entityType)
+              .bind("domainEntity", Entity.DOMAIN)
+              .bind("hasRelation", Relationship.HAS.ordinal())
+              .mapToMap()
+              .list();
+
+      List<EntityReference> domains = new ArrayList<>();
+      for (Map<String, Object> row : rows) {
+        EntityReference domainRef = buildDomainReference(row.get("domainJson"));
+        if (domainRef != null) {
+          domains.add(domainRef);
+        }
+      }
+      return domains;
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve domains for entity {}/{}: {}", entityType, entityId, e.getMessage());
+      return Collections.emptyList();
+    }
+  }
+
+  private static EntityReference buildDomainReference(Object domainJsonObject) {
+    if (domainJsonObject == null) {
+      return null;
+    }
+    try {
+      JsonNode domainJson = JsonUtils.readTree(domainJsonObject.toString());
+      if (!domainJson.has("id")) {
+        return null;
+      }
+      EntityReference ref =
+          new EntityReference()
+              .withId(UUID.fromString(domainJson.get("id").asText()))
+              .withType(Entity.DOMAIN);
+      if (domainJson.has("name") && !domainJson.get("name").isNull()) {
+        ref.setName(domainJson.get("name").asText());
+      }
+      if (domainJson.has("fullyQualifiedName") && !domainJson.get("fullyQualifiedName").isNull()) {
+        ref.setFullyQualifiedName(domainJson.get("fullyQualifiedName").asText());
+      }
+      if (domainJson.has("displayName") && !domainJson.get("displayName").isNull()) {
+        ref.setDisplayName(domainJson.get("displayName").asText());
+      }
+      if (domainJson.has("description") && !domainJson.get("description").isNull()) {
+        ref.setDescription(domainJson.get("description").asText());
+      }
+      return ref;
+    } catch (Exception e) {
+      LOG.debug("Could not parse domain JSON: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Set the {@code domains} array in the task JSON so it is visible to readers
+   * that don't follow relationships (e.g. the search index pipeline).
+   */
+  private static void setDomainsInTaskJson(ObjectNode taskJson, List<EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return;
+    }
+    taskJson.set("domains", JsonUtils.valueToTree(domains));
+  }
+
+  /**
+   * Insert DOMAIN --HAS--> task rows so {@code TaskRepository.getDomains()} returns
+   * the inherited domains when the task is read.
+   */
+  private static void insertTaskDomainRelationships(
+      Handle handle, String taskId, List<EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return;
+    }
+    for (EntityReference domain : domains) {
+      try {
+        handle
+            .createUpdate(
+                "INSERT INTO entity_relationship "
+                    + "(fromId, toId, fromEntity, toEntity, relation) "
+                    + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
+            .bind("fromId", domain.getId().toString())
+            .bind("toId", taskId)
+            .bind("fromEntity", Entity.DOMAIN)
+            .bind("toEntity", Entity.TASK)
+            .bind("relation", Relationship.HAS.ordinal())
+            .execute();
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not insert domain relationship for task {} -> domain {}: {}",
+            taskId,
+            domain.getId(),
+            e.getMessage());
+      }
     }
   }
 }

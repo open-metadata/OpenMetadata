@@ -225,7 +225,7 @@ public class TaskWorkflowHandler {
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
     }
 
-    // Non-terminal transition: the next stage's CreateTaskImpl already updated the Task
+    // Non-terminal transition: the next stage's CreateTask already updated the Task
     // entity with the correct stageId, status, and availableTransitions. No resolution needed.
     if (resolutionType == null) {
       LOG.info(

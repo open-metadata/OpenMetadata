@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
@@ -62,6 +62,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -72,14 +73,14 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
  * Flowable TaskListener that creates a Task entity (new system) when a workflow reaches an
  * approval node. This replaces CreateApprovalTaskImpl for the new Task entity system.
  *
- * <p>Key differences from CreateApprovalTaskImpl:
+ * <p>Key differences from the legacy CreateApprovalTaskImpl:
  * - Creates Task entity instead of Thread entity
  * - Uses TaskRepository instead of FeedRepository
  * - Links task to WorkflowInstance via workflowInstanceId
  * - Cleaner separation from Feed/Thread complexity
  */
 @Slf4j
-public class CreateTaskImpl implements TaskListener {
+public class CreateTask implements TaskListener {
   static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
   private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
@@ -124,8 +125,10 @@ public class CreateTaskImpl implements TaskListener {
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
-      Integer approvalThreshold = getThresholdValue(approvalThresholdExpr, delegateTask, 1);
-      Integer rejectionThreshold = getThresholdValue(rejectionThresholdExpr, delegateTask, 1);
+      Integer approvalThreshold =
+          WorkflowVariableResolver.getThresholdValue(approvalThresholdExpr, delegateTask, 1);
+      Integer rejectionThreshold =
+          WorkflowVariableResolver.getThresholdValue(rejectionThresholdExpr, delegateTask, 1);
 
       // Get task type and category
       TaskEntityType taskType = getTaskType(delegateTask);
@@ -165,7 +168,7 @@ public class CreateTaskImpl implements TaskListener {
       delegateTask.setVariable("taskEntityId", task.getId().toString());
 
       LOG.info(
-          "[CreateTaskImpl] Created Task entity: id='{}', taskId='{}', type='{}', workflowInstanceId='{}'",
+          "[CreateTask] Created Task entity: id='{}', taskId='{}', type='{}', workflowInstanceId='{}'",
           task.getId(),
           task.getTaskId(),
           taskType,
@@ -182,18 +185,8 @@ public class CreateTaskImpl implements TaskListener {
     }
   }
 
-  private Integer getThresholdValue(Expression expr, DelegateTask delegateTask, int defaultValue) {
-    if (expr != null) {
-      String thresholdStr = (String) expr.getValue(delegateTask);
-      if (thresholdStr != null && !thresholdStr.isEmpty()) {
-        return Integer.parseInt(thresholdStr);
-      }
-    }
-    return defaultValue;
-  }
-
   private TaskEntityType getTaskType(DelegateTask delegateTask) {
-    String variableTaskType = stringVariable(delegateTask, "taskType");
+    String variableTaskType = WorkflowVariableResolver.stringVariable(delegateTask, "taskType");
     if (variableTaskType != null && !variableTaskType.isEmpty()) {
       return TaskEntityType.fromValue(variableTaskType);
     }
@@ -214,7 +207,8 @@ public class CreateTaskImpl implements TaskListener {
   }
 
   private TaskCategory getTaskCategory(DelegateTask delegateTask) {
-    String variableTaskCategory = stringVariable(delegateTask, "taskCategory");
+    String variableTaskCategory =
+        WorkflowVariableResolver.stringVariable(delegateTask, "taskCategory");
     if (variableTaskCategory != null && !variableTaskCategory.isEmpty()) {
       return TaskCategory.fromValue(variableTaskCategory);
     }
@@ -313,7 +307,7 @@ public class CreateTaskImpl implements TaskListener {
       String varName = assigneesVarNameExpr.getValue(delegateTask).toString();
       Object varValue = delegateTask.getVariable(varName);
       LOG.info(
-          "[CreateTaskImpl] Reading assignees: varName='{}', varValue type='{}', varValue='{}'",
+          "[CreateTask] Reading assignees: varName='{}', varValue type='{}', varValue='{}'",
           varName,
           varValue != null ? varValue.getClass().getName() : "null",
           varValue);
@@ -329,8 +323,7 @@ public class CreateTaskImpl implements TaskListener {
             try {
               assignees.add(getEntityReferenceFromLinkString(link));
             } catch (Exception e) {
-              LOG.warn(
-                  "[CreateTaskImpl] Failed to resolve assignee '{}': {}", link, e.getMessage());
+              LOG.warn("[CreateTask] Failed to resolve assignee '{}': {}", link, e.getMessage());
             }
           }
         }
@@ -346,7 +339,7 @@ public class CreateTaskImpl implements TaskListener {
             assignees.add(getEntityReferenceFromLinkString(candidate.getUserId()));
           } catch (Exception e) {
             LOG.warn(
-                "[CreateTaskImpl] Failed to resolve candidate '{}': {}",
+                "[CreateTask] Failed to resolve candidate '{}': {}",
                 candidate.getUserId(),
                 e.getMessage());
           }
@@ -378,29 +371,40 @@ public class CreateTaskImpl implements TaskListener {
 
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     UUID requestedTaskId = resolveRequestedTaskId(delegateTask);
-    String taskName = stringVariable(delegateTask, "taskName");
-    String taskDisplayName = stringVariable(delegateTask, "taskDisplayName");
-    String taskDescription = stringVariable(delegateTask, "taskDescription");
+    String taskName = WorkflowVariableResolver.stringVariable(delegateTask, "taskName");
+    String taskDisplayName =
+        WorkflowVariableResolver.stringVariable(delegateTask, "taskDisplayName");
+    String taskDescription =
+        WorkflowVariableResolver.stringVariable(delegateTask, "taskDescription");
     TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
-    Object requestedPayload = workflowObjectVariable(delegateTask, "taskPayload");
-    Long requestedDueDate = longVariable(delegateTask, "taskDueDate");
+    Object requestedPayload =
+        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskPayload");
+    Long requestedDueDate = WorkflowVariableResolver.longVariable(delegateTask, "taskDueDate");
     Object requestedExternalReference =
-        workflowObjectVariable(delegateTask, "taskExternalReference");
-    Object requestedTags = workflowObjectVariable(delegateTask, "taskTags");
+        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskExternalReference");
+    Object requestedTags =
+        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskTags");
     List<EntityReference> requestedReviewers =
-        entityReferencesVariable(delegateTask, "taskReviewers");
+        WorkflowVariableResolver.entityReferencesVariable(delegateTask, "taskReviewers");
     List<EntityReference> requestedAssignees =
-        entityReferencesVariable(delegateTask, "taskAssignees");
-    EntityReference requestedCreatedBy = entityReferenceVariable(delegateTask, "taskCreatedBy");
-    String requestedUpdatedBy = stringVariable(delegateTask, "taskUpdatedBy");
-    String workflowDefinitionId = stringVariable(delegateTask, "workflowDefinitionId");
+        WorkflowVariableResolver.entityReferencesVariable(delegateTask, "taskAssignees");
+    EntityReference requestedCreatedBy =
+        WorkflowVariableResolver.entityReferenceVariable(delegateTask, "taskCreatedBy");
+    String requestedUpdatedBy =
+        WorkflowVariableResolver.stringVariable(delegateTask, "taskUpdatedBy");
+    String workflowDefinitionId =
+        WorkflowVariableResolver.stringVariable(delegateTask, "workflowDefinitionId");
     UUID resolvedWorkflowDefinitionId =
         resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
-    boolean workflowManagedDraftTask = booleanVariable(delegateTask, "taskWorkflowManaged");
-    String taskFormSchemaId = stringVariable(delegateTask, "taskFormSchemaId");
-    Double taskFormSchemaVersion = doubleVariable(delegateTask, "taskFormSchemaVersion");
-    String workflowStageId = stringExpression(stageIdExpr, delegateTask);
-    String workflowStageDisplayName = stringExpression(stageDisplayNameExpr, delegateTask);
+    boolean workflowManagedDraftTask =
+        WorkflowVariableResolver.booleanVariable(delegateTask, "taskWorkflowManaged");
+    String taskFormSchemaId =
+        WorkflowVariableResolver.stringVariable(delegateTask, "taskFormSchemaId");
+    Double taskFormSchemaVersion =
+        WorkflowVariableResolver.doubleVariable(delegateTask, "taskFormSchemaVersion");
+    String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
+    String workflowStageDisplayName =
+        WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
     TaskEntityStatus stageStatus = resolveStageStatus(delegateTask);
     List<TaskAvailableTransition> availableTransitions =
         TaskWorkflowLifecycleResolver.parseTransitions(
@@ -435,7 +439,7 @@ public class CreateTaskImpl implements TaskListener {
     }
     if (existingTask != null) {
       LOG.info(
-          "[CreateTaskImpl] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
+          "[CreateTask] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
           existingTask.getId(),
           existingTask.getWorkflowStageId(),
           assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
@@ -643,8 +647,7 @@ public class CreateTaskImpl implements TaskListener {
             return taskRepository.find(requestedTaskId, Include.ALL);
           } catch (EntityNotFoundException ignored) {
             LOG.debug(
-                "[CreateTaskImpl] Task '{}' not visible yet during workflow callback",
-                requestedTaskId);
+                "[CreateTask] Task '{}' not visible yet during workflow callback", requestedTaskId);
             return null;
           }
         };
@@ -662,7 +665,7 @@ public class CreateTaskImpl implements TaskListener {
 
     if (existingTask == null) {
       LOG.info(
-          "[CreateTaskImpl] Workflow-managed draft task '{}' remained unavailable after {} lookup attempts",
+          "[CreateTask] Workflow-managed draft task '{}' remained unavailable after {} lookup attempts",
           requestedTaskId,
           WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS);
     }
@@ -671,7 +674,7 @@ public class CreateTaskImpl implements TaskListener {
   }
 
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
-    String taskId = stringVariable(delegateTask, "taskEntityId");
+    String taskId = WorkflowVariableResolver.stringVariable(delegateTask, "taskEntityId");
     if (taskId != null && !taskId.isBlank()) {
       return UUID.fromString(taskId);
     }
@@ -694,14 +697,13 @@ public class CreateTaskImpl implements TaskListener {
     }
 
     LOG.debug(
-        "[CreateTaskImpl] Falling back to process business key '{}' as requested task id",
-        businessKey);
+        "[CreateTask] Falling back to process business key '{}' as requested task id", businessKey);
 
     return UUID.fromString(businessKey);
   }
 
   private TaskEntityStatus resolveStageStatus(DelegateTask delegateTask) {
-    String stageStatus = stringExpression(taskStatusExpr, delegateTask);
+    String stageStatus = WorkflowVariableResolver.stringExpression(taskStatusExpr, delegateTask);
     if (stageStatus == null || stageStatus.isBlank()) {
       return TaskEntityStatus.Open;
     }
@@ -709,102 +711,11 @@ public class CreateTaskImpl implements TaskListener {
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
-    String priority = stringVariable(delegateTask, "taskPriority");
+    String priority = WorkflowVariableResolver.stringVariable(delegateTask, "taskPriority");
     if (priority == null || priority.isBlank()) {
       return null;
     }
     return TaskPriority.fromValue(priority);
-  }
-
-  private List<EntityReference> entityReferencesVariable(
-      DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    if (value == null) {
-      return null;
-    }
-    return value instanceof String stringValue
-        ? JsonUtils.readValue(
-            stringValue,
-            new com.fasterxml.jackson.core.type.TypeReference<List<EntityReference>>() {})
-        : JsonUtils.convertValue(
-            value, new com.fasterxml.jackson.core.type.TypeReference<List<EntityReference>>() {});
-  }
-
-  private EntityReference entityReferenceVariable(DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    if (value == null) {
-      return null;
-    }
-    return value instanceof String stringValue
-        ? JsonUtils.readValue(stringValue, EntityReference.class)
-        : JsonUtils.convertValue(value, EntityReference.class);
-  }
-
-  private Object workflowObjectVariable(DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    if (!(value instanceof String stringValue)) {
-      return value;
-    }
-    if (stringValue.isBlank()) {
-      return null;
-    }
-
-    String trimmedValue = stringValue.trim();
-    if (!trimmedValue.startsWith("{") && !trimmedValue.startsWith("[")) {
-      return value;
-    }
-
-    return JsonUtils.readOrConvertValue(trimmedValue, Object.class);
-  }
-
-  private Object variable(DelegateTask delegateTask, String variableName) {
-    return delegateTask.getVariable(variableName);
-  }
-
-  private boolean booleanVariable(DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    if (value instanceof Boolean booleanValue) {
-      return booleanValue;
-    }
-    if (value instanceof String stringValue && !stringValue.isBlank()) {
-      return Boolean.parseBoolean(stringValue);
-    }
-    return false;
-  }
-
-  private String stringVariable(DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    return value == null ? null : String.valueOf(value);
-  }
-
-  private String stringExpression(Expression expression, DelegateTask delegateTask) {
-    if (expression == null) {
-      return null;
-    }
-    Object value = expression.getValue(delegateTask);
-    return value == null ? null : String.valueOf(value);
-  }
-
-  private Long longVariable(DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    if (value instanceof Number numberValue) {
-      return numberValue.longValue();
-    }
-    if (value instanceof String stringValue && !stringValue.isBlank()) {
-      return Long.valueOf(stringValue);
-    }
-    return null;
-  }
-
-  private Double doubleVariable(DelegateTask delegateTask, String variableName) {
-    Object value = variable(delegateTask, variableName);
-    if (value instanceof Number numberValue) {
-      return numberValue.doubleValue();
-    }
-    if (value instanceof String stringValue && !stringValue.isBlank()) {
-      return Double.valueOf(stringValue);
-    }
-    return null;
   }
 
   private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
@@ -922,7 +833,7 @@ public class CreateTaskImpl implements TaskListener {
                 .singleResult();
         if (execution != null) {
           LOG.info(
-              "[CreateTaskImpl] Draft task '{}' was deleted before materialization; "
+              "[CreateTask] Draft task '{}' was deleted before materialization; "
                   + "terminating workflow instance '{}' via message '{}'",
               requestedTaskId,
               processInstanceId,
@@ -933,13 +844,13 @@ public class CreateTaskImpl implements TaskListener {
       }
 
       LOG.info(
-          "[CreateTaskImpl] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
+          "[CreateTask] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
           requestedTaskId,
           processInstanceId);
       runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(
-          "[CreateTaskImpl] Workflow instance '{}' already ended while handling deleted draft task '{}'",
+          "[CreateTask] Workflow instance '{}' already ended while handling deleted draft task '{}'",
           processInstanceId,
           requestedTaskId);
     }

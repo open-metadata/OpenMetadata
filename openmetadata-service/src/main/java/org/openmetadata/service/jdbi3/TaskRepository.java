@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
@@ -50,7 +49,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionPayload;
-import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -73,8 +71,9 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
-import org.openmetadata.service.tasks.TaskFormSchemaValidator;
+import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
@@ -285,7 +284,7 @@ public class TaskRepository extends EntityRepository<Task> {
   @Override
   public void prepare(Task task, boolean update) {
     if (task.getTaskId() == null) {
-      task.setTaskId(generateTaskId());
+      task.setTaskId(TaskIdGenerator.generateTaskId(daoCollection));
     }
     if (task.getName() == null) {
       task.setName(task.getTaskId());
@@ -300,9 +299,9 @@ public class TaskRepository extends EntityRepository<Task> {
     if (!update) {
       setDefaultAssigneesFromEntityOwners(task);
     }
-    validateAssignees(task.getAssignees());
-    validateTaskReviewers(task.getReviewers());
-    validatePayloadAgainstFormSchema(task);
+    TaskFieldValidator.validateAssignees(task.getAssignees());
+    TaskFieldValidator.validateReviewers(task.getReviewers());
+    TaskFieldValidator.validatePayloadAgainstFormSchema(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -676,59 +675,6 @@ public class TaskRepository extends EntityRepository<Task> {
     return author != null && author.getName() != null && author.getName().equals(userName);
   }
 
-  private String generateTaskId() {
-    long nextId = getNextSequenceId();
-    return String.format("TASK-%05d", nextId);
-  }
-
-  private long getNextSequenceId() {
-    Boolean isMySQL =
-        org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL();
-    if (Boolean.TRUE.equals(isMySQL)) {
-      return Entity.getJdbi()
-          .withHandle(
-              handle -> {
-                handle
-                    .createUpdate("UPDATE new_task_sequence SET id = LAST_INSERT_ID(id + 1)")
-                    .execute();
-                return handle.createQuery("SELECT LAST_INSERT_ID()").mapTo(Long.class).one();
-              });
-    } else {
-      return daoCollection.taskDAO().getNextTaskIdPostgres();
-    }
-  }
-
-  private void validateAssignees(List<EntityReference> assignees) {
-    for (EntityReference assignee : listOrEmpty(assignees)) {
-      String type = assignee.getType();
-      if (!USER.equals(type) && !TEAM.equals(type)) {
-        throw new IllegalArgumentException(
-            "Task can only be assigned to users or teams. Found: " + type);
-      }
-    }
-  }
-
-  private void validateTaskReviewers(List<EntityReference> reviewers) {
-    for (EntityReference reviewer : listOrEmpty(reviewers)) {
-      String type = reviewer.getType();
-      if (!USER.equals(type) && !TEAM.equals(type)) {
-        throw new IllegalArgumentException("Task reviewers must be users or teams. Found: " + type);
-      }
-    }
-  }
-
-  private void validatePayloadAgainstFormSchema(Task task) {
-    if (task.getType() == null) {
-      return;
-    }
-
-    TaskWorkflowLifecycleResolver.resolveBinding(task)
-        .ifPresent(
-            binding ->
-                TaskFormSchemaValidator.validatePayload(
-                    binding.createFormSchema(), task.getPayload()));
-  }
-
   /**
    * Resolve a task with workflow integration.
    *
@@ -752,33 +698,10 @@ public class TaskRepository extends EntityRepository<Task> {
       Object resolvedPayload,
       String comment,
       String user) {
-    validateResolutionPayloadAgainstFormSchema(task, transitionId, resolvedPayload, newValue);
+    TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
+        task, transitionId, resolvedPayload, newValue);
     return TaskWorkflowHandler.getInstance()
         .resolveTask(task, transitionId, resolutionType, newValue, resolvedPayload, comment, user);
-  }
-
-  private void validateResolutionPayloadAgainstFormSchema(
-      Task task, String transitionId, Object resolvedPayload, String newValue) {
-    if (task.getType() == null) {
-      return;
-    }
-
-    if (resolvedPayload == null && newValue == null) {
-      return;
-    }
-
-    TaskWorkflowLifecycleResolver.resolveSchema(task)
-        .ifPresent(
-            schema -> {
-              TaskAvailableTransition transition =
-                  TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
-              Object transitionSchema =
-                  TaskWorkflowLifecycleResolver.resolveTransitionFormSchema(
-                      schema, transitionId, transition);
-              TaskFormSchemaValidator.validatePayload(
-                  transitionSchema,
-                  TaskWorkflowHandler.mergeResolutionPayload(task, resolvedPayload, newValue));
-            });
   }
 
   /**
@@ -882,6 +805,46 @@ public class TaskRepository extends EntityRepository<Task> {
     throw new AuthorizationException(
         CatalogExceptionMessage.taskOperationNotAllowed(
             userName, closeTask ? "closeTask" : "resolveTask"));
+  }
+
+  /**
+   * Check that the user is allowed to perform an owner-only mutating action on a task,
+   * such as reassigning it or changing its priority. Per the task permission matrix,
+   * these actions are restricted to:
+   * <ul>
+   *   <li>Admins</li>
+   *   <li>Direct or team owner of the target entity</li>
+   *   <li>Domain owner of any domain the target entity belongs to (via team membership)</li>
+   * </ul>
+   * Assignees and creators cannot perform these actions.
+   */
+  public void checkPermissionsForOwnerOnlyAction(
+      SecurityContext securityContext, Task task, String action) {
+    String userName = securityContext.getUserPrincipal().getName();
+    User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
+
+    if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      return;
+    }
+
+    EntityReference about = task.getAbout();
+    List<EntityReference> owners = about != null ? Entity.getOwners(about) : null;
+
+    if (!nullOrEmpty(owners)
+        && owners.stream().anyMatch(owner -> owner.getName().equals(userName))) {
+      return;
+    }
+
+    List<EntityReference> teams = user.getTeams();
+    if (!nullOrEmpty(teams) && !nullOrEmpty(owners)) {
+      List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
+      if (owners.stream().anyMatch(owner -> teamNames.contains(owner.getName()))) {
+        return;
+      }
+    }
+
+    throw new AuthorizationException(
+        CatalogExceptionMessage.taskOperationNotAllowed(userName, action));
   }
 
   private boolean isIncidentTask(Task task) {
@@ -1070,7 +1033,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // storeEntity is the raw persistence path and deliberately skips the full
     // update pipeline. Invoke postUpdate explicitly so lifecycle hooks fire
     // consistently with every other task-update path (PATCH, workflow-driven
-    // CreateTaskImpl updates, etc.). This is what allows IncidentTcrsSyncHandler
+    // CreateTask updates, etc.). This is what allows IncidentTcrsSyncHandler
     // — and any future postUpdate handler — to see terminal resolutions.
     postUpdate(original, task);
 

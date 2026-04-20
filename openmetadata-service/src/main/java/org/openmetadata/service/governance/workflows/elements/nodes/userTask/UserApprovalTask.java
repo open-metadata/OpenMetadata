@@ -32,7 +32,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -134,7 +133,7 @@ public class UserApprovalTask implements NodeInterface {
             .build();
 
     // Force sync execution on the approval subprocess so the entry path
-    // (SetApprovalAssigneesImpl → user task creation → CreateTaskImpl listener)
+    // (SetApprovalAssigneesImpl → user task creation → CreateTask listener)
     // runs on the caller's thread inside the current transaction. Without this
     // the async job executor picks up the continuation after POST /resolve
     // returns, which races with client reads and subsequent writes.
@@ -149,7 +148,7 @@ public class UserApprovalTask implements NodeInterface {
             subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
 
     // ExclusiveGatewayBuilder defaults to async=true, which pushes the rest of
-    // the user task subprocess (including the CreateTaskImpl task listener)
+    // the user task subprocess (including the CreateTask task listener)
     // onto Flowable's async executor. For the incident workflow we want the
     // whole entry path to run on the caller's thread so the POST /resolve
     // response reflects the new stage and assignees. Explicitly turn async off.
@@ -287,7 +286,7 @@ public class UserApprovalTask implements NodeInterface {
     FlowableListener createTaskListener =
         new FlowableListenerBuilder()
             .event("create")
-            .implementation(CreateTaskImpl.class.getName())
+            .implementation(CreateTask.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
             .addFieldExtension(assigneesVarNameExpr)
             .addFieldExtension(approvalThresholdExpr)

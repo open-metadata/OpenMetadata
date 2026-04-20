@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,7 +33,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
-class CreateTaskImplTest {
+class CreateTaskTest {
 
   @Test
   void testResolveExistingTaskAssigneesDefersToCurrentDatabaseAssignmentsDuringPendingStart() {
@@ -53,11 +53,11 @@ class CreateTaskImplTest {
     Task existingTask =
         new Task()
             .withId(UUID.randomUUID())
-            .withWorkflowStageId(CreateTaskImpl.PENDING_WORKFLOW_START_STAGE_ID)
+            .withWorkflowStageId(CreateTask.PENDING_WORKFLOW_START_STAGE_ID)
             .withAssignees(List.of(existingAssignee));
 
     List<EntityReference> resolved =
-        CreateTaskImpl.resolveExistingTaskAssignees(
+        CreateTask.resolveExistingTaskAssignees(
             existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
 
     assertNull(resolved);
@@ -85,7 +85,7 @@ class CreateTaskImplTest {
             .withAssignees(List.of(existingAssignee));
 
     List<EntityReference> resolved =
-        CreateTaskImpl.resolveExistingTaskAssignees(
+        CreateTask.resolveExistingTaskAssignees(
             existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
 
     assertNull(resolved);
@@ -104,15 +104,14 @@ class CreateTaskImplTest {
         new Task().withId(UUID.randomUUID()).withWorkflowStageId("review").withAssignees(null);
 
     List<EntityReference> resolved =
-        CreateTaskImpl.resolveExistingTaskAssignees(existingTask, List.of(workflowAssignee), null);
+        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(workflowAssignee), null);
 
     assertEquals(List.of(workflowAssignee), resolved);
   }
 
   @Test
   void testShouldSkipDeletedWorkflowManagedDraftTaskWhenPendingDraftWasRemoved() {
-    assertTrue(
-        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), true, null));
+    assertTrue(CreateTask.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), true, null));
   }
 
   @Test
@@ -120,10 +119,10 @@ class CreateTaskImplTest {
     Task existingTask = new Task().withId(UUID.randomUUID());
 
     assertFalse(
-        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), false, null));
-    assertFalse(CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(null, true, null));
+        CreateTask.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), false, null));
+    assertFalse(CreateTask.shouldSkipDeletedWorkflowManagedDraftTask(null, true, null));
     assertFalse(
-        CreateTaskImpl.shouldSkipDeletedWorkflowManagedDraftTask(
+        CreateTask.shouldSkipDeletedWorkflowManagedDraftTask(
             UUID.randomUUID(), true, existingTask));
   }
 
@@ -137,7 +136,7 @@ class CreateTaskImplTest {
         .thenThrow(EntityNotFoundException.byId(taskId.toString()))
         .thenReturn(existingTask);
 
-    Task resolvedTask = CreateTaskImpl.findExistingTaskWithRetry(taskRepository, taskId, true);
+    Task resolvedTask = CreateTask.findExistingTaskWithRetry(taskRepository, taskId, true);
 
     assertEquals(existingTask, resolvedTask);
     verify(taskRepository, times(2)).find(taskId, Include.ALL);
@@ -151,7 +150,7 @@ class CreateTaskImplTest {
 
     when(taskRepository.find(taskId, Include.ALL)).thenReturn(existingTask);
 
-    Task resolvedTask = CreateTaskImpl.findExistingTaskWithRetry(taskRepository, taskId, false);
+    Task resolvedTask = CreateTask.findExistingTaskWithRetry(taskRepository, taskId, false);
 
     assertEquals(existingTask, resolvedTask);
     verify(taskRepository).find(taskId, Include.ALL);
@@ -165,7 +164,7 @@ class CreateTaskImplTest {
     when(taskRepository.find(taskId, Include.ALL))
         .thenThrow(EntityNotFoundException.byId(taskId.toString()));
 
-    Task resolvedTask = CreateTaskImpl.findExistingTaskWithRetry(taskRepository, taskId, true);
+    Task resolvedTask = CreateTask.findExistingTaskWithRetry(taskRepository, taskId, true);
 
     assertNull(resolvedTask);
     verify(taskRepository, times(6)).find(taskId, Include.ALL);
@@ -173,18 +172,18 @@ class CreateTaskImplTest {
 
   @Test
   void testIsTerminalTaskStatusReturnsTrueForResolvedStates() {
-    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Approved));
-    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Rejected));
-    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Completed));
-    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
-    assertTrue(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Failed));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Approved));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Rejected));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Completed));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Failed));
   }
 
   @Test
   void testIsTerminalTaskStatusReturnsFalseForOpenStates() {
-    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Open));
-    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.InProgress));
-    assertFalse(CreateTaskImpl.isTerminalTaskStatus(TaskEntityStatus.Pending));
-    assertFalse(CreateTaskImpl.isTerminalTaskStatus(null));
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Open));
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.InProgress));
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    assertFalse(CreateTask.isTerminalTaskStatus(null));
   }
 }
