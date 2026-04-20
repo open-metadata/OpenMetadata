@@ -15,14 +15,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
-import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
-import org.openmetadata.schema.attachments.Asset;
-import org.openmetadata.schema.attachments.AssetType;
-import org.openmetadata.schema.entity.data.Article;
-import org.openmetadata.schema.entity.data.Page;
-import org.openmetadata.schema.entity.data.PageHierarchy;
-import org.openmetadata.schema.entity.data.PageType;
-import org.openmetadata.schema.entity.data.QuickLink;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -39,6 +31,13 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.attachments.AssetType;
+import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageHierarchy;
+import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -57,11 +56,8 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
@@ -246,16 +242,18 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   public ResultList<PageHierarchy> getHierarchyWithSearch(
       String parent, PageType pageType, int offset, int limit) {
+    String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchy(parent, pageType.value(), offset, limit);
+        .listPageHierarchy(parent, pageTypeValue, offset, limit);
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearchForActivePage(
       String activeFqn, PageType pageType, int offset, int limit) {
+    String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchyForActivePage(activeFqn, pageType.value(), offset, limit);
+        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, offset, limit);
   }
 
   public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {

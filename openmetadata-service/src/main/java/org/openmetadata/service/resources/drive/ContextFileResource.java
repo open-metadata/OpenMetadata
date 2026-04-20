@@ -2,18 +2,6 @@ package org.openmetadata.service.resources.drive;
 
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
-import org.openmetadata.service.jdbi3.ContextFileRepository;
-import org.openmetadata.schema.api.data.CreateContextFile;
-import org.openmetadata.schema.attachments.Asset;
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileContent;
-import org.openmetadata.schema.entity.data.ContextFileType;
-import org.openmetadata.schema.entity.data.ProcessingStatus;
-import org.openmetadata.service.attachments.AssetService;
-import org.openmetadata.service.attachments.AssetServiceFactory;
-import org.openmetadata.service.attachments.AzureAssetService;
-import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileExtractionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,17 +31,31 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileContent;
+import org.openmetadata.schema.entity.data.ContextFileType;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.attachments.AzureAssetService;
+import org.openmetadata.service.attachments.S3AssetService;
+import org.openmetadata.service.drive.ContextFileExtractionService;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -261,6 +263,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
       boolean assetUploaded = false;
       boolean assetPersisted = false;
+      boolean contentPersisted = false;
       ContextFile createdFile = null;
       try {
         try (InputStream uploadStream = bufferedUpload.newInputStream()) {
@@ -276,9 +279,17 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
         repository
             .getContentRepository()
             .create(null, content, user, ImpersonationContext.getImpersonatedBy());
+        contentPersisted = true;
         extractionService.submit(createdFile.getId(), content.getId());
         return createResponse;
       } catch (Exception e) {
+        if (contentPersisted) {
+          try {
+            repository.getContentRepository().delete(user, content.getId(), false, true);
+          } catch (Exception ignored) {
+            // Best-effort cleanup.
+          }
+        }
         if (createdFile != null) {
           cleanupFailedUpload(user, createdFile.getId());
         }
@@ -363,9 +374,8 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
             }
           };
 
-      String safeName = sanitizeFileName(asset.getFileName());
       return Response.ok(output, asset.getContentType())
-          .header("Content-Disposition", "attachment; filename=\"" + safeName + "\"")
+          .header("Content-Disposition", buildContentDisposition(asset.getFileName()))
           .header("Content-Length", asset.getSize().longValue())
           .build();
     } catch (Exception e) {
@@ -440,9 +450,29 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
   static final int MAX_EXPIRY_SECONDS = 3600;
 
-  /** Sanitize a filename for use in Content-Disposition headers. */
+  /**
+   * Sanitize a filename for use in the ASCII {@code filename="..."} parameter of a
+   * Content-Disposition header. Strips header-injection characters (quotes, backslashes,
+   * CR/LF) and falls back to "download" if the input is blank.
+   */
   static String sanitizeFileName(String fileName) {
-    return fileName.replaceAll("[\"\\\\\\r\\n]", "_");
+    if (fileName == null) {
+      return "download";
+    }
+    String sanitized = fileName.replaceAll("[\"\\\\\\r\\n]", "_").trim();
+    return sanitized.isEmpty() ? "download" : sanitized;
+  }
+
+  /**
+   * Build a Content-Disposition value that is safe for non-ASCII filenames. Emits both
+   * the legacy quoted {@code filename=} parameter (for older clients) and the RFC 5987
+   * {@code filename*=UTF-8''...} parameter with percent-encoded bytes — so international
+   * filenames round-trip while still being header-injection safe.
+   */
+  static String buildContentDisposition(String fileName) {
+    String safeAscii = sanitizeFileName(fileName);
+    String encoded = URLEncoder.encode(safeAscii, StandardCharsets.UTF_8).replace("+", "%20");
+    return "attachment; filename=\"" + safeAscii + "\"; filename*=UTF-8''" + encoded;
   }
 
   /** Clamp expiry to [1, MAX_EXPIRY_SECONDS]. */
