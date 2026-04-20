@@ -399,7 +399,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         } else {
           const data = {
             message: value,
-            from: currentUser.name,
           } as Post;
 
           const res = await postFeedById(id, data);
@@ -700,14 +699,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         if (activityThread) {
           // Add to existing thread
           const updatedThread = await postFeedById(activityThread.id, {
-            from: currentUser?.name ?? '',
             message,
           } as Post);
           setActivityThread(updatedThread);
         } else {
           // Create new thread
           const threadData: CreateThread = {
-            from: currentUser?.name ?? '',
             message,
             about: activity.about ?? '',
             type: ThreadType.Conversation,

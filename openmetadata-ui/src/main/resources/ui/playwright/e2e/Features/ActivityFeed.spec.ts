@@ -40,10 +40,6 @@ import { editDisplayName } from '../../utils/user';
 const test = base;
 
 const adminUser = new UserClass();
-const user1 = new UserClass();
-const entity = new TableClass();
-const extraEntity = new TableClass();
-const testPersona = new PersonaClass();
 
 const waitForConversationMaterialization = async ({
   apiContext,
@@ -525,7 +521,6 @@ test.describe('Mention notifications in Notification Box', () => {
     const conversationResponse = await apiContext.post('/api/v1/feed', {
       data: {
         about: `<#E::table::${entityFqn}>`,
-        from: adminUser.responseData.name,
         message: conversationSeedText,
         type: 'Conversation',
       },
@@ -597,7 +592,6 @@ test.describe('Mention notifications in Notification Box', () => {
           `/api/v1/feed/${conversationThreadId}/posts`,
           {
             data: {
-              from: user1.responseData.name,
               message: `Hey <#E::user::${adminUser.responseData.name}>, can you check this?`,
             },
           }
@@ -783,7 +777,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       // Create a conversation thread via API so we can post replies in the tests
       const conversationResponse = await apiContext.post('/api/v1/feed', {
         data: {
-          from: adminUser.responseData.name,
           message: 'Initial conversation for Chinese character encoding test',
           about: `<#E::databaseSchema::${schemaFqn}>`,
           type: 'Conversation',

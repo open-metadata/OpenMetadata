@@ -60,10 +60,11 @@ export const createAnnouncementViaApi = async (
   const endTime = startTime + 86400 * 1000;
   const response = await apiContext.post('/api/v1/announcements', {
     data: {
-      message,
-      about: entityLink,
-      type: 'Announcement',
-      announcementDetails: { description, startTime, endTime },
+      displayName: message,
+      description,
+      entityLink,
+      startTime,
+      endTime,
     },
   });
   expect(response.ok()).toBeTruthy();

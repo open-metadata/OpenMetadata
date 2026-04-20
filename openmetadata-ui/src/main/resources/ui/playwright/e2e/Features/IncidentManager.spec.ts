@@ -646,7 +646,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           data: {
             message: 'Can you resolve this thread for me? <#E::user::admin>',
             about: `<#E::testCase::${get(testCase, 'fullyQualifiedName')}>`,
-            from: user1.responseData.name,
             type: 'Conversation',
           },
         });
