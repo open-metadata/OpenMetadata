@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "אין נתונים שנצפו לאחרונה.",
     "no-reference-available": "אין הפניות זמינות.",
     "no-related-terms-available": "אין מונחים קשורים זמינים.",
+    "no-relations-for-selected-filter": "לא נמצאו קשרים עבור סוגי הקשר שנבחרו. נסה לבחור סוגים שונים.",
     "no-relations-found": "לא נמצאו קשרים למונח זה",
     "no-retry-queue-records": "לא נמצאו רשומות ניסיון חוזר לאינדוקס בזמן אמת. כל הישויות אונדקסו בהצלחה.",
     "no-roles-assigned": "לא הוקצו תפקידים",

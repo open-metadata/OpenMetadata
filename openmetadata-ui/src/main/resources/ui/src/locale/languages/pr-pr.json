@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "شما اخیراً هیچ دارایی داده‌ای را مشاهده نکرده‌اید. کاوش کنید تا چیزی جالب پیدا کنید!",
     "no-reference-available": "هیچ مرجعی در دسترس نیست.",
     "no-related-terms-available": "هیچ واژه مرتبطی موجود نیست.",
+    "no-relations-for-selected-filter": "No relations found for the selected relation types. Try selecting different types.",
     "no-relations-found": "رابطه‌ای برای این اصطلاح یافت نشد",
     "no-retry-queue-records": "Nenhum registro de tentativa de indexação ao vivo encontrado. Todas as entidades foram indexadas com sucesso.",
     "no-roles-assigned": "هیچ نقشی اختصاص داده نشده است.",
