@@ -104,7 +104,7 @@ const DomainAssetDryRunModal = ({
               })}
             </ul>
           </Dialog.Content>
-          <Dialog.Footer className="tw:sm:grid-cols-[1fr_auto_auto]">
+          <Dialog.Footer>
             <span
               className="tw:text-sm tw:text-tertiary tw:sm:self-center"
               data-testid="dry-run-affected-count">
@@ -112,22 +112,24 @@ const DomainAssetDryRunModal = ({
                 count: warnings.length,
               })}
             </span>
-            <Button
-              color="secondary"
-              data-testid="cancel"
-              isDisabled={isLoading}
-              onPress={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              showTextWhileLoading
-              color="primary"
-              data-testid={isLoading ? 'loading-button' : 'save-button'}
-              isDisabled={isLoading}
-              isLoading={isLoading}
-              onPress={onConfirm}>
-              {confirmText}
-            </Button>
+            <div className="tw:flex tw:flex-col-reverse tw:gap-3 tw:sm:flex-row tw:sm:justify-end">
+              <Button
+                color="secondary"
+                data-testid="cancel"
+                isDisabled={isLoading}
+                onPress={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                showTextWhileLoading
+                color="primary"
+                data-testid={isLoading ? 'loading-button' : 'save-button'}
+                isDisabled={isLoading}
+                isLoading={isLoading}
+                onPress={onConfirm}>
+                {confirmText}
+              </Button>
+            </div>
           </Dialog.Footer>
         </Dialog>
       </Modal>
