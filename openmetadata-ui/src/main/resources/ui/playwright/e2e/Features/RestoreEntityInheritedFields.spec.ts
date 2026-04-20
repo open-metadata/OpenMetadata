@@ -126,22 +126,22 @@ entities.forEach((EntityClass) => {
           : 1
       );
 
-      // click database
+      const parentBreadcrumbIndex = [
+        'Table',
+        'ApiEndpoint',
+        'Store Procedure',
+      ].includes(entity.getType())
+        ? 1
+        : 0;
+
+      // Assign domain + data product on the parent so the entity inherits both.
       await page
         .getByTestId('breadcrumb-link')
-        .nth(
-          ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())
-            ? 1
-            : 0
-        )
+        .nth(parentBreadcrumbIndex)
         .click();
-      // assign domain
+
       await assignSingleSelectDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
-
-      await redirectToHomePage(page);
-
-      await entity.visitEntityPage(page);
 
       await assignDataProduct(
         page,
@@ -152,7 +152,10 @@ entities.forEach((EntityClass) => {
         true
       );
 
-      // This will delete and restore and ensure both operation are successful
+      await redirectToHomePage(page);
+      await entity.visitEntityPage(page);
+
+      // Soft-delete then restore — verifies both operations succeed with inherited fields.
       await softDeleteEntity(
         page,
         entity.entityResponseData.name,
