@@ -28,7 +28,7 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { getRoles } from '../../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
@@ -71,14 +71,8 @@ const UserProfileRoles = ({
 
   const fetchRoles = async () => {
     try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data);
+      const roles = await searchRoles('*', 100);
+      setRoles(roles);
     } catch (err) {
       showErrorToast(
         err as AxiosError,

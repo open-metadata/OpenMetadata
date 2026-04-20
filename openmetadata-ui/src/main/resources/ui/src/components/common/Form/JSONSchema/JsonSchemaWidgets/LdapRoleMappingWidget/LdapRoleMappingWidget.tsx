@@ -26,7 +26,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
-import { getRoles } from '../../../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
 
@@ -101,8 +101,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     const fetchRoles = async () => {
       setIsLoadingRoles(true);
       try {
-        const response = await getRoles('*', undefined, undefined, true, 1000);
-        const roleOptions: RoleOption[] = (response.data || []).map((role) => ({
+        const roles = await searchRoles('*', 100);
+        const roleOptions: RoleOption[] = roles.map((role) => ({
           label: role.displayName || role.name,
           value: role.name,
         }));

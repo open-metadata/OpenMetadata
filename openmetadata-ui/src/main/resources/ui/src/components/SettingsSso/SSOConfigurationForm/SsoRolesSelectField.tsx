@@ -18,7 +18,7 @@ import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRoles } from '../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './sso-configuration-form-array-field-template.less';
 
@@ -30,10 +30,10 @@ const SsoRolesSelectField = (props: FieldProps) => {
   >([]);
 
   useEffect(() => {
-    getRoles('*', undefined, undefined, true, 1000)
-      .then((response) => {
+    searchRoles('*', 100)
+      .then((roles) => {
         setRoleOptions(
-          (response.data || []).map((role) => ({
+          roles.map((role) => ({
             label: role.displayName || role.name,
             value: role.name,
           }))
