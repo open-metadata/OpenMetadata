@@ -766,5 +766,103 @@ class TestPartitionColumnsToTableColumns:
         assert result[1].dataTypeDisplay is None
 
 
+class TestManifestEntryPartitionColumnConversion:
+    """Regression tests for the cross-class PartitionColumn conversion at
+    ``_manifest_entries_to_metadata_entries_by_container``.
+
+    ``ManifestMetadataEntry.partitionColumns`` and
+    ``MetadataEntry.partitionColumns`` are declared by two generated
+    Pydantic models that happen to share the class name ``PartitionColumn``
+    but live in different modules. Pydantic v2 rejects cross-class
+    substitution, so the converter must dump to a dict so the target model
+    re-constructs its own instance.
+    """
+
+    @staticmethod
+    def _manifest_with_partition_cols(partition_cols):
+        from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+            ManifestMetadataConfig,
+            ManifestMetadataEntry,
+        )
+        from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+            PartitionColumn as ManifestPartitionColumn,
+        )
+
+        pc_objects = [ManifestPartitionColumn(**kwargs) for kwargs in partition_cols]
+        return ManifestMetadataConfig(
+            entries=[
+                ManifestMetadataEntry(
+                    containerName="bucket-a",
+                    dataPath="data/events/dt=*/*.parquet",
+                    structureFormat="parquet",
+                    partitionColumns=pc_objects or None,
+                )
+            ]
+        )
+
+    def test_explicit_partition_columns_converted_to_metadata_entry(self):
+        manifest = self._manifest_with_partition_cols(
+            [{"name": "dt", "dataType": DataType.DATE}]
+        )
+
+        entries = (
+            StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
+                container_name="bucket-a", manifest=manifest
+            )
+        )
+
+        assert len(entries) == 1
+        cols = entries[0].partitionColumns
+        assert cols is not None
+        assert len(cols) == 1
+        assert cols[0].name == "dt"
+        assert cols[0].dataType == DataType.DATE
+        assert type(cols[0]).__module__ == (
+            "metadata.generated.schema.metadataIngestion.storage."
+            "containerMetadataConfig"
+        )
+
+    def test_partition_columns_none_stays_none(self):
+        manifest = self._manifest_with_partition_cols([])
+
+        entries = (
+            StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
+                container_name="bucket-a", manifest=manifest
+            )
+        )
+
+        assert entries[0].partitionColumns is None
+
+    def test_partition_columns_optional_fields_preserved(self):
+        manifest = self._manifest_with_partition_cols(
+            [
+                {
+                    "name": "region",
+                    "dataType": DataType.STRING,
+                    "dataTypeDisplay": "Region",
+                    "description": "Geographic region",
+                },
+                {"name": "year", "dataType": DataType.INT},
+            ]
+        )
+
+        entries = (
+            StorageServiceSource._manifest_entries_to_metadata_entries_by_container(
+                container_name="bucket-a", manifest=manifest
+            )
+        )
+
+        cols = entries[0].partitionColumns
+        assert len(cols) == 2
+        assert cols[0].name == "region"
+        assert cols[0].dataType == DataType.STRING
+        assert cols[0].dataTypeDisplay == "Region"
+        assert cols[0].description == "Geographic region"
+        assert cols[1].name == "year"
+        assert cols[1].dataType == DataType.INT
+        assert cols[1].dataTypeDisplay is None
+        assert cols[1].description is None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -393,7 +393,11 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 dataPath=entry.dataPath,
                 structureFormat=entry.structureFormat,
                 isPartitioned=entry.isPartitioned,
-                partitionColumns=entry.partitionColumns,
+                partitionColumns=(
+                    [pc.model_dump() for pc in entry.partitionColumns]
+                    if entry.partitionColumns
+                    else None
+                ),
                 separator=entry.separator,
                 depth=entry.depth,
                 unstructuredFormats=entry.unstructuredFormats,
