@@ -43,6 +43,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -62,6 +64,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/metrics")
 @Tag(
@@ -607,5 +610,141 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public Response getCustomUnitsOfMeasurement(@Context SecurityContext securityContext) {
     List<String> customUnits = repository.getDistinctCustomUnitsOfMeasurement();
     return Response.ok(customUnits).build();
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Valid
+  @Operation(
+      operationId = "exportMetrics",
+      summary = "Export metrics in CSV format",
+      description =
+          "Export metrics in CSV format. Use `*` as name for a platform-wide export of all metrics, "
+              + "or pass a Domain fully qualified name to scope the export to metrics owned by that domain.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with metrics",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the Domain to scope the export, or `*` for all metrics",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name, false);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportMetricsAsync",
+      summary = "Export metrics in CSV format asynchronously",
+      description =
+          "Export metrics in CSV format asynchronously. Use `*` as name for platform-wide export.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with metrics",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the Domain to scope the export, or `*` for all metrics",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Valid
+  @Operation(
+      operationId = "importMetrics",
+      summary = "Import metrics from CSV (creates missing metrics, updates existing)",
+      description =
+          "Import metrics from CSV. New metrics will be created and existing metrics will be updated. "
+              + "Use `*` as name for a platform-wide import, or pass a Domain fully qualified name "
+              + "to associate the imported metrics with that domain.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the Domain to import into, or `*` for platform-wide",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importMetricsAsync",
+      summary = "Import metrics from CSV asynchronously",
+      description =
+          "Import metrics from CSV asynchronously. Returns a job id that can be polled for completion.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the Domain to import into, or `*` for platform-wide",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 }

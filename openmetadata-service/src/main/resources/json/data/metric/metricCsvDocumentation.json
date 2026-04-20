@@ -1,0 +1,135 @@
+{
+  "summary": "Metric CSV file is used for bulk importing and exporting Metric definitions. Use '*' as the {name} path parameter to operate platform-wide, or a Domain fully qualified name to scope import/export to that domain.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name that uniquely identifies the Metric.",
+      "examples": [
+        "monthly_active_users",
+        "user_retention_rate"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the Metric.",
+      "examples": [
+        "Monthly Active Users",
+        "User Retention Rate"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description of the Metric in Markdown format.",
+      "examples": [
+        "Number of distinct users active in the last 30 days."
+      ]
+    },
+    {
+      "name": "metricType",
+      "required": false,
+      "description": "Type of the Metric. One of: COUNT, SUM, AVERAGE, RATIO, PERCENTAGE, MIN, MAX, MEDIAN, MODE, STANDARD_DEVIATION, VARIANCE, OTHER.",
+      "examples": [
+        "COUNT",
+        "PERCENTAGE"
+      ]
+    },
+    {
+      "name": "unitOfMeasurement",
+      "required": false,
+      "description": "Unit of measurement for the Metric. One of: COUNT, DOLLARS, PERCENTAGE, TIMESTAMP, SIZE, REQUESTS, EVENTS, TRANSACTIONS, OTHER.",
+      "examples": [
+        "COUNT",
+        "DOLLARS"
+      ]
+    },
+    {
+      "name": "customUnitOfMeasurement",
+      "required": false,
+      "description": "Custom unit of measurement when unitOfMeasurement is OTHER.",
+      "examples": [
+        "users/day"
+      ]
+    },
+    {
+      "name": "granularity",
+      "required": false,
+      "description": "Granularity of the Metric. One of: SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, QUARTER, YEAR.",
+      "examples": [
+        "DAY",
+        "MONTH"
+      ]
+    },
+    {
+      "name": "expressionLanguage",
+      "required": false,
+      "description": "Language used for the Metric expression code. One of: SQL, Java, JavaScript, Python, DAX, External.",
+      "examples": [
+        "SQL",
+        "DAX"
+      ]
+    },
+    {
+      "name": "expressionCode",
+      "required": false,
+      "description": "Metric expression code. For DAX, provide the measure formula (e.g. 'CALCULATE(DISTINCTCOUNT(Users[Id]))').",
+      "examples": [
+        "SELECT COUNT(DISTINCT user_id) FROM events WHERE event_date >= CURRENT_DATE - INTERVAL '30 day'",
+        "CALCULATE(DISTINCTCOUNT(Users[UserId]), Users[IsActive] = TRUE)"
+      ]
+    },
+    {
+      "name": "relatedMetrics",
+      "required": false,
+      "description": "Fully qualified names of related Metrics, separated by ';'.",
+      "examples": [
+        "daily_active_users;weekly_active_users"
+      ]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners of the Metric, in the format type:name (e.g. user:alice or team:analytics), separated by ';'.",
+      "examples": [
+        "user:alice",
+        "team:analytics;user:bob"
+      ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers of the Metric, in the format type:name, separated by ';'.",
+      "examples": [
+        "user:alice"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the Metric, separated by ';'.",
+      "examples": [
+        "PII.Sensitive",
+        "Tier.Tier1;PII.Sensitive"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the Metric, separated by ';'.",
+      "examples": [
+        "Glossary.Term1",
+        "Glossary.Term1;Glossary.Term2"
+      ]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Fully qualified names of Domains associated with the Metric, separated by ';'.",
+      "examples": [
+        "Marketing"
+      ]
+    }
+  ]
+}
