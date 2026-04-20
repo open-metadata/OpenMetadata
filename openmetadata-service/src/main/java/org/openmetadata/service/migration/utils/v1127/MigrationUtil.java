@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.ConfigSourceResolver;
 
 @Slf4j
@@ -13,21 +14,25 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   public static void backfillConfigSourceEnvHash(CollectionDAO collectionDAO) {
-    LOG.info("Backfilling env_hash and env_sync_timestamp for openmetadata_settings rows");
+    LOG.info("Backfilling env_hash and env_sync_timestamp for dual-source settings");
     CollectionDAO.SystemDAO systemDAO = collectionDAO.systemDAO();
     List<Settings> allSettings = systemDAO.getAllConfig();
     Timestamp migrationTime = ConfigSourceResolver.now();
     int success = 0;
-    int skipped = 0;
+    int skippedNonDualSource = 0;
+    int skippedAlreadyHashed = 0;
     int failed = 0;
     for (Settings setting : allSettings) {
       if (setting.getConfigType() == null || setting.getConfigValue() == null) {
-        skipped++;
+        continue;
+      }
+      if (!SystemRepository.isDualSourceSetting(setting.getConfigType())) {
+        skippedNonDualSource++;
         continue;
       }
       String configType = setting.getConfigType().toString();
       if (systemDAO.getEnvHash(configType) != null) {
-        skipped++;
+        skippedAlreadyHashed++;
         continue;
       }
       try {
@@ -43,9 +48,11 @@ public class MigrationUtil {
       }
     }
     LOG.info(
-        "config-source metadata backfill complete: {} succeeded, {} skipped, {} failed",
+        "config-source metadata backfill complete: "
+            + "{} succeeded, {} non-dual-source skipped, {} already hashed, {} failed",
         success,
-        skipped,
+        skippedNonDualSource,
+        skippedAlreadyHashed,
         failed);
   }
 }
