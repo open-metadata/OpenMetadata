@@ -19,12 +19,6 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: jest.fn().mockImplementation((key) => key),
-  }),
-}));
-
 describe('ExploreTree', () => {
   it('renders the correct tree nodes', async () => {
     const { getByText, queryByTestId } = render(

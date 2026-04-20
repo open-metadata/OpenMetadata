@@ -1456,6 +1456,8 @@ test.describe('Glossary tests', () => {
       // Delete A (succeeds - not mocked, real deletion)
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await expectGlossaryNotVisible(page, glossaryA.data.displayName);
 
       // Delete B (fails via mocked WebSocket event)
       await selectActiveGlossary(page, glossaryB.data.displayName);
@@ -1465,6 +1467,8 @@ test.describe('Glossary tests', () => {
       const refetch = waitForGlossaryListRefetch(page);
       emitDeleteFailure(jobIdB, glossaryB.data.name);
       await refetch;
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
 
       // A deleted, B restored, C untouched
       await expect(
