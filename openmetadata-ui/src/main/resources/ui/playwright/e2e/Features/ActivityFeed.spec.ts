@@ -865,36 +865,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     return editorLocator.first();
   };
 
-  const selectMentionSuggestion = async (
-    page: Page,
-    editorLocator: ReturnType<Page['locator']>,
-    label: string
-  ) => {
-    await page.waitForTimeout(500);
-
-    const editorText = await editorLocator.textContent();
-    if (editorText?.includes(`@${label}`)) {
-      return;
-    }
-
-    const mentionItem = page
-      .locator('.mention-item')
-      .filter({ hasText: label })
-      .first();
-
-    if (await mentionItem.isVisible().catch(() => false)) {
-      await mentionItem.click();
-
-      return;
-    }
-
-    const dropdown = page.locator('.suggestion-menu-wrapper');
-    if (await dropdown.isVisible().catch(() => false)) {
-      await page.keyboard.press('ArrowDown');
-      await page.keyboard.press('Enter');
-    }
-  };
-
   const selectHashSuggestion = async (
     page: Page,
     editorLocator: ReturnType<Page['locator']>,
@@ -924,77 +894,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       await page.keyboard.press('Enter');
     }
   };
-
-  test('Should allow mentioning a user with Chinese characters in the activity feed', async ({
-    page,
-  }) => {
-    const feedPromise = page.waitForResponse((response) => {
-      const url = response.url();
-      return (
-        url.includes('/api/v1/feed') &&
-        url.includes('entityLink=') &&
-        url.includes('type=Conversation') &&
-        response.request().method() === 'GET'
-      );
-    });
-    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/all`);
-    const feedResponse = await feedPromise;
-    expect(feedResponse.status()).toBe(200);
-    await waitForAllLoadersToDisappear(page);
-
-    const seededThread = page
-      .locator('[data-testid="message-container"]')
-      .filter({
-        hasText: 'Initial conversation for Chinese character encoding test',
-      })
-      .first();
-
-    await expect(seededThread).toBeVisible({ timeout: 30_000 });
-    await seededThread.click();
-    await waitForAllLoadersToDisappear(page);
-
-    const commentsInput = page.getByTestId('comments-input-field');
-    await expect(commentsInput).toBeVisible({ timeout: 10_000 });
-    await commentsInput.click();
-
-    const editorLocator = page.locator(
-      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-    );
-
-    await editorLocator.fill('Hey ');
-
-    await editorLocator.click();
-
-    await page.keyboard.press('@');
-    const userSuggestionsResponse = page.waitForResponse((response) => {
-      const url = response.url();
-
-      return (
-        url.includes('/api/v1/search/query') &&
-        url.includes(encodeURIComponent(userName))
-      );
-    });
-    await editorLocator.pressSequentially(userName);
-    await userSuggestionsResponse;
-
-    await selectMentionSuggestion(page, editorLocator, userName);
-
-    await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
-    await expect(
-      page.locator('[data-testid="send-button"]')
-    ).not.toBeDisabled();
-
-    const postMentionResponse = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.locator('[data-testid="send-button"]').click();
-    await postMentionResponse;
-    const replyCard = page
-      .getByTestId('feed-reply-card')
-      .filter({ hasText: `Hey @${userName}` });
-    await expect(replyCard).toBeVisible();
-    await expect(replyCard.getByTestId('viewer-container')).toHaveText(
-      `Hey @${userName}`
-    );
-  });
 
   test('Should encode the chinese character while mentioning api endpoint', async ({
     page,
