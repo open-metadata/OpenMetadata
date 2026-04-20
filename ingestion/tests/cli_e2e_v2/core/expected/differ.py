@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -28,6 +29,7 @@ from tests.cli_e2e_v2.core.expected.types import (
     ExpectedDatabase,
     ExpectedSchema,
     ExpectedService,
+    ExpectedStoredProcedure,
     ExpectedTable,
     MatchMode,
 )
@@ -131,6 +133,9 @@ def _diff_schema(
     for exp_table in exp_schema.tables:
         _diff_table(exp_table, schema_fqn, om, mode, diffs)
 
+    for exp_sp in exp_schema.stored_procedures:
+        _diff_stored_procedure(exp_sp, schema_fqn, om, diffs)
+
 
 def _diff_table(
     exp_table: ExpectedTable,
@@ -227,6 +232,30 @@ def _diff_column(
                 Diff(
                     f"{path}.description",
                     f"contains {exp_col.description!r}",
+                    actual_desc,
+                )
+            )
+
+
+def _diff_stored_procedure(
+    exp_sp: ExpectedStoredProcedure,
+    schema_fqn: str,
+    om: OpenMetadata,
+    diffs: list[Diff],
+) -> None:
+    sp_fqn = f"{schema_fqn}.{exp_sp.name}"
+    path = f"procedure[{exp_sp.name}]"
+    actual = om.get_by_name(entity=StoredProcedure, fqn=sp_fqn)
+    if actual is None:
+        diffs.append(Diff(path, "present", "missing"))
+        return
+    if exp_sp.description is not None:
+        actual_desc = actual.description.root if actual.description else ""
+        if exp_sp.description not in actual_desc:
+            diffs.append(
+                Diff(
+                    f"{path}.description",
+                    f"contains {exp_sp.description!r}",
                     actual_desc,
                 )
             )

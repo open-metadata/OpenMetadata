@@ -72,9 +72,18 @@ class ExpectedTable:
 
 
 @dataclass
+class ExpectedStoredProcedure:
+    """A single stored procedure's expected presence in OM."""
+
+    name: str
+    description: str | None = None  # None = don't assert; str = substring match
+
+
+@dataclass
 class ExpectedSchema:
     name: str
     tables: list[ExpectedTable]
+    stored_procedures: list[ExpectedStoredProcedure] = field(default_factory=list)
 
 
 @dataclass

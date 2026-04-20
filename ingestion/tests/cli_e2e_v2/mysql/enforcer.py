@@ -25,6 +25,7 @@ from sqlalchemy import bindparam, create_engine, text
 from sqlalchemy.engine import Engine
 
 from tests.cli_e2e_v2.core.source.sql import (
+    BaselineStoredProcedure,
     BaselineTable,
     BaselineView,
     SqlSourceBaseline,
@@ -53,16 +54,27 @@ class MySqlEnforcer:
         schemas_list = list(self._baseline.schemas)
         if not schemas_list:
             return SourceState(
-                payload={"schemas": set(), "tables": {}, "views": set()}
+                payload={
+                    "schemas": set(),
+                    "tables": {},
+                    "views": set(),
+                    "stored_procedures": set(),
+                }
             )
 
         with self._engine.connect() as conn:
             schemas = self._query_schemas(conn, schemas_list)
             tables = self._query_tables_with_columns(conn, schemas_list)
             views = self._query_views(conn, schemas_list)
+            stored_procedures = self._query_stored_procedures(conn, schemas_list)
 
         return SourceState(
-            payload={"schemas": schemas, "tables": tables, "views": views}
+            payload={
+                "schemas": schemas,
+                "tables": tables,
+                "views": views,
+                "stored_procedures": stored_procedures,
+            }
         )
 
     def compare(self, expected: BaselineSpec) -> list[Drift]:
@@ -77,6 +89,7 @@ class MySqlEnforcer:
         drifts.extend(self._diff_schemas(expected, state))
         drifts.extend(self._diff_tables(expected, state))
         drifts.extend(self._diff_views(expected, state))
+        drifts.extend(self._diff_stored_procedures(expected, state))
 
         return drifts
 
@@ -91,6 +104,9 @@ class MySqlEnforcer:
 
             for view in self._baseline.views:
                 self._apply_view(conn, view)
+
+            for sp in self._baseline.stored_procedures:
+                self._apply_stored_procedure(conn, sp)
 
     # --- introspection helpers ------------------------------------------
 
@@ -140,6 +156,18 @@ class MySqlEnforcer:
             "SELECT TABLE_SCHEMA, TABLE_NAME "
             "FROM INFORMATION_SCHEMA.VIEWS "
             "WHERE TABLE_SCHEMA IN :schemas"
+        ).bindparams(bindparam("schemas", expanding=True))
+        return {
+            (row[0], row[1])
+            for row in conn.execute(query, {"schemas": schemas_list})
+        }
+
+    @staticmethod
+    def _query_stored_procedures(conn, schemas_list: list[str]) -> set[tuple[str, str]]:
+        query = text(
+            "SELECT ROUTINE_SCHEMA, ROUTINE_NAME "
+            "FROM INFORMATION_SCHEMA.ROUTINES "
+            "WHERE ROUTINE_SCHEMA IN :schemas AND ROUTINE_TYPE = 'PROCEDURE'"
         ).bindparams(bindparam("schemas", expanding=True))
         return {
             (row[0], row[1])
@@ -244,6 +272,21 @@ class MySqlEnforcer:
                 )
         return drifts
 
+    @staticmethod
+    def _diff_stored_procedures(expected: SqlSourceBaseline, state: dict) -> list[Drift]:
+        drifts: list[Drift] = []
+        actual_sps: set[tuple[str, str]] = state.get("stored_procedures", set())
+        for sp in expected.stored_procedures:
+            if (sp.schema, sp.name) not in actual_sps:
+                drifts.append(
+                    Drift(
+                        path=f"procedure[{sp.schema}.{sp.name}]",
+                        expected="present",
+                        actual="missing",
+                    )
+                )
+        return drifts
+
     # --- apply helpers --------------------------------------------------
 
     def _apply_table(self, conn, tbl: BaselineTable) -> None:
@@ -278,6 +321,11 @@ class MySqlEnforcer:
     @staticmethod
     def _apply_view(conn, view: BaselineView) -> None:
         conn.execute(text(view.definition_sql))
+
+    @staticmethod
+    def _apply_stored_procedure(conn, sp: BaselineStoredProcedure) -> None:
+        conn.execute(text(f"DROP PROCEDURE IF EXISTS {sp.schema}.{sp.name}"))
+        conn.execute(text(sp.definition_sql))
 
     # --- type normalization ---------------------------------------------
 

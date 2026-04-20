@@ -75,6 +75,23 @@ class BaselineView:
 
 
 @dataclass
+class BaselineStoredProcedure:
+    """A single expected stored procedure in the source database.
+
+    MySQL has no CREATE OR REPLACE PROCEDURE; the enforcer handles this by
+    issuing DROP PROCEDURE IF EXISTS before each CREATE in apply().
+
+    definition_sql is sent verbatim to the server. MySQL's DELIMITER is a
+    CLI-only convenience — via PyMySQL the whole CREATE PROCEDURE statement
+    is one string and MySQL's server-side parser handles the procedure body.
+    """
+
+    schema: str
+    name: str
+    definition_sql: str
+
+
+@dataclass
 class SqlSourceBaseline(BaselineSpec):
     """Top-level declarative spec for a SQL-based source.
 
@@ -86,3 +103,4 @@ class SqlSourceBaseline(BaselineSpec):
     schemas: list[str]
     tables: list[BaselineTable]
     views: list[BaselineView] = field(default_factory=list)
+    stored_procedures: list[BaselineStoredProcedure] = field(default_factory=list)

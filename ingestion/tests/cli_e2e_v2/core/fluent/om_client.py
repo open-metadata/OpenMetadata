@@ -21,6 +21,9 @@ from tests.cli_e2e_v2.core.fluent.table_assert import TableAssert
 
 if TYPE_CHECKING:
     from tests.cli_e2e_v2.core.fluent.service_assert import ServiceAssert
+    from tests.cli_e2e_v2.core.fluent.stored_procedure_assert import (
+        StoredProcedureAssert,
+    )
 
 
 class OmClient:
@@ -39,3 +42,12 @@ class OmClient:
         from tests.cli_e2e_v2.core.fluent.service_assert import ServiceAssert
 
         return ServiceAssert(self._om, name)
+
+    def stored_procedure(self, fqn: str) -> "StoredProcedureAssert":
+        # Lazy import keeps Task 13's test-time importability even if this file
+        # is loaded before Task 14-style classes.
+        from tests.cli_e2e_v2.core.fluent.stored_procedure_assert import (
+            StoredProcedureAssert,
+        )
+
+        return StoredProcedureAssert(self._om, fqn)
