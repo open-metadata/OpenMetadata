@@ -46,7 +46,8 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_PRODUCER_THREADS = 1;
   private static final int DEFAULT_QUEUE_SIZE = 100;
   private static final int DEFAULT_MAX_CONCURRENT_REQUESTS = 100;
-  private static final long DEFAULT_PAYLOAD_SIZE = 104857600L;
+  private static final long DEFAULT_PAYLOAD_SIZE =
+      SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
   private static final int DEFAULT_FIELD_FETCH_THREADS = 0;
   private static final int DEFAULT_DOC_BUILD_THREADS = 0;
   private static final long DEFAULT_STATS_INTERVAL_MS = 0;

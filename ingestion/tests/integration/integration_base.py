@@ -197,7 +197,7 @@ PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
             "serviceConnection": {{
                 "config": {service_config}
             }},
-            "sourceConfig": {{"config": {{"type":"Profiler", "profileSample": 100}}}}
+            "sourceConfig": {{"config": {{"type":"Profiler", "profileSampleConfig": {{"sampleConfigType": "STATIC", "config": {{"profileSample": 100, "profileSampleType": "PERCENTAGE"}}}}}}}}
         }},
         "processor": {{"type": "orm-profiler", "config": {{}}}},
         "sink": {{"type": "metadata-rest", "config": {{}}}},

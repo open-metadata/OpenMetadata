@@ -210,7 +210,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
     const data = {
       message: value,
-      from: currentUser.name,
     } as Post;
 
     try {
