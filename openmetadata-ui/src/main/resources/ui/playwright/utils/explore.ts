@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
 import { isEmpty, isUndefined } from 'lodash';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
@@ -393,11 +393,16 @@ export const countCsvResponseRows = (csvText: string): number =>
   csvText.split('\n').filter((line: string) => line.trim().length > 0).length -
   1;
 
-export const getExportCount = async (
-  page: Page,
+export const getExportCountFromModal = async (
+  modalContent: Locator,
   testId: string
 ): Promise<number> => {
-  const text = await page.getByTestId(testId).textContent();
+  const countLocator = modalContent.getByTestId(testId);
+
+  await expect(countLocator).toBeVisible();
+  await expect(countLocator).toContainText(/\(\d[\d,]* Results?\)/);
+
+  const text = await countLocator.textContent();
   const match = text?.match(/(\d[\d,]*)/);
 
   return match ? parseInt(match[1].replace(/,/g, ''), 10) : 0;
