@@ -24,7 +24,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
-import { Transi18next } from '../../../../utils/CommonUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';

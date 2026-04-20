@@ -285,30 +285,6 @@ jest.mock(
     ))
 );
 
-// Mock translations
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(() => ({
-    t: (key: string, params?: Record<string, string>) => {
-      if (key.includes('.') && params) {
-        return key.replace(
-          /\{\{(\w+)\}\}/g,
-          (_, paramKey) => params[paramKey] || ''
-        );
-      }
-
-      return key;
-    },
-  })),
-  Trans: jest.fn(({ children, i18nKey }) => {
-    // Simple mock for Trans component that renders children
-    if (typeof children === 'string') {
-      return children;
-    }
-
-    return children || i18nKey;
-  }),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Alert: ({
     title,

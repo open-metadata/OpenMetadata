@@ -81,19 +81,10 @@ export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
 export const VERSION = 'VERSION';
-export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const DISABLED = 'disabled';
-export const imageTypes = {
-  image: 's96-c',
-  image192: 's192-c',
-  image24: 's24-c',
-  image32: 's32-c',
-  image48: 's48-c',
-  image512: 's512-c',
-  image72: 's72-c',
-};
+
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';

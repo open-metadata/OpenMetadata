@@ -27,7 +27,7 @@ import {
 } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { getIsErrorMatch } from './CommonUtils';
+import { getIsErrorMatch } from './APIUtils';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';

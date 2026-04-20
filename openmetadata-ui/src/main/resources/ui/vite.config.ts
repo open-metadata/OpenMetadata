@@ -38,19 +38,19 @@ export default defineConfig(({ mode }) => {
           // Don't replace ${basePath} placeholder - it will be replaced at runtime by Java backend
           // Add ${basePath} prefix to asset paths (with or without leading slash)
           return html
-            .replace(
+            .replaceAll(
               /(<script[^>]*src=["'])(\.\/)?assets\//g,
               '$1${basePath}assets/'
             )
-            .replace(
+            .replaceAll(
               /(<link[^>]*href=["'])(\.\/)?assets\//g,
               '$1${basePath}assets/'
             )
-            .replace(
+            .replaceAll(
               /(<img[^>]*src=["'])(\.\/)?assets\//g,
               '$1${basePath}assets/'
             )
-            .replace(
+            .replaceAll(
               /(<img[^>]*src=["'])(\.\/)?images\//g,
               '$1${basePath}images/'
             );
@@ -73,6 +73,9 @@ export default defineConfig(({ mode }) => {
           ext: '.gz',
           threshold: 1024, // Only compress files larger than 1KB
           deleteOriginFile: false, // Keep original files for fallback
+          // Skip binary formats that are already compressed — re-compressing
+          // them wastes build CPU and saves zero bytes.
+          filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,
         }),
       mode === 'production' &&
         viteCompression({
@@ -80,6 +83,8 @@ export default defineConfig(({ mode }) => {
           ext: '.br',
           threshold: 1024, // Only compress files larger than 1KB
           deleteOriginFile: false, // Keep original files for fallback
+          // Same exclusion list — woff2 is already brotli-compressed internally.
+          filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,
         }),
     ].filter(Boolean),
 
@@ -169,29 +174,32 @@ export default defineConfig(({ mode }) => {
       cssMinify: 'esbuild',
       cssCodeSplit: true,
       reportCompressedSize: false,
-      chunkSizeWarningLimit: 5000,
+      chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'antd-vendor': ['antd', '@ant-design/icons'],
-            'editor-vendor': [
-              '@tiptap/react',
-              '@tiptap/starter-kit',
-              '@tiptap/extension-link',
-            ],
-            'chart-vendor': ['recharts', 'reactflow'],
-          },
           assetFileNames: (assetInfo) => {
-            const fileName = assetInfo.name || '';
-            const info = fileName.split('.');
-            const ext = info[info.length - 1];
+            const names = assetInfo.names ?? [];
+            const fileName = names.length > 0 ? names[0] : '';
+            const ext = fileName ? path.extname(fileName).toLowerCase() : '';
 
-            if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            if (/\.(png|jpe?g|svg|gif|tiff|bmp|ico)$/i.test(ext)) {
               return `images/[name]-[hash][extname]`;
             }
 
             return `assets/[name]-[hash][extname]`;
+          },
+          manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+              if (id.includes('antd')) {
+                return 'vendor-antd';
+              }
+              if (id.includes('@openmetadata/ui-core-components')) {
+                return 'vendor-untitled';
+              }
+              if (id.includes('@untitledui/icons')) {
+                return 'vendor-untitled-icons';
+              }
+            }
           },
         },
       },
