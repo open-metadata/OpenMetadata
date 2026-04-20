@@ -13,17 +13,31 @@
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { SidebarItem } from '../../constant/sidebar';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
+import {
+  CONDITIONS_MUST,
+  selectOption,
+  showAdvancedSearchDialog,
+} from '../../utils/advancedSearch';
+import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
   editCreatedProperty,
+  setValueForProperty,
+  validateValueForProperty,
   verifyCustomPropertyInAdvancedSearch,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+import {
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
+} from '../../utils/sidebar';
 
 const propertiesList = [
   'Integer',
@@ -68,7 +82,7 @@ test.describe(
         .serial(`Add update and delete custom properties for ${entity.name}`, () => {
         propertiesList.forEach((property) => {
           test(property, async ({ page }) => {
-            const propertyName = `pwcp${uuid()}${uuid()}test${entity.name}`;
+            const propertyName = `pw._CP-${uuid()} . ${entity.name}:/&^%$#@!`;
             await settingClick(
               page,
               entity.entityApiType as SettingOptionsType,
@@ -99,6 +113,140 @@ test.describe(
 
             await deleteCreatedProperty(page, propertyName);
           });
+        });
+      });
+    });
+
+    test.describe('Updating value of a special-character-name property does not duplicate the key', () => {
+      const entity = CUSTOM_PROPERTIES_ENTITIES['entity_table'];
+
+      test('no duplicate card after update', async ({ page }) => {
+        test.slow();
+
+        const propertyName = `\\ pw.edge.update.${uuid()} \\`;
+
+        await test.step('Create property', async () => {
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
+          await addCustomPropertiesForEntity({
+            page,
+            propertyName,
+            customPropertyData: entity,
+            customType: 'String',
+          });
+        });
+
+        await test.step('Set initial value', async () => {
+          await adminTestEntity.visitEntityPage(page);
+          await waitForAllLoadersToDisappear(page);
+
+          await setValueForProperty({
+            page,
+            propertyName,
+            value: 'initial value',
+            propertyType: 'string',
+            endpoint: EntityTypeEndpoint.Table,
+          });
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'initial value',
+            propertyType: 'string',
+          });
+        });
+
+        await test.step('Update value and verify only one card exists', async () => {
+          await setValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+            endpoint: EntityTypeEndpoint.Table,
+          });
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+          });
+
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toHaveCount(1);
+          await expect(
+            page.getByTestId(`custom-property-"${propertyName}"-card`)
+          ).toHaveCount(0);
+        });
+
+        await test.step('Value persists after reload', async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+          });
+
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toHaveCount(1);
+          await expect(
+            page.getByTestId(`custom-property-"${propertyName}"-card`)
+          ).toHaveCount(0);
+        });
+
+        await test.step('Updated value is searchable via Advanced Search', async () => {
+          await sidebarClick(page, SidebarItem.EXPLORE);
+
+          await showAdvancedSearchDialog(page);
+
+          const ruleLocator = page.locator('.rule').nth(0);
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            'Custom Properties',
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            'Table',
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            propertyName,
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--operator .ant-select'),
+            CONDITIONS_MUST.equalTo.name
+          );
+
+          await ruleLocator
+            .locator('.rule--widget--TEXT input[type="text"]')
+            .fill('updated value');
+
+          await advanceSearchSaveFilter(page, 'updated value');
+
+          await expect(
+            page.getByTestId(
+              `table-data-card_${adminTestEntity.entityResponseData.fullyQualifiedName}`
+            )
+          ).toBeVisible();
         });
       });
     });
@@ -142,7 +290,7 @@ test.describe(
 
           await page.locator("pre[role='presentation']").last().click();
           await page.keyboard.type(
-            "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100"
+            "SELECT id, name, email\n\nFROM users\n\nWHERE active = true\n\nAND department = 'engineering'\n\nORDER BY created_at DESC\n\nLIMIT 100"
           );
 
           const patchResponse = page.waitForResponse(

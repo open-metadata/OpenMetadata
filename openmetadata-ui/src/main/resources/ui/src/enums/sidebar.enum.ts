@@ -35,4 +35,5 @@ export enum SidebarItem {
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
   KNOWLEDGE_CENTER = 'knowledge-center',
+  WORKFLOWS = 'workflows',
 }
