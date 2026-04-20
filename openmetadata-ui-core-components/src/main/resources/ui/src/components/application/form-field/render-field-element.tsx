@@ -35,7 +35,6 @@ import {
 import { ColorPickerField } from './fields/color-picker-field';
 import { IconPickerField } from './fields/icon-picker-field';
 
-
 const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
   FieldTypes.AUTOCOMPLETE,
   FieldTypes.MULTI_SELECT,
