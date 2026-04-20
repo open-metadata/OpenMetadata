@@ -240,12 +240,15 @@ const AddDomainForm = ({
   >([]);
   const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
 
-  const domainTypeOptions = Object.keys(DomainType).map((key) => ({
-    label: key,
-    id: DomainType[key as keyof typeof DomainType],
-    value: DomainType[key as keyof typeof DomainType],
-  }));
+  const domainTypeOptions = Object.keys(DomainType).map((key) => {
+    const domainTypeValue = DomainType[key as keyof typeof DomainType];
 
+    return {
+      label: domainTypeValue,
+      id: domainTypeValue,
+      value: domainTypeValue,
+    };
+  });
   const selectedColor = useWatch({
     control: form.control,
     name: 'color',
