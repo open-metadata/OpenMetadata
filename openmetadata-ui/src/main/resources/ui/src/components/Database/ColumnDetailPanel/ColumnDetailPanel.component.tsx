@@ -677,16 +677,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const renderOverviewTab = () => {
     if (isColumnDataLoading) {
       return (
-        <div className="flex-center p-lg">
+        <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
           <Loader size="default" />
         </div>
       );
     }
 
     return (
-      <Space className="w-full" direction="vertical" size="large">
+      <Space className="tw:w-full" direction="vertical" size="large">
         {isDescriptionLoading ? (
-          <div className="flex-center p-lg">
+          <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
             <Loader size="small" />
           </div>
         ) : (
@@ -752,7 +752,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const renderLineageTab = () => {
     if (isLineageLoading) {
       return (
-        <div className="flex-center p-lg">
+        <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
           <Loader size="default" />
         </div>
       );
@@ -760,7 +760,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     if (!lineageData) {
       return (
-        <div className="text-center text-grey-muted p-lg">
+        <div className="tw:text-center tw:text-gray-400 tw:p-6">
           {t('label.no-data-found')}
         </div>
       );
@@ -782,7 +782,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <div className="overview-tab-content">
+      <div className="tw:h-auto">
         <CustomPropertiesSection
           emptyStateMessage={t('label.table-entity-text', {
             entityText: t('label.column-plural'),
@@ -843,14 +843,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             );
           })}
       </div>
-      <div className="title-container items-start gap-4">
-        <div className="d-flex items-center justify-between w-full title-row">
-          <div className="d-flex items-center title-row" style={{ flex: 1 }}>
+      <div className="title-container tw:items-start tw:gap-4">
+        <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:min-w-0 tw:overflow-hidden">
+          <div
+            className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
+            style={{ flex: 1 }}>
             <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
               <ColumnIcon className="tw:h-5 tw:w-5 tw:text-gray-700" />
             </div>
-            <div className="d-flex flex-column title-text-column">
-              <div className="d-flex items-center gap-2 title-name-row">
+            <div className="tw:flex tw:flex-col tw:min-w-0 tw:flex-1 tw:overflow-hidden">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
                 <Tooltip
                   mouseEnterDelay={0.5}
                   placement="topLeft"
@@ -896,7 +898,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 (entityType === EntityType.TABLE ||
                   entityType === EntityType.DASHBOARD_DATA_MODEL) && (
                   <Typography.Text
-                    className="text-grey-muted text-xs"
+                    className="tw:text-gray-400 tw:text-xs"
                     data-testid="entity-name"
                     ellipsis={{ tooltip: true }}>
                     {stringToHTML(activeColumn.name || '')}
@@ -914,13 +916,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             />
           </div>
         </div>
-        <div className="d-flex items-center gap-2">
+        <div className="tw:flex tw:items-center tw:gap-2">
           {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
             <Tooltip
               placement="bottom"
               title={getDataTypeDisplay(activeColumn)}
               trigger="hover">
-              <div className="tw:max-w-60 flex-center tw:overflow-hidden tw:text-ellipsis data-type-chip">
+              <div
+                className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
+                  tw:text-ellipsis data-type-chip
+                  ">
                 {getDataTypeDisplay(activeColumn) || ''}
               </div>
             </Tooltip>
@@ -951,20 +956,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           />
         );
       case EntityRightPanelTab.LINEAGE:
-        return <div className="overview-tab-content">{renderLineageTab()}</div>;
+        return <div className="tw:h-auto">{renderLineageTab()}</div>;
       case EntityRightPanelTab.CUSTOM_PROPERTIES:
-        return (
-          <div className="overview-tab-content">
-            {renderCustomPropertiesTab()}
-          </div>
-        );
+        return <div className="tw:h-auto">{renderCustomPropertiesTab()}</div>;
       case EntityRightPanelTab.RELATIONS:
         return null;
       case EntityRightPanelTab.OVERVIEW:
       default:
-        return (
-          <div className="overview-tab-content">{renderOverviewTab()}</div>
-        );
+        return <div className="tw:h-auto">{renderOverviewTab()}</div>;
     }
   };
 
@@ -973,8 +972,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }
 
   const navFooter = (
-    <div className="d-flex justify-between items-center w-full navigation-container">
-      <div className="d-flex items-center gap-1 m-t-sm">
+    <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
+      <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
           color="secondary"
           iconLeading={ChevronUp}
@@ -990,7 +989,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handleNextColumn}
         />
         {isColumnInList && flattenedColumns.length > 0 && (
-          <Typography.Text className="pagination-header-text text-medium">
+          <Typography.Text className="pagination-header-text tw:font-medium">
             {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
             {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
           </Typography.Text>
@@ -1020,18 +1019,20 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         </div>
       )}
       <div className="column-detail-panel-container">
-        <div className="d-flex gap-2">
+        <div className="tw:flex tw:gap-2 tw:h-full">
           <Card bordered={false} className="summary-panel-container">
-            <Card className="content-area" style={{ width: '100%' }}>
+            <Card
+              className="tw:h-full tw:overflow-y-auto tw:max-h-full"
+              style={{ width: '100%' }}>
               {renderTabContent()}
             </Card>
           </Card>
-          <div className="m-r-sm">
+          <div className="tw:mr-2">
             <EntityRightPanelVerticalNav
               isColumnDetailPanel
               activeTab={activeTab}
               entityType={entityType}
-              verticalNavConatinerclassName="column-detail-panel-vertical-nav"
+              verticalNavConatinerclassName="tw:w-[70px]"
               onTabChange={handleTabChange}
             />
           </div>
