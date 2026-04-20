@@ -49,5 +49,4 @@ class ProcessingPeriodTest {
             TimestampUtils.getTimestampFromDateString(fiveDaysAgo));
     assertEquals(expectedStart, period.startTimestamp());
   }
-
 }

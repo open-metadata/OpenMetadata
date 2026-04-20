@@ -39,8 +39,7 @@ class DataInsightsEntityEnricherTest {
   void setUp() throws Exception {
     processor = new DataInsightsEntityEnricher(100);
     enrichEntityMethod =
-        DataInsightsEntityEnricher.class.getDeclaredMethod(
-            "enrichEntity", Map.class, Map.class);
+        DataInsightsEntityEnricher.class.getDeclaredMethod("enrichEntity", Map.class, Map.class);
     enrichEntityMethod.setAccessible(true);
   }
 
@@ -107,8 +106,7 @@ class DataInsightsEntityEnricherTest {
 
   private void invokeStripNestedColumnChildren(Map<String, Object> entityMap) throws Exception {
     Method stripMethod =
-        DataInsightsEntityEnricher.class.getDeclaredMethod(
-            "stripNestedColumnChildren", Map.class);
+        DataInsightsEntityEnricher.class.getDeclaredMethod("stripNestedColumnChildren", Map.class);
     stripMethod.setAccessible(true);
     stripMethod.invoke(null, entityMap);
   }

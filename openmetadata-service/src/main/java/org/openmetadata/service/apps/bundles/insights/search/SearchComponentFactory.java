@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.insights.search;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsElasticSearchProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsOpenSearchProcessor;
 import org.openmetadata.service.search.SearchRepository;
@@ -10,7 +11,6 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeri
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
-import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.AbstractDataInsightsBulkProcessor;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 

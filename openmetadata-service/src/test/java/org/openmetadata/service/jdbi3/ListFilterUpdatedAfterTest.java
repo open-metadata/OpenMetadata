@@ -22,6 +22,8 @@ class ListFilterUpdatedAfterTest {
     ListFilter filter = new ListFilter().addUpdatedAfter(1_700_000_000_000L);
     String condition = filter.getCondition(null);
 
-    assertTrue(condition.contains(">="), "Boundary must be inclusive (>=) to avoid missing entities updated at exactly lastRunTimestamp");
+    assertTrue(
+        condition.contains(">="),
+        "Boundary must be inclusive (>=) to avoid missing entities updated at exactly lastRunTimestamp");
   }
 }
