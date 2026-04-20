@@ -126,6 +126,7 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
@@ -135,11 +136,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -182,7 +179,6 @@ import {
 } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
-import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import {
@@ -203,14 +199,52 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
-const KnowledgeGraph = lazy(
-  () => import('../components/KnowledgeGraph/KnowledgeGraph')
+
+const SampleDataTableComponent = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Database/SampleDataTable/SampleDataTable.component')
+  )
 );
 
-const EntityLineageTab = lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+const TableQueries = withSuspenseFallback(
+  lazy(() => import('../components/Database/TableQueries/TableQueries'))
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
   )
+);
+
+const DataObservabilityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+      )
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
+  )
+);
+
+const TableConstraints = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
+
+const KnowledgeGraph = withSuspenseFallback(
+  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
 );
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {

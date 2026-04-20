@@ -22,14 +22,6 @@ jest.mock('../../rest/KpiAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: KPI_LIST })),
 }));
 
-jest.mock('../../utils/i18next/LocalUtil', () => ({
-  t: jest.fn((key: string) => key),
-  translateWithNestedKeys: jest.fn((key: string, nestedKey?: string) => {
-    return nestedKey ? `${key}.${nestedKey}` : key;
-  }),
-  detectBrowserLanguage: jest.fn(() => 'en-US'),
-}));
-
 describe('Test KPIChart Component', () => {
   const mockProps = {
     chartFilter: {

@@ -11,36 +11,26 @@
  *  limitations under the License.
  */
 
-import i18n, { t as i18nextT } from 'i18next';
+import i18next, { t as i18nextT } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { initReactI18next } from 'react-i18next';
-import { getInitOptions, languageMap } from './i18nextUtil';
-import { SupportedLocales } from './LocalUtil.interface';
+import { ReactNode } from 'react';
+import { initReactI18next, Trans } from 'react-i18next';
+import { getInitOptions } from './i18nextUtil';
+import localUtilClassBase from './LocalUtilClassBase';
 
-// Function to detect browser language
-export const detectBrowserLanguage = (): SupportedLocales => {
-  const browserLang = navigator.language;
-  const browserLangs = navigator.languages || [browserLang];
-  let browserLanguage = undefined;
-  for (const lang of browserLangs) {
-    const langCode = lang.split('-')[0];
-
-    if (languageMap[langCode]) {
-      browserLanguage = languageMap[langCode];
-
-      return browserLanguage;
-    }
-  }
-
-  // English is the default language when we don't support browser language
-  return browserLanguage ?? SupportedLocales.English;
-};
-
-// Initialize i18next (language)
-i18n
-  .use(LanguageDetector) // Detects system language
+i18next
+  .use(LanguageDetector)
   .use(initReactI18next)
-  .init(getInitOptions());
+  .init(getInitOptions())
+  .then(async () => {
+    if (i18next.language !== i18next.resolvedLanguage) {
+      await i18next.changeLanguage(i18next.language);
+    }
+  });
+
+i18next.on('languageChanged', async (lng) => {
+  await localUtilClassBase.loadLocales(lng);
+});
 
 export const t = (key: string, options?: Record<string, unknown>): string => {
   const translation = i18nextT(key, options);
@@ -79,4 +69,19 @@ export const translateWithNestedKeys = (
   return t(label, translatedParams);
 };
 
-export default i18n;
+export const Transi18next = ({
+  i18nKey,
+  values,
+  renderElement,
+  ...otherProps
+}: {
+  i18nKey: string;
+  values?: object;
+  renderElement: ReactNode;
+}): JSX.Element => (
+  <Trans i18nKey={i18nKey} values={values} {...otherProps}>
+    {renderElement}
+  </Trans>
+);
+
+export default i18next;
