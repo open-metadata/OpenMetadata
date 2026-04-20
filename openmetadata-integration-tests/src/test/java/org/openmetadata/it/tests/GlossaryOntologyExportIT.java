@@ -428,7 +428,9 @@ public class GlossaryOntologyExportIT {
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Accept", acceptHeader)
-            .timeout(Duration.ofSeconds(60))
+            // Jena's legacy model.write() for RDF/XML fetches the w3.org DTD on first use;
+            // in network-isolated CI this can stall ~100s before falling back.
+            .timeout(Duration.ofSeconds(150))
             .GET()
             .build();
 
