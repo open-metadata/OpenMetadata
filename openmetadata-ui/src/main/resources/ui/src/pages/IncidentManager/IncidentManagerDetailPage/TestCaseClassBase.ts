@@ -15,6 +15,7 @@ import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component'
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
 import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import DimensionalityTab from '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab';
+import RcaExplanationTab from '../../../components/DataQuality/IncidentManager/RcaExplanationTab/RcaExplanationTab.component';
 import SqlQueryTab from '../../../components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component';
 import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
@@ -36,9 +37,11 @@ export interface TestCaseTabType {
 
 class TestCaseClassBase {
   showSqlQueryTab: boolean;
+  showRcaTab: boolean;
 
   constructor() {
     this.showSqlQueryTab = false;
+    this.showRcaTab = false;
   }
 
   public getTab(
@@ -101,12 +104,29 @@ class TestCaseClassBase {
             },
           ]
         : []),
+      ...(this.showRcaTab
+        ? [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'rca-analysis',
+                name: i18n.t('label.ai-analysis'),
+              },
+              Tab: RcaExplanationTab,
+              key: TestCasePageTabs.RCA_ANALYSIS,
+            },
+          ]
+        : []),
       ...rest,
     ];
   }
 
   setShowSqlQueryTab(showSqlQueryTab: boolean) {
     this.showSqlQueryTab = showSqlQueryTab;
+  }
+
+  setShowRcaTab(showRcaTab: boolean) {
+    this.showRcaTab = showRcaTab;
   }
 
   public getFields(): string[] {
