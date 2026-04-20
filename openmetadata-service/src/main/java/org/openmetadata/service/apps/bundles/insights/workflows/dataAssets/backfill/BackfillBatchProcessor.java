@@ -22,8 +22,6 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 
@@ -64,13 +62,6 @@ public final class BackfillBatchProcessor {
       LocalDate windowStart,
       LocalDate windowEnd,
       WorkflowStatsCollector stats) {
-
-    LOG.debug(
-        "[BackfillBatch] processBatch START — entityType={} batchSize={} requestCacheSize={} inheritanceCacheSize={}",
-        entityType,
-        batch.size(),
-        RequestEntityCache.size(),
-        EntityRepository.inheritanceCacheSize());
 
     // 1. Compute spans and collect version keys needed for this batch.
     Map<UUID, List<Span>> entitySpans = new HashMap<>();
@@ -152,11 +143,6 @@ public final class BackfillBatchProcessor {
     flush(opsBuffer);
 
     stats.record(new StepResult("backfill-" + entityType, totalSuccess, totalFailed, errors));
-    LOG.debug(
-        "[BackfillBatch] processBatch END — entityType={} requestCacheSize={} inheritanceCacheSize={}",
-        entityType,
-        RequestEntityCache.size(),
-        EntityRepository.inheritanceCacheSize());
   }
 
   @SuppressWarnings("unchecked")
