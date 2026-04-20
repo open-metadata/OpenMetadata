@@ -70,9 +70,15 @@ export const createBot = async (page: Page) => {
 
   await page.locator(descriptionBox).fill(BOT_DETAILS.description);
 
-  const saveResponse = page.waitForResponse('/api/v1/bots');
+  const saveResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/bots') &&
+      response.request().method() === 'POST'
+  );
   await page.click('[data-testid="save-user"]');
-  await saveResponse;
+  const createBotResponse = await saveResponse;
+
+  expect(createBotResponse.status()).toBe(201);
 
   // Verify bot is getting added in the bots listing page
   await expect(
@@ -115,7 +121,10 @@ export const deleteBot = async (page: Page) => {
 
   await toastNotification(page, /deleted successfully!/);
 
-  await expect(page.locator('.ant-table-tbody')).not.toContainText(botName);
+  await page.getByTestId('searchbar').clear();
+  await page.getByTestId('searchbar').fill(BOT_DETAILS.updatedBotName);
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByText(/No data found!?/i)).toBeVisible();
 };
 
 export const updateBotDetails = async (page: Page) => {
@@ -152,6 +161,33 @@ export const updateBotDetails = async (page: Page) => {
   await expect(
     page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
   ).toContainText(BOT_DETAILS.updatedDescription);
+};
+
+export const verifyBotSearch = async (page: Page) => {
+  const searchInput = page.getByTestId('searchbar');
+  const createdBotLink = page.getByTestId(
+    `bot-link-${BOT_DETAILS.updatedBotName}`
+  );
+
+  const searchBot = async (searchTerm: string) => {
+    await searchInput.clear();
+    await searchInput.fill(searchTerm);
+    await expect(searchInput).toHaveValue(searchTerm);
+    await waitForAllLoadersToDisappear(page);
+  };
+
+  await searchBot(BOT_DETAILS.updatedBotName);
+  await expect(createdBotLink).toBeVisible();
+
+  await searchBot(BOT_DETAILS.botEmail);
+  await expect(createdBotLink).toBeVisible();
+
+  await searchBot(`${BOT_DETAILS.updatedBotName}-no-match`);
+  await expect(page.getByText(/No data found!?/i)).toBeVisible();
+
+  await searchInput.clear();
+  await waitForAllLoadersToDisappear(page);
+  await expect(createdBotLink).toBeVisible();
 };
 
 export const tokenExpirationForDays = async (page: Page) => {
