@@ -14,9 +14,7 @@
 import { EntityType } from '../../enums/entity.enum';
 import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 import { OntologyNode } from './OntologyExplorer.interface';
-
-const ASSET_NODE_TYPE = 'dataAsset';
-const METRIC_NODE_TYPE = 'metric';
+import { ASSET_NODE_TYPE, METRIC_NODE_TYPE } from './utils/graphBuilders';
 
 export function buildOntologySlideoutEntityDetails(
   node: OntologyNode
