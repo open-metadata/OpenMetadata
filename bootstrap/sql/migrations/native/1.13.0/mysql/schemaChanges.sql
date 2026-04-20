@@ -22,16 +22,6 @@ SET json = JSON_SET(
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.preview');
 
-ALTER TABLE entity_extension
-  ADD COLUMN versionNum DOUBLE NULL,
-  ADD COLUMN changedFieldKeys JSON NULL;
-
-CREATE INDEX idx_entity_extension_version_order
-  ON entity_extension (id, versionNum);
-
-CREATE INDEX idx_entity_extension_changed_field_keys
-  ON entity_extension ((CAST(changedFieldKeys->'$' AS CHAR(512) ARRAY)));
-
 -- Reduce deadlocks for entity_usage upserts by making the unique key follow the lookup predicate
 -- (id, usageDate) instead of (usageDate, id).
 SET @migrate_usage_date_idx_sql := (

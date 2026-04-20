@@ -26,25 +26,25 @@ import org.openmetadata.service.util.EntityUtil;
 class MigrationSqlStatementHashTest {
 
   @Test
-  void mysql1130MigrationStatementsHaveUniqueHashesWithinEachFile() {
+  void mysql1127MigrationStatementsHaveUniqueHashesWithinEachFile() {
     assertUniqueStatementHashes(
         resolveRepoRoot()
-            .resolve("bootstrap/sql/migrations/native/1.13.0/mysql/schemaChanges.sql"));
+            .resolve("bootstrap/sql/migrations/native/1.12.7/mysql/schemaChanges.sql"));
     assertUniqueStatementHashes(
         resolveRepoRoot()
             .resolve(
-                "bootstrap/sql/migrations/native/1.13.0/mysql/postDataMigrationSQLScript.sql"));
+                "bootstrap/sql/migrations/native/1.12.7/mysql/postDataMigrationSQLScript.sql"));
   }
 
   @Test
-  void mysql1130MigrationFilesDoNotQueryInformationSchema() throws Exception {
+  void mysql1127MigrationFilesDoNotQueryInformationSchema() throws Exception {
     assertDoesNotReferenceInformationSchema(
         resolveRepoRoot()
-            .resolve("bootstrap/sql/migrations/native/1.13.0/mysql/schemaChanges.sql"));
+            .resolve("bootstrap/sql/migrations/native/1.12.7/mysql/schemaChanges.sql"));
     assertDoesNotReferenceInformationSchema(
         resolveRepoRoot()
             .resolve(
-                "bootstrap/sql/migrations/native/1.13.0/mysql/postDataMigrationSQLScript.sql"));
+                "bootstrap/sql/migrations/native/1.12.7/mysql/postDataMigrationSQLScript.sql"));
   }
 
   private void assertUniqueStatementHashes(Path sqlFile) {
