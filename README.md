@@ -59,7 +59,7 @@ OpenMetadata Consists of Four Main Components:
 <br><br><br>
 **Data Lineage**: Track and visualize the origin and transformation of your data assets end-to-end. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
   
-**Data Documentation**: Document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations and generate data dictionaries and data catalogs.
+**Data Documentation**: Document your data assets and metadata entities using rich text, images, and links. You can also add commentts and annotations and generate data dictionaries and data catalogs.
   
 **Data Observability**: Monitor the health and performance of your data assets and pipelines. You can view metrics such as data freshness, data volume, data quality, and data latency. You can also set up alerts and notifications for any anomalies or failures.
   
