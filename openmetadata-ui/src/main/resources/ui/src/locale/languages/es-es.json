@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "No hay datos vistos recientemente.",
     "no-reference-available": "No hay referencias disponibles.",
     "no-related-terms-available": "No hay términos relacionados disponibles.",
+    "no-relations-for-selected-filter": "No se encontraron relaciones para los tipos de relación seleccionados. Intente seleccionar tipos diferentes.",
     "no-relations-found": "No se encontraron relaciones para este término",
     "no-retry-queue-records": "No se encontraron registros de reintentos de indexación en vivo. Todas las entidades se indexaron correctamente.",
     "no-roles-assigned": "No hay roles asignados",
