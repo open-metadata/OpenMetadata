@@ -8743,10 +8743,18 @@ public interface CollectionDAO {
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
 
-    @SqlUpdate(
-        "UPDATE openmetadata_settings SET json = :json, env_hash = :envHash, "
-            + "env_sync_timestamp = :envSyncTimestamp, db_modified_timestamp = :dbModifiedTimestamp "
-            + "WHERE configType = :configType")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :json, env_hash = :envHash, "
+                + "env_sync_timestamp = :envSyncTimestamp, db_modified_timestamp = :dbModifiedTimestamp "
+                + "WHERE configType = :configType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :json :: jsonb, env_hash = :envHash, "
+                + "env_sync_timestamp = :envSyncTimestamp, db_modified_timestamp = :dbModifiedTimestamp "
+                + "WHERE configType = :configType",
+        connectionType = POSTGRES)
     void updateConfigWithMetadata(
         @Bind("configType") String configType,
         @Bind("json") String json,
