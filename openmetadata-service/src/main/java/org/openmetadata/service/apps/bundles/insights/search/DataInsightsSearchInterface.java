@@ -2,12 +2,16 @@ package org.openmetadata.service.apps.bundles.insights.search;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface DataInsightsSearchInterface {
+  Logger LOG = LoggerFactory.getLogger(DataInsightsSearchInterface.class);
   String DATA_INSIGHTS_SEARCH_CONFIG_PATH = "/dataInsights/config.json";
 
   void createComponentTemplate(String name, String template) throws IOException;
@@ -57,6 +61,12 @@ public interface DataInsightsSearchInterface {
         Object value = entityIndexMap.getMappings().getProperties().get(attribute);
         if (value != null) {
           indexMappingTemplate.getTemplate().getMappings().getProperties().put(attribute, value);
+        } else {
+          LOG.warn(
+              "[DI] config.json field '{}' not found in {}/{} entity mapping — will be absent from DI index",
+              attribute,
+              entityType,
+              language);
         }
       }
     }
@@ -71,12 +81,14 @@ public interface DataInsightsSearchInterface {
 
   default List<String> getEntityAttributeFields(
       DataInsightsSearchConfiguration dataInsightsSearchConfiguration, String entityType) {
-    List<String> entityAttributeFields =
-        dataInsightsSearchConfiguration.getMappingFields().get("common");
-    entityAttributeFields.addAll(
-        dataInsightsSearchConfiguration.getMappingFields().get(entityType));
-
-    return entityAttributeFields;
+    List<String> result =
+        new ArrayList<>(
+            dataInsightsSearchConfiguration.getMappingFields().getOrDefault("common", List.of()));
+    List<String> typeFields = dataInsightsSearchConfiguration.getMappingFields().get(entityType);
+    if (typeFields != null) {
+      result.addAll(typeFields);
+    }
+    return result;
   }
 
   void createDataAssetsDataStream(
