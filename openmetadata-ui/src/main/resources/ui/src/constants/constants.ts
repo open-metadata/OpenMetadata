@@ -339,6 +339,7 @@ export const SOCKET_EVENTS = {
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
   CHART_DATA_STREAM: 'chartDataStream',
+  QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

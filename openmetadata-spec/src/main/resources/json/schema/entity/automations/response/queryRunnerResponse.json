@@ -41,6 +41,10 @@
         "executedQuery": {
             "description": "The actual query that was executed (may be transpiled or modified from the original)",
             "type": "string"
+        },
+        "resultPath": {
+            "description": "S3 or GCS key path where the query results CSV is stored. Present when storage mode is enabled; mutually exclusive with 'results'.",
+            "type": "string"
         }
     },
     "additionalProperties": false
