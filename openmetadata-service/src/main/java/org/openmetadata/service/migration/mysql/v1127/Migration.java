@@ -17,7 +17,7 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     try {
-      MigrationUtil.backfillConfigSourceEnvHash(handle);
+      MigrationUtil.backfillConfigSourceEnvHash(collectionDAO);
     } catch (Exception e) {
       LOG.error(
           "Failed to backfill env_hash in v1127 migration. "
