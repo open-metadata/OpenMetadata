@@ -93,7 +93,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("folder", MetadataOperation.VIEW_BASIC);
-    return null;
+    return List.of();
   }
 
   @Override

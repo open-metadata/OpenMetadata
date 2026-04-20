@@ -70,7 +70,7 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("parent,children", MetadataOperation.VIEW_BASIC);
-    return null;
+    return List.of();
   }
 
   @Override

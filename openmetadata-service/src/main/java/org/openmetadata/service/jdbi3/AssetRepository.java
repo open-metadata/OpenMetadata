@@ -78,7 +78,7 @@ public class AssetRepository {
 
   public List<Asset> getByFqnPrefix(String fqnPrefix, AssetType assetType) {
     try {
-      List<String> jsonList = dao.getByFqnPrefix(fqnPrefix, assetType.value());
+      List<String> jsonList = dao.getByFqnPrefix(assetType.value(), fqnPrefix);
       if (jsonList == null || jsonList.isEmpty()) {
         throw EntityNotFoundException.byMessage(
             CatalogExceptionMessage.entityNotFound(ENTITY_TYPE, fqnPrefix));

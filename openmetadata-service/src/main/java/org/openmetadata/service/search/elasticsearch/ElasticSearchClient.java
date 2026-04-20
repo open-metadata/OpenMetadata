@@ -1225,8 +1225,7 @@ public class ElasticSearchClient implements SearchClient {
       processPageHierarchyHits(
           es.co.elastic.clients.elasticsearch.core.SearchResponse<
                   es.co.elastic.clients.json.JsonData>
-              searchResponse)
-          throws java.io.IOException {
+              searchResponse) {
     java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
         new java.util.ArrayList<>();
 
@@ -1238,10 +1237,25 @@ public class ElasticSearchClient implements SearchClient {
           java.util.Map<String, Object> sourceMap = EsUtils.jsonDataToMap(hit.source());
           org.openmetadata.schema.entity.data.PageHierarchy page =
               org.openmetadata.service.util.SearchUtils.getPageHierarchy(sourceMap);
-          page.setChildrenCount(getChildrenCountForPage(page));
           pageHierarchies.add(page);
         }
       }
+    }
+
+    // Derive childrenCount from the already-fetched batch instead of issuing an extra
+    // search per hit (N+1). A page's childrenCount reflects how many of the returned
+    // pages name it as parent — accurate when the caller fetches adjacent depths
+    // together (as getHierarchyWithSearchForActivePage does) and a harmless zero for
+    // the pure top-level listing (the UI loads deeper levels lazily).
+    java.util.Map<java.util.UUID, java.lang.Integer> childrenCountByParentId =
+        new java.util.HashMap<>();
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
+      if (page.getParent() != null && page.getParent().getId() != null) {
+        childrenCountByParentId.merge(page.getParent().getId(), 1, java.lang.Integer::sum);
+      }
+    }
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
+      page.setChildrenCount(childrenCountByParentId.getOrDefault(page.getId(), 0));
     }
 
     return pageHierarchies;
@@ -1280,43 +1294,4 @@ public class ElasticSearchClient implements SearchClient {
     return rootPages;
   }
 
-  private int getChildrenCountForPage(org.openmetadata.schema.entity.data.PageHierarchy parentPage)
-      throws java.io.IOException {
-    String parentFqn = parentPage.getFullyQualifiedName();
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query childCountQuery =
-        es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
-            q ->
-                q.bool(
-                    b ->
-                        b.must(
-                            es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
-                                m ->
-                                    m.prefix(
-                                        p ->
-                                            p.field("fullyQualifiedName")
-                                                .value(parentFqn + "."))))));
-
-    es.co.elastic.clients.elasticsearch.core.SearchRequest childCountSearchRequest =
-        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
-            s ->
-                s.index(
-                        org.openmetadata.service.Entity.getSearchRepository()
-                            .getIndexOrAliasName(
-                                org.openmetadata.service.jdbi3.KnowledgePageRepository
-                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
-                    .query(childCountQuery)
-                    .size(0));
-
-    es.co.elastic.clients.elasticsearch.core.SearchResponse<es.co.elastic.clients.json.JsonData>
-        childCountSearchResponse =
-            newClient.search(
-                childCountSearchRequest, es.co.elastic.clients.json.JsonData.class);
-
-    if (childCountSearchResponse != null
-        && childCountSearchResponse.hits() != null
-        && childCountSearchResponse.hits().total() != null) {
-      return (int) childCountSearchResponse.hits().total().value();
-    }
-    return 0;
-  }
 }

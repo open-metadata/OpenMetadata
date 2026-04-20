@@ -35,12 +35,23 @@ public class DaoListFilter extends ListFilter {
     List<String> conditions = new ArrayList<>();
     String baseConditions = super.getCondition(tableName);
     conditions.add(baseConditions);
-    conditions.add(getArticleCondition());
+    conditions.add(getPageTypeCondition(tableName));
     return addCondition(conditions);
   }
 
+  public String getPageTypeCondition(String tableName) {
+    String pageType = this.queryParams.get("pageType");
+    if (pageType == null) {
+      return "";
+    }
+    String qualifiedColumn =
+        (tableName == null || tableName.isBlank()) ? "pageType" : tableName + ".pageType";
+    return qualifiedColumn + " = :pageType";
+  }
+
+  /** @deprecated use {@link #getPageTypeCondition(String)} instead. */
+  @Deprecated
   public String getArticleCondition() {
-    String article = this.queryParams.get("pageType");
-    return article == null ? "" : "pageType = :pageType";
+    return getPageTypeCondition(null);
   }
 }

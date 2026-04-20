@@ -36,7 +36,7 @@ public final class SearchUtils {
 
     if (parentMap != null) {
       parent = new EntityReference();
-      parent.setId(UUID.fromString((String) parentMap.get("id")));
+      parent.setId(parseUuid((String) parentMap.get("id")));
       parent.setType((String) parentMap.get("type"));
       parent.setName((String) parentMap.get("name"));
       parent.setFullyQualifiedName((String) parentMap.get("fullyQualifiedName"));
@@ -46,8 +46,9 @@ public final class SearchUtils {
 
     PageHierarchy page = new PageHierarchy();
 
-    if (idStr != null) {
-      page.withId(UUID.fromString(idStr));
+    UUID pageId = parseUuid(idStr);
+    if (pageId != null) {
+      page.withId(pageId);
     }
 
     if (pageTypeStr != null) {
@@ -60,5 +61,21 @@ public final class SearchUtils {
         .withParent(parent);
 
     return page;
+  }
+
+  /**
+   * Parse a UUID string safely — returns null for missing or malformed values so a single
+   * bad hit does not break the entire hierarchy response.
+   */
+  private static UUID parseUuid(String value) {
+    if (value == null || value.isEmpty()) {
+      return null;
+    }
+    try {
+      return UUID.fromString(value);
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Ignoring malformed UUID in search hit: {}", value);
+      return null;
+    }
   }
 }

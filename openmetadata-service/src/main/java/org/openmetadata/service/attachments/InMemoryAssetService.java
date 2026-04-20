@@ -1,13 +1,15 @@
 package org.openmetadata.service.attachments;
 
-import org.openmetadata.schema.attachments.Asset;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.service.util.AsyncService;
 
 /**
  * In-memory implementation of AssetService for local testing and development.
@@ -31,6 +33,15 @@ public class InMemoryAssetService implements AssetService {
     this.assetStore = new ConcurrentHashMap<>();
     this.baseUrl = baseUrl;
     LOG.info("Initialized InMemoryAssetService for local testing (base URL: {})", baseUrl);
+  }
+
+  /**
+   * Run async work on the shared OM {@link AsyncService} executor so server-side
+   * concurrency is bounded and observable, rather than falling back to the JVM
+   * common ForkJoinPool.
+   */
+  private static Executor executor() {
+    return AsyncService.getInstance().getExecutorService();
   }
 
   @Override
@@ -60,7 +71,8 @@ public class InMemoryAssetService implements AssetService {
             LOG.error("Failed to upload asset {}: {}", asset.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to upload asset", e);
           }
-        });
+        },
+        executor());
   }
 
   @Override
@@ -79,7 +91,8 @@ public class InMemoryAssetService implements AssetService {
               assetBytes.length);
 
           return new ByteArrayInputStream(assetBytes);
-        });
+        },
+        executor());
   }
 
   @Override
@@ -95,7 +108,8 @@ public class InMemoryAssetService implements AssetService {
           } else {
             LOG.warn("Attempted to delete non-existent asset {}", asset.getId());
           }
-        });
+        },
+        executor());
   }
 
   @Override
