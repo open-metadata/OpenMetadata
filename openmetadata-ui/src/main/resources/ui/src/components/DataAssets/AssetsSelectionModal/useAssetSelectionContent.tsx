@@ -90,8 +90,8 @@ import {
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import DomainAssetDryRunModal from '../DomainAssetDryRunModal/DomainAssetDryRunModal';
 import './asset-selection-model.style.less';
 
 export interface AssetSelectionContentProps {
@@ -837,19 +837,13 @@ export const useAssetSelectionContent = ({
 
       {isLoading && <Loader size="small" />}
 
-      <ConfirmationModal
-        bodyText={
-          <ul className="m-0 p-l-md" data-testid="add-dry-run-warnings">
-            {dryRunWarnings?.map((r, index) => (
-              <li key={index}>{r.message}</li>
-            ))}
-          </ul>
-        }
-        cancelText={t('label.cancel')}
+      <DomainAssetDryRunModal
         confirmText={t('label.move-anyway')}
         header={t('label.confirm-asset-move')}
         isLoading={isSaveLoading}
         visible={!isUndefined(dryRunWarnings)}
+        warnings={dryRunWarnings ?? []}
+        warningsTestId="add-dry-run-warnings"
         onCancel={cancelDomainAssetMove}
         onConfirm={confirmDomainAssetMove}
       />

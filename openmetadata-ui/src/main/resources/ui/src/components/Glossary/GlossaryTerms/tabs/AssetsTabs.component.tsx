@@ -100,6 +100,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
+import DomainAssetDryRunModal from '../../../DataAssets/DomainAssetDryRunModal/DomainAssetDryRunModal';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -1122,19 +1123,13 @@ const AssetsTabs = forwardRef(
             onConfirm={confirmBulkDelete}
           />
 
-          <ConfirmationModal
-            bodyText={
-              <ul className="m-0 p-l-md" data-testid="remove-dry-run-warnings">
-                {removeDryRunWarnings?.map((r, index) => (
-                  <li key={index}>{r.message}</li>
-                ))}
-              </ul>
-            }
-            cancelText={t('label.cancel')}
+          <DomainAssetDryRunModal
             confirmText={t('label.remove-anyway')}
             header={t('label.confirm-asset-remove')}
             isLoading={assetRemoving}
             visible={removeDryRunWarnings !== undefined}
+            warnings={removeDryRunWarnings ?? []}
+            warningsTestId="remove-dry-run-warnings"
             onCancel={cancelDomainAssetRemove}
             onConfirm={confirmDomainAssetRemove}
           />
