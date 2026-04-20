@@ -13,6 +13,7 @@
 Custom types' registry for easy access
 without having an import mess
 """
+
 import math
 from enum import Enum
 
@@ -152,6 +153,7 @@ COMPLEX_TYPE_METRICS = {"nullCount", "valuesCount"}
 def is_complex_type(type_name: str) -> bool:
     """Check if a type name belongs to a complex data type."""
     return type_name in COMPLEX_TYPES
+
 
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 

@@ -43,7 +43,10 @@ def _import_registry():
 
     src_dir = os.path.join(
         os.path.dirname(__file__),
-        os.pardir, os.pardir, os.pardir, os.pardir,
+        os.pardir,
+        os.pardir,
+        os.pardir,
+        os.pardir,
         "src",
     )
     src_dir = os.path.normpath(src_dir)
@@ -60,18 +63,18 @@ def _import_registry():
         _bootstrap_generated_stub(src_dir)
 
     # Now import what we need.
-    from metadata.profiler.orm.registry import (
-        COMPLEX_TYPE_METRICS,
-        COMPLEX_TYPES,
-        NOT_COMPUTE,
-        is_complex_type,
-    )
     from metadata.ingestion.source.sqa_types import (
         SQAMap,
         SQASet,
         SQASGeography,
         SQAStruct,
         SQAUnion,
+    )
+    from metadata.profiler.orm.registry import (
+        COMPLEX_TYPE_METRICS,
+        COMPLEX_TYPES,
+        NOT_COMPUTE,
+        is_complex_type,
     )
     from metadata.profiler.orm.types.custom_array import CustomArray
     from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
@@ -98,8 +101,8 @@ def _bootstrap_generated_stub(src_dir):
     orm.registry module can be imported in environments where
     the full code-generation pipeline has not been run.
     """
-    from types import ModuleType
     from enum import Enum
+    from types import ModuleType
 
     # Create the DataType enum with values the registry references.
     class DataType(str, Enum):
@@ -207,7 +210,9 @@ def _bootstrap_generated_stub(src_dir):
         nullMissingCount = "nullMissingCount"
         system = "system"
 
-    profiler_config_stub = sys.modules["metadata.generated.schema.configuration.profilerConfiguration"]
+    profiler_config_stub = sys.modules[
+        "metadata.generated.schema.configuration.profilerConfiguration"
+    ]
     profiler_config_stub.MetricType = MetricType
     profiler_config_stub.MetricConfigurationDefinition = None
 
@@ -220,7 +225,9 @@ def _bootstrap_generated_stub(src_dir):
     create_stub.CreateTableProfileRequest = None
 
     # Populate databaseService stub
-    db_service_stub = sys.modules["metadata.generated.schema.entity.services.databaseService"]
+    db_service_stub = sys.modules[
+        "metadata.generated.schema.entity.services.databaseService"
+    ]
     db_service_stub.DatabaseService = None
 
     # Populate basic stub
@@ -404,7 +411,8 @@ class TestNoOverlapBetweenSets(TestCase):
     def test_no_overlap(self):
         overlap = NOT_COMPUTE & COMPLEX_TYPES
         self.assertEqual(
-            len(overlap), 0,
+            len(overlap),
+            0,
             f"Found overlap between NOT_COMPUTE and COMPLEX_TYPES: {overlap}",
         )
 
@@ -412,5 +420,9 @@ class TestNoOverlapBetweenSets(TestCase):
         """Common types like Integer, String should not be in either set."""
         regular_types = ["Integer", "String", "Float", "Boolean", "Date"]
         for type_name in regular_types:
-            self.assertNotIn(type_name, NOT_COMPUTE, f"{type_name} found in NOT_COMPUTE")
-            self.assertNotIn(type_name, COMPLEX_TYPES, f"{type_name} found in COMPLEX_TYPES")
+            self.assertNotIn(
+                type_name, NOT_COMPUTE, f"{type_name} found in NOT_COMPUTE"
+            )
+            self.assertNotIn(
+                type_name, COMPLEX_TYPES, f"{type_name} found in COMPLEX_TYPES"
+            )
