@@ -14,27 +14,21 @@ public record IndexLifecycleManager(
     String clusterAlias = searchInterface.getClusterAlias();
     for (String entityType : entityTypes) {
       String base = "di-data-assets-" + entityType.toLowerCase();
-      String streamName =
+      String prefix =
           (clusterAlias == null || clusterAlias.isBlank()) ? base : clusterAlias + "-" + base;
 
-      // Use wildcard to cover both the base stream and any per-day variants
-      // (e.g. di-data-assets-chart AND di-data-assets-chart-2026.03.21).
+      // Delete any data streams matching the prefix (v1 base stream + v2 per-day streams).
       try {
-        searchInterface.deleteDataAssetDataStream(streamName + "*");
+        searchInterface.deleteDataAssetDataStream(prefix + "*");
       } catch (IOException e) {
-        LOG.warn("Could not delete data stream {}*: {}", streamName, e.getMessage());
+        LOG.warn("Could not delete data streams {}*: {}", prefix, e.getMessage());
       }
 
+      // Delete any regular daily indices matching the prefix (single wildcard API call).
       try {
-        for (DailyIndex index : searchInterface.listDailyIndices(clusterAlias, entityType)) {
-          try {
-            searchInterface.deleteDailyIndex(index);
-          } catch (IOException e) {
-            LOG.warn("Could not delete daily index {}: {}", index.name(), e.getMessage());
-          }
-        }
+        searchInterface.deleteIndicesByPattern(prefix + "-*");
       } catch (IOException e) {
-        LOG.warn("Could not list daily indices for {}: {}", entityType, e.getMessage());
+        LOG.warn("Could not delete indices {}-*: {}", prefix, e.getMessage());
       }
     }
   }

@@ -173,6 +173,15 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
+  public void deleteIndicesByPattern(String pattern) throws IOException {
+    var response = performRequest("DELETE", "/" + pattern);
+    if (response.getStatus() != 200 && response.getStatus() != 404) {
+      throw new IOException(
+          "Failed to delete indices matching " + pattern + ": HTTP " + response.getStatus());
+    }
+  }
+
+  @Override
   public void createDailyIndex(DailyIndex index) throws IOException {
     var response = performRequest("PUT", "/" + index.name());
     if (response.getStatus() != 200 && response.getStatus() != 400) {

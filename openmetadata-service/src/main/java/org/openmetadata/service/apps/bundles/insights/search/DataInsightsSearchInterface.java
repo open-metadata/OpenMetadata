@@ -101,6 +101,9 @@ public interface DataInsightsSearchInterface {
 
   void deleteDailyIndex(DailyIndex index) throws IOException;
 
+  /** Deletes all regular indices matching a wildcard pattern (e.g. {@code di-data-assets-table-*}). */
+  void deleteIndicesByPattern(String pattern) throws IOException;
+
   /** Creates the daily index if it does not already exist. Index template auto-applies mappings. */
   void createDailyIndex(DailyIndex index) throws IOException;
 

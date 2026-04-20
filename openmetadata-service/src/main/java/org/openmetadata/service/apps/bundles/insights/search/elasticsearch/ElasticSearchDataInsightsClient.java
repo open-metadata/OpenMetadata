@@ -179,6 +179,17 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
+  public void deleteIndicesByPattern(String pattern) throws IOException {
+    try {
+      performRequest("DELETE", "/" + pattern);
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusCode() != 404) {
+        throw e;
+      }
+    }
+  }
+
+  @Override
   public void createDailyIndex(DailyIndex index) throws IOException {
     try {
       performRequest("PUT", "/" + index.name());
