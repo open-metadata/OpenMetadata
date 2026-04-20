@@ -154,6 +154,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
+import org.openmetadata.service.security.ImpersonationCleanupFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -371,6 +372,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register ETag Filters for optimistic concurrency control
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
+
+    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
+    // RequestEntityCache, impersonation context) after every response so state
+    // cannot leak across requests that share a Jetty worker thread.
+    environment.jersey().register(ImpersonationCleanupFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
