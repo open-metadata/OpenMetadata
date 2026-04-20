@@ -265,7 +265,7 @@ const DomainDetails = ({
     }
   };
 
-  const fetchDataProducts = async () => {
+  const fetchDataProducts = useCallback(async () => {
     if (!isVersionsView) {
       try {
         const res = await searchQuery({
@@ -289,7 +289,7 @@ const DomainDetails = ({
         );
       }
     }
-  };
+  }, [isVersionsView, domainFqn, enqueueSnackbar, t]);
 
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
@@ -389,7 +389,7 @@ const DomainDetails = ({
     dataProductsTabRef.current?.refreshDataProducts();
     handleTabChange(EntityTabs.DATA_PRODUCTS);
     onUpdate?.(domain);
-  }, [handleTabChange, onUpdate, domain]);
+  }, [fetchDataProducts, handleTabChange, onUpdate, domain]);
 
   const {
     formDrawer: dataProductDrawer,

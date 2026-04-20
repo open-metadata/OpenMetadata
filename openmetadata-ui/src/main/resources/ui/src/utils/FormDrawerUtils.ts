@@ -13,9 +13,9 @@
 
 /**
  * Awaits the submit handler, then closes the drawer and runs the optional
- * post-success callback. If the submit handler throws, close/onSuccess are
- * skipped and the error propagates so the drawer footer's try/catch keeps the
- * drawer open for the user to retry.
+ * post-success callback. If the submit handler throws or rejects,
+ * `closeDrawer` and `onSuccess` are skipped — the drawer stays open
+ * for the user to retry (the error is caught by the drawer footer).
  */
 export const submitAndClose = async <T>(
   data: T,

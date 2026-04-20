@@ -565,6 +565,17 @@ const AddDomainForm = ({
       backgroundColor: selectedColor,
       defaultIcon,
       options: iconOptions,
+      labels: {
+        customIconUrl: t('label.icon-url'),
+        emptyState: t('message.no-entity-available', {
+          entity: t('label.icon-plural'),
+        }),
+        enterIconUrl: t('label.enter-entity', {
+          entity: t('label.icon-url'),
+        }),
+        iconsTab: t('label.icon-plural'),
+        urlTab: t('label.url'),
+      },
     },
     type: FieldTypes.ICON_PICKER,
   };
