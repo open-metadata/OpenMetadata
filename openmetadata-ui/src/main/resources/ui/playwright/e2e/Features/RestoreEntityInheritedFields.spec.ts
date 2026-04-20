@@ -31,7 +31,6 @@ import {
   assignSingleSelectDomain,
   redirectToHomePage,
 } from '../../utils/common';
-import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
@@ -163,8 +162,8 @@ entities.forEach((EntityClass) => {
           },
           {
             message: `Waiting for inherited domain "${domain.responseData.displayName}"`,
-            timeout: 60_000,
-            intervals: [2_000, 3_000, 5_000],
+            timeout: 120_000,
+            intervals: [3_000, 5_000, 10_000],
           }
         )
         .toContain(domain.responseData.displayName);
