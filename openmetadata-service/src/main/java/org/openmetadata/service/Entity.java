@@ -105,7 +105,7 @@ public final class Entity {
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
-  @Setter private static SearchRepository searchRepository;
+  @Setter private static volatile SearchRepository searchRepository;
   @Getter @Setter private static AuditLogRepository auditLogRepository;
   @Getter @Setter private static SuggestionRepository suggestionRepository;
   @Getter @Setter private static TypeRepository typeRepository;
@@ -935,20 +935,26 @@ public final class Entity {
   }
 
   public static SearchRepository getSearchRepository() {
-    if (searchRepository == null) {
+    SearchRepository repo = searchRepository;
+    if (repo == null) {
       synchronized (Entity.class) {
-        OpenMetadataApplicationConfig config = OpenMetadataApplicationConfigHolder.getInstance();
-        if (config != null && config.getElasticSearchConfiguration() != null) {
-          searchRepository =
-              SearchRepositoryFactory.createSearchRepository(
-                  config.getElasticSearchConfiguration(),
-                  config.getDataSourceFactory() != null
-                      ? config.getDataSourceFactory().getMaxSize()
-                      : 50);
+        repo = searchRepository;
+        if (repo == null) {
+          OpenMetadataApplicationConfig config =
+              OpenMetadataApplicationConfigHolder.getInstance();
+          if (config != null && config.getElasticSearchConfiguration() != null) {
+            repo =
+                SearchRepositoryFactory.createSearchRepository(
+                    config.getElasticSearchConfiguration(),
+                    config.getDataSourceFactory() != null
+                        ? config.getDataSourceFactory().getMaxSize()
+                        : 50);
+            searchRepository = repo;
+          }
         }
       }
     }
-    return searchRepository;
+    return repo;
   }
 
   public static <T> T getSearchRepo() {

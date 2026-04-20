@@ -9,4 +9,12 @@ public class SystemSettingsException extends WebServiceException {
   public SystemSettingsException(String message) {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
+
+  private SystemSettingsException(Response.Status status, String message) {
+    super(status, ERROR_TYPE, message);
+  }
+
+  public static SystemSettingsException forbidden(String message) {
+    return new SystemSettingsException(Response.Status.FORBIDDEN, message);
+  }
 }

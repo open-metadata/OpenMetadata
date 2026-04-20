@@ -82,4 +82,37 @@ class ConfigSourceResolverTest {
         ConfigSourceResolver.shouldUseEnvValue(
             ConfigSource.AUTO, sameHash, sameHash, null, null, Timestamp.from(Instant.now())));
   }
+
+  @Test
+  void testShouldUseEnvValue_autoModeStoredHashNullDbTimestampNull() {
+    // Upgrade scenario: no stored hash and no db timestamp => treat as newly seeded; env wins.
+    assertTrue(
+        ConfigSourceResolver.shouldUseEnvValue(
+            ConfigSource.AUTO, "currentHash", null, null, null, Timestamp.from(Instant.now())));
+  }
+
+  @Test
+  void testShouldUseEnvValue_autoModeStoredHashNullDbTimestampOlderThanRestart() {
+    // Upgrade scenario where migration backfilled db_modified_timestamp but not env_hash.
+    // shouldUseEnv returns true — without the v1127 Migration backfilling env_hash,
+    // customized DB rows would be overwritten by ENV. This test pins that behavior so
+    // anyone changing the resolver semantics reviews the migration interaction.
+    Timestamp dbModified = Timestamp.from(Instant.now().minusSeconds(3600));
+    Timestamp restart = Timestamp.from(Instant.now());
+    assertTrue(
+        ConfigSourceResolver.shouldUseEnvValue(
+            ConfigSource.AUTO, "currentHash", null, null, dbModified, restart));
+  }
+
+  @Test
+  void testShouldUseEnvValue_autoModeStoredHashMatchesAfterBackfill() {
+    // After v1127 backfill, stored hash matches env hash (operator hadn't customized);
+    // resolver should keep DB value regardless of timestamps.
+    String matchingHash = "post-backfill-hash";
+    Timestamp dbModified = Timestamp.from(Instant.now().minusSeconds(3600));
+    Timestamp restart = Timestamp.from(Instant.now());
+    assertFalse(
+        ConfigSourceResolver.shouldUseEnvValue(
+            ConfigSource.AUTO, matchingHash, matchingHash, null, dbModified, restart));
+  }
 }

@@ -372,7 +372,7 @@ public class SystemResource {
 
     authorizer.authorizeAdmin(securityContext);
     if (!systemRepository.isUpdateAllowed(settingName.getConfigType())) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "This setting is managed by ENV configuration and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
@@ -529,7 +529,7 @@ public class SystemResource {
     // Check if update is allowed based on configSource
     SettingsType settingsType = SettingsType.fromValue(settingName);
     if (!systemRepository.isUpdateAllowed(settingsType)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "This setting is managed by ENV configuration and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
@@ -692,13 +692,13 @@ public class SystemResource {
 
     // Check if update is allowed based on configSource for both configs
     if (!systemRepository.isUpdateAllowed(AUTHENTICATION_CONFIGURATION)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "Authentication configuration is managed by ENV and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
 
     if (!systemRepository.isUpdateAllowed(AUTHORIZER_CONFIGURATION)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "Authorizer configuration is managed by ENV and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
@@ -763,13 +763,13 @@ public class SystemResource {
 
     // Check if update is allowed based on configSource for both configs
     if (!systemRepository.isUpdateAllowed(AUTHENTICATION_CONFIGURATION)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "Authentication configuration is managed by ENV and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
 
     if (!systemRepository.isUpdateAllowed(AUTHORIZER_CONFIGURATION)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "Authorizer configuration is managed by ENV and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
@@ -858,13 +858,13 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
     // Check if update is allowed based on configSource - reject validation if ENV-managed
     if (!systemRepository.isUpdateAllowed(AUTHENTICATION_CONFIGURATION)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "Authentication configuration is managed by ENV and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }
 
     if (!systemRepository.isUpdateAllowed(AUTHORIZER_CONFIGURATION)) {
-      throw new IllegalArgumentException(
+      throw SystemSettingsException.forbidden(
           "Authorizer configuration is managed by ENV and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
     }

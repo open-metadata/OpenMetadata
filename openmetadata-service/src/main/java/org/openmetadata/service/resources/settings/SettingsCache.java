@@ -97,10 +97,16 @@ public class SettingsCache {
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
-    if (!initialized) {
-      initialized = true;
+    if (initialized) {
+      return;
+    }
+    synchronized (SettingsCache.class) {
+      if (initialized) {
+        return;
+      }
       applicationStartTime = ConfigSourceResolver.now();
       createDefaultConfiguration(config);
+      initialized = true;
     }
   }
 
@@ -523,10 +529,8 @@ public class SettingsCache {
     if (storedSettings == null) {
       Settings setting =
           new Settings().withConfigType(settingsType).withConfigValue(envConfigValue);
-      Entity.getSystemRepository().createNewSetting(setting);
       Entity.getSystemRepository()
-          .updateConfigMetadata(
-              settingsType.toString(), currentEnvHash, applicationStartTime, applicationStartTime);
+          .syncSetting(setting, currentEnvHash, applicationStartTime, applicationStartTime);
       return;
     }
 
@@ -543,10 +547,8 @@ public class SettingsCache {
       LOG.info("Config source resolution: using ENV value for {}", settingsType);
       Settings setting =
           new Settings().withConfigType(settingsType).withConfigValue(envConfigValue);
-      Entity.getSystemRepository().updateSetting(setting);
       Entity.getSystemRepository()
-          .updateConfigMetadata(
-              settingsType.toString(), currentEnvHash, applicationStartTime, applicationStartTime);
+          .syncSetting(setting, currentEnvHash, applicationStartTime, applicationStartTime);
     } else {
       if (storedEnvHash == null || !currentEnvHash.equals(storedEnvHash)) {
         Entity.getSystemRepository().updateEnvHash(settingsType.toString(), currentEnvHash);
