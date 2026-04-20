@@ -113,7 +113,7 @@ EXPECTED_TABLE = Table(
     name="WATER_CLUSTER.sashdat",
     displayName=None,
     fullyQualifiedName="cas.cas-shared-default.Samples.WATER_CLUSTER.sashdat",
-    description='Last analyzed: <b>2023-12-20T20:52:01.453Z</b>. Visit <a target="_blank" '
+    description="Last analyzed: <b>2023-12-20T20:52:01.453Z</b>. Visit <a "
     'href="http://your-server-host.org/SASInformationCatalog/details/~fs~catalog~fs~instances~fs'
     '~0063116c-577c-0f44-8116-3924506c8f4a">SAS Information Catalog</a> for more information.',
     version=0.1,

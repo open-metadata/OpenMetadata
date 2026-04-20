@@ -62,7 +62,12 @@ import {
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import { getEntityIconUrl } from '../utils/entityIconUrls';
-import { getLayoutConfig, NODE_HEIGHT, NODE_WIDTH } from '../utils/graphConfig';
+import {
+  adaptiveSpacing,
+  getLayoutConfig,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+} from '../utils/graphConfig';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -168,6 +173,20 @@ function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   return idx === 1;
 }
 
+function stripNodePositionsForDataMode<T extends { style?: unknown }>(
+  nodes: T[]
+): T[] {
+  return nodes.map((node) => {
+    const style = node.style as Record<string, unknown> | undefined;
+    if (!style || (!('x' in style) && !('y' in style))) {
+      return node;
+    }
+    const { x: _x, y: _y, ...restStyle } = style;
+
+    return { ...node, style: restStyle };
+  });
+}
+
 interface GraphNodeMeta {
   color?: string;
   assetColor?: string;
@@ -228,6 +247,9 @@ interface UseOntologyGraphProps {
   glossaryColorMap: Record<string, string>;
   computeNodeColor: (node: OntologyNode) => string;
   assetToTermMap: Record<string, string[]>;
+  onPositionsReady?: (
+    positions: Record<string, { x: number; y: number }>
+  ) => void;
 }
 
 export function useOntologyGraph({
@@ -252,6 +274,7 @@ export function useOntologyGraph({
   glossaryColorMap,
   computeNodeColor,
   assetToTermMap,
+  onPositionsReady,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
@@ -262,6 +285,7 @@ export function useOntologyGraph({
   const termFingerprintRef = useRef<string>('');
   const assetFingerprintRef = useRef<string>('');
   const justInitializedRef = useRef<boolean>(false);
+  const prevLayoutTypeRef = useRef<typeof layoutType | null>(null);
   const cancelPendingUpdateRef = useRef<(() => void) | null>(null);
   const assetToTermMapRef = useRef(assetToTermMap);
   assetToTermMapRef.current = assetToTermMap;
@@ -277,6 +301,9 @@ export function useOntologyGraph({
 
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
+
+  const onPositionsReadyRef = useRef(onPositionsReady);
+  onPositionsReadyRef.current = onPositionsReady;
 
   // Cached graph bounds — recomputed only when node data changes, not on every
   // pan/zoom transform. Updated by recomputeGraphBounds() after data updates.
@@ -352,6 +379,24 @@ export function useOntologyGraph({
     });
 
     return positions;
+  }, []);
+
+  const emitPagePositions = useCallback((graph: Graph) => {
+    const cb = onPositionsReadyRef.current;
+    if (!cb) {
+      return;
+    }
+    const pagePositions: Record<string, { x: number; y: number }> = {};
+    graph.getNodeData().forEach((node) => {
+      try {
+        const canvasPos = graph.getElementPosition(node.id);
+        const clientPos = graph.getClientByCanvas(canvasPos);
+        pagePositions[node.id] = { x: clientPos[0], y: clientPos[1] };
+      } catch {
+        // Node may not be rendered yet; skip it.
+      }
+    });
+    cb(pagePositions);
   }, []);
 
   const positionAssetNodes = useCallback((graph: Graph) => {
@@ -462,7 +507,7 @@ export function useOntologyGraph({
       return;
     }
 
-    const NODE_H_SEP = 100;
+    const NODE_H_SEP = 200;
     const NODE_V_SEP = 80;
     const COMBO_H_GAP = 160;
     const COMBO_V_GAP = 180;
@@ -498,6 +543,15 @@ export function useOntologyGraph({
       const k = Math.max(1, nodes.length);
       const innerCols = Math.ceil(Math.sqrt(k));
 
+      // Use the widest node's actual rendered width so long-label nodes
+      // (up to MODEL_NODE_MAX_WIDTH) don't overlap neighbours and hide edges.
+      const maxNodeW = nodes.reduce((m, n) => {
+        const s = n.data?.size;
+        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
+
+        return Math.max(m, w);
+      }, NODE_WIDTH);
+
       nodes.forEach((node, i) => {
         const nc = i % innerCols;
         const nr = Math.floor(i / innerCols);
@@ -508,8 +562,8 @@ export function useOntologyGraph({
             x:
               curX +
               COMBO_INTERIOR_PADDING_SIDES +
-              nc * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              nc * (maxNodeW + NODE_H_SEP) +
+              maxNodeW / 2,
             y:
               curY +
               COMBO_INTERIOR_PADDING_TOP +
@@ -521,7 +575,7 @@ export function useOntologyGraph({
 
       const innerRows = Math.ceil(k / innerCols);
       const comboW =
-        innerCols * NODE_WIDTH +
+        innerCols * maxNodeW +
         (innerCols - 1) * NODE_H_SEP +
         COMBO_INTERIOR_PADDING_SIDES * 2;
       const comboH =
@@ -566,6 +620,164 @@ export function useOntologyGraph({
     }
   }, []);
 
+  const applyBakedPositions = useCallback((graph: Graph, nodes: NodeData[]) => {
+    const bakedUpdates = nodes
+      .filter(
+        (n) =>
+          typeof (n.style as Record<string, unknown> | undefined)?.x ===
+          'number'
+      )
+      .map((n) => {
+        const s = n.style as Record<string, unknown>;
+
+        return { id: n.id, style: { x: s.x as number, y: s.y as number } };
+      });
+    if (bakedUpdates.length > 0) {
+      graph.updateNodeData(bakedUpdates);
+    }
+  }, []);
+
+  /**
+   * Shared helper: builds per-combo node positions using circular inner layout
+   * and arranges combo blocks in an outer grid.
+   * Returns a flat array of node updates ready for graph.updateNodeData().
+   */
+  const buildIntraComboLayout = useCallback((graph: Graph): NodeData[] => {
+    const totalNodes = graph.getNodeData().length;
+    const adaptedNodeSep = adaptiveSpacing(60, totalNodes);
+    const adaptedGap = Math.max(48, adaptiveSpacing(280, totalNodes));
+
+    const NODE_H_SEP = adaptedNodeSep;
+    const COMBO_H_GAP = adaptedGap;
+    const COMBO_V_GAP = adaptedGap;
+    const MAX_RING_RADIUS_MODEL = Math.max(
+      120,
+      adaptiveSpacing(360, totalNodes)
+    );
+    const MIN_RING_RADIUS = 80;
+    const GRID_COLS = Math.max(
+      1,
+      Math.ceil(Math.sqrt(graph.getComboData().length * 2))
+    );
+
+    const nodesByCombo = new Map<string, NodeData[]>();
+    graph.getNodeData().forEach((node) => {
+      const comboId =
+        typeof node.combo === 'string' ? node.combo : String(node.combo ?? '');
+      if (!comboId) {
+        return;
+      }
+      if (!nodesByCombo.has(comboId)) {
+        nodesByCombo.set(comboId, []);
+      }
+      nodesByCombo.get(comboId)!.push(node);
+    });
+
+    const updates: NodeData[] = [];
+    let curX = 0;
+    let curY = 0;
+    let rowMaxH = 0;
+
+    graph.getComboData().forEach((combo, idx) => {
+      const col = idx % GRID_COLS;
+      if (col === 0 && idx > 0) {
+        curX = 0;
+        curY += rowMaxH + COMBO_V_GAP;
+        rowMaxH = 0;
+      }
+
+      const nodes = nodesByCombo.get(String(combo.id)) ?? [];
+      const k = nodes.length;
+      if (k === 0) {
+        return;
+      }
+
+      const maxNodeW = nodes.reduce((m, n) => {
+        const s = n.data?.size;
+        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
+
+        return Math.max(m, w);
+      }, NODE_WIDTH);
+
+      // Ring radius large enough so node borders don't overlap, capped so
+      // large groups (50-200 nodes) don't create unbounded layouts.
+      const ringRadius =
+        k <= 1
+          ? 0
+          : Math.min(
+              MAX_RING_RADIUS_MODEL,
+              Math.max(
+                MIN_RING_RADIUS,
+                (k * (maxNodeW + NODE_H_SEP)) / (2 * Math.PI)
+              )
+            );
+
+      // Visual span = ring diameter + one node half-width on each side
+      const visualW = ringRadius === 0 ? maxNodeW : 2 * ringRadius + maxNodeW;
+      const visualH =
+        ringRadius === 0 ? NODE_HEIGHT : 2 * ringRadius + NODE_HEIGHT;
+      const comboW = visualW + COMBO_INTERIOR_PADDING_SIDES * 2;
+      const comboH =
+        visualH + COMBO_INTERIOR_PADDING_TOP + COMBO_INTERIOR_PADDING_SIDES;
+
+      const centerX = curX + comboW / 2;
+      const centerY =
+        curY + COMBO_INTERIOR_PADDING_TOP + ringRadius + NODE_HEIGHT / 2;
+
+      // Circular: all nodes evenly on the ring
+      nodes.forEach((node, i) => {
+        const angle = k === 1 ? 0 : (2 * Math.PI * i) / k - Math.PI / 2;
+        updates.push({
+          id: node.id,
+          style: {
+            ...(node.style ?? {}),
+            x: centerX + (k === 1 ? 0 : ringRadius * Math.cos(angle)),
+            y: centerY + (k === 1 ? 0 : ringRadius * Math.sin(angle)),
+          },
+        });
+      });
+
+      curX += comboW + COMBO_H_GAP;
+      rowMaxH = Math.max(rowMaxH, comboH);
+    });
+
+    // Orphan nodes (no combo) placed in a row below all combo blocks
+    const orphanNodes = graph.getNodeData().filter((n) => !n.combo);
+    if (orphanNodes.length > 0) {
+      const bottomY = curY + rowMaxH + COMBO_V_GAP;
+      const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      orphanNodes.forEach((node, i) => {
+        updates.push({
+          id: node.id,
+          style: {
+            ...(node.style ?? {}),
+            x:
+              COMBO_INTERIOR_PADDING_SIDES +
+              (i % orphanCols) * (NODE_WIDTH + NODE_H_SEP) +
+              NODE_WIDTH / 2,
+            y:
+              bottomY +
+              Math.floor(i / orphanCols) * (NODE_HEIGHT + 40) +
+              NODE_HEIGHT / 2,
+          },
+        });
+      });
+    }
+
+    return updates;
+  }, []);
+
+  /** Circular layout within each combo box, combo boxes arranged in a grid. */
+  const positionCircularNodes = useCallback(
+    (graph: Graph) => {
+      const updates = buildIntraComboLayout(graph);
+      if (updates.length > 0) {
+        graph.updateNodeData(updates);
+      }
+    },
+    [buildIntraComboLayout]
+  );
+
   const DATA_MODE_ASSET_TYPES = new Set(['dataAsset', 'metric']);
   const termNodeCount = useMemo(
     () =>
@@ -575,16 +787,13 @@ export function useOntologyGraph({
     [explorationMode, inputNodes]
   );
 
-  const isModelView = explorationMode === 'model';
-
   const hasBakedPositions = useMemo(() => {
     if (explorationMode === 'data') {
       return true;
     }
     if (
       explorationMode === 'hierarchy' &&
-      (layoutType === LayoutEngine.Circular ||
-        layoutType === LayoutEngine.Radial)
+      layoutType === LayoutEngine.Circular
     ) {
       return true;
     }
@@ -604,6 +813,7 @@ export function useOntologyGraph({
     const isDataMode = explorationMode === 'data';
     const isHierarchyMode = explorationMode === 'hierarchy';
     const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
+    const isModelView = explorationMode === 'model';
     const graph = new Graph({
       container,
       width,
@@ -916,10 +1126,6 @@ export function useOntologyGraph({
       },
       layout: getLayoutConfig(layoutType, inputNodes.length, {
         hasCombos,
-        focusNode:
-          layoutType === LayoutEngine.Radial
-            ? focusNodeId ?? selectedNodeId ?? undefined
-            : undefined,
         isDataMode,
         isHierarchyMode,
         isModelView,
@@ -1091,12 +1297,19 @@ export function useOntologyGraph({
       suppressEdgeCheck(1500);
       try {
         if (hasBakedPositions) {
+          applyBakedPositions(graph, graphData.nodes ?? []);
           if (isDataMode) {
             positionAssetNodes(graph);
           }
           await graph.draw();
-        } else if ((isModelView || isHierarchyMode) && hasCombos) {
+        } else if (
+          (isModelView || isHierarchyMode) &&
+          layoutType === LayoutEngine.Dagre
+        ) {
           positionModelModeNodes(graph);
+          await graph.draw();
+        } else if (isModelView && layoutType === LayoutEngine.Circular) {
+          positionCircularNodes(graph);
           await graph.draw();
         } else {
           await runLayout(graph);
@@ -1110,6 +1323,7 @@ export function useOntologyGraph({
         }
         await fitAndClampZoom();
         recomputeGraphBounds();
+        emitPagePositions(graph);
       } catch {
         if (renderCancelled) {
           return;
@@ -1121,6 +1335,7 @@ export function useOntologyGraph({
           if (!renderCancelled) {
             await fitAndClampZoom();
             recomputeGraphBounds();
+            emitPagePositions(graph);
           }
         } catch {
           // Graph may have been destroyed; ignore.
@@ -1165,11 +1380,13 @@ export function useOntologyGraph({
       graphRef.current = null;
     };
   }, [
+    applyBakedPositions,
     termNodeCount,
     explorationMode,
     hasBakedPositions,
     layoutType,
     recomputeGraphBounds,
+    emitPagePositions,
   ]);
 
   useEffect(() => {
@@ -1200,9 +1417,6 @@ export function useOntologyGraph({
       termEdges.length.toString(),
       termEdges.map((e) => `${e.from}>${e.to}:${e.relationType}`).join(','),
       layoutType,
-      layoutType === LayoutEngine.Radial
-        ? focusNodeId ?? selectedNodeId ?? ''
-        : '',
       explorationMode,
     ].join('||');
 
@@ -1214,6 +1428,10 @@ export function useOntologyGraph({
       dataSignatureChanged || newTermFingerprint !== termFingerprintRef.current;
     const assetFingerprintChanged =
       newAssetFingerprint !== assetFingerprintRef.current;
+    const layoutTypeChanged =
+      prevLayoutTypeRef.current !== null &&
+      prevLayoutTypeRef.current !== layoutType;
+    prevLayoutTypeRef.current = layoutType;
     if (justInitializedRef.current) {
       justInitializedRef.current = false;
       prevDataSignatureRef.current = dataSignature ?? '';
@@ -1232,7 +1450,11 @@ export function useOntologyGraph({
 
     if (canPatchInPlace) {
       try {
-        graph.updateNodeData(graphData.nodes ?? []);
+        let nodesToUpdate = graphData.nodes ?? [];
+        if (isDataMode) {
+          nodesToUpdate = stripNodePositionsForDataMode(nodesToUpdate);
+        }
+        graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
         graph.draw();
 
@@ -1297,23 +1519,23 @@ export function useOntologyGraph({
         const addedNodeIds = new Set(addedNodes.map((n) => String(n.id)));
         const termsWithNewAssets = new Set<string>();
         addedNodeIds.forEach((assetId) => {
-          const termId = map[assetId];
-          if (termId) {
-            termsWithNewAssets.add(termId);
-          }
+          const termIds = map[assetId];
+          termIds?.forEach((termId) => termsWithNewAssets.add(termId));
         });
 
         // Group ALL assets by term, but only for the affected terms.
         // Ring positions are computed for the full ring because adding one asset
         // shifts the angular spacing of every sibling in the same ring.
         const affectedAssetsByTerm = new Map<string, string[]>();
-        Object.entries(map).forEach(([assetId, termId]) => {
-          if (!termsWithNewAssets.has(termId)) {
-            return;
-          }
-          const list = affectedAssetsByTerm.get(termId) ?? [];
-          list.push(assetId);
-          affectedAssetsByTerm.set(termId, list);
+        Object.entries(map).forEach(([assetId, termIds]) => {
+          termIds.forEach((termId) => {
+            if (!termsWithNewAssets.has(termId)) {
+              return;
+            }
+            const list = affectedAssetsByTerm.get(termId) ?? [];
+            list.push(assetId);
+            affectedAssetsByTerm.set(termId, list);
+          });
         });
 
         affectedAssetsByTerm.forEach((assetIds, termId) => {
@@ -1408,7 +1630,11 @@ export function useOntologyGraph({
     if (assetFingerprintChanged && !termFingerprintChanged && topologySynced) {
       assetFingerprintRef.current = newAssetFingerprint;
       try {
-        graph.updateNodeData(graphData.nodes ?? []);
+        let nodesToUpdate = graphData.nodes ?? [];
+        if (isDataMode) {
+          nodesToUpdate = stripNodePositionsForDataMode(nodesToUpdate);
+        }
+        graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
         graph.draw();
       } catch {
@@ -1430,10 +1656,6 @@ export function useOntologyGraph({
     const isModelViewLocal = explorationMode === 'model';
     const layoutOptions = getLayoutConfig(layoutType, inputNodes.length, {
       hasCombos,
-      focusNode:
-        layoutType === LayoutEngine.Radial
-          ? focusNodeId ?? selectedNodeId ?? undefined
-          : undefined,
       isDataMode,
       isHierarchyMode,
       isModelView: isModelViewLocal,
@@ -1456,11 +1678,60 @@ export function useOntologyGraph({
         }
 
         setClickedEdgeIdRef.current(null);
+
+        const preUpdatePositions: Record<string, [number, number]> = {};
+        if (isDataMode && !termFingerprintChanged) {
+          inputNodesRef.current.forEach((n) => {
+            try {
+              const pos = graph.getElementPosition(n.id);
+              if (pos) {
+                preUpdatePositions[n.id] = [pos[0], pos[1]];
+              }
+            } catch {
+              // not yet positioned
+            }
+          });
+        }
+
         graph.setData(graphData);
 
-        if ((isModelViewLocal || isHierarchyMode) && hasCombos) {
+        if (
+          (isModelViewLocal || isHierarchyMode) &&
+          layoutType === LayoutEngine.Dagre
+        ) {
           positionModelModeNodes(graph);
-        } else if (!hasBakedPositions) {
+        } else if (isModelViewLocal && layoutType === LayoutEngine.Circular) {
+          positionCircularNodes(graph);
+        } else if (hasBakedPositions) {
+          if (
+            isDataMode &&
+            !termFingerprintChanged &&
+            Object.keys(preUpdatePositions).length > 0
+          ) {
+            const updates = (graphData.nodes ?? [])
+              .map((node) => {
+                const snapshotPos = preUpdatePositions[String(node.id)];
+                if (!snapshotPos) {
+                  return null;
+                }
+
+                return {
+                  id: node.id,
+                  style: {
+                    ...((node.style as Record<string, unknown>) ?? {}),
+                    x: snapshotPos[0],
+                    y: snapshotPos[1],
+                  },
+                };
+              })
+              .filter((u): u is NonNullable<typeof u> => u !== null);
+            if (updates.length > 0) {
+              graph.updateNodeData(updates);
+            }
+          } else {
+            applyBakedPositions(graph, graphData.nodes ?? []);
+          }
+        } else {
           graph.setLayout(layoutOptions);
           try {
             await runLayout(graph);
@@ -1486,10 +1757,11 @@ export function useOntologyGraph({
           return;
         }
 
-        if (termFingerprintChanged) {
+        if (termFingerprintChanged || layoutTypeChanged) {
           await fitViewWithMinZoom(graph);
         }
         recomputeGraphBounds();
+        emitPagePositions(graph);
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1511,11 +1783,19 @@ export function useOntologyGraph({
     explorationMode,
     focusNodeId,
     expandedTermIds,
+    applyBakedPositions,
     hasBakedPositions,
     positionAssetNodes,
     positionModelModeNodes,
+    positionCircularNodes,
     recomputeGraphBounds,
+    emitPagePositions,
   ]);
 
-  return { graphRef, extractNodePositions, suppressEdgeCheck };
+  return {
+    graphRef,
+    extractNodePositions,
+    suppressEdgeCheck,
+    emitPagePositions,
+  };
 }

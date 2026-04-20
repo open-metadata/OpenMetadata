@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
 import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import {
   GlobalSettingOptions,
@@ -19,6 +18,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import globalSettingsClassBase from './GlobalSettingsClassBase';
+import i18n from './i18next/LocalUtil';
 import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -113,7 +113,7 @@ export const getSettingPageEntityBreadCrumb = (
 
   return [
     {
-      name: i18next.t('label.setting-plural'),
+      name: i18n.t('label.setting-plural'),
       url: ROUTES.SETTINGS,
     },
     {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AntdConfig, BasicConfig } from '@react-awesome-query-builder/antd';
+import { AntdConfig } from '@react-awesome-query-builder/antd';
 import { Registry } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
@@ -19,7 +19,7 @@ import QueryBuilderWidget from './QueryBuilderWidget';
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
 const mockOnChange = jest.fn();
-const baseConfig = AntdConfig as BasicConfig;
+const baseConfig = AntdConfig;
 
 jest.mock(
   '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
