@@ -548,13 +548,15 @@ class Profiler(Generic[TMetric]):
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(
-                    self.profiler_interface.sampler.sample_config.profileSample
+                    self.profiler_interface.sampler.sample_config.get_static_config().profileSample
                     if self.profiler_interface.sampler.sample_config
+                    and self.profiler_interface.sampler.sample_config.get_static_config()
                     else None
                 ),
                 profileSampleType=(
-                    self.profiler_interface.sampler.sample_config.profileSampleType
+                    self.profiler_interface.sampler.sample_config.get_static_config().profileSampleType
                     if self.profiler_interface.sampler.sample_config
+                    and self.profiler_interface.sampler.sample_config.get_static_config()
                     else None
                 ),
                 customMetrics=self._table_results.get("customMetrics"),
