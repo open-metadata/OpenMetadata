@@ -13,7 +13,8 @@
 
 import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isEmpty, toLower } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -25,7 +26,9 @@ import {
   TERM_ADMIN,
 } from '../../../../../constants/constants';
 import { useAuth } from '../../../../../hooks/authHooks';
-import '../../../../users.less';
+import { Role } from '../../../../../generated/entity/teams/role';
+import { EntityType } from '../../../../../enums/entity.enum';
+import '../../users.less';
 import { AsyncSelect } from '../../../../common/AsyncSelect/AsyncSelect';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { searchQuery } from '../../../../../rest/searchAPI';
@@ -59,18 +62,23 @@ const UserProfileRoles = ({
         fetchSource: true,
       });
 
-      const options = response.hits.hits.map((hit) => ({
-        label: getEntityName(hit._source),
-        value: hit._source.id,
-        data: hit._source,
-      }));
+      const options: { label: string; value: string; data?: Role }[] =
+        response.hits.hits.map((hit) => ({
+          label: getEntityName(hit._source),
+          value: hit._source.id,
+          data: hit._source as Role,
+        }));
 
-      if (!isUserAdmin && (isEmpty(searchText) || toLower(TERM_ADMIN).includes(toLower(searchText)))) {
+      if (
+        !isUserAdmin &&
+        (isEmpty(searchText) ||
+          toLower(TERM_ADMIN).includes(toLower(searchText)))
+      ) {
         options.push({
           label: TERM_ADMIN,
           value: toLower(TERM_ADMIN),
           data: undefined,
-        } as any);
+        });
       }
 
       return {
@@ -106,16 +114,16 @@ const UserProfileRoles = ({
     setIsLoading(true);
     // filter out the roles , and exclude the admin one
     const updatedRoles = selectedRoles.filter(
-      (roleId) => roleId !== toLower(TERM_ADMIN)
+      (roleId: string) => roleId !== toLower(TERM_ADMIN)
     );
 
     // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
     const isAdmin = selectedRoles.find(
-      (roleId) => roleId === toLower(TERM_ADMIN)
+      (roleId: string) => roleId === toLower(TERM_ADMIN)
     );
     await updateUserDetails(
       {
-        roles: updatedRoles.map((roleId) => {
+        roles: updatedRoles.map((roleId: string) => {
           const role = userRoles?.find((r) => r.id === roleId);
 
           return { id: roleId, type: 'role', name: role?.name ?? '' };
@@ -237,7 +245,7 @@ const UserProfileRoles = ({
                     dropdownMatchSelectWidth={false}
                     loading={isLoading}
                     maxTagCount={3}
-                    maxTagPlaceholder={(omittedValues) => (
+                    maxTagPlaceholder={(omittedValues: any[]) => (
                       <span className="max-tag-text">
                         {t('label.plus-count-more', {
                           count: omittedValues.length,
