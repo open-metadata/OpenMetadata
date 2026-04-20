@@ -224,7 +224,7 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
         if (value != null) {
           indexMappingTemplate.getTemplate().getMappings().getProperties().put(attribute, value);
         } else {
-          log.warn(
+          LOG.warn(
               "[DI] config.json field '{}' not found in {}/{} entity mapping — will be absent from DI index",
               attribute,
               entityType,
