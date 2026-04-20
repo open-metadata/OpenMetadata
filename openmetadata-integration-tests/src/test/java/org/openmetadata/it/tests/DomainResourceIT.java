@@ -1310,7 +1310,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     client.users().delete(follower.getId().toString());
 
-    ListParams params = new ListParams().setFields("followers").withLimit(100);
+    ListParams params = new ListParams().setFields("followers").withLimit(1000000);
     ListResponse<Domain> list = listEntities(params);
     Domain listed =
         list.getData().stream()
@@ -1344,7 +1344,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     adminClient.users().delete(voter.getId().toString());
 
-    ListParams params = new ListParams().setFields("votes").withLimit(100);
+    ListParams params = new ListParams().setFields("votes").withLimit(1000000);
     ListResponse<Domain> list = listEntities(params);
     Domain listed =
         list.getData().stream()
