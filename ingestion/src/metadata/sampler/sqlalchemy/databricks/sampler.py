@@ -34,7 +34,7 @@ class DatabricksSamplerInterface(SQASampler):
             quoted_catalog = connection.dialect.identifier_preparer.quote(
                 self.service_connection_config.catalog
             )
-            connection.execute(f"USE CATALOG {quoted_catalog};")
+            connection.execute(text(f"USE CATALOG {quoted_catalog};"))
 
         self.session_factory = scoped_session(session_maker)
 

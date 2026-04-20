@@ -5,7 +5,8 @@ source:
     config:
       hostPort: $E2E_REDSHIFT_HOST_PORT
       username: $E2E_REDSHIFT_USERNAME
-      password: $E2E_REDSHIFT_PASSWORD
+      authType:
+        password: $E2E_REDSHIFT_PASSWORD
       database: $E2E_REDSHIFT_DB
       type: Redshift
   sourceConfig:

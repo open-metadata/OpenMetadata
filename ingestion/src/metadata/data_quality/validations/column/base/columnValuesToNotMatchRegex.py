@@ -57,15 +57,15 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
             not_match_count = self._run_results(
-                Metrics.NOT_REGEX_COUNT,
+                Metrics.notRegexCount,
                 column,
                 expression=test_params[self.FORBIDDEN_REGEX],
             )
 
-            metric_values = {Metrics.NOT_REGEX_COUNT.name: not_match_count}
+            metric_values = {Metrics.notRegexCount.name: not_match_count}
 
             if self.test_case.computePassedFailedRowCount:
-                metric_values[Metrics.ROW_COUNT.name] = self.get_row_count()
+                metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -120,11 +120,11 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             dict: Mapping of Metrics enum names to Metrics enum values
         """
         metrics = {
-            Metrics.NOT_REGEX_COUNT.name: Metrics.NOT_REGEX_COUNT,
+            Metrics.notRegexCount.name: Metrics.notRegexCount,
         }
 
         if self.test_case.computePassedFailedRowCount:
-            metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
+            metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
@@ -153,8 +153,8 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             raise ValueError(
                 "test_params is required for columnValuesToNotMatchRegex._evaluate_test_condition"
             )
-        not_match_count = metric_values[Metrics.NOT_REGEX_COUNT.name]
-        total_rows = metric_values.get(Metrics.ROW_COUNT.name)
+        not_match_count = metric_values[Metrics.notRegexCount.name]
+        total_rows = metric_values.get(Metrics.rowCount.name)
 
         matched = not_match_count == 0
         failed_count = not_match_count
@@ -186,7 +186,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        not_match_count = metric_values[Metrics.NOT_REGEX_COUNT.name]
+        not_match_count = metric_values[Metrics.notRegexCount.name]
 
         if dimension_info:
             return (
@@ -208,7 +208,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=NOT_LIKE_COUNT,
-                value=str(metric_values[Metrics.NOT_REGEX_COUNT.name]),
+                value=str(metric_values[Metrics.notRegexCount.name]),
             ),
         ]
 

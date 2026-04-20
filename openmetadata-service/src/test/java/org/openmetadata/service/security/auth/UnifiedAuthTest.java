@@ -47,7 +47,7 @@ public class UnifiedAuthTest {
 
     // Verify
     assertNotNull(handler);
-    assertTrue(handler instanceof BasicAuthServletHandler);
+    assertInstanceOf(BasicAuthServletHandler.class, handler);
   }
 
   @Test
@@ -62,11 +62,11 @@ public class UnifiedAuthTest {
 
     // Verify
     assertNotNull(handler);
-    assertTrue(handler instanceof LdapAuthServletHandler);
+    assertInstanceOf(LdapAuthServletHandler.class, handler);
   }
 
   @Test
-  void testUnifiedLoginEndpoint() throws Exception {
+  void testUnifiedLoginEndpoint() {
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
     when(mockAuthConfig.getCallbackUrl()).thenReturn("http://localhost:8585");
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
@@ -81,7 +81,7 @@ public class UnifiedAuthTest {
   }
 
   @Test
-  void testSessionBasedRefreshToken() throws Exception {
+  void testSessionBasedRefreshToken() {
     // This test verifies refresh tokens are stored in session, not sent to client
 
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
@@ -105,13 +105,13 @@ public class UnifiedAuthTest {
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
 
     AuthServeletHandler handler1 = AuthServeletHandlerFactory.getHandler(mockConfig);
-    assertTrue(handler1 instanceof BasicAuthServletHandler);
+    assertInstanceOf(BasicAuthServletHandler.class, handler1);
 
     // Switch to LDAP
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.LDAP);
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
 
     AuthServeletHandler handler2 = AuthServeletHandlerFactory.getHandler(mockConfig);
-    assertTrue(handler2 instanceof LdapAuthServletHandler);
+    assertInstanceOf(LdapAuthServletHandler.class, handler2);
   }
 }

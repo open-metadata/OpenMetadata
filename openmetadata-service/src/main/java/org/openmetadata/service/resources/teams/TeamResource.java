@@ -437,7 +437,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return Response.ok()
+        .entity(
+            repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
+        .build();
   }
 
   @PUT
@@ -466,7 +469,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return Response.ok()
+        .entity(
+            repository.bulkRemoveAssets(
+                name, request, securityContext.getUserPrincipal().getName()))
+        .build();
   }
 
   @GET

@@ -15,11 +15,15 @@
 
 .profiler-switch {
   .ant-radio-button-wrapper,
-  .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
+  .ant-radio-button-wrapper-checked:not(
+      [class*=' ant-radio-button-wrapper-disabled']
+    ).ant-radio-button-wrapper:first-child {
     border-color: @primary-1;
   }
 
-  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
+  .ant-radio-button-wrapper-checked:not(
+      .ant-radio-button-wrapper-disabled
+    )::before {
     background-color: @primary-1;
   }
 

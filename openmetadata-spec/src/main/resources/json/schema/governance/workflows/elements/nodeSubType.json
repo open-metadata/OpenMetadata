@@ -21,6 +21,7 @@
     "sinkTask",
     "createRecognizerFeedbackApprovalTask",
     "applyRecognizerFeedbackTask",
-    "rejectRecognizerFeedbackTask"
+    "rejectRecognizerFeedbackTask",
+    "checkChangeDescriptionTask"
   ]
 }

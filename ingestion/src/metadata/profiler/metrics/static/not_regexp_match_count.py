@@ -43,8 +43,10 @@ class NotRegexCount(StaticMetric):
     rows that match the forbidden regex pattern
 
     This Metric needs to be initialised passing the expression to check
-    add_props(expression="j%")(Metrics.NOT_REGEX_COUNT.value)
+    add_props(expression="j%")(Metrics.notRegexCount.value)
     """
+
+    schema_metric_type = MetricType.notRegexCount
 
     expression: str
 
@@ -64,20 +66,18 @@ class NotRegexCount(StaticMetric):
         """sqlalchemy function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_REGEX_COUNT)"
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.notRegexCount)"
             )
         return SumFn(
             case(
-                [
-                    (
-                        not_(
-                            RegexpMatchFn(
-                                column(self.col.name, self.col.type), self.expression
-                            ),
+                (
+                    not_(
+                        RegexpMatchFn(
+                            column(self.col.name, self.col.type), self.expression
                         ),
-                        0,
-                    )
-                ],
+                    ),
+                    0,
+                ),
                 else_=1,
             )
         )
@@ -103,7 +103,7 @@ class NotRegexCount(StaticMetric):
         """Returns the logic to compute this metric using Pandas"""
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_REGEX_COUNT)"
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.notRegexCount)"
             )
 
         return PandasComputation[int, int](

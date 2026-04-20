@@ -5,6 +5,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.SearchUtil.getFuzziness;
+import static org.openmetadata.service.search.SearchUtil.getMaxExpansions;
+import static org.openmetadata.service.search.SearchUtil.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
@@ -27,6 +30,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
@@ -179,7 +183,7 @@ public class ElasticSearchSourceBuilderFactory
     compositeConfig.setTermBoosts(allTermBoosts);
     compositeConfig.setFieldValueBoosts(allFieldValueBoosts);
     compositeConfig.setScoreMode(AssetTypeConfiguration.ScoreMode.SUM);
-    compositeConfig.setBoostMode(AssetTypeConfiguration.BoostMode.SUM);
+    compositeConfig.setBoostMode(AssetTypeConfiguration.BoostMode.MULTIPLY);
 
     return compositeConfig;
   }
@@ -264,16 +268,16 @@ public class ElasticSearchSourceBuilderFactory
 
   private ElasticSearchRequestBuilder addAggregationV2(
       ElasticSearchRequestBuilder searchRequestBuilder) {
-    searchSettings
-        .getGlobalSettings()
-        .getAggregations()
+    listOrEmpty(searchSettings.getGlobalSettings().getAggregations())
         .forEach(
             agg -> {
               es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation termsAgg;
               int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
               if (!nullOrEmpty(agg.getField())) {
-                termsAgg = ElasticAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+                String field =
+                    SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
+                termsAgg = ElasticAggregationBuilder.termsAggregation(field, maxSize);
               } else if (!nullOrEmpty(agg.getScript())) {
                 termsAgg =
                     ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
@@ -320,6 +324,10 @@ public class ElasticSearchSourceBuilderFactory
       return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
     }
 
+    if (isColumnIndex(indexName)) {
+      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+    }
+
     if (isServiceIndex(indexName)) {
       return buildServiceSearchBuilderV2(searchQuery, fromOffset, size);
     }
@@ -358,6 +366,27 @@ public class ElasticSearchSourceBuilderFactory
           query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
+  }
+
+  public ElasticSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder;
+    if (nullOrEmpty(query) || "*".equals(query.trim())) {
+      queryBuilder =
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
+    } else {
+      Map<String, Float> fields = ColumnSearchIndex.getFields();
+      queryBuilder =
+          ElasticQueryBuilder.multiMatchQuery(
+              query,
+              fields,
+              es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
+              es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+              String.valueOf(DEFAULT_TIE_BREAKER),
+              "0");
+    }
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(List.of("name", "displayName", "description"));
+    return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {
@@ -632,6 +661,9 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
+      String fuzziness = getFuzziness(query);
+      int maxExpansions = getMaxExpansions(query);
+
       es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
           es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
               q ->
@@ -642,8 +674,8 @@ public class ElasticSearchSourceBuilderFactory
                               .type(
                                   es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType
                                       .MostFields)
-                              .fuzziness("1")
-                              .maxExpansions(10)
+                              .fuzziness(fuzziness)
+                              .maxExpansions(maxExpansions)
                               .prefixLength(1)
                               .operator(
                                   es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or)
@@ -691,7 +723,7 @@ public class ElasticSearchSourceBuilderFactory
         es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
         es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
-        "1");
+        getFuzziness(query));
   }
 
   private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(
@@ -802,6 +834,11 @@ public class ElasticSearchSourceBuilderFactory
     List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
         new ArrayList<>();
 
+    // Add baseline weight of 1.0 so that assets with no tier/usage retain their text score
+    // when boostMode is multiply. Without this, function_score could be 0 and zero out the
+    // text relevance score.
+    functions.add(ElasticQueryBuilder.weightFunction(ElasticQueryBuilder.matchAllQuery(), 1.0));
+
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
       searchSettings.getGlobalSettings().getTermBoosts().stream()
           .map(this::buildTermBoostFunctionV2)
@@ -896,7 +933,8 @@ public class ElasticSearchSourceBuilderFactory
       int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
       if (!nullOrEmpty(agg.getField())) {
-        termsAgg = ElasticAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+        String field = SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
+        termsAgg = ElasticAggregationBuilder.termsAggregation(field, maxSize);
       } else if (!nullOrEmpty(agg.getScript())) {
         termsAgg = ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
       } else {

@@ -1,0 +1,337 @@
+{
+  "tables": [
+    {
+      "name": "raw_customers",
+      "description": "Raw customer data loaded from CSV seed file in the jaffle_shop dbt project",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Primary key for customers",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "first_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(256)",
+          "dataLength": 256,
+          "description": "Customer first name",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "last_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(256)",
+          "dataLength": 256,
+          "description": "Customer last name",
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "raw_orders",
+      "description": "Raw order data loaded from CSV seed file in the jaffle_shop dbt project",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Primary key for orders",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "user_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Foreign key to customers",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "order_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date the order was placed",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "status",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(64)",
+          "dataLength": 64,
+          "description": "Order status: placed, shipped, completed, return_pending, or returned",
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    {
+      "name": "raw_payments",
+      "description": "Raw payment data loaded from CSV seed file in the jaffle_shop dbt project",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Primary key for payments",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "order_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Foreign key to orders",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "payment_method",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(64)",
+          "dataLength": 64,
+          "description": "Payment method: credit_card, coupon, bank_transfer, or gift_card",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "amount",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Payment amount in cents",
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    {
+      "name": "stg_customers",
+      "description": "Staged customer data with renamed columns from raw_customers",
+      "tableType": "View",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Unique identifier for a customer, renamed from id",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "first_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(256)",
+          "dataLength": 256,
+          "description": "Customer first name",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "last_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(256)",
+          "dataLength": 256,
+          "description": "Customer last name",
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    {
+      "name": "stg_orders",
+      "description": "Staged order data with renamed columns from raw_orders",
+      "tableType": "View",
+      "columns": [
+        {
+          "name": "order_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Unique identifier for an order, renamed from id",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Foreign key to customers, renamed from user_id",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "order_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date the order was placed",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "status",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(64)",
+          "dataLength": 64,
+          "description": "Order status",
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    {
+      "name": "stg_payments",
+      "description": "Staged payment data with renamed columns and converted amount from raw_payments",
+      "tableType": "View",
+      "columns": [
+        {
+          "name": "payment_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Unique identifier for a payment, renamed from id",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "order_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Foreign key to orders",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "payment_method",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(64)",
+          "dataLength": 64,
+          "description": "Payment method used",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "amount",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Payment amount in dollars (converted from cents)",
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    {
+      "name": "customers",
+      "description": "Customer table with basic information and derived facts based on orders",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Unique identifier for a customer",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "first_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(256)",
+          "dataLength": 256,
+          "description": "Customer first name",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "last_name",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(256)",
+          "dataLength": 256,
+          "description": "Customer last name",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "first_order",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date of the customer's first order",
+          "ordinalPosition": 4
+        },
+        {
+          "name": "most_recent_order",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date of the customer's most recent order",
+          "ordinalPosition": 5
+        },
+        {
+          "name": "number_of_orders",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Total number of orders placed by the customer",
+          "ordinalPosition": 6
+        },
+        {
+          "name": "customer_lifetime_value",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Total amount spent by the customer across all orders",
+          "ordinalPosition": 7
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "description": "Order table with order details and payment amounts broken down by payment method",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "order_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Unique identifier for an order",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_id",
+          "dataType": "INT",
+          "dataTypeDisplay": "integer",
+          "description": "Foreign key to the customers table",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "order_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date the order was placed",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "status",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "character varying(64)",
+          "dataLength": 64,
+          "description": "Order status: placed, shipped, completed, return_pending, or returned",
+          "ordinalPosition": 4
+        },
+        {
+          "name": "credit_card_amount",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Amount paid by credit card",
+          "ordinalPosition": 5
+        },
+        {
+          "name": "coupon_amount",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Amount paid by coupon",
+          "ordinalPosition": 6
+        },
+        {
+          "name": "bank_transfer_amount",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Amount paid by bank transfer",
+          "ordinalPosition": 7
+        },
+        {
+          "name": "gift_card_amount",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Amount paid by gift card",
+          "ordinalPosition": 8
+        },
+        {
+          "name": "amount",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric(16,2)",
+          "description": "Total order amount across all payment methods",
+          "ordinalPosition": 9
+        }
+      ]
+    }
+  ]
+}

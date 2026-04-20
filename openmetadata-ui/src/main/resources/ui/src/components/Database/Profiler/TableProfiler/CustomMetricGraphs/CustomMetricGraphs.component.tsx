@@ -10,16 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import {
-  Box,
-  Grid,
-  IconButton,
-  Menu,
-  MenuItem,
-  Stack,
-  useTheme,
-} from '@mui/material';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@untitledui/icons';
 import { Form, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
@@ -35,6 +27,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import {
+  BLUE_600,
+  BLUE_CHART_AREA_FILL,
+  CHART_CURSOR_STROKE,
+} from '../../../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
@@ -71,7 +68,6 @@ const CustomMetricGraphs = ({
   isLoading,
   customMetrics,
 }: CustomMetricGraphsProps) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const {
@@ -88,9 +84,7 @@ const CustomMetricGraphs = ({
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<Record<string, HTMLElement | null>>(
-    {}
-  );
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
   const renderHorizontalGridLine = useMemo(
     () => createHorizontalGridLineRenderer(),
@@ -172,7 +166,8 @@ const CustomMetricGraphs = ({
     setSelectedMetrics(
       customMetrics?.find((metric) => metric.name === metricName)
     );
-    setAnchorEl((prev) => ({ ...prev, [metricName]: null }));
+    setOpenMenuKey(null);
+
     switch (key) {
       case MenuOptions.EDIT:
         setIsEditModalVisible(true);
@@ -187,26 +182,17 @@ const CustomMetricGraphs = ({
     }
   };
 
-  const handleMenuOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    metricName: string
-  ) => {
-    setAnchorEl((prev) => ({ ...prev, [metricName]: event.currentTarget }));
-  };
-
-  const handleMenuClose = (metricName: string) => {
-    setAnchorEl((prev) => ({ ...prev, [metricName]: null }));
-  };
-
   return (
-    <Stack data-testid="custom-metric-graph-container" spacing="30px">
+    <div
+      className="tw:flex tw:flex-col tw:gap-8"
+      data-testid="custom-metric-graph-container">
       {toPairs(customMetricsGraphData).map(([key, metric]) => {
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
         );
 
         return isUndefined(metricDetails) ? null : (
-          <Box key={key}>
+          <div key={key}>
             <ProfilerStateWrapper
               data-testid={`${key}-custom-metrics`}
               isLoading={isLoading}
@@ -216,60 +202,43 @@ const CustomMetricGraphs = ({
                     latestValue: last(metric)?.[key] ?? '--',
                     title: t('label.count'),
                     dataKey: key,
-                    color: theme.palette.allShades.blue[500],
+                    color: BLUE_600,
                   },
                 ],
                 extra:
                   editPermission || deletePermission ? (
-                    <>
-                      <IconButton
+                    <Dropdown.Root
+                      isOpen={openMenuKey === key}
+                      onOpenChange={(isOpen) =>
+                        setOpenMenuKey(isOpen ? key : null)
+                      }>
+                      <Button
+                        color="secondary"
                         data-testid={`${key}-custom-metrics-menu`}
-                        size="small"
-                        sx={{
-                          color: theme.palette.grey[800],
-                        }}
-                        onClick={(e) => handleMenuOpen(e, key)}>
-                        <MoreVertIcon fontSize="small" />
-                      </IconButton>
-                      <Menu
-                        anchorEl={anchorEl[key]}
-                        anchorOrigin={{
-                          vertical: 'bottom',
-                          horizontal: 'right',
-                        }}
-                        open={Boolean(anchorEl[key])}
-                        sx={{
-                          '.MuiPaper-root': {
-                            width: 'max-content',
-                          },
-                        }}
-                        transformOrigin={{
-                          vertical: 'top',
-                          horizontal: 'right',
-                        }}
-                        onClose={() => handleMenuClose(key)}>
-                        {items.map((item) => (
-                          <MenuItem
-                            disabled={item.disabled}
-                            key={item.key}
-                            onClick={() => handleMenuClick(item.key, key)}>
-                            {item.label}
-                          </MenuItem>
-                        ))}
-                      </Menu>
-                    </>
+                        iconLeading={DotsVertical}
+                        size="sm"
+                      />
+                      <Dropdown.Popover className="tw:w-max">
+                        <Dropdown.Menu items={items}>
+                          {(item) => (
+                            <Dropdown.Item
+                              id={item.key}
+                              isDisabled={item.disabled}
+                              label={item.label}
+                              onAction={() => handleMenuClick(item.key, key)}
+                            />
+                          )}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown.Root>
                   ) : undefined,
               }}
               title={key}>
-              <Box>
+              <div>
                 {isEmpty(metric) ? (
-                  <Grid
-                    alignItems="middle"
-                    className="h-full w-full"
-                    display="flex"
-                    justifyContent="center">
+                  <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
                     <ErrorPlaceHolder className="mt-0-important" />
-                  </Grid>
+                  </div>
                 ) : (
                   <ResponsiveContainer
                     className="custom-legend"
@@ -313,7 +282,7 @@ const CustomMetricGraphs = ({
                           />
                         }
                         cursor={{
-                          stroke: theme.palette.grey[200],
+                          stroke: CHART_CURSOR_STROKE,
                           strokeDasharray: '3 3',
                         }}
                       />
@@ -321,22 +290,22 @@ const CustomMetricGraphs = ({
                       <Line
                         dataKey={key}
                         name={key}
-                        stroke={theme.palette.allShades.blue[500]}
+                        stroke={BLUE_600}
                         type="monotone"
                       />
                       <Area
                         dataKey={key}
-                        fill={theme.palette.allShades.blue[50]}
+                        fill={BLUE_CHART_AREA_FILL}
                         name={key}
-                        stroke={theme.palette.allShades.blue[500]}
+                        stroke={BLUE_600}
                         type="monotone"
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
                 )}
-              </Box>
+              </div>
             </ProfilerStateWrapper>
-          </Box>
+          </div>
         );
       })}
       <DeleteWidgetModal
@@ -371,7 +340,7 @@ const CustomMetricGraphs = ({
           />
         </Modal>
       )}
-    </Stack>
+    </div>
   );
 };
 

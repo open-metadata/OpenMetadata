@@ -86,7 +86,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    row = dict(row)
+                    row = row._asdict()
                     try:
                         yield TableQuery(
                             dialect=self.dialect.value,

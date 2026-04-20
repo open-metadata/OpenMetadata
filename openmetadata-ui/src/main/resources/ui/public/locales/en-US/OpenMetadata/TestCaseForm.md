@@ -57,6 +57,27 @@ If you're testing the `amount` column with dimensions `region` and `product_type
 $$
 
 $$section
+### Top Dimensions $(id="topDimensions")
+
+Controls how many top dimension values are shown individually in the test results. Values beyond this limit are grouped into an **Others** bucket.
+
+- **Default**: 5 (the top 5 dimension values by impact score are shown, the rest are aggregated)
+- **Minimum**: 1
+- **Maximum**: 50
+
+**When to adjust**:
+- **Increase** if you have high-cardinality dimensions and need visibility into more individual values
+- **Decrease** if you want a more compact summary focused on the most significant segments
+
+**Example**:
+If you set Top Dimensions to 3 and your `region` dimension has values North America, Europe, Asia, Africa, and South America, the results will show:
+- North America (individual result)
+- Europe (individual result)
+- Asia (individual result)
+- Others (aggregated result for Africa + South America)
+$$
+
+$$section
 ### Test Type $(id="testType")
 
 Choose the type of test to apply based on your data quality requirements. Available test types depend on whether you selected table-level or column-level testing. Each test type has specific parameters and validation rules designed to check different aspects of data quality.

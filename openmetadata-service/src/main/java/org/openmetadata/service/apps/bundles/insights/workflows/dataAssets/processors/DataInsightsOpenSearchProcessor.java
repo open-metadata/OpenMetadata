@@ -76,7 +76,7 @@ public class DataInsightsOpenSearchProcessor
   }
 
   @Override
-  public void updateStats(int currentSuccess, int currentFailed) {
+  public synchronized void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
 

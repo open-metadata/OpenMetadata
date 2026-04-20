@@ -62,8 +62,9 @@ import { ServiceConfig } from './AddServicePage.interface';
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceCategory;
+  }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
 
   const [showErrorMessage, setShowErrorMessage] = useState(

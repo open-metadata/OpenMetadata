@@ -121,7 +121,8 @@ public class EmbeddingService {
   }
 
   private EmbeddingService(OpenMetadataApplicationConfig config) {
-    this.executorService = Executors.newFixedThreadPool(4);
+    this.executorService =
+        Executors.newFixedThreadPool(4, Thread.ofPlatform().name("om-embedding-", 0).factory());
 
     // For now, always use local provider
     // TODO: Add configuration support for different providers

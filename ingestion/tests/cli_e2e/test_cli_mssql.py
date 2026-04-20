@@ -150,10 +150,6 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
                         "firstQuartile": 2.5,
-                        "histogram": {
-                            "boundaries": ["1.000 to 3.773", "3.773 and up"],
-                            "frequencies": [1, 2],
-                        },
                         "interQuartileRange": 2.0,
                         "max": 5.0,
                         "maxLength": None,

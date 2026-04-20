@@ -24,8 +24,8 @@ import {
   MenuItem,
   Popover,
   TextField,
-  Typography,
 } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   ArrowLeft as ArrowBackIcon,
   Check as CheckIcon,
@@ -380,7 +380,7 @@ const InlineTestCaseIncidentStatus = ({
     if (userOptions.length === 0) {
       return (
         <Box sx={{ p: 2, textAlign: 'center' }}>
-          <Typography color="text.secondary" variant="body2">
+          <Typography as="span" className="tw:text-body tw:text-tertiary">
             {t('message.no-username-available', { user: '' })}
           </Typography>
         </Box>
@@ -520,7 +520,7 @@ const InlineTestCaseIncidentStatus = ({
           <IconButton size="small" onClick={handleBackToStatusMenu}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
+          <Typography as="span" className="tw:text-base tw:font-semibold">
             {t('label.assigned')}
           </Typography>
           <Box sx={{ flex: 1 }} />
@@ -590,7 +590,7 @@ const InlineTestCaseIncidentStatus = ({
           <IconButton size="small" onClick={handleBackToStatusMenu}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
+          <Typography as="span" className="tw:text-base tw:font-semibold">
             {t('label.resolved')}
           </Typography>
           <Box sx={{ flex: 1 }} />

@@ -19,7 +19,8 @@ from typing import Any, List, Optional, Union
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
     SapErpConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.database.saperp.constants import PARAMS_DATA
 from metadata.ingestion.source.database.saperp.models import (
     SapErpColumn,
@@ -62,7 +63,7 @@ class SapErpClient:
             retry_wait=2,
             verify=get_verify_ssl(config.sslConfig),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="saperp")
 
     def test_table_api(self):
         """

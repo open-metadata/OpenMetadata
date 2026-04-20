@@ -12,6 +12,7 @@
 import traceback
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 
@@ -42,6 +43,7 @@ from metadata.ingestion.source.database.mssql.models import (
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
@@ -74,7 +76,7 @@ logger = ingestion_logger()
 # Avoid using these data types in new development work, and plan to modify applications that currently use them.
 # Use nvarchar(max), varchar(max), and varbinary(max) instead.
 # ref: https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
-ischema_names = update_mssql_ischema_names(ischema_names)
+update_mssql_ischema_names(ischema_names)
 
 MSDialect.get_table_comment = get_table_comment
 MSDialect.get_view_definition = get_view_definition
@@ -106,6 +108,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
+        self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
 
     @classmethod
     def create(
@@ -127,19 +130,22 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_SCHEMA_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_SCHEMA_COMMENTS)).all()
         self.schema_desc_map = {
             (row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results
         }
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_DATABASE_COMMENTS)).all()
         self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
 
     def set_stored_procedure_description_map(self) -> None:
         self.stored_procedure_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_STORED_PROCEDURE_COMMENTS)).all()
         self.stored_procedure_desc_map = {
             (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
             for row in results
@@ -156,6 +162,28 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         Method to fetch the database description
         """
         return self.database_desc_map.get(database_name)
+
+    def _get_encrypted_procedures(
+        self, database_name: str, schema_name: str
+    ) -> set[str]:
+        """Fetch and cache encrypted stored procedure names for a database and schema"""
+        cache_key = (database_name, schema_name)
+        if cache_key not in self.encrypted_procedures_cache:
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(
+                        text(MSSQL_GET_ENCRYPTED_STORED_PROCEDURES),
+                        {"schema_name": schema_name},
+                    ).all()
+                self.encrypted_procedures_cache[cache_key] = {
+                    row.procedure_name for row in results
+                }
+            except Exception as exc:
+                logger.debug(
+                    f"Could not fetch encrypted procedures for {database_name}.{schema_name}: {exc}"
+                )
+                self.encrypted_procedures_cache[cache_key] = set()
+        return self.encrypted_procedures_cache[cache_key]
 
     def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
         """
@@ -216,15 +244,20 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                MSSQL_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        MSSQL_GET_STORED_PROCEDURES.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                        )
+                    )
+                ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
+                    stored_procedure = MssqlStoredProcedure.model_validate(
+                        row._asdict()
+                    )
                     if self.is_stored_procedure_filtered(stored_procedure.name):
                         continue
                     yield stored_procedure
@@ -232,7 +265,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     logger.error(f"Error parsing Stored Procedure row: {row}")
                     self.status.failed(
                         error=StackTraceError(
-                            name=dict(row).get("name", "UNKNOWN"),
+                            name=row._asdict().get("name", "UNKNOWN"),
                             error=f"Error parsing Stored Procedure payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )
@@ -244,6 +277,15 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """Prepare the stored procedure payload"""
 
         try:
+            proc_definition = stored_procedure.definition
+            if not proc_definition:
+                encrypted_procs = self._get_encrypted_procedures(
+                    self.context.get().database,
+                    self.context.get().database_schema,
+                )
+                if stored_procedure.name in encrypted_procs:
+                    proc_definition = "-- Unable to fetch code as this is an encrypted stored procedure"
+
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
                 description=self.get_stored_procedure_description(
@@ -251,7 +293,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
-                    code=stored_procedure.definition,
+                    code=proc_definition,
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 interface BrandColors {
   primaryColor?: string;
@@ -27,6 +27,7 @@ interface BrandColors {
 
 interface ThemeContextType {
   theme: Theme;
+  brandColors?: BrandColors;
   setTheme: (theme: Theme) => void;
 }
 
@@ -46,17 +47,17 @@ interface ThemeProviderProps {
   children: ReactNode;
   brandColors?: BrandColors;
   /**
-   * The class to add to the root element when the theme is dark
+   * The class to add to the root element when the theme is dark.
    * @default "dark-mode"
    */
   darkModeClass?: string;
   /**
-   * The default theme to use if no theme is stored in localStorage
-   * @default "system"
+   * The default theme to use if no theme is stored in localStorage.
+   * @default "light"
    */
   defaultTheme?: Theme;
   /**
-   * The key to use to store the theme in localStorage
+   * The key to use to store the theme in localStorage.
    * @default "ui-theme"
    */
   storageKey?: string;
@@ -238,55 +239,38 @@ const clearBrandCssVars = (root: HTMLElement) => {
 export const ThemeProvider = ({
   children,
   brandColors,
-  defaultTheme = 'system',
+  defaultTheme = 'light',
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof globalThis !== 'undefined') {
       const savedTheme = localStorage.getItem(storageKey) as Theme | null;
 
-      return savedTheme || defaultTheme;
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        return savedTheme;
+      }
+
+      localStorage.removeItem(storageKey);
     }
 
     return defaultTheme;
   });
 
   useEffect(() => {
-    const applyTheme = () => {
-      const root = window.document.documentElement;
+    const root = globalThis.document.documentElement;
 
-      if (theme === 'system') {
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
-          .matches
-          ? 'dark'
-          : 'light';
+    root.classList.toggle(darkModeClass, theme === 'dark');
 
-        root.classList.toggle(darkModeClass, systemTheme === 'dark');
-        localStorage.removeItem(storageKey);
-      } else {
-        root.classList.toggle(darkModeClass, theme === 'dark');
-        localStorage.setItem(storageKey, theme);
-      }
-    };
-
-    applyTheme();
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const handleChange = () => {
-      if (theme === 'system') {
-        applyTheme();
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
+    if (theme === 'dark') {
+      localStorage.setItem(storageKey, theme);
+    } else {
+      localStorage.removeItem(storageKey);
+    }
+  }, [theme, darkModeClass, storageKey]);
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = globalThis.document.documentElement;
 
     clearBrandCssVars(root);
     if (brandColors && Object.values(brandColors).some(Boolean)) {
@@ -302,9 +286,12 @@ export const ThemeProvider = ({
     brandColors?.infoColor,
   ]);
 
+  const values = useMemo(
+    () => ({ theme, brandColors, setTheme }),
+    [theme, brandColors]
+  );
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={values}>{children}</ThemeContext.Provider>
   );
 };

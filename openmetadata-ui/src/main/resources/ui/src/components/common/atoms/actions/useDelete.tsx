@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -30,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import Loader from '../../Loader/Loader';
 
 interface UseDeleteConfig<
   T extends { id: string; name?: string; displayName?: string }
@@ -312,7 +312,7 @@ export const useDelete = <
               variant="contained"
               onClick={handleDelete}>
               {isDeleting ? (
-                <CircularProgress color="inherit" size={20} />
+                <Loader size="small" type="white" />
               ) : (
                 t('label.delete')
               )}

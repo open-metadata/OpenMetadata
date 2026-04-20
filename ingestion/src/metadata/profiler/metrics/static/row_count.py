@@ -38,6 +38,8 @@ class RowCount(StaticMetric):
     Count all rows on a table
     """
 
+    schema_metric_type = MetricType.rowCount
+
     @classmethod
     def name(cls):
         return MetricType.rowCount.value

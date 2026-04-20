@@ -48,6 +48,8 @@ class NullCount(StaticMetric):
     ```
     """
 
+    schema_metric_type = MetricType.nullCount
+
     @classmethod
     def name(cls):
         return MetricType.nullCount.value
@@ -60,7 +62,7 @@ class NullCount(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         return coalesce(
-            SumFn(case([(column(self.col.name, self.col.type).is_(None), 1)], else_=0)),
+            SumFn(case((column(self.col.name, self.col.type).is_(None), 1), else_=0)),
             0,
         )
 

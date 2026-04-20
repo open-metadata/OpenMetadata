@@ -86,7 +86,7 @@ const mockSearchResponse = {
     hits: {
       hits: mockDataProducts.map((product) => ({
         _source: product,
-        _index: 'data_product_search_index',
+        _index: 'dataProduct',
         _id: product.id,
       })),
       total: { value: mockDataProducts.length },
@@ -181,7 +181,7 @@ describe('DataProductsWidget', () => {
         '',
         'updatedAt',
         'desc',
-        'data_product_search_index'
+        'dataProduct'
       );
     });
 
@@ -290,7 +290,7 @@ describe('DataProductsWidget', () => {
         hits: {
           hits: manyDataProducts.map((product) => ({
             _source: product,
-            _index: 'data_product_search_index',
+            _index: 'dataProduct',
             _id: product.id,
           })),
           total: { value: manyDataProducts.length },

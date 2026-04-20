@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.settings.SettingsType;
@@ -35,6 +36,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
@@ -105,6 +107,25 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
+      if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
+        SearchSettings searchSettings =
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+        ElasticSearchSourceBuilderFactory searchBuilderFactory =
+            new ElasticSearchSourceBuilderFactory(searchSettings);
+        ElasticSearchRequestBuilder textQueryBuilder =
+            searchBuilderFactory.getSearchSourceBuilderV2(
+                indexName, request.getQueryText(), 0, 0, false, false);
+        Query textQuery = textQueryBuilder.query();
+        if (textQuery != null) {
+          if (query != null) {
+            final Query finalQuery = query;
+            query = Query.of(q -> q.bool(b -> b.must(finalQuery).must(textQuery)));
+          } else {
+            query = textQuery;
+          }
+        }
+      }
+
       if (request.getDeleted() != null) {
         Query deletedQuery =
             Query.of(q -> q.term(t -> t.field("deleted").value(request.getDeleted())));
@@ -121,7 +142,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         searchRequestBuilder.query(query);
       }
 
-      String aggregationField = request.getFieldName();
+      String aggregationField =
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
         throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
       }
@@ -260,9 +282,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
       LOG.info(
           "Generic Aggregation - Aggregation results present: {}", aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info("Generic Aggregation - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject -> LOG.info("Generic Aggregation - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());
@@ -312,7 +333,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
           if (parsedQuery != null) {
             final Query existingQuery = parsedQuery;
-            Query combinedQuery =
+            parsedQuery =
                 Query.of(
                     qb ->
                         qb.bool(
@@ -321,7 +342,6 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
                               b.filter(rbacQuery);
                               return b;
                             }));
-            parsedQuery = combinedQuery;
           } else {
             parsedQuery = rbacQuery;
           }
@@ -366,10 +386,9 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       LOG.info(
           "Generic Aggregation with RBAC - Aggregation results present: {}",
           aggregationResults.isPresent());
-      if (aggregationResults.isPresent()) {
-        LOG.info(
-            "Generic Aggregation with RBAC - Aggregation results: {}", aggregationResults.get());
-      }
+      aggregationResults.ifPresent(
+          jsonObject ->
+              LOG.info("Generic Aggregation with RBAC - Aggregation results: {}", jsonObject));
 
       return SearchIndexUtils.parseAggregationResults(
           aggregationResults, aggregationMetadata.getAggregationMetadata());

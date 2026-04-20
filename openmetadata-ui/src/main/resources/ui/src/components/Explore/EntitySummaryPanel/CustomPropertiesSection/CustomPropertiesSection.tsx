@@ -144,15 +144,15 @@ const CustomPropertiesSection = ({
       <div className="custom-properties-list p-x-md">
         {filteredProperties.length > 0
           ? filteredProperties.map((property: CustomProperty) => (
-            <PropertyValue
-              isRenderedInRightPanel
-              extension={extensionData}
-              hasEditPermissions={hasEditPermissions}
-              key={property.name}
-              property={property}
-              onExtensionUpdate={onExtensionUpdate}
-            />
-          ))
+              <PropertyValue
+                isRenderedInRightPanel
+                extension={extensionData}
+                hasEditPermissions={hasEditPermissions}
+                key={property.name}
+                property={property}
+                onExtensionUpdate={onExtensionUpdate}
+              />
+            ))
           : emptyState}
       </div>
     </div>

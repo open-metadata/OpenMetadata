@@ -249,6 +249,14 @@ public abstract class EntityServiceBase<T> {
           JsonNode fieldValue = updatedNode.get(fieldName);
 
           if (!isBasicField(fieldName)) {
+            // Empty collections/nulls often represent explicit clears in PATCH flows.
+            // Fetch these fields from server so diff generation can emit remove operations.
+            if (fieldValue == null
+                || fieldValue.isNull()
+                || (fieldValue.isArray() && fieldValue.isEmpty())) {
+              fieldsToFetch.add(fieldName);
+              continue;
+            }
             if (isReferenceField(fieldValue)) {
               fieldsToFetch.add(fieldName);
             }

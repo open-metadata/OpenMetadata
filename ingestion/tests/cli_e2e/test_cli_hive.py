@@ -15,6 +15,8 @@ Hive E2E tests
 
 from typing import List
 
+from sqlalchemy import text
+
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
@@ -76,9 +78,9 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     def setUp(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             for sql_statements in self.prepare_e2e:
-                connection.execute(sql_statements)
+                connection.execute(text(sql_statements))
 
         self.create_table_and_view()
 

@@ -18,12 +18,113 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { act } from 'react';
+import React, { act } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
+
+const DropdownContext = React.createContext<{
+  isOpen: boolean;
+  onOpenChange?: (isOpen: boolean) => void;
+}>({ isOpen: false });
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const DropdownRoot = ({
+    children,
+    isOpen = false,
+    onOpenChange,
+  }: React.PropsWithChildren<{
+    isOpen?: boolean;
+    onOpenChange?: (isOpen: boolean) => void;
+  }>) => (
+    <DropdownContext.Provider value={{ isOpen, onOpenChange }}>
+      {children}
+    </DropdownContext.Provider>
+  );
+
+  const DropdownPopover = ({ children }: React.PropsWithChildren) => {
+    const { isOpen } = React.useContext(DropdownContext);
+
+    return isOpen ? <div>{children}</div> : null;
+  };
+
+  const DropdownMenu = ({
+    items,
+    children,
+  }: {
+    items: unknown[];
+    children: (item: unknown) => React.ReactNode;
+  }) => <div>{(items || []).map((item) => children(item))}</div>;
+
+  const DropdownItem = ({
+    'data-testid': testId,
+    label,
+    onAction,
+    isDisabled,
+  }: {
+    'data-testid'?: string;
+    label?: string;
+    onAction?: () => void;
+    isDisabled?: boolean;
+  }) => (
+    <button data-testid={testId} disabled={isDisabled} onClick={onAction}>
+      {label}
+    </button>
+  );
+
+  const MockButton = ({
+    children,
+    onClick,
+    'data-testid': testId,
+    isDisabled,
+  }: React.PropsWithChildren<{
+    onClick?: React.MouseEventHandler;
+    'data-testid'?: string;
+    isDisabled?: boolean;
+    [key: string]: unknown;
+  }>) => {
+    const { onOpenChange, isOpen } = React.useContext(DropdownContext);
+    const handleClick = (e: React.MouseEvent) => {
+      onOpenChange?.(!isOpen);
+      onClick?.(e);
+    };
+
+    return (
+      <button data-testid={testId} disabled={isDisabled} onClick={handleClick}>
+        {children}
+      </button>
+    );
+  };
+
+  return {
+    Button: MockButton,
+    Skeleton: () => <span>Loading...</span>,
+    Tooltip: ({
+      children,
+      title,
+    }: React.PropsWithChildren<{ title?: string }>) => (
+      <div title={title}>{children}</div>
+    ),
+    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    Typography: ({
+      children,
+      className,
+      ...props
+    }: React.PropsWithChildren<{ className?: string }>) => (
+      <span className={className} {...props}>
+        {children}
+      </span>
+    ),
+    Dropdown: {
+      Root: DropdownRoot,
+      Popover: DropdownPopover,
+      Menu: DropdownMenu,
+      Item: DropdownItem,
+    },
+  };
+});
 
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
@@ -35,13 +136,22 @@ const mockAuthData = {
   isAdminUser: true,
   isAuthDisabled: false,
 };
-jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, ...rest }) => (
-      <span {...rest}>{children}</span>
-    )),
-}));
+const mockNavigateDataQualityTab = jest.fn();
+
+jest.mock('react-router-dom', () => {
+  const actual =
+    jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest
+      .fn()
+      .mockImplementation(({ children, ...rest }) => (
+        <span {...rest}>{children}</span>
+      )),
+    useNavigate: () => mockNavigateDataQualityTab,
+  };
+});
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => {
     return {

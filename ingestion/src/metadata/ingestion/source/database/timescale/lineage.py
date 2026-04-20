@@ -16,6 +16,8 @@ TimescaleDB lineage module with continuous aggregate support
 import traceback
 from typing import Iterable, Optional
 
+from sqlalchemy import text
+
 from metadata.generated.schema.entity.services.connections.database.timescaleConnection import (
     TimescaleConnection,
 )
@@ -62,7 +64,8 @@ class TimescaleLineageSource(PostgresLineageSource):
         """Check if TimescaleDB extension is installed"""
         super().prepare()
         try:
-            result = self.engine.execute(TIMESCALE_CHECK_EXTENSION).first()
+            with self.engine.connect() as conn:
+                result = conn.execute(text(TIMESCALE_CHECK_EXTENSION)).first()
             self.timescaledb_installed = (
                 result.timescaledb_installed if result else False
             )
@@ -96,9 +99,10 @@ class TimescaleLineageSource(PostgresLineageSource):
         column-level lineage.
         """
         try:
-            results = self.engine.execute(
-                TIMESCALE_GET_CONTINUOUS_AGGREGATE_DEFINITIONS
-            )
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(TIMESCALE_GET_CONTINUOUS_AGGREGATE_DEFINITIONS)
+                ).all()
 
             for row in results:
                 try:

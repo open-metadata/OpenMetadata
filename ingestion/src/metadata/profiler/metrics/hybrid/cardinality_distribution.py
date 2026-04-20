@@ -15,11 +15,12 @@ Cardinality Distribution Metric definition
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy import case, column, desc, func, or_
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
@@ -39,12 +40,14 @@ class CardinalityDistribution(HybridMetric):
     with an "Others" bucket. Only works for concatenable types (strings, enums).
     """
 
+    schema_metric_type = MetricType.cardinalityDistribution
+
     threshold_percentage: float = 0.02  # 2% threshold for "Others" bucket
     min_buckets: int = 5  # Minimum number of top categories to show
 
     @classmethod
     def name(cls):
-        return "cardinalityDistribution"
+        return MetricType.cardinalityDistribution.value
 
     @property
     def metric_type(self):
@@ -52,7 +55,7 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ) -> Optional[Dict[str, Any]]:
@@ -103,15 +106,13 @@ class CardinalityDistribution(HybridMetric):
         # step 2: Get categories
         categories = session.query(  # type: ignore
             case(
-                [
-                    (
-                        or_(
-                            value_counts_cte.c["category_count"] >= threshold,
-                            value_counts_cte.c["valueRank"] <= self.min_buckets,
-                        ),
-                        value_counts_cte.c["category"],
-                    )
-                ],
+                (
+                    or_(
+                        value_counts_cte.c["category_count"] >= threshold,
+                        value_counts_cte.c["valueRank"] <= self.min_buckets,
+                    ),
+                    value_counts_cte.c["category"],
+                ),
                 else_="Others",
             ).label("category"),
             value_counts_cte.c["category_count"],

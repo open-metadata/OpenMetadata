@@ -29,7 +29,7 @@ const mockTableSearchResponse = {
     },
     hits: [
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: '9b30a945-239a-4cb7-93b0-f1b7425aed41',
         _score: null,
@@ -119,5 +119,57 @@ describe('searchAPI tests', () => {
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 
     expect(res.hits.hits[0]._source.type).toBe('table');
+  });
+
+  it('nlqSearch should forward query_filter', async () => {
+    const mockGet = jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: mockTableSearchResponse })
+      );
+
+    jest.mock('./index', () => ({
+      get: mockGet,
+    }));
+
+    const { nlqSearch } = require('./searchAPI');
+
+    await nlqSearch({
+      query: 'show tables',
+      searchIndex: SearchIndex.TABLE,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  entityType: 'table',
+                },
+              },
+            ],
+          },
+        },
+      },
+      pageNumber: 1,
+      pageSize: 10,
+    });
+
+    const [, config] = mockGet.mock.calls[0];
+
+    expect(config.params.query_filter).toBe(
+      JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  entityType: 'table',
+                },
+              },
+            ],
+          },
+        },
+      })
+    );
   });
 });

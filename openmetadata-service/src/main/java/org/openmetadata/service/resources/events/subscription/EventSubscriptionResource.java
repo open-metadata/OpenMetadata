@@ -68,6 +68,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
@@ -1535,6 +1536,30 @@ public class EventSubscriptionResource
       throw new WebApplicationException(
           String.format("Invalid webhook endpoint URL: %s", e.getMessage()),
           Response.Status.BAD_REQUEST);
+    }
+    if (webhookConfig.getAuthType() instanceof Map<?, ?> authMap
+        && WebhookOAuth2Config.Type.OAUTH_2.value().equals(authMap.get("type"))) {
+      WebhookOAuth2Config oauth2Config =
+          JsonUtils.convertValue(webhookConfig.getAuthType(), WebhookOAuth2Config.class);
+      String tokenUrl =
+          oauth2Config == null || oauth2Config.getTokenUrl() == null
+              ? null
+              : oauth2Config.getTokenUrl().toString();
+      if (oauth2Config == null
+          || nullOrEmpty(tokenUrl)
+          || nullOrEmpty(oauth2Config.getClientId())
+          || nullOrEmpty(oauth2Config.getClientSecret())) {
+        throw new WebApplicationException(
+            "OAuth2 configuration requires tokenUrl, clientId, and clientSecret",
+            Response.Status.BAD_REQUEST);
+      }
+      try {
+        URLValidator.validateURL(oauth2Config.getTokenUrl().toString());
+      } catch (Exception e) {
+        throw new WebApplicationException(
+            String.format("Invalid OAuth2 token URL: %s", e.getMessage()),
+            Response.Status.BAD_REQUEST);
+      }
     }
   }
 

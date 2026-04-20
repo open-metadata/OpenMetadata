@@ -26,11 +26,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -38,10 +45,14 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Team entity operations.
@@ -949,6 +960,151 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         Exception.class, () -> createEntity(createBu2), "Business Unit can only have one parent");
   }
 
+  @Test
+  void test_bulkAddRemoveAssets(TestNamespace ns) {
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("bulkAssetsTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDescription("Team for bulk assets test");
+
+    Team team = createEntity(create);
+
+    User user1 = createTestUser(ns, "bulkUser1");
+    User user2 = createTestUser(ns, "bulkUser2");
+    User user3 = createTestUser(ns, "bulkUser3");
+
+    BulkAssets addRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    user1.getEntityReference(),
+                    user2.getEntityReference(),
+                    user3.getEntityReference()));
+
+    BulkOperationResult addResult =
+        bulkAddAssetsWithResult(SdkClients.adminClient(), team.getName(), addRequest);
+
+    assertNotNull(addResult);
+    assertEquals(3, addResult.getNumberOfRowsProcessed());
+    assertEquals(3, addResult.getNumberOfRowsPassed());
+
+    Team fetched = SdkClients.adminClient().teams().get(team.getId().toString(), "users");
+    assertNotNull(fetched.getUsers());
+    assertEquals(3, fetched.getUsers().size());
+
+    BulkAssets removeRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    user1.getEntityReference(),
+                    user2.getEntityReference(),
+                    user3.getEntityReference()));
+
+    BulkOperationResult removeResult =
+        bulkRemoveAssetsWithResult(SdkClients.adminClient(), team.getName(), removeRequest);
+
+    assertNotNull(removeResult);
+    assertEquals(3, removeResult.getNumberOfRowsProcessed());
+    assertEquals(3, removeResult.getNumberOfRowsPassed());
+
+    Team fetchedAfterRemove =
+        SdkClients.adminClient().teams().get(team.getId().toString(), "users");
+    assertTrue(fetchedAfterRemove.getUsers() == null || fetchedAfterRemove.getUsers().isEmpty());
+  }
+
+  @Test
+  void test_bulkAddAssets_permissionDenied(TestNamespace ns) {
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("bulkAssetsPermTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDescription("Team for permission test");
+
+    Team team = createEntity(create);
+
+    User user1 = createTestUser(ns, "permUser1");
+
+    BulkAssets addRequest = new BulkAssets().withAssets(List.of(user1.getEntityReference()));
+
+    // testUserClient has no admin/special roles - should get 403 for EDIT_ALL operation
+    ApiException exception =
+        assertThrows(
+            ApiException.class,
+            () -> bulkAddAssetsWithResult(SdkClients.testUserClient(), team.getName(), addRequest),
+            "Non-admin user should not be able to bulk add assets");
+    assertEquals(403, exception.getStatusCode(), "Should return 403 Forbidden");
+  }
+
+  @Test
+  void test_getAllTeamsWithAssetsCount_includesInheritedOwnership(TestNamespace ns)
+      throws InterruptedException {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTeam createTeam =
+        new CreateTeam()
+            .withName(ns.prefix("teamWithAssets"))
+            .withTeamType(TeamType.GROUP)
+            .withDescription("Team for asset count test");
+
+    Team team = createEntity(createTeam);
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("schemaForTeam"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    createSchema.setOwners(List.of(team.getEntityReference()));
+
+    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+
+    CreateTable createTable1 = new CreateTable();
+    createTable1.setName(ns.prefix("table1"));
+    createTable1.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable1.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    client.tables().create(createTable1);
+
+    CreateTable createTable2 = new CreateTable();
+    createTable2.setName(ns.prefix("table2"));
+    createTable2.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable2.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    client.tables().create(createTable2);
+
+    org.awaitility.Awaitility.await()
+        .atMost(30, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(1, java.util.concurrent.TimeUnit.SECONDS)
+        .until(
+            () -> {
+              java.util.Map<String, Integer> counts = client.teams().getAllTeamsWithAssetsCount();
+              Integer teamCount = counts.get(team.getFullyQualifiedName());
+              return teamCount != null && teamCount >= 3;
+            });
+
+    java.util.Map<String, Integer> assetsCount = client.teams().getAllTeamsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        3,
+        assetsCount.get(team.getFullyQualifiedName()),
+        "Team should have 3 assets: 1 schema + 2 inherited tables (columns excluded from counts)");
+  }
+
+  private Database createDatabase(TestNamespace ns, DatabaseService service) {
+    CreateDatabase dbRequest = new CreateDatabase();
+    dbRequest.setName(ns.prefix("database"));
+    dbRequest.setService(service.getFullyQualifiedName());
+    return SdkClients.adminClient().databases().create(dbRequest);
+  }
+
   private User createTestUser(TestNamespace ns, String suffix) {
     String name = ns.prefix(suffix);
     String sanitized = name.replaceAll("[^a-zA-Z0-9._-]", "");
@@ -964,6 +1120,18 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDescription("Test user for team tests");
 
     return SdkClients.adminClient().users().create(createUser);
+  }
+
+  private BulkOperationResult bulkAddAssetsWithResult(
+      OpenMetadataClient client, String teamName, BulkAssets request) {
+    String path = "/v1/teams/" + teamName + "/assets/add";
+    return client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+  }
+
+  private BulkOperationResult bulkRemoveAssetsWithResult(
+      OpenMetadataClient client, String teamName, BulkAssets request) {
+    String path = "/v1/teams/" + teamName + "/assets/remove";
+    return client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
   }
 
   // ===================================================================

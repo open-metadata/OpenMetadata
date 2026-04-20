@@ -1,0 +1,153 @@
+{
+  "dataModels": [
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.raw_customers",
+      "modelType": "DBT",
+      "resourceType": "seed",
+      "description": "Raw customer data loaded from CSV seed file",
+      "path": "seeds/raw_customers.csv",
+      "rawSql": "",
+      "sql": "",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": [],
+      "columns": [
+        {"name": "id", "dataType": "INT", "description": "Primary key for customers"},
+        {"name": "first_name", "dataType": "VARCHAR", "dataLength": 256, "description": "Customer first name"},
+        {"name": "last_name", "dataType": "VARCHAR", "dataLength": 256, "description": "Customer last name"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.raw_orders",
+      "modelType": "DBT",
+      "resourceType": "seed",
+      "description": "Raw order data loaded from CSV seed file",
+      "path": "seeds/raw_orders.csv",
+      "rawSql": "",
+      "sql": "",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": [],
+      "columns": [
+        {"name": "id", "dataType": "INT", "description": "Primary key for orders"},
+        {"name": "user_id", "dataType": "INT", "description": "Foreign key to customers"},
+        {"name": "order_date", "dataType": "DATE", "description": "Date the order was placed"},
+        {"name": "status", "dataType": "VARCHAR", "dataLength": 64, "description": "Order status"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.raw_payments",
+      "modelType": "DBT",
+      "resourceType": "seed",
+      "description": "Raw payment data loaded from CSV seed file",
+      "path": "seeds/raw_payments.csv",
+      "rawSql": "",
+      "sql": "",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": [],
+      "columns": [
+        {"name": "id", "dataType": "INT", "description": "Primary key for payments"},
+        {"name": "order_id", "dataType": "INT", "description": "Foreign key to orders"},
+        {"name": "payment_method", "dataType": "VARCHAR", "dataLength": 64, "description": "Payment method used"},
+        {"name": "amount", "dataType": "INT", "description": "Payment amount in cents"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.stg_customers",
+      "modelType": "DBT",
+      "resourceType": "model",
+      "description": "Staged customer data with renamed columns",
+      "path": "models/staging/stg_customers.sql",
+      "rawSql": "WITH source AS (\n    SELECT * FROM {{ ref('raw_customers') }}\n)\n\nSELECT\n    id AS customer_id,\n    first_name,\n    last_name\nFROM source",
+      "sql": "WITH source AS (\n    SELECT * FROM jaffle_shop.public.raw_customers\n)\n\nSELECT\n    id AS customer_id,\n    first_name,\n    last_name\nFROM source",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": ["postgres_sample.jaffle_shop.public.raw_customers"],
+      "columns": [
+        {"name": "customer_id", "dataType": "INT", "description": "Unique identifier for a customer"},
+        {"name": "first_name", "dataType": "VARCHAR", "dataLength": 256, "description": "Customer first name"},
+        {"name": "last_name", "dataType": "VARCHAR", "dataLength": 256, "description": "Customer last name"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.stg_orders",
+      "modelType": "DBT",
+      "resourceType": "model",
+      "description": "Staged order data with renamed columns",
+      "path": "models/staging/stg_orders.sql",
+      "rawSql": "WITH source AS (\n    SELECT * FROM {{ ref('raw_orders') }}\n)\n\nSELECT\n    id AS order_id,\n    user_id AS customer_id,\n    order_date,\n    status\nFROM source",
+      "sql": "WITH source AS (\n    SELECT * FROM jaffle_shop.public.raw_orders\n)\n\nSELECT\n    id AS order_id,\n    user_id AS customer_id,\n    order_date,\n    status\nFROM source",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": ["postgres_sample.jaffle_shop.public.raw_orders"],
+      "columns": [
+        {"name": "order_id", "dataType": "INT", "description": "Unique identifier for an order"},
+        {"name": "customer_id", "dataType": "INT", "description": "Foreign key to customers"},
+        {"name": "order_date", "dataType": "DATE", "description": "Date the order was placed"},
+        {"name": "status", "dataType": "VARCHAR", "dataLength": 64, "description": "Order status"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.stg_payments",
+      "modelType": "DBT",
+      "resourceType": "model",
+      "description": "Staged payment data with renamed columns and converted amount from cents to dollars",
+      "path": "models/staging/stg_payments.sql",
+      "rawSql": "WITH source AS (\n    SELECT * FROM {{ ref('raw_payments') }}\n)\n\nSELECT\n    id AS payment_id,\n    order_id,\n    payment_method,\n    amount / 100.0 AS amount\nFROM source",
+      "sql": "WITH source AS (\n    SELECT * FROM jaffle_shop.public.raw_payments\n)\n\nSELECT\n    id AS payment_id,\n    order_id,\n    payment_method,\n    amount / 100.0 AS amount\nFROM source",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": ["postgres_sample.jaffle_shop.public.raw_payments"],
+      "columns": [
+        {"name": "payment_id", "dataType": "INT", "description": "Unique identifier for a payment"},
+        {"name": "order_id", "dataType": "INT", "description": "Foreign key to orders"},
+        {"name": "payment_method", "dataType": "VARCHAR", "dataLength": 64, "description": "Payment method used"},
+        {"name": "amount", "dataType": "NUMERIC", "description": "Payment amount in dollars"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.customers",
+      "modelType": "DBT",
+      "resourceType": "model",
+      "description": "This table has basic information about a customer, as well as some derived facts based on a customer's orders",
+      "path": "models/customers.sql",
+      "rawSql": "WITH customers AS (\n    SELECT * FROM {{ ref('stg_customers') }}\n),\n\norders AS (\n    SELECT * FROM {{ ref('stg_orders') }}\n),\n\npayments AS (\n    SELECT * FROM {{ ref('stg_payments') }}\n),\n\ncustomer_orders AS (\n    SELECT\n        customer_id,\n        MIN(order_date) AS first_order,\n        MAX(order_date) AS most_recent_order,\n        COUNT(order_id) AS number_of_orders\n    FROM orders\n    GROUP BY customer_id\n),\n\ncustomer_payments AS (\n    SELECT\n        orders.customer_id,\n        SUM(amount) AS total_amount\n    FROM payments\n    LEFT JOIN orders ON payments.order_id = orders.order_id\n    GROUP BY orders.customer_id\n),\n\nfinal AS (\n    SELECT\n        customers.customer_id,\n        customers.first_name,\n        customers.last_name,\n        customer_orders.first_order,\n        customer_orders.most_recent_order,\n        customer_orders.number_of_orders,\n        customer_payments.total_amount AS customer_lifetime_value\n    FROM customers\n    LEFT JOIN customer_orders ON customers.customer_id = customer_orders.customer_id\n    LEFT JOIN customer_payments ON customers.customer_id = customer_payments.customer_id\n)\n\nSELECT * FROM final",
+      "sql": "WITH customers AS (\n    SELECT * FROM jaffle_shop.public.stg_customers\n),\n\norders AS (\n    SELECT * FROM jaffle_shop.public.stg_orders\n),\n\npayments AS (\n    SELECT * FROM jaffle_shop.public.stg_payments\n),\n\ncustomer_orders AS (\n    SELECT\n        customer_id,\n        MIN(order_date) AS first_order,\n        MAX(order_date) AS most_recent_order,\n        COUNT(order_id) AS number_of_orders\n    FROM orders\n    GROUP BY customer_id\n),\n\ncustomer_payments AS (\n    SELECT\n        orders.customer_id,\n        SUM(amount) AS total_amount\n    FROM payments\n    LEFT JOIN orders ON payments.order_id = orders.order_id\n    GROUP BY orders.customer_id\n),\n\nfinal AS (\n    SELECT\n        customers.customer_id,\n        customers.first_name,\n        customers.last_name,\n        customer_orders.first_order,\n        customer_orders.most_recent_order,\n        customer_orders.number_of_orders,\n        customer_payments.total_amount AS customer_lifetime_value\n    FROM customers\n    LEFT JOIN customer_orders ON customers.customer_id = customer_orders.customer_id\n    LEFT JOIN customer_payments ON customers.customer_id = customer_payments.customer_id\n)\n\nSELECT * FROM final",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": [
+        "postgres_sample.jaffle_shop.public.stg_customers",
+        "postgres_sample.jaffle_shop.public.stg_orders",
+        "postgres_sample.jaffle_shop.public.stg_payments"
+      ],
+      "columns": [
+        {"name": "customer_id", "dataType": "INT", "description": "Unique identifier for a customer"},
+        {"name": "first_name", "dataType": "VARCHAR", "dataLength": 256, "description": "Customer first name. PII."},
+        {"name": "last_name", "dataType": "VARCHAR", "dataLength": 256, "description": "Customer last name. PII."},
+        {"name": "first_order", "dataType": "DATE", "description": "Date of the customer's first order"},
+        {"name": "most_recent_order", "dataType": "DATE", "description": "Date of the customer's most recent order"},
+        {"name": "number_of_orders", "dataType": "INT", "description": "Total number of orders placed by the customer"},
+        {"name": "customer_lifetime_value", "dataType": "NUMERIC", "description": "Total amount spent by the customer across all orders"}
+      ]
+    },
+    {
+      "tableFqn": "postgres_sample.jaffle_shop.public.orders",
+      "modelType": "DBT",
+      "resourceType": "model",
+      "description": "This table has one row per order with order details and payment amounts broken down by payment method",
+      "path": "models/orders.sql",
+      "rawSql": "WITH orders AS (\n    SELECT * FROM {{ ref('stg_orders') }}\n),\n\npayments AS (\n    SELECT * FROM {{ ref('stg_payments') }}\n),\n\norder_payments AS (\n    SELECT\n        order_id,\n        SUM(CASE WHEN payment_method = 'credit_card' THEN amount ELSE 0 END) AS credit_card_amount,\n        SUM(CASE WHEN payment_method = 'coupon' THEN amount ELSE 0 END) AS coupon_amount,\n        SUM(CASE WHEN payment_method = 'bank_transfer' THEN amount ELSE 0 END) AS bank_transfer_amount,\n        SUM(CASE WHEN payment_method = 'gift_card' THEN amount ELSE 0 END) AS gift_card_amount,\n        SUM(amount) AS total_amount\n    FROM payments\n    GROUP BY order_id\n),\n\nfinal AS (\n    SELECT\n        orders.order_id,\n        orders.customer_id,\n        orders.order_date,\n        orders.status,\n        order_payments.credit_card_amount,\n        order_payments.coupon_amount,\n        order_payments.bank_transfer_amount,\n        order_payments.gift_card_amount,\n        order_payments.total_amount AS amount\n    FROM orders\n    LEFT JOIN order_payments ON orders.order_id = order_payments.order_id\n)\n\nSELECT * FROM final",
+      "sql": "WITH orders AS (\n    SELECT * FROM jaffle_shop.public.stg_orders\n),\n\npayments AS (\n    SELECT * FROM jaffle_shop.public.stg_payments\n),\n\norder_payments AS (\n    SELECT\n        order_id,\n        SUM(CASE WHEN payment_method = 'credit_card' THEN amount ELSE 0 END) AS credit_card_amount,\n        SUM(CASE WHEN payment_method = 'coupon' THEN amount ELSE 0 END) AS coupon_amount,\n        SUM(CASE WHEN payment_method = 'bank_transfer' THEN amount ELSE 0 END) AS bank_transfer_amount,\n        SUM(CASE WHEN payment_method = 'gift_card' THEN amount ELSE 0 END) AS gift_card_amount,\n        SUM(amount) AS total_amount\n    FROM payments\n    GROUP BY order_id\n),\n\nfinal AS (\n    SELECT\n        orders.order_id,\n        orders.customer_id,\n        orders.order_date,\n        orders.status,\n        order_payments.credit_card_amount,\n        order_payments.coupon_amount,\n        order_payments.bank_transfer_amount,\n        order_payments.gift_card_amount,\n        order_payments.total_amount AS amount\n    FROM orders\n    LEFT JOIN order_payments ON orders.order_id = order_payments.order_id\n)\n\nSELECT * FROM final",
+      "dbtSourceProject": "jaffle_shop",
+      "upstream": [
+        "postgres_sample.jaffle_shop.public.stg_orders",
+        "postgres_sample.jaffle_shop.public.stg_payments"
+      ],
+      "columns": [
+        {"name": "order_id", "dataType": "INT", "description": "Unique identifier for an order"},
+        {"name": "customer_id", "dataType": "INT", "description": "Foreign key to the customers table"},
+        {"name": "order_date", "dataType": "DATE", "description": "Date the order was placed"},
+        {"name": "status", "dataType": "VARCHAR", "dataLength": 64, "description": "Order status: placed, shipped, completed, return_pending, or returned"},
+        {"name": "credit_card_amount", "dataType": "NUMERIC", "description": "Amount paid by credit card"},
+        {"name": "coupon_amount", "dataType": "NUMERIC", "description": "Amount paid by coupon"},
+        {"name": "bank_transfer_amount", "dataType": "NUMERIC", "description": "Amount paid by bank transfer"},
+        {"name": "gift_card_amount", "dataType": "NUMERIC", "description": "Amount paid by gift card"},
+        {"name": "amount", "dataType": "NUMERIC", "description": "Total order amount across all payment methods"}
+      ]
+    }
+  ]
+}

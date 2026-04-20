@@ -20,7 +20,6 @@ from typing import List, Optional, Type, Union
 
 from pydantic import ConfigDict
 from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -70,4 +69,4 @@ class ThreadPoolMetrics(ConfigModel):
     metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
     metric_type: MetricTypes
     column: Optional[Union[Column, SQALikeColumn]] = None
-    table: Union[Table, DeclarativeMeta]
+    table: Union[Table, type]

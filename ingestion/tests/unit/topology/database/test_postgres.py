@@ -399,27 +399,30 @@ class PostgresUnitTest(TestCase):
         mock_result_func = MagicMock()
         mock_result_func.all.return_value = []
 
-        mock_engine.execute.side_effect = [mock_result_proc, mock_result_func]
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = [mock_result_proc, mock_result_func]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.postgres_source.get_stored_procedures())
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
-    @patch("sqlalchemy.engine.base.Engine")
-    def test_get_version_info(self, engine):
-        # outdated with a switch to get_server_version_num instead of get_+server_version
-        # engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        # self.assertEqual("15.3", get_postgres_version(engine))
+    def test_get_version_info(self):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        engine.execute.return_value = [["110016"]]
-        self.assertEqual("110016", get_postgres_version(engine))
+        mock_conn.execute.return_value.all.return_value = [["110016"]]
+        self.assertEqual("110016", get_postgres_version(mock_engine))
 
-        engine.execute.return_value = [["90624"]]
-        self.assertEqual("90624", get_postgres_version(engine))
+        mock_conn.execute.return_value.all.return_value = [["90624"]]
+        self.assertEqual("90624", get_postgres_version(mock_engine))
 
-        engine.execute.return_value = [[]]
-        self.assertIsNone(get_postgres_version(engine))
+        mock_conn.execute.return_value.all.return_value = [[]]
+        self.assertIsNone(get_postgres_version(mock_engine))
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(
@@ -920,3 +923,30 @@ class PostgresUnitTest(TestCase):
                 self.assertEqual(
                     call_args[1]["entity_source_state"], expected_source_state
                 )
+
+
+class TestPostgresCommonMappings(TestCase):
+    """Verify extended type entries in the shared PostgreSQL ischema_names map."""
+
+    def test_tid_type_registered(self):
+        """'tid' must be present in the PostgreSQL ischema_names after common_pg_mappings is loaded."""
+        # common_pg_mappings registers types as a side-effect of module import
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        self.assertIn("tid", pg_ischema_names)
+
+    def test_tid_maps_to_string(self):
+        """'tid' must map to a String-compatible SQLAlchemy type."""
+        from sqlalchemy import String as SqlAlchemyString
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        tid_type = pg_ischema_names["tid"]
+        self.assertIs(tid_type, SqlAlchemyString)

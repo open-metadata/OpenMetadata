@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
+@import '../../Domain/domain.less';
 
 .data-product-details {
   .ant-tabs-tabpane {
@@ -20,18 +21,7 @@
   .announcement-card {
     margin-top: 4px;
   }
-}
 
-.data-product-details-page-tabs {
-  .ant-tabs.tabs-new {
-    .ant-tabs-tabpane {
-      height: @domain-page-height;
-      overflow-y: auto;
-    }
-  }
-}
-
-.data-product-details {
   .ant-btn-group.spaced {
     .ant-btn.ant-btn-default.data-contract-latest-result-button {
       font-size: 14px;
@@ -63,6 +53,15 @@
         border: 1px solid @blue-39;
         background-color: @blue-33;
       }
+    }
+  }
+}
+
+.data-product-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      height: @domain-page-height;
+      overflow-y: auto;
     }
   }
 }

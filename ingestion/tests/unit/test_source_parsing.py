@@ -400,7 +400,7 @@ def test_glue():
                 "awsConfig": {
                     "awsAccessKeyId": "aws accessKey id",
                     "awsSecretAccessKey": "aws secret access key",
-                    "awsRegion": "aws region",
+                    "awsRegion": "us-east-1",
                     "endPointURL": "https://glue.region.amazonaws.com",
                 },
             }
@@ -671,7 +671,7 @@ def test_redshift():
             "config": {
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
                 "username": "username",
-                "password": "strong_password",
+                "authType": {"password": "strong_password"},
                 "database": "dev",
                 "type": "Redshift",
             }

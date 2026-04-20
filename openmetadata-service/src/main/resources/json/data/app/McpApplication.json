@@ -1,6 +1,7 @@
 {
   "name": "McpApplication",
   "displayName": "MCP Server",
+  "allowBotImpersonation": true,
   "appConfiguration": {
     "originValidationEnabled": false,
     "originHeaderUri": "http://localhost"

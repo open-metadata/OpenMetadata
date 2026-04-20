@@ -16,11 +16,16 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
+import {
+  BundleSuiteBulkAddRequestClass,
+  Mode as BundleSuiteBulkAddMode,
+} from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
+  TableData,
   TestCase,
   TestCaseDimensionResult,
   TestCaseResult,
@@ -57,6 +62,8 @@ export type ListTestSuitePramsBySearch = ListTestSuitePrams & {
 
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
+  entityFQN?: string;
+  columnName?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
   testCaseStatus?: TestCaseStatus;
@@ -118,6 +125,7 @@ export type DataQualityReportParamsType = {
   q?: string;
   aggregationQuery: string;
   index: string;
+  domain?: string;
 };
 
 export type TestCaseDimensionResultParams = {
@@ -207,6 +215,33 @@ export const addTestCaseToLogicalTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestSuite>
   >(`${testCaseUrl}/logicalTestCases`, data);
+
+  return response.data;
+};
+
+export type AddTestCaseListSubmitPayload = {
+  selectAll: boolean;
+  includeIds: string[];
+  excludeIds: string[];
+};
+
+export const addTestCasesToLogicalTestSuiteBulk = async (
+  testSuiteId: string,
+  payload: AddTestCaseListSubmitPayload
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkAddRequestClass = {
+    testSuiteId,
+    mode: payload.selectAll
+      ? BundleSuiteBulkAddMode.All
+      : BundleSuiteBulkAddMode.IDS,
+    selection: payload.selectAll
+      ? { filter: { excludeIds: payload.excludeIds } }
+      : { ids: payload.includeIds },
+  };
+  const response = await APIClient.put<
+    BundleSuiteBulkAddRequestClass,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk`, request);
 
   return response.data;
 };
@@ -409,6 +444,7 @@ interface ListTestCasesParams {
   after?: string;
   entityFQN?: string;
   entityLink?: string;
+  columnName?: string;
   testSuiteId?: string;
   include?: Include;
   testCaseStatus?: TestCaseStatus;
@@ -434,6 +470,24 @@ export const exportTestCasesInCSV = async (
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
     { params }
+  );
+
+  return response.data;
+};
+
+export const getTestCaseFailedSampleData = async (
+  id: string
+): Promise<TableData> => {
+  const response = await APIClient.get<TableData>(
+    `${testCaseUrl}/${id}/failedRowsSample`
+  );
+
+  return response.data;
+};
+
+export const deleteTestCaseFailedSampleData = async (id: string) => {
+  const response = await APIClient.delete(
+    `${testCaseUrl}/${id}/failedRowsSample`
   );
 
   return response.data;

@@ -13,11 +13,11 @@ Test athena source
 """
 
 import unittest
-from unittest.mock import patch
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 from pydantic import AnyUrl
-from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.container import (
@@ -57,6 +57,8 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
+from metadata.ingestion.source.database.athena.models import AthenaStatus
+from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 
 EXPECTED_DATABASE_NAMES = ["mydatabase"]
@@ -299,13 +301,38 @@ class TestAthenaService(unittest.TestCase):
         assert list(self.athena_source.get_database_names()) == EXPECTED_DATABASE_NAMES
 
     def test_query_table_names_and_types(self):
-        with patch.object(Inspector, "get_table_names", return_value=[MOCK_TABLE_NAME]):
-            assert (
-                self.athena_source.query_table_names_and_types(
-                    MOCK_DATABASE_SCHEMA.name.root
-                )
-                == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_glue_client = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {"TableList": [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]}
+        ]
+        mock_glue_client.get_paginator.return_value = mock_paginator
+        self.athena_source.glue_client = mock_glue_client
+        assert (
+            self.athena_source.query_table_names_and_types(
+                MOCK_DATABASE_SCHEMA.name.root
             )
+            == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        )
+
+    def test_query_table_names_and_types_iceberg(self):
+        mock_glue_client = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {
+                "TableList": [
+                    {
+                        "Name": MOCK_TABLE_NAME,
+                        "Parameters": {"table_type": "ICEBERG"},
+                    }
+                ]
+            }
+        ]
+        mock_glue_client.get_paginator.return_value = mock_paginator
+        self.athena_source.glue_client = mock_glue_client
+        assert self.athena_source.query_table_names_and_types(
+            MOCK_DATABASE_SCHEMA.name.root
+        ) == [TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)]
 
     def test_yield_database(self):
         assert (
@@ -321,3 +348,82 @@ class TestAthenaService(unittest.TestCase):
             MOCK_LOCATION_ENTITY[0].dataModel, MOCK_TABLE_ENTITY[0], columns_list
         )
         assert column_lineage == EXPECTED_COLUMN_LINEAGE
+
+    def test_get_table_extensions_returns_none_without_type_ref(self):
+        self.athena_source._string_property_type_ref = None
+        assert self.athena_source.get_table_extensions(MOCK_TABLE_NAME) is None
+
+    def test_get_table_extensions_returns_properties_from_description(self):
+        from metadata.generated.schema.type.customProperty import PropertyType
+
+        self.athena_source._string_property_type_ref = PropertyType(
+            EntityReference(
+                id=UUID("00000000-0000-0000-0000-000000000001"), type="type"
+            )
+        )
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_comment.return_value = {"text": "desc"}
+        mock_inspector.get_table_options.return_value = {
+            "awsathena_location": "s3://bucket/path",
+            "awsathena_tblproperties": {"prop_key": "prop_value", "null_prop": None},
+        }
+        self.athena_source.get_table_description(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME, mock_inspector
+        )
+
+        with patch.object(self.athena_source, "metadata") as mock_metadata:
+            result = self.athena_source.get_table_extensions(MOCK_TABLE_NAME)
+
+        assert result == {"prop_key": "prop_value"}
+        assert "null_prop" not in result
+        mock_metadata.create_or_update_custom_property.assert_called_once()
+
+
+SUBMISSION_DT = datetime(2024, 1, 2, 10, 0, 0)
+COMPLETION_DT = datetime(2024, 1, 2, 10, 5, 0)
+
+
+class TestAthenaUsageYieldTableQueries:
+    def _make_source(self):
+        source = MagicMock()
+        source.dialect.value = "athena"
+        source.config.serviceName = "test_athena"
+        source.start = datetime(2024, 1, 1)
+        source.is_not_dbt_or_om_query.return_value = True
+        return source
+
+    def _make_query_list(self, status):
+        query = MagicMock()
+        query.Query = "SELECT 1"
+        query.Status = status
+        query.Statistics = None
+        query_list = MagicMock()
+        query_list.QueryExecutions = [query]
+        return query_list
+
+    def test_end_time_uses_completion_datetime_when_present(self):
+        status = MagicMock()
+        status.State = "SUCCEEDED"
+        status.SubmissionDateTime = SUBMISSION_DT
+        status.CompletionDateTime = COMPLETION_DT
+
+        source = self._make_source()
+        source.get_queries.return_value = [self._make_query_list(status)]
+
+        results = list(AthenaUsageSource.yield_table_queries(source))
+
+        assert len(results) == 1
+        assert len(results[0].queries) == 1
+        assert results[0].queries[0].endTime == COMPLETION_DT.isoformat(" ", "seconds")
+
+    def test_end_time_falls_back_to_submission_when_completion_missing(self):
+        status = AthenaStatus(State="SUCCEEDED", SubmissionDateTime=SUBMISSION_DT)
+
+        source = self._make_source()
+        source.get_queries.return_value = [self._make_query_list(status)]
+
+        results = list(AthenaUsageSource.yield_table_queries(source))
+
+        assert len(results) == 1
+        assert len(results[0].queries) == 1
+        assert results[0].queries[0].endTime == SUBMISSION_DT.isoformat(" ", "seconds")

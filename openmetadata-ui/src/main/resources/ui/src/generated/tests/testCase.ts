@@ -28,6 +28,11 @@ export interface TestCase {
      */
     createdBy?: string;
     /**
+     * List of data products this test case is part of. When not set, the test case inherits the
+     * data products from the table it belongs to.
+     */
+    dataProducts?: EntityReference[];
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -131,6 +136,11 @@ export interface TestCase {
      */
     testSuites?: TestSuite[];
     /**
+     * Number of top dimension values to show before grouping the rest as Others. Controls the
+     * cardinality of dimensional test results. Defaults to 5 when not specified.
+     */
+    topDimensions?: number;
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */
@@ -215,8 +225,8 @@ export interface FieldChange {
 }
 
 /**
- * Domains the test case belongs to. When not set, the test case inherits the domain from
- * the table it belongs to.
+ * List of data products this test case is part of. When not set, the test case inherits the
+ * data products from the table it belongs to.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -298,6 +308,7 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
@@ -418,6 +429,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

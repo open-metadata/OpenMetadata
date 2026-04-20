@@ -17,7 +17,8 @@ from typing import Optional
 from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
     SplineConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.pipeline.spline.models import (
     AttributeDetail,
     ExecutionDetail,
@@ -43,7 +44,7 @@ class SplineClient:
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (NO_ACCESS_TOKEN, 0),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="spline")
 
     def _paginate_pipelines(self, pipelines: ExecutionEvents):
         while pipelines.pageNum * pipelines.pageSize < pipelines.totalCount:

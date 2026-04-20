@@ -11,5 +11,5 @@
 kind: DataContract
 id: missing-apiversion
 name: Missing API Version Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active

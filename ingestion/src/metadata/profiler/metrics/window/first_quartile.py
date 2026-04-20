@@ -40,6 +40,8 @@ class FirstQuartile(StaticMetric, PercentilMixin):
     - For a quantifiable value, return first quartile value
     """
 
+    schema_metric_type = MetricType.firstQuartile
+
     @classmethod
     def name(cls):
         return MetricType.firstQuartile.value

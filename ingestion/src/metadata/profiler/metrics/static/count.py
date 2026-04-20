@@ -40,6 +40,8 @@ class Count(StaticMetric):
     Given a column, return the count. Ignores NULL values
     """
 
+    schema_metric_type = MetricType.valuesCount
+
     @classmethod
     def name(cls):
         return MetricType.valuesCount.value

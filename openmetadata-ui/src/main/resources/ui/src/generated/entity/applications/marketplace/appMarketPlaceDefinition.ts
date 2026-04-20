@@ -19,6 +19,11 @@ export interface AppMarketPlaceDefinition {
      */
     agentType?: AgentType;
     /**
+     * When true, the bot created for this application will have allowImpersonation enabled,
+     * allowing it to act on behalf of users.
+     */
+    allowBotImpersonation?: boolean;
+    /**
      * If true, multiple instances of this app can run concurrently. This is useful for apps
      * like QueryRunner that support parallel executions with different configurations.
      */
@@ -79,6 +84,10 @@ export interface AppMarketPlaceDefinition {
      */
     domains?: EntityReference[];
     /**
+     * Flag to enable/disable the application. If the app is not enabled, it can't be installed.
+     */
+    enabled?: boolean;
+    /**
      * Event subscriptions that will be created when the application is installed.
      */
     eventSubscriptions?: CreateEventSubscription[];
@@ -118,11 +127,6 @@ export interface AppMarketPlaceDefinition {
      * Permission used by Native Applications.
      */
     permission: Permissions;
-    /**
-     * Flag to enable/disable preview for the application. If the app is in preview mode, it
-     * can't be installed.
-     */
-    preview?: boolean;
     /**
      * Privacy Policy for the developer
      */
@@ -336,6 +340,17 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
     /**
      * Enable distributed indexing to scale reindexing across multiple servers with fault
      * tolerance and parallel processing
@@ -589,6 +604,12 @@ export interface Action {
      */
     propagationDepthMode?: PropagationDepthMode;
     /**
+     * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+     * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+     * entities receive metadata from upstream lineage.
+     */
+    propagationFilterMode?: PropagationFilterMode;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
@@ -679,6 +700,16 @@ export enum LabelElement {
 export enum PropagationDepthMode {
     DataAsset = "DATA_ASSET",
     Root = "ROOT",
+}
+
+/**
+ * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+ * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+ * entities receive metadata from upstream lineage.
+ */
+export enum PropagationFilterMode {
+    Source = "SOURCE",
+    Target = "TARGET",
 }
 
 /**
@@ -837,6 +868,10 @@ export enum LabelTypeEnum {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */
@@ -1481,6 +1516,11 @@ export enum SubscriptionCategory {
  */
 export interface Webhook {
     /**
+     * Authentication configuration for the webhook. If not specified, the webhook will be sent
+     * without authentication.
+     */
+    authType?: AuthenticationConfigurationType;
+    /**
      * Endpoint to receive the webhook events over POST requests.
      */
     endpoint?: string;
@@ -1501,11 +1541,6 @@ export interface Webhook {
      */
     receivers?: string[];
     /**
-     * Secret set by the webhook client used for computing HMAC SHA256 signature of webhook
-     * payload and sent in `X-OM-Signature` header in POST requests to publish the events.
-     */
-    secretKey?: string;
-    /**
      * Send the Event to Admins
      *
      * Send the Mails to Admins
@@ -1524,6 +1559,53 @@ export interface Webhook {
      */
     sendToOwners?: boolean;
     [property: string]: any;
+}
+
+/**
+ * Authentication configuration for the webhook. If not specified, the webhook will be sent
+ * without authentication.
+ *
+ * No authentication.
+ *
+ * Bearer token authentication for webhook endpoints.
+ *
+ * OAuth2 Client Credentials configuration for webhook authentication.
+ */
+export interface AuthenticationConfigurationType {
+    /**
+     * Authentication type discriminator.
+     */
+    type: AuthenticationConfigurationTypeType;
+    /**
+     * Secret key used for computing HMAC SHA256 signature of webhook payload, sent in the
+     * X-OM-Signature header.
+     */
+    secretKey?: string;
+    /**
+     * OAuth2 client identifier. Stored encrypted via Fernet.
+     */
+    clientId?: string;
+    /**
+     * OAuth2 client secret. Stored encrypted via Fernet.
+     */
+    clientSecret?: string;
+    /**
+     * Optional OAuth2 scopes to request (space-separated).
+     */
+    scope?: string;
+    /**
+     * Token endpoint URL to obtain access tokens.
+     */
+    tokenUrl?: string;
+}
+
+/**
+ * Authentication type discriminator.
+ */
+export enum AuthenticationConfigurationTypeType {
+    Bearer = "bearer",
+    None = "none",
+    Oauth2 = "oauth2",
 }
 
 /**

@@ -82,11 +82,54 @@ public class DataInsightsEntityEnricherProcessor
     return enrichedMaps;
   }
 
+  public List<Map<String, Object>> enrichSingle(
+      EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
+    try {
+      return getEntityVersions(entity, contextData).stream()
+          .flatMap(
+              entityVersionMap ->
+                  generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData))
+                      .stream())
+          .toList();
+    } catch (Exception e) {
+      IndexingError error =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
+              .withSubmittedCount(1)
+              .withFailedCount(1)
+              .withSuccessCount(0)
+              .withMessage(
+                  String.format(
+                      "Entity Enricher Encountered Failure for entity '%s': %s",
+                      entity.getFullyQualifiedName(), e.getMessage()))
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      LOG.debug(
+          "[DataInsightsEntityEnricherProcessor] Single entity enrichment failed. Details: {}",
+          JsonUtils.pojoToJson(error));
+      updateStats(0, 1);
+      throw new SearchIndexException(error);
+    }
+  }
+
   private List<Map<String, Object>> getEntityVersions(
       EntityInterface entity, Map<String, Object> contextData) {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
     Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
+
+    // Skip version history queries for entities unchanged during the window (N+1 optimization).
+    Long updatedAt = entity.getUpdatedAt();
+    if (updatedAt != null) {
+      Long entityUpdatedDay = TimestampUtils.getStartOfDayTimestamp(updatedAt);
+      if (entityUpdatedDay < startTimestamp) {
+        Map<String, Object> versionMap = new HashMap<>();
+        versionMap.put("endTimestamp", endTimestamp);
+        versionMap.put("startTimestamp", startTimestamp);
+        versionMap.put("versionEntity", entity);
+        return List.of(versionMap);
+      }
+    }
+
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
 
     Long pointerTimestamp = endTimestamp;
@@ -145,6 +188,7 @@ public class DataInsightsEntityEnricherProcessor
 
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
+    stripNestedColumnChildren(entityMap);
 
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
 
@@ -183,12 +227,15 @@ public class DataInsightsEntityEnricherProcessor
 
     if (SearchIndexUtils.hasColumns(entity)) {
       entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
-      entityMap.put(
-          "numberOfColumnsWithDescription",
+      int columnsWithDescription =
           ((ColumnsEntityInterface) entity)
               .getColumns().stream()
                   .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
-                  .reduce(0, Integer::sum));
+                  .reduce(0, Integer::sum);
+      entityMap.put("numberOfColumnsWithDescription", columnsWithDescription);
+      entityMap.put(
+          "hasColumnDescription",
+          columnsWithDescription == ((ColumnsEntityInterface) entity).getColumns().size() ? 1 : 0);
     }
 
     // Modify Custom Property key
@@ -197,6 +244,26 @@ public class DataInsightsEntityEnricherProcessor
         o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
 
     return entityMap;
+  }
+
+  /**
+   * Removes the recursive {@code children} subtree from every top-level column entry in the
+   * serialized entity map. The DI data stream uses dynamic field mapping, and deeply nested
+   * STRUCT/UNION column types can expand into hundreds of unique field paths per document,
+   * pushing the index past OpenSearch's {@code index.mapping.total_fields.limit} of 1000.
+   * Top-level column metadata (name, type, description, etc.) is preserved.
+   */
+  @SuppressWarnings("unchecked")
+  private static void stripNestedColumnChildren(Map<String, Object> entityMap) {
+    Object columns = entityMap.get("columns");
+    if (!(columns instanceof List<?> columnList)) {
+      return;
+    }
+    for (Object column : columnList) {
+      if (column instanceof Map<?, ?> columnMap) {
+        ((Map<String, Object>) columnMap).remove("children");
+      }
+    }
   }
 
   private String processTeam(EntityInterface entity) {
@@ -226,12 +293,11 @@ public class DataInsightsEntityEnricherProcessor
           // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
           // belonged.
           LOG.debug(
-              String.format(
-                  "Owner %s for %s '%s' version '%s' not found.",
-                  entityOwner.getFullyQualifiedName(),
-                  Entity.getEntityTypeFromObject(entity),
-                  entity.getFullyQualifiedName(),
-                  entity.getVersion()));
+              "Owner {} for {} '{}' version '{}' not found.",
+              entityOwner.getFullyQualifiedName(),
+              Entity.getEntityTypeFromObject(entity),
+              entity.getFullyQualifiedName(),
+              entity.getVersion());
         }
       }
     }
@@ -293,7 +359,7 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   @Override
-  public void updateStats(int currentSuccess, int currentFailed) {
+  public synchronized void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
 

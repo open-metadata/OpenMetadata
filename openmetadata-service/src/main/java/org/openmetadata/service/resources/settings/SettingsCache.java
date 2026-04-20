@@ -19,8 +19,10 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
@@ -57,8 +59,11 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.RelationCategory;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -71,6 +76,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.ConfigSourceResolver;
@@ -164,23 +170,34 @@ public class SettingsCache {
     // Initialise Search Settings
     Settings storedSearchSettings =
         Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
-    if (storedSearchSettings == null) {
-      try {
-        List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
-        if (!jsonDataFiles.isEmpty()) {
-          String json =
-              CommonUtil.getResourceAsStream(
-                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+    try {
+      List<String> jsonDataFiles =
+          EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+      if (!jsonDataFiles.isEmpty()) {
+        String json =
+            CommonUtil.getResourceAsStream(
+                EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+        SearchSettings defaultSearchSettings = JsonUtils.readValue(json, SearchSettings.class);
+        if (storedSearchSettings == null) {
           Settings setting =
-              new Settings()
-                  .withConfigType(SEARCH_SETTINGS)
-                  .withConfigValue(JsonUtils.readValue(json, SearchSettings.class));
+              new Settings().withConfigType(SEARCH_SETTINGS).withConfigValue(defaultSearchSettings);
           Entity.getSystemRepository().createNewSetting(setting);
+        } else {
+          SearchSettings existingSearchSettings =
+              JsonUtils.convertValue(storedSearchSettings.getConfigValue(), SearchSettings.class);
+          SearchSettings mergedSettings =
+              new SearchSettingsHandler()
+                  .mergeSearchSettings(defaultSearchSettings, existingSearchSettings);
+          // Only update if merged settings differ from existing settings
+          if (!JsonUtils.pojoToJson(mergedSettings)
+              .equals(JsonUtils.pojoToJson(existingSearchSettings))) {
+            storedSearchSettings.setConfigValue(mergedSettings);
+            Entity.getSystemRepository().createOrUpdate(storedSearchSettings);
+          }
         }
-      } catch (IOException e) {
-        LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
       }
+    } catch (IOException e) {
+      LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
     }
 
     // Initialise Certification Settings
@@ -232,7 +249,7 @@ public class SettingsCache {
                               .withMediumGraphBatchSize(5000)
                               .withLargeGraphBatchSize(1000)
                               .withStreamingBatchSize(500)
-                              .withEnableCaching(true)
+                              .withEnableCaching(false)
                               .withCacheTTLSeconds(300)
                               .withMaxCachedGraphs(100)
                               .withEnableProgressTracking(false)
@@ -254,6 +271,19 @@ public class SettingsCache {
       ConfigSource configSource =
           authzConfig.getConfigSource() != null ? authzConfig.getConfigSource() : ConfigSource.ENV;
       syncConfigWithSource(AUTHORIZER_CONFIGURATION, authzConfig, configSource);
+    }
+
+    Settings storedMcpConfig =
+        Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
+    if (storedMcpConfig == null) {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          applicationConfig.getMcpConfiguration();
+      if (mcpConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
     }
 
     ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
@@ -301,6 +331,179 @@ public class SettingsCache {
                       .withDefaultPipelineService("openlineage"));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialize Glossary Term Relation Settings with default relation types
+    Settings glossaryTermRelationSettings =
+        Entity.getSystemRepository().getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.toString());
+    if (glossaryTermRelationSettings == null) {
+      List<GlossaryTermRelationType> defaultRelationTypes =
+          List.of(
+              createRelationType(
+                  "relatedTo",
+                  "Related To",
+                  "General semantic relationship between terms",
+                  null,
+                  "https://open-metadata.org/ontology/relatedTo",
+                  true,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#1570ef",
+                  null,
+                  null),
+              createRelationType(
+                  "synonym",
+                  "Synonym",
+                  "Terms that have the same or nearly the same meaning",
+                  null,
+                  "http://www.w3.org/2004/02/skos/core#exactMatch",
+                  true,
+                  false,
+                  RelationCategory.EQUIVALENCE,
+                  true,
+                  "#b42318",
+                  null,
+                  null),
+              createRelationType(
+                  "antonym",
+                  "Antonym",
+                  "Terms that have opposite meanings",
+                  null,
+                  "https://open-metadata.org/ontology/antonym",
+                  true,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#b54708",
+                  null,
+                  null),
+              createRelationType(
+                  "broader",
+                  "Broader",
+                  "A more general term (hypernym)",
+                  "narrower",
+                  "http://www.w3.org/2004/02/skos/core#broader",
+                  false,
+                  true,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#067647",
+                  null,
+                  null),
+              createRelationType(
+                  "narrower",
+                  "Narrower",
+                  "A more specific term (hyponym)",
+                  "broader",
+                  "http://www.w3.org/2004/02/skos/core#narrower",
+                  false,
+                  true,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#4e5ba6",
+                  null,
+                  null),
+              createRelationType(
+                  "partOf",
+                  "Part Of",
+                  "This term is a part or component of another term",
+                  "hasPart",
+                  "https://open-metadata.org/ontology/partOf",
+                  false,
+                  false,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#026aa2",
+                  null,
+                  null),
+              createRelationType(
+                  "hasPart",
+                  "Has Part",
+                  "This term has the other term as a part or component",
+                  "partOf",
+                  "https://open-metadata.org/ontology/hasPart",
+                  false,
+                  false,
+                  RelationCategory.HIERARCHICAL,
+                  true,
+                  "#155eef",
+                  null,
+                  null),
+              createRelationType(
+                  "calculatedFrom",
+                  "Calculated From",
+                  "This term/metric is calculated or derived from another term",
+                  "usedToCalculate",
+                  "https://open-metadata.org/ontology/calculatedFrom",
+                  false,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#6938ef",
+                  null,
+                  null),
+              createRelationType(
+                  "usedToCalculate",
+                  "Used To Calculate",
+                  "This term is used in the calculation of another term",
+                  "calculatedFrom",
+                  "https://open-metadata.org/ontology/usedToCalculate",
+                  false,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#ba24d5",
+                  null,
+                  null),
+              createRelationType(
+                  "seeAlso",
+                  "See Also",
+                  "Related term that may provide additional context",
+                  null,
+                  "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+                  true,
+                  false,
+                  RelationCategory.ASSOCIATIVE,
+                  true,
+                  "#c11574",
+                  null,
+                  null));
+
+      Settings setting =
+          new Settings()
+              .withConfigType(GLOSSARY_TERM_RELATION_SETTINGS)
+              .withConfigValue(
+                  new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+  }
+
+  private static GlossaryTermRelationType createRelationType(
+      String name,
+      String displayName,
+      String description,
+      String inverseRelation,
+      String rdfPredicate,
+      boolean isSymmetric,
+      boolean isTransitive,
+      RelationCategory category,
+      boolean isSystemDefined,
+      String color,
+      Integer sourceMax,
+      Integer targetMax) {
+    return new GlossaryTermRelationType()
+        .withName(name)
+        .withDisplayName(displayName)
+        .withDescription(description)
+        .withInverseRelation(inverseRelation)
+        .withRdfPredicate(java.net.URI.create(rdfPredicate))
+        .withIsSymmetric(isSymmetric)
+        .withIsTransitive(isTransitive)
+        .withCategory(category)
+        .withIsSystemDefined(isSystemDefined)
+        .withColor(color)
+        .withSourceMax(sourceMax)
+        .withTargetMax(targetMax);
   }
 
   private static void syncConfigWithSource(
@@ -353,8 +556,8 @@ public class SettingsCache {
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
-      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
-      return JsonUtils.readValue(json, clazz);
+      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      return JsonUtils.convertValue(configValue, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       throw new EntityNotFoundException("Setting not found");
@@ -364,8 +567,8 @@ public class SettingsCache {
   public static <T> T getSettingOrDefault(
       SettingsType settingName, T defaultValue, Class<T> clazz) {
     try {
-      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
-      return JsonUtils.readValue(json, clazz);
+      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      return JsonUtils.convertValue(configValue, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       return defaultValue;
@@ -403,8 +606,7 @@ public class SettingsCache {
   public static Map<String, Float> getAggregatedSearchFields() {
     try {
       Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
-      Map<String, Float> fields = (Map<String, Float>) aggregatedFields.getConfigValue();
-      return fields;
+      return (Map<String, Float>) aggregatedFields.getConfigValue();
     } catch (Exception ex) {
       LOG.error("Failed to fetch aggregated search fields", ex);
       // Return default fields as fallback
@@ -471,9 +673,8 @@ public class SettingsCache {
           }
           LOG.info("Loaded Email Setting");
         }
-        case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
-          fetchedSettings = Entity.getSystemRepository().getOMBaseUrlConfigInternal();
-        }
+        case OPEN_METADATA_BASE_URL_CONFIGURATION -> fetchedSettings =
+            Entity.getSystemRepository().getOMBaseUrlConfigInternal();
         case SLACK_APP_CONFIGURATION -> {
           // Only if available
           fetchedSettings = Entity.getSystemRepository().getSlackApplicationConfigInternal();
@@ -502,7 +703,9 @@ public class SettingsCache {
         }
         default -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
-          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+          if (fetchedSettings != null) {
+            LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+          }
         }
       }
       return fetchedSettings;

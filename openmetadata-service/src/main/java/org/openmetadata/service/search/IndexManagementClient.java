@@ -143,4 +143,23 @@ public interface IndexManagementClient {
       Set<String> aliases) {}
 
   List<IndexStats> getAllIndexStats() throws IOException;
+
+  /**
+   * Get the document count for a specific index.
+   *
+   * @param indexName the name of the index
+   * @return the number of documents in the index, or -1 if count cannot be determined
+   */
+  default long getDocumentCount(String indexName) {
+    try {
+      for (IndexStats stats : getAllIndexStats()) {
+        if (stats.name().equals(indexName)) {
+          return stats.documents();
+        }
+      }
+    } catch (Exception e) {
+      return -1;
+    }
+    return 0;
+  }
 }

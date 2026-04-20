@@ -34,8 +34,10 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
   const [additionalUsersDetails, setAdditionalUsersDetails] = useState<User[]>(
     []
   );
-  const [removeUserDetails, setRemoveUserDetails] =
-    useState<{ state: boolean; user: User }>();
+  const [removeUserDetails, setRemoveUserDetails] = useState<{
+    state: boolean;
+    user: User;
+  }>();
 
   const { t } = useTranslation();
 

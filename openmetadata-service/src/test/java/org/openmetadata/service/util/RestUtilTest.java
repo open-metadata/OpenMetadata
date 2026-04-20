@@ -13,260 +13,176 @@
 
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
-@Slf4j
-class RestUtilTest extends OpenMetadataApplicationTest {
+class RestUtilTest {
+
   @Test
-  void hrefTests() throws URISyntaxException {
-    OpenMetadataBaseUrlConfiguration urlConfiguration =
-        SettingsCache.getSetting(
-            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
-            OpenMetadataBaseUrlConfiguration.class);
+  void getHrefPrefersConfiguredBaseUrlAndNormalizesPaths() {
+    UriInfo uriInfo = mock(UriInfo.class);
+    when(uriInfo.getBaseUri()).thenReturn(URI.create("http://localhost:8585/api/v1/"));
 
-    UriInfo uriInfo = mockUriInfo(urlConfiguration.getOpenMetadataUrl());
-    OpenMetadataApplicationConfig config = OpenMetadataApplicationConfigHolder.getInstance();
-    String apiPath = config.getApiRootPath();
-    apiPath =
-        apiPath != null && apiPath.endsWith("/")
-            ? apiPath.substring(0, apiPath.length() - 1)
-            : apiPath;
-    String omUrl = urlConfiguration.getOpenMetadataUrl();
-    omUrl = omUrl != null && omUrl.endsWith("/") ? omUrl.substring(0, omUrl.length() - 1) : omUrl;
-    String baseUrl = omUrl + apiPath;
+    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
+    when(config.getApiRootPath()).thenReturn("/api/v1/");
 
-    assertEquals(
-        URI.create(String.format("%s/%s", baseUrl, "collection")),
-        RestUtil.getHref(uriInfo, "collection"));
-    assertEquals(
-        URI.create(String.format("%s/%s", baseUrl, "collection")),
-        RestUtil.getHref(uriInfo, "/collection"));
-    assertEquals(
-        URI.create(String.format("%s/%s", baseUrl, "collection")),
-        RestUtil.getHref(uriInfo, "collection/"));
-    assertEquals(
-        URI.create(String.format("%s/%s", baseUrl, "collection")),
-        RestUtil.getHref(uriInfo, "/collection/"));
+    OpenMetadataBaseUrlConfiguration baseUrlConfiguration =
+        new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("https://openmetadata.example/");
 
+    try (MockedStatic<OpenMetadataApplicationConfigHolder> configHolder =
+            mockStatic(OpenMetadataApplicationConfigHolder.class);
+        MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class)) {
+      configHolder.when(OpenMetadataApplicationConfigHolder::getInstance).thenReturn(config);
+      settingsCache
+          .when(
+              () ->
+                  SettingsCache.getSetting(
+                      SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+                      OpenMetadataBaseUrlConfiguration.class))
+          .thenReturn(baseUrlConfiguration);
+
+      assertEquals(
+          URI.create("https://openmetadata.example/api/v1/tables"),
+          RestUtil.getHref(uriInfo, "/tables/"));
+    }
+  }
+
+  @Test
+  void getHrefFallsBackToRequestBaseUriAndAppendsEntityId() {
+    UriInfo uriInfo = mock(UriInfo.class);
+    when(uriInfo.getBaseUri()).thenReturn(URI.create("http://localhost:8585/api/v1/"));
+
+    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
+    when(config.getApiRootPath()).thenReturn("/api/v1/");
+
+    OpenMetadataBaseUrlConfiguration baseUrlConfiguration =
+        new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("   ");
     UUID id = UUID.randomUUID();
+
+    try (MockedStatic<OpenMetadataApplicationConfigHolder> configHolder =
+            mockStatic(OpenMetadataApplicationConfigHolder.class);
+        MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class)) {
+      configHolder.when(OpenMetadataApplicationConfigHolder::getInstance).thenReturn(config);
+      settingsCache
+          .when(
+              () ->
+                  SettingsCache.getSetting(
+                      SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+                      OpenMetadataBaseUrlConfiguration.class))
+          .thenReturn(baseUrlConfiguration);
+
+      assertEquals(
+          URI.create("http://localhost:8585/api/v1/tables/" + id),
+          RestUtil.getHref(uriInfo, "tables/", id));
+    }
+  }
+
+  @Test
+  void dateAndCursorHelpersHandleDateOnlyValuesAndValidation() {
+    assertEquals(0, RestUtil.compareDates("2024-01-01", "2024-01-01"));
+    assertEquals(-1, RestUtil.compareDates("2024-01-01", "2024-01-02"));
+    assertEquals(1, RestUtil.compareDates("2024-01-02", "2024-01-01"));
+
+    assertDoesNotThrow(() -> RestUtil.validateCursors("cursor", null));
+    assertThrows(IllegalArgumentException.class, () -> RestUtil.validateCursors("before", "after"));
+
+    assertNull(RestUtil.encodeCursor(null));
+    assertNull(RestUtil.decodeCursor(""));
     assertEquals(
-        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
-        RestUtil.getHref(uriInfo, "collection", id));
+        "service.sales.orders",
+        RestUtil.decodeCursor(RestUtil.encodeCursor("service.sales.orders")));
+  }
+
+  @Test
+  void responseWrappersPopulateEntitiesHeadersAndEtags() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withFullyQualifiedName("service.sales.orders")
+            .withVersion(1.0)
+            .withUpdatedAt(42L);
+    ChangeEvent changeEvent = new ChangeEvent().withEntityType(Entity.TABLE);
+
+    Response putCreated =
+        new RestUtil.PutResponse<>(Response.Status.CREATED, table, EventType.ENTITY_CREATED)
+            .toResponse();
+    assertEquals(Response.Status.CREATED.getStatusCode(), putCreated.getStatus());
+    assertEquals(table, putCreated.getEntity());
     assertEquals(
-        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
-        RestUtil.getHref(uriInfo, "/collection", id));
+        EventType.ENTITY_CREATED.toString(),
+        putCreated.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER));
+
+    Response putUpdated =
+        new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, EventType.ENTITY_DELETED)
+            .toResponse();
+    assertEquals(changeEvent, putUpdated.getEntity());
+
+    Response patchResponse =
+        new RestUtil.PatchResponse<>(Response.Status.OK, table, EventType.ENTITY_UPDATED)
+            .toResponse();
     assertEquals(
-        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
-        RestUtil.getHref(uriInfo, "collection/", id));
+        EventType.ENTITY_UPDATED.value(),
+        patchResponse.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER));
     assertEquals(
-        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
-        RestUtil.getHref(uriInfo, "/collection/", id));
-  }
+        EntityETag.generateETag(table), patchResponse.getHeaderString(EntityETag.ETAG_HEADER));
 
-  private UriInfo mockUriInfo(String uri) throws URISyntaxException {
-    UriInfo uriInfo = Mockito.mock(UriInfo.class);
-    URI uriObject = new URI(uri);
-    Mockito.when(uriInfo.getBaseUri()).thenReturn(uriObject);
-    return uriInfo;
-  }
+    Response patchWithoutEntity =
+        new RestUtil.PatchResponse<>(Response.Status.OK, "payload", EventType.ENTITY_UPDATED)
+            .toResponse();
+    assertNull(patchWithoutEntity.getHeaderString(EntityETag.ETAG_HEADER));
 
-  @Test
-  void testNormalizeQuotes_leftDoubleQuote() {
-    String input = "\u201ctest";
-    assertEquals("\"test", RestUtil.normalizeQuotes(input));
-  }
-
-  @Test
-  void testNormalizeQuotes_rightDoubleQuote() {
-    String input = "test\u201d";
-    assertEquals("test\"", RestUtil.normalizeQuotes(input));
+    Response deleteResponse =
+        new RestUtil.DeleteResponse<>(table, EventType.ENTITY_DELETED).toResponse();
+    assertEquals(Response.Status.OK.getStatusCode(), deleteResponse.getStatus());
+    assertEquals(table, deleteResponse.getEntity());
+    assertEquals(
+        EventType.ENTITY_DELETED.value(),
+        deleteResponse.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER));
   }
 
   @Test
-  void testNormalizeQuotes_leftSingleQuote() {
-    String input = "\u2018test";
-    assertEquals("'test", RestUtil.normalizeQuotes(input));
-  }
+  void timestampQuoteAndJsonHelpersHandleNestedStructuresAndInvalidInput() {
+    assertThrows(
+        IllegalArgumentException.class, () -> RestUtil.validateTimestampMilliseconds(null));
+    assertThrows(
+        BadRequestException.class, () -> RestUtil.validateTimestampMilliseconds(1_234_567_8901L));
+    assertDoesNotThrow(() -> RestUtil.validateTimestampMilliseconds(1_234_567_890_123L));
 
-  @Test
-  void testNormalizeQuotes_rightSingleQuote() {
-    String input = "test\u2019";
-    assertEquals("test'", RestUtil.normalizeQuotes(input));
-  }
+    assertEquals("\"quoted\" and 'single'", RestUtil.normalizeQuotes("“quoted” and ‘single’"));
 
-  @Test
-  void testNormalizeQuotes_mixedQuotes() {
-    String input = "\u201cHello\u201d and \u2018World\u2019";
-    assertEquals("\"Hello\" and 'World'", RestUtil.normalizeQuotes(input));
-  }
-
-  @Test
-  void testNormalizeQuotes_jsonWithSmartQuotes() {
-    String input = "{\u201cname\u201d:\u201ccolumnCount\u201d,\u201cvalue\u201d:\u201c5\u201d}";
-    assertEquals("{\"name\":\"columnCount\",\"value\":\"5\"}", RestUtil.normalizeQuotes(input));
-  }
-
-  @Test
-  void testNormalizeQuotes_noQuotes() {
-    String input = "plain text without quotes";
-    assertEquals("plain text without quotes", RestUtil.normalizeQuotes(input));
-  }
-
-  @Test
-  void testNormalizeQuotes_emptyString() {
-    assertEquals("", RestUtil.normalizeQuotes(""));
-  }
-
-  @Test
-  void testNormalizeQuotes_alreadyNormalQuotes() {
-    String input = "{\"name\":\"value\"}";
-    assertEquals("{\"name\":\"value\"}", RestUtil.normalizeQuotes(input));
-  }
-
-  @Test
-  void testFindMatchingBrace_simpleObject() {
-    String input = "{\"name\":\"value\"}";
-    assertEquals(15, RestUtil.findMatchingBrace(input, 0));
-  }
-
-  @Test
-  void testFindMatchingBrace_nestedObject() {
-    String input = "{\"outer\":{\"inner\":\"value\"}}";
-    assertEquals(26, RestUtil.findMatchingBrace(input, 0));
-  }
-
-  @Test
-  void testFindMatchingBrace_bracesInsideString() {
-    String input = "{\"value\":\"contains { and } braces\"}";
-    assertEquals(34, RestUtil.findMatchingBrace(input, 0));
-  }
-
-  @Test
-  void testFindMatchingBrace_escapedQuotesInString() {
-    String input = "{\"value\":\"has \\\"escaped\\\" quotes\"}";
-    assertEquals(33, RestUtil.findMatchingBrace(input, 0));
-  }
-
-  @Test
-  void testFindMatchingBrace_noClosingBrace() {
-    String input = "{\"incomplete\":\"object\"";
-    assertEquals(-1, RestUtil.findMatchingBrace(input, 0));
-  }
-
-  @Test
-  void testFindMatchingBrace_startFromMiddle() {
-    String input = "prefix{\"name\":\"value\"}suffix";
-    assertEquals(21, RestUtil.findMatchingBrace(input, 6));
-  }
-
-  @Test
-  void testExtractJsonObjects_singleObject() {
-    String input = "{\"name\":\"value\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(1, result.size());
-    assertEquals("{\"name\":\"value\"}", result.get(0));
-  }
-
-  @Test
-  void testExtractJsonObjects_multipleObjectsCommaDelimited() {
-    String input = "{\"name\":\"a\"},{\"name\":\"b\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
-    assertEquals("{\"name\":\"a\"}", result.get(0));
-    assertEquals("{\"name\":\"b\"}", result.get(1));
-  }
-
-  @Test
-  void testExtractJsonObjects_multipleObjectsSemicolonDelimited() {
-    String input = "{\"name\":\"a\"};{\"name\":\"b\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
-    assertEquals("{\"name\":\"a\"}", result.get(0));
-    assertEquals("{\"name\":\"b\"}", result.get(1));
-  }
-
-  @Test
-  void testExtractJsonObjects_valueContainsSemicolon() {
-    String input = "{\"sql\":\"SELECT * FROM t WHERE x > 0;\"},{\"name\":\"b\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
-    assertEquals("{\"sql\":\"SELECT * FROM t WHERE x > 0;\"}", result.get(0));
-    assertEquals("{\"name\":\"b\"}", result.get(1));
-  }
-
-  @Test
-  void testExtractJsonObjects_valueContainsNewlines() {
-    String input = "{\"sql\":\"SELECT\\ncustomer_id\\nFROM DUAL\"},{\"name\":\"b\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
-    assertEquals("{\"sql\":\"SELECT\\ncustomer_id\\nFROM DUAL\"}", result.get(0));
-    assertEquals("{\"name\":\"b\"}", result.get(1));
-  }
-
-  @Test
-  void testExtractJsonObjects_valueContainsBraces() {
-    String input = "{\"value\":\"contains { and } braces\"},{\"name\":\"b\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
-    assertEquals("{\"value\":\"contains { and } braces\"}", result.get(0));
-    assertEquals("{\"name\":\"b\"}", result.get(1));
-  }
-
-  @Test
-  void testExtractJsonObjects_emptyString() {
-    List<String> result = RestUtil.extractJsonObjects("");
-    assertTrue(result.isEmpty());
-  }
-
-  @Test
-  void testExtractJsonObjects_noJsonObjects() {
-    List<String> result = RestUtil.extractJsonObjects("plain text");
-    assertTrue(result.isEmpty());
-  }
-
-  @Test
-  void testExtractJsonObjects_prefixAndSuffix() {
-    String input = "prefix {\"name\":\"value\"} suffix";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(1, result.size());
-    assertEquals("{\"name\":\"value\"}", result.get(0));
-  }
-
-  @Test
-  void testExtractJsonObjects_nestedObjects() {
-    String input = "{\"outer\":{\"inner\":\"value\"}},{\"name\":\"b\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
-    assertEquals("{\"outer\":{\"inner\":\"value\"}}", result.get(0));
-    assertEquals("{\"name\":\"b\"}", result.get(1));
-  }
-
-  @Test
-  void testExtractJsonObjects_realWorldSqlExample() {
     String input =
-        "{\"name\":\"sqlExpression\",\"value\":\"SELECT customer_id FROM DUAL WHERE lifetime_value < 0;\"},"
-            + "{\"name\":\"threshold\",\"value\":\"10\"}";
-    List<String> result = RestUtil.extractJsonObjects(input);
-    assertEquals(2, result.size());
+        "prefix {\"a\":\"{literal}\",\"b\":{\"c\":1}} middle "
+            + "{\"d\":\"escaped quote \\\"}\\\" stays in string\",\"e\":2} suffix {\"broken\":true";
+    List<String> jsonObjects = RestUtil.extractJsonObjects(input);
+
+    assertEquals(2, jsonObjects.size());
+    assertEquals("{\"a\":\"{literal}\",\"b\":{\"c\":1}}", jsonObjects.get(0));
+    assertEquals("{\"d\":\"escaped quote \\\"}\\\" stays in string\",\"e\":2}", jsonObjects.get(1));
     assertEquals(
-        "{\"name\":\"sqlExpression\",\"value\":\"SELECT customer_id FROM DUAL WHERE lifetime_value < 0;\"}",
-        result.get(0));
-    assertEquals("{\"name\":\"threshold\",\"value\":\"10\"}", result.get(1));
+        jsonObjects.get(0).length() - 1, RestUtil.findMatchingBrace(jsonObjects.get(0), 0));
+    assertEquals(-1, RestUtil.findMatchingBrace("{\"broken\":true", 0));
   }
 }

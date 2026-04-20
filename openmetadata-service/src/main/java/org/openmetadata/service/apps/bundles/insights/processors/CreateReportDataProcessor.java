@@ -20,10 +20,13 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 public class CreateReportDataProcessor implements Processor<List<ReportData>, List<?>> {
   @Getter private final String name;
   private final StepStats stats = new StepStats();
+  private final ReportData.ReportDataType reportDataType;
 
-  public CreateReportDataProcessor(int total, String name) {
+  public CreateReportDataProcessor(
+      int total, String name, ReportData.ReportDataType reportDataType) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
     this.name = name;
+    this.reportDataType = reportDataType;
   }
 
   @Override
@@ -31,9 +34,6 @@ public class CreateReportDataProcessor implements Processor<List<ReportData>, Li
       throws SearchIndexException {
     List<ReportData> reportDataList = new ArrayList<>();
     try {
-      // TODO: Branch different ReportDataType process instead of having a generic Object.
-      ReportData.ReportDataType reportDataType =
-          (ReportData.ReportDataType) contextData.get("ReportDataType");
       Long timestamp = (Long) contextData.get(TIMESTAMP_KEY);
 
       for (Object eventData : input) {

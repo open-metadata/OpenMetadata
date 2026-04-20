@@ -11,7 +11,8 @@
 """NoSQL Sampler"""
 from typing import Dict, List, Optional, Tuple
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.sampler.sampler_interface import SamplerInterface
@@ -59,7 +60,8 @@ class NoSQLSampler(SamplerInterface):
         ]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
-            rows=[list(map(str, row)) for row in rows], columns=[c.name for c in cols]
+            rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
+            columns=[c.name for c in cols],
         )
 
     def get_dataset(self, **__):
@@ -80,16 +82,17 @@ class NoSQLSampler(SamplerInterface):
         )
         rows, cols = self.transpose_records(records, columns)
         return TableData(
-            rows=[list(map(str, row)) for row in rows],
+            rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
             columns=[col.name for col in cols],
         )
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.raw_dataset)
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-            limit = num_rows * (self.sample_config.profileSample or 100 / 100)
-        elif self.sample_config.profileSampleType == ProfileSampleType.ROWS:
-            limit = self.sample_config.profileSample
+        static = self.sample_config.get_static_config()
+        if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
+            limit = num_rows * (static.profileSample or 100 / 100)
+        elif static and static.profileSampleType == ProfileSampleType.ROWS:
+            limit = static.profileSample
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit

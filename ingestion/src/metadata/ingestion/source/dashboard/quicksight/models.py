@@ -77,3 +77,5 @@ class DescribeDataSourceResponse(BaseModel):
     DataSource: Optional[DataSourceModel] = None
     RequestId: Optional[str] = None
     Status: Optional[int] = None
+    dataset_id: Optional[str] = None
+    dataset_name: Optional[str] = None

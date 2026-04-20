@@ -78,8 +78,9 @@ const ServiceInsightsTab = ({
   isIngestionPipelineLoading,
   isCollateAIagentsLoading,
 }: ServiceInsightsTabProps) => {
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceTypes }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceTypes;
+  }>();
   const { socket } = useWebSocketConnector();
   const [chartsResults, setChartsResults] = useState<ChartsResults>();
   const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);

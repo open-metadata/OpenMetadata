@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Card,
-  Skeleton,
-  Stack,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 import { ProfilerStateWrapperProps } from './ProfilerStateWrapper.interface';
 
@@ -28,42 +21,30 @@ const ProfilerStateWrapper = ({
   profilerLatestValueProps,
   dataTestId,
 }: ProfilerStateWrapperProps) => {
-  const theme = useTheme();
-
   if (isLoading) {
     return <Skeleton height={380} variant="rounded" width="100%" />;
   }
 
   return (
-    <Box>
+    <div>
       {title && (
-        <Typography
-          sx={{
-            fontSize: '16px',
-            color: theme.palette.grey[900],
-            fontWeight: 600,
-            mb: 3,
-          }}
-          variant="h6">
+        <p
+          className="tw:m-0 tw:mb-3 tw:text-md tw:font-semibold tw:text-primary"
+          data-testid={`${title}-title`}>
           {title}
-        </Typography>
+        </p>
       )}
-      <Card
-        data-testid={dataTestId ?? 'profiler-details-card-container'}
-        sx={{
-          p: 4,
-          borderRadius: '10px',
-          border: `1px solid ${theme.palette.grey[200]}`,
-          boxShadow: 'none',
-        }}>
-        <Stack spacing={4}>
+      <div
+        className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:p-4 tw:shadow-none"
+        data-testid={dataTestId ?? 'profiler-details-card-container'}>
+        <div className="tw:flex tw:flex-col tw:gap-4">
           {profilerLatestValueProps && (
             <ProfilerLatestValue {...profilerLatestValueProps} />
           )}
-          <Box flexGrow={1}>{children}</Box>
-        </Stack>
-      </Card>
-    </Box>
+          <div className="tw:grow">{children}</div>
+        </div>
+      </div>
+    </div>
   );
 };
 

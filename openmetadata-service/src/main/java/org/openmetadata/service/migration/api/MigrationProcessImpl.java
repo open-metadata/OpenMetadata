@@ -50,7 +50,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   public void initializeWorkflowHandler() {
-    WorkflowHandler.initialize(openMetadataApplicationConfig);
+    WorkflowHandler.initialize(openMetadataApplicationConfig, true);
   }
 
   public PipelineServiceClientInterface getPipelineServiceClient() {
@@ -160,6 +160,16 @@ public class MigrationProcessImpl implements MigrationProcess {
         migrationFile.getPostDDLScripts(),
         migrationFile.version,
         isForceMigration);
+  }
+
+  @Override
+  public boolean isReprocessing() {
+    return migrationFile.isReprocessing();
+  }
+
+  @Override
+  public boolean hasNewStatements() {
+    return migrationFile.hasNewStatements();
   }
 
   @Override

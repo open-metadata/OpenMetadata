@@ -13,6 +13,7 @@
 Validator for column values to be between test case
 """
 import math
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import Column
@@ -20,23 +21,34 @@ from sqlalchemy import Column
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
-    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeBetween import (
     BaseColumnValuesToBeBetweenValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import is_date_time
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.time_utils import convert_timestamp
 
 logger = test_suite_logger()
 
 
 class ColumnValuesToBeBetweenValidator(
-    BaseColumnValuesToBeBetweenValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToBeBetweenValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to be between test case"""
 
@@ -49,12 +61,25 @@ class ColumnValuesToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        min_value = row.get(Metrics.min.name)
+        max_value = row.get(Metrics.max.name)
+        if min_value is None or max_value is None:
+            return None
+        return {
+            Metrics.min.name: self._normalize_metric_value(min_value, is_min=True),
+            Metrics.max.name: self._normalize_metric_value(max_value, is_min=False),
+            DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
+            DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
+        }
+
     def _execute_dimensional_validation(
         self,
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for values to be between with proper aggregation
 
@@ -78,9 +103,9 @@ class ColumnValuesToBeBetweenValidator(
             checker = self._get_validation_checker(test_params)
 
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
-                Metrics.MIN.name: Metrics.MIN(column).fn(),
-                Metrics.MAX.name: Metrics.MAX(column).fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+                Metrics.min.name: Metrics.min(column).fn(),
+                Metrics.max.name: Metrics.max(column).fn(),
                 DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
                     column
                 ),
@@ -94,42 +119,12 @@ class ColumnValuesToBeBetweenValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                min_value = row.get(Metrics.MIN.name)
-                max_value = row.get(Metrics.MAX.name)
-
-                if min_value is None or max_value is None:
-                    logger.warning(
-                        "Skipping '%s=%s' dimension since 'min' or 'max' are 'None'",
-                        dimension_col.name,
-                        row.get(DIMENSION_VALUE_KEY),
-                    )
-                    continue
-
-                # Normalize values (convert date to datetime if needed)
-                min_value = self._normalize_metric_value(min_value, is_min=True)
-                max_value = self._normalize_metric_value(max_value, is_min=False)
-
-                metric_values = {
-                    Metrics.MIN.name: min_value,
-                    Metrics.MAX.name: max_value,
-                    DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
-                    DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -164,3 +159,38 @@ class ColumnValuesToBeBetweenValidator(
         )
 
         return row_count, failed_rows
+
+    def filter(self):
+        column = self.get_column()
+        if is_date_time(column.type):
+            min_bound = self.get_test_case_param_value(
+                self.test_case.parameterValues,  # type: ignore
+                "minValue",
+                type_=datetime.fromtimestamp,
+                default=datetime.min,
+                pre_processor=convert_timestamp,
+            )
+            max_bound = self.get_test_case_param_value(
+                self.test_case.parameterValues,  # type: ignore
+                "maxValue",
+                type_=datetime.fromtimestamp,
+                default=datetime.max,
+                pre_processor=convert_timestamp,
+            )
+        else:
+            min_bound = self.get_min_bound("minValue")
+            max_bound = self.get_max_bound("maxValue")
+
+        filters = []
+        if min_bound is not None:
+            filters.append((column, "lt", min_bound))
+        if max_bound is not None:
+            filters.append((column, "gt", max_bound))
+        return {
+            "filters": filters,
+            "or_filter": True,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

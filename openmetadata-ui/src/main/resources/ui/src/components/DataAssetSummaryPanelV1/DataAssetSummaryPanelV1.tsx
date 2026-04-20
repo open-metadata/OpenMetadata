@@ -23,7 +23,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
+import EntityLink from '../../utils/EntityLink';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -35,15 +35,15 @@ import { Operation } from 'fast-json-patch';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
-import { Chart } from '../../generated/entity/data/chart';
-import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
-import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
@@ -68,7 +68,6 @@ export const DataAssetSummaryPanelV1 = ({
   entityType,
   isLoading = false,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
-  highlights,
   onOwnerUpdate,
   panelPath,
   onDomainUpdate,
@@ -95,6 +94,17 @@ export const DataAssetSummaryPanelV1 = ({
     async (newDescription: string) => {
       try {
         if (!dataAsset.id) {
+          return;
+        }
+        if (entityType === EntityType.TABLE_COLUMN) {
+          const res = await updateTableColumn(
+            dataAsset.fullyQualifiedName ?? '',
+            {
+              description: newDescription,
+            }
+          );
+          onDescriptionUpdate?.(res.description || newDescription);
+
           return;
         }
 
@@ -131,15 +141,19 @@ export const DataAssetSummaryPanelV1 = ({
         );
       }
     },
-    [dataAsset.id, dataAsset.description, entityType, t, onDescriptionUpdate]
+    [
+      dataAsset.id,
+      dataAsset.fullyQualifiedName,
+      dataAsset.description,
+      entityType,
+      t,
+      onDescriptionUpdate,
+    ]
   );
 
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
   >({});
-  const [charts, setCharts] = useState<Chart[]>([]);
-  const [chartsDetailsLoading, setChartsDetailsLoading] =
-    useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
@@ -156,20 +170,47 @@ export const DataAssetSummaryPanelV1 = ({
     [dataAsset, additionalInfo, entityType]
   );
 
-  useMemo(() => {
-    return getEntityChildDetails(
-      entityType,
-      entityType === EntityType.DASHBOARD
-        ? ({ ...dataAsset, charts } as unknown as Dashboard)
-        : dataAsset,
-      highlights,
-      entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
-    );
-  }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
-
   const shouldShowLineageSection = useMemo(
     () => hasLineageTab(entityType),
     [entityType]
+  );
+
+  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+
+  const {
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams,
+  } = useMemo(() => {
+    if (!isColumnEntity) {
+      return {
+        changeSummaryEntityType: entityType,
+        changeSummaryEntityId: dataAsset.id ?? '',
+        changeSummaryParams: { fieldPrefix: 'description', limit: 1 },
+      };
+    }
+    const columnData = dataAsset as typeof dataAsset & {
+      table?: { id?: string };
+    };
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      dataAsset.fullyQualifiedName ?? '',
+      false
+    );
+
+    return {
+      changeSummaryEntityType: EntityType.TABLE,
+      changeSummaryEntityId: columnData.table?.id ?? '',
+      changeSummaryParams: {
+        fieldPrefix: `columns.${columnName}.description`,
+        limit: 1,
+      },
+    };
+  }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
+
+  const { changeSummary } = useChangeSummary(
+    changeSummaryEntityType,
+    changeSummaryEntityId,
+    changeSummaryParams
   );
 
   const fetchIncidentCount = useCallback(async () => {
@@ -198,18 +239,6 @@ export const DataAssetSummaryPanelV1 = ({
       }
     }
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
-
-  const fetchChartsDetails = useCallback(async () => {
-    setChartsDetailsLoading(true);
-    try {
-      const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
-      setCharts(chartDetails);
-    } catch {
-      // Error
-    } finally {
-      setChartsDetailsLoading(false);
-    }
-  }, [dataAsset]);
 
   const fetchTestCases = useCallback(async () => {
     if (!dataAsset?.fullyQualifiedName || entityType !== EntityType.TABLE) {
@@ -266,19 +295,13 @@ export const DataAssetSummaryPanelV1 = ({
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
 
   const fetchEntityBasedDetails = () => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        fetchIncidentCount();
-
-        break;
-      case EntityType.DASHBOARD:
-        fetchChartsDetails();
-
-        break;
-      default:
-        break;
+    if (entityType === EntityType.TABLE) {
+      fetchIncidentCount();
     }
   };
+  // Columns inherit owners, domains, tier, and data products from their parent table
+  // These fields should not be editable on columns
+
   const {
     editDomainPermission,
     editOwnerPermission,
@@ -289,7 +312,9 @@ export const DataAssetSummaryPanelV1 = ({
     editGlossaryTermsPermission,
   } = useMemo(
     () => ({
+      // Columns inherit domain from table - not editable
       editDomainPermission:
+        !isColumnEntity &&
         entityPermissions?.EditAll &&
         !dataAsset.deleted &&
         panelPath !== ENTITY_PATH.dataProductsTab,
@@ -299,19 +324,24 @@ export const DataAssetSummaryPanelV1 = ({
       editGlossaryTermsPermission:
         (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
         !dataAsset.deleted,
+      // Columns inherit owners from table - not editable
       editOwnerPermission:
+        !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
         !dataAsset.deleted,
+      // Columns inherit tier from table - not editable
       editTierPermission:
+        !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
         !dataAsset.deleted,
       editTagsPermission:
         (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
         !dataAsset.deleted,
+      // Columns inherit data products from table - not editable
       editDataProductPermission:
-        entityPermissions?.EditAll && !dataAsset.deleted,
+        !isColumnEntity && entityPermissions?.EditAll && !dataAsset.deleted,
     }),
-    [entityPermissions, dataAsset]
+    [entityPermissions, dataAsset, isColumnEntity]
   );
 
   const init = useCallback(async () => {
@@ -320,12 +350,54 @@ export const DataAssetSummaryPanelV1 = ({
       return;
     }
 
+    // For columns, use the parent table's permissions since columns don't have their own
+    if (entityType === EntityType.TABLE_COLUMN) {
+      const columnData = dataAsset as typeof dataAsset & {
+        table?: { id?: string };
+      };
+      if (columnData.table?.id) {
+        try {
+          const permissions = await getEntityPermission(
+            ResourceEntity.TABLE,
+            columnData.table.id
+          );
+          setEntityPermissions(permissions);
+
+          return;
+        } catch {
+          // If permission fetch fails, allow basic view access for columns
+          setEntityPermissions({
+            ...DEFAULT_ENTITY_PERMISSION,
+            ViewBasic: true,
+            ViewAll: true,
+          });
+
+          return;
+        }
+      }
+      // If no table.id available, allow basic view access for columns
+      // Columns inherit permissions from their parent table
+      setEntityPermissions({
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewBasic: true,
+        ViewAll: true,
+      });
+
+      return;
+    }
+
     const permissions = await getEntityPermission(
       dataAsset.entityType as ResourceEntity,
       dataAsset.id
     );
     setEntityPermissions(permissions);
-  }, [dataAsset.id, dataAsset.entityType, isTourPage, getEntityPermission]);
+  }, [
+    dataAsset.id,
+    dataAsset.entityType,
+    entityType,
+    isTourPage,
+    getEntityPermission,
+  ]);
 
   useEffect(() => {
     if (entityPermissions) {
@@ -335,6 +407,10 @@ export const DataAssetSummaryPanelV1 = ({
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
+    const descriptionChangeSummaryEntry = isColumnEntity
+      ? changeSummary?.[changeSummaryParams.fieldPrefix]
+      : changeSummary?.description;
+
     switch (entityType) {
       case EntityType.API_COLLECTION:
       case EntityType.API_ENDPOINT:
@@ -363,6 +439,7 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.FILE:
       case EntityType.SPREADSHEET:
       case EntityType.WORKSHEET:
+      case EntityType.TABLE_COLUMN:
       case EntityType.GOVERN:
       case EntityType.GLOSSARY:
       case EntityType.GLOSSARY_TERM:
@@ -419,6 +496,9 @@ export const DataAssetSummaryPanelV1 = ({
             {entityType === EntityType.DIRECTORY && (
               <span className="d-none" data-testid="DirectorySummary" />
             )}
+            {entityType === EntityType.TABLE_COLUMN && (
+              <span className="d-none" data-testid="ColumnSummary" />
+            )}
             {entityType === EntityType.DASHBOARD_DATA_MODEL && (
               <span
                 className="d-none"
@@ -426,6 +506,7 @@ export const DataAssetSummaryPanelV1 = ({
               />
             )}
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -505,7 +586,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityType={entityType}
                 hasPermission={editGlossaryTermsPermission}
                 key={`glossary-terms-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
+                  dataAsset.tags?.length ?? 0
                 }`}
                 maxVisibleGlossaryTerms={3}
                 tags={dataAsset.tags}
@@ -517,9 +598,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityId={dataAsset.id}
                 entityType={entityType}
                 hasPermission={editTagsPermission}
-                key={`tags-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
-                }`}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                 tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
@@ -532,7 +611,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityType={entityType}
                 hasPermission={editDataProductPermission}
                 key={`data-products-${dataAsset.id}-${
-                  (dataAsset.dataProducts as unknown[])?.length || 0
+                  dataAsset.dataProducts?.length ?? 0
                 }`}
                 onDataProductsUpdate={onDataProductsUpdate}
               />
@@ -544,6 +623,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <span className="d-none" data-testid="KnowledgePageSummary" />
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -567,9 +647,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityId={dataAsset.id}
                 entityType={entityType}
                 hasPermission={editTagsPermission}
-                key={`tags-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
-                }`}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                 tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
@@ -580,7 +658,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityType={entityType}
                 hasPermission={editGlossaryTermsPermission}
                 key={`glossary-terms-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
+                  dataAsset.tags?.length ?? 0
                 }`}
                 maxVisibleGlossaryTerms={3}
                 tags={dataAsset.tags}
@@ -593,6 +671,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -640,9 +719,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityId={dataAsset.id}
                 entityType={entityType}
                 hasPermission={editTagsPermission}
-                key={`tags-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
-                }`}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                 tags={dataAsset.tags?.filter(
                   (tag: TagLabel) => tag.source !== TagSource.Glossary
                 )}
@@ -681,6 +758,7 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
@@ -713,9 +791,7 @@ export const DataAssetSummaryPanelV1 = ({
                   entityId={dataAsset.id}
                   entityType={entityType}
                   hasPermission={editTagsPermission}
-                  key={`tags-${dataAsset.id}-${
-                    (dataAsset.tags as unknown[])?.length || 0
-                  }`}
+                  key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                   tags={dataAsset.tags?.filter(
                     (tag: TagLabel) => tag.source !== TagSource.Glossary
                   )}
@@ -735,6 +811,7 @@ export const DataAssetSummaryPanelV1 = ({
     componentType,
     statusCounts,
     entityPermissions,
+    changeSummary,
   ]);
 
   useEffect(() => {

@@ -11,14 +11,38 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import {
   LineageData,
   LineageEntityReference,
 } from '../../../../components/Lineage/Lineage.interface';
+import { User } from '../../../../generated/entity/teams/user';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
+jest.mock('@untitledui/icons', () => ({
+  ChevronRight: jest
+    .fn()
+    .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
+      <svg data-testid="chevron-right-icon" {...props} />
+    )),
+  DotsHorizontal: jest
+    .fn()
+    .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
+      <svg data-testid="dots-horizontal-icon" {...props} />
+    )),
+}));
+
 // Mock react-i18next
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
@@ -86,7 +110,7 @@ jest.mock('antd', () => ({
 // Mock SVG components with unique implementations
 jest.mock('../../../../assets/svg/downstream.svg', () => ({
   __esModule: true,
-  ReactComponent: (props: any) => (
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="downstream-icon" {...props}>
       <title>DownstreamIcon</title>
     </svg>
@@ -95,7 +119,7 @@ jest.mock('../../../../assets/svg/downstream.svg', () => ({
 
 jest.mock('../../../../assets/svg/upstream.svg', () => ({
   __esModule: true,
-  ReactComponent: (props: any) => (
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="upstream-icon" {...props}>
       <title>UpstreamIcon</title>
     </svg>
@@ -104,7 +128,7 @@ jest.mock('../../../../assets/svg/upstream.svg', () => ({
 
 jest.mock('../../../../assets/svg/ic-task-empty.svg', () => ({
   __esModule: true,
-  ReactComponent: (props: any) => (
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="no-data-icon" {...props}>
       <title>NoDataIcon</title>
     </svg>
@@ -164,7 +188,7 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
     .fn()
     .mockImplementation(({ owners }) => (
       <div data-testid="owner-label">
-        {owners?.map((owner: any) => owner.name).join(', ')}
+        {owners?.map((owner: User) => owner.name).join(', ')}
       </div>
     )),
 }));
@@ -346,8 +370,8 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should render direction icon for upstream items', () => {
@@ -393,9 +417,8 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts with MUI Breadcrumbs
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should render downstream direction text', () => {
@@ -457,12 +480,10 @@ describe('LineageTabContent', () => {
     it('should render entity path when available', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      // MUI Breadcrumbs renders path as separate breadcrumb items
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('schema')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts with MUI Breadcrumbs
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should render entity display name or name', () => {
@@ -617,11 +638,10 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      // MUI Breadcrumbs renders first and last items with condensed menu for middle items
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('table')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should handle entities without fullyQualifiedName', () => {

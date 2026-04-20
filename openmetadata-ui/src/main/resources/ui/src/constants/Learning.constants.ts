@@ -153,7 +153,7 @@ export const LEARNING_PAGE_IDS = {
 } as const;
 
 export type LearningPageId =
-  typeof LEARNING_PAGE_IDS[keyof typeof LEARNING_PAGE_IDS];
+  (typeof LEARNING_PAGE_IDS)[keyof typeof LEARNING_PAGE_IDS];
 
 export const PAGE_IDS: PageIdOption[] = [
   { value: LEARNING_PAGE_IDS.DOMAIN, label: 'Domain' },

@@ -18,10 +18,11 @@ from copy import deepcopy
 from typing import Iterable, Optional
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
-from sqlalchemy import types, util
+from sqlalchemy import text, types, util
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
     PrestoConnection,
 )
@@ -31,8 +32,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CREATE_TABLE
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
+from metadata.ingestion.source.database.presto.queries import (
+    PRESTO_GET_CATALOG_CONNECTOR,
+    PRESTO_SHOW_CREATE_TABLE,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ometa_logger
@@ -100,7 +107,7 @@ def get_table_comment(self, connection, table_name, schema=None, **kw):
     fmt_query = PRESTO_SHOW_CREATE_TABLE.format(
         schema_table_name=".".join(filter(None, [schema, table_name]))
     )
-    results = connection.execute(fmt_query)
+    results = connection.execute(text(fmt_query))
     for res in results:
         matches = re.findall(r"COMMENT '(.*)'", res[0])
         if matches:
@@ -143,13 +150,34 @@ class PrestoSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        table_type = TableType.Regular
+        try:
+            catalog_name = self.context.get().database
+            result = self.connection.execute(
+                text(PRESTO_GET_CATALOG_CONNECTOR),
+                {"catalog_name": catalog_name},
+            )
+            row = result.first()
+            if row and row[0] == "iceberg":
+                table_type = TableType.Iceberg
+        except Exception:
+            logger.debug(traceback.format_exc())
+
+        return [
+            TableNameAndType(name=name, type_=table_type)
+            for name in self.inspector.get_table_names(schema_name) or []
+        ]
+
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
         else:
-            results = self.connection.execute("SHOW CATALOGS")
+            results = self.connection.execute(text("SHOW CATALOGS"))
             for res in results:
                 if res:
                     new_catalog = res[0]

@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-.global-search-suggestion-box {
-  max-height: 70vh;
-  overflow-y: scroll;
-  scrollbar-width: none;
+.global-search-overlay {
+  .global-search-suggestion-box {
+    max-height: 70vh;
+    overflow-y: scroll;
+    scrollbar-width: none;
 
-  &::-webkit-scrollbar {
-    display: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }

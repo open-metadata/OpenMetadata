@@ -27,6 +27,11 @@ public class ApplicationContext {
     return instance;
   }
 
+  public static void reinitialize() {
+    instance = null;
+    initialize();
+  }
+
   public static void initialize() {
     if (instance != null) {
       return;
@@ -76,8 +81,7 @@ public class ApplicationContext {
   }
 
   public AbstractNativeApplication getAppIfExists(String name) {
-    AbstractNativeApplication app = this.apps.get(name);
-    return app;
+    return this.apps.get(name);
   }
 
   public Collection<AbstractNativeApplication> getAllApps() {

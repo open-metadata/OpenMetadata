@@ -42,6 +42,10 @@ export const entityData = [
     label: 'label.dashboard-plural',
   },
   {
+    type: SearchIndex.CHART,
+    label: 'label.chart-plural',
+  },
+  {
     type: SearchIndex.STORED_PROCEDURE,
     label: 'label.stored-procedure-plural',
   },
@@ -70,33 +74,35 @@ export const entityData = [
     label: 'label.data-model-plural',
   },
   {
-    type: SearchIndex.API_ENDPOINT_INDEX,
+    type: SearchIndex.API_ENDPOINT,
     label: 'label.api-endpoint-plural',
   },
   {
-    type: SearchIndex.METRIC_SEARCH_INDEX,
+    type: SearchIndex.METRIC,
     label: 'label.metric-plural',
   },
   {
-    type: SearchIndex.DIRECTORY_SEARCH_INDEX,
+    type: SearchIndex.DIRECTORY,
     label: 'label.directory-plural',
   },
   {
-    type: SearchIndex.FILE_SEARCH_INDEX,
+    type: SearchIndex.FILE,
     label: 'label.file-plural',
   },
   {
-    type: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+    type: SearchIndex.SPREADSHEET,
     label: 'label.spreadsheet-plural',
   },
   {
-    type: SearchIndex.WORKSHEET_SEARCH_INDEX,
+    type: SearchIndex.WORKSHEET,
     label: 'label.worksheet-plural',
   },
 ];
 
 export const NODE_WIDTH = 400;
-export const NODE_HEIGHT = 90;
+export const NODE_HEIGHT = 66;
+export const NODE_HEIGHT_WITH_CHILDREN = 109;
+export const COLUMN_NODE_HEIGHT = 32.85;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,

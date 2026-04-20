@@ -1,0 +1,28 @@
+# Example: Dashboard connector using REST API
+# Run: metadata scaffold-connector --name my_dashboard --service-type dashboard ...
+
+name: apache_superset
+display_name: Superset
+service_type: dashboard
+connection_type: rest_api
+auth_types:
+  - basic
+  - token
+capabilities:
+  - metadata
+description: "Apache Superset — open-source data exploration and visualization"
+docs_url: "https://superset.apache.org/docs/api"
+api_endpoints: |
+  GET /api/v1/dashboard/ — List dashboards
+  GET /api/v1/dashboard/{id} — Dashboard details
+  GET /api/v1/chart/ — List charts
+  GET /api/v1/chart/{id} — Chart details
+  GET /api/v1/dataset/ — List datasets (data models)
+  POST /api/v1/security/login — Auth (basic)
+docs_notes: |
+  - Auth: POST /api/v1/security/login with username/password returns JWT
+  - Alternatively: pass token directly via API key
+  - Pagination: Uses page/page_size query params
+  - Rate limits: None by default, but can be configured per instance
+  - Dashboards contain charts, charts reference datasets
+  - Datasets provide lineage to underlying database tables

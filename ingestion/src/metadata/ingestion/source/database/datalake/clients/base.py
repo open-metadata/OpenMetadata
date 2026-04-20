@@ -13,18 +13,23 @@
 Datalake Base Client
 """
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional, Tuple
 
 
 class DatalakeBaseClient(ABC):
     """Base DL client implementation"""
 
-    def __init__(self, client: Any, **kwargs):
+    def __init__(self, client: Any, session: Any = None, **kwargs):
         self._client = client
+        self._session = session
 
     @property
     def client(self) -> Any:
         return self._client
+
+    @property
+    def session(self) -> Any:
+        return self._session
 
     @classmethod
     @abstractmethod
@@ -44,8 +49,13 @@ class DatalakeBaseClient(ABC):
         """Returns the RAW database schema names, based on the underlying client."""
 
     @abstractmethod
-    def get_table_names(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
-        """Returns the Table names, based on the underlying client."""
+    def get_table_names(
+        self,
+        bucket_name: str,
+        prefix: Optional[str],
+        skip_cold_storage: bool = False,
+    ) -> Iterable[Tuple[str, Optional[int]]]:
+        """Returns (key, file_size_bytes) tuples. Size may be None if unavailable."""
 
     @abstractmethod
     def close(self, service_connection):

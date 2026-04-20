@@ -19,6 +19,10 @@ export interface SearchStats {
      */
     clusterHealth?: string;
     /**
+     * Total number of expected indices from entity index mappings.
+     */
+    expectedIndexCount?: number;
+    /**
      * List of index details.
      */
     indexes?: IndexStats[];
@@ -27,6 +31,10 @@ export interface SearchStats {
      * while indexing is in progress.
      */
     isSearchIndexingRunning?: boolean;
+    /**
+     * List of expected index names that are missing from the search cluster.
+     */
+    missingIndexes?: string[];
     /**
      * List of orphan indexes (indexes with zero aliases).
      */

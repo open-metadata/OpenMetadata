@@ -40,8 +40,7 @@ import org.openmetadata.service.clients.pipeline.config.types.WorkflowConfigType
 public class WorkflowConfigBuilder {
 
   public static OpenMetadataWorkflowConfig buildOMWorkflowConfig(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service)
-      throws WorkflowBuildException {
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
 
     WorkflowConfigTypeStrategy workflowStrategy;
 
@@ -84,6 +83,9 @@ public class WorkflowConfigBuilder {
         buildDefaultWorkflowConfig(ingestionPipeline).withLoggerLevel(ingestionLevel));
     config.setIngestionPipelineFQN(ingestionPipeline.getFullyQualifiedName());
     config.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
+    if (service != null && service.getIngestionRunner() != null) {
+      config.setIngestionRunnerName(service.getIngestionRunner().getName());
+    }
     return config;
   }
 
@@ -108,6 +110,9 @@ public class WorkflowConfigBuilder {
         buildDefaultWorkflowConfig(ingestionPipeline).withLoggerLevel(ingestionLevel));
     config.setIngestionPipelineFQN(ingestionPipeline.getFullyQualifiedName());
     config.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
+    if (ingestionPipeline.getIngestionRunner() != null) {
+      config.setIngestionRunnerName(ingestionPipeline.getIngestionRunner().getName());
+    }
     return config;
   }
 

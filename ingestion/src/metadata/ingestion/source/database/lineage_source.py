@@ -343,7 +343,7 @@ class LineageSource(QueryParserSource, ABC):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    query_dict = dict(row)
+                    query_dict = row._asdict() if hasattr(row, "_asdict") else row
                     try:
                         query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         yield TableQuery(
@@ -525,9 +525,6 @@ class LineageSource(QueryParserSource, ABC):
         """
         By default cross database lineage is not supported.
         """
-        logger.info(
-            f"Processing Cross Database Lineage not supported for {str(self.service_connection.type.value)}"
-        )
 
     def _iter(
         self, *_, **__

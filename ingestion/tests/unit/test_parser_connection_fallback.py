@@ -29,12 +29,12 @@ Case-Sensitivity Issue:
 
 Services Affected:
 ------------------
-Only 3 out of 47 database services were broken on Linux:
+Only 3 out of 46 database services were broken on Linux:
   ❌ SAS     (tried: sASConnection,     actual: sasConnection.py)
   ❌ SQLite  (tried: sQLiteConnection,  actual: sqliteConnection.py)
   ❌ SSAS    (tried: sSASConnection,    actual: ssasConnection.py)
 
-All other 44 services worked correctly because camelCase matched their filenames:
+All other 43 services worked correctly because camelCase matched their filenames:
   ✅ BigQuery (bigQueryConnection.py), AzureSQL (azureSQLConnection.py), etc.
 
 The Solution:
@@ -48,7 +48,7 @@ This test suite validates:
 1. Fallback path works for the 3 affected services
 2. Standard path works for 44 unaffected services
 3. Edge cases (numbers, acronyms, mixed-case)
-4. Comprehensive validation of all 47 services
+4. Comprehensive validation of all 46 services
 5. Performance (fallback has negligible overhead)
 """
 import pytest
@@ -65,14 +65,13 @@ class TestConnectionFallbackMechanism:
     Test suite for the scalable connection import mechanism.
 
     The get_connection_class() function uses a try-except pattern:
-    1. Try standard camelCase: "BigQuery" -> "bigQueryConnection.py" (44 services)
+    1. Try standard camelCase: "BigQuery" -> "bigQueryConnection.py" (43 services)
     2. Fallback to lowercase: "SAS" -> "sasConnection.py" (3 services)
 
     This automatically handles any naming convention without hardcoded lists.
 
     IMPORTANT: Only 3 services require the fallback path!
-    All other services use standard camelCase and work on first try.
-    """
+    All other 43 services use standard camelCase and work on first try."""
 
     # The ONLY 3 services that require fallback to all-lowercase module name
     # These were broken on Linux (case-sensitive FS) before the fix
@@ -114,7 +113,6 @@ class TestConnectionFallbackMechanism:
         "Glue",
         "Greenplum",
         "Hive",
-        "Iceberg",
         "Impala",
         "Mssql",
         "Mysql",
@@ -182,7 +180,7 @@ class TestConnectionFallbackMechanism:
           Result: MATCH - worked on both Linux and macOS
 
         The try block succeeds immediately without needing the fallback.
-        This represents 44 out of 47 database services (94%).
+        This represents 43 out of 46 database services (93%).
         """
         connection_class = get_connection_class(service_name, DatabaseConnection)
 
@@ -328,7 +326,7 @@ class TestConnectionFallbackMechanism:
         Standard path services: 1 import attempt (fast)
         Fallback path services: 2 import attempts (still fast)
 
-        With only 3 services using fallback out of 47, the overhead is negligible.
+        With only 3 services using fallback out of 46, the overhead is negligible.
         """
         import time
 

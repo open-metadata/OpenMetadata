@@ -73,17 +73,15 @@ public class ApprovalTaskCompletionValidator implements TaskListener {
         throw e;
       }
       LOG.error(
-          String.format(
-              "[%s] Approval validation error: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Approval validation error: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           e);
       // Re-throw to prevent incorrect completion
       throw e;
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "[%s] Approval validation error: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Approval validation error: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           e);
       // Convert to runtime exception to prevent incorrect completion
       throw new RuntimeException("Validation failed: " + e.getMessage(), e);

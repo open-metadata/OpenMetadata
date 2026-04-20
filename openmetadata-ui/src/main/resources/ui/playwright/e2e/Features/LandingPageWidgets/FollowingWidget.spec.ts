@@ -55,15 +55,25 @@ const test = base.extend<{ adminPage: Page }>({
   },
 });
 
+base.beforeAll('Create admin user', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await afterAction();
+});
+
+base.afterAll('Delete admin user', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await afterAction();
+});
+
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -84,7 +94,7 @@ entities.forEach((EntityClass) => {
       const entityName = entity.entityResponseData?.['displayName'];
 
       await followEntity(adminPage, entity.endpoint);
-      await validateFollowedEntityToWidget(adminPage, entityName, true);
+      await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
     });
   });
 });

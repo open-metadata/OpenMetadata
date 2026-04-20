@@ -71,6 +71,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "result": {
         "type": "text"
       },
@@ -195,6 +201,7 @@
             "type": "keyword"
           },
           "owners": {
+            "type": "nested",
             "properties": {
               "id": {
                 "type": "keyword",

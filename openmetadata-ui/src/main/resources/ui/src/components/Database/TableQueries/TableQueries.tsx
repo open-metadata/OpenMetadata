@@ -114,8 +114,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isOwnerLoading, setIsOwnerLoading] = useState(false);
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
-  const [queryDateFilter, setQueryDateFilter] =
-    useState<{ startTs: number; endTs: number }>();
+  const [queryDateFilter, setQueryDateFilter] = useState<{
+    startTs: number;
+    endTs: number;
+  }>();
   const [sortQuery, setSortQuery] = useState<{
     field: string;
     order: SORT_ORDER;

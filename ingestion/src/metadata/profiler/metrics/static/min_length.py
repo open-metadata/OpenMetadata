@@ -43,6 +43,8 @@ class MinLength(StaticMetric):
     Only works for concatenable types
     """
 
+    schema_metric_type = MetricType.minLength
+
     @classmethod
     def name(cls):
         return MetricType.minLength.value

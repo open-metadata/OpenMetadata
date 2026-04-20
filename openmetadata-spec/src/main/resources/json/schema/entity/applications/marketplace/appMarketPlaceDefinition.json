@@ -153,10 +153,10 @@
       "type": "boolean",
       "default": false
     },
-    "preview": {
+    "enabled": {
       "type": "boolean",
-      "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
-      "default": false
+      "description": "Flag to enable/disable the application. If the app is not enabled, it can't be installed.",
+      "default": true
     },
     "domains" : {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
@@ -177,6 +177,11 @@
     },
     "supportsIngestionRunner": {
       "description": "If the app support execution through the external runner.",
+      "type": "boolean",
+      "default": false
+    },
+    "allowBotImpersonation": {
+      "description": "When true, the bot created for this application will have allowImpersonation enabled, allowing it to act on behalf of users.",
       "type": "boolean",
       "default": false
     }

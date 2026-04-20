@@ -59,13 +59,13 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
             res = self._run_results(
-                Metrics.COUNT_IN_SET, column, values=test_params[self.FORBIDDEN_VALUES]
+                Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES]
             )
 
-            metric_values = {Metrics.COUNT_IN_SET.name: res}
+            metric_values = {Metrics.countInSet.name: res}
 
             if self.test_case.computePassedFailedRowCount:
-                metric_values[Metrics.ROW_COUNT.name] = self.get_row_count()
+                metric_values[Metrics.rowCount.name] = self.get_row_count()
 
         except (ValueError, RuntimeError) as exc:
             msg = (
@@ -92,7 +92,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             self.get_test_case_status(evaluation["matched"]),
             result_message,
             test_result_values,
-            row_count=metric_values.get(Metrics.ROW_COUNT.name),
+            row_count=metric_values.get(Metrics.rowCount.name),
             failed_rows=evaluation["failed_rows"],
         )
 
@@ -122,11 +122,11 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             dict: Mapping of Metrics enum names to Metrics enum values
         """
         metrics = {
-            Metrics.COUNT_IN_SET.name: Metrics.COUNT_IN_SET,
+            Metrics.countInSet.name: Metrics.countInSet,
         }
 
         if self.test_case.computePassedFailedRowCount:
-            metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
+            metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
@@ -156,10 +156,10 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             raise ValueError(
                 "test_params is required for columnValuesToNotBeInSet._evaluate_test_condition"
             )
-        count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
+        count_in_set = metric_values[Metrics.countInSet.name]
 
         matched = count_in_set == 0
-        total_rows = metric_values.get(Metrics.ROW_COUNT.name)
+        total_rows = metric_values.get(Metrics.rowCount.name)
         failed_count = count_in_set
         if total_rows:
             passed_count = total_rows - failed_count
@@ -189,7 +189,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
+        count_in_set = metric_values[Metrics.countInSet.name]
 
         if dimension_info:
             return (
@@ -211,7 +211,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=COUNT_FORBIDDEN_VALUES,
-                value=str(metric_values[Metrics.COUNT_IN_SET.name]),
+                value=str(metric_values[Metrics.countInSet.name]),
             ),
         ]
 

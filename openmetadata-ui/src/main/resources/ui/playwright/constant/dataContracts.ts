@@ -506,8 +506,6 @@ version: "2.1.0"
 status: active
 description:
   purpose: Comprehensive data contract for customer analytics.
-  limitations: Historical data only, no PII exposed.
-  usage: For internal analytics dashboards and ML models.
 slaProperties:
   - property: freshness
     value: "12"
@@ -860,7 +858,7 @@ sla:
     period: 5
     unit: day
 owners: []
-reviewers: []`
+reviewers: []`;
 
 // Helper function to generate unique ODCS contract
 export const generateODCSContract = (

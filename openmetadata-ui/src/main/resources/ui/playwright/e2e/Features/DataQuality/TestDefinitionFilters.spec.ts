@@ -133,22 +133,19 @@ test.describe(
         await closeFilterDropdown(page);
       });
 
-      await test.step(
-        'Verify persistence through browser navigation',
-        async () => {
-          await page.goBack();
-          await waitForAllLoadersToDisappear(page);
+      await test.step('Verify persistence through browser navigation', async () => {
+        await page.goBack();
+        await waitForAllLoadersToDisappear(page);
 
-          expect(page.url()).not.toContain('entityType');
-          expect(page.url()).not.toContain('testPlatforms');
+        expect(page.url()).not.toContain('entityType');
+        expect(page.url()).not.toContain('testPlatforms');
 
-          await page.goForward();
-          await waitForAllLoadersToDisappear(page);
+        await page.goForward();
+        await waitForAllLoadersToDisappear(page);
 
-          expect(page.url()).toContain('entityType=TABLE');
-          expect(page.url()).toContain('testPlatforms=OpenMetadata');
-        }
-      );
+        expect(page.url()).toContain('entityType=TABLE');
+        expect(page.url()).toContain('testPlatforms=OpenMetadata');
+      });
     });
 
     test('should handle filter UI interactions correctly', async ({ page }) => {
@@ -207,17 +204,14 @@ test.describe(
         expect(page.url()).toContain('entityType=TABLE');
       });
 
-      await test.step(
-        'Verify no clear all button in single-select mode',
-        async () => {
-          await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
+      await test.step('Verify no clear all button in single-select mode', async () => {
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
-          const clearButton = page.getByTestId('clear-button');
-          await expect(clearButton).not.toBeVisible();
+        const clearButton = page.getByTestId('clear-button');
+        await expect(clearButton).not.toBeVisible();
 
-          await closeFilterDropdown(page);
-        }
-      );
+        await closeFilterDropdown(page);
+      });
     });
 
     test('should handle multiple filter operations', async ({ page }) => {
@@ -311,28 +305,25 @@ test.describe(
         );
       });
 
-      await test.step(
-        'Navigate to page 2 and verify pagination resets on filter change',
-        async () => {
-          await expect(page.getByTestId('pagination')).toBeVisible();
+      await test.step('Navigate to page 2 and verify pagination resets on filter change', async () => {
+        await expect(page.getByTestId('pagination')).toBeVisible();
 
-          const nextButton = page.getByTestId('next');
-          await expect(nextButton).toBeEnabled();
-          await nextButton.click();
-          await waitForAllLoadersToDisappear(page);
+        const nextButton = page.getByTestId('next');
+        await expect(nextButton).toBeEnabled();
+        await nextButton.click();
+        await waitForAllLoadersToDisappear(page);
 
-          expect(page.url()).toMatch(/currentPage=2/);
+        expect(page.url()).toMatch(/currentPage=2/);
 
-          await toggleFilter(
-            page,
-            FILTER_LABELS.ENTITY_TYPE,
-            ENTITY_TYPE_OPTIONS.TABLE
-          );
+        await toggleFilter(
+          page,
+          FILTER_LABELS.ENTITY_TYPE,
+          ENTITY_TYPE_OPTIONS.TABLE
+        );
 
-          expect(page.url()).not.toContain('currentPage=2');
-          expect(page.url()).toContain('entityType=TABLE');
-        }
-      );
+        expect(page.url()).not.toContain('currentPage=2');
+        expect(page.url()).toContain('entityType=TABLE');
+      });
     });
 
     test('should not revert to previous value when changing filter selection', async ({
@@ -353,52 +344,43 @@ test.describe(
         expect(responseData.data).toBeDefined();
       });
 
-      await test.step(
-        'Change to a different testPlatform filter (OpenMetadata)',
-        async () => {
-          await toggleFilter(
-            page,
-            FILTER_LABELS.TEST_PLATFORMS,
-            TEST_PLATFORM_OPTIONS.OPENMETADATA
-          );
+      await test.step('Change to a different testPlatform filter (OpenMetadata)', async () => {
+        await toggleFilter(
+          page,
+          FILTER_LABELS.TEST_PLATFORMS,
+          TEST_PLATFORM_OPTIONS.OPENMETADATA
+        );
 
-          expect(page.url()).toContain('testPlatforms=OpenMetadata');
-          expect(page.url()).not.toContain('testPlatforms=dbt');
-        }
-      );
+        expect(page.url()).toContain('testPlatforms=OpenMetadata');
+        expect(page.url()).not.toContain('testPlatforms=dbt');
+      });
 
-      await test.step(
-        'Verify the new filter persists after page reload',
-        async () => {
-          await page.reload();
-          await waitForAllLoadersToDisappear(page);
+      await test.step('Verify the new filter persists after page reload', async () => {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
 
-          expect(page.url()).toContain('testPlatforms=OpenMetadata');
-          expect(page.url()).not.toContain('testPlatforms=dbt');
+        expect(page.url()).toContain('testPlatforms=OpenMetadata');
+        expect(page.url()).not.toContain('testPlatforms=dbt');
 
-          await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
+        await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
-          const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
+        const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
 
-          await expect(openMetadataRadio).toBeChecked();
+        await expect(openMetadataRadio).toBeChecked();
 
-          await closeFilterDropdown(page);
-        }
-      );
+        await closeFilterDropdown(page);
+      });
 
-      await test.step(
-        'Change back to previous testPlatform filter (dbt)',
-        async () => {
-          await toggleFilter(
-            page,
-            FILTER_LABELS.TEST_PLATFORMS,
-            TEST_PLATFORM_OPTIONS.DBT
-          );
+      await test.step('Change back to previous testPlatform filter (dbt)', async () => {
+        await toggleFilter(
+          page,
+          FILTER_LABELS.TEST_PLATFORMS,
+          TEST_PLATFORM_OPTIONS.DBT
+        );
 
-          expect(page.url()).toContain('testPlatforms=dbt');
-          expect(page.url()).not.toContain('testPlatforms=OpenMetadata');
-        }
-      );
+        expect(page.url()).toContain('testPlatforms=dbt');
+        expect(page.url()).not.toContain('testPlatforms=OpenMetadata');
+      });
 
       await test.step('Verify final selection persists', async () => {
         await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);

@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Meta, StoryObj } from "@storybook/react";
-import { Tooltip, TooltipTrigger } from "../components/base/tooltip/tooltip";
-import { Button } from "../components/base/buttons/button";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
+import { Button } from '../components/base/buttons/button';
 
 const meta = {
-  title: "Components/Tooltip",
+  title: 'Components/Tooltip',
   component: Tooltip,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Tooltip>;
 
 export default meta;
@@ -39,9 +39,8 @@ export const Default: Story = {
 export const WithDescription: StoryObj = {
   render: () => (
     <Tooltip
-      title="Tooltip title"
       description="This is a longer description that provides more context."
-    >
+      title="Tooltip title">
       <TooltipTrigger>
         <Button color="secondary">With description</Button>
       </TooltipTrigger>
@@ -51,7 +50,7 @@ export const WithDescription: StoryObj = {
 
 export const WithArrow: StoryObj = {
   render: () => (
-    <Tooltip title="Tooltip with arrow" arrow>
+    <Tooltip arrow title="Tooltip with arrow">
       <TooltipTrigger>
         <Button color="secondary">With arrow</Button>
       </TooltipTrigger>
@@ -61,25 +60,39 @@ export const WithArrow: StoryObj = {
 
 export const Placements: StoryObj = {
   render: () => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24, padding: 80 }}>
-      <Tooltip title="Top tooltip" placement="top">
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 24,
+        padding: 80,
+      }}>
+      <Tooltip placement="top" title="Top tooltip">
         <TooltipTrigger>
-          <Button color="secondary" size="sm">Top</Button>
+          <Button color="secondary" size="sm">
+            Top
+          </Button>
         </TooltipTrigger>
       </Tooltip>
-      <Tooltip title="Bottom tooltip" placement="bottom">
+      <Tooltip placement="bottom" title="Bottom tooltip">
         <TooltipTrigger>
-          <Button color="secondary" size="sm">Bottom</Button>
+          <Button color="secondary" size="sm">
+            Bottom
+          </Button>
         </TooltipTrigger>
       </Tooltip>
-      <Tooltip title="Left tooltip" placement="left">
+      <Tooltip placement="left" title="Left tooltip">
         <TooltipTrigger>
-          <Button color="secondary" size="sm">Left</Button>
+          <Button color="secondary" size="sm">
+            Left
+          </Button>
         </TooltipTrigger>
       </Tooltip>
-      <Tooltip title="Right tooltip" placement="right">
+      <Tooltip placement="right" title="Right tooltip">
         <TooltipTrigger>
-          <Button color="secondary" size="sm">Right</Button>
+          <Button color="secondary" size="sm">
+            Right
+          </Button>
         </TooltipTrigger>
       </Tooltip>
     </div>
@@ -88,7 +101,7 @@ export const Placements: StoryObj = {
 
 export const AlwaysVisible: StoryObj = {
   render: () => (
-    <Tooltip title="Always visible tooltip" isOpen>
+    <Tooltip isOpen title="Always visible tooltip">
       <TooltipTrigger>
         <Button color="secondary">Always visible</Button>
       </TooltipTrigger>

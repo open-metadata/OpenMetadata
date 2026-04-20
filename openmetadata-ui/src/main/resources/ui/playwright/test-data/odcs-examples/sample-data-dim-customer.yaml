@@ -15,7 +15,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: dim-customer-contract
 name: Dim Customer Data Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active
 description:
   purpose: Data contract for the dim_customer dimension table containing customer metrics and segmentation
@@ -70,18 +70,18 @@ schema:
         description: True if customer has very low probability of returning
 slaProperties:
   - property: freshness
-    value: "6"
+    value: '6'
     unit: hours
     description: Customer data should be refreshed every 6 hours
   - property: availability
-    value: "99.9"
+    value: '99.9'
     unit: percent
 quality:
   - type: custom
     name: no_null_customer_ids
     description: Customer ID should never be null
     column: customer_id
-    rule: "customer_id IS NOT NULL"
+    rule: 'customer_id IS NOT NULL'
     severity: critical
   - type: library
     name: valid_order_counts

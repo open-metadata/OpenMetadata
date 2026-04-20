@@ -1,0 +1,81 @@
+name: Lint Skills Standards
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**/*.md'
+      - 'skills/**/*.json'
+      - 'skills/**/*.yaml'
+      - 'skills/**/*.yml'
+
+jobs:
+  lint-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: 'skills/**/*.md'
+          config: 'skills/.markdownlint.yaml'
+
+  validate-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          python3 -c "
+          import json, pathlib, sys
+          failed = False
+          for f in sorted(pathlib.Path('skills').rglob('*.json')):
+              try:
+                  json.loads(f.read_text())
+                  print(f'OK: {f}')
+              except Exception as e:
+                  print(f'INVALID: {f}: {e}', file=sys.stderr)
+                  failed = True
+          if failed:
+              sys.exit(1)
+          "
+
+  check-symlinks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify standards symlinks
+        run: |
+          for skill_dir in skills/connector-building skills/connector-review skills/connector-standards skills/test-locally; do
+            if [ -L "$skill_dir/standards" ]; then
+              target=$(readlink "$skill_dir/standards")
+              if [ "$target" != "../standards" ]; then
+                echo "ERROR: $skill_dir/standards points to '$target', expected '../standards'"
+                exit 1
+              fi
+              echo "OK: $skill_dir/standards -> $target"
+            else
+              echo "ERROR: $skill_dir/standards is not a symlink"
+              exit 1
+            fi
+          done
+
+  check-plugin-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin.json
+        run: |
+          python3 -c "
+          import json, sys
+          data = json.load(open('skills/.claude-plugin/plugin.json'))
+          required = ['name', 'version', 'description', 'author']
+          missing = [k for k in required if k not in data]
+          if missing:
+              print(f'Missing fields in plugin.json: {missing}')
+              sys.exit(1)
+          print(f'plugin.json OK: {data[\"name\"]} v{data[\"version\"]}')
+          "

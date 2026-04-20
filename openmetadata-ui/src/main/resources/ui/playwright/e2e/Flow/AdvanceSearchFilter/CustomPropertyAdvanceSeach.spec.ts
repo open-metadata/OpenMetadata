@@ -68,12 +68,136 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await dashboard.delete(apiContext);
+    await topic1.delete(apiContext);
+    await topic2.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
   test.describe('Text Field Custom Properties', () => {
+    test('String CP with numeric-like string value', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+      const numericStringDashboard = new DashboardClass();
+
+      await test.step('Setup dashboard with numeric-like string value', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+
+        await numericStringDashboard.create(apiContext);
+
+        await apiContext.patch(
+          `/api/v1/dashboards/${numericStringDashboard.entityResponseData.id}`,
+          {
+            data: [
+              {
+                op: 'add',
+                path: '/extension',
+                value: { [propertyNames['string']]: '100' },
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
+            },
+          }
+        );
+
+        await afterAction();
+      });
+
+      await test.step('Equal operator finds dashboard with string value "100"', async () => {
+        await showAdvancedSearchDialog(page);
+        await applyCustomPropertyFilter(
+          page,
+          propertyNames['string'],
+          'equal',
+          '100'
+        );
+        await verifySearchResults(
+          page,
+          numericStringDashboard.entityResponseData.fullyQualifiedName,
+          true,
+          '100'
+        );
+        await clearAdvancedSearchFilters(page);
+      });
+
+      await test.step('Not_equal operator excludes dashboard with string value "100"', async () => {
+        await showAdvancedSearchDialog(page);
+        await applyCustomPropertyFilter(
+          page,
+          propertyNames['string'],
+          'not_equal',
+          '100'
+        );
+        await verifySearchResults(
+          page,
+          numericStringDashboard.entityResponseData.fullyQualifiedName,
+          false,
+          '100'
+        );
+        await clearAdvancedSearchFilters(page);
+      });
+
+      await test.step('Contains operator finds dashboard with partial numeric-like string "10"', async () => {
+        await showAdvancedSearchDialog(page);
+        await applyCustomPropertyFilter(
+          page,
+          propertyNames['string'],
+          'like',
+          '10'
+        );
+        await verifySearchResults(
+          page,
+          numericStringDashboard.entityResponseData.fullyQualifiedName,
+          true,
+          '10'
+        );
+        await clearAdvancedSearchFilters(page);
+      });
+
+      await test.step('Not contains operator excludes dashboard with partial numeric-like string "10"', async () => {
+        await showAdvancedSearchDialog(page);
+        await applyCustomPropertyFilter(
+          page,
+          propertyNames['string'],
+          'not_like',
+          '10'
+        );
+        await verifySearchResults(
+          page,
+          numericStringDashboard.entityResponseData.fullyQualifiedName,
+          false,
+          '10'
+        );
+        await clearAdvancedSearchFilters(page);
+      });
+
+      await test.step('Is not null operator finds dashboard with numeric-like string value', async () => {
+        await showAdvancedSearchDialog(page);
+        await applyCustomPropertyFilter(
+          page,
+          propertyNames['string'],
+          'is_not_null',
+          ''
+        );
+        await verifySearchResults(
+          page,
+          numericStringDashboard.entityResponseData.fullyQualifiedName,
+          true
+        );
+        await clearAdvancedSearchFilters(page);
+      });
+    });
+
     test('String CP with all operators', async ({ page }) => {
       test.slow();
       const propertyName = propertyNames['string'];
@@ -605,21 +729,21 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     test('Entity Reference CP with all operators', async ({ page }) => {
       test.slow();
       const propertyName = propertyNames['entityReference'];
-      const containsText = topic1.entityResponseData.displayName.substring(
+      const containsText = topic1.entityResponseData.displayName?.substring(
         1,
         5
       );
-      const regexpText = `${topic1.entityResponseData.displayName.substring(
+      const regexpText = `${topic1.entityResponseData.displayName?.substring(
         0,
         2
-      )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
+      )}.*${topic1.entityResponseData.displayName?.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_equals',
-        topic1.entityResponseData.displayName,
+        topic1.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReference'
       );
@@ -635,7 +759,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'select_not_equals',
-        topic1.entityResponseData.displayName,
+        topic1.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReference'
       );
@@ -647,7 +771,12 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, propertyName, 'like', containsText);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        containsText ?? ''
+      );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
@@ -661,7 +790,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'not_like',
-        containsText
+        containsText ?? ''
       );
       await verifySearchResults(
         page,
@@ -703,21 +832,21 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     test('Entity Reference List CP with all operators', async ({ page }) => {
       test.slow();
       const propertyName = propertyNames['entityReferenceList'];
-      const containsText = topic1.entityResponseData.displayName.substring(
+      const containsText = topic1.entityResponseData.displayName?.substring(
         1,
         5
       );
-      const regexpText = `${topic1.entityResponseData.displayName.substring(
+      const regexpText = `${topic1.entityResponseData.displayName?.substring(
         0,
         2
-      )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
+      )}.*${topic1.entityResponseData.displayName?.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_equals',
-        topic1.entityResponseData.displayName,
+        topic1.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReferenceList'
       );
@@ -733,7 +862,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'select_equals',
-        topic2.entityResponseData.displayName,
+        topic2.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReferenceList'
       );
@@ -749,7 +878,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'select_not_equals',
-        topic2.entityResponseData.displayName,
+        topic2.entityResponseData.displayName ?? '',
         'Dashboard',
         'entityReferenceList'
       );
@@ -761,7 +890,12 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, propertyName, 'like', containsText);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        containsText ?? ''
+      );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
@@ -775,7 +909,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'not_like',
-        containsText
+        containsText ?? ''
       );
       await verifySearchResults(
         page,

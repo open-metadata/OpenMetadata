@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -38,7 +38,10 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 from ..conftest import _safe_delete
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 TEST_CASE_FQN = (
     "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"

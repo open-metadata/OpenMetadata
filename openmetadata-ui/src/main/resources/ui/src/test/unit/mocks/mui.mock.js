@@ -106,9 +106,6 @@ jest.mock('@mui/material', () => ({
       {label}
     </label>
   ),
-  CircularProgress: ({ ...props }) => (
-    <div data-testid={props['data-testid']}>Loading...</div>
-  ),
   Modal: ({ children, open, ...props }) =>
     open ? <div data-testid={props['data-testid']}>{children}</div> : null,
   styled: (component) => () => component,

@@ -23,13 +23,12 @@ from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DmlOperationType,
-    ProfileSampleType,
     SystemProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -92,6 +91,10 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def get_connector_name() -> str:
         return "bigquery"
+
+    @staticmethod
+    def get_lineage_config_args() -> dict:
+        return {"processQueryLineage": True}
 
     @staticmethod
     def expected_tables() -> int:

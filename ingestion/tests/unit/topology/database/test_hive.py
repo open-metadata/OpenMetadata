@@ -436,6 +436,88 @@ class HiveUnitTest(TestCase):
             String.__eq__ = custom_eq
             self.assertEqual(expected, original)
 
+    def test_get_columns_deduplicates_partition_column_no_sentinel(self):
+        """
+        Partition key column appears as a plain duplicate row at the end of
+        DESCRIBE output with no '# Partition Information' header in between.
+        get_columns must return each column exactly once.
+        """
+        # process_date is a partition column that appears twice:
+        # once in the regular section and once repeated at the end (no sentinel)
+        table_columns = [
+            ("audio_only", "boolean", None),
+            ("close_id", "int", None),
+            ("device_name", "string", None),
+            ("process_date", "string", None),
+            ("start_time", "bigint", None),
+            ("streaming", "boolean", None),
+            ("process_date", "string", None),  # partition key repeated, no sentinel
+        ]
+        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
+            lambda connection, table_name, schema_name: table_columns
+        )
+
+        col_list = hive_dialect.get_columns(
+            self=hive_dialect,
+            connection=mock_hive_config["source"],
+            table_name="partitioned_table",
+            schema="test_schema",
+        )
+
+        col_names = [col["name"] for col in col_list]
+
+        self.assertEqual(
+            col_names.count("process_date"),
+            1,
+            f"process_date should appear exactly once but got: {col_names}",
+        )
+        self.assertEqual(
+            col_names,
+            [
+                "audio_only",
+                "close_id",
+                "device_name",
+                "process_date",
+                "start_time",
+                "streaming",
+            ],
+        )
+
+    def test_get_columns_deduplicates_partition_column_with_sentinel(self):
+        """
+        Standard Hive DESCRIBE output: partition columns are repeated after
+        a '# Partition Information' sentinel row.
+        get_columns must stop at the sentinel and return each column once.
+        """
+        table_columns = [
+            ("id", "int", None),
+            ("name", "string", None),
+            ("dt", "string", None),
+            (None, None, None),
+            ("# Partition Information", None, None),
+            ("# col_name", "data_type", "comment"),
+            ("dt", "string", None),  # partition key repeated after sentinel
+        ]
+        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
+            lambda connection, table_name, schema_name: table_columns
+        )
+
+        col_list = hive_dialect.get_columns(
+            self=hive_dialect,
+            connection=mock_hive_config["source"],
+            table_name="partitioned_table",
+            schema="test_schema",
+        )
+
+        col_names = [col["name"] for col in col_list]
+
+        self.assertEqual(
+            col_names.count("dt"),
+            1,
+            f"dt should appear exactly once but got: {col_names}",
+        )
+        self.assertEqual(col_names, ["id", "name", "dt"])
+
     def test_ssl_connection_configuration(self):
         """
         Test SSL configuration in Hive connection

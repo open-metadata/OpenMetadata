@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  Skeleton,
-  Stack,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import React, { Fragment, useMemo, useState } from 'react';
 import {
   Area,
@@ -58,7 +51,6 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   noDataPlaceholderText,
   chartType = 'line',
 }: ProfilerDetailsCardProps) => {
-  const theme = useTheme();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const { showBrush, endIndex } = useMemo(() => {
@@ -80,32 +72,20 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   );
 
   if (isLoading) {
-    return <Skeleton height={380} variant="rounded" width="100%" />;
+    return <Skeleton height="95%" variant="rounded" width="100%" />;
   }
 
   return (
-    <Box>
+    <div>
       {title && (
-        <Typography
-          sx={{
-            fontSize: '16px',
-            color: theme.palette.grey[900],
-            fontWeight: 600,
-            mb: 3,
-          }}
-          variant="h6">
-          {title}
-        </Typography>
+        <div className="tw:mb-3">
+          <p className="tw:m-0 tw:text-md tw:font-semibold">{title}</p>
+        </div>
       )}
-      <Card
-        data-testid="profiler-details-card-container"
-        sx={{
-          p: 4,
-          borderRadius: '10px',
-          border: `1px solid ${theme.palette.grey[200]}`,
-          boxShadow: 'none',
-        }}>
-        <Stack spacing={4}>
+      <div
+        className="tw:rounded-[10px] tw:border tw:border-secondary tw:p-4 tw:shadow-none"
+        data-testid="profiler-details-card-container">
+        <div className="tw:flex tw:flex-col tw:gap-4">
           <ProfilerLatestValue
             information={information}
             tickFormatter={tickFormatter}
@@ -158,7 +138,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     />
                   }
                   cursor={{
-                    stroke: theme.palette.grey[200],
+                    stroke: GRAPH_BACKGROUND_COLOR,
                     strokeDasharray: '3 3',
                   }}
                 />
@@ -214,9 +194,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               placeholderText={noDataPlaceholderText}
             />
           )}
-        </Stack>
-      </Card>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };
 

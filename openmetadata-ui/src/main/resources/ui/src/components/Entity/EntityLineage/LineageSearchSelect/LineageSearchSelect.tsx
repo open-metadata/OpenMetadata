@@ -14,7 +14,7 @@ import { RightOutlined } from '@ant-design/icons';
 import { Select, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import {
@@ -26,6 +26,7 @@ import {
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -33,15 +34,9 @@ import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
-  const {
-    nodes,
-    zoomValue,
-    reactFlowInstance,
-    onNodeClick,
-    onColumnClick,
-    isPlatformLineage,
-    platformView,
-  } = useLineageProvider();
+  const { nodes, reactFlowInstance, onNodeClick } = useLineageProvider();
+  const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
+    useLineageStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [allOptions, setAllOptions] = useState<DefaultOptionType[]>([]);
   const [renderedOptions, setRenderedOptions] = useState<DefaultOptionType[]>(
@@ -77,7 +72,7 @@ const LineageSearchSelect = () => {
       };
       options.push(nodeOption);
 
-      const { childrenFlatten = [] } = getEntityChildrenAndLabel(node);
+      const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
       childrenFlatten.forEach((column: Column) => {
         const columnOption = {
@@ -211,10 +206,10 @@ const LineageSearchSelect = () => {
           zoom: zoomValue,
         });
       } else {
-        onColumnClick(value ?? '');
+        setSelectedColumn(value ?? '');
       }
     },
-    [onNodeClick, reactFlowInstance, onColumnClick, nodes, zoomValue]
+    [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
   );
 
   if (isPlatformLineage || platformView !== LineagePlatformView.None) {
@@ -246,4 +241,4 @@ const LineageSearchSelect = () => {
   );
 };
 
-export default LineageSearchSelect;
+export default React.memo(LineageSearchSelect);

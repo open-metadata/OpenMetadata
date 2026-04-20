@@ -17,6 +17,7 @@
     <!-- Don't upgrade from this version as tests don't work with later version-->
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
+    <node.heap.size>6144</node.heap.size>
   </properties>
 
   <profiles>
@@ -149,6 +150,9 @@
                   (and you can remove this whole <configuration> section.) -->
               <arguments>run build</arguments>
               <!--arguments>build</arguments-->
+              <environmentVariables>
+                <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
+              </environmentVariables>
             </configuration>
           </execution>
         </executions>

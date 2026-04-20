@@ -33,8 +33,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
@@ -54,6 +56,7 @@ import org.openmetadata.service.util.RestUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "usage")
 public class UsageResource {
+  private static final int MAX_DEADLOCK_RETRIES = 3;
   private final UsageRepository dao;
   private final Authorizer authorizer;
 
@@ -193,7 +196,7 @@ public class UsageResource {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
     ResourceContext<?> resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.create(entity, id, usage).toResponse();
+    return executeWithDeadlockRetry(() -> dao.create(entity, id, usage).toResponse());
   }
 
   @PUT
@@ -230,7 +233,7 @@ public class UsageResource {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
     ResourceContext<?> resourceContext = new ResourceContext(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.createOrUpdate(entity, id, usage).toResponse();
+    return executeWithDeadlockRetry(() -> dao.createOrUpdate(entity, id, usage).toResponse());
   }
 
   @POST
@@ -270,7 +273,8 @@ public class UsageResource {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
     ResourceContext<?> resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
+    return executeWithDeadlockRetry(
+        () -> dao.createByName(entity, fullyQualifiedName, usage).toResponse());
   }
 
   @PUT
@@ -310,7 +314,44 @@ public class UsageResource {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
     ResourceContext<?> resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
+    return executeWithDeadlockRetry(
+        () -> dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse());
+  }
+
+  private <T> T executeWithDeadlockRetry(Supplier<T> operation) {
+    RuntimeException lastError = null;
+    for (int attempt = 1; attempt <= MAX_DEADLOCK_RETRIES; attempt++) {
+      try {
+        return operation.get();
+      } catch (RuntimeException ex) {
+        if (!isDeadlock(ex) || attempt == MAX_DEADLOCK_RETRIES) {
+          throw ex;
+        }
+        lastError = ex;
+        LOG.warn(
+            "Retrying usage write after deadlock (attempt {}/{})", attempt, MAX_DEADLOCK_RETRIES);
+      }
+    }
+    throw lastError == null
+        ? new IllegalStateException("Deadlock retry failed unexpectedly")
+        : lastError;
+  }
+
+  private boolean isDeadlock(Throwable throwable) {
+    Throwable root = throwable;
+    while (root.getCause() != null) {
+      root = root.getCause();
+    }
+    if (root instanceof SQLException sqlException) {
+      String sqlState = sqlException.getSQLState();
+      int errorCode = sqlException.getErrorCode();
+      return "40001".equals(sqlState)
+          || "40P01".equals(sqlState)
+          || errorCode == 1213
+          || errorCode == 1205;
+    }
+    String message = root.getMessage();
+    return message != null && message.contains("Deadlock found when trying to get lock");
   }
 
   @POST

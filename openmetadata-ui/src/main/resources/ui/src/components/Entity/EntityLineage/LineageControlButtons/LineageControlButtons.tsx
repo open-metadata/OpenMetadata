@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowsAltOutlined, ShrinkOutlined } from '@ant-design/icons';
 import {
   MenuItem,
   ToggleButton,
@@ -33,7 +32,6 @@ import { ReactComponent as ZoomInIcon } from '../../../../assets/svg/ic-zoom-in.
 import { ReactComponent as ZoomOutIcon } from '../../../../assets/svg/ic-zoom-out.svg';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { centerNodePosition } from '../../../../utils/EntityLineageUtils';
 import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
@@ -47,20 +45,9 @@ const LineageControlButtons: FC<{
   const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
     useState<null | HTMLElement>(null);
 
-  const {
-    reactFlowInstance,
-    redraw,
-    activeLayer,
-    isEditMode,
-    expandAllColumns,
-    toggleColumnView,
-  } = useLineageProvider();
+  const { reactFlowInstance, redraw } = useLineageProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
-
-  const isColumnLayerActive = useMemo(() => {
-    return activeLayer.includes(LineageLayer.ColumnLevelLineage);
-  }, [activeLayer]);
 
   const isFullscreen = useMemo(() => {
     const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -179,24 +166,6 @@ const LineageControlButtons: FC<{
           {t('label.refocused-to-home')}
         </MenuItem>
       </StyledMenu>
-
-      {/* Remove this after we have paginated column view inside nodes */}
-      {isColumnLayerActive && !isEditMode && (
-        <Tooltip
-          arrow
-          placement="top"
-          title={
-            expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
-          }>
-          <ToggleButton
-            className="lineage-button"
-            data-testid="expand-column"
-            value="expand-column"
-            onClick={toggleColumnView}>
-            {expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
-          </ToggleButton>
-        </Tooltip>
-      )}
 
       <Tooltip arrow placement="top" title={t('label.mind-map')}>
         <ToggleButton

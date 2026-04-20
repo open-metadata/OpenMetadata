@@ -15,7 +15,7 @@ Datalake GCS Client
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional, Set, Tuple
 
 from google.cloud import storage
 
@@ -29,6 +29,11 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
 from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credentials
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+GCS_COLD_STORAGE_CLASSES: Set[str] = {"COLDLINE", "ARCHIVE"}
 
 
 class DatalakeGcsClient(DatalakeBaseClient):
@@ -107,11 +112,24 @@ class DatalakeGcsClient(DatalakeBaseClient):
             for bucket in self._client.list_buckets():
                 yield bucket.name
 
-    def get_table_names(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
+    def get_table_names(
+        self,
+        bucket_name: str,
+        prefix: Optional[str],
+        skip_cold_storage: bool = False,
+    ) -> Iterable[Tuple[str, Optional[int]]]:
         bucket = self._client.get_bucket(bucket_name)
 
         for key in bucket.list_blobs(prefix=prefix):
-            yield key.name
+            if skip_cold_storage:
+                storage_class = getattr(key, "storage_class", None)
+                if storage_class and storage_class in GCS_COLD_STORAGE_CLASSES:
+                    logger.debug(
+                        f"Skipping cold storage object: {key.name} "
+                        f"(storage_class: {storage_class})"
+                    )
+                    continue
+            yield key.name, key.size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")

@@ -2,7 +2,7 @@
 
 # Governance
 
-> **6 Components** | **55 Files** | **846 Tests** | **1439 Scenarios** 🚀
+> **6 Components** | **63 Files** | **933 Tests** | **1598 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
@@ -19,7 +19,7 @@
 ## Custom Properties
 
 <details open>
-<summary>📄 <b>Customproperties-part1.spec.ts</b> (190 tests, 190 scenarios)</summary>
+<summary>📄 <b>Customproperties-part1.spec.ts</b> (191 tests, 195 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Customproperties-part1.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Customproperties-part1.spec.ts)
 
@@ -27,391 +27,207 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Custom properties without custom property config** - Add Integer custom property for container | Add Integer custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 2 | **Custom properties without custom property config** - Add Integer custom property for dashboard | Add Integer custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 3 | **Custom properties without custom property config** - Add Integer custom property for database | Add Integer custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 4 | **Custom properties without custom property config** - Add Integer custom property for databaseSchema | Add Integer custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 5 | **Custom properties without custom property config** - Add Integer custom property for glossaryTerm | Add Integer custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 6 | **Custom properties without custom property config** - Add Integer custom property for mlmodel | Add Integer custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 7 | **Custom properties without custom property config** - Add Integer custom property for pipeline | Add Integer custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 8 | **Custom properties without custom property config** - Add Integer custom property for searchIndex | Add Integer custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 9 | **Custom properties without custom property config** - Add Integer custom property for storedProcedure | Add Integer custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 10 | **Custom properties without custom property config** - Add Integer custom property for table | Add Integer custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 11 | **Custom properties without custom property config** - Add Integer custom property for topic | Add Integer custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 12 | **Custom properties without custom property config** - Add Integer custom property for apiCollection | Add Integer custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 13 | **Custom properties without custom property config** - Add Integer custom property for apiEndpoint | Add Integer custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 14 | **Custom properties without custom property config** - Add Integer custom property for dataProduct | Add Integer custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 15 | **Custom properties without custom property config** - Add Integer custom property for domain | Add Integer custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 16 | **Custom properties without custom property config** - Add Integer custom property for dashboardDataModel | Add Integer custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 17 | **Custom properties without custom property config** - Add Integer custom property for metric | Add Integer custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 18 | **Custom properties without custom property config** - Add Integer custom property for chart | Add Integer custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 19 | **Custom properties without custom property config** - Add Integer custom property for tableColumn | Add Integer custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 20 | **Custom properties without custom property config** - Add String custom property for container | Add String custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 21 | **Custom properties without custom property config** - Add String custom property for dashboard | Add String custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 22 | **Custom properties without custom property config** - Add String custom property for database | Add String custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 23 | **Custom properties without custom property config** - Add String custom property for databaseSchema | Add String custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 24 | **Custom properties without custom property config** - Add String custom property for glossaryTerm | Add String custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 25 | **Custom properties without custom property config** - Add String custom property for mlmodel | Add String custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 26 | **Custom properties without custom property config** - Add String custom property for pipeline | Add String custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 27 | **Custom properties without custom property config** - Add String custom property for searchIndex | Add String custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 28 | **Custom properties without custom property config** - Add String custom property for storedProcedure | Add String custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 29 | **Custom properties without custom property config** - Add String custom property for table | Add String custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 30 | **Custom properties without custom property config** - Add String custom property for topic | Add String custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 31 | **Custom properties without custom property config** - Add String custom property for apiCollection | Add String custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 32 | **Custom properties without custom property config** - Add String custom property for apiEndpoint | Add String custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 33 | **Custom properties without custom property config** - Add String custom property for dataProduct | Add String custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 34 | **Custom properties without custom property config** - Add String custom property for domain | Add String custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 35 | **Custom properties without custom property config** - Add String custom property for dashboardDataModel | Add String custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 36 | **Custom properties without custom property config** - Add String custom property for metric | Add String custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 37 | **Custom properties without custom property config** - Add String custom property for chart | Add String custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 38 | **Custom properties without custom property config** - Add String custom property for tableColumn | Add String custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 39 | **Custom properties without custom property config** - Add Markdown custom property for container | Add Markdown custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 40 | **Custom properties without custom property config** - Add Markdown custom property for dashboard | Add Markdown custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 41 | **Custom properties without custom property config** - Add Markdown custom property for database | Add Markdown custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 42 | **Custom properties without custom property config** - Add Markdown custom property for databaseSchema | Add Markdown custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 43 | **Custom properties without custom property config** - Add Markdown custom property for glossaryTerm | Add Markdown custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 44 | **Custom properties without custom property config** - Add Markdown custom property for mlmodel | Add Markdown custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 45 | **Custom properties without custom property config** - Add Markdown custom property for pipeline | Add Markdown custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 46 | **Custom properties without custom property config** - Add Markdown custom property for searchIndex | Add Markdown custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 47 | **Custom properties without custom property config** - Add Markdown custom property for storedProcedure | Add Markdown custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 48 | **Custom properties without custom property config** - Add Markdown custom property for table | Add Markdown custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 49 | **Custom properties without custom property config** - Add Markdown custom property for topic | Add Markdown custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 50 | **Custom properties without custom property config** - Add Markdown custom property for apiCollection | Add Markdown custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 51 | **Custom properties without custom property config** - Add Markdown custom property for apiEndpoint | Add Markdown custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 52 | **Custom properties without custom property config** - Add Markdown custom property for dataProduct | Add Markdown custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 53 | **Custom properties without custom property config** - Add Markdown custom property for domain | Add Markdown custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 54 | **Custom properties without custom property config** - Add Markdown custom property for dashboardDataModel | Add Markdown custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 55 | **Custom properties without custom property config** - Add Markdown custom property for metric | Add Markdown custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 56 | **Custom properties without custom property config** - Add Markdown custom property for chart | Add Markdown custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 57 | **Custom properties without custom property config** - Add Markdown custom property for tableColumn | Add Markdown custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 58 | **Custom properties without custom property config** - Add Duration custom property for container | Add Duration custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 59 | **Custom properties without custom property config** - Add Duration custom property for dashboard | Add Duration custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 60 | **Custom properties without custom property config** - Add Duration custom property for database | Add Duration custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 61 | **Custom properties without custom property config** - Add Duration custom property for databaseSchema | Add Duration custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 62 | **Custom properties without custom property config** - Add Duration custom property for glossaryTerm | Add Duration custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 63 | **Custom properties without custom property config** - Add Duration custom property for mlmodel | Add Duration custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 64 | **Custom properties without custom property config** - Add Duration custom property for pipeline | Add Duration custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 65 | **Custom properties without custom property config** - Add Duration custom property for searchIndex | Add Duration custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 66 | **Custom properties without custom property config** - Add Duration custom property for storedProcedure | Add Duration custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 67 | **Custom properties without custom property config** - Add Duration custom property for table | Add Duration custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 68 | **Custom properties without custom property config** - Add Duration custom property for topic | Add Duration custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 69 | **Custom properties without custom property config** - Add Duration custom property for apiCollection | Add Duration custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 70 | **Custom properties without custom property config** - Add Duration custom property for apiEndpoint | Add Duration custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 71 | **Custom properties without custom property config** - Add Duration custom property for dataProduct | Add Duration custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 72 | **Custom properties without custom property config** - Add Duration custom property for domain | Add Duration custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 73 | **Custom properties without custom property config** - Add Duration custom property for dashboardDataModel | Add Duration custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 74 | **Custom properties without custom property config** - Add Duration custom property for metric | Add Duration custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 75 | **Custom properties without custom property config** - Add Duration custom property for chart | Add Duration custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 76 | **Custom properties without custom property config** - Add Duration custom property for tableColumn | Add Duration custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 77 | **Custom properties without custom property config** - Add Email custom property for container | Add Email custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 78 | **Custom properties without custom property config** - Add Email custom property for dashboard | Add Email custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 79 | **Custom properties without custom property config** - Add Email custom property for database | Add Email custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 80 | **Custom properties without custom property config** - Add Email custom property for databaseSchema | Add Email custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 81 | **Custom properties without custom property config** - Add Email custom property for glossaryTerm | Add Email custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 82 | **Custom properties without custom property config** - Add Email custom property for mlmodel | Add Email custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 83 | **Custom properties without custom property config** - Add Email custom property for pipeline | Add Email custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 84 | **Custom properties without custom property config** - Add Email custom property for searchIndex | Add Email custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 85 | **Custom properties without custom property config** - Add Email custom property for storedProcedure | Add Email custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 86 | **Custom properties without custom property config** - Add Email custom property for table | Add Email custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 87 | **Custom properties without custom property config** - Add Email custom property for topic | Add Email custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 88 | **Custom properties without custom property config** - Add Email custom property for apiCollection | Add Email custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 89 | **Custom properties without custom property config** - Add Email custom property for apiEndpoint | Add Email custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 90 | **Custom properties without custom property config** - Add Email custom property for dataProduct | Add Email custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 91 | **Custom properties without custom property config** - Add Email custom property for domain | Add Email custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 92 | **Custom properties without custom property config** - Add Email custom property for dashboardDataModel | Add Email custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 93 | **Custom properties without custom property config** - Add Email custom property for metric | Add Email custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 94 | **Custom properties without custom property config** - Add Email custom property for chart | Add Email custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 95 | **Custom properties without custom property config** - Add Email custom property for tableColumn | Add Email custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 96 | **Custom properties without custom property config** - Add Number custom property for container | Add Number custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 97 | **Custom properties without custom property config** - Add Number custom property for dashboard | Add Number custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 98 | **Custom properties without custom property config** - Add Number custom property for database | Add Number custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 99 | **Custom properties without custom property config** - Add Number custom property for databaseSchema | Add Number custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 100 | **Custom properties without custom property config** - Add Number custom property for glossaryTerm | Add Number custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 101 | **Custom properties without custom property config** - Add Number custom property for mlmodel | Add Number custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 102 | **Custom properties without custom property config** - Add Number custom property for pipeline | Add Number custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 103 | **Custom properties without custom property config** - Add Number custom property for searchIndex | Add Number custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 104 | **Custom properties without custom property config** - Add Number custom property for storedProcedure | Add Number custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 105 | **Custom properties without custom property config** - Add Number custom property for table | Add Number custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 106 | **Custom properties without custom property config** - Add Number custom property for topic | Add Number custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 107 | **Custom properties without custom property config** - Add Number custom property for apiCollection | Add Number custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 108 | **Custom properties without custom property config** - Add Number custom property for apiEndpoint | Add Number custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 109 | **Custom properties without custom property config** - Add Number custom property for dataProduct | Add Number custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 110 | **Custom properties without custom property config** - Add Number custom property for domain | Add Number custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 111 | **Custom properties without custom property config** - Add Number custom property for dashboardDataModel | Add Number custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 112 | **Custom properties without custom property config** - Add Number custom property for metric | Add Number custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 113 | **Custom properties without custom property config** - Add Number custom property for chart | Add Number custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 114 | **Custom properties without custom property config** - Add Number custom property for tableColumn | Add Number custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 115 | **Custom properties without custom property config** - Add Sql Query custom property for container | Add Sql Query custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 116 | **Custom properties without custom property config** - Add Sql Query custom property for dashboard | Add Sql Query custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 117 | **Custom properties without custom property config** - Add Sql Query custom property for database | Add Sql Query custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 118 | **Custom properties without custom property config** - Add Sql Query custom property for databaseSchema | Add Sql Query custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 119 | **Custom properties without custom property config** - Add Sql Query custom property for glossaryTerm | Add Sql Query custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 120 | **Custom properties without custom property config** - Add Sql Query custom property for mlmodel | Add Sql Query custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 121 | **Custom properties without custom property config** - Add Sql Query custom property for pipeline | Add Sql Query custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 122 | **Custom properties without custom property config** - Add Sql Query custom property for searchIndex | Add Sql Query custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 123 | **Custom properties without custom property config** - Add Sql Query custom property for storedProcedure | Add Sql Query custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 124 | **Custom properties without custom property config** - Add Sql Query custom property for table | Add Sql Query custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 125 | **Custom properties without custom property config** - Add Sql Query custom property for topic | Add Sql Query custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 126 | **Custom properties without custom property config** - Add Sql Query custom property for apiCollection | Add Sql Query custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 127 | **Custom properties without custom property config** - Add Sql Query custom property for apiEndpoint | Add Sql Query custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 128 | **Custom properties without custom property config** - Add Sql Query custom property for dataProduct | Add Sql Query custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 129 | **Custom properties without custom property config** - Add Sql Query custom property for domain | Add Sql Query custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 130 | **Custom properties without custom property config** - Add Sql Query custom property for dashboardDataModel | Add Sql Query custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 131 | **Custom properties without custom property config** - Add Sql Query custom property for metric | Add Sql Query custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 132 | **Custom properties without custom property config** - Add Sql Query custom property for chart | Add Sql Query custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 133 | **Custom properties without custom property config** - Add Sql Query custom property for tableColumn | Add Sql Query custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 134 | **Custom properties without custom property config** - Add Time Interval custom property for container | Add Time Interval custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 135 | **Custom properties without custom property config** - Add Time Interval custom property for dashboard | Add Time Interval custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 136 | **Custom properties without custom property config** - Add Time Interval custom property for database | Add Time Interval custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 137 | **Custom properties without custom property config** - Add Time Interval custom property for databaseSchema | Add Time Interval custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 138 | **Custom properties without custom property config** - Add Time Interval custom property for glossaryTerm | Add Time Interval custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 139 | **Custom properties without custom property config** - Add Time Interval custom property for mlmodel | Add Time Interval custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 140 | **Custom properties without custom property config** - Add Time Interval custom property for pipeline | Add Time Interval custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 141 | **Custom properties without custom property config** - Add Time Interval custom property for searchIndex | Add Time Interval custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 142 | **Custom properties without custom property config** - Add Time Interval custom property for storedProcedure | Add Time Interval custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 143 | **Custom properties without custom property config** - Add Time Interval custom property for table | Add Time Interval custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 144 | **Custom properties without custom property config** - Add Time Interval custom property for topic | Add Time Interval custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 145 | **Custom properties without custom property config** - Add Time Interval custom property for apiCollection | Add Time Interval custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 146 | **Custom properties without custom property config** - Add Time Interval custom property for apiEndpoint | Add Time Interval custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 147 | **Custom properties without custom property config** - Add Time Interval custom property for dataProduct | Add Time Interval custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 148 | **Custom properties without custom property config** - Add Time Interval custom property for domain | Add Time Interval custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 149 | **Custom properties without custom property config** - Add Time Interval custom property for dashboardDataModel | Add Time Interval custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 150 | **Custom properties without custom property config** - Add Time Interval custom property for metric | Add Time Interval custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 151 | **Custom properties without custom property config** - Add Time Interval custom property for chart | Add Time Interval custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 152 | **Custom properties without custom property config** - Add Time Interval custom property for tableColumn | Add Time Interval custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 153 | **Custom properties without custom property config** - Add Timestamp custom property for container | Add Timestamp custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 154 | **Custom properties without custom property config** - Add Timestamp custom property for dashboard | Add Timestamp custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 155 | **Custom properties without custom property config** - Add Timestamp custom property for database | Add Timestamp custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 156 | **Custom properties without custom property config** - Add Timestamp custom property for databaseSchema | Add Timestamp custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 157 | **Custom properties without custom property config** - Add Timestamp custom property for glossaryTerm | Add Timestamp custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 158 | **Custom properties without custom property config** - Add Timestamp custom property for mlmodel | Add Timestamp custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 159 | **Custom properties without custom property config** - Add Timestamp custom property for pipeline | Add Timestamp custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 160 | **Custom properties without custom property config** - Add Timestamp custom property for searchIndex | Add Timestamp custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 161 | **Custom properties without custom property config** - Add Timestamp custom property for storedProcedure | Add Timestamp custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 162 | **Custom properties without custom property config** - Add Timestamp custom property for table | Add Timestamp custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 163 | **Custom properties without custom property config** - Add Timestamp custom property for topic | Add Timestamp custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 164 | **Custom properties without custom property config** - Add Timestamp custom property for apiCollection | Add Timestamp custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 165 | **Custom properties without custom property config** - Add Timestamp custom property for apiEndpoint | Add Timestamp custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 166 | **Custom properties without custom property config** - Add Timestamp custom property for dataProduct | Add Timestamp custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 167 | **Custom properties without custom property config** - Add Timestamp custom property for domain | Add Timestamp custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 168 | **Custom properties without custom property config** - Add Timestamp custom property for dashboardDataModel | Add Timestamp custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 169 | **Custom properties without custom property config** - Add Timestamp custom property for metric | Add Timestamp custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 170 | **Custom properties without custom property config** - Add Timestamp custom property for chart | Add Timestamp custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 171 | **Custom properties without custom property config** - Add Timestamp custom property for tableColumn | Add Timestamp custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 172 | **Custom properties without custom property config** - Add Hyperlink custom property for container | Add Hyperlink custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 173 | **Custom properties without custom property config** - Add Hyperlink custom property for dashboard | Add Hyperlink custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 174 | **Custom properties without custom property config** - Add Hyperlink custom property for database | Add Hyperlink custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 175 | **Custom properties without custom property config** - Add Hyperlink custom property for databaseSchema | Add Hyperlink custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 176 | **Custom properties without custom property config** - Add Hyperlink custom property for glossaryTerm | Add Hyperlink custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 177 | **Custom properties without custom property config** - Add Hyperlink custom property for mlmodel | Add Hyperlink custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 178 | **Custom properties without custom property config** - Add Hyperlink custom property for pipeline | Add Hyperlink custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 179 | **Custom properties without custom property config** - Add Hyperlink custom property for searchIndex | Add Hyperlink custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 180 | **Custom properties without custom property config** - Add Hyperlink custom property for storedProcedure | Add Hyperlink custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 181 | **Custom properties without custom property config** - Add Hyperlink custom property for table | Add Hyperlink custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 182 | **Custom properties without custom property config** - Add Hyperlink custom property for topic | Add Hyperlink custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 183 | **Custom properties without custom property config** - Add Hyperlink custom property for apiCollection | Add Hyperlink custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 184 | **Custom properties without custom property config** - Add Hyperlink custom property for apiEndpoint | Add Hyperlink custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 185 | **Custom properties without custom property config** - Add Hyperlink custom property for dataProduct | Add Hyperlink custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 186 | **Custom properties without custom property config** - Add Hyperlink custom property for domain | Add Hyperlink custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 187 | **Custom properties without custom property config** - Add Hyperlink custom property for dashboardDataModel | Add Hyperlink custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 188 | **Custom properties without custom property config** - Add Hyperlink custom property for metric | Add Hyperlink custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 189 | **Custom properties without custom property config** - Add Hyperlink custom property for chart | Add Hyperlink custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 190 | **Custom properties without custom property config** - Add Hyperlink custom property for tableColumn | Add Hyperlink custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 1 | **Custom properties without custom property config** - Integer | Integer |
+| 2 | **Custom properties without custom property config** - String | String |
+| 3 | **Custom properties without custom property config** - Markdown | Markdown |
+| 4 | **Custom properties without custom property config** - Duration | Duration |
+| 5 | **Custom properties without custom property config** - Email | Email |
+| 6 | **Custom properties without custom property config** - Number | Number |
+| 7 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 8 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 9 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 10 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 11 | **Custom properties without custom property config** - Integer | Integer |
+| 12 | **Custom properties without custom property config** - String | String |
+| 13 | **Custom properties without custom property config** - Markdown | Markdown |
+| 14 | **Custom properties without custom property config** - Duration | Duration |
+| 15 | **Custom properties without custom property config** - Email | Email |
+| 16 | **Custom properties without custom property config** - Number | Number |
+| 17 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 18 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 19 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 20 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 21 | **Custom properties without custom property config** - Integer | Integer |
+| 22 | **Custom properties without custom property config** - String | String |
+| 23 | **Custom properties without custom property config** - Markdown | Markdown |
+| 24 | **Custom properties without custom property config** - Duration | Duration |
+| 25 | **Custom properties without custom property config** - Email | Email |
+| 26 | **Custom properties without custom property config** - Number | Number |
+| 27 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 28 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 29 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 30 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 31 | **Custom properties without custom property config** - Integer | Integer |
+| 32 | **Custom properties without custom property config** - String | String |
+| 33 | **Custom properties without custom property config** - Markdown | Markdown |
+| 34 | **Custom properties without custom property config** - Duration | Duration |
+| 35 | **Custom properties without custom property config** - Email | Email |
+| 36 | **Custom properties without custom property config** - Number | Number |
+| 37 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 38 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 39 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 40 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 41 | **Custom properties without custom property config** - Integer | Integer |
+| 42 | **Custom properties without custom property config** - String | String |
+| 43 | **Custom properties without custom property config** - Markdown | Markdown |
+| 44 | **Custom properties without custom property config** - Duration | Duration |
+| 45 | **Custom properties without custom property config** - Email | Email |
+| 46 | **Custom properties without custom property config** - Number | Number |
+| 47 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 48 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 49 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 50 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 51 | **Custom properties without custom property config** - Integer | Integer |
+| 52 | **Custom properties without custom property config** - String | String |
+| 53 | **Custom properties without custom property config** - Markdown | Markdown |
+| 54 | **Custom properties without custom property config** - Duration | Duration |
+| 55 | **Custom properties without custom property config** - Email | Email |
+| 56 | **Custom properties without custom property config** - Number | Number |
+| 57 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 58 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 59 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 60 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 61 | **Custom properties without custom property config** - Integer | Integer |
+| 62 | **Custom properties without custom property config** - String | String |
+| 63 | **Custom properties without custom property config** - Markdown | Markdown |
+| 64 | **Custom properties without custom property config** - Duration | Duration |
+| 65 | **Custom properties without custom property config** - Email | Email |
+| 66 | **Custom properties without custom property config** - Number | Number |
+| 67 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 68 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 69 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 70 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 71 | **Custom properties without custom property config** - Integer | Integer |
+| 72 | **Custom properties without custom property config** - String | String |
+| 73 | **Custom properties without custom property config** - Markdown | Markdown |
+| 74 | **Custom properties without custom property config** - Duration | Duration |
+| 75 | **Custom properties without custom property config** - Email | Email |
+| 76 | **Custom properties without custom property config** - Number | Number |
+| 77 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 78 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 79 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 80 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 81 | **Custom properties without custom property config** - Integer | Integer |
+| 82 | **Custom properties without custom property config** - String | String |
+| 83 | **Custom properties without custom property config** - Markdown | Markdown |
+| 84 | **Custom properties without custom property config** - Duration | Duration |
+| 85 | **Custom properties without custom property config** - Email | Email |
+| 86 | **Custom properties without custom property config** - Number | Number |
+| 87 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 88 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 89 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 90 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 91 | **Custom properties without custom property config** - Integer | Integer |
+| 92 | **Custom properties without custom property config** - String | String |
+| 93 | **Custom properties without custom property config** - Markdown | Markdown |
+| 94 | **Custom properties without custom property config** - Duration | Duration |
+| 95 | **Custom properties without custom property config** - Email | Email |
+| 96 | **Custom properties without custom property config** - Number | Number |
+| 97 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 98 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 99 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 100 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 101 | **Custom properties without custom property config** - Integer | Integer |
+| 102 | **Custom properties without custom property config** - String | String |
+| 103 | **Custom properties without custom property config** - Markdown | Markdown |
+| 104 | **Custom properties without custom property config** - Duration | Duration |
+| 105 | **Custom properties without custom property config** - Email | Email |
+| 106 | **Custom properties without custom property config** - Number | Number |
+| 107 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 108 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 109 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 110 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 111 | **Custom properties without custom property config** - Integer | Integer |
+| 112 | **Custom properties without custom property config** - String | String |
+| 113 | **Custom properties without custom property config** - Markdown | Markdown |
+| 114 | **Custom properties without custom property config** - Duration | Duration |
+| 115 | **Custom properties without custom property config** - Email | Email |
+| 116 | **Custom properties without custom property config** - Number | Number |
+| 117 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 118 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 119 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 120 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 121 | **Custom properties without custom property config** - Integer | Integer |
+| 122 | **Custom properties without custom property config** - String | String |
+| 123 | **Custom properties without custom property config** - Markdown | Markdown |
+| 124 | **Custom properties without custom property config** - Duration | Duration |
+| 125 | **Custom properties without custom property config** - Email | Email |
+| 126 | **Custom properties without custom property config** - Number | Number |
+| 127 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 128 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 129 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 130 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 131 | **Custom properties without custom property config** - Integer | Integer |
+| 132 | **Custom properties without custom property config** - String | String |
+| 133 | **Custom properties without custom property config** - Markdown | Markdown |
+| 134 | **Custom properties without custom property config** - Duration | Duration |
+| 135 | **Custom properties without custom property config** - Email | Email |
+| 136 | **Custom properties without custom property config** - Number | Number |
+| 137 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 138 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 139 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 140 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 141 | **Custom properties without custom property config** - Integer | Integer |
+| 142 | **Custom properties without custom property config** - String | String |
+| 143 | **Custom properties without custom property config** - Markdown | Markdown |
+| 144 | **Custom properties without custom property config** - Duration | Duration |
+| 145 | **Custom properties without custom property config** - Email | Email |
+| 146 | **Custom properties without custom property config** - Number | Number |
+| 147 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 148 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 149 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 150 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 151 | **Custom properties without custom property config** - Integer | Integer |
+| 152 | **Custom properties without custom property config** - String | String |
+| 153 | **Custom properties without custom property config** - Markdown | Markdown |
+| 154 | **Custom properties without custom property config** - Duration | Duration |
+| 155 | **Custom properties without custom property config** - Email | Email |
+| 156 | **Custom properties without custom property config** - Number | Number |
+| 157 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 158 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 159 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 160 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 161 | **Custom properties without custom property config** - Integer | Integer |
+| 162 | **Custom properties without custom property config** - String | String |
+| 163 | **Custom properties without custom property config** - Markdown | Markdown |
+| 164 | **Custom properties without custom property config** - Duration | Duration |
+| 165 | **Custom properties without custom property config** - Email | Email |
+| 166 | **Custom properties without custom property config** - Number | Number |
+| 167 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 168 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 169 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 170 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 171 | **Custom properties without custom property config** - Integer | Integer |
+| 172 | **Custom properties without custom property config** - String | String |
+| 173 | **Custom properties without custom property config** - Markdown | Markdown |
+| 174 | **Custom properties without custom property config** - Duration | Duration |
+| 175 | **Custom properties without custom property config** - Email | Email |
+| 176 | **Custom properties without custom property config** - Number | Number |
+| 177 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 178 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 179 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 180 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 181 | **Custom properties without custom property config** - Integer | Integer |
+| 182 | **Custom properties without custom property config** - String | String |
+| 183 | **Custom properties without custom property config** - Markdown | Markdown |
+| 184 | **Custom properties without custom property config** - Duration | Duration |
+| 185 | **Custom properties without custom property config** - Email | Email |
+| 186 | **Custom properties without custom property config** - Number | Number |
+| 187 | **Custom properties without custom property config** - Sql Query | Sql Query |
+| 188 | **Custom properties without custom property config** - Time Interval | Time Interval |
+| 189 | **Custom properties without custom property config** - Timestamp | Timestamp |
+| 190 | **Custom properties without custom property config** - Hyperlink | Hyperlink |
+| 191 | **Custom properties without custom property config** - sqlQuery shows scrollable CodeMirror container and no expand toggle | SqlQuery shows scrollable CodeMirror container and no expand toggle |
+| | ↳ *Create sqlQuery property* | |
+| | ↳ *Set multi-line SQL value* | |
+| | ↳ *Verify .CodeMirror-scroll is height-constrained and scrollable* | |
+| | ↳ *Verify expand/collapse toggle is hidden* | |
+| | ↳ *Cleanup property* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>Customproperties-part2.spec.ts</b> (133 tests, 133 scenarios)</summary>
+<summary>📄 <b>Customproperties-part2.spec.ts</b> (135 tests, 145 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Customproperties-part2.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Customproperties-part2.spec.ts)
 
@@ -419,272 +235,153 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Custom properties with custom property config** - Add Enum custom property for container | Add Enum custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 2 | **Custom properties with custom property config** - Add Enum custom property for dashboard | Add Enum custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 3 | **Custom properties with custom property config** - Add Enum custom property for database | Add Enum custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 4 | **Custom properties with custom property config** - Add Enum custom property for databaseSchema | Add Enum custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 5 | **Custom properties with custom property config** - Add Enum custom property for glossaryTerm | Add Enum custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 6 | **Custom properties with custom property config** - Add Enum custom property for mlmodel | Add Enum custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 7 | **Custom properties with custom property config** - Add Enum custom property for pipeline | Add Enum custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 8 | **Custom properties with custom property config** - Add Enum custom property for searchIndex | Add Enum custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 9 | **Custom properties with custom property config** - Add Enum custom property for storedProcedure | Add Enum custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 10 | **Custom properties with custom property config** - Add Enum custom property for table | Add Enum custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 11 | **Custom properties with custom property config** - Add Enum custom property for topic | Add Enum custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 12 | **Custom properties with custom property config** - Add Enum custom property for apiCollection | Add Enum custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 13 | **Custom properties with custom property config** - Add Enum custom property for apiEndpoint | Add Enum custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 14 | **Custom properties with custom property config** - Add Enum custom property for dataProduct | Add Enum custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 15 | **Custom properties with custom property config** - Add Enum custom property for domain | Add Enum custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 16 | **Custom properties with custom property config** - Add Enum custom property for dashboardDataModel | Add Enum custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 17 | **Custom properties with custom property config** - Add Enum custom property for metric | Add Enum custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 18 | **Custom properties with custom property config** - Add Enum custom property for chart | Add Enum custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 19 | **Custom properties with custom property config** - Add Enum custom property for tableColumn | Add Enum custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 20 | **Custom properties with custom property config** - Add Table custom property for container | Add Table custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 21 | **Custom properties with custom property config** - Add Table custom property for dashboard | Add Table custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 22 | **Custom properties with custom property config** - Add Table custom property for database | Add Table custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 23 | **Custom properties with custom property config** - Add Table custom property for databaseSchema | Add Table custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 24 | **Custom properties with custom property config** - Add Table custom property for glossaryTerm | Add Table custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 25 | **Custom properties with custom property config** - Add Table custom property for mlmodel | Add Table custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 26 | **Custom properties with custom property config** - Add Table custom property for pipeline | Add Table custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 27 | **Custom properties with custom property config** - Add Table custom property for searchIndex | Add Table custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 28 | **Custom properties with custom property config** - Add Table custom property for storedProcedure | Add Table custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 29 | **Custom properties with custom property config** - Add Table custom property for table | Add Table custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 30 | **Custom properties with custom property config** - Add Table custom property for topic | Add Table custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 31 | **Custom properties with custom property config** - Add Table custom property for apiCollection | Add Table custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 32 | **Custom properties with custom property config** - Add Table custom property for apiEndpoint | Add Table custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 33 | **Custom properties with custom property config** - Add Table custom property for dataProduct | Add Table custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 34 | **Custom properties with custom property config** - Add Table custom property for domain | Add Table custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 35 | **Custom properties with custom property config** - Add Table custom property for dashboardDataModel | Add Table custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 36 | **Custom properties with custom property config** - Add Table custom property for metric | Add Table custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 37 | **Custom properties with custom property config** - Add Table custom property for chart | Add Table custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 38 | **Custom properties with custom property config** - Add Table custom property for tableColumn | Add Table custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 39 | **Custom properties with custom property config** - Add Entity Reference custom property for container | Add Entity Reference custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 40 | **Custom properties with custom property config** - Add Entity Reference custom property for dashboard | Add Entity Reference custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 41 | **Custom properties with custom property config** - Add Entity Reference custom property for database | Add Entity Reference custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 42 | **Custom properties with custom property config** - Add Entity Reference custom property for databaseSchema | Add Entity Reference custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 43 | **Custom properties with custom property config** - Add Entity Reference custom property for glossaryTerm | Add Entity Reference custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 44 | **Custom properties with custom property config** - Add Entity Reference custom property for mlmodel | Add Entity Reference custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 45 | **Custom properties with custom property config** - Add Entity Reference custom property for pipeline | Add Entity Reference custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 46 | **Custom properties with custom property config** - Add Entity Reference custom property for searchIndex | Add Entity Reference custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 47 | **Custom properties with custom property config** - Add Entity Reference custom property for storedProcedure | Add Entity Reference custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 48 | **Custom properties with custom property config** - Add Entity Reference custom property for table | Add Entity Reference custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 49 | **Custom properties with custom property config** - Add Entity Reference custom property for topic | Add Entity Reference custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 50 | **Custom properties with custom property config** - Add Entity Reference custom property for apiCollection | Add Entity Reference custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 51 | **Custom properties with custom property config** - Add Entity Reference custom property for apiEndpoint | Add Entity Reference custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 52 | **Custom properties with custom property config** - Add Entity Reference custom property for dataProduct | Add Entity Reference custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 53 | **Custom properties with custom property config** - Add Entity Reference custom property for domain | Add Entity Reference custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 54 | **Custom properties with custom property config** - Add Entity Reference custom property for dashboardDataModel | Add Entity Reference custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 55 | **Custom properties with custom property config** - Add Entity Reference custom property for metric | Add Entity Reference custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 56 | **Custom properties with custom property config** - Add Entity Reference custom property for chart | Add Entity Reference custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 57 | **Custom properties with custom property config** - Add Entity Reference custom property for tableColumn | Add Entity Reference custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 58 | **Custom properties with custom property config** - Add Entity Reference list custom property for container | Add Entity Reference list custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 59 | **Custom properties with custom property config** - Add Entity Reference list custom property for dashboard | Add Entity Reference list custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 60 | **Custom properties with custom property config** - Add Entity Reference list custom property for database | Add Entity Reference list custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 61 | **Custom properties with custom property config** - Add Entity Reference list custom property for databaseSchema | Add Entity Reference list custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 62 | **Custom properties with custom property config** - Add Entity Reference list custom property for glossaryTerm | Add Entity Reference list custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 63 | **Custom properties with custom property config** - Add Entity Reference list custom property for mlmodel | Add Entity Reference list custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 64 | **Custom properties with custom property config** - Add Entity Reference list custom property for pipeline | Add Entity Reference list custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 65 | **Custom properties with custom property config** - Add Entity Reference list custom property for searchIndex | Add Entity Reference list custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 66 | **Custom properties with custom property config** - Add Entity Reference list custom property for storedProcedure | Add Entity Reference list custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 67 | **Custom properties with custom property config** - Add Entity Reference list custom property for table | Add Entity Reference list custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 68 | **Custom properties with custom property config** - Add Entity Reference list custom property for topic | Add Entity Reference list custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 69 | **Custom properties with custom property config** - Add Entity Reference list custom property for apiCollection | Add Entity Reference list custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 70 | **Custom properties with custom property config** - Add Entity Reference list custom property for apiEndpoint | Add Entity Reference list custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 71 | **Custom properties with custom property config** - Add Entity Reference list custom property for dataProduct | Add Entity Reference list custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 72 | **Custom properties with custom property config** - Add Entity Reference list custom property for domain | Add Entity Reference list custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 73 | **Custom properties with custom property config** - Add Entity Reference list custom property for dashboardDataModel | Add Entity Reference list custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 74 | **Custom properties with custom property config** - Add Entity Reference list custom property for metric | Add Entity Reference list custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 75 | **Custom properties with custom property config** - Add Entity Reference list custom property for chart | Add Entity Reference list custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 76 | **Custom properties with custom property config** - Add Entity Reference list custom property for tableColumn | Add Entity Reference list custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 77 | **Custom properties with custom property config** - Add Date custom property for container | Add Date custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 78 | **Custom properties with custom property config** - Add Date custom property for dashboard | Add Date custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 79 | **Custom properties with custom property config** - Add Date custom property for database | Add Date custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 80 | **Custom properties with custom property config** - Add Date custom property for databaseSchema | Add Date custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 81 | **Custom properties with custom property config** - Add Date custom property for glossaryTerm | Add Date custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 82 | **Custom properties with custom property config** - Add Date custom property for mlmodel | Add Date custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 83 | **Custom properties with custom property config** - Add Date custom property for pipeline | Add Date custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 84 | **Custom properties with custom property config** - Add Date custom property for searchIndex | Add Date custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 85 | **Custom properties with custom property config** - Add Date custom property for storedProcedure | Add Date custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 86 | **Custom properties with custom property config** - Add Date custom property for table | Add Date custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 87 | **Custom properties with custom property config** - Add Date custom property for topic | Add Date custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 88 | **Custom properties with custom property config** - Add Date custom property for apiCollection | Add Date custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 89 | **Custom properties with custom property config** - Add Date custom property for apiEndpoint | Add Date custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 90 | **Custom properties with custom property config** - Add Date custom property for dataProduct | Add Date custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 91 | **Custom properties with custom property config** - Add Date custom property for domain | Add Date custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 92 | **Custom properties with custom property config** - Add Date custom property for dashboardDataModel | Add Date custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 93 | **Custom properties with custom property config** - Add Date custom property for metric | Add Date custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 94 | **Custom properties with custom property config** - Add Date custom property for chart | Add Date custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 95 | **Custom properties with custom property config** - Add Date custom property for tableColumn | Add Date custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 96 | **Custom properties with custom property config** - Add Time custom property for container | Add Time custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 97 | **Custom properties with custom property config** - Add Time custom property for dashboard | Add Time custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 98 | **Custom properties with custom property config** - Add Time custom property for database | Add Time custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 99 | **Custom properties with custom property config** - Add Time custom property for databaseSchema | Add Time custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 100 | **Custom properties with custom property config** - Add Time custom property for glossaryTerm | Add Time custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 101 | **Custom properties with custom property config** - Add Time custom property for mlmodel | Add Time custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 102 | **Custom properties with custom property config** - Add Time custom property for pipeline | Add Time custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 103 | **Custom properties with custom property config** - Add Time custom property for searchIndex | Add Time custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 104 | **Custom properties with custom property config** - Add Time custom property for storedProcedure | Add Time custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 105 | **Custom properties with custom property config** - Add Time custom property for table | Add Time custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 106 | **Custom properties with custom property config** - Add Time custom property for topic | Add Time custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 107 | **Custom properties with custom property config** - Add Time custom property for apiCollection | Add Time custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 108 | **Custom properties with custom property config** - Add Time custom property for apiEndpoint | Add Time custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 109 | **Custom properties with custom property config** - Add Time custom property for dataProduct | Add Time custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 110 | **Custom properties with custom property config** - Add Time custom property for domain | Add Time custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 111 | **Custom properties with custom property config** - Add Time custom property for dashboardDataModel | Add Time custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 112 | **Custom properties with custom property config** - Add Time custom property for metric | Add Time custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 113 | **Custom properties with custom property config** - Add Time custom property for chart | Add Time custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 114 | **Custom properties with custom property config** - Add Time custom property for tableColumn | Add Time custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 115 | **Custom properties with custom property config** - Add DateTime custom property for container | Add DateTime custom property for container |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 116 | **Custom properties with custom property config** - Add DateTime custom property for dashboard | Add DateTime custom property for dashboard |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 117 | **Custom properties with custom property config** - Add DateTime custom property for database | Add DateTime custom property for database |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 118 | **Custom properties with custom property config** - Add DateTime custom property for databaseSchema | Add DateTime custom property for databaseSchema |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 119 | **Custom properties with custom property config** - Add DateTime custom property for glossaryTerm | Add DateTime custom property for glossaryTerm |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 120 | **Custom properties with custom property config** - Add DateTime custom property for mlmodel | Add DateTime custom property for mlmodel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 121 | **Custom properties with custom property config** - Add DateTime custom property for pipeline | Add DateTime custom property for pipeline |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 122 | **Custom properties with custom property config** - Add DateTime custom property for searchIndex | Add DateTime custom property for searchIndex |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 123 | **Custom properties with custom property config** - Add DateTime custom property for storedProcedure | Add DateTime custom property for storedProcedure |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 124 | **Custom properties with custom property config** - Add DateTime custom property for table | Add DateTime custom property for table |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 125 | **Custom properties with custom property config** - Add DateTime custom property for topic | Add DateTime custom property for topic |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 126 | **Custom properties with custom property config** - Add DateTime custom property for apiCollection | Add DateTime custom property for apiCollection |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 127 | **Custom properties with custom property config** - Add DateTime custom property for apiEndpoint | Add DateTime custom property for apiEndpoint |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 128 | **Custom properties with custom property config** - Add DateTime custom property for dataProduct | Add DateTime custom property for dataProduct |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 129 | **Custom properties with custom property config** - Add DateTime custom property for domain | Add DateTime custom property for domain |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 130 | **Custom properties with custom property config** - Add DateTime custom property for dashboardDataModel | Add DateTime custom property for dashboardDataModel |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 131 | **Custom properties with custom property config** - Add DateTime custom property for metric | Add DateTime custom property for metric |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 132 | **Custom properties with custom property config** - Add DateTime custom property for chart | Add DateTime custom property for chart |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
-| 133 | **Custom properties with custom property config** - Add DateTime custom property for tableColumn | Add DateTime custom property for tableColumn |
-| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 1 | **Custom properties with custom property config** - Enum | Enum |
+| 2 | **Custom properties with custom property config** - Table | Table |
+| 3 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 4 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 5 | **Custom properties with custom property config** - Date | Date |
+| 6 | **Custom properties with custom property config** - Time | Time |
+| 7 | **Custom properties with custom property config** - Date Time | Date Time |
+| 8 | **Custom properties with custom property config** - Enum | Enum |
+| 9 | **Custom properties with custom property config** - Table | Table |
+| 10 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 11 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 12 | **Custom properties with custom property config** - Date | Date |
+| 13 | **Custom properties with custom property config** - Time | Time |
+| 14 | **Custom properties with custom property config** - Date Time | Date Time |
+| 15 | **Custom properties with custom property config** - Enum | Enum |
+| 16 | **Custom properties with custom property config** - Table | Table |
+| 17 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 18 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 19 | **Custom properties with custom property config** - Date | Date |
+| 20 | **Custom properties with custom property config** - Time | Time |
+| 21 | **Custom properties with custom property config** - Date Time | Date Time |
+| 22 | **Custom properties with custom property config** - Enum | Enum |
+| 23 | **Custom properties with custom property config** - Table | Table |
+| 24 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 25 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 26 | **Custom properties with custom property config** - Date | Date |
+| 27 | **Custom properties with custom property config** - Time | Time |
+| 28 | **Custom properties with custom property config** - Date Time | Date Time |
+| 29 | **Custom properties with custom property config** - Enum | Enum |
+| 30 | **Custom properties with custom property config** - Table | Table |
+| 31 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 32 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 33 | **Custom properties with custom property config** - Date | Date |
+| 34 | **Custom properties with custom property config** - Time | Time |
+| 35 | **Custom properties with custom property config** - Date Time | Date Time |
+| 36 | **Custom properties with custom property config** - Enum | Enum |
+| 37 | **Custom properties with custom property config** - Table | Table |
+| 38 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 39 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 40 | **Custom properties with custom property config** - Date | Date |
+| 41 | **Custom properties with custom property config** - Time | Time |
+| 42 | **Custom properties with custom property config** - Date Time | Date Time |
+| 43 | **Custom properties with custom property config** - Enum | Enum |
+| 44 | **Custom properties with custom property config** - Table | Table |
+| 45 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 46 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 47 | **Custom properties with custom property config** - Date | Date |
+| 48 | **Custom properties with custom property config** - Time | Time |
+| 49 | **Custom properties with custom property config** - Date Time | Date Time |
+| 50 | **Custom properties with custom property config** - Enum | Enum |
+| 51 | **Custom properties with custom property config** - Table | Table |
+| 52 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 53 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 54 | **Custom properties with custom property config** - Date | Date |
+| 55 | **Custom properties with custom property config** - Time | Time |
+| 56 | **Custom properties with custom property config** - Date Time | Date Time |
+| 57 | **Custom properties with custom property config** - Enum | Enum |
+| 58 | **Custom properties with custom property config** - Table | Table |
+| 59 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 60 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 61 | **Custom properties with custom property config** - Date | Date |
+| 62 | **Custom properties with custom property config** - Time | Time |
+| 63 | **Custom properties with custom property config** - Date Time | Date Time |
+| 64 | **Custom properties with custom property config** - Enum | Enum |
+| 65 | **Custom properties with custom property config** - Table | Table |
+| 66 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 67 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 68 | **Custom properties with custom property config** - Date | Date |
+| 69 | **Custom properties with custom property config** - Time | Time |
+| 70 | **Custom properties with custom property config** - Date Time | Date Time |
+| 71 | **Custom properties with custom property config** - Enum | Enum |
+| 72 | **Custom properties with custom property config** - Table | Table |
+| 73 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 74 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 75 | **Custom properties with custom property config** - Date | Date |
+| 76 | **Custom properties with custom property config** - Time | Time |
+| 77 | **Custom properties with custom property config** - Date Time | Date Time |
+| 78 | **Custom properties with custom property config** - Enum | Enum |
+| 79 | **Custom properties with custom property config** - Table | Table |
+| 80 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 81 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 82 | **Custom properties with custom property config** - Date | Date |
+| 83 | **Custom properties with custom property config** - Time | Time |
+| 84 | **Custom properties with custom property config** - Date Time | Date Time |
+| 85 | **Custom properties with custom property config** - Enum | Enum |
+| 86 | **Custom properties with custom property config** - Table | Table |
+| 87 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 88 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 89 | **Custom properties with custom property config** - Date | Date |
+| 90 | **Custom properties with custom property config** - Time | Time |
+| 91 | **Custom properties with custom property config** - Date Time | Date Time |
+| 92 | **Custom properties with custom property config** - Enum | Enum |
+| 93 | **Custom properties with custom property config** - Table | Table |
+| 94 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 95 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 96 | **Custom properties with custom property config** - Date | Date |
+| 97 | **Custom properties with custom property config** - Time | Time |
+| 98 | **Custom properties with custom property config** - Date Time | Date Time |
+| 99 | **Custom properties with custom property config** - Enum | Enum |
+| 100 | **Custom properties with custom property config** - Table | Table |
+| 101 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 102 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 103 | **Custom properties with custom property config** - Date | Date |
+| 104 | **Custom properties with custom property config** - Time | Time |
+| 105 | **Custom properties with custom property config** - Date Time | Date Time |
+| 106 | **Custom properties with custom property config** - Enum | Enum |
+| 107 | **Custom properties with custom property config** - Table | Table |
+| 108 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 109 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 110 | **Custom properties with custom property config** - Date | Date |
+| 111 | **Custom properties with custom property config** - Time | Time |
+| 112 | **Custom properties with custom property config** - Date Time | Date Time |
+| 113 | **Custom properties with custom property config** - Enum | Enum |
+| 114 | **Custom properties with custom property config** - Table | Table |
+| 115 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 116 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 117 | **Custom properties with custom property config** - Date | Date |
+| 118 | **Custom properties with custom property config** - Time | Time |
+| 119 | **Custom properties with custom property config** - Date Time | Date Time |
+| 120 | **Custom properties with custom property config** - Enum | Enum |
+| 121 | **Custom properties with custom property config** - Table | Table |
+| 122 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 123 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 124 | **Custom properties with custom property config** - Date | Date |
+| 125 | **Custom properties with custom property config** - Time | Time |
+| 126 | **Custom properties with custom property config** - Date Time | Date Time |
+| 127 | **Custom properties with custom property config** - Enum | Enum |
+| 128 | **Custom properties with custom property config** - Table | Table |
+| 129 | **Custom properties with custom property config** - Entity Reference | Entity Reference |
+| 130 | **Custom properties with custom property config** - Entity Reference List | Entity Reference List |
+| 131 | **Custom properties with custom property config** - Date | Date |
+| 132 | **Custom properties with custom property config** - Time | Time |
+| 133 | **Custom properties with custom property config** - Date Time | Date Time |
+| 134 | **Custom properties with custom property config** - entityReferenceList shows item count, scrollable list, no expand toggle | EntityReferenceList shows item count, scrollable list, no expand toggle |
+| | ↳ *Create entityReferenceList property* | |
+| | ↳ *Set 5 user references as value* | |
+| | ↳ *Verify item count (5) in property name* | |
+| | ↳ *Verify .entity-list-body is scrollable* | |
+| | ↳ *Verify expand/collapse toggle is hidden* | |
+| | ↳ *Cleanup property* | |
+| 135 | **Custom properties with custom property config** - table-cp shows row count, scrollable container, no expand toggle | Table-cp shows row count, scrollable container, no expand toggle |
+| | ↳ *Create table-cp property* | |
+| | ↳ *Add 5 rows of data to table property* | |
+| | ↳ *Verify row count (5) in property name* | |
+| | ↳ *Verify .custom-property-scrollable-container is scrollable* | |
+| | ↳ *Verify expand/collapse toggle is hidden* | |
+| | ↳ *Cleanup property* | |
 
 </details>
 
@@ -1140,7 +837,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>DataProductAndSubdomains.spec.ts</b> (15 tests, 15 scenarios)</summary>
+<summary>📄 <b>DataProductAndSubdomains.spec.ts</b> (17 tests, 17 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataProductAndSubdomains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataProductAndSubdomains.spec.ts)
 
@@ -1174,6 +871,13 @@
 | 1 | **Data Product Search and Filter** - Search data products by name | Search data products by name |
 | 2 | **Data Product Search and Filter** - Filter data products by domain in global selector | Filter data products by domain in global selector |
 
+### Data Product Name in Entity Name Cell
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Name in Entity Name Cell** - Entity name cell shows both display name and name | Entity name cell shows both display name and name |
+| 2 | **Data Product Name in Entity Name Cell** - Search data products by name | Search data products by name |
+
 </details>
 
 <details open>
@@ -1197,6 +901,47 @@
 | 10 | **Domain Filter - User Behavior Tests** - Domain assets tab should NOT show assets from other domains | Domain assets tab should NOT show assets from other domains |
 | 11 | **Domain Filter - User Behavior Tests** - Domain Data Products tab should NOT show data products from other domains | Domain Data Products tab should NOT show data products from other domains |
 | 12 | **Domain Filter - User Behavior Tests** - Multi-nested domain hierarchy: filters should scope correctly at every level | Multi-nested domain hierarchy: filters should scope correctly at every level |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainDataProductsRightPanel.spec.ts</b> (9 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DomainDataProductsRightPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DomainDataProductsRightPanel.spec.ts)
+
+### Domain Data Products Tab - Right Panel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Data Products Tab - Right Panel** - Should open right panel when clicking data product card in domain | Open right panel when clicking data product card in domain |
+| 2 | **Domain Data Products Tab - Right Panel** - Should display data product name link in panel in domain context | Display data product name link in panel in domain context |
+| 3 | **Domain Data Products Tab - Right Panel** - Should display overview tab for data product | Display overview tab for data product |
+| 4 | **Domain Data Products Tab - Right Panel** - Should edit description for data product from domain context | Edit description for data product from domain context |
+| 5 | **Domain Data Products Tab - Right Panel** - Should display overview tab content for data product in domain context | Display overview tab content for data product in domain context |
+| 6 | **Domain Data Products Tab - Right Panel** - Should edit tags for data product from domain context | Edit tags for data product from domain context |
+| 7 | **Domain Data Products Tab - Right Panel** - Should assign tier for data product from domain context | Assign tier for data product from domain context |
+| 8 | **Domain Data Products Tab - Right Panel** - Should edit owners for data product from domain context | Edit owners for data product from domain context |
+| 9 | **Domain Data Products Tab - Right Panel** - Should not display glossary terms section in domain data products context | Not display glossary terms section in domain data products context |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainTierCertificationVoting.spec.ts</b> (8 tests, 8 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DomainTierCertificationVoting.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DomainTierCertificationVoting.spec.ts)
+
+### Domain & DataProduct - Tier, Certification, and Voting
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain & DataProduct - Tier, Certification, and Voting** - Domain - Tier assign, update, and remove | Domain - Tier assign, update, and remove |
+| 2 | **Domain & DataProduct - Tier, Certification, and Voting** - Domain - Certification assign, update, and remove | Domain - Certification assign, update, and remove |
+| 3 | **Domain & DataProduct - Tier, Certification, and Voting** - Domain - UpVote and DownVote | Domain - UpVote and DownVote |
+| 4 | **Domain & DataProduct - Tier, Certification, and Voting** - DataProduct - Tier assign, update, and remove | DataProduct - Tier assign, update, and remove |
+| 5 | **Domain & DataProduct - Tier, Certification, and Voting** - DataProduct - Certification assign, update, and remove | DataProduct - Certification assign, update, and remove |
+| 6 | **Domain & DataProduct - Tier, Certification, and Voting** - DataProduct - UpVote and DownVote | DataProduct - UpVote and DownVote |
+| 7 | **Domain & DataProduct - Tier, Certification, and Voting** - Edit buttons not visible on Domain | Edit buttons not visible on Domain |
+| 8 | **Domain & DataProduct - Tier, Certification, and Voting** - Edit buttons not visible on DataProduct | Edit buttons not visible on DataProduct |
 
 </details>
 
@@ -1375,6 +1120,20 @@
 | | ↳ *pre-requisite* | |
 | | ↳ *apply tab label customization for Data Product* | |
 | | ↳ *validate applied label change for Data Product Documentation tab* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainWidgetFilter.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts)
+
+### Domain Widget Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Widget Filter** - Setup Domains widget on landing page | Setup Domains widget on landing page |
+| 2 | **Domain Widget Filter** - Domains widget should show only selected domain when domain filter is active | Domains widget should show only selected domain when domain filter is active |
 
 </details>
 
@@ -1590,6 +1349,68 @@
 </details>
 
 <details open>
+<summary>📄 <b>GlossaryStatusFilterLargeDataset.spec.ts</b> (19 tests, 19 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts)
+
+### Glossary Status Filter - Large Dataset
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Status Filter - Large Dataset** - should display only Draft terms when filtered | Display only Draft terms when filtered |
+| 2 | **Glossary Status Filter - Large Dataset** - should display only Approved terms when filtered | Display only Approved terms when filtered |
+| 3 | **Glossary Status Filter - Large Dataset** - should display only In Review terms when filtered | Display only In Review terms when filtered |
+| 4 | **Glossary Status Filter - Large Dataset** - should display only Deprecated terms when filtered | Display only Deprecated terms when filtered |
+| 5 | **Glossary Status Filter - Large Dataset** - should display only Rejected terms when filtered | Display only Rejected terms when filtered |
+| 6 | **Glossary Status Filter - Large Dataset** - should display terms matching multiple selected statuses | Display terms matching multiple selected statuses |
+| 7 | **Glossary Status Filter - Large Dataset** - should display all terms when All is selected | Display all terms when All is selected |
+| 8 | **Glossary Status Filter - Large Dataset** - should maintain filter state across pagination | Maintain filter state across pagination |
+| 9 | **Glossary Status Filter - Large Dataset** - should return matching terms for search query | Return matching terms for search query |
+| 10 | **Glossary Status Filter - Large Dataset** - should show no results for non-matching query | Show no results for non-matching query |
+| 11 | **Glossary Status Filter - Large Dataset** - should restore all terms when search is cleared | Restore all terms when search is cleared |
+| 12 | **Glossary Status Filter - Large Dataset** - should paginate through search results | Paginate through search results |
+| 13 | **Glossary Status Filter - Large Dataset** - should filter search results by selected status | Filter search results by selected status |
+| 14 | **Glossary Status Filter - Large Dataset** - should paginate combined search and status results | Paginate combined search and status results |
+| 15 | **Glossary Status Filter - Large Dataset** - should maintain status filter when search is cleared | Maintain status filter when search is cleared |
+| 16 | **Glossary Status Filter - Large Dataset** - should maintain search when status filter is changed | Maintain search when status filter is changed |
+| 17 | **Glossary Status Filter - Large Dataset** - should revert changes when Cancel is clicked | Revert changes when Cancel is clicked |
+| 18 | **Glossary Status Filter - Large Dataset** - should reset pagination when filter changes | Reset pagination when filter changes |
+| 19 | **Glossary Status Filter - Large Dataset** - should apply status filter within acceptable time | Apply status filter within acceptable time |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlossaryStatusFilterNestedTerms.spec.ts</b> (19 tests, 19 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts)
+
+### Glossary Status Filter - Nested Terms
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Status Filter - Nested Terms** - filter by parent status shows parent and allows expansion to see children | Filter by parent status shows parent and allows expansion to see children |
+| 2 | **Glossary Status Filter - Nested Terms** - filter by child status shows child as flat result even if parent does not match | Filter by child status shows child as flat result even if parent does not match |
+| 3 | **Glossary Status Filter - Nested Terms** - filter shows parent when status matches and all children on expand | Filter shows parent when status matches and all children on expand |
+| 4 | **Glossary Status Filter - Nested Terms** - multiple status filter shows terms matching any selected status | Multiple status filter shows terms matching any selected status |
+| 5 | **Glossary Status Filter - Nested Terms** - filter by grandparent status shows only approved terms | Filter by grandparent status shows only approved terms |
+| 6 | **Glossary Status Filter - Nested Terms** - expanding grandparent shows parent with any status | Expanding grandparent shows parent with any status |
+| 7 | **Glossary Status Filter - Nested Terms** - filter by middle level status shows nested term as flat result | Filter by middle level status shows nested term as flat result |
+| 8 | **Glossary Status Filter - Nested Terms** - filter by leaf level status shows nested term as flat result | Filter by leaf level status shows nested term as flat result |
+| 9 | **Glossary Status Filter - Nested Terms** - search for child term name + apply non-matching status filter shows no results | Search for child term name + apply non-matching status filter shows no results |
+| 10 | **Glossary Status Filter - Nested Terms** - search for child term name + matching status shows child | Search for child term name + matching status shows child |
+| 11 | **Glossary Status Filter - Nested Terms** - search for parent term name with child status filter shows no results | Search for parent term name with child status filter shows no results |
+| 12 | **Glossary Status Filter - Nested Terms** - clearing search maintains status filter | Clearing search maintains status filter |
+| 13 | **Glossary Status Filter - Nested Terms** - clearing status filter maintains search results | Clearing status filter maintains search results |
+| 14 | **Glossary Status Filter - Nested Terms** - apply filter, expand parent, verify children shown | Apply filter, expand parent, verify children shown |
+| 15 | **Glossary Status Filter - Nested Terms** - change filter while expanded updates visible root terms | Change filter while expanded updates visible root terms |
+| 16 | **Glossary Status Filter - Nested Terms** - expand all button loads all terms | Expand all button loads all terms |
+| 17 | **Glossary Status Filter - Nested Terms** - deeply nested term (5 levels) - filter shows matching terms as flat results | Deeply nested term (5 levels) - filter shows matching terms as flat results |
+| 18 | **Glossary Status Filter - Nested Terms** - all children have same status different from parent | All children have same status different from parent |
+| 19 | **Glossary Status Filter - Nested Terms** - only leaf nodes match filter - parent chain does not | Only leaf nodes match filter - parent chain does not |
+
+</details>
+
+<details open>
 <summary>📄 <b>GlossaryCRUDOperations.spec.ts</b> (13 tests, 13 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts)
@@ -1669,6 +1490,28 @@
 </details>
 
 <details open>
+<summary>📄 <b>GlossaryTermRightPanel.spec.ts</b> (10 tests, 10 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts)
+
+### Glossary Term Assets Tab - Right Panel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Term Assets Tab - Right Panel** - Should open right panel when clicking asset in glossary term assets tab | Open right panel when clicking asset in glossary term assets tab |
+| 2 | **Glossary Term Assets Tab - Right Panel** - Should display correct tabs for table entity in glossary term assets context | Display correct tabs for table entity in glossary term assets context |
+| 3 | **Glossary Term Assets Tab - Right Panel** - Should edit description from glossary term assets context | Edit description from glossary term assets context |
+| 4 | **Glossary Term Assets Tab - Right Panel** - Should display entity name link in panel header in glossary term assets context | Display entity name link in panel header in glossary term assets context |
+| 5 | **Glossary Term Assets Tab - Right Panel** - Should display overview tab content in glossary term assets context | Display overview tab content in glossary term assets context |
+| 6 | **Glossary Term Assets Tab - Right Panel** - Should edit tags from glossary term assets context | Edit tags from glossary term assets context |
+| 7 | **Glossary Term Assets Tab - Right Panel** - Should assign tier from glossary term assets context | Assign tier from glossary term assets context |
+| 8 | **Glossary Term Assets Tab - Right Panel** - Should edit owners from glossary term assets context | Edit owners from glossary term assets context |
+| 9 | **Glossary Term Assets Tab - Right Panel** - Should edit domain from glossary term assets context | Edit domain from glossary term assets context |
+| 10 | **Glossary Term Assets Tab - Right Panel** - Should edit glossary terms from glossary term assets context | Edit glossary terms from glossary term assets context |
+
+</details>
+
+<details open>
 <summary>📄 <b>GlossaryNavigation.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts)
@@ -1737,7 +1580,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>GlossaryImportExport.spec.ts</b> (7 tests, 19 scenarios)</summary>
+<summary>📄 <b>GlossaryImportExport.spec.ts</b> (7 tests, 18 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts)
 
@@ -1750,7 +1593,6 @@
 | | ↳ *should export data glossary term details* | |
 | | ↳ *should import and edit with one additional glossaryTerm* | |
 | | ↳ *should verify bulk import details in version history* | |
-| | ↳ *should have term in review state* | |
 | | ↳ *delete custom properties* | |
 | 2 | **Glossary Bulk Import Export** - Check for Circular Reference in Glossary Import | For Circular Reference in Glossary Import |
 | | ↳ *Create glossary for circular reference test* | |
@@ -1937,6 +1779,31 @@
 </details>
 
 <details open>
+<summary>📄 <b>GlossaryExpandAllWithStatusFilter.spec.ts</b> (4 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts)
+
+### Glossary Expand All with Status Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Glossary Expand All with Status Filter** - Expand All with Draft filter shows all terms including children of non-matching parents | Expand All with Draft filter shows all terms including children of non-matching parents |
+| | ↳ *Apply Draft status filter* | |
+| | ↳ *Expand all and verify all terms are visible* | |
+| 2 | **Glossary Expand All with Status Filter** - Expand All with Approved filter shows all terms | Expand All with Approved filter shows all terms |
+| | ↳ *Apply Approved status filter* | |
+| | ↳ *Expand all and verify all terms are visible* | |
+| 3 | **Glossary Expand All with Status Filter** - Expand All with default filter shows all terms | Expand All with default filter shows all terms |
+| | ↳ *Expand all and verify all terms are visible* | |
+| 4 | **Glossary Expand All with Status Filter** - Expand All shows all children regardless of status filter | Expand All shows all children regardless of status filter |
+| | ↳ *Apply Draft filter and expand all* | |
+| | ↳ *Verify MixedStatusChild (Draft) appears under ApprovedParent* | |
+| | ↳ *Collapse all and verify filter re-applies* | |
+| | ↳ *Switch to Approved filter and expand again* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>GlossaryVoting.spec.ts</b> (3 tests, 3 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryVoting.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryVoting.spec.ts)
@@ -2014,6 +1881,29 @@
 | 1 | **Tag Page with Limited EditTag Permission** - Add and Remove Assets and Check Restricted Entity | Add and Remove Assets and Check Restricted Entity |
 | | ↳ *Add Asset * | |
 | | ↳ *Delete Asset* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>TagPageRightPanel.spec.ts</b> (11 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/TagPageRightPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/TagPageRightPanel.spec.ts)
+
+### Tag Page Assets - Right Panel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Tag Page Assets - Right Panel** - Should open right panel when clicking asset in tag assets page | Open right panel when clicking asset in tag assets page |
+| 2 | **Tag Page Assets - Right Panel** - Should display correct tabs for table entity in tag assets page context | Display correct tabs for table entity in tag assets page context |
+| 3 | **Tag Page Assets - Right Panel** - Should edit description from tag assets page context | Edit description from tag assets page context |
+| 4 | **Tag Page Assets - Right Panel** - Should display entity name link in panel header in tag assets page context | Display entity name link in panel header in tag assets page context |
+| 5 | **Tag Page Assets - Right Panel** - Should display overview tab content in tag assets page context | Display overview tab content in tag assets page context |
+| 6 | **Tag Page Assets - Right Panel** - Panel should not be visible before any asset is selected | Panel should not be visible before any asset is selected |
+| 7 | **Tag Page Assets - Right Panel** - Should edit tags from tag assets page context | Edit tags from tag assets page context |
+| 8 | **Tag Page Assets - Right Panel** - Should assign tier from tag assets page context | Assign tier from tag assets page context |
+| 9 | **Tag Page Assets - Right Panel** - Should edit owners from tag assets page context | Edit owners from tag assets page context |
+| 10 | **Tag Page Assets - Right Panel** - Should edit domain from tag assets page context | Edit domain from tag assets page context |
+| 11 | **Tag Page Assets - Right Panel** - Should edit glossary terms from tag assets page context | Edit glossary terms from tag assets page context |
 
 </details>
 
@@ -2123,7 +2013,7 @@
 ## Data Contracts
 
 <details open>
-<summary>📄 <b>DataContracts.spec.ts</b> (48 tests, 369 scenarios)</summary>
+<summary>📄 <b>DataContracts.spec.ts</b> (48 tests, 423 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataContracts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataContracts.spec.ts)
 
@@ -2150,6 +2040,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 2 | **Data Contracts** - Create Data Contract and validate for Topic | Create Data Contract and validate for Topic |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2169,6 +2062,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 3 | **Data Contracts** - Create Data Contract and validate for Dashboard | Create Data Contract and validate for Dashboard |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2188,6 +2084,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 4 | **Data Contracts** - Create Data Contract and validate for DashboardDataModel | Create Data Contract and validate for DashboardDataModel |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2207,6 +2106,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 5 | **Data Contracts** - Create Data Contract and validate for Pipeline | Create Data Contract and validate for Pipeline |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2226,6 +2128,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 6 | **Data Contracts** - Create Data Contract and validate for MlModel | Create Data Contract and validate for MlModel |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2245,6 +2150,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 7 | **Data Contracts** - Create Data Contract and validate for Container | Create Data Contract and validate for Container |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2264,6 +2172,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 8 | **Data Contracts** - Create Data Contract and validate for SearchIndex | Create Data Contract and validate for SearchIndex |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2283,6 +2194,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 9 | **Data Contracts** - Create Data Contract and validate for Store Procedure | Create Data Contract and validate for Store Procedure |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2302,6 +2216,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 10 | **Data Contracts** - Create Data Contract and validate for ApiEndpoint | Create Data Contract and validate for ApiEndpoint |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2321,6 +2238,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 11 | **Data Contracts** - Create Data Contract and validate for Api Collection | Create Data Contract and validate for Api Collection |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2340,6 +2260,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 12 | **Data Contracts** - Create Data Contract and validate for Chart | Create Data Contract and validate for Chart |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2359,6 +2282,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 13 | **Data Contracts** - Create Data Contract and validate for Directory | Create Data Contract and validate for Directory |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2378,6 +2304,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 14 | **Data Contracts** - Create Data Contract and validate for File | Create Data Contract and validate for File |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2397,6 +2326,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 15 | **Data Contracts** - Create Data Contract and validate for Spreadsheet | Create Data Contract and validate for Spreadsheet |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2416,6 +2348,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 16 | **Data Contracts** - Create Data Contract and validate for Worksheet | Create Data Contract and validate for Worksheet |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2435,6 +2370,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 17 | **Data Contracts** - Create Data Contract and validate for Database | Create Data Contract and validate for Database |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2454,6 +2392,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 18 | **Data Contracts** - Create Data Contract and validate for Database Schema | Create Data Contract and validate for Database Schema |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |
@@ -2473,6 +2414,9 @@
 | | ↳ *Delete contract* | |
 | | ↳ *Import contract from ODCS YAML* | |
 | | ↳ *Delete imported contract* | |
+| | ↳ *Import contract from OM YAML* | |
+| | ↳ *Export OM YAML* | |
+| | ↳ *Delete OM imported contract* | |
 | 19 | **Data Contracts** - Pagination in Schema Tab with Selection Persistent | Pagination in Schema Tab with Selection Persistent |
 | | ↳ *Redirect to Home Page and visit entity* | |
 | | ↳ *Open contract section and start adding contract* | |

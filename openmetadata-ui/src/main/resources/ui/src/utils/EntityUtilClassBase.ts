@@ -98,6 +98,7 @@ import {
   getApplicationDetailsPath,
   getBotsPath,
   getClassificationTagPath,
+  getDataProductDetailsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -118,7 +119,7 @@ import {
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
-type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
@@ -360,12 +361,7 @@ class EntityUtilClassBase {
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
-        return getEntityDetailsPath(
-          EntityType.DATA_PRODUCT,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
+        return getDataProductDetailsPath(fullyQualifiedName, tab, subTab);
       case EntityType.APPLICATION:
         return getApplicationDetailsPath(fullyQualifiedName);
 
@@ -391,7 +387,7 @@ class EntityUtilClassBase {
       case EntityType.PERSONA:
         return getPersonaDetailsPath(fullyQualifiedName);
 
-      case SearchIndex.API_COLLECTION_INDEX:
+      case SearchIndex.API_COLLECTION:
       case EntityType.API_COLLECTION:
         return getEntityDetailsPath(
           EntityType.API_COLLECTION,
@@ -400,7 +396,7 @@ class EntityUtilClassBase {
           subTab
         );
 
-      case SearchIndex.API_ENDPOINT_INDEX:
+      case SearchIndex.API_ENDPOINT:
       case EntityType.API_ENDPOINT:
         return getEntityDetailsPath(
           EntityType.API_ENDPOINT,
@@ -408,7 +404,7 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
-      case SearchIndex.METRIC_SEARCH_INDEX:
+      case SearchIndex.METRIC:
       case EntityType.METRIC:
         return getEntityDetailsPath(
           EntityType.METRIC,
@@ -628,7 +624,6 @@ class EntityUtilClassBase {
 
       case EntityType.API_ENDPOINT:
       case EntityType.DATABASE_SCHEMA:
-      case EntityType.CONTAINER:
         // Service.ApiCollection.Endpoint
         if (fqnParts.length > 3) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 3));

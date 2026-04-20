@@ -78,6 +78,12 @@
       "default": true,
       "title": "Mark Deleted Data Models"
     },
+    "markDeletedCharts": {
+      "description": "Optional configuration to soft delete charts in OpenMetadata if the source charts are deleted.",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Charts"
+    },
     "includeTags": {
       "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
@@ -93,6 +99,12 @@
     "includeDraftDashboard": {
       "title": "Include Draft Dashboards",
       "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",
+      "type": "boolean",
+      "default": true
+    },
+    "includeUsage": {
+      "title": "Include Usage",
+      "description": "Optional configuration to toggle the ingestion of usage metadata for dashboards. When enabled, usage statistics will be collected and ingested.",
       "type": "boolean",
       "default": true
     },

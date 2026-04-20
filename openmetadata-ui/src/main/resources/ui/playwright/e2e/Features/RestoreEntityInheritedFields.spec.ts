@@ -30,11 +30,14 @@ import {
   assignSingleSelectDomain,
   redirectToHomePage,
 } from '../../utils/common';
-import { softDeleteEntity } from '../../utils/entity';
+import {
+  softDeleteEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
-const domain = new Domain();
-const dataProduct = new DataProduct([domain]);
+let domain: Domain;
+let dataProduct: DataProduct;
 
 const entities = [
   ApiEndpointClass,
@@ -51,6 +54,9 @@ const entities = [
 ] as const;
 
 test.beforeAll('setup test', async ({ browser }) => {
+  domain = new Domain();
+  dataProduct = new DataProduct([domain]);
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await domain.create(apiContext);
   await dataProduct.create(apiContext);
@@ -78,7 +84,6 @@ entities.forEach((EntityClass) => {
       test.slow();
 
       await entity.visitEntityPage(page);
-      await page.waitForLoadState('networkidle');
 
       await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
         ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())
@@ -97,13 +102,20 @@ entities.forEach((EntityClass) => {
         .click();
       // assign domain
       await assignSingleSelectDomain(page, domain.responseData);
+      await waitForAllLoadersToDisappear(page);
 
       await redirectToHomePage(page);
 
       await entity.visitEntityPage(page);
-      await assignDataProduct(page, domain.responseData, [
-        dataProduct.responseData,
-      ]);
+
+      await assignDataProduct(
+        page,
+        domain.responseData,
+        [dataProduct.responseData],
+        'Add',
+        'KnowledgePanel.DataProducts',
+        true
+      );
 
       // This will delete and restore and ensure both operation are successful
       await softDeleteEntity(

@@ -13,16 +13,17 @@
 import React from 'react';
 import { DataQualityProgressSegmentProps } from './DataQualitySection.interface';
 
-export const DataQualityProgressSegment: React.FC<DataQualityProgressSegmentProps> =
-  ({ percent, type }) => {
-    if (percent <= 0) {
-      return null;
-    }
+export const DataQualityProgressSegment: React.FC<
+  DataQualityProgressSegmentProps
+> = ({ percent, type }) => {
+  if (percent <= 0) {
+    return null;
+  }
 
-    return (
-      <div
-        className={`progress-segment ${type}`}
-        style={{ width: `${percent}%` }}
-      />
-    );
-  };
+  return (
+    <div
+      className={`progress-segment ${type}`}
+      style={{ width: `${percent}%` }}
+    />
+  );
+};

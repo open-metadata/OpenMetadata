@@ -123,4 +123,10 @@ class AutoClassificationProcessor(Processor, ABC):
                 )
 
         record.column_tags = column_tags
+
+        # Free the sample data rows now that classification is done.
+        # The sink only needs them if store=True.
+        if record.sample_data and not record.sample_data.store:
+            record.sample_data.data = None
+
         return Either(right=record, left=None)

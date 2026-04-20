@@ -14,6 +14,7 @@
 package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
@@ -34,7 +35,6 @@ import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -197,13 +197,15 @@ class EventSubscriptionSchedulerClusteringTest {
     assertNotNull(sched2);
 
     // They should have different instance IDs
-    assertFalse(
-        sched1.getSchedulerInstanceId().equals(sched2.getSchedulerInstanceId()),
+    assertNotEquals(
+        sched1.getSchedulerInstanceId(),
+        sched2.getSchedulerInstanceId(),
         "Scheduler instances should have different IDs");
 
     // And different scheduler names
-    assertFalse(
-        sched1.getSchedulerName().equals(sched2.getSchedulerName()),
+    assertNotEquals(
+        sched1.getSchedulerName(),
+        sched2.getSchedulerName(),
         "Scheduler instances should have different names");
 
     LOG.info(
@@ -255,7 +257,7 @@ class EventSubscriptionSchedulerClusteringTest {
   @DisallowConcurrentExecution
   public static class SlowConcurrencyTestJob implements Job {
     @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
+    public void execute(JobExecutionContext context) {
       if (!jobRunning.compareAndSet(false, true)) {
         LOG.error("CONCURRENT EXECUTION DETECTED!");
         concurrentExecutionDetected.set(true);
@@ -280,7 +282,7 @@ class EventSubscriptionSchedulerClusteringTest {
   /** Job WITHOUT DisallowConcurrentExecution - allows concurrent execution. */
   public static class ConcurrentAllowedJob implements Job {
     @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
+    public void execute(JobExecutionContext context) {
       if (!jobRunning.compareAndSet(false, true)) {
         LOG.warn("Concurrent execution detected (expected for this job)");
         concurrentExecutionDetected.set(true);

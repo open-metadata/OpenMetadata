@@ -121,7 +121,12 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
-import { getUserPath } from '../../../../utils/RouterUtils';
+import {
+  getClassificationTagPath,
+  getDomainDetailsPath,
+  getGlossaryTermDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -130,6 +135,55 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
+
+type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
+
+const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
+  tags: (fqn) => getClassificationTagPath(fqn),
+  tier: (fqn) => getClassificationTagPath(fqn),
+  glossaryTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  relatedTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  domains: (fqn) => getDomainDetailsPath(fqn),
+};
+
+const parseProposedChanges = (message: string): ProposedChanges | null => {
+  if (!message?.trimStart().startsWith('{')) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(message);
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return null;
+    }
+    const normalized: ProposedChanges = Object.create(null) as ProposedChanges;
+    for (const [field, value] of Object.entries(parsed)) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        continue;
+      }
+      const entry = value as Record<string, unknown>;
+      normalized[field] = {
+        added: Array.isArray(entry.added)
+          ? (entry.added as unknown[]).filter(
+              (v): v is string => typeof v === 'string'
+            )
+          : [],
+        removed: Array.isArray(entry.removed)
+          ? (entry.removed as unknown[]).filter(
+              (v): v is string => typeof v === 'string'
+            )
+          : [],
+      };
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : null;
+  } catch {
+    return null;
+  }
+};
 
 export const TaskTabNew = ({
   taskThread,
@@ -174,18 +228,21 @@ export const TaskTabNew = ({
 
   const showAddSuggestionButton = useMemo(() => {
     const taskType = taskDetails?.type ?? ('' as TaskType);
-    const parsedSuggestion = [
-      TaskType.UpdateDescription,
-      TaskType.RequestDescription,
-    ].includes(taskType)
-      ? taskDetails?.suggestion
-      : JSON.parse(taskDetails?.suggestion || '[]');
+    let parsedSuggestion: string | TagLabel[] = taskDetails?.suggestion ?? '';
+
+    if (isTaskTags) {
+      try {
+        parsedSuggestion = JSON.parse(taskDetails?.suggestion || '[]');
+      } catch {
+        parsedSuggestion = [];
+      }
+    }
 
     return (
       [TaskType.RequestTag, TaskType.RequestDescription].includes(taskType) &&
       isEmpty(parsedSuggestion)
     );
-  }, [taskDetails]);
+  }, [taskDetails, isTaskTags]);
 
   const noSuggestionTaskMenuOptions = useMemo(() => {
     let label;
@@ -815,14 +872,22 @@ export const TaskTabNew = ({
         taskDetails?.suggestion ?? taskDetails?.oldValue ?? '';
 
       return { description };
-    } else {
-      const updatedTags = JSON.parse(
-        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
-      );
+    } else if (isTaskTags) {
+      let updatedTags: TagLabel[] = [];
+
+      try {
+        updatedTags = JSON.parse(
+          taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
+        );
+      } catch {
+        updatedTags = [];
+      }
 
       return { updatedTags };
     }
-  }, [taskDetails, isTaskDescription]);
+
+    return {};
+  }, [taskDetails, isTaskDescription, isTaskTags]);
 
   const handleAssigneeUpdate = async () => {
     setIsAssigneeLoading(true);
@@ -1104,6 +1169,10 @@ export const TaskTabNew = ({
     setHasAddedComment(false);
   }, [taskThread.id]);
 
+  const proposedChanges = isTaskGlossaryApproval
+    ? parseProposedChanges(taskThread.message ?? '')
+    : null;
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1124,6 +1193,66 @@ export const TaskTabNew = ({
       </Col>
       <Divider className="m-0" type="horizontal" />
       <Col span={24}>{taskHeader}</Col>
+      {proposedChanges !== null && (
+        <Col span={24}>
+          <div className="task-proposed-changes">
+            <Typography.Text className="task-proposed-changes-title">
+              {t('label.proposed-change-plural')}
+            </Typography.Text>
+            <div className="task-proposed-changes-fields">
+              {Object.entries(proposedChanges).map(
+                ([field, { added, removed }]) => {
+                  const getUrl = FIELD_ROUTE_MAP[field];
+
+                  return (
+                    <div
+                      className="task-proposed-changes-field-row"
+                      key={field}>
+                      <Typography.Text className="task-proposed-changes-field-name">
+                        {startCase(field)}
+                      </Typography.Text>
+                      <div className="task-proposed-changes-chips">
+                        {removed.map((val, index) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}-${index}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}-${index}`}>
+                              {val}
+                            </span>
+                          )
+                        )}
+                        {added.map((val, index) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}-${index}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}-${index}`}>
+                              {val}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        </Col>
+      )}
       <Col span={24}>
         {isTaskDescription && (
           <DescriptionTaskNew

@@ -22,6 +22,7 @@ import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
 import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
@@ -175,40 +176,46 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconChart;
 
       break;
-    case SearchIndex.API_COLLECTION_INDEX:
+    case SearchIndex.API_COLLECTION:
       label = i18next.t('label.api-collection-plural');
       GroupIcon = IconApiCollection;
 
       break;
 
-    case SearchIndex.API_ENDPOINT_INDEX:
+    case SearchIndex.API_ENDPOINT:
       label = i18next.t('label.api-endpoint-plural');
       GroupIcon = IconApiEndpoint;
 
       break;
-    case SearchIndex.METRIC_SEARCH_INDEX:
+    case SearchIndex.METRIC:
       label = i18next.t('label.metric-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.DIRECTORY_SEARCH_INDEX:
+    case SearchIndex.DIRECTORY:
       label = i18next.t('label.directory-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.FILE_SEARCH_INDEX:
+    case SearchIndex.FILE:
       label = i18next.t('label.file-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.SPREADSHEET_SEARCH_INDEX:
+    case SearchIndex.SPREADSHEET:
       label = i18next.t('label.spreadsheet-plural');
       GroupIcon = MetricIcon;
 
       break;
-    case SearchIndex.WORKSHEET_SEARCH_INDEX:
+    case SearchIndex.WORKSHEET:
       label = i18next.t('label.worksheet-plural');
       GroupIcon = MetricIcon;
+
+      break;
+
+    case SearchIndex.COLUMN:
+      label = i18next.t('label.column-plural');
+      GroupIcon = ColumnIcon;
 
       break;
 
@@ -224,7 +231,7 @@ export const getGroupLabel = (index: string) => {
   }
 
   const groupLabel = (
-    <div className="d-flex items-center p-y-xs">
+    <div className="d-flex items-center p-y-xs p-x-lg">
       <GroupIcon className="m-r-sm" height={16} width={16} />
       <p className="text-grey-muted text-xs">{label}</p>
     </div>
@@ -250,7 +257,7 @@ export const getSuggestionElement = (
   return (
     <Button
       block
-      className="text-left truncate p-0"
+      className="text-left truncate p-y-0 p-x-lg"
       data-testid={dataTestId}
       icon={
         <img
@@ -283,11 +290,19 @@ export const filterOptionsByIndex = (
   options: Array<Option>,
   searchIndex: SearchIndex,
   maxItemsPerType = 5
-) =>
-  options
-    .filter((option) => option._index.includes(searchIndex))
+) => {
+  const entityType =
+    searchClassBase.getSearchIndexEntityTypeMapping()[searchIndex];
+
+  if (!entityType) {
+    return [];
+  }
+
+  return options
+    .filter((option) => option._source?.entityType === entityType)
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
+};
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   const commonAssets: Record<string, EntityType> = {
@@ -313,10 +328,10 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATABASE]: EntityType.DATABASE,
     [SearchIndex.DOMAIN]: EntityType.DOMAIN,
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
-    [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
-    [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
-    [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
-    [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
+    [SearchIndex.API_COLLECTION]: EntityType.API_COLLECTION,
+    [SearchIndex.API_ENDPOINT]: EntityType.API_ENDPOINT,
+    [SearchIndex.METRIC]: EntityType.METRIC,
+    [SearchIndex.API_SERVICE]: EntityType.API_SERVICE,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found
@@ -400,6 +415,25 @@ export const parseBucketsData = (
  * @param wildcardTerms - Optional record for wildcard queries
  * @returns Query filter object for searchQuery API
  */
+const NESTED_FIELDS = ['owners'];
+
+const getNestedPath = (field: string): string | undefined => {
+  return NESTED_FIELDS.find((nested) => field.startsWith(`${nested}.`));
+};
+
+const wrapTermQuery = (
+  field: string,
+  value: string | number | boolean,
+  nestedPath?: string
+): ElasticsearchQuery => {
+  const termQuery: ElasticsearchQuery = { term: { [field]: value } };
+  if (nestedPath) {
+    return { nested: { path: nestedPath, query: termQuery } };
+  }
+
+  return termQuery;
+};
+
 export const getTermQuery = (
   terms: Record<string, string | string[] | number | boolean>,
   queryType: 'must' | 'must_not' | 'should' | 'should_not' = 'must',
@@ -414,11 +448,12 @@ export const getTermQuery = (
 ) => {
   const termQueries = Object.entries(terms)
     .map(([field, value]) => {
+      const nestedPath = getNestedPath(field);
       if (Array.isArray(value)) {
-        return value.map((v) => ({ term: { [field]: v } }));
+        return value.map((v) => wrapTermQuery(field, v, nestedPath));
       }
 
-      return { term: { [field]: value } };
+      return wrapTermQuery(field, value, nestedPath);
     })
     .flat();
 
@@ -431,11 +466,12 @@ export const getTermQuery = (
   const mustNotQueries = options?.mustNotTerms
     ? Object.entries(options.mustNotTerms)
         .map(([field, value]) => {
+          const nestedPath = getNestedPath(field);
           if (Array.isArray(value)) {
-            return value.map((v) => ({ term: { [field]: v } }));
+            return value.map((v) => wrapTermQuery(field, v, nestedPath));
           }
 
-          return { term: { [field]: value } };
+          return wrapTermQuery(field, value, nestedPath);
         })
         .flat()
     : [];

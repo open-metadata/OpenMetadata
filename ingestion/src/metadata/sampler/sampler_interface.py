@@ -13,8 +13,11 @@ Interface for sampler
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set, Union
+from typing import Any, List, Optional, Set, Union
 
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    SampleDataIngestionConfig,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -45,7 +48,10 @@ from metadata.sampler.config import (
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.utils.constants import (
+    SAMPLE_DATA_DEFAULT_COUNT,
+    SAMPLE_DATA_MAX_CELL_LENGTH,
+)
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -229,29 +235,65 @@ class SamplerInterface(ABC):
         """get columns"""
         raise NotImplementedError
 
+    @staticmethod
+    def _truncate_cell(value: Any) -> Any:
+        """Truncate string values that exceed the max cell length."""
+        if isinstance(value, str) and len(value) > SAMPLE_DATA_MAX_CELL_LENGTH:
+            return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
+        return value
+
     @calculate_execution_time(store=False)
-    def generate_sample_data(self) -> Optional[TableData]:
+    def generate_sample_data(
+        self, sample_data_config: Optional[SampleDataIngestionConfig] = None
+    ) -> TableData:
         """Fetch and ingest sample data
 
         Returns:
             TableData: sample data
         """
-        try:
-            logger.debug(
-                f"Fetching sample data for {self.entity.fullyQualifiedName.root}..."
+        if sample_data_config is None:
+            # if there is no global config, default to storing and reading sample data to ensure backward compatibility
+            # and availability of sample data for downstream steps
+            sample_data_config = SampleDataIngestionConfig(
+                storeSampleData=True, readSampleData=True
             )
-            table_data = self.fetch_sample_data(self.columns)
-            # Only store the data if configured to do so
-            if self.storage_config:
-                upload_sample_data(
-                    data=table_data,
-                    entity=self.entity,
-                    sample_storage_config=self.storage_config,
+
+        if (
+            not sample_data_config.storeSampleData
+            and not sample_data_config.readSampleData
+        ):
+            logger.info(
+                "Both storing and reading of sample data are disabled. Skipping sample data generation."
+            )
+            return TableData(rows=[], columns=[])
+        try:
+
+            # Stores overwrites reading since if we are storing the data, we want to fetch it
+            # as well to pass down the pipeline. If we are not storing, but reading is enabled,
+            # we still want to fetch the data to pass down the pipeline, but we won't store it.
+            if sample_data_config.readSampleData or sample_data_config.storeSampleData:
+                logger.debug(
+                    f"Fetching sample data for {self.entity.fullyQualifiedName.root}..."
                 )
-            table_data.rows = table_data.rows[
-                : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
-            ]
-            return table_data
+                table_data = self.fetch_sample_data(self.columns)
+                # Truncate large cell values to prevent OOM in downstream
+                # processing (NLP, serialization, etc.)
+                table_data.rows = [
+                    [self._truncate_cell(cell) for cell in row]
+                    for row in table_data.rows[
+                        : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
+                    ]
+                ]
+                # Only store the data if configured to do so
+                if self.storage_config and sample_data_config.storeSampleData:
+                    upload_sample_data(
+                        data=table_data,
+                        entity=self.entity,
+                        sample_storage_config=self.storage_config,
+                    )
+                return table_data
+
+            return TableData(rows=[], columns=[])
 
         except Exception as err:
             logger.debug(traceback.format_exc())

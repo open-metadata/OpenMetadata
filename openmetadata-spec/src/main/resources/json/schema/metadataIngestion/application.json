@@ -34,6 +34,10 @@
       "description": "Enable streaming logs to a remote log storage via the OpenMetadata Server",
       "type": "boolean",
       "default": false
+    },
+    "ingestionRunnerName": {
+      "description": "Name of the ingestion runner executing this workflow. Set at dispatch time by the execution environment.",
+      "type": "string"
     }
   },
   "required": ["workflowConfig"],

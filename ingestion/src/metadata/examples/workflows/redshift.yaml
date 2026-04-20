@@ -5,7 +5,11 @@ source:
     config:
       hostPort: cluster.name.region.redshift.amazonaws.com:5439
       username: username
-      password: strong_password
+      authType:
+        password: strong_password
+        # awsConfig:
+        #   awsRegion: eu-west-3
+      sslMode: require
       database: dev
       type: Redshift
   sourceConfig:

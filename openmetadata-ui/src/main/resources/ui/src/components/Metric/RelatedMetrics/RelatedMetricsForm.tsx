@@ -77,7 +77,7 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
               initialOptions={initialOptions}
               mode="multiple"
               placeholder={t('label.related-metric-plural')}
-              searchIndex={SearchIndex.METRIC_SEARCH_INDEX}
+              searchIndex={SearchIndex.METRIC}
             />
           </Form.Item>
         </Col>

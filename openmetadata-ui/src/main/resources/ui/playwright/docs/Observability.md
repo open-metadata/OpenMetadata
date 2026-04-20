@@ -2,13 +2,14 @@
 
 # Observability
 
-> **5 Components** | **19 Files** | **116 Tests** | **258 Scenarios** 🚀
+> **6 Components** | **23 Files** | **169 Tests** | **328 Scenarios** 🚀
 
 ## Table of Contents
 - [Data Quality](#data-quality)
 - [Incident Manager](#incident-manager)
 - [Profiler](#profiler)
 - [Test Library](#test-library)
+- [Rules Library](#rules-library)
 - [Alerts & Notifications](#alerts-notifications)
 
 ---
@@ -16,6 +17,43 @@
 <div id="data-quality"></div>
 
 ## Data Quality
+
+<details open>
+<summary>📄 <b>DataQualityPermissions.spec.ts</b> (25 tests, 25 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts)
+
+### Observability Permission Coverage
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Observability Permission Coverage** - Data Consumer cannot create or delete test cases | Data Consumer cannot create or delete test cases |
+| 2 | **Observability Permission Coverage** - Data Consumer can VIEW test cases but sees no edit controls in UI | Data Consumer can VIEW test cases but sees no edit controls in UI |
+| 3 | **Observability Permission Coverage** - Data Steward cannot create or delete test cases (default) | Data Steward cannot create or delete test cases (default) |
+| 4 | **Observability Permission Coverage** - Data Consumer cannot create or delete test suites | Data Consumer cannot create or delete test suites |
+| 5 | **Observability Permission Coverage** - Data Consumer cannot edit test case | Data Consumer cannot edit test case |
+| 6 | **Observability Permission Coverage** - User with TEST_CASE.CREATE cannot delete test cases | User with TEST_CASE.CREATE cannot delete test cases |
+| 7 | **Observability Permission Coverage** - User with TEST_CASE.DELETE cannot create test cases | User with TEST_CASE.DELETE cannot create test cases |
+| 8 | **Observability Permission Coverage** - User with TEST_CASE.VIEW_BASIC cannot edit test cases | User with TEST_CASE.VIEW_BASIC cannot edit test cases |
+| 9 | **Observability Permission Coverage** - User without TEST_SUITE.CREATE cannot create test suites | User without TEST_SUITE.CREATE cannot create test suites |
+| 10 | **Observability Permission Coverage** - User without TEST_SUITE.DELETE cannot delete test suites | User without TEST_SUITE.DELETE cannot delete test suites |
+| 11 | **Observability Permission Coverage** - User without TEST_SUITE.EDIT cannot add test case to logical suite | User without TEST_SUITE.EDIT cannot add test case to logical suite |
+| 12 | **Observability Permission Coverage** - User with TEST_CASE.CREATE can see Add button for test case | User with TEST_CASE.CREATE can see Add button for test case |
+| 13 | **Observability Permission Coverage** - User with TEST_CASE.DELETE can see delete option for test case | User with TEST_CASE.DELETE can see delete option for test case |
+| 14 | **Observability Permission Coverage** - User with TABLE.CREATE_TESTS can see Add button (Table Permission) | User with TABLE.CREATE_TESTS can see Add button (Table Permission) |
+| 15 | **Observability Permission Coverage** - User with TEST_CASE.EDIT_ALL can see edit action on test case | User with TEST_CASE.EDIT_ALL can see edit action on test case |
+| 16 | **Observability Permission Coverage** - User with TABLE.EDIT_TESTS can see edit action on test case | User with TABLE.EDIT_TESTS can see edit action on test case |
+| 17 | **Observability Permission Coverage** - User with VIEW_BASIC cannot see edit action in UI | User with VIEW_BASIC cannot see edit action in UI |
+| 18 | **Observability Permission Coverage** - User with TEST_CASE.VIEW_BASIC can view test case in UI | User with TEST_CASE.VIEW_BASIC can view test case in UI |
+| 19 | **Observability Permission Coverage** - User with TEST_CASE.VIEW_BASIC can view test case CONTENT details in UI | User with TEST_CASE.VIEW_BASIC can view test case CONTENT details in UI |
+| 20 | **Observability Permission Coverage** - User with TEST_SUITE.CREATE can see Add test suite button | User with TEST_SUITE.CREATE can see Add test suite button |
+| 21 | **Observability Permission Coverage** - User with TEST_SUITE.VIEW_ALL can view test suites page and list suites | User with TEST_SUITE.VIEW_ALL can view test suites page and list suites |
+| 22 | **Observability Permission Coverage** - User with TEST_SUITE.VIEW_ALL can view test suite CONTENT but cannot add test case | User with TEST_SUITE.VIEW_ALL can view test suite CONTENT but cannot add test case |
+| 23 | **Observability Permission Coverage** - User with TEST_SUITE.EDIT_ALL can see add test case button on suite details | User with TEST_SUITE.EDIT_ALL can see add test case button on suite details |
+| 24 | **Observability Permission Coverage** - User with TABLE.VIEW_TESTS can view test suites page (alternative permission) | User with TABLE.VIEW_TESTS can view test suites page (alternative permission) |
+| 25 | **Observability Permission Coverage** - Admin can see Data Quality UI controls (add test case, add test suite) | Admin can see Data Quality UI controls (add test case, add test suite) |
+
+</details>
 
 <details open>
 <summary>📄 <b>TestCaseImportExportBasic.spec.ts</b> (24 tests, 30 scenarios)</summary>
@@ -156,6 +194,29 @@
 </details>
 
 <details open>
+<summary>📄 <b>TestCaseResultPermissions.spec.ts</b> (11 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts)
+
+### TestCaseResult Permission Coverage
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **TestCaseResult Permission Coverage** - User with TEST_CASE.VIEW_ALL can view test case and results in UI | User with TEST_CASE.VIEW_ALL can view test case and results in UI |
+| 2 | **TestCaseResult Permission Coverage** - User with TEST_CASE.VIEW_ALL can view test RESULT CONTENT in UI | User with TEST_CASE.VIEW_ALL can view test RESULT CONTENT in UI |
+| 3 | **TestCaseResult Permission Coverage** - User with TABLE.VIEW_TESTS can view test case and results in UI (alternative) | User with TABLE.VIEW_TESTS can view test case and results in UI (alternative) |
+| 4 | **TestCaseResult Permission Coverage** - User with only TABLE.EDIT_TESTS (no TEST_CASE.VIEW_ALL) can still view results in UI via TABLE.VIEW_TESTS | User with only TABLE.EDIT_TESTS (no TEST_CASE.VIEW_ALL) can still view results in UI via TABLE.VIEW_TESTS |
+| 5 | **TestCaseResult Permission Coverage** - User with TEST_CASE.EDIT_ALL can see edit action on test case | User with TEST_CASE.EDIT_ALL can see edit action on test case |
+| 6 | **TestCaseResult Permission Coverage** - User with TABLE.EDIT_TESTS can see edit action on test case (alternative) | User with TABLE.EDIT_TESTS can see edit action on test case (alternative) |
+| 7 | **TestCaseResult Permission Coverage** - User with TABLE.DELETE + TEST_CASE.DELETE can see delete option for test case | User with TABLE.DELETE + TEST_CASE.DELETE can see delete option for test case |
+| 8 | **TestCaseResult Permission Coverage** - User with only VIEW cannot see edit action and cannot POST results | User with only VIEW cannot see edit action and cannot POST results |
+| 9 | **TestCaseResult Permission Coverage** - User with only VIEW cannot PATCH results | User with only VIEW cannot PATCH results |
+| 10 | **TestCaseResult Permission Coverage** - User with only TEST_CASE.DELETE (no TABLE.DELETE) cannot DELETE results | User with only TEST_CASE.DELETE (no TABLE.DELETE) cannot DELETE results |
+| 11 | **TestCaseResult Permission Coverage** - User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results | User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results |
+
+</details>
+
+<details open>
 <summary>📄 <b>TableLevelTests.spec.ts</b> (9 tests, 27 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts)
@@ -200,6 +261,26 @@
 | | ↳ *Create* | |
 | | ↳ *Edit* | |
 | | ↳ *Delete* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>TestCaseIncidentPermissions.spec.ts</b> (8 tests, 8 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts)
+
+### TestCaseIncidentStatus Permission Coverage
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **TestCaseIncidentStatus Permission Coverage** - User with TEST_CASE.VIEW_ALL can view incidents in UI | User with TEST_CASE.VIEW_ALL can view incidents in UI |
+| 2 | **TestCaseIncidentStatus Permission Coverage** - User with TEST_CASE.VIEW_ALL can view incident CONTENT in UI | User with TEST_CASE.VIEW_ALL can view incident CONTENT in UI |
+| 3 | **TestCaseIncidentStatus Permission Coverage** - User with TABLE.VIEW_TESTS can view incidents in UI (alternative) | User with TABLE.VIEW_TESTS can view incidents in UI (alternative) |
+| 4 | **TestCaseIncidentStatus Permission Coverage** - User with TEST_CASE.EDIT_ALL can see edit icon on incidents | User with TEST_CASE.EDIT_ALL can see edit icon on incidents |
+| 5 | **TestCaseIncidentStatus Permission Coverage** - User with TABLE.EDIT_TESTS can see edit icon on incidents (alternative) | User with TABLE.EDIT_TESTS can see edit icon on incidents (alternative) |
+| 6 | **TestCaseIncidentStatus Permission Coverage** - User with only VIEW cannot see edit icon and cannot POST incidents | User with only VIEW cannot see edit icon and cannot POST incidents |
+| 7 | **TestCaseIncidentStatus Permission Coverage** - User with only VIEW cannot PATCH incidents | User with only VIEW cannot PATCH incidents |
+| 8 | **TestCaseIncidentStatus Permission Coverage** - Consumer-like user cannot see edit icon and cannot create/edit incidents | Consumer-like user cannot see edit icon and cannot create/edit incidents |
 
 </details>
 
@@ -367,30 +448,7 @@
 ## Incident Manager
 
 <details open>
-<summary>📄 <b>IncidentManagerDateFilter.spec.ts</b> (6 tests, 6 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts)
-
-### Incident Manager Date Filter
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Incident Manager Date Filter** - Date picker shows placeholder when no date is selected | Date picker shows placeholder when no date is selected |
-| 2 | **Incident Manager Date Filter** - Select preset date range | Select preset date range |
-| 3 | **Incident Manager Date Filter** - Clear selected date range | Clear selected date range |
-| 4 | **Incident Manager Date Filter** - Date filter persists on page reload | Date filter persists on page reload |
-
-### Incident Manager Date Filter - Sidebar
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Incident Manager Date Filter - Sidebar** - Date picker shows placeholder by default on Incident Manager page | Date picker shows placeholder by default on Incident Manager page |
-| 2 | **Incident Manager Date Filter - Sidebar** - Select and clear date range on Incident Manager page | Select and clear date range on Incident Manager page |
-
-</details>
-
-<details open>
-<summary>📄 <b>IncidentManager.spec.ts</b> (5 tests, 18 scenarios)</summary>
+<summary>📄 <b>IncidentManager.spec.ts</b> (7 tests, 20 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/IncidentManager.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/IncidentManager.spec.ts)
 
@@ -419,6 +477,31 @@
 | | ↳ *Verify incident's status on DQ page* | |
 | 4 | **Incident Manager** - Validate Incident Tab in Entity details page | Validate Incident tab in entity page  Verifies incidents list within entity details, lineage incident counts, and navigation back to tab. |
 | 5 | **Incident Manager** - Verify filters in Incident Manager's page | Verify filters in Incident Manager page  Tests Assignee, Status, Test Case, and Date filters and confirms list updates accordingly. |
+| 6 | **Incident Manager** - Next, Previous and page indicator | Next, Previous and page indicator |
+| 7 | **Incident Manager** - Page size dropdown updates list limit and resets to page 1 | Page size dropdown updates list limit and resets to page 1 |
+
+</details>
+
+<details open>
+<summary>📄 <b>IncidentManagerDateFilter.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts)
+
+### Incident Manager Date Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Incident Manager Date Filter** - Date picker shows placeholder when no date is selected | Date picker shows placeholder when no date is selected |
+| 2 | **Incident Manager Date Filter** - Select preset date range | Select preset date range |
+| 3 | **Incident Manager Date Filter** - Clear selected date range | Clear selected date range |
+| 4 | **Incident Manager Date Filter** - Date filter persists on page reload | Date filter persists on page reload |
+
+### Incident Manager Date Filter - Sidebar
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Incident Manager Date Filter - Sidebar** - Date picker shows placeholder by default on Incident Manager page | Date picker shows placeholder by default on Incident Manager page |
+| 2 | **Incident Manager Date Filter - Sidebar** - Select and clear date range on Incident Manager page | Select and clear date range on Incident Manager page |
 
 </details>
 
@@ -516,6 +599,56 @@
 | | ↳ *Delete the test definition and verify redirect to first page* | |
 
 </details>
+
+<details open>
+<summary>📄 <b>TestDefinitionFilters.spec.ts</b> (7 tests, 24 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts)
+
+### Test Definition Filters
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Filters** - should filter test definitions with single-select filters | Filter test definitions with single-select filters |
+| | ↳ *Select entity type filter* | |
+| | ↳ *Verify radio button is checked* | |
+| | ↳ *Change filter selection* | |
+| | ↳ *Verify previous selection is cleared* | |
+| 2 | **Test Definition Filters** - should restore and persist filters from URL | Restore and persist filters from URL |
+| | ↳ *Load page with URL parameters* | |
+| | ↳ *Verify filters are pre-selected* | |
+| | ↳ *Verify persistence through browser navigation* | |
+| 3 | **Test Definition Filters** - should handle filter UI interactions correctly | Handle filter UI interactions correctly |
+| | ↳ *Verify radio button rendering* | |
+| | ↳ *Test toggle selection behavior* | |
+| | ↳ *Verify update button and dropdown closing* | |
+| | ↳ *Verify no clear all button in single-select mode* | |
+| 4 | **Test Definition Filters** - should handle multiple filter operations | Handle multiple filter operations |
+| | ↳ *Apply first filter* | |
+| | ↳ *Apply second filter* | |
+| | ↳ *Remove first filter* | |
+| | ↳ *Remove second filter* | |
+| 5 | **Test Definition Filters** - should make correct API calls and show filtered results | Make correct API calls and show filtered results |
+| | ↳ *Apply filter and validate API* | |
+| | ↳ *Verify filtered results in UI* | |
+| 6 | **Test Definition Filters** - should reset pagination when filters change | Reset pagination when filters change |
+| | ↳ *Apply initial filter* | |
+| | ↳ *Navigate to page 2 and verify pagination resets on filter change* | |
+| 7 | **Test Definition Filters** - should not revert to previous value when changing filter selection | Not revert to previous value when changing filter selection |
+| | ↳ *Select initial testPlatform filter (dbt)* | |
+| | ↳ *Change to a different testPlatform filter (OpenMetadata)* | |
+| | ↳ *Verify the new filter persists after page reload* | |
+| | ↳ *Change back to previous testPlatform filter (dbt)* | |
+| | ↳ *Verify final selection persists* | |
+
+</details>
+
+
+---
+
+<div id="rules-library"></div>
+
+## Rules Library
 
 <details open>
 <summary>📄 <b>TestDefinitionPermissions.spec.ts</b> (7 tests, 7 scenarios)</summary>

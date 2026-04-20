@@ -4,6 +4,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -111,17 +112,20 @@ public class StageStatsTracker {
    */
   public boolean awaitSinkCompletion(long timeoutMs) {
     long deadline = System.currentTimeMillis() + timeoutMs;
+    long sleepMs = 50;
     while (pendingSinkOps.get() > 0) {
       if (System.currentTimeMillis() >= deadline) {
-        LOG.warn(
-            "Timed out waiting for {} pending sink operations for job {} entity {}",
+        LOG.debug(
+            "Await cycle expired with {} pending sink operations for job {} entity {}",
             pendingSinkOps.get(),
             jobId,
             entityType);
         return false;
       }
       try {
-        Thread.sleep(10);
+        Thread.sleep(sleepMs);
+        // reduces CPU waste from thousands of wakeups across partition workers.
+        sleepMs = Math.min(sleepMs * 2, 200);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         return false;
@@ -133,6 +137,24 @@ public class StageStatsTracker {
   /** Get the count of pending sink operations. */
   public long getPendingSinkOps() {
     return pendingSinkOps.get();
+  }
+
+  /**
+   * Reconcile any remaining pending sink operations by recording them as successful. This should
+   * only be called after the bulk processor has been flushed — at that point, submitted records are
+   * either written or would have been reported as failures through the error handler. Pending ops
+   * that remain are callbacks that didn't fire in time, not actual write failures.
+   */
+  public void reconcilePendingSinkOps() {
+    long remaining = pendingSinkOps.getAndSet(0);
+    if (remaining > 0) {
+      sink.add((int) remaining, 0, 0);
+      LOG.info(
+          "Reconciled {} pending sink operations as successful for job {} entity {}",
+          remaining,
+          jobId,
+          entityType);
+    }
   }
 
   public void recordVector(StatsResult result) {
@@ -182,6 +204,19 @@ public class StageStatsTracker {
       operationCount.set(0);
       lastFlushTime = System.currentTimeMillis();
       return;
+    }
+
+    ReindexingMetrics metrics = ReindexingMetrics.getInstance();
+    if (metrics != null) {
+      if (rSuccess > 0) metrics.recordStageSuccess("reader", entityType, rSuccess);
+      if (rFailed > 0) metrics.recordStageFailed("reader", entityType, rFailed);
+      if (rWarnings > 0) metrics.recordStageWarnings("reader", entityType, rWarnings);
+      if (pSuccess > 0) metrics.recordStageSuccess("process", entityType, pSuccess);
+      if (pFailed > 0) metrics.recordStageFailed("process", entityType, pFailed);
+      if (sSuccess > 0) metrics.recordStageSuccess("sink", entityType, sSuccess);
+      if (sFailed > 0) metrics.recordStageFailed("sink", entityType, sFailed);
+      if (vSuccess > 0) metrics.recordStageSuccess("vector", entityType, vSuccess);
+      if (vFailed > 0) metrics.recordStageFailed("vector", entityType, vFailed);
     }
 
     try {

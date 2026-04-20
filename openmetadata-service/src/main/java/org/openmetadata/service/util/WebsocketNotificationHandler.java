@@ -49,7 +49,9 @@ public class WebsocketNotificationHandler {
   private final ExecutorService threadScheduler;
 
   public WebsocketNotificationHandler() {
-    this.threadScheduler = Executors.newFixedThreadPool(1);
+    this.threadScheduler =
+        Executors.newFixedThreadPool(
+            1, java.lang.Thread.ofPlatform().name("om-websocket-notification").factory());
   }
 
   public void processNotifications(ContainerResponseContext responseContext) {

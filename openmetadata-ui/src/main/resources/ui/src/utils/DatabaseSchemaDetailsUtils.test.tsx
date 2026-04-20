@@ -12,7 +12,10 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
+import {
+  buildSchemaQueryFilter,
+  ExtraDatabaseSchemaDropdownOptions,
+} from './DatabaseSchemaDetailsUtils';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -36,6 +39,90 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockNavigate = jest.fn();
+
+describe('buildSchemaQueryFilter', () => {
+  it('should return a filter with only the field term when no searchValue is provided', () => {
+    const result = buildSchemaQueryFilter(
+      'service.fullyQualifiedName.keyword',
+      'my-service'
+    );
+
+    expect(result).toEqual({
+      query: {
+        bool: {
+          must: [
+            { term: { 'service.fullyQualifiedName.keyword': 'my-service' } },
+          ],
+        },
+      },
+    });
+  });
+
+  it('should include displayName and name wildcard should-queries when searchValue is provided', () => {
+    const result = buildSchemaQueryFilter(
+      'service.fullyQualifiedName.keyword',
+      'my-service',
+      'PowerBI'
+    );
+
+    expect(result).toEqual({
+      query: {
+        bool: {
+          must: [
+            { term: { 'service.fullyQualifiedName.keyword': 'my-service' } },
+            {
+              bool: {
+                should: [
+                  { wildcard: { 'displayName.keyword': '*PowerBI*' } },
+                  { wildcard: { 'name.keyword': '*PowerBI*' } },
+                ],
+                minimum_should_match: 1,
+              },
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  it('should preserve the original casing of the search value in wildcard patterns', () => {
+    const result = buildSchemaQueryFilter(
+      'service.fullyQualifiedName.keyword',
+      'my-service',
+      'PowerBIBigquery'
+    );
+
+    const mustClauses = result.query.bool.must as Record<string, unknown>[];
+    const nestedBool = mustClauses.find((clause) => 'bool' in clause) as {
+      bool: { should: { wildcard: Record<string, string> }[] };
+    };
+
+    nestedBool.bool.should.forEach((s) => {
+      const value = Object.values(s.wildcard)[0];
+
+      expect(value).toBe('*PowerBIBigquery*');
+    });
+  });
+
+  it('should search across displayName.keyword and name.keyword fields only', () => {
+    const result = buildSchemaQueryFilter(
+      'service.fullyQualifiedName.keyword',
+      'my-service',
+      'test'
+    );
+
+    const mustClauses = result.query.bool.must as Record<string, unknown>[];
+    const nestedBool = mustClauses.find((clause) => 'bool' in clause) as {
+      bool: { should: { wildcard: Record<string, string> }[] };
+    };
+
+    const searchedFields = nestedBool.bool.should.map(
+      (s) => Object.keys(s.wildcard)[0]
+    );
+
+    expect(searchedFields).toEqual(['displayName.keyword', 'name.keyword']);
+  });
+});
 
 describe('ExtraDatabaseSchemaDropdownOptions', () => {
   beforeEach(() => {

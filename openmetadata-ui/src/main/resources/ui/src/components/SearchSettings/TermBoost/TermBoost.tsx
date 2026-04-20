@@ -68,7 +68,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
 
         // Determine field based on FQN pattern
         if (fqn?.startsWith('Certification.')) {
-          field = 'certification.tagFQN';
+          field = 'certification.tagLabel.tagFQN';
         } else if (fqn?.startsWith('Tier.')) {
           field = 'tier.tagFQN';
         }

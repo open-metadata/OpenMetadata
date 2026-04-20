@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/ssrsConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SsrsConnection",
+  "description": "SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to create, deploy, and manage paginated reports",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.SsrsConnection",
+  "definitions": {
+    "ssrsType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Ssrs"
+      ],
+      "default": "Ssrs"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/ssrsType",
+      "default": "Ssrs"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and Port of the Ssrs instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Ssrs.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Ssrs.",
+      "type": "string",
+      "format": "password"
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex to exclude or include charts that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Chart Filter Pattern"
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Project Filter Pattern"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "password"
+  ]
+}

@@ -33,6 +33,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   domain?: string;
   sortField?: string;
   sortType?: 'asc' | 'desc';
+  dateField?: 'timestamp' | 'updatedAt';
 };
 
 export const getListTestCaseIncidentStatus = async ({

@@ -15,7 +15,12 @@ import test from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { resetTokenFromBotPage } from '../../utils/bot';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const mysqlService = new MysqlIngestionClass({
@@ -35,6 +40,15 @@ test.describe.configure({
 });
 
 test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
+  test.beforeAll(async ({ browser }) => {
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      const { page, afterAction } = await createNewPage(browser);
+      await resetTokenFromBotPage(page, 'autoClassification-bot');
+      await afterAction();
+    }
+  });
+
   test('should be able to auto classify data', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(
@@ -55,12 +69,12 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     // Click on the database name
     await page.getByTestId('column-name').getByText('default').click();
 
-    await page.waitForSelector('[data-testid="cypress_integrations_test_db"]');
+    await page.getByTestId('cypress_integrations_test_db').waitFor();
 
     // Click on the database schema name
     await page.getByTestId('cypress_integrations_test_db').click();
 
-    await page.waitForSelector('[data-testid="sensitive_customers"]');
+    await page.getByTestId('sensitive_customers').waitFor();
 
     // Click on the table name
     await page.getByTestId('sensitive_customers').click();

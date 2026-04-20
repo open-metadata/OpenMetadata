@@ -110,6 +110,15 @@ const MarketPlacePage = withSuspenseFallback(
   React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
+const DataMarketplacePage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataMarketplacePage" */ '../../pages/DataMarketplacePage/DataMarketplacePage.component'
+      )
+  )
+);
+
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
@@ -183,6 +192,12 @@ const ServiceVersionPage = withSuspenseFallback(
 
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
+);
+
+const OntologyExplorerPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
+  )
 );
 
 const RequestDescriptionPage = withSuspenseFallback(
@@ -343,6 +358,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.EXPLORE_WITH_TAB}
       />
       <Route
+        element={<OntologyExplorerPage />}
+        path={ROUTES.ONTOLOGY_EXPLORER}
+      />
+      <Route
         element={
           <EditConnectionFormPage
             pageTitle={t('label.edit-entity', {
@@ -435,6 +454,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
+      <Route element={<DataMarketplacePage />} path={ROUTES.DATA_MARKETPLACE} />
       <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
       <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />

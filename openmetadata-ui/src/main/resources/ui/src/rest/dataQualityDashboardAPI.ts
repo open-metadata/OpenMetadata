@@ -17,6 +17,7 @@ import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolu
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   buildDataQualityDashboardFilters,
+  buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
@@ -38,6 +39,7 @@ export const fetchEntityCoveredWithDQ = (
     }),
     index: 'testCase',
     aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
+    domain: filters?.domainFqn,
   });
 };
 
@@ -59,6 +61,7 @@ export const fetchTotalEntityCount = (
     }),
     index: 'table',
     aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+    domain: filters?.domainFqn,
   });
 };
 
@@ -78,6 +81,7 @@ export const fetchTestCaseSummary = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -97,6 +101,7 @@ export const fetchTestCaseSummaryByDimension = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -111,6 +116,9 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags));
   }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
+  }
 
   return getDataQualityReport({
     q: JSON.stringify({
@@ -124,6 +132,7 @@ export const fetchTestCaseSummaryByNoDimension = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -139,6 +148,11 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
   return getDataQualityReport({
@@ -163,6 +177,7 @@ export const fetchCountOfIncidentStatusTypeByDays = (
     index: 'testCaseResolutionStatus',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -178,6 +193,11 @@ export const fetchIncidentTimeMetrics = (
   const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
 
   return getDataQualityReport({
@@ -211,6 +231,7 @@ export const fetchIncidentTimeMetrics = (
     index: 'testCaseResolutionStatus',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+    domain: filters?.domainFqn,
   });
 };
 
@@ -226,6 +247,11 @@ export const fetchTestCaseStatusMetricsByDays = (
   const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
   if (combinedTags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
+  }
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    mustFilter.push(
+      buildMustEsFilterForDataProducts(filters.dataProductFqns, 'testCase.')
+    );
   }
   if (filters?.entityFQN) {
     mustFilter.push({
@@ -259,6 +285,7 @@ export const fetchTestCaseStatusMetricsByDays = (
     index: 'testCaseResult',
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+    domain: filters?.domainFqn,
   });
 };
 

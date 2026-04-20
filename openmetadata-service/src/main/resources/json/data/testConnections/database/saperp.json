@@ -7,7 +7,8 @@
       "name": "GetTables",
       "description": "Validate that we can fetch the list of tables from the API",
       "errorMessage": "Failed to fetch tables, please validate if the access token is correct and has enough privilege to fetch tables.",
-      "mandatory": true
+      "mandatory": true,
+      "shortCircuit": true
     },
     {
       "name": "GetColumns",
@@ -17,4 +18,3 @@
     }
   ]
 }
-

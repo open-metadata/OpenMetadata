@@ -19,7 +19,7 @@ and manage behavior such as timeouts.
 from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union
 
 from sqlalchemy import Table, text
-from sqlalchemy.orm import DeclarativeMeta, Query, Session
+from sqlalchemy.orm import Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.utils.logger import query_runner_logger
@@ -111,7 +111,7 @@ class QueryRunner:
     def __init__(
         self,
         session: Session,
-        dataset: Union[DeclarativeMeta, AliasedClass],
+        dataset: Union[type, AliasedClass],
         raw_dataset: Table,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
@@ -191,7 +191,7 @@ class QueryRunner:
 
         return query
 
-    def _select_from_dataset(self, dataset: DeclarativeMeta, *entities, **kwargs):
+    def _select_from_dataset(self, dataset: type, *entities, **kwargs):
         """This method will use the sample data
         and the partitioning logic if available otherwise it will use the raw table.
 
@@ -221,8 +221,10 @@ class QueryRunner:
         """
         filter_ = get_query_filter_for_runner(kwargs)
         group_by_ = get_query_group_by_for_runner(kwargs)
-        user_query = self._session.query(self._dataset).from_statement(
+        user_query = (
             text(f"{self.profile_sample_query}")
+            .columns(*self.raw_dataset.__table__.c)
+            .subquery()
         )
 
         query = self._build_query(*entities, **kwargs).select_from(user_query)

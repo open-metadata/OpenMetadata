@@ -24,9 +24,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueLengthsToBeBetween import (
     BaseColumnValueLengthsToBeBetweenValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.length import LenFn
@@ -36,7 +43,10 @@ logger = test_suite_logger()
 
 
 class ColumnValueLengthsToBeBetweenValidator(
-    BaseColumnValueLengthsToBeBetweenValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValueLengthsToBeBetweenValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column value length to be between test case"""
 
@@ -77,12 +87,25 @@ class ColumnValueLengthsToBeBetweenValidator(
 
         return row_count, failed_rows
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        min_len_value = row.get(Metrics.minLength.name)
+        max_len_value = row.get(Metrics.maxLength.name)
+        if min_len_value is None or max_len_value is None:
+            return None
+        return {
+            Metrics.minLength.name: min_len_value,
+            Metrics.maxLength.name: max_len_value,
+            DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
+            DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
+        }
+
     def _execute_dimensional_validation(
         self,
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
@@ -106,9 +129,9 @@ class ColumnValueLengthsToBeBetweenValidator(
             checker = self._get_validation_checker(test_params)
 
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
-                Metrics.MIN_LENGTH.name: Metrics.MIN_LENGTH(column).fn(),
-                Metrics.MAX_LENGTH.name: Metrics.MAX_LENGTH(column).fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+                Metrics.minLength.name: Metrics.minLength(column).fn(),
+                Metrics.maxLength.name: Metrics.maxLength(column).fn(),
                 DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
                     LenFn(column)
                 ),
@@ -122,36 +145,32 @@ class ColumnValueLengthsToBeBetweenValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                min_len_value = row.get(Metrics.MIN_LENGTH.name)
-                max_len_value = row.get(Metrics.MAX_LENGTH.name)
-
-                if min_len_value is None or max_len_value is None:
-                    continue
-
-                metric_values = {
-                    Metrics.MIN_LENGTH.name: min_len_value,
-                    Metrics.MAX_LENGTH.name: max_len_value,
-                    DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
-                    DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
+
+    def filter(self):
+        min_bound = self.get_min_bound("minLength")
+        max_bound = self.get_max_bound("maxLength")
+        filters = []
+        if min_bound is not None and min_bound > float("-inf"):
+            filters.append((LenFn(self.get_column()), "lt", min_bound))
+        if max_bound is not None and max_bound < float("inf"):
+            filters.append((LenFn(self.get_column()), "gt", max_bound))
+        return {
+            "filters": filters,
+            "or_filter": True,
+        }
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

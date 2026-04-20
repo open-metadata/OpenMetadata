@@ -46,6 +46,8 @@ class Sum(StaticMetric):
     Only works for quantifiable types
     """
 
+    schema_metric_type = MetricType.sum
+
     @classmethod
     def name(cls):
         return MetricType.sum.value

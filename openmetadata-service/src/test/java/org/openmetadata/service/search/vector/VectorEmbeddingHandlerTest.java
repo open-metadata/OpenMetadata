@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,8 +11,12 @@ import static org.mockito.Mockito.when;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class VectorEmbeddingHandlerTest {
@@ -24,8 +29,6 @@ class VectorEmbeddingHandlerTest {
     vectorIndexService = mock(VectorIndexService.class);
     handler = new VectorEmbeddingHandler(vectorIndexService);
     subjectContext = mock(SubjectContext.class);
-
-    when(vectorIndexService.getIndexName()).thenReturn("vector_search_index");
   }
 
   @Test
@@ -47,9 +50,18 @@ class VectorEmbeddingHandlerTest {
   void testOnEntityCreatedForSupportedType() {
     EntityInterface entity = createMockEntity("table");
 
-    handler.onEntityCreated(entity, subjectContext);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchRepository searchRepository = mock(SearchRepository.class);
+      IndexMapping indexMapping = mock(IndexMapping.class);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
+      when(searchRepository.getClusterAlias()).thenReturn("");
+      when(indexMapping.getIndexName("")).thenReturn("table_search_index");
 
-    verify(vectorIndexService).updateVectorEmbeddings(any(), anyString());
+      handler.onEntityCreated(entity, subjectContext);
+
+      verify(vectorIndexService).updateEntityEmbedding(any(), anyString());
+    }
   }
 
   @Test
@@ -58,7 +70,7 @@ class VectorEmbeddingHandlerTest {
 
     handler.onEntityCreated(entity, subjectContext);
 
-    verify(vectorIndexService, never()).updateVectorEmbeddings(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   @Test
@@ -66,9 +78,18 @@ class VectorEmbeddingHandlerTest {
     EntityInterface entity = createMockEntity("table");
     when(entity.getDeleted()).thenReturn(false);
 
-    handler.onEntityUpdated(entity, null, subjectContext);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchRepository searchRepository = mock(SearchRepository.class);
+      IndexMapping indexMapping = mock(IndexMapping.class);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
+      when(searchRepository.getClusterAlias()).thenReturn("");
+      when(indexMapping.getIndexName("")).thenReturn("table_search_index");
 
-    verify(vectorIndexService).updateVectorEmbeddings(any(), anyString());
+      handler.onEntityUpdated(entity, null, subjectContext);
+
+      verify(vectorIndexService).updateEntityEmbedding(any(), anyString());
+    }
   }
 
   @Test
@@ -78,49 +99,48 @@ class VectorEmbeddingHandlerTest {
 
     handler.onEntityUpdated(entity, null, subjectContext);
 
-    verify(vectorIndexService, never()).updateVectorEmbeddings(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   @Test
   void testOnEntityUpdatedHandlesNull() {
     handler.onEntityUpdated(null, null, subjectContext);
 
-    verify(vectorIndexService, never()).updateVectorEmbeddings(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   @Test
-  void testOnEntityDeletedCallsHardDelete() {
+  void testOnEntityDeletedIsNoOp() {
     EntityInterface entity = createMockEntity("table");
 
     handler.onEntityDeleted(entity, subjectContext);
 
-    verify(vectorIndexService).hardDeleteEmbeddings(any());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   @Test
-  void testOnEntitySoftDeletedCallsSoftDelete() {
+  void testOnEntitySoftDeletedIsNoOp() {
     EntityInterface entity = createMockEntity("table");
 
     handler.onEntitySoftDeletedOrRestored(entity, true, subjectContext);
 
-    verify(vectorIndexService).softDeleteEmbeddings(any());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   @Test
-  void testOnEntityRestoredCallsRestore() {
+  void testOnEntityRestoredIsNoOp() {
     EntityInterface entity = createMockEntity("table");
 
     handler.onEntitySoftDeletedOrRestored(entity, false, subjectContext);
 
-    verify(vectorIndexService).restoreEmbeddings(any());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   @Test
   void testOnEntitySoftDeletedOrRestoredHandlesNull() {
     handler.onEntitySoftDeletedOrRestored(null, true, subjectContext);
 
-    verify(vectorIndexService, never()).softDeleteEmbeddings(any());
-    verify(vectorIndexService, never()).restoreEmbeddings(any());
+    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
   }
 
   private EntityInterface createMockEntity(String entityType) {

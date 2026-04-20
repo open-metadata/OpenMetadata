@@ -219,12 +219,12 @@ class TestDatalakeProfilerTestE2E:
     ):
         """Test custom profiler config return expected sample and metric computation"""
         profiler_metrics = [
-            "MIN",
-            "MAX",
-            "MEAN",
-            "MEDIAN",
+            "min",
+            "max",
+            "mean",
+            "median",
         ]
-        id_metrics = ["MIN", "MAX"]
+        id_metrics = ["min", "max"]
         non_metric_values = ["name", "timestamp"]
 
         ingestion_config["source"]["sourceConfig"]["config"].update(
@@ -277,7 +277,7 @@ class TestDatalakeProfilerTestE2E:
 
         id_metric_ln = 0
         for metric_name, metric in latest_id_profile:
-            if metric_name.upper() in id_metrics:
+            if metric_name in id_metrics:
                 assert metric is not None
                 id_metric_ln += 1
             else:
@@ -296,7 +296,7 @@ class TestDatalakeProfilerTestE2E:
 
         age_metric_ln = 0
         for metric_name, metric in latest_age_profile:
-            if metric_name.upper() in profiler_metrics:
+            if metric_name in profiler_metrics:
                 assert metric is not None
                 age_metric_ln += 1
             else:

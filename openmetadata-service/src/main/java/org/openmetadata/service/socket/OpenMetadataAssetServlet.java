@@ -26,13 +26,20 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
+import org.openmetadata.service.security.CspNonceHandler;
 
 @Slf4j
 public class OpenMetadataAssetServlet extends AssetServlet {
+  private static final Set<String> STATIC_FILE_EXTENSIONS =
+      Set.of(
+          "js", "css", "map", "json", "txt", "html", "ico", "png", "jpg", "jpeg", "svg", "gif",
+          "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf");
+
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
   private final String resourcePath;
@@ -57,9 +64,9 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String requestUri = req.getRequestURI();
 
     if (requestUri.endsWith("/")) {
-      // Serve index.html for directory requests
+      final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
       resp.setContentType("text/html");
-      resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
+      resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
       return;
     }
 
@@ -103,10 +110,10 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     // For SPA routing: serve index.html for 404s that don't look like static asset requests
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
       if (isSpaRoute(requestUri)) {
-        // Serve index file for SPA routes instead of 404
+        final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
         resp.setStatus(200);
         resp.setContentType("text/html");
-        resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
+        resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
       } else {
         resp.sendError(404);
       }
@@ -221,7 +228,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
    * @param requestUri The request URI to check
    * @return true if this should be treated as an SPA route, false if it's a static asset
    */
-  private boolean isSpaRoute(String requestUri) {
+  boolean isSpaRoute(String requestUri) {
     // Remove base path if present
     String pathToCheck = requestUri;
     String normalizedBasePath =
@@ -233,11 +240,29 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       pathToCheck = requestUri.substring(normalizedBasePath.length());
     }
 
-    // If path has a file extension, it's likely a static asset
-    // Don't serve index.html for these
-    String fileName = pathToCheck.substring(pathToCheck.lastIndexOf('/') + 1);
-    return !fileName.contains("."); // Has extension, likely a static asset
+    // API and OpenAPI routes should never be rewritten to index.html
+    if (pathToCheck.startsWith("/api/") || pathToCheck.startsWith("/openapi")) {
+      return false;
+    }
 
-    // No file extension, treat as SPA route
+    // Known static resource directories should not be rewritten.
+    if (pathToCheck.startsWith("/assets/")
+        || pathToCheck.startsWith("/images/")
+        || pathToCheck.startsWith("/favicons/")) {
+      return false;
+    }
+
+    String fileName = pathToCheck.substring(pathToCheck.lastIndexOf('/') + 1);
+    if (fileName.isEmpty()) {
+      return true;
+    }
+
+    int dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex <= 0 || dotIndex == fileName.length() - 1) {
+      return true;
+    }
+
+    String extension = fileName.substring(dotIndex + 1).toLowerCase();
+    return !STATIC_FILE_EXTENSIONS.contains(extension);
   }
 }

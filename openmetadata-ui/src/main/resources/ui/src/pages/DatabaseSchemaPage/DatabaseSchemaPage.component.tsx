@@ -100,8 +100,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const USERId = currentUser?.id ?? '';
 
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
-  const { tab: activeTab = EntityTabs.TABLE } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.TABLE } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
   const { entityFqn: decodedDatabaseSchemaFQN } = useFqn({
     type: EntityType.DATABASE_SCHEMA,
   });

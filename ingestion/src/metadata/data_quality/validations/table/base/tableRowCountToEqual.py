@@ -43,7 +43,7 @@ class BaseTableRowCountToEqualValidator(BaseTestValidator):
             TestCaseResult: The test case result for the overall validation
         """
         try:
-            res = self._run_results(Metrics.ROW_COUNT)
+            res = self._run_results(Metrics.rowCount)
         except ValueError as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, Position } from 'reactflow';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -20,10 +21,11 @@ import './PortsLineageView.style.less';
 import { DataProductNodeProps } from './PortsLineageView.types';
 
 const DataProductNode = memo(({ data }: DataProductNodeProps) => {
+  const { t } = useTranslation();
   const { dataProduct } = data;
 
   return (
-    <Box
+    <div
       className="data-product-center-node"
       data-testid="data-product-center-node">
       <Handle
@@ -39,22 +41,23 @@ const DataProductNode = memo(({ data }: DataProductNodeProps) => {
         type="source"
       />
 
-      <Box className="data-product-badge">
+      <div className="data-product-badge">
         <DataProductIcon height={12} width={12} />
-        Data Product
-      </Box>
+        {t('label.data-product')}
+      </div>
 
-      <Box className="data-product-content">
-        <Box className="data-product-icon-container">
+      <div className="data-product-content">
+        <div className="data-product-icon-container">
           <DataProductIcon height={24} width={24} />
-        </Box>
+        </div>
         <Typography
-          className="data-product-name"
+          as="h4"
+          className="tw:text-center tw:text-gray-400"
           title={getEntityName(dataProduct)}>
           {getEntityName(dataProduct)}
         </Typography>
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 });
 

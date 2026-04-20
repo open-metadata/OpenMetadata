@@ -828,6 +828,105 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "not_null_customers_customer_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.customers",
+            "results": [
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "unique_customers_customer_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.customers",
+            "results": [
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "accepted_values_customers_status",
+            "tableFqn": "postgres_sample.jaffle_shop.public.customers",
+            "results": [
+                { "result": "Found 100 rows, expected between 1 and 10000", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "100" }] },
+                { "result": "Found 100 rows, expected between 1 and 10000", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "100" }] },
+                { "result": "Found 0 rows, expected between 1 and 10000", "testCaseStatus": "Failed", "testResultValues": [{ "name": "rowCount", "value": "0" }] },
+                { "result": "Found 100 rows, expected between 1 and 10000", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "100" }] },
+                { "result": "Found 0 rows, expected between 1 and 10000", "testCaseStatus": "Failed", "testResultValues": [{ "name": "rowCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "not_null_orders_order_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.orders",
+            "results": [
+                { "result": "0 null values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "unique_orders_order_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.orders",
+            "results": [
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "accepted_values_orders_status",
+            "tableFqn": "postgres_sample.jaffle_shop.public.orders",
+            "results": [
+                { "result": "Found 5 values not in set: [placed, shipped, completed, return_pending, returned]", "testCaseStatus": "Failed", "testResultValues": [{ "name": "forbiddenCount", "value": "5" }] },
+                { "result": "Found 3 values not in set: [placed, shipped, completed, return_pending, returned]", "testCaseStatus": "Failed", "testResultValues": [{ "name": "forbiddenCount", "value": "3" }] },
+                { "result": "0 forbidden values found in column status", "testCaseStatus": "Success", "testResultValues": [{ "name": "forbiddenCount", "value": "0" }] },
+                { "result": "Found 2 values not in set: [placed, shipped, completed, return_pending, returned]", "testCaseStatus": "Failed", "testResultValues": [{ "name": "forbiddenCount", "value": "2" }] },
+                { "result": "0 forbidden values found in column status", "testCaseStatus": "Success", "testResultValues": [{ "name": "forbiddenCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "relationships_orders_customer_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.orders",
+            "results": [
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "Found 2 null values in column customer_id", "testCaseStatus": "Failed", "testResultValues": [{ "name": "nullCount", "value": "2" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "Found 1 null value in column customer_id", "testCaseStatus": "Failed", "testResultValues": [{ "name": "nullCount", "value": "1" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "not_null_stg_customers_customer_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.stg_customers",
+            "results": [
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
+                { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "unique_stg_customers_customer_id",
+            "tableFqn": "postgres_sample.jaffle_shop.public.stg_customers",
+            "results": [
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] }
+            ]
         }
     ]
 }

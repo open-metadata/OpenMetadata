@@ -11,7 +11,6 @@ from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyz
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.runner import LineageRunner
 
-from metadata.ingestion.lineage.masker import mask_query, masked_query_cache
 from metadata.utils.timeout import timeout
 
 # max lineage parsing wait in second for each parser and graph comparisons
@@ -614,32 +613,4 @@ def assert_lr_graphs_match(
     assert nx.is_isomorphic(lr1._sql_holder.graph, lr2._sql_holder.graph), (
         f"\n\tGraph with {name1}: {lr1._sql_holder.graph}\n\t"
         f"Graph with {name2}: {lr2._sql_holder.graph}"
-    )
-
-
-def assert_masked_query(sql: str, masked_query: str, dialect: str, parser_name: str):
-    """
-    Helper function to test query masking with a specific parser and assert the result.
-
-    :param sql: SQL statement to test
-    :param masked_query: Expected masked query
-    :param dialect: SQL dialect to use (for SqlGlot and SqlFluff)
-    :param parser_name: Name of parser being tested (for error messages)
-    """
-    analyzer_class = PARSER_MAP[parser_name]
-
-    parser_prefix = f"[{parser_name}] " if parser_name else ""
-
-    # clear cache before each test
-    masked_query_cache.clear()
-
-    parser = LineageRunner(sql, dialect=dialect, analyzer=analyzer_class)
-    len(parser.source_tables)  # Force parsing
-
-    actual = mask_query(sql, dialect=dialect, parser=parser)
-    expected = masked_query
-
-    assert actual == expected, (
-        f"\n\t{parser_prefix}Expected Masked Query: {expected}"
-        f"\n\t{parser_prefix}Actual Masked Query:   {actual}"
     )

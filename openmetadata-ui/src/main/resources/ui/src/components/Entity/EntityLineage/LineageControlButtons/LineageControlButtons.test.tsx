@@ -13,7 +13,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import LineageControlButtons from './LineageControlButtons';
 
@@ -57,7 +56,20 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
 }));
 
 jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn(),
+  useLineageProvider: jest.fn().mockImplementation(() => ({
+    ...mockLineageProviderValues,
+    reactFlowInstance: mockReactFlowInstance,
+  })),
+}));
+
+jest.mock('../../../../hooks/useLineageStore', () => ({
+  useLineageStore: jest.fn(() => ({
+    selectedColumn: null,
+    setSelectedColumn: jest.fn(),
+    setTracedColumns: jest.fn(),
+    isEditMode: false,
+    tracedColumns: new Set(),
+  })),
 }));
 
 const mockOnToggleMiniMap = jest.fn();
@@ -67,13 +79,6 @@ const mockProps = {
 };
 
 describe('LineageControlButtons', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (useLineageProvider as jest.Mock).mockReturnValue(
-      mockLineageProviderValues
-    );
-  });
-
   describe('Rendering', () => {
     it('should render all control buttons', () => {
       render(
@@ -89,47 +94,6 @@ describe('LineageControlButtons', () => {
       expect(screen.getByTestId('full-screen')).toBeInTheDocument();
     });
 
-    it('should render expand column button when column layer is active and not in edit mode', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.getByTestId('expand-column')).toBeInTheDocument();
-    });
-
-    it('should not render expand column button when in edit mode', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-        isEditMode: true,
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.queryByTestId('expand-column')).not.toBeInTheDocument();
-    });
-
-    it('should not render expand column button when column layer is not active', () => {
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.queryByTestId('expand-column')).not.toBeInTheDocument();
-    });
-
     it('should show minimap as selected when miniMapVisible is true', () => {
       render(
         <MemoryRouter>
@@ -140,44 +104,6 @@ describe('LineageControlButtons', () => {
       const miniMapButton = screen.getByTestId('toggle-mind-map');
 
       expect(miniMapButton).toHaveClass('Mui-selected');
-    });
-
-    it('should show shrink icon when columns are expanded', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-        expandAllColumns: true,
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.getByTestId('expand-column')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('expand-column').querySelector('.anticon-shrink')
-      ).toBeInTheDocument();
-    });
-
-    it('should show expand icon when columns are collapsed', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-        expandAllColumns: false,
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(screen.getByTestId('expand-column')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('expand-column').querySelector('.anticon-arrows-alt')
-      ).toBeInTheDocument();
     });
   });
 
@@ -192,25 +118,6 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('toggle-mind-map'));
 
       expect(mockOnToggleMiniMap).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('Column Expand/Collapse', () => {
-    it('should call toggleColumnView when expand column button is clicked', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-      });
-
-      render(
-        <MemoryRouter>
-          <LineageControlButtons {...mockProps} />
-        </MemoryRouter>
-      );
-
-      fireEvent.click(screen.getByTestId('expand-column'));
-
-      expect(mockToggleColumnView).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -274,7 +181,7 @@ describe('LineageControlButtons', () => {
     });
 
     it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
+      (useLineageProvider as jest.Mock).mockReturnValueOnce({
         ...mockLineageProviderValues,
         reactFlowInstance: undefined,
       });
@@ -345,7 +252,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-selected'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(15, 50, {
+      expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
         duration: 800,
         zoom: 0.65,
       });
@@ -386,7 +293,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-home'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(25, 50, {
+      expect(mockSetCenter).toHaveBeenCalledWith(25, 38, {
         duration: 800,
         zoom: 0.65,
       });

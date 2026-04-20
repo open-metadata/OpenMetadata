@@ -431,8 +431,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      CreateDataContract create = YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
       return create(uriInfo, securityContext, dataContract);
@@ -513,8 +512,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createOrUpdateFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      CreateDataContract create = YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
       return createOrUpdate(uriInfo, securityContext, dataContract);
@@ -1342,9 +1340,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response validateDataContractRequestYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract createRequest =
-          yamlMapper.readValue(yamlContent, CreateDataContract.class);
+          YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
       ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
       return Response.ok(validation).build();

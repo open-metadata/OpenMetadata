@@ -29,6 +29,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -70,6 +71,12 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
           }
         }
       }
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Skipping activity feed for {} {} - entity {} was deleted before processing",
+          changeEvent.getEventType(),
+          changeEvent.getEntityType(),
+          changeEvent.getEntityId());
     } catch (Exception ex) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(

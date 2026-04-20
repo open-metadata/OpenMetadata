@@ -14,6 +14,7 @@ for the metadata-server API. It is based on the generated pydantic
 models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
+
 import traceback
 from collections import OrderedDict
 from collections.abc import Generator
@@ -77,6 +78,7 @@ from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.profile_mixin import OMetaProfileMixin
+from metadata.ingestion.ometa.mixins.progress_mixin import OMetaProgressMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
@@ -285,6 +287,7 @@ class OpenMetadata(
     OMetaSuggestionsMixin,
     OMetaDomainMixin,
     OMetaProfileMixin,
+    OMetaProgressMixin,
     OMetaTagGlossaryMixin,
     Generic[T, C],
 ):
@@ -426,6 +429,13 @@ class OpenMetadata(
         """
         Update the filename for services and schemas
         """
+        explicit_file_name_map = {
+            "CreateTableProfileRequest": "table",
+            "CreateTestCaseResult": "basic",
+        }
+        if create.__name__ in explicit_file_name_map:
+            return explicit_file_name_map[create.__name__]
+
         if "service" in create.__name__.lower():
             return file_name.replace("service", "Service")
 
@@ -456,16 +466,19 @@ class OpenMetadata(
             .replace("datacontract", "dataContract")
             .replace("chatconversation", "chatConversation")
             .replace("eventsubscription", "eventSubscription")
+            .replace("mcpserver", "mcpServer")
         )
         class_path = ".".join(
             filter(
                 None,
                 [
                     self.class_root,
-                    self.entity_path
-                    if not file_name.startswith("test")
-                    and not file_name.startswith("eventSubscription")
-                    else None,
+                    (
+                        self.entity_path
+                        if not file_name.startswith("test")
+                        and not file_name.startswith("eventSubscription")
+                        else None
+                    ),
                     self.get_module_path(create),
                     self.update_file_name(create, file_name),
                 ],

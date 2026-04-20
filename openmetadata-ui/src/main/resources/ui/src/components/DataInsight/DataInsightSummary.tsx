@@ -52,8 +52,9 @@ interface Props {
 }
 
 const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
-  const { tab = DataInsightTabs.DATA_ASSETS } =
-    useRequiredParams<{ tab: DataInsightTabs }>();
+  const { tab = DataInsightTabs.DATA_ASSETS } = useRequiredParams<{
+    tab: DataInsightTabs;
+  }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [webCharts, setWebCharts] = useState<

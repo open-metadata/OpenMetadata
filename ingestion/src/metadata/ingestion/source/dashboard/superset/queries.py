@@ -105,5 +105,5 @@ inner join
 on 
 	t.id=tc.table_id  
 where 
-	tc.table_id=%(table_id)s
+	tc.table_id=:table_id
 """

@@ -11,6 +11,7 @@
 """
 Airflow source to extract metadata from OM UI
 """
+
 import traceback
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -144,7 +145,7 @@ class AirflowSource(PipelineServiceSource):
             return self._is_remote_airflow_3
 
         try:
-            inspector = inspect(self.session.bind)
+            inspector = inspect(self.session.get_bind())
             tables = inspector.get_table_names()
 
             # Airflow 3.x removed the 'task_instance' primary key column 'map_index'
@@ -182,7 +183,7 @@ class AirflowSource(PipelineServiceSource):
             return self._execution_date_column
 
         try:
-            inspector = inspect(self.session.bind)
+            inspector = inspect(self.session.get_bind())
             columns = [col["name"] for col in inspector.get_columns("dag_run")]
             if "logical_date" in columns:
                 self._execution_date_column = "logical_date"
@@ -200,13 +201,23 @@ class AirflowSource(PipelineServiceSource):
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ) -> "AirflowSource":
+    ):
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (
+            AirflowRestApiConnection,
+        )
+
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(
                 f"Expected AirflowConnection, but got {connection}"
             )
+        if isinstance(connection.connection, AirflowRestApiConnection):
+            from metadata.ingestion.source.pipeline.airflow.api.source import (
+                AirflowApiSource,
+            )
+
+            return AirflowApiSource(config, metadata)
         return cls(config, metadata)
 
     @property
@@ -279,7 +290,7 @@ class AirflowSource(PipelineServiceSource):
                 .all()
             )
 
-            dag_run_dict = [dict(elem) for elem in dag_run_list]
+            dag_run_dict = [elem._asdict() for elem in dag_run_list]
 
             # Build DagRun manually to not fall into new/old columns from
             # different Airflow versions
@@ -346,7 +357,9 @@ class AirflowSource(PipelineServiceSource):
             )
 
         task_instance_dict = (
-            [dict(elem) for elem in task_instance_list] if task_instance_list else []
+            [elem._asdict() for elem in task_instance_list]
+            if task_instance_list
+            else []
         )
 
         return [
@@ -392,15 +405,22 @@ class AirflowSource(PipelineServiceSource):
                     ]
 
                     # DagRun objects are built with logical_date (SDK is Airflow 3.x)
-                    execution_date = dag_run.logical_date
+                    # Fall back to start_date if logical_date is None (e.g. manually triggered runs)
+                    execution_date = dag_run.logical_date or dag_run.start_date
                     timestamp = datetime_to_ts(execution_date)
+                    if timestamp is None:
+                        logger.warning(
+                            f"Skipping pipeline status for run {dag_run.run_id}: "
+                            "both logical_date and start_date are None"
+                        )
+                        continue
                     pipeline_status = PipelineStatus(
                         executionId=dag_run.run_id,
                         taskStatus=task_statuses,
                         executionStatus=STATUS_MAP.get(
                             dag_run.state, StatusType.Pending.value
                         ),
-                        timestamp=Timestamp(timestamp) if timestamp else None,
+                        timestamp=Timestamp(timestamp),
                     )
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
@@ -650,9 +670,9 @@ class AirflowSource(PipelineServiceSource):
                         f"?_flt_3_dag_id={quote(dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
                     )
                 ),
-                downstreamTasks=list(task.downstream_task_ids)
-                if task.downstream_task_ids
-                else [],
+                downstreamTasks=(
+                    list(task.downstream_task_ids) if task.downstream_task_ids else []
+                ),
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
@@ -697,16 +717,20 @@ class AirflowSource(PipelineServiceSource):
 
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
+                description=(
+                    Markdown(pipeline_details.description)
+                    if pipeline_details.description
+                    else None
+                ),
                 sourceUrl=SourceUrl(source_url),
                 state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=pipeline_details.start_date.isoformat()
-                if pipeline_details.start_date
-                else None,
+                startDate=(
+                    pipeline_details.start_date.isoformat()
+                    if pipeline_details.start_date
+                    else None
+                ),
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),
@@ -885,24 +909,30 @@ class AirflowSource(PipelineServiceSource):
 
         return PipelineObservability(
             pipeline=EntityReference(
-                id=pipeline_entity.id.root
-                if hasattr(pipeline_entity.id, "root")
-                else pipeline_entity.id,
+                id=(
+                    pipeline_entity.id.root
+                    if hasattr(pipeline_entity.id, "root")
+                    else pipeline_entity.id
+                ),
                 type="pipeline",
-                fullyQualifiedName=pipeline_entity.fullyQualifiedName.root
-                if hasattr(pipeline_entity.fullyQualifiedName, "root")
-                else str(pipeline_entity.fullyQualifiedName),
+                fullyQualifiedName=(
+                    pipeline_entity.fullyQualifiedName.root
+                    if hasattr(pipeline_entity.fullyQualifiedName, "root")
+                    else str(pipeline_entity.fullyQualifiedName)
+                ),
             ),
             scheduleInterval=schedule_interval,
-            startTime=Timestamp(datetime_to_ts(dag_run.start_date))
-            if dag_run.start_date
-            else None,
-            endTime=Timestamp(datetime_to_ts(execution_date))
-            if execution_date
-            else None,
-            lastRunTime=Timestamp(datetime_to_ts(execution_date))
-            if execution_date
-            else None,
+            startTime=(
+                Timestamp(datetime_to_ts(dag_run.start_date))
+                if dag_run.start_date
+                else None
+            ),
+            endTime=(
+                Timestamp(datetime_to_ts(execution_date)) if execution_date else None
+            ),
+            lastRunTime=(
+                Timestamp(datetime_to_ts(execution_date)) if execution_date else None
+            ),
             lastRunStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
         )
 

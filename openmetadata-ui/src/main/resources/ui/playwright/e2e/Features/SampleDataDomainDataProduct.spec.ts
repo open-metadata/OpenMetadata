@@ -18,7 +18,6 @@ import { redirectToHomePage } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -29,7 +28,7 @@ const testDomainData: Domain['data'] = {
   domainType: 'Aggregate',
 };
 
-test.describe('Sample Data Domain and Data Product Validation', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Sample Data Domain and Data Product Validation', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -50,7 +49,7 @@ test.describe('Sample Data Domain and Data Product Validation', PLAYWRIGHT_SAMPL
     await waitForAllLoadersToDisappear(page);
     await selectDomain(page, testDomainData);
     const dpRes = page.waitForResponse((response) =>
-      response.url().includes('index=data_product_search_index')
+      response.url().includes('index=dataProduct')
     );
     await page.getByTestId('data_products').click();
     await dpRes;
@@ -67,7 +66,7 @@ test.describe('Sample Data Domain and Data Product Validation', PLAYWRIGHT_SAMPL
     await waitForAllLoadersToDisappear(page);
     await selectDomain(page, testDomainData);
     const dpRes = page.waitForResponse((response) =>
-      response.url().includes('index=data_product_search_index')
+      response.url().includes('index=dataProduct')
     );
     await page.getByTestId('data_products').click();
     await dpRes;
@@ -75,10 +74,9 @@ test.describe('Sample Data Domain and Data Product Validation', PLAYWRIGHT_SAMPL
     const dataProductCard = page.getByTestId('explore-card-TestDataProduct');
     await expect(dataProductCard).toBeVisible();
     await dataProductCard.click();
-    await page.waitForSelector(
-      '[data-testid="entity-summary-panel-container"]',
-      { state: 'visible' }
-    );
+    await page
+      .getByTestId('entity-summary-panel-container')
+      .waitFor({ state: 'visible' });
     const summaryPanel = page.getByTestId('entity-summary-panel-container');
     await expect(summaryPanel).toContainText('Test Data Product');
     await expect(summaryPanel).toContainText(

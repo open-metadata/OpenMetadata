@@ -10,31 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  createTheme,
-  Palette,
-  ThemeProvider,
-  TypographyVariantsOptions,
-} from '@mui/material/styles';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import {
-  Column,
-  ColumnProfile,
-  DataType,
-} from '../../../../generated/entity/data/table';
+import { ColumnProfile } from '../../../../generated/entity/data/table';
 import { KeyProfileMetrics } from './KeyProfileMetrics.component';
 
-const mockGetTableColumnsByFQN = jest.fn();
-
-jest.mock('../../../../rest/tableAPI', () => ({
-  getTableColumnsByFQN: jest
-    .fn()
-    .mockImplementation((...args) => mockGetTableColumnsByFQN(...args)),
-}));
-
-jest.mock('../../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    children,
+    title,
+  }: React.PropsWithChildren<{ title?: string }>) => (
+    <div title={title}>{children}</div>
+  ),
+  TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
 }));
 
 jest.mock('../../../../utils/CommonUtils', () => {
@@ -44,7 +32,6 @@ jest.mock('../../../../utils/CommonUtils', () => {
     ...actual,
     formatNumberWithComma: jest.fn((number: number) => {
       // Use en-US locale to ensure consistent formatting (1,234,567 not 12,34,567)
-      // This prevents flakiness when i18n.language is set to locales like en-IN
       return new Intl.NumberFormat('en-US').format(number);
     }),
   };
@@ -56,95 +43,23 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../common/Loader/Loader', () => ({
-  __esModule: true,
-  default: () => <div data-testid="loader">Loading...</div>,
-}));
-
-const mockTheme = createTheme({
-  palette: {
-    allShades: {
-      gray: {
-        50: '#FAFAFA',
-        100: '#EAECF5',
-        600: '#717680',
-        900: '#181D27',
-      },
-    },
-  } as Palette,
-  spacing: (value: number) => `${value * 8}px`,
-  typography: {
-    pxToRem: (px: number) => `${px / 16}rem`,
-  } as TypographyVariantsOptions,
-});
-
-const renderWithTheme = (component: React.ReactElement) => {
-  return render(<ThemeProvider theme={mockTheme}>{component}</ThemeProvider>);
-};
-
-const createMockColumn = (profile: ColumnProfile): Column => ({
-  name: 'test_column',
-  dataType: DataType.String,
-  fullyQualifiedName: 'test_table.test_column',
-  profile,
-});
-
 describe('KeyProfileMetrics', () => {
   const mockProfile: ColumnProfile = {
     name: 'test_column',
     timestamp: Date.now(),
-    uniqueProportion: 1.0,
-    nullProportion: 0.0,
-    distinctProportion: 1.0,
+    uniqueProportion: 1,
+    nullProportion: 0,
+    distinctProportion: 1,
     valuesCount: 1000,
   };
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should render loading state while fetching data', () => {
-    mockGetTableColumnsByFQN.mockImplementation(
-      () =>
-        new Promise(() => {
-          // Never resolves to keep loading state
-        })
-    );
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
+  it('should render all four metrics with profile data', () => {
+    render(<KeyProfileMetrics profile={mockProfile} />);
 
     expect(
       screen.getByText('label.key-profile-metric-plural')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-  });
-
-  it('should render all four metrics with profile data', async () => {
-    const mockColumn = createMockColumn(mockProfile);
-
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [mockColumn],
-    });
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('label.uniqueness')).toBeInTheDocument();
-    });
-
-    expect(
-      screen.getByText('label.key-profile-metric-plural')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.uniqueness')).toBeInTheDocument();
     expect(screen.getByText('label.nullness')).toBeInTheDocument();
     expect(screen.getByText('label.distinct')).toBeInTheDocument();
     expect(screen.getByText('label.value-count')).toBeInTheDocument();
@@ -156,65 +71,31 @@ describe('KeyProfileMetrics', () => {
     expect(screen.getByText('1,000')).toBeInTheDocument();
   });
 
-  it('should render -- when no columnFqn or tableFqn provided', async () => {
-    renderWithTheme(<KeyProfileMetrics />);
+  it('should render -- when no profile is provided', () => {
+    render(<KeyProfileMetrics />);
 
-    await waitFor(() => {
-      const placeholders = screen.getAllByText('--');
+    const placeholders = screen.getAllByText('--');
 
-      expect(placeholders).toHaveLength(4);
-    });
+    expect(placeholders).toHaveLength(4);
   });
 
-  it('should render -- when API returns no matching column', async () => {
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [],
-    });
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      const placeholders = screen.getAllByText('--');
-
-      expect(placeholders).toHaveLength(4);
-    });
-  });
-
-  it('should render -- for metrics with undefined values', async () => {
+  it('should render -- for metrics with undefined values', () => {
     const partialProfile: ColumnProfile = {
       name: 'test_column',
       timestamp: Date.now(),
       uniqueProportion: 0.5,
     };
 
-    const mockColumn = createMockColumn(partialProfile);
+    render(<KeyProfileMetrics profile={partialProfile} />);
 
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [mockColumn],
-    });
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('50%')).toBeInTheDocument();
-    });
+    expect(screen.getByText('50%')).toBeInTheDocument();
 
     const placeholders = screen.getAllByText('--');
 
     expect(placeholders.length).toBeGreaterThan(0);
   });
 
-  it('should render percentage values correctly', async () => {
+  it('should render percentage values correctly', () => {
     const profileWithPercentages: ColumnProfile = {
       name: 'test_column',
       timestamp: Date.now(),
@@ -224,54 +105,27 @@ describe('KeyProfileMetrics', () => {
       valuesCount: 5000,
     };
 
-    const mockColumn = createMockColumn(profileWithPercentages);
+    render(<KeyProfileMetrics profile={profileWithPercentages} />);
 
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [mockColumn],
-    });
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('75%')).toBeInTheDocument();
-    });
-
+    expect(screen.getByText('75%')).toBeInTheDocument();
     expect(screen.getByText('25%')).toBeInTheDocument();
     expect(screen.getByText('80%')).toBeInTheDocument();
     expect(screen.getByText('5,000')).toBeInTheDocument();
   });
 
-  it('should format large value counts with commas', async () => {
+  it('should format large value counts with commas', () => {
     const profileWithLargeCount: ColumnProfile = {
       name: 'test_column',
       timestamp: Date.now(),
       valuesCount: 1234567,
     };
 
-    const mockColumn = createMockColumn(profileWithLargeCount);
+    render(<KeyProfileMetrics profile={profileWithLargeCount} />);
 
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [mockColumn],
-    });
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('1,234,567')).toBeInTheDocument();
-    });
+    expect(screen.getByText('1,234,567')).toBeInTheDocument();
   });
 
-  it('should handle zero values correctly', async () => {
+  it('should handle zero values correctly', () => {
     const profileWithZeros: ColumnProfile = {
       name: 'test_column',
       timestamp: Date.now(),
@@ -281,65 +135,28 @@ describe('KeyProfileMetrics', () => {
       valuesCount: 0,
     };
 
-    const mockColumn = createMockColumn(profileWithZeros);
+    render(<KeyProfileMetrics profile={profileWithZeros} />);
 
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [mockColumn],
-    });
+    const zeroPercentages = screen.getAllByText('0%');
 
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      const zeroPercentages = screen.getAllByText('0%');
-
-      expect(zeroPercentages.length).toBeGreaterThanOrEqual(3);
-    });
-
+    expect(zeroPercentages.length).toBeGreaterThanOrEqual(3);
     expect(screen.getByText('0')).toBeInTheDocument();
   });
 
-  it('should render tooltips for each metric', async () => {
-    const mockColumn = createMockColumn(mockProfile);
+  it('should render data-testid for each metric', () => {
+    render(<KeyProfileMetrics profile={mockProfile} />);
 
-    mockGetTableColumnsByFQN.mockResolvedValue({
-      data: [mockColumn],
-    });
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('label.uniqueness')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('label.nullness')).toBeInTheDocument();
-    expect(screen.getByText('label.distinct')).toBeInTheDocument();
-    expect(screen.getByText('label.value-count')).toBeInTheDocument();
-  });
-
-  it('should handle API errors gracefully', async () => {
-    mockGetTableColumnsByFQN.mockRejectedValue(new Error('API Error'));
-
-    renderWithTheme(
-      <KeyProfileMetrics
-        columnFqn="test_table.test_column"
-        tableFqn="test_table"
-      />
-    );
-
-    await waitFor(() => {
-      const placeholders = screen.getAllByText('--');
-
-      expect(placeholders).toHaveLength(4);
-    });
+    expect(
+      screen.getByTestId('key-profile-metric-label.uniqueness')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('key-profile-metric-label.nullness')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('key-profile-metric-label.distinct')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('key-profile-metric-label.value-count')
+    ).toBeInTheDocument();
   });
 });

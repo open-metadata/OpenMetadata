@@ -12,7 +12,8 @@
 REST Auth & Client for Redash
 """
 
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
@@ -24,7 +25,7 @@ class RedashApiClient:
     REST Auth & Client for Redash
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config):
         self.config = config
@@ -36,7 +37,7 @@ class RedashApiClient:
             auth_token_mode="Key",
             allow_redirects=True,
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="redash")
 
     def dashboards(self, page=1, page_size=25):
         """GET api/dashboards"""

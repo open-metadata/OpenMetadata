@@ -113,7 +113,6 @@ class TestGetConnectionClass:
         "Glue",
         "Greenplum",
         "Hive",
-        "Iceberg",
         "Impala",
         "Mssql",
         "Mysql",

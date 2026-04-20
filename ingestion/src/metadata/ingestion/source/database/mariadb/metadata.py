@@ -14,6 +14,7 @@ MariaDB source module
 import traceback
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from sqlalchemy.dialects.mysql.base import ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 
@@ -79,7 +80,8 @@ class MariadbSource(CommonDbSourceService):
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[MariaDBStoredProcedure]:
-        results = self.engine.execute(query).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(query)).all()
         for row in results:
             try:
                 stored_procedure = MariaDBStoredProcedure.model_validate(
@@ -93,7 +95,7 @@ class MariadbSource(CommonDbSourceService):
                 logger.error(error)
                 self.status.failed(
                     error=StackTraceError(
-                        name=dict(row).get("procedure_name", "UNKNOWN"),
+                        name=row._asdict().get("procedure_name", "UNKNOWN"),
                         error=error,
                         stackTrace=traceback.format_exc(),
                     )

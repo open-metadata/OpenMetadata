@@ -18,7 +18,7 @@ import unittest
 from datetime import datetime, timedelta
 
 import sqlalchemy as sqa
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy.orm import DeclarativeBase, Session
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -35,7 +35,6 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
@@ -51,6 +50,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 
@@ -98,7 +98,9 @@ test_suite_config = {
     },
 }
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
@@ -316,8 +318,13 @@ class TestE2EWorkflow(unittest.TestCase):
         self.metadata.create_or_update_table_profiler_config(
             fqn=fqn,
             table_profiler_config=TableProfilerConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE,
-                profileSample=50.0,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType="STATIC",
+                    config={
+                        "profileSample": 50.0,
+                        "profileSampleType": "PERCENTAGE",
+                    },
+                ),
             ),
         )
 
@@ -380,8 +387,13 @@ class TestE2EWorkflow(unittest.TestCase):
         self.metadata.create_or_update_table_profiler_config(
             fqn=fqn,
             table_profiler_config=TableProfilerConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE,
-                profileSample=100.0,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType="STATIC",
+                    config={
+                        "profileSample": 100.0,
+                        "profileSampleType": "PERCENTAGE",
+                    },
+                ),
                 partitioning=PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,

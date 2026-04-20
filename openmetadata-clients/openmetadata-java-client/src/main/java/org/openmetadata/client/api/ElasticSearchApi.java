@@ -11,6 +11,7 @@ import java.util.Map;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.EncodingUtils;
 
+@Deprecated(since = "1.12.0", forRemoval = true)
 public interface ElasticSearchApi extends ApiClient.Api {
 
   /**

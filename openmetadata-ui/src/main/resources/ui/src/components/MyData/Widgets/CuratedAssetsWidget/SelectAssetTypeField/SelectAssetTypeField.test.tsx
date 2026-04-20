@@ -40,8 +40,8 @@ jest.mock('../../../../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {
     getEntityTypeSearchIndexMapping: jest.fn().mockReturnValue({
-      table: 'table_search_index',
-      dashboard: 'dashboard_search_index',
+      table: 'table',
+      dashboard: 'dashboard',
     }),
   },
 }));

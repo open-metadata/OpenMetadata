@@ -1,0 +1,83 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q -- '--no-verify'; then echo '{\"decision\": \"block\", \"reason\": \"Do not skip pre-commit hooks. Fix the underlying issue instead.\"}'; exit 2; fi",
+            "description": "Block --no-verify on git commits"
+          },
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(from\\s+@mui|import.*@mui|@emotion)'; then echo '{\"decision\": \"block\", \"reason\": \"Do not use MUI or @emotion. Use components from openmetadata-ui-core-components instead. See CLAUDE.md for details.\"}'; exit 2; fi",
+            "description": "Block new MUI/emotion imports"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.java$'; then echo 'Reminder: run `mvn spotless:apply` before committing Java changes.'; fi",
+            "description": "Remind to format Java after edits"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE 'openmetadata-spec/src/main/resources/json/schema/.*\\.json$'; then echo 'Schema file modified. Remember to run `make generate` to regenerate Pydantic models and rebuild dependent modules.'; fi",
+            "description": "Remind to regenerate after schema changes"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE 'openmetadata-spec/src/main/resources/json/schema/entity/services/connections/.*\\.json$'; then echo 'Connection schema modified. Remember to run `yarn parse-schema` to update resolved schemas for the UI.'; fi",
+            "description": "Remind to parse connection schemas for UI"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.new_string // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$' && echo \"$CONTENT\" | grep -qE ': any[^A-Za-z]|: any$|<any>|as any'; then echo 'Warning: `any` type detected in TypeScript. Use proper types, `unknown` with type guards, or import from generated types. See CLAUDE.md.'; fi",
+            "description": "Warn about any type in TypeScript"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.new_string // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$' && echo \"$CONTENT\" | grep -qE 'console\\.(log|warn|error|info|debug)'; then echo 'Warning: `console.*` detected in TypeScript. Remove before committing — CI lint-src will fail (no-console rule).'; fi",
+            "description": "Warn about console.log in TypeScript"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE 'locale/languages/en-us\\.json$'; then echo 'i18n key added. Run `yarn i18n` to sync all 17 locale files before committing — CI i18n-sync will fail otherwise.'; fi",
+            "description": "Remind to run i18n sync after adding keys"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.java$'; then echo 'Reminder: run `mvn spotless:apply` before committing Java changes.'; fi",
+            "description": "Remind to format Java after writes"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.content // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$' && echo \"$CONTENT\" | grep -qE 'import.*from.*@mui|import.*from.*@emotion'; then echo 'Warning: MUI/@emotion import detected. Use components from openmetadata-ui-core-components instead. See CLAUDE.md.'; fi",
+            "description": "Warn about MUI imports in new files"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.content // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx|js|jsx)$'; then HAS_LICENSE=$(echo \"$CONTENT\" | head -5 | grep -c 'Copyright.*Collate'); if [ \"$HAS_LICENSE\" -eq 0 ]; then echo 'Warning: New file missing Apache 2.0 license header. CI license-header check will fail. Add the standard header or run `yarn license-header-fix`.'; fi; fi",
+            "description": "Warn about missing license header in new files"
+          },
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.content // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$' && echo \"$CONTENT\" | grep -qE 'console\\.(log|warn|error|info|debug)'; then echo 'Warning: `console.*` in new file. CI lint-src will fail (no-console rule). Use the logger or remove.'; fi",
+            "description": "Warn about console.log in new files"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -595,7 +595,14 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default T jsonToEntity(String json, Object identity) {
     Class<T> clz = getEntityClass();
-    T entity = json != null ? JsonUtils.readValue(json, clz) : null;
+    T entity;
+    if (json != null) {
+      org.openmetadata.service.monitoring.RequestLatencyContext.trackJsonDeserialize(json.length());
+    }
+    try (var ignored =
+        org.openmetadata.service.monitoring.RequestLatencyContext.phase("jsonDeserialize")) {
+      entity = json != null ? JsonUtils.readValue(json, clz) : null;
+    }
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
       throw EntityNotFoundException.byMessage(

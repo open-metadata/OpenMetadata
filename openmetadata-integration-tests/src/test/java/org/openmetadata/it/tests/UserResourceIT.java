@@ -2180,18 +2180,18 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     SubjectCache.invalidateAll();
 
     // Test 1: Cache Miss (First call - should be slower)
-    long cacheMissStartTime = System.currentTimeMillis();
+    long cacheMissStartTime = System.nanoTime();
     SubjectContext context1 = SubjectContext.getSubjectContext(userName);
-    long cacheMissTime = System.currentTimeMillis() - cacheMissStartTime;
+    double cacheMissTime = (System.nanoTime() - cacheMissStartTime) / 1_000_000.0;
     assertNotNull(context1);
     assertEquals(userName, context1.user().getName());
 
     // Test 2: Cache Hit (Multiple subsequent calls - should be much faster)
-    List<Long> cacheHitTimes = new ArrayList<>();
+    List<Double> cacheHitTimes = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      long cacheHitStartTime = System.currentTimeMillis();
+      long cacheHitStartTime = System.nanoTime();
       SubjectContext context = SubjectContext.getSubjectContext(userName);
-      long cacheHitTime = System.currentTimeMillis() - cacheHitStartTime;
+      double cacheHitTime = (System.nanoTime() - cacheHitStartTime) / 1_000_000.0;
 
       cacheHitTimes.add(cacheHitTime);
       assertNotNull(context);
@@ -2200,41 +2200,39 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     // Calculate cache hit performance statistics
     double avgCacheHitTime =
-        cacheHitTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
-    long maxCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).max().orElse(0);
-    long minCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).min().orElse(0);
+        cacheHitTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
 
     // Performance assertions
     double performanceImprovement =
-        ((double) cacheMissTime - avgCacheHitTime) / cacheMissTime * 100;
+        cacheMissTime > 0 ? ((cacheMissTime - avgCacheHitTime) / cacheMissTime) * 100 : 0.0;
 
     // Assert significant performance improvement
     assertTrue(
         performanceImprovement > 30.0,
         String.format(
-            "Expected >30%% improvement, got %.1f%% (%dms → %.1fms)",
+            "Expected >30%% improvement, got %.1f%% (%.3fms -> %.3fms)",
             performanceImprovement, cacheMissTime, avgCacheHitTime));
     assertTrue(
         avgCacheHitTime < 200,
-        String.format("Cache hits should be <200ms, got %.1fms", avgCacheHitTime));
+        String.format("Cache hits should be <200ms, got %.3fms", avgCacheHitTime));
 
     // Test 3: Concurrent Access Performance
     int threadCount = 5;
     int callsPerThread = 10;
     ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
-    long concurrentStartTime = System.currentTimeMillis();
-    List<CompletableFuture<List<Long>>> futures = new ArrayList<>();
+    long concurrentStartTime = System.nanoTime();
+    List<CompletableFuture<List<Double>>> futures = new ArrayList<>();
 
     for (int threadId = 0; threadId < threadCount; threadId++) {
-      CompletableFuture<List<Long>> future =
+      CompletableFuture<List<Double>> future =
           CompletableFuture.supplyAsync(
               () -> {
-                List<Long> threadTimes = new ArrayList<>();
+                List<Double> threadTimes = new ArrayList<>();
                 for (int call = 0; call < callsPerThread; call++) {
-                  long callStart = System.currentTimeMillis();
+                  long callStart = System.nanoTime();
                   SubjectContext context = SubjectContext.getSubjectContext(userName);
-                  long callTime = System.currentTimeMillis() - callStart;
+                  double callTime = (System.nanoTime() - callStart) / 1_000_000.0;
 
                   threadTimes.add(callTime);
                   assertNotNull(context);
@@ -2254,12 +2252,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
       throw new RuntimeException("Concurrent test failed", e);
     }
 
-    long totalConcurrentTime = System.currentTimeMillis() - concurrentStartTime;
+    double totalConcurrentTime = (System.nanoTime() - concurrentStartTime) / 1_000_000.0;
     executor.shutdown();
 
     // Collect all concurrent timing data
-    List<Long> allConcurrentTimes = new ArrayList<>();
-    for (CompletableFuture<List<Long>> future : futures) {
+    List<Double> allConcurrentTimes = new ArrayList<>();
+    for (CompletableFuture<List<Double>> future : futures) {
       try {
         allConcurrentTimes.addAll(future.get());
       } catch (Exception e) {
@@ -2268,7 +2266,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     }
 
     double avgConcurrentTime =
-        allConcurrentTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+        allConcurrentTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
     int totalCalls = threadCount * callsPerThread;
     double callsPerSecond = (double) totalCalls / (totalConcurrentTime / 1000.0);
 

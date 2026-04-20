@@ -73,7 +73,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                     logger.debug(f"Executing lineage query: {sql_statement}")
                     rows = conn.execute(text(sql_statement))
                     for row in rows:
-                        query_dict = dict(row)
+                        query_dict = row._asdict()
                         query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         row_count += 1
                         try:

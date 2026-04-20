@@ -48,7 +48,7 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                     endTime=query.Status.CompletionDateTime.isoformat(
                         DATETIME_SEPARATOR, DATETIME_TIME_SPEC
                     )
-                    if query.Status.CompletionDateTime
+                    if getattr(query.Status, "CompletionDateTime", None)
                     else query.Status.SubmissionDateTime.isoformat(
                         DATETIME_SEPARATOR, DATETIME_TIME_SPEC
                     ),

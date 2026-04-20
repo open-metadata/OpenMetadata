@@ -12,11 +12,18 @@
  */
 @import (reference) '../../../../styles/variables.less';
 
+.test-case-result-tooltip.ant-tooltip .ant-tooltip-inner {
+  background-color: @white;
+  color: @black;
+  border-radius: @border-rad-sm;
+  font-size: @size-sm;
+  font-weight: @font-medium;
+}
+
 // Parameter label and value text styles (global for reuse)
 .parameter-label {
   color: @grey-700;
   font-size: @font-size-base;
-  font-style: normal;
   font-weight: @font-medium;
   min-width: 200px;
   display: inline-block;
@@ -25,12 +32,7 @@
 .parameter-value-text {
   color: @grey-900;
   font-size: @font-size-base;
-  font-style: normal;
   font-weight: @font-medium;
-}
-
-.dynamic-assertion-icon {
-  margin-top: @size-xxs;
 }
 
 .test-case-result-tab {
@@ -56,7 +58,6 @@
   .parameter-title {
     color: @grey-900;
     font-size: @font-size-base;
-    font-style: normal;
     font-weight: @font-semibold;
   }
 
@@ -65,7 +66,37 @@
   }
 
   .parameter-row {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: @size-sm;
     padding: @size-xs 0;
+    width: 100%;
+  }
+
+  .parameter-row-cell {
+    &--full {
+      grid-column: span 8;
+    }
+    &--half {
+      grid-column: span 6;
+    }
+  }
+
+  .parameter-row-cell-content {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: @size-xs;
+    width: 100%;
+  }
+
+  .parameter-value-text-flex {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
   }
 
   .parameter-row-divider {

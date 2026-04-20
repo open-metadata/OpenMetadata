@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.modelcontextprotocol.common.McpTransportContext;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
- * Tests to verify the MCP SDK 0.17.0 upgrade works correctly. These tests validate the API changes
- * made during the upgrade from 0.11.2 to 0.17.0.
+ * Tests to verify the MCP SDK 1.1.0 upgrade works correctly. These tests validate the API changes
+ * made during the upgrade from 0.17.1 to 1.1.0.
  */
 public class McpSdkUpgradeTest {
 
@@ -172,6 +172,56 @@ public class McpSdkUpgradeTest {
     assertThat(searchTool).isNotNull();
     assertThat(searchTool.description()).isNotNull();
     assertThat(searchTool.inputSchema()).isNotNull();
+  }
+
+  @Test
+  void testServerCapabilitiesDoNotAdvertiseLogging() {
+    // The stateless MCP server has no handler for logging/setLevel.
+    // Advertising logging capability causes spec-compliant clients (e.g. VSCode)
+    // to call logging/setLevel, which fails with MethodNotFound.
+    McpSchema.ServerCapabilities capabilities =
+        McpSchema.ServerCapabilities.builder()
+            .tools(true)
+            .prompts(true)
+            .resources(true, true)
+            .build();
+
+    assertThat(capabilities.logging()).isNull();
+  }
+
+  @Test
+  void testElicitationCapabilitiesDeserialization() throws Exception {
+    // Regression test for https://github.com/open-metadata/OpenMetadata/issues/26454
+    // MCP clients implementing the 2025-11-25 spec send elicitation with form/url fields.
+    // SDK <= 0.17.1 threw UnrecognizedPropertyException crashing the handshake.
+    JacksonMcpJsonMapper jsonMapper = new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
+
+    String initRequest =
+        """
+        {
+          "jsonrpc": "2.0",
+          "id": 0,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {
+              "roots": {},
+              "elicitation": {
+                "form": {},
+                "url": {}
+              }
+            },
+            "clientInfo": {"name": "claude-code", "version": "2.1.74"}
+          }
+        }
+        """;
+
+    McpSchema.JSONRPCMessage message = McpSchema.deserializeJsonRpcMessage(jsonMapper, initRequest);
+
+    assertThat(message).isNotNull();
+    assertThat(message).isInstanceOf(McpSchema.JSONRPCRequest.class);
+    McpSchema.JSONRPCRequest request = (McpSchema.JSONRPCRequest) message;
+    assertThat(request.method()).isEqualTo("initialize");
   }
 
   @Test

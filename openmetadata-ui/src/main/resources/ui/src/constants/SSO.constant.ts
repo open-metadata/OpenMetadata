@@ -19,6 +19,8 @@ import {
   getServerUrl,
 } from '../utils/SSOURLUtils';
 
+export const MAX_XML_SIZE = 1 * 1024 * 1024;
+
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
 
@@ -45,7 +47,9 @@ export const SAML_SSO_DEFAULTS = {
   authority: getAuthorityUrl(),
   clientType: 'public',
   jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-  idp: {},
+  idp: {
+    authorityUrl: '',
+  },
   sp: {
     entityId: getServerUrl(),
     acs: getCallbackUrl(),

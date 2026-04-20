@@ -12,7 +12,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: full-contract
 name: Complete ODCS Contract
-version: "2.0.0"
+version: '2.0.0'
 status: active
 description:
   purpose: Comprehensive data contract for customer analytics.
@@ -20,13 +20,13 @@ description:
   usage: For internal analytics dashboards and ML models.
 slaProperties:
   - property: freshness
-    value: "12"
+    value: '12'
     unit: hour
   - property: latency
-    value: "2"
+    value: '2'
     unit: hour
   - property: retention
-    value: "365"
+    value: '365'
     unit: day
 roles:
   - name: data_admin

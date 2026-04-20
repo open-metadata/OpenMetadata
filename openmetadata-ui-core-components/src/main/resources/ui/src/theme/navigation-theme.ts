@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
+import type { ThemeColors } from '../types';
 import { BODY_FONT_SIZES } from './typography-constants';
 
-export const navigationTheme = (colors: any): Components<Theme> => ({
+export const navigationTheme = (colors: ThemeColors): Components<Theme> => ({
   MuiBreadcrumbs: {
     styleOverrides: {
       root: {

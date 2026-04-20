@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';

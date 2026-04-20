@@ -90,84 +90,24 @@ jest.mock('antd', () => ({
   },
 }));
 
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  Chip: jest.fn().mockImplementation(({ label, ...props }) => (
-    <div data-testid="chip" {...props}>
-      {label}
-    </div>
-  )),
-  Box: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="box" {...props}>
-      {children}
-    </div>
-  )),
-  Stack: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="stack" {...props}>
-      {children}
-    </div>
-  )),
-  Tooltip: jest.fn().mockImplementation(({ children, title, ...props }) => (
-    <div data-testid="tooltip" title={title} {...props}>
-      {children}
-    </div>
-  )),
-  Typography: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="typography" {...props}>
-      {children}
-    </div>
-  )),
-  useTheme: jest.fn().mockReturnValue({
-    spacing: (value: number) => `${value * 8}px`,
-    typography: {
-      pxToRem: (value: number) => `${value / 16}rem`,
-    },
-    palette: {
-      allShades: {
-        gray: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          600: '#757575',
-          900: '#212121',
-        },
-      },
-    },
-  }),
-}));
-
-jest.mock('@mui/material/styles', () => ({
-  ...jest.requireActual('@mui/material/styles'),
-  styled: jest.fn().mockImplementation((component) => {
-    return jest.fn().mockImplementation((props) => {
-      const Component = component;
-
-      return <Component {...props} />;
-    });
-  }),
-  useTheme: jest.fn().mockReturnValue({
-    spacing: (value: number) => `${value * 8}px`,
-    typography: {
-      pxToRem: (value: number) => `${value / 16}rem`,
-    },
-    palette: {
-      allShades: {
-        gray: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          600: '#757575',
-          900: '#212121',
-        },
-      },
-    },
-  }),
-}));
-
-jest.mock('@mui/icons-material', () => ({
-  HelpOutlineIcon: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="help-outline-icon">HelpIcon</div>
-    )),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn().mockImplementation(
+    ({
+      children,
+      onClick,
+      'data-testid': testId,
+      isDisabled,
+    }: React.PropsWithChildren<{
+      onClick?: React.MouseEventHandler;
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      [key: string]: unknown;
+    }>) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick}>
+        {children}
+      </button>
+    )
+  ),
 }));
 
 jest.mock('@ant-design/icons', () => ({
@@ -650,6 +590,10 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
+      await waitFor(() => {
+        expect(getByTestId('tags-section')).toBeInTheDocument();
+      });
+
       const updateButton = getByTestId('update-tags');
       fireEvent.click(updateButton);
 
@@ -669,6 +613,10 @@ describe('ColumnDetailPanel', () => {
           onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
+
+      await waitFor(() => {
+        expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      });
 
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);

@@ -54,6 +54,8 @@ public class FlywayMigrationFile extends MigrationFile {
 
   @Override
   public void parseSQLFiles() {
+    schemaChanges.clear();
+    postDDLScripts.clear();
     if (sqlFile.exists() && sqlFile.isFile()) {
       try {
         final ParsingContext parsingContext = new ParsingContext();
@@ -95,6 +97,17 @@ public class FlywayMigrationFile extends MigrationFile {
   @Override
   public String getMigrationsFilePath() {
     return sqlFile.getAbsolutePath();
+  }
+
+  @Override
+  public MigrationFile copyWithReprocessing(boolean reprocessing) {
+    FlywayMigrationFile copy =
+        new FlywayMigrationFile(
+            sqlFile, migrationDAO, connectionType, openMetadataApplicationConfig);
+    copy.schemaChanges.addAll(schemaChanges);
+    copy.postDDLScripts.addAll(postDDLScripts);
+    copy.setReprocessing(reprocessing);
+    return copy;
   }
 
   public static boolean isFlywayMigrationFile(File file) {

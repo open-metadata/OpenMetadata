@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -285,34 +285,40 @@ const ObservabilityAlertsPage = () => {
 
   const pageHeaderData = useMemo(
     () => ({
-      header: t('label.observability'),
+      header: t('label.observability-alert'),
       subHeader: t('message.alerts-description'),
     }),
-    []
+    [t]
   );
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <div className="d-flex justify-between m-t-xs">
-            <PageHeader
-              data={pageHeaderData}
-              learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
-              title={t('label.observability-alert')}
-            />
-            {(alertResourcePermission?.Create ||
-              alertResourcePermission?.All) && (
-              <LimitWrapper resource="eventsubscription">
-                <Button
-                  data-testid="create-observability"
-                  type="primary"
-                  onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
-                  {t('label.add-entity', { entity: t('label.alert') })}
-                </Button>
-              </LimitWrapper>
-            )}
-          </div>
+          <Card>
+            <Row>
+              <Col span={16}>
+                <PageHeader
+                  data={pageHeaderData}
+                  learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
+                  title={t('label.observability-alert')}
+                />
+              </Col>
+              <Col className="d-flex justify-end" span={8}>
+                {(alertResourcePermission?.Create ||
+                  alertResourcePermission?.All) && (
+                  <LimitWrapper resource="eventsubscription">
+                    <Button
+                      data-testid="create-observability"
+                      type="primary"
+                      onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
+                      {t('label.add-entity', { entity: t('label.alert') })}
+                    </Button>
+                  </LimitWrapper>
+                )}
+              </Col>
+            </Row>
+          </Card>
         </Col>
         <Col span={24}>
           <Table

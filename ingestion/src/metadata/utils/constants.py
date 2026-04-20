@@ -53,9 +53,6 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueType,
 )
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    IcebergType,
-)
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
 )
@@ -85,7 +82,7 @@ DOT = "_DOT_"
 TEN_MIN = 10 * 60
 THREE_MIN = 3 * 60
 UTF_8 = "utf-8"
-CHUNKSIZE = 200000
+CHUNKSIZE = 100000
 DEFAULT_DATABASE = "default"
 DEFAULT_DASHBAORD = "default"
 BUILDER_PASSWORD_ATTR = "password"
@@ -117,6 +114,10 @@ AUTHORIZATION_HEADER = "Authorization"
 NO_ACCESS_TOKEN = "no_token"
 
 SAMPLE_DATA_DEFAULT_COUNT = 50
+
+# Max length for any individual cell value in sample data.
+# Prevents OOM when tables contain large TEXT/CLOB columns.
+SAMPLE_DATA_MAX_CELL_LENGTH = 5_000
 
 ENTITY_REFERENCE_CLASS_MAP = {
     # Service Entities
@@ -172,7 +173,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DomoDatabaseType.DomoDatabase.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
-    IcebergType.Iceberg.value,
     MongoDBType.MongoDB.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,

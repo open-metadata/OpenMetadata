@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **79 Files** | **1611 Tests** | **2258 Scenarios** 🚀
+> **13 Components** | **86 Files** | **1622 Tests** | **2327 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -16,6 +16,7 @@
 - [RBAC](#rbac)
 - [Onboarding](#onboarding)
 - [App Marketplace](#app-marketplace)
+- [General](#general)
 - [Authentication](#authentication)
 
 ---
@@ -25,7 +26,7 @@
 ## Other
 
 <details open>
-<summary>📄 <b>ODCSImportExport.spec.ts</b> (42 tests, 42 scenarios)</summary>
+<summary>📄 <b>ODCSImportExport.spec.ts</b> (47 tests, 50 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ODCSImportExport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ODCSImportExport.spec.ts)
 
@@ -72,14 +73,301 @@
 | 37 | **ODCS Import/Export** - Schema validation shows loading state during validation | Schema validation shows loading state during validation |
 | 38 | **ODCS Import/Export** - Schema validation passes for contract without schema definition | Schema validation passes for contract without schema definition |
 | 39 | **ODCS Import/Export** - Multi-object ODCS contract shows object selector | Multi-object ODCS contract shows object selector |
-| 40 | **ODCS Import/Export** - Multi-object ODCS contract - selecting object enables import | Multi-object ODCS contract - selecting object enables import |
+| 40 | **ODCS Import/Export** - Multi-object ODCS contract - selecting object enables import and completes import | Multi-object ODCS contract - selecting object enables import and completes import |
 | 41 | **ODCS Import/Export** - Multi-object ODCS contract - object selector shows all schema objects | Multi-object ODCS contract - object selector shows all schema objects |
 | 42 | **ODCS Import/Export** - Single-object ODCS contract does not show object selector | Single-object ODCS contract does not show object selector |
+| 43 | **ODCS Import/Export** - Import ODCS, modify via UI, export and verify changes | Import ODCS, modify via UI, export and verify changes |
+| 44 | **ODCS Import/Export** - Import ODCS with SLA, modify SLA via UI, export and verify SLA changes | Import ODCS with SLA, modify SLA via UI, export and verify SLA changes |
+| 45 | **ODCS Import/Export** - Import ODCS with markdown description and verify proper rendering | Import ODCS with markdown description and verify proper rendering |
+| 46 | **ODCS Import/Export** - Create contract from UI, export OM format, import with merge, verify data | Create contract from UI, export OM format, import with merge, verify data |
+| | ↳ *Create contract from UI with SLA* | |
+| | ↳ *Export as OM format and modify description* | |
+| | ↳ *Import modified OM YAML with merge option* | |
+| | ↳ *Verify merged contract preserves SLA and updates description* | |
+| 47 | **ODCS Import/Export** - OM format export and import round trip - create, export, delete, reimport | OM format export and import round trip - create, export, delete, reimport |
 
 </details>
 
 <details open>
-<summary>📄 <b>AuditLogs.spec.ts</b> (34 tests, 80 scenarios)</summary>
+<summary>📄 <b>InputOutputPorts.spec.ts</b> (42 tests, 150 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts)
+
+### Input Output Ports
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Input Output Ports** - Input port button visible, output port button hidden when no assets | Input port button visible, output port button hidden when no assets |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product ports tab* | |
+| | ↳ *Verify button states* | |
+| 2 | **Input Output Ports** - Tab renders with empty state when no ports exist | Tab renders with empty state when no ports exist |
+| | ↳ *Create data product with assets via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify empty states* | |
+| | ↳ *Verify lineage section shows zero counts* | |
+| 3 | **Input Output Ports** - Tab displays correct port counts | Tab displays correct port counts |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to data product ports tab* | |
+| | ↳ *Verify port counts* | |
+| 4 | **Input Output Ports** - Lineage section is collapsed by default | Lineage section is collapsed by default |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Verify lineage is collapsed* | |
+| 5 | **Input Output Ports** - Add single input port | Add single input port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add input port* | |
+| | ↳ *Verify port was added* | |
+| 6 | **Input Output Ports** - Add single output port | Add single output port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add output port* | |
+| | ↳ *Verify port was added* | |
+| 7 | **Input Output Ports** - Add multiple input ports at once | Add multiple input ports at once |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add multiple input ports* | |
+| | ↳ *Verify both ports were added* | |
+| 8 | **Input Output Ports** - Add different entity types as ports | Add different entity types as ports |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add table as input port* | |
+| | ↳ *Add topic as input port* | |
+| | ↳ *Add dashboard as output port* | |
+| | ↳ *Verify different entity types are shown* | |
+| 9 | **Input Output Ports** - Cancel adding port | Cancel adding port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel input port drawer* | |
+| | ↳ *Verify empty state still shown* | |
+| 10 | **Input Output Ports** - Input port drawer shows assets from outside data product | Input port drawer shows assets from outside data product |
+| | ↳ *Create data product with ONE asset* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open input port drawer and verify unfiltered assets* | |
+| 11 | **Input Output Ports** - Add input port from asset not in data product | Add input port from asset not in data product |
+| | ↳ *Create data product WITHOUT any assets* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add input port from external asset* | |
+| | ↳ *Verify port was added* | |
+| 12 | **Input Output Ports** - Output port drawer shows info banner about data product assets | Output port drawer shows info banner about data product assets |
+| | ↳ *Create data product with assets* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open output port drawer and verify info banner* | |
+| 13 | **Input Output Ports** - Input port drawer does not show info banner | Input port drawer does not show info banner |
+| | ↳ *Create data product* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open input port drawer and verify no info banner* | |
+| 14 | **Input Output Ports** - Port drawers show Entity Type quick filter | Port drawers show Entity Type quick filter |
+| | ↳ *Create data product with assets* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify Entity Type filter in input port drawer* | |
+| | ↳ *Verify Entity Type filter in output port drawer* | |
+| 15 | **Input Output Ports** - Output port drawer only shows data product assets | Output port drawer only shows data product assets |
+| | ↳ *Create data product with specific assets* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open output port drawer and verify filtering* | |
+| 16 | **Input Output Ports** - Input ports list displays entity cards | Input ports list displays entity cards |
+| | ↳ *Create data product with input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify input ports list* | |
+| 17 | **Input Output Ports** - Output ports list displays entity cards | Output ports list displays entity cards |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify output ports list* | |
+| 18 | **Input Output Ports** - Port action dropdown visible with EditAll permission | Port action dropdown visible with EditAll permission |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify action dropdown is visible* | |
+| 19 | **Input Output Ports** - Remove single input port | Remove single input port |
+| | ↳ *Create data product with input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove first input port* | |
+| | ↳ *Verify port was removed* | |
+| 20 | **Input Output Ports** - Remove single output port | Remove single output port |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove first output port* | |
+| | ↳ *Verify port was removed* | |
+| 21 | **Input Output Ports** - Cancel port removal | Cancel port removal |
+| | ↳ *Create data product with input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel removal dialog* | |
+| | ↳ *Verify port still exists* | |
+| 22 | **Input Output Ports** - Remove last port shows empty state | Remove last port shows empty state |
+| | ↳ *Create data product with single input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove the only input port* | |
+| | ↳ *Verify empty state appears* | |
+| 23 | **Input Output Ports** - Lineage loads on expand | Lineage loads on expand |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Expand lineage section* | |
+| | ↳ *Verify lineage view is visible* | |
+| 24 | **Input Output Ports** - Lineage displays data product center node | Lineage displays data product center node |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify data product node is visible* | |
+| 25 | **Input Output Ports** - Lineage displays input and output ports | Lineage displays input and output ports |
+| | ↳ *Create data product with input and output ports* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify input port nodes are visible* | |
+| | ↳ *Verify output port nodes are visible* | |
+| 26 | **Input Output Ports** - Lineage with only input ports | Lineage with only input ports |
+| | ↳ *Create data product with only input ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only input port is shown* | |
+| 27 | **Input Output Ports** - Lineage with only output ports | Lineage with only output ports |
+| | ↳ *Create data product with only output ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only output port is shown* | |
+| 28 | **Input Output Ports** - Lineage controls work | Lineage controls work |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify ReactFlow controls are visible* | |
+| 29 | **Input Output Ports** - Lineage section collapse/expand | Lineage section collapse/expand |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially collapsed* | |
+| | ↳ *Expand lineage* | |
+| | ↳ *Collapse lineage* | |
+| 30 | **Input Output Ports** - Input ports section collapse/expand | Input ports section collapse/expand |
+| | ↳ *Create data product with input port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse input ports section* | |
+| | ↳ *Expand input ports section* | |
+| 31 | **Input Output Ports** - Output ports section collapse/expand | Output ports section collapse/expand |
+| | ↳ *Create data product with output port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse output ports section* | |
+| | ↳ *Expand output ports section* | |
+| 32 | **Input Output Ports** - Multiple sections can be collapsed independently | Multiple sections can be collapsed independently |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Collapse input ports only* | |
+| | ↳ *Expand lineage while keeping input collapsed* | |
+| 33 | **Input Output Ports** - Toggle fullscreen mode | Toggle fullscreen mode |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen mode* | |
+| 34 | **Input Output Ports** - Exit fullscreen with button | Exit fullscreen with button |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter and exit fullscreen mode* | |
+| 35 | **Input Output Ports** - Exit fullscreen with Escape key | Exit fullscreen with Escape key |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and exit with Escape* | |
+| 36 | **Input Output Ports** - Fullscreen lineage is interactive | Fullscreen lineage is interactive |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and verify controls* | |
+| 37 | **Input Output Ports** - Input ports list pagination | Input ports list pagination |
+| | ↳ *Create data product with many input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify ports list displays* | |
+| 38 | **Input Output Ports** - Warning shown when removing asset that is also an output port | Warning shown when removing asset that is also an output port |
+| | ↳ *Create data product with asset as output port via API* | |
+| | ↳ *Navigate to data product assets tab* | |
+| | ↳ *Delete asset and verify warning* | |
+| 39 | **Input Output Ports** - No warning when removing asset that is NOT an output port | No warning when removing asset that is NOT an output port |
+| | ↳ *Create data product with asset (not output port) via API* | |
+| | ↳ *Navigate to data product assets tab* | |
+| | ↳ *Delete asset that is NOT an output port* | |
+| 40 | **Input Output Ports** - Bulk delete shows warning listing only assets in output ports | Bulk delete shows warning listing only assets in output ports |
+| | ↳ *Create data product with mixed assets via API* | |
+| | ↳ *Navigate to data product assets tab* | |
+| | ↳ *Select all assets and click bulk delete* | |
+| 41 | **Input Output Ports** - No warning when data product has no output ports | No warning when data product has no output ports |
+| | ↳ *Create data product with assets but no output ports* | |
+| | ↳ *Navigate and delete asset* | |
+| 42 | **Input Output Ports** - Removing asset from data product also removes it from output ports | Removing asset from data product also removes it from output ports |
+| | ↳ *Create data product with two assets as output ports via API* | |
+| | ↳ *Navigate to data product and verify output ports* | |
+| | ↳ *Go to assets tab and remove one asset* | |
+| | ↳ *Verify output port was also removed* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>NestedChildrenUpdates.spec.ts</b> (32 tests, 32 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/NestedChildrenUpdates.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NestedChildrenUpdates.spec.ts)
+
+### API Endpoint
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API Endpoint** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **API Endpoint** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **API Endpoint** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 4 | **API Endpoint** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+
+### Data Model
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Model** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **Data Model** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **Data Model** - should update nested column displayName immediately without refresh | Update nested column displayName immediately without refresh |
+| 4 | **Data Model** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 5 | **Data Model** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 6 | **Data Model** - should update nested column displayName immediately without refresh | Update nested column displayName immediately without refresh |
+
+### File
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **File** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **File** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **File** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 4 | **File** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+
+### Search Index
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Search Index** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **Search Index** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **Search Index** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 4 | **Search Index** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+
+### Table
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **Table** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **Table** - should update nested column displayName immediately without refresh | Update nested column displayName immediately without refresh |
+| 4 | **Table** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 5 | **Table** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 6 | **Table** - should update nested column displayName immediately without refresh | Update nested column displayName immediately without refresh |
+
+### Topic
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Topic** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **Topic** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **Topic** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 4 | **Topic** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+
+### Worksheet
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Worksheet** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 2 | **Worksheet** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+| 3 | **Worksheet** - should update nested column description immediately without page refresh | Update nested column description immediately without page refresh |
+| 4 | **Worksheet** - should add and remove tags to nested column immediately without refresh | Add and remove tags to nested column immediately without refresh |
+
+</details>
+
+<details open>
+<summary>📄 <b>AuditLogs.spec.ts</b> (27 tests, 68 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts)
 
@@ -89,81 +377,61 @@
 |---|-----------|-------------|
 | 1 | **Audit Logs Page** - should display page header with correct title and subtitle | Display page header with correct title and subtitle |
 | | ↳ *Verify page header* | |
-| | ↳ *Verify page sub-header* | |
-| 2 | **Audit Logs Page** - should display Filters dropdown and search bar | Display Filters dropdown and search bar |
-| | ↳ *Verify Filters dropdown is visible* | |
-| | ↳ *Verify search bar is visible* | |
-| 3 | **Audit Logs Page** - should display audit logs list | Display audit logs list |
-| | ↳ *Verify list container is visible* | |
-| | ↳ *Verify list has header* | |
-| 4 | **Audit Logs Page** - should open Filters dropdown and show filter categories | Open Filters dropdown and show filter categories |
-| | ↳ *Verify filter categories are visible* | |
-| | ↳ *Close popover by clicking elsewhere* | |
-| 5 | **Audit Logs Page** - should apply and clear filters | Apply and clear filters |
+| 2 | **Audit Logs Page** - should apply and clear filters | Apply and clear filters |
 | | ↳ *Clear button should not be visible initially* | |
 | | ↳ *Select a Time filter* | |
 | | ↳ *Verify filter tag appears and Clear button shows* | |
 | | ↳ *Clear filters* | |
-| 6 | **Audit Logs Page** - should support multiple filters from different categories | Support multiple filters from different categories |
+| 3 | **Audit Logs Page** - should support multiple filters from different categories | Support multiple filters from different categories |
 | | ↳ *Select Time filter* | |
 | | ↳ *Add Entity Type filter (should add to existing filters)* | |
-| 7 | **Audit Logs Page** - should allow searching within User filter | Allow searching within User filter |
+| 4 | **Audit Logs Page** - should allow searching within User filter | Allow searching within User filter |
 | | ↳ *Open User filter category* | |
 | | ↳ *Verify search input is available* | |
-| | ↳ *Navigate back to categories* | |
-| 8 | **Audit Logs Page** - should allow searching within Entity Type filter | Allow searching within Entity Type filter |
+| 5 | **Audit Logs Page** - should allow searching within Entity Type filter | Allow searching within Entity Type filter |
 | | ↳ *Open Entity Type filter category* | |
 | | ↳ *Verify entity types are searchable* | |
-| 9 | **Audit Logs Page** - should remove individual filter by clicking close icon | Remove individual filter by clicking close icon |
+| 6 | **Audit Logs Page** - should remove individual filter by clicking close icon | Remove individual filter by clicking close icon |
 | | ↳ *Add a Time filter* | |
 | | ↳ *Verify filter tag is displayed* | |
 | | ↳ *Remove filter by clicking close icon* | |
-| 10 | **Audit Logs Page** - should replace filter value when selecting new value in same category | Replace filter value when selecting new value in same category |
+| 7 | **Audit Logs Page** - should replace filter value when selecting new value in same category | Replace filter value when selecting new value in same category |
 | | ↳ *Select Yesterday filter* | |
 | | ↳ *Verify Yesterday filter is active* | |
 | | ↳ *Select Last 7 Days filter (should replace Yesterday)* | |
 | | ↳ *Verify Last 7 Days filter replaced Yesterday* | |
-| 11 | **Audit Logs Page** - should search audit logs | Search audit logs |
+| 8 | **Audit Logs Page** - should apply both User and EntityType filters simultaneously | Apply both User and EntityType filters simultaneously |
+| | ↳ *Navigate to audit logs page* | |
+| | ↳ *Apply User filter (select admin)* | |
+| | ↳ *Add EntityType filter (should coexist with User filter)* | |
+| | ↳ *Verify both User and EntityType filters are active simultaneously* | |
+| | ↳ *Remove User filter and verify EntityType filter remains* | |
+| 9 | **Audit Logs Page** - should search audit logs | Search audit logs |
 | | ↳ *Enter search term and press Enter* | |
 | | ↳ *Verify Clear button appears after search* | |
 | | ↳ *Clear search* | |
-| 12 | **Audit Logs Page** - should support case-insensitive search | Support case-insensitive search |
+| 10 | **Audit Logs Page** - should support case-insensitive search | Support case-insensitive search |
 | | ↳ *Search with lowercase term* | |
-| 13 | **Audit Logs Page** - should display Export button | Display Export button |
-| | ↳ *Verify Export button is visible* | |
-| 14 | **Audit Logs Page** - should open and close Export modal | Open and close Export modal |
-| | ↳ *Open Export modal* | |
-| | ↳ *Verify modal contains export elements* | |
-| | ↳ *Close modal* | |
-| 15 | **Audit Logs Page** - should require date range for export | Require date range for export |
-| | ↳ *Open Export modal* | |
-| | ↳ *Verify Export button is disabled without date range* | |
-| | ↳ *Verify date range label shows Required* | |
-| 16 | **Audit Logs Page** - should allow export with date range filter | Allow export with date range filter |
-| | ↳ *Open Export modal* | |
-| | ↳ *Select a date range* | |
-| | ↳ *Verify Export button is still enabled* | |
-| 17 | **Audit Logs Page** - should support pagination controls | Support pagination controls |
+| 11 | **Audit Logs Page** - should support pagination and page size selection | Support pagination and page size selection |
 | | ↳ *Verify pagination area exists* | |
+| | ↳ *Verify default page size* | |
+| | ↳ *Change page size* | |
 | | ↳ *Navigate pages if available* | |
-| 18 | **Audit Logs Page** - should display list items with profile picture and user info | Display list items with profile picture and user info |
+| 12 | **Audit Logs Page** - should display list items with profile picture and user info | Display list items with profile picture and user info |
 | | ↳ *Verify list items have correct structure* | |
 | | ↳ *Verify list item has user info and event type* | |
 | | ↳ *Verify list item has metadata section* | |
-| 19 | **Audit Logs Page** - should display entity type in list item metadata | Display entity type in list item metadata |
+| 13 | **Audit Logs Page** - should display entity type in list item metadata | Display entity type in list item metadata |
 | | ↳ *Filter by Entity Type to get results* | |
 | | ↳ *Verify entity type badge is displayed* | |
-| 20 | **Audit Logs Page** - should display relative timestamp in list items | Display relative timestamp in list items |
+| 14 | **Audit Logs Page** - should display relative timestamp in list items | Display relative timestamp in list items |
 | | ↳ *Verify timestamp is displayed* | |
 
 ### Audit Logs - Search Functionality
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Audit Logs - Search Functionality** - should search and find admin user activity | Search and find admin user activity |
-| | ↳ *Search for admin user activity* | |
-| | ↳ *Verify search results are displayed or empty state shown* | |
-| 2 | **Audit Logs - Search Functionality** - should verify search API returns proper response structure | Search API returns proper response structure |
+| 1 | **Audit Logs - Search Functionality** - should verify search API returns proper response structure | Search API returns proper response structure |
 | | ↳ *Perform search and validate response structure* | |
 
 ### Audit Logs - Export Functionality
@@ -226,190 +494,7 @@
 | 7 | **Audit Logs - Event Verification** - should display audit log entry in UI after entity creation | Display audit log entry in UI after entity creation |
 | | ↳ *Filter by entityType=glossary* | |
 | | ↳ *Verify the created glossary appears in the list* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>InputOutputPorts.spec.ts</b> (30 tests, 142 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts)
-
-### Input Output Ports
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Input Output Ports** - Tab renders with empty state when no ports exist | Tab renders with empty state when no ports exist |
-| | ↳ *Create data product via API* | |
-| | ↳ *Navigate to data product* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify empty states* | |
-| | ↳ *Verify lineage section shows zero counts* | |
-| | ↳ *Cleanup* | |
-| 2 | **Input Output Ports** - Tab displays correct port counts | Tab displays correct port counts |
-| | ↳ *Create data product with ports via API* | |
-| | ↳ *Navigate to data product ports tab* | |
-| | ↳ *Verify port counts* | |
-| | ↳ *Cleanup* | |
-| 3 | **Input Output Ports** - Lineage section is collapsed by default | Lineage section is collapsed by default |
-| | ↳ *Create data product via API* | |
-| | ↳ *Navigate to data product* | |
-| | ↳ *Verify lineage is collapsed* | |
-| | ↳ *Cleanup* | |
-| 4 | **Input Output Ports** - Add single input port | Add single input port |
-| | ↳ *Setup* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Add input port* | |
-| | ↳ *Verify port was added* | |
-| | ↳ *Cleanup* | |
-| 5 | **Input Output Ports** - Add single output port | Add single output port |
-| | ↳ *Setup* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Add output port* | |
-| | ↳ *Verify port was added* | |
-| | ↳ *Cleanup* | |
-| 6 | **Input Output Ports** - Add multiple input ports at once | Add multiple input ports at once |
-| | ↳ *Setup* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Add multiple input ports* | |
-| | ↳ *Verify both ports were added* | |
-| | ↳ *Cleanup* | |
-| 7 | **Input Output Ports** - Add different entity types as ports | Add different entity types as ports |
-| | ↳ *Setup* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Add table as input port* | |
-| | ↳ *Add topic as input port* | |
-| | ↳ *Add dashboard as output port* | |
-| | ↳ *Verify different entity types are shown* | |
-| | ↳ *Cleanup* | |
-| 8 | **Input Output Ports** - Cancel adding port | Cancel adding port |
-| | ↳ *Setup* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Open and cancel input port drawer* | |
-| | ↳ *Verify empty state still shown* | |
-| | ↳ *Cleanup* | |
-| 9 | **Input Output Ports** - Input ports list displays entity cards | Input ports list displays entity cards |
-| | ↳ *Create data product with input ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify input ports list* | |
-| | ↳ *Cleanup* | |
-| 10 | **Input Output Ports** - Output ports list displays entity cards | Output ports list displays entity cards |
-| | ↳ *Create data product with output ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify output ports list* | |
-| | ↳ *Cleanup* | |
-| 11 | **Input Output Ports** - Port action dropdown visible with EditAll permission | Port action dropdown visible with EditAll permission |
-| | ↳ *Create data product with ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify action dropdown is visible* | |
-| | ↳ *Cleanup* | |
-| 12 | **Input Output Ports** - Remove single input port | Remove single input port |
-| | ↳ *Create data product with input ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Remove first input port* | |
-| | ↳ *Verify port was removed* | |
-| | ↳ *Cleanup* | |
-| 13 | **Input Output Ports** - Remove single output port | Remove single output port |
-| | ↳ *Create data product with output ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Remove first output port* | |
-| | ↳ *Verify port was removed* | |
-| | ↳ *Cleanup* | |
-| 14 | **Input Output Ports** - Cancel port removal | Cancel port removal |
-| | ↳ *Create data product with input port via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Open and cancel removal dialog* | |
-| | ↳ *Verify port still exists* | |
-| | ↳ *Cleanup* | |
-| 15 | **Input Output Ports** - Remove last port shows empty state | Remove last port shows empty state |
-| | ↳ *Create data product with single input port via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Remove the only input port* | |
-| | ↳ *Verify empty state appears* | |
-| | ↳ *Cleanup* | |
-| 16 | **Input Output Ports** - Lineage loads on expand | Lineage loads on expand |
-| | ↳ *Create data product with ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Expand lineage section* | |
-| | ↳ *Verify lineage view is visible* | |
-| | ↳ *Cleanup* | |
-| 17 | **Input Output Ports** - Lineage displays data product center node | Lineage displays data product center node |
-| | ↳ *Create data product with ports via API* | |
-| | ↳ *Navigate to ports tab and expand lineage* | |
-| | ↳ *Verify data product node is visible* | |
-| | ↳ *Cleanup* | |
-| 18 | **Input Output Ports** - Lineage displays input and output ports | Lineage displays input and output ports |
-| | ↳ *Create data product with input and output ports* | |
-| | ↳ *Navigate to ports tab and expand lineage* | |
-| | ↳ *Verify input port nodes are visible* | |
-| | ↳ *Verify output port nodes are visible* | |
-| | ↳ *Cleanup* | |
-| 19 | **Input Output Ports** - Lineage with only input ports | Lineage with only input ports |
-| | ↳ *Create data product with only input ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Verify only input port is shown* | |
-| | ↳ *Cleanup* | |
-| 20 | **Input Output Ports** - Lineage with only output ports | Lineage with only output ports |
-| | ↳ *Create data product with only output ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Verify only output port is shown* | |
-| | ↳ *Cleanup* | |
-| 21 | **Input Output Ports** - Lineage controls work | Lineage controls work |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Verify ReactFlow controls are visible* | |
-| | ↳ *Cleanup* | |
-| 22 | **Input Output Ports** - Lineage section collapse/expand | Lineage section collapse/expand |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify initially collapsed* | |
-| | ↳ *Expand lineage* | |
-| | ↳ *Collapse lineage* | |
-| | ↳ *Cleanup* | |
-| 23 | **Input Output Ports** - Input ports section collapse/expand | Input ports section collapse/expand |
-| | ↳ *Create data product with input port* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify initially expanded* | |
-| | ↳ *Collapse input ports section* | |
-| | ↳ *Expand input ports section* | |
-| | ↳ *Cleanup* | |
-| 24 | **Input Output Ports** - Output ports section collapse/expand | Output ports section collapse/expand |
-| | ↳ *Create data product with output port* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify initially expanded* | |
-| | ↳ *Collapse output ports section* | |
-| | ↳ *Expand output ports section* | |
-| | ↳ *Cleanup* | |
-| 25 | **Input Output Ports** - Multiple sections can be collapsed independently | Multiple sections can be collapsed independently |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Collapse input ports only* | |
-| | ↳ *Expand lineage while keeping input collapsed* | |
-| | ↳ *Cleanup* | |
-| 26 | **Input Output Ports** - Toggle fullscreen mode | Toggle fullscreen mode |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Enter fullscreen mode* | |
-| | ↳ *Cleanup* | |
-| 27 | **Input Output Ports** - Exit fullscreen with button | Exit fullscreen with button |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Enter and exit fullscreen mode* | |
-| | ↳ *Cleanup* | |
-| 28 | **Input Output Ports** - Exit fullscreen with Escape key | Exit fullscreen with Escape key |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Enter fullscreen and exit with Escape* | |
-| | ↳ *Cleanup* | |
-| 29 | **Input Output Ports** - Fullscreen lineage is interactive | Fullscreen lineage is interactive |
-| | ↳ *Create data product with ports* | |
-| | ↳ *Navigate and expand lineage* | |
-| | ↳ *Enter fullscreen and verify controls* | |
-| | ↳ *Cleanup* | |
-| 30 | **Input Output Ports** - Input ports list pagination | Input ports list pagination |
-| | ↳ *Create data product with many input ports via API* | |
-| | ↳ *Navigate to ports tab* | |
-| | ↳ *Verify ports list displays* | |
-| | ↳ *Cleanup* | |
+| | ↳ *Verify the created glossary entry is visible in the UI list* | |
 
 </details>
 
@@ -448,83 +533,27 @@
 </details>
 
 <details open>
-<summary>📄 <b>LearningResources.spec.ts</b> (19 tests, 40 scenarios)</summary>
+<summary>📄 <b>ODCSImportExportPermissions.spec.ts</b> (13 tests, 13 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/LearningResources.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/LearningResources.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts)
 
-### Learning Resources Admin Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Learning Resources Admin Page** - should display learning resources page | Display learning resources page |
-| 2 | **Learning Resources Admin Page** - should open and close add resource drawer | Open and close add resource drawer |
-| | ↳ *Open add resource drawer* | |
-| | ↳ *Close drawer* | |
-| 3 | **Learning Resources Admin Page** - should validate required fields | Validate required fields |
-| 4 | **Learning Resources Admin Page** - should edit an existing learning resource | Edit an existing learning resource |
-| | ↳ *Click edit button and verify drawer opens* | |
-| | ↳ *Close the drawer* | |
-| 5 | **Learning Resources Admin Page** - should delete a learning resource | Delete a learning resource |
-| | ↳ *Click delete button and confirm* | |
-| | ↳ *Verify resource is removed from list* | |
-| 6 | **Learning Resources Admin Page** - should preview a learning resource by clicking on name | Preview a learning resource by clicking on name |
-| | ↳ *Click on resource name to preview* | |
-| | ↳ *Verify preview modal opens* | |
-| | ↳ *Close preview modal* | |
-| 7 | **Learning Resources Admin Page** - should filter resources by type | Filter resources by type |
-| | ↳ *Filter by Video type* | |
-| 8 | **Learning Resources Admin Page** - should search resources by name | Search resources by name |
-| | ↳ *Search for resource* | |
-
-### Learning Resources Admin Page - Additional Tests
+### ODCS Import/Export - RBAC Permissions
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Learning Resources Admin Page - Additional Tests** - should filter resources by category | Filter resources by category |
-| | ↳ *Filter by Governance category* | |
-| 2 | **Learning Resources Admin Page - Additional Tests** - should filter resources by status | Filter resources by status |
-| | ↳ *Filter by Draft status* | |
-| 3 | **Learning Resources Admin Page - Additional Tests** - should edit and save resource changes via UI | Edit and save resource changes via UI |
-| | ↳ *Open edit drawer and modify display name* | |
-| | ↳ *Save changes* | |
-| | ↳ *Verify updated display name in list* | |
-
-### Learning Icon on Pages
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Learning Icon on Pages** - should display learning icon on glossary page when resources exist | Display learning icon on glossary page when resources exist |
-| 2 | **Learning Icon on Pages** - should open learning drawer when icon is clicked | Open learning drawer when icon is clicked |
-| | ↳ *Click learning icon* | |
-| | ↳ *Verify drawer opens with resources* | |
-| | ↳ *Close drawer* | |
-| 3 | **Learning Icon on Pages** - should NOT show draft resources on target pages | NOT show draft resources on target pages |
-| 4 | **Learning Icon on Pages** - should show learning icon on lineage page when resources exist | Show learning icon on lineage page when resources exist |
-| 5 | **Learning Icon on Pages** - should open resource player when clicking on resource card in drawer | Open resource player when clicking on resource card in drawer |
-| | ↳ *Open learning drawer* | |
-| | ↳ *Click on resource card to open player* | |
-| | ↳ *Close player modal* | |
-
-### Learning Resources E2E Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Learning Resources E2E Flow** - should create resource via UI and verify learning icon appears on target page | Create resource via UI and verify learning icon appears on target page |
-| | ↳ *Navigate to Learning Resources admin page* | |
-| | ↳ *Open add resource drawer and fill form* | |
-| | ↳ *Save the resource* | |
-| | ↳ *Navigate to Glossary page and verify learning icon appears* | |
-| | ↳ *Click learning icon and verify the created resource is shown* | |
-| | ↳ *Cleanup - delete the created resource* | |
-| 2 | **Learning Resources E2E Flow** - should update resource context and verify learning icon moves to new page | Update resource context and verify learning icon moves to new page |
-| | ↳ *Verify resource appears on Glossary page initially* | |
-| | ↳ *Navigate to admin page and update resource context to Lineage* | |
-| | ↳ *Verify learning icon no longer appears on Glossary page* | |
-| | ↳ *Verify learning icon now appears on Lineage page* | |
-| 3 | **Learning Resources E2E Flow** - should delete resource and verify learning icon disappears from target page | Delete resource and verify learning icon disappears from target page |
-| | ↳ *Verify resource appears on Glossary page initially* | |
-| | ↳ *Navigate to admin page and delete the resource* | |
-| | ↳ *Verify learning icon no longer shows deleted resource on Glossary page* | |
+| 1 | **ODCS Import/Export - RBAC Permissions** - Admin should see all import and export options for existing contract | Verify admin can see all import/export options for existing contract |
+| 2 | **ODCS Import/Export - RBAC Permissions** - Admin should successfully export ODCS contract | Verify admin can export ODCS contract |
+| 3 | **ODCS Import/Export - RBAC Permissions** - Admin should successfully import ODCS contract | Verify admin can import ODCS contract on table without contract |
+| 4 | **ODCS Import/Export - RBAC Permissions** - Data Consumer should see export but not import options | Data Consumer should see export options but not import options |
+| 5 | **ODCS Import/Export - RBAC Permissions** - Data Consumer can export ODCS contract | Data Consumer can successfully export ODCS contract |
+| 6 | **ODCS Import/Export - RBAC Permissions** - Data Steward should see export but not import options | Data Steward should see export options but not import options |
+| 7 | **ODCS Import/Export - RBAC Permissions** - Data Steward can export ODCS contract | Data Steward can successfully export ODCS contract |
+| 8 | **ODCS Import/Export - RBAC Permissions** - User with EditAll should see all import and export options | User with EditAll permission should see all import and export options |
+| 9 | **ODCS Import/Export - RBAC Permissions** - User with EditAll can export ODCS contract | User with EditAll permission can export ODCS contract |
+| 10 | **ODCS Import/Export - RBAC Permissions** - User with EditAll can import ODCS contract | User with EditAll permission can import ODCS contract |
+| 11 | **ODCS Import/Export - RBAC Permissions** - User with ViewOnly should see export but not import options | User with ViewOnly permission should see export but not import options |
+| 12 | **ODCS Import/Export - RBAC Permissions** - User with ViewOnly can export ODCS contract | User with ViewOnly permission can export ODCS contract |
+| 13 | **ODCS Import/Export - RBAC Permissions** - API should allow export for users with view permission | Verify API allows export for users with view permission |
 
 </details>
 
@@ -574,6 +603,103 @@
 |---|-----------|-------------|
 | 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
 | 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+</details>
+
+<details open>
+<summary>📄 <b>DescriptionVisibility.spec.ts</b> (12 tests, 12 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DescriptionVisibility.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DescriptionVisibility.spec.ts)
+
+### Long Description Visibility
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Long Description Visibility** - Domain long description is scrollable and end of text is visible after scroll | Domain long description is scrollable and end of text is visible after scroll |
+| 2 | **Long Description Visibility** - Domain description card collapse hides content and expand restores scrollability | Domain description card collapse hides content and expand restores scrollability |
+| 3 | **Long Description Visibility** - Data Product truncates long description and end of text is not visible before expand | Data Product truncates long description and end of text is not visible before expand |
+| 4 | **Long Description Visibility** - Data Product long description is scrollable and end of text is visible after expanding | Data Product long description is scrollable and end of text is visible after expanding |
+| 5 | **Long Description Visibility** - Data Product description card collapse hides content and expand restores it | Data Product description card collapse hides content and expand restores it |
+| 6 | **Long Description Visibility** - Glossary truncates long description and end of text is not visible before expand | Glossary truncates long description and end of text is not visible before expand |
+| 7 | **Long Description Visibility** - Glossary long description is visible after expanding | Glossary long description is visible after expanding |
+| 8 | **Long Description Visibility** - Glossary description card collapse hides content and expand restores it | Glossary description card collapse hides content and expand restores it |
+| 9 | **Long Description Visibility** - Glossary Term truncates long description and end of text is not visible before expand | Glossary Term truncates long description and end of text is not visible before expand |
+| 10 | **Long Description Visibility** - Glossary Term long description is visible after expanding | Glossary Term long description is visible after expanding |
+| 11 | **Long Description Visibility** - Glossary Term description card collapse hides content and expand restores it | Glossary Term description card collapse hides content and expand restores it |
+| 12 | **Long Description Visibility** - Customized Table detail page Description widget shows long description | Customized Table detail page Description widget shows long description |
+
+</details>
+
+<details open>
+<summary>📄 <b>NestedColumnsExpandCollapse.spec.ts</b> (11 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts)
+
+### Table - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### Topic - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Topic - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### API Endpoint - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API Endpoint - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### Data Model - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Model - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### Container - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Container - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### Search Index - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Search Index - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### Worksheet - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Worksheet - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### File - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **File - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names | Not duplicate rows when expanding and collapsing nested columns with same names |
+
+### Table Version History - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Version History - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names in Version History | Not duplicate rows when expanding and collapsing nested columns with same names in Version History |
+
+### Table Profiler Tab - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Profiler Tab - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names in Profiler Tab | Not duplicate rows when expanding and collapsing nested columns with same names in Profiler Tab |
+
+### API Endpoint Entity Summary Panel - Nested columns with duplicate names
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API Endpoint Entity Summary Panel - Nested columns with duplicate names** - should not duplicate rows when expanding and collapsing nested columns with same names in Explore Summary Panel | Not duplicate rows when expanding and collapsing nested columns with same names in Explore Summary Panel |
 
 </details>
 
@@ -672,6 +798,20 @@
 </details>
 
 <details open>
+<summary>📄 <b>RTL.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/RTL.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/RTL.spec.ts)
+
+### Verify RTL Layout for landing page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Verify RTL Layout for landing page** - Verify DataAssets widget functionality | DataAssets widget functionality |
+| 2 | **Verify RTL Layout for landing page** - Verify Following widget functionality | Following widget functionality |
+
+</details>
+
+<details open>
 <summary>📄 <b>FrequentlyJoined.spec.ts</b> (2 tests, 2 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/FrequentlyJoined.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/FrequentlyJoined.spec.ts)
@@ -738,6 +878,19 @@
 </details>
 
 <details open>
+<summary>📄 <b>LanguageOverride.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/LanguageOverride.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LanguageOverride.spec.ts)
+
+### Language Override Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Language Override Tests** - App language should override browser language on landing page and user dropdown | App language should override browser language on landing page and user dropdown |
+
+</details>
+
+<details open>
 <summary>📄 <b>Markdown.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Markdown.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Markdown.spec.ts)
@@ -793,7 +946,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Bots.spec.ts</b> (1 tests, 5 scenarios)</summary>
+<summary>📄 <b>Bots.spec.ts</b> (1 tests, 6 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts)
 
@@ -805,6 +958,7 @@
 | | ↳ *Verify ingestion bot delete button is always disabled* | |
 | | ↳ *Create Bot* | |
 | | ↳ *Update display name and description* | |
+| | ↳ *Verify generateToken API contract* | |
 | | ↳ *Update token expiration* | |
 | | ↳ *Delete Bot* | |
 
@@ -860,7 +1014,7 @@
 ## Entities
 
 <details open>
-<summary>📄 <b>Entity.spec.ts</b> (357 tests, 463 scenarios)</summary>
+<summary>📄 <b>Entity.spec.ts</b> (361 tests, 470 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts)
 
@@ -913,7 +1067,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 26 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 26 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Table
 
@@ -958,22 +1112,32 @@
 | | ↳ *Update description via column detail panel and test panel features* | |
 | 21 | **Table** - Column detail panel key profile metrics validation | Column detail panel key profile metrics validation |
 | | ↳ *Verify key profile metrics are displayed in column detail panel* | |
-| 22 | **Table** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 23 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 24 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 25 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Table** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 22 | **Table** - Column detail panel - Data Quality tab shows test cases | Column detail panel - Data Quality tab shows test cases |
+| | ↳ *Open column detail panel and navigate to DQ tab* | |
+| | ↳ *Verify stat cards and filter by failed* | |
+| | ↳ *Filter by success and verify test case card* | |
+| 23 | **Table** - Column detail panel - Data Quality Incidents tab | Column detail panel - Data Quality Incidents tab |
+| | ↳ *Open column detail panel and navigate to Incidents tab* | |
+| | ↳ *Verify incidents stats container and cards* | |
+| 24 | **Table** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 25 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 26 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 27 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 28 | **Table** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
-| 27 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 28 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
-| 29 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
+| 29 | **Table** - Set & update column-level custom property | Set & update column-level custom property |
+| | ↳ *Set ${...} custom property on column and verify in UI* | |
+| 30 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 31 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
 | | ↳ *Navigate to Data Observability tab* | |
 | | ↳ *Verify tabs UI component is rendered in Data Observability tab* | |
 | | ↳ *Switch to Activity Feed tab* | |
 | | ↳ *Verify tabs or left component is rendered in Activity Feed tab* | |
-| 30 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Tests access control for table-level data access with deny policy  Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData cannot access those tabs on table entities |
+| 32 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
+| 33 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level |
+| 34 | **Table** - Data Consumer should be denied edit access in column detail panel when deny policy rule is applied | Data Consumer should be denied edit access in column detail panel when deny policy rule is applied |
 
 ### Stored Procedure
 
@@ -998,7 +1162,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 16 | **Stored Procedure** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 17 | **Stored Procedure** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 17 | **Stored Procedure** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Dashboard
 
@@ -1025,7 +1189,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 18 | **Dashboard** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 19 | **Dashboard** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 19 | **Dashboard** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Pipeline
 
@@ -1076,7 +1240,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 26 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 26 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Topic
 
@@ -1127,7 +1291,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 26 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 26 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Ml Model
 
@@ -1178,7 +1342,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 26 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 26 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Container
 
@@ -1204,7 +1368,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 17 | **Container** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 18 | **Container** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 18 | **Container** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Search Index
 
@@ -1255,7 +1419,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 26 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 26 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Dashboard Data Model
 
@@ -1308,7 +1472,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 27 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 28 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 28 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Metric
 
@@ -1333,7 +1497,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 16 | **Metric** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 17 | **Metric** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 17 | **Metric** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Chart
 
@@ -1358,7 +1522,7 @@
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 16 | **Chart** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 17 | **Chart** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 17 | **Chart** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Directory
 
@@ -1379,7 +1543,7 @@
 | 13 | **Directory** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Directory** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 15 | **Directory** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 16 | **Directory** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 16 | **Directory** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### File
 
@@ -1400,7 +1564,7 @@
 | 13 | **File** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **File** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 15 | **File** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 16 | **File** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 16 | **File** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Spreadsheet
 
@@ -1421,7 +1585,7 @@
 | 13 | **Spreadsheet** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Spreadsheet** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 15 | **Spreadsheet** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 16 | **Spreadsheet** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 16 | **Spreadsheet** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Worksheet
 
@@ -1443,7 +1607,7 @@
 | 14 | **Worksheet** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 15 | **Worksheet** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 16 | **Worksheet** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 17 | **Worksheet** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 17 | **Worksheet** - User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity |
 
 ### Standalone Tests
 
@@ -2211,309 +2375,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (79 tests, 79 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts)
-
-### Column Bulk Operations Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations Page** - should load the page with stats cards | Load the page with stats cards |
-| 2 | **Column Bulk Operations Page** - should display column grid with data | Display column grid with data |
-| 3 | **Column Bulk Operations Page** - should show no results message when filters match nothing | Show no results message when filters match nothing |
-
-### Column Bulk Operations - Metadata Status Filters
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Metadata Status Filters** - should filter by MISSING metadata status | Filter by MISSING metadata status |
-| 2 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Description metadata status | Filter by Has Description metadata status |
-| 3 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Tags metadata status | Filter by Has Tags metadata status |
-| 4 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Glossary metadata status | Filter by Has Glossary metadata status |
-| 5 | **Column Bulk Operations - Metadata Status Filters** - should make API call when filtering by metadata status | Make API call when filtering by metadata status |
-
-### Column Bulk Operations - Domain Filters
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Domain Filters** - should display Domains filter button | Display Domains filter button |
-| 2 | **Column Bulk Operations - Domain Filters** - should open Domains filter dropdown | Open Domains filter dropdown |
-| 3 | **Column Bulk Operations - Domain Filters** - should have domain options in dropdown when domains exist | Have domain options in dropdown when domains exist |
-
-### Column Bulk Operations - Selection and Edit
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Selection and Edit** - should show disabled edit button when no columns are selected | Show disabled edit button when no columns are selected |
-| 2 | **Column Bulk Operations - Selection and Edit** - should enable edit button when columns are selected | Enable edit button when columns are selected |
-| 3 | **Column Bulk Operations - Selection and Edit** - should open edit drawer when edit button is clicked | Open edit drawer when edit button is clicked |
-| 4 | **Column Bulk Operations - Selection and Edit** - should be able to dismiss drawer | Be able to dismiss drawer |
-| 5 | **Column Bulk Operations - Selection and Edit** - should clear selection when cancel selection button is clicked | Clear selection when cancel selection button is clicked |
-
-### Column Bulk Operations - Bulk Update Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Bulk Update Flow** - should update display name and propagate to all entities | Update display name and propagate to all entities |
-| 2 | **Column Bulk Operations - Bulk Update Flow** - should update all occurrences when selecting expanded column | Update all occurrences when selecting expanded column |
-| 3 | **Column Bulk Operations - Bulk Update Flow** - should show success notification after bulk update | Show success notification after bulk update |
-| 4 | **Column Bulk Operations - Bulk Update Flow** - should populate existing values when editing again | Populate existing values when editing again |
-
-### Column Bulk Operations - Edit Drawer Pre-population
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Edit Drawer Pre-population** - should show tags field in edit drawer when selecting a column | Show tags field in edit drawer when selecting a column |
-| 2 | **Column Bulk Operations - Edit Drawer Pre-population** - should show glossary terms field in edit drawer when selecting a column | Show glossary terms field in edit drawer when selecting a column |
-
-### Column Bulk Operations - Coverage Status Display
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Coverage Status Display** - should display coverage indicators in the grid | Display coverage indicators in the grid |
-| 2 | **Column Bulk Operations - Coverage Status Display** - should display metadata status from API response | Display metadata status from API response |
-
-### Column Bulk Operations - Column Variations
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Column Variations** - should show coverage indicator for columns with same name | Show coverage indicator for columns with same name |
-| 2 | **Column Bulk Operations - Column Variations** - should expand column row to show variations when clicked | Expand column row to show variations when clicked |
-
-### Column Bulk Operations - Search
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Search** - should filter columns by search query | Filter columns by search query |
-| 2 | **Column Bulk Operations - Search** - should make server-side API call with columnNamePattern when searching | Make server-side API call with columnNamePattern when searching |
-| 3 | **Column Bulk Operations - Search** - should perform case-insensitive search | Perform case-insensitive search |
-| 4 | **Column Bulk Operations - Search** - should update stats cards when search is applied | Update stats cards when search is applied |
-
-### Column Bulk Operations - Pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Pagination** - should navigate through pages | Navigate through pages |
-
-### Column Bulk Operations - Multi-select
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Multi-select** - should select multiple columns and bulk edit | Select multiple columns and bulk edit |
-| 2 | **Column Bulk Operations - Multi-select** - should select all columns using header checkbox | Select all columns using header checkbox |
-
-### Column Bulk Operations - View Selected Only
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - View Selected Only** - should toggle view selected only mode | Toggle view selected only mode |
-
-### Column Bulk Operations - Aggregate Row Click Behavior
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Aggregate Row Click Behavior** - should open edit drawer when clicking on aggregate row | Open edit drawer when clicking on aggregate row |
-| 2 | **Column Bulk Operations - Aggregate Row Click Behavior** - should NOT open edit drawer when clicking expand button | NOT open edit drawer when clicking expand button |
-
-### Column Bulk Operations - Combined Filters
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Combined Filters** - should apply multiple filters together | Apply multiple filters together |
-| 2 | **Column Bulk Operations - Combined Filters** - should clear individual filters | Clear individual filters |
-
-### Column Bulk Operations - URL State Persistence
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - URL State Persistence** - should restore filters from URL on page load | Restore filters from URL on page load |
-| 2 | **Column Bulk Operations - URL State Persistence** - should persist search query in URL | Persist search query in URL |
-
-### Column Bulk Operations - Edit Drawer Title
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Edit Drawer Title** - should show correct title for single column selection | Show correct title for single column selection |
-| 2 | **Column Bulk Operations - Edit Drawer Title** - should show correct title for multiple column selection | Show correct title for multiple column selection |
-
-### Column Bulk Operations - Cancel Without Saving
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Cancel Without Saving** - should discard changes when closing drawer without saving | Discard changes when closing drawer without saving |
-
-### Column Bulk Operations - Service Filter
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Service Filter** - should show Service filter chip when Service filter is applied from URL | Show Service filter chip when Service filter is applied from URL |
-| 2 | **Column Bulk Operations - Service Filter** - should have filter bar with search and filter options | Have filter bar with search and filter options |
-
-### Column Bulk Operations - Cross Entity Type Support
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Cross Entity Type Support** - should filter by entity type - Table only | Filter by entity type - Table only |
-| 2 | **Column Bulk Operations - Cross Entity Type Support** - should filter by entity type - Dashboard Data Model only | Filter by entity type - Dashboard Data Model only |
-| 3 | **Column Bulk Operations - Cross Entity Type Support** - should show occurrence count for columns appearing in multiple entities | Show occurrence count for columns appearing in multiple entities |
-| 4 | **Column Bulk Operations - Cross Entity Type Support** - should expand row to show entity details for multi-occurrence columns | Expand row to show entity details for multi-occurrence columns |
-
-### Column Bulk Operations - Nested STRUCT Columns
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Nested STRUCT Columns** - should display STRUCT column with expand button | Display STRUCT column with expand button |
-| 2 | **Column Bulk Operations - Nested STRUCT Columns** - should expand STRUCT column to show nested fields | Expand STRUCT column to show nested fields |
-| 3 | **Column Bulk Operations - Nested STRUCT Columns** - should select and edit nested STRUCT field | Select and edit nested STRUCT field |
-| 4 | **Column Bulk Operations - Nested STRUCT Columns** - should show nested levels with proper indentation | Show nested levels with proper indentation |
-
-### Column Bulk Operations - Error Handling
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Error Handling** - should maintain page stability during interactions | Maintain page stability during interactions |
-| 2 | **Column Bulk Operations - Error Handling** - should handle network timeout gracefully | Handle network timeout gracefully |
-
-### Column Bulk Operations - Tag Operations
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Tag Operations** - should be able to remove existing tags | Be able to remove existing tags |
-| 2 | **Column Bulk Operations - Tag Operations** - should be able to add multiple tags at once | Be able to add multiple tags at once |
-| 3 | **Column Bulk Operations - Tag Operations** - should be able to clear all tags from a column | Be able to clear all tags from a column |
-
-### Column Bulk Operations - Keyboard Accessibility
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Keyboard Accessibility** - should close drawer with Escape key | Close drawer with Escape key |
-| 2 | **Column Bulk Operations - Keyboard Accessibility** - should navigate form fields with Tab key | Navigate form fields with Tab key |
-| 3 | **Column Bulk Operations - Keyboard Accessibility** - should select checkbox with Space key | Select checkbox with Space key |
-
-### Column Bulk Operations - Selection Edge Cases
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Selection Edge Cases** - should maintain selection after scrolling | Maintain selection after scrolling |
-| 2 | **Column Bulk Operations - Selection Edge Cases** - should allow selecting non-adjacent rows | Allow selecting non-adjacent rows |
-| 3 | **Column Bulk Operations - Selection Edge Cases** - should re-select same row after deselecting | Re-select same row after deselecting |
-
-### Column Bulk Operations - Special Characters & Long Content
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Special Characters & Long Content** - should handle search with special characters | Handle search with special characters |
-| 2 | **Column Bulk Operations - Special Characters & Long Content** - should display long column names with truncation | Display long column names with truncation |
-| 3 | **Column Bulk Operations - Special Characters & Long Content** - should allow entering long description in edit drawer | Allow entering long description in edit drawer |
-| 4 | **Column Bulk Operations - Special Characters & Long Content** - should handle display name with special characters | Handle display name with special characters |
-
-### Column Bulk Operations - Async Job Status
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Async Job Status** - should show loading state during update | Show loading state during update |
-| 2 | **Column Bulk Operations - Async Job Status** - should allow selecting and editing columns | Allow selecting and editing columns |
-
-### Column Bulk Operations - Empty/Edge Values
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Empty/Edge Values** - should allow clearing display name | Allow clearing display name |
-| 2 | **Column Bulk Operations - Empty/Edge Values** - should allow clearing description | Allow clearing description |
-| 3 | **Column Bulk Operations - Empty/Edge Values** - should handle column with no existing metadata | Handle column with no existing metadata |
-
-### Column Bulk Operations - Browser Behavior
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Browser Behavior** - should maintain functionality after page refresh | Maintain functionality after page refresh |
-| 2 | **Column Bulk Operations - Browser Behavior** - should handle multiple visits to the page | Handle multiple visits to the page |
-| 3 | **Column Bulk Operations - Browser Behavior** - should warn before closing page with unsaved changes | Warn before closing page with unsaved changes |
-
-### Column Bulk Operations - Filter Edge Cases
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Filter Edge Cases** - should allow interacting with filters | Allow interacting with filters |
-| 2 | **Column Bulk Operations - Filter Edge Cases** - should reset search filter properly | Reset search filter properly |
-| 3 | **Column Bulk Operations - Filter Edge Cases** - should show correct count when combining search and filters | Show correct count when combining search and filters |
-
-</details>
-
-<details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (46 tests, 48 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
-
-### Right Entity Panel - Admin User Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Description Section - Add and Update | Admin - Overview Tab - Description Section - Add and Update |
-| 2 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible | Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible |
-| 3 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible | Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible |
-| 4 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Remove Owner - User | Admin - Overview Tab - Owners Section - Remove Owner - User |
-| 5 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Remove Owner - Team | Admin - Overview Tab - Owners Section - Remove Owner - Team |
-| 6 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible | Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible |
-| 7 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Tag | Admin - Overview Tab - Remove Tag |
-| 8 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible | Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible |
-| 9 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Glossary Term | Admin - Overview Tab - Remove Glossary Term |
-| 10 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Tier Section - Add and Update | Admin - Overview Tab - Tier Section - Add and Update |
-| 11 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Tier | Admin - Overview Tab - Remove Tier |
-| 12 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Domains Section - Add and Update | Admin - Overview Tab - Domains Section - Add and Update |
-| 13 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Domain | Admin - Overview Tab - Remove Domain |
-| 14 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
-| 15 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
-| 16 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
-| | ↳ *Create lineage connections* | |
-| | ↳ *Verify overview tab lineage* | |
-| | ↳ *Verify lineage tab content* | |
-| 17 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
-| 18 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
-| 19 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |
-| 20 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Tab | Data Quality Tab - Incidents Tab |
-| 21 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Tab - Test Case Link Navigation | Data Quality Tab - Incidents Tab - Test Case Link Navigation |
-| 22 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - View Custom Properties | Admin - Custom Properties Tab - View Custom Properties |
-| 23 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Search Functionality | Admin - Custom Properties Tab - Search Functionality |
-| 24 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Different Property Types Display | Admin - Custom Properties Tab - Different Property Types Display |
-| 25 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Empty State | Admin - Custom Properties Tab - Empty State |
-
-### Right Entity Panel - Data Steward User Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Description Section - Add and Update | Data Steward - Overview Tab - Description Section - Add and Update |
-| 2 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Owners Section - Add and Update | Data Steward - Overview Tab - Owners Section - Add and Update |
-| 3 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Tier Section - Add and Update | Data Steward - Overview Tab - Tier Section - Add and Update |
-| 4 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Tags Section - Add and Update | Data Steward - Overview Tab - Tags Section - Add and Update |
-| 5 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Glossary Terms Section - Add and Update | Data Steward - Overview Tab - Glossary Terms Section - Add and Update |
-| 6 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Should NOT have permissions for Domains | Data Steward - Overview Tab - Should NOT have permissions for Domains |
-| 7 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Schema Tab - View Schema | Data Steward - Schema Tab - View Schema |
-| 8 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Lineage Tab - No Lineage | Data Steward - Lineage Tab - No Lineage |
-| 9 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Data Quality Tab - No Test Cases | Data Steward - Data Quality Tab - No Test Cases |
-| 10 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Custom Properties Tab - View Custom Properties | Data Steward - Custom Properties Tab - View Custom Properties |
-
-### Right Entity Panel - Data Consumer User Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Description Section - Add and Update | Data Consumer - Overview Tab - Description Section - Add and Update |
-| 2 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Owners Section - View Owners | Data Consumer - Overview Tab - Owners Section - View Owners |
-| 3 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Tier Section - Add and Update | Data Consumer - Overview Tab - Tier Section - Add and Update |
-| 4 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Tags Section - Add and Update | Data Consumer - Overview Tab - Tags Section - Add and Update |
-| 5 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Glossary Terms Section - Add and Update | Data Consumer - Overview Tab - Glossary Terms Section - Add and Update |
-| 6 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products | Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products |
-| 7 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Schema Tab - View Schema | Data Consumer - Schema Tab - View Schema |
-| 8 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Lineage Tab - No Lineage | Data Consumer - Lineage Tab - No Lineage |
-| 9 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Data Quality Tab - No Test Cases | Data Consumer - Data Quality Tab - No Test Cases |
-| 10 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Data Quality Tab - Incidents Empty State | Data Consumer - Data Quality Tab - Incidents Empty State |
-| 11 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Custom Properties Tab - View Custom Properties | Data Consumer - Custom Properties Tab - View Custom Properties |
-
-</details>
-
-<details open>
-<summary>📄 <b>EntityPermissions.spec.ts</b> (40 tests, 40 scenarios)</summary>
+<summary>📄 <b>EntityPermissions.spec.ts</b> (44 tests, 44 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/EntityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/EntityPermissions.spec.ts)
 
@@ -2622,45 +2484,137 @@
 | 1 | **Worksheet Permissions** - Worksheet allow common operations permissions | Worksheet allow common operations permissions |
 | 2 | **Worksheet Permissions** - Worksheet deny common operations permissions | Worksheet deny common operations permissions |
 
-</details>
-
-<details open>
-<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (18 tests, 18 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts)
-
-### Entity Summary Panel
+### Database Permissions
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Entity Summary Panel** - should display summary panel for table | Display summary panel for table |
-| 2 | **Entity Summary Panel** - should display summary panel for database | Display summary panel for database |
-| 3 | **Entity Summary Panel** - should display summary panel for databaseSchema | Display summary panel for databaseSchema |
-| 4 | **Entity Summary Panel** - should display summary panel for dashboard | Display summary panel for dashboard |
-| 5 | **Entity Summary Panel** - should display summary panel for dashboardDataModel | Display summary panel for dashboardDataModel |
-| 6 | **Entity Summary Panel** - should display summary panel for pipeline | Display summary panel for pipeline |
-| 7 | **Entity Summary Panel** - should display summary panel for topic | Display summary panel for topic |
-| 8 | **Entity Summary Panel** - should display summary panel for mlmodel | Display summary panel for mlmodel |
-| 9 | **Entity Summary Panel** - should display summary panel for container | Display summary panel for container |
-| 10 | **Entity Summary Panel** - should display summary panel for searchIndex | Display summary panel for searchIndex |
-| 11 | **Entity Summary Panel** - should render entity title section with link | Render entity title section with link |
-| 12 | **Entity Summary Panel** - should display owners section | Display owners section |
-| 13 | **Entity Summary Panel** - should display domain section | Display domain section |
-| 14 | **Entity Summary Panel** - should display tags section | Display tags section |
-| 15 | **Entity Summary Panel** - should navigate between tabs | Navigate between tabs |
-| 16 | **Entity Summary Panel** - should display description section | Display description section |
-
-### Entity Title Section - Edit Display Name
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Entity Title Section - Edit Display Name** - should edit display name from entity summary panel | Edit display name from entity summary panel |
-| 2 | **Entity Title Section - Edit Display Name** - should cancel edit display name modal | Cancel edit display name modal |
+| 1 | **Database Permissions** - Database allow common operations permissions | Database allow common operations permissions |
+| 2 | **Database Permissions** - Database allow entity-specific permission operations | Database allow entity-specific permission operations |
+| 3 | **Database Permissions** - Database deny common operations permissions | Database deny common operations permissions |
+| 4 | **Database Permissions** - Database deny entity-specific permission operations | Database deny entity-specific permission operations |
 
 </details>
 
 <details open>
-<summary>📄 <b>ServiceEntityPermissions.spec.ts</b> (16 tests, 16 scenarios)</summary>
+<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (24 tests, 60 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts)
+
+### Column Bulk Operations - Page Load & Stats
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Page Load & Stats** - should load the page with stats cards and grid data | Load the page with stats cards and grid data |
+| | ↳ *Verify stats cards are visible* | |
+| | ↳ *Verify the grid table is visible with rows* | |
+| 2 | **Column Bulk Operations - Page Load & Stats** - should show no results when searching for nonexistent column | Show no results when searching for nonexistent column |
+| | ↳ *Search for a nonexistent column name* | |
+| | ↳ *Verify empty state or zero rows* | |
+
+### Column Bulk Operations - Filters & Search
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Filters & Search** - should filter by metadata status and verify API param | Filter by metadata status and verify API param |
+| | ↳ *Open metadata status filter and select MISSING* | |
+| | ↳ *Verify filter chip is displayed* | |
+| 2 | **Column Bulk Operations - Filters & Search** - should filter by entity type (Table) | Filter by entity type (Table) |
+| | ↳ *Open Asset Type filter and select Table* | |
+| 3 | **Column Bulk Operations - Filters & Search** - should restore filters from URL on page load | Restore filters from URL on page load |
+| | ↳ *Navigate to page with metadataStatus in URL* | |
+| | ↳ *Verify filter chip is restored* | |
+| 4 | **Column Bulk Operations - Filters & Search** - should search columns with server-side API call | Search columns with server-side API call |
+| | ↳ *Type search query and verify API call* | |
+| 5 | **Column Bulk Operations - Filters & Search** - should not reset stats to zero while search request is loading | Not reset stats to zero while search request is loading |
+| 6 | **Column Bulk Operations - Filters & Search** - should clear individual filter and update URL | Clear individual filter and update URL |
+| | ↳ *Navigate with metadataStatus filter in URL* | |
+| | ↳ *Verify filter chip is present* | |
+| | ↳ *Deselect the MISSING filter* | |
+| | ↳ *Verify filter chip removed and URL updated* | |
+| 7 | **Column Bulk Operations - Filters & Search** - should keep latest search results when responses arrive out of order | Keep latest search results when responses arrive out of order |
+| 8 | **Column Bulk Operations - Filters & Search** - should show Service filter chip from URL | Show Service filter chip from URL |
+| | ↳ *Navigate with service filter in URL* | |
+| | ↳ *Verify service chip is visible* | |
+
+### Column Bulk Operations - Selection & Edit Drawer
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Selection & Edit Drawer** - should show disabled edit button when no columns are selected | Show disabled edit button when no columns are selected |
+| 2 | **Column Bulk Operations - Selection & Edit Drawer** - should update pending changes counter when editing selected columns | Update pending changes counter when editing selected columns |
+| | ↳ *Search and select a shared column* | |
+| | ↳ *Open drawer and edit display name* | |
+| | ↳ *Verify pending changes value shows edited/selected count* | |
+| 3 | **Column Bulk Operations - Selection & Edit Drawer** - should not count aggregate parent row in drawer selected count | Not count aggregate parent row in drawer selected count |
+| | ↳ *Search and select shared grouped column* | |
+| | ↳ *Open drawer and verify selected count matches occurrences* | |
+| 4 | **Column Bulk Operations - Selection & Edit Drawer** - should show pending progress spinner after submitting bulk update | Show pending progress spinner after submitting bulk update |
+| | ↳ *Search, select, and open edit drawer* | |
+| | ↳ *Submit update request* | |
+| | ↳ *Verify pending progress indicator and counter are visible* | |
+| 5 | **Column Bulk Operations - Selection & Edit Drawer** - should select column, open drawer, and verify form fields | Select column, open drawer, and verify form fields |
+| | ↳ *Search for shared column* | |
+| | ↳ *Select the column checkbox* | |
+| | ↳ *Verify edit button is enabled and click it* | |
+| | ↳ *Verify drawer opens with all form fields* | |
+| | ↳ *Close drawer with Escape* | |
+| 6 | **Column Bulk Operations - Selection & Edit Drawer** - should show column count for multiple column selection | Show column count for multiple column selection |
+| | ↳ *Select two columns via header checkbox then individual* | |
+| | ↳ *Open drawer and verify multi-select title* | |
+| | ↳ *Close drawer* | |
+| 7 | **Column Bulk Operations - Selection & Edit Drawer** - should cancel selection and disable edit button | Cancel selection and disable edit button |
+| | ↳ *Search and select a column* | |
+| | ↳ *Cancel selection* | |
+| | ↳ *Verify edit button is disabled again* | |
+| 8 | **Column Bulk Operations - Selection & Edit Drawer** - should discard changes when closing drawer without saving | Discard changes when closing drawer without saving |
+| | ↳ *Search and select a column* | |
+| | ↳ *Open drawer and enter a display name* | |
+| | ↳ *Close drawer without saving* | |
+| | ↳ *Reopen drawer and verify changes were discarded* | |
+| | ↳ *Close drawer* | |
+| 9 | **Column Bulk Operations - Selection & Edit Drawer** - should open edit drawer when clicking on aggregate row | Open edit drawer when clicking on aggregate row |
+| | ↳ *Click on a column name cell to open drawer* | |
+| | ↳ *Verify drawer opens* | |
+| | ↳ *Close drawer* | |
+
+### Column Bulk Operations - Bulk Update Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Bulk Update Flow** - should update display name and propagate to all occurrences | Update display name and propagate to all occurrences |
+| | ↳ *Search for shared column* | |
+| | ↳ *Select the column* | |
+| | ↳ *Open drawer and fill display name* | |
+| | ↳ *Submit update and verify API request* | |
+| 2 | **Column Bulk Operations - Bulk Update Flow** - should show success notification after bulk update | Show success notification after bulk update |
+| | ↳ *Search and select column* | |
+| | ↳ *Fill display name and submit* | |
+| | ↳ *Verify success toast* | |
+
+### Column Bulk Operations - Nested STRUCT Columns
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Nested STRUCT Columns** - should expand STRUCT column to show nested fields | Expand STRUCT column to show nested fields |
+| | ↳ *Search for STRUCT column* | |
+| | ↳ *Verify STRUCT row is visible* | |
+| | ↳ *Expand the STRUCT row* | |
+| 2 | **Column Bulk Operations - Nested STRUCT Columns** - should select and edit nested STRUCT field | Select and edit nested STRUCT field |
+| | ↳ *Search for STRUCT column* | |
+| | ↳ *Expand STRUCT row* | |
+| | ↳ *Select a nested child column* | |
+
+### Column Bulk Operations - Pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Pagination** - should navigate through pages | Navigate through pages |
+| | ↳ *Click Next and verify Previous becomes enabled* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>ServiceEntityPermissions.spec.ts</b> (20 tests, 20 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts)
 
@@ -2676,14 +2630,18 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Dashboard Service Permissions** - Dashboard Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Dashboard Service Permissions** - Dashboard Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+| 2 | **Dashboard Service Permissions** - Dashboard Service allow entity-specific permission operations | Dashboard Service allow entity-specific permission operations |
+| 3 | **Dashboard Service Permissions** - Dashboard Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+| 4 | **Dashboard Service Permissions** - Dashboard Service deny entity-specific permission operations | Dashboard Service deny entity-specific permission operations |
 
 ### Database Service Permissions
 
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Database Service Permissions** - Database Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Database Service Permissions** - Database Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+| 2 | **Database Service Permissions** - Database Service allow entity-specific permission operations | Database Service allow entity-specific permission operations |
+| 3 | **Database Service Permissions** - Database Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+| 4 | **Database Service Permissions** - Database Service deny entity-specific permission operations | Database Service deny entity-specific permission operations |
 
 ### Messaging Service Permissions
 
@@ -2719,6 +2677,41 @@
 |---|-----------|-------------|
 | 1 | **Storage Service Permissions** - Storage Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
 | 2 | **Storage Service Permissions** - Storage Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+</details>
+
+<details open>
+<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (18 tests, 18 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts)
+
+### Entity Summary Panel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Entity Summary Panel** - should display summary panel for table | Display summary panel for table |
+| 2 | **Entity Summary Panel** - should display summary panel for database | Display summary panel for database |
+| 3 | **Entity Summary Panel** - should display summary panel for databaseSchema | Display summary panel for databaseSchema |
+| 4 | **Entity Summary Panel** - should display summary panel for dashboard | Display summary panel for dashboard |
+| 5 | **Entity Summary Panel** - should display summary panel for dashboardDataModel | Display summary panel for dashboardDataModel |
+| 6 | **Entity Summary Panel** - should display summary panel for pipeline | Display summary panel for pipeline |
+| 7 | **Entity Summary Panel** - should display summary panel for topic | Display summary panel for topic |
+| 8 | **Entity Summary Panel** - should display summary panel for mlmodel | Display summary panel for mlmodel |
+| 9 | **Entity Summary Panel** - should display summary panel for container | Display summary panel for container |
+| 10 | **Entity Summary Panel** - should display summary panel for searchIndex | Display summary panel for searchIndex |
+| 11 | **Entity Summary Panel** - should render entity title section with link | Render entity title section with link |
+| 12 | **Entity Summary Panel** - should display owners section | Display owners section |
+| 13 | **Entity Summary Panel** - should display domain section | Display domain section |
+| 14 | **Entity Summary Panel** - should display tags section | Display tags section |
+| 15 | **Entity Summary Panel** - should navigate between tabs | Navigate between tabs |
+| 16 | **Entity Summary Panel** - should display description section | Display description section |
+
+### Entity Title Section - Edit Display Name
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Entity Title Section - Edit Display Name** - should edit display name from entity summary panel | Edit display name from entity summary panel |
+| 2 | **Entity Title Section - Edit Display Name** - should cancel edit display name modal | Cancel edit display name modal |
 
 </details>
 
@@ -3344,6 +3337,49 @@
 </details>
 
 <details open>
+<summary>📄 <b>PersonaFlow.spec.ts</b> (10 tests, 16 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts)
+
+### Persona operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Persona operations** - Persona creation should work properly with breadcrumb navigation | Persona creation should work properly with breadcrumb navigation |
+| 2 | **Persona operations** - Persona update description flow should work properly | Persona update description flow should work properly |
+| 3 | **Persona operations** - Persona rename flow should work properly | Persona rename flow should work properly |
+| 4 | **Persona operations** - Remove users in persona should work properly | Remove users in persona should work properly |
+| 5 | **Persona operations** - Delete persona should work properly | Delete persona should work properly |
+
+### Default persona setting and removal flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Default persona setting and removal flow** - Set and remove default persona should work properly | Set and remove default persona should work properly |
+| | ↳ *Admin creates a persona and sets the default persona* | |
+| | ↳ *User refreshes and checks the default persona is applied* | |
+| | ↳ *Changing default persona* | |
+| | ↳ *Verify changed default persona for new user* | |
+| | ↳ *Admin removes the default persona* | |
+| | ↳ *User refreshes and sees no default persona* | |
+
+### Team persona setting flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Team persona setting flow** - Set default persona for team should work properly | Set default persona for team should work properly |
+| | ↳ *Admin sets default persona for a team* | |
+| | ↳ *Admin can verify the team persona is applied to the team user* | |
+| 2 | **Team persona setting flow** - Admin can remove the default persona for a team | Admin can remove the default persona for a team |
+| | ↳ *Admin removes the default persona for a team* | |
+| 3 | **Team persona setting flow** - User without permissions cannot edit team persona | User without permissions cannot edit team persona |
+| | ↳ *User without permissions cannot edit team persona* | |
+| 4 | **Team persona setting flow** - Non-group team types do not have a default persona setting | Non-group team types do not have a default persona setting |
+| | ↳ *Verify non-group teams cannot set a persona* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>CustomizeWidgets.spec.ts</b> (9 tests, 45 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts)
@@ -3410,35 +3446,6 @@
 </details>
 
 <details open>
-<summary>📄 <b>PersonaFlow.spec.ts</b> (6 tests, 11 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts)
-
-### Persona operations
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Persona operations** - Persona creation should work properly | Persona creation should work properly |
-| 2 | **Persona operations** - Persona update description flow should work properly | Persona update description flow should work properly |
-| 3 | **Persona operations** - Persona rename flow should work properly | Persona rename flow should work properly |
-| 4 | **Persona operations** - Remove users in persona should work properly | Remove users in persona should work properly |
-| 5 | **Persona operations** - Delete persona should work properly | Delete persona should work properly |
-
-### Default persona setting and removal flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Default persona setting and removal flow** - Set and remove default persona should work properly | Set and remove default persona should work properly |
-| | ↳ *Admin creates a persona and sets the default persona* | |
-| | ↳ *User refreshes and checks the default persona is applied* | |
-| | ↳ *Changing default persona* | |
-| | ↳ *Verify changed default persona for new user* | |
-| | ↳ *Admin removes the default persona* | |
-| | ↳ *User refreshes and sees no default persona* | |
-
-</details>
-
-<details open>
 <summary>📄 <b>CustomizeLandingPage.spec.ts</b> (3 tests, 5 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts)
@@ -3483,131 +3490,41 @@
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts)
 
-### Pagination tests for Users page
+### Pagination Tests
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Pagination tests for Users page** - should test pagination on Users page | Pagination on Users page |
-| 2 | **Pagination tests for Users page** - should test Users complete flow with search | Users complete flow with search |
-
-### Database Schema Tables page pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Database Schema Tables page pagination** - should test Database Schema Tables normal pagination | Database Schema Tables normal pagination |
-| 2 | **Database Schema Tables page pagination** - should test Database Schema Tables complete flow with search | Database Schema Tables complete flow with search |
-
-### Table columns page pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table columns page pagination** - should test pagination on Table columns | Pagination on Table columns |
-| 2 | **Table columns page pagination** - should test Table columns complete flow with search | Table columns complete flow with search |
-
-### Service Databases page pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Service Databases page pagination** - should test pagination on Service Databases page | Pagination on Service Databases page |
-| 2 | **Service Databases page pagination** - should test Service Database Tables complete flow with search | Service Database Tables complete flow with search |
-
-### Pagination tests for Classification Tags page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Classification Tags page** - should test pagination on Classification Tags page | Pagination on Classification Tags page |
-
-### Pagination tests for Metrics page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Metrics page** - should test pagination on Metrics page | Pagination on Metrics page |
-
-### Pagination tests for Notification Alerts page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Notification Alerts page** - should test pagination on Notification Alerts page | Pagination on Notification Alerts page |
-
-### Pagination tests for Observability Alerts page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Observability Alerts page** - should test pagination on Observability Alerts page | Pagination on Observability Alerts page |
-
-### Pagination tests for API Collection Endpoints page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for API Collection Endpoints page** - should test API Collection normal pagination | API Collection normal pagination |
-| 2 | **Pagination tests for API Collection Endpoints page** - should test API Collection complete flow with search | API Collection complete flow with search |
-
-### Pagination tests for Stored Procedures page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Stored Procedures page** - should test Stored Procedures normal pagination | Stored Procedures normal pagination |
-| 2 | **Pagination tests for Stored Procedures page** - should test Stored Procedures complete flow with search | Stored Procedures complete flow with search |
-
-### Pagination tests for Database Schemas page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Database Schemas page** - should test Database Schemas normal pagination | Database Schemas normal pagination |
-| 2 | **Pagination tests for Database Schemas page** - should test Database Schemas complete flow with search | Database Schemas complete flow with search |
-
-### Pagination tests for Dashboard Data Models page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Dashboard Data Models page** - should test Data Models normal pagination | Data Models normal pagination |
-| 2 | **Pagination tests for Dashboard Data Models page** - should test Data Models complete flow with search | Data Models complete flow with search |
-
-### Pagination tests for Drive Service Directories page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Drive Service Directories page** - should test Directories normal pagination | Directories normal pagination |
-| 2 | **Pagination tests for Drive Service Directories page** - should test Directories complete flow with search | Directories complete flow with search |
-
-### Pagination tests for Drive Service Files page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Drive Service Files page** - should test Files normal pagination | Files normal pagination |
-| 2 | **Pagination tests for Drive Service Files page** - should test Files complete flow with search | Files complete flow with search |
-| 3 | **Pagination tests for Drive Service Files page** - should reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload | Reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload |
-
-### Pagination tests for Drive Service Spreadsheets page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Drive Service Spreadsheets page** - should test Spreadsheets normal pagination | Spreadsheets normal pagination |
-| 2 | **Pagination tests for Drive Service Spreadsheets page** - should test Spreadsheets complete flow with search | Spreadsheets complete flow with search |
-
-### Pagination tests for Roles page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Roles page** - should test pagination on Roles page | Pagination on Roles page |
-
-### Pagination tests for Policies page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Policies page** - should test pagination on Policies page | Pagination on Policies page |
-
-### Pagination tests for Bots page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Bots page** - should test pagination on Bots page | Pagination on Bots page |
-
-### Pagination tests for Service version page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Service version page** - should test pagination on Service version page | Pagination on Service version page |
+| 1 | **Pagination Tests** - should test pagination on Users page | Pagination on Users page |
+| 2 | **Pagination Tests** - should test Users complete flow with search | Users complete flow with search |
+| 3 | **Pagination Tests** - should test Database Schema Tables normal pagination | Database Schema Tables normal pagination |
+| 4 | **Pagination Tests** - should test Database Schema Tables complete flow with search | Database Schema Tables complete flow with search |
+| 5 | **Pagination Tests** - should test pagination on Table columns | Pagination on Table columns |
+| 6 | **Pagination Tests** - should test Table columns complete flow with search | Table columns complete flow with search |
+| 7 | **Pagination Tests** - should test pagination on Service Databases page | Pagination on Service Databases page |
+| 8 | **Pagination Tests** - should test Service Database Tables complete flow with search | Service Database Tables complete flow with search |
+| 9 | **Pagination Tests** - should test pagination on Classification Tags page | Pagination on Classification Tags page |
+| 10 | **Pagination Tests** - should test pagination on Metrics page | Pagination on Metrics page |
+| 11 | **Pagination Tests** - should test pagination on Notification Alerts page | Pagination on Notification Alerts page |
+| 12 | **Pagination Tests** - should test pagination on Observability Alerts page | Pagination on Observability Alerts page |
+| 13 | **Pagination Tests** - should test API Collection normal pagination | API Collection normal pagination |
+| 14 | **Pagination Tests** - should test API Collection complete flow with search | API Collection complete flow with search |
+| 15 | **Pagination Tests** - should test Stored Procedures normal pagination | Stored Procedures normal pagination |
+| 16 | **Pagination Tests** - should test Stored Procedures complete flow with search | Stored Procedures complete flow with search |
+| 17 | **Pagination Tests** - should test Database Schemas normal pagination | Database Schemas normal pagination |
+| 18 | **Pagination Tests** - should test Database Schemas complete flow with search | Database Schemas complete flow with search |
+| 19 | **Pagination Tests** - should test Data Models normal pagination | Data Models normal pagination |
+| 20 | **Pagination Tests** - should test Data Models complete flow with search | Data Models complete flow with search |
+| 21 | **Pagination Tests** - should test Directories normal pagination | Directories normal pagination |
+| 22 | **Pagination Tests** - should test Directories complete flow with search | Directories complete flow with search |
+| 23 | **Pagination Tests** - should test Files normal pagination | Files normal pagination |
+| 24 | **Pagination Tests** - should test Files complete flow with search | Files complete flow with search |
+| 25 | **Pagination Tests** - should reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload | Reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload |
+| 26 | **Pagination Tests** - should test Spreadsheets normal pagination | Spreadsheets normal pagination |
+| 27 | **Pagination Tests** - should test Spreadsheets complete flow with search | Spreadsheets complete flow with search |
+| 28 | **Pagination Tests** - should test pagination on Roles page | Pagination on Roles page |
+| 29 | **Pagination Tests** - should test pagination on Policies page | Pagination on Policies page |
+| 30 | **Pagination Tests** - should test pagination on Bots page | Pagination on Bots page |
+| 31 | **Pagination Tests** - should test pagination on Service version page | Pagination on Service version page |
 
 </details>
 
@@ -3703,8 +3620,8 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Test pagination in column level lineage** - Verify column visibility across pagination pages | Column visibility across pagination pages |
-| | ↳ *Verify T1-P1: C1-C5 visible, C6-C11 hidden* | |
-| | ↳ *Verify T2-P1: C1-C5 visible, C6-C12 hidden* | |
+| | ↳ *Verify T1-P1: C1-C10 visible, C10-C21 hidden* | |
+| | ↳ *Verify T2-P1: C1-C10 visible, C10-C22 hidden* | |
 | | ↳ *Navigate to T1-P2 and verify visibility* | |
 | | ↳ *Navigate to T2-P2 and verify visibility* | |
 | | ↳ *Navigate to T1-P3 and verify visibility* | |
@@ -4020,6 +3937,116 @@
 </details>
 
 <details open>
+<summary>📄 <b>TeamSubscriptions.spec.ts</b> (17 tests, 44 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/TeamSubscriptions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TeamSubscriptions.spec.ts)
+
+### Team Subscriptions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Team Subscriptions** - should display subscription as None when no subscription configured | Display subscription as None when no subscription configured |
+| | ↳ *Verify no subscription is configured* | |
+| 2 | **Team Subscriptions** - should open and close subscription edit modal | Open and close subscription edit modal |
+| | ↳ *Open subscription modal* | |
+| | ↳ *Close subscription modal* | |
+| 3 | **Team Subscriptions** - should configure MS Teams webhook subscription | Configure MS Teams webhook subscription |
+| | ↳ *Open subscription modal and select MS Teams* | |
+| | ↳ *Enter endpoint and save* | |
+| | ↳ *Verify MS Teams icon is displayed* | |
+| 4 | **Team Subscriptions** - should configure Slack webhook subscription | Configure Slack webhook subscription |
+| | ↳ *Configure Slack webhook* | |
+| | ↳ *Verify Slack icon is displayed* | |
+| 5 | **Team Subscriptions** - should configure Google Chat webhook subscription | Configure Google Chat webhook subscription |
+| | ↳ *Configure Google Chat webhook* | |
+| | ↳ *Verify Google Chat icon is displayed* | |
+| 6 | **Team Subscriptions** - should configure Generic webhook subscription | Configure Generic webhook subscription |
+| | ↳ *Configure Generic webhook* | |
+| | ↳ *Verify Generic webhook icon is displayed* | |
+| 7 | **Team Subscriptions** - should validate endpoint URL format | Validate endpoint URL format |
+| | ↳ *Open subscription modal and select webhook* | |
+| | ↳ *Enter invalid URL and verify error* | |
+| | ↳ *Close modal* | |
+| 8 | **Team Subscriptions** - should require endpoint when webhook type is selected | Require endpoint when webhook type is selected |
+| | ↳ *Open subscription modal and select Slack* | |
+| | ↳ *Submit without endpoint and verify error* | |
+| | ↳ *Close modal* | |
+| 9 | **Team Subscriptions** - should disable endpoint input when webhook type is None | Disable endpoint input when webhook type is None |
+| | ↳ *Open subscription modal* | |
+| | ↳ *Select Slack and verify endpoint is enabled* | |
+| | ↳ *Select None and verify endpoint is disabled* | |
+| | ↳ *Close modal* | |
+| 10 | **Team Subscriptions** - should update existing subscription to different webhook type | Update existing subscription to different webhook type |
+| | ↳ *Configure MS Teams webhook* | |
+| | ↳ *Update to Generic webhook* | |
+| | ↳ *Verify updated webhook icon* | |
+| 11 | **Team Subscriptions** - should remove subscription by setting webhook to None | Remove subscription by setting webhook to None |
+| | ↳ *Configure Slack webhook* | |
+| | ↳ *Remove subscription by selecting None* | |
+| | ↳ *Verify subscription is removed* | |
+| 12 | **Team Subscriptions** - should persist subscription after page reload | Persist subscription after page reload |
+| | ↳ *Configure Generic webhook* | |
+| | ↳ *Reload page and verify persistence* | |
+| 13 | **Team Subscriptions** - admin can edit subscriptions for any team | Admin can edit subscriptions for any team |
+| | ↳ *Verify admin can see edit button* | |
+| | ↳ *Admin can configure all webhook types* | |
+
+### Team Subscriptions - Owner Permission Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Team Subscriptions - Owner Permission Tests** - team owner can manage subscriptions | Team owner can manage subscriptions |
+| | ↳ *Owner can see edit button* | |
+| | ↳ *Owner can configure webhook* | |
+| | ↳ *Owner can update webhook type* | |
+| | ↳ *Owner can remove subscription* | |
+| 2 | **Team Subscriptions - Owner Permission Tests** - team member without owner role cannot edit subscriptions | Team member without owner role cannot edit subscriptions |
+| | ↳ *Create team with member (non-owner)* | |
+| | ↳ *Verify member cannot edit subscriptions* | |
+| | ↳ *Cleanup resources* | |
+
+### Team Subscriptions - Data Consumer Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Team Subscriptions - Data Consumer Tests** - data consumer cannot edit team subscriptions | Data consumer cannot edit team subscriptions |
+| | ↳ *Login as data consumer and visit team page* | |
+| | ↳ *Verify edit button is not visible* | |
+| | ↳ *Verify subscription details are visible (read-only)* | |
+
+### Team Subscriptions - Data Steward Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Team Subscriptions - Data Steward Tests** - data steward cannot edit team subscriptions | Data steward cannot edit team subscriptions |
+| | ↳ *Login as data steward and visit team page* | |
+| | ↳ *Verify edit button is not visible* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>TeamAssetsRightPanel.spec.ts</b> (10 tests, 10 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts)
+
+### Team Details Assets Tab - Right Panel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Team Details Assets Tab - Right Panel** - Should open right panel when clicking asset in team assets tab | Open right panel when clicking asset in team assets tab |
+| 2 | **Team Details Assets Tab - Right Panel** - Should display correct tabs for table entity in team assets context | Display correct tabs for table entity in team assets context |
+| 3 | **Team Details Assets Tab - Right Panel** - Should edit description from team assets context | Edit description from team assets context |
+| 4 | **Team Details Assets Tab - Right Panel** - Should display entity name link in panel header in team assets context | Display entity name link in panel header in team assets context |
+| 5 | **Team Details Assets Tab - Right Panel** - Should display overview tab content in team assets context | Display overview tab content in team assets context |
+| 6 | **Team Details Assets Tab - Right Panel** - Should edit tags from team assets context | Edit tags from team assets context |
+| 7 | **Team Details Assets Tab - Right Panel** - Should assign tier from team assets context | Assign tier from team assets context |
+| 8 | **Team Details Assets Tab - Right Panel** - Should edit domain from team assets context | Edit domain from team assets context |
+| 9 | **Team Details Assets Tab - Right Panel** - Should edit glossary terms from team assets context | Edit glossary terms from team assets context |
+| 10 | **Team Details Assets Tab - Right Panel** - Should edit owners from team assets context | Edit owners from team assets context |
+
+</details>
+
+<details open>
 <summary>📄 <b>TeamsDragAndDrop.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/TeamsDragAndDrop.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TeamsDragAndDrop.spec.ts)
@@ -4165,7 +4192,7 @@
 ## SSO
 
 <details open>
-<summary>📄 <b>SSOConfiguration.spec.ts</b> (43 tests, 43 scenarios)</summary>
+<summary>📄 <b>SSOConfiguration.spec.ts</b> (37 tests, 37 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts)
 
@@ -4205,17 +4232,16 @@
 | 30 | **SSO Configuration Tests** - should show tenant field for Azure provider | Show tenant field for Azure provider |
 | 31 | **SSO Configuration Tests** - should collapse advanced config by default | Collapse advanced config by default |
 | 32 | **SSO Configuration Tests** - should expand and collapse advanced config when clicked | Expand and collapse advanced config when clicked |
-| 33 | **SSO Configuration Tests** - should add new mapping when Add button is clicked | Add new mapping when Add button is clicked |
-| 34 | **SSO Configuration Tests** - should allow entering LDAP group DN | Allow entering LDAP group DN |
-| 35 | **SSO Configuration Tests** - should allow selecting roles from dropdown | Allow selecting roles from dropdown |
-| 36 | **SSO Configuration Tests** - should allow removing a mapping | Allow removing a mapping |
-| 37 | **SSO Configuration Tests** - should show duplicate error when same LDAP group is added twice | Show duplicate error when same LDAP group is added twice |
-| 38 | **SSO Configuration Tests** - should clear duplicate error when one entry is changed | Clear duplicate error when one entry is changed |
-| 39 | **SSO Configuration Tests** - should allow adding multiple unique mappings | Allow adding multiple unique mappings |
-| 40 | **SSO Configuration Tests** - should maintain mapping when clearing LDAP group input | Maintain mapping when clearing LDAP group input |
-| 41 | **SSO Configuration Tests** - should handle case-insensitive duplicate detection | Handle case-insensitive duplicate detection |
-| 42 | **SSO Configuration Tests** - should handle whitespace in duplicate detection | Handle whitespace in duplicate detection |
-| 43 | **SSO Configuration Tests** - should not display role mapping widget for non-LDAP providers | Not display role mapping widget for non-LDAP providers |
+| 33 | **SSO Configuration Tests** - should support full LDAP role mapping flow: add, fill, open roles dropdown, detect and resolve duplicates, and remove | Support full LDAP role mapping flow: add, fill, open roles dropdown, detect and resolve duplicates, and remove |
+| 34 | **SSO Configuration Tests** - should render authReassignRoles as a searchable dropdown and support role selection, removal, and search filtering | Render authReassignRoles as a searchable dropdown and support role selection, removal, and search filtering |
+| 35 | **SSO Configuration Tests** - should not display role mapping widget for non-LDAP providers | Not display role mapping widget for non-LDAP providers |
+
+### SSO Back Navigation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **SSO Back Navigation** - should navigate to /settings when pressing back if SSO is already configured | Navigate to /settings when pressing back if SSO is already configured |
+| 2 | **SSO Back Navigation** - should stay on /settings/sso when pressing back if SSO is not configured | Stay on /settings/sso when pressing back if SSO is not configured |
 
 </details>
 
@@ -4293,11 +4319,11 @@
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Roles.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Roles.spec.ts)
 
-### Standalone Tests
+### Roles page tests
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | Roles page should work properly | Roles page should work properly |
+| 1 | **Roles page tests** - Roles page should work properly | Roles page should work properly |
 | | ↳ *Add new role and check all tabs data* | |
 | | ↳ *Add new role without selecting data* | |
 | | ↳ *Edit created role* | |
@@ -4306,7 +4332,7 @@
 | | ↳ *Remove added policy from created role* | |
 | | ↳ *Check if last policy is not removed* | |
 | | ↳ *Delete created Role* | |
-| 2 | Delete role action from manage button options | Delete role action from manage button options |
+| 2 | **Roles page tests** - Delete role action from manage button options | Delete role action from manage button options |
 
 </details>
 
@@ -4360,11 +4386,11 @@
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/SearchIndexApplication.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SearchIndexApplication.spec.ts)
 
-### Standalone Tests
+### Search Index Application
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | Search Index Application | Search Index Application |
+| 1 | **Search Index Application** - Search Index Application | Search Index Application |
 | | ↳ *Visit Application page* | |
 | | ↳ *Verify last execution run* | |
 | | ↳ *View App Run Config* | |
@@ -4372,6 +4398,84 @@
 | | ↳ *Uninstall application* | |
 | | ↳ *Install application* | |
 | | ↳ *Run application* | |
+
+</details>
+
+
+---
+
+<div id="general"></div>
+
+## General
+
+<details open>
+<summary>📄 <b>LearningResources.spec.ts</b> (13 tests, 32 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/LearningResources.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/LearningResources.spec.ts)
+
+### Learning Resources Admin Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Resources Admin Page** - should validate required fields when creating a resource | Validate required fields when creating a resource |
+| | ↳ *Open create resource drawer* | |
+| | ↳ *Attempt to save without required fields* | |
+| | ↳ *Close drawer* | |
+| 2 | **Learning Resources Admin Page** - should create a new learning resource | Create a new learning resource |
+| 3 | **Learning Resources Admin Page** - should preview a learning resource by clicking on row | Preview a learning resource by clicking on row |
+| | ↳ *Click row and verify player modal opens* | |
+| | ↳ *Close preview modal* | |
+| 4 | **Learning Resources Admin Page** - should toggle between table and card views | Toggle between table and card views |
+| | ↳ *Verify table view is default* | |
+| | ↳ *Switch to card view* | |
+| | ↳ *Switch back to table view* | |
+
+### Learning Icon on Pages
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Icon on Pages** - should show correct learning resource in drawer on lineage page | Show correct learning resource in drawer on lineage page |
+| | ↳ *Navigate to lineage page* | |
+| | ↳ *Open learning drawer and verify resource* | |
+| | ↳ *Close drawer* | |
+| 2 | **Learning Icon on Pages** - should open resource player when clicking on resource card in drawer | Open resource player when clicking on resource card in drawer |
+| | ↳ *Navigate to glossary page* | |
+| | ↳ *Open learning drawer* | |
+| | ↳ *Click resource card and verify player opens* | |
+
+### Learning Resources - Search and Filters
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Resources - Search and Filters** - should send correct search param to API when searching | Send correct search param to API when searching |
+| | ↳ *Type search term and verify API receives search param* | |
+| | ↳ *Verify search result is shown in table* | |
+| 2 | **Learning Resources - Search and Filters** - should send correct resourceType param when filtering by type | Send correct resourceType param when filtering by type |
+| | ↳ *Apply Video type filter and verify API param* | |
+| | ↳ *Verify filter chip is shown* | |
+| 3 | **Learning Resources - Search and Filters** - should send correct category param when filtering by category | Send correct category param when filtering by category |
+| | ↳ *Apply Discovery category filter and verify API param* | |
+| | ↳ *Verify filter chip is shown* | |
+| 4 | **Learning Resources - Search and Filters** - should send correct pageId param when filtering by context | Send correct pageId param when filtering by context |
+| | ↳ *Apply Glossary context filter and verify API param* | |
+| | ↳ *Verify filter chip is shown* | |
+| 5 | **Learning Resources - Search and Filters** - should send correct status param when filtering by status | Send correct status param when filtering by status |
+| | ↳ *Apply Active status filter and verify API param* | |
+| | ↳ *Verify filter chip is shown* | |
+| 6 | **Learning Resources - Search and Filters** - should clear all filters and reload without filter params | Clear all filters and reload without filter params |
+| | ↳ *Apply a filter first* | |
+| | ↳ *Clear all filters and verify clean API call* | |
+| | ↳ *Verify filter chips are gone* | |
+
+### Learning Resources E2E Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Resources E2E Flow** - should create resource via UI and verify learning icon appears on target page | Create resource via UI and verify learning icon appears on target page |
+| | ↳ *Navigate to Learning Resources admin page* | |
+| | ↳ *Open add resource drawer and fill form* | |
+| | ↳ *Save the resource and verify API response* | |
+| | ↳ *Navigate to Glossary and verify resource in learning drawer* | |
 
 </details>
 

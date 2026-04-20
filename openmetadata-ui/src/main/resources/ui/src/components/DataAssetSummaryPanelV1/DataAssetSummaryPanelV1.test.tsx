@@ -26,11 +26,11 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
-import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -71,16 +71,16 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn(),
 }));
 
+jest.mock('../../hooks/useChangeSummary', () => ({
+  useChangeSummary: jest.fn(),
+}));
+
 jest.mock('../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
 jest.mock('../../rest/testAPI', () => ({
   listTestCases: jest.fn(),
-}));
-
-jest.mock('../../utils/DashboardDetailsUtils', () => ({
-  fetchCharts: jest.fn(),
 }));
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
@@ -91,10 +91,6 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../utils/EntitySummaryPanelUtils', () => ({
-  getEntityChildDetails: jest.fn(),
 }));
 
 jest.mock('../../utils/EntityUtils', () => {
@@ -380,13 +376,6 @@ const mockIncidentData = {
   },
 };
 
-const mockChartsData = [
-  {
-    id: 'chart-1',
-    name: 'Test Chart',
-  },
-];
-
 describe('DataAssetSummaryPanelV1', () => {
   const mockT = jest.fn((key: string) => key);
   const mockGetEntityPermission = jest.fn();
@@ -420,6 +409,13 @@ describe('DataAssetSummaryPanelV1', () => {
     (useTourProvider as jest.Mock).mockReturnValue({
       isTourPage: false,
     });
+    (useChangeSummary as jest.Mock).mockReturnValue({
+      changeSummary: {},
+      totalEntries: 0,
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
 
     // Setup API mocks with fresh instances
     mockGetEntityPermission.mockResolvedValue(mockEntityPermissions);
@@ -430,7 +426,6 @@ describe('DataAssetSummaryPanelV1', () => {
       mockIncidentData
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
-    (fetchCharts as jest.Mock).mockResolvedValue(mockChartsData);
     (getEntityOverview as jest.Mock).mockImplementation(
       (_entityType: any, _dataAsset: any, additionalInfo: any) => [
         { name: 'Type', value: 'Table', visible: ['explore'] },
@@ -604,28 +599,6 @@ describe('DataAssetSummaryPanelV1', () => {
           limit: 100,
           fields: ['testCaseResult', 'incidentId'],
         });
-      });
-    });
-
-    it('should fetch charts for DASHBOARD entity', async () => {
-      const dashboardProps = {
-        ...defaultProps,
-        entityType: EntityType.DASHBOARD,
-        dataAsset: {
-          ...mockDataAsset,
-          name: 'test-dashboard',
-          displayName: 'Test Dashboard',
-          entityType: EntityType.DASHBOARD,
-          charts: [{ id: 'chart-1' }],
-        } as any,
-      };
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...dashboardProps} />);
-      });
-
-      await waitFor(() => {
-        expect(fetchCharts).toHaveBeenCalledWith([{ id: 'chart-1' }]);
       });
     });
 
@@ -881,32 +854,6 @@ describe('DataAssetSummaryPanelV1', () => {
         expect(screen.getByTestId('overview-item-incidents')).toHaveTextContent(
           'Incidents 0'
         );
-      });
-    });
-
-    it('should handle charts fetch error gracefully', async () => {
-      const dashboardProps = {
-        ...defaultProps,
-        entityType: EntityType.DASHBOARD,
-        dataAsset: {
-          ...mockDataAsset,
-          name: 'test-dashboard',
-          displayName: 'Test Dashboard',
-          entityType: EntityType.DASHBOARD,
-          charts: [{ id: 'chart-1' }],
-        } as any,
-      };
-
-      (fetchCharts as jest.Mock).mockRejectedValue(
-        new Error('Charts fetch failed')
-      );
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...dashboardProps} />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('description-section')).toBeInTheDocument();
       });
     });
   });

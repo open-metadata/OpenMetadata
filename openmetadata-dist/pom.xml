@@ -43,6 +43,7 @@
 
   <properties>
     <final.Name>openmetadata</final.Name>
+    <sonar.skip>true</sonar.skip>
   </properties>
 
   <profiles>

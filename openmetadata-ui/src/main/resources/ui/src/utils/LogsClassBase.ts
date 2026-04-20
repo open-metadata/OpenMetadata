@@ -18,6 +18,7 @@ import { Pipeline } from '../generated/api/services/ingestionPipelines/createIng
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getNameFromFQN, getTableFQNFromColumnFQN } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
@@ -54,7 +55,8 @@ class LogsClassBase {
           activeTitle: true,
         },
         {
-          name: getNameFromFQN(ingestionName),
+          name:
+            getEntityName(ingestionDetails) || getNameFromFQN(ingestionName),
           url: '',
           activeTitle: true,
         },
@@ -90,7 +92,7 @@ class LogsClassBase {
           url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
         },
         {
-          name: ingestionDetails.name,
+          name: getEntityName(ingestionDetails),
           url: getTestSuiteDetailsPath({
             isExecutableTestSuite,
             fullyQualifiedName:
@@ -110,14 +112,23 @@ class LogsClassBase {
     }
 
     const urlPath = [serviceType, ...updateIngestionName];
+    const pipelineDisplayName =
+      getEntityName(ingestionDetails) || updateIngestionName.at(-1);
 
     return urlPath.map((path, index) => {
+      const isLast = index === urlPath.length - 1;
+      let name: string;
+      if (index === 0) {
+        name = startCase(path);
+      } else if (isLast) {
+        name = pipelineDisplayName ?? path;
+      } else {
+        name = path;
+      }
+
       return {
-        name: index === 0 ? startCase(path) : path,
-        url:
-          index !== urlPath.length - 1
-            ? getLogEntityPath(path, serviceType)
-            : '',
+        name,
+        url: isLast ? '' : getLogEntityPath(path, serviceType),
       };
     });
   }

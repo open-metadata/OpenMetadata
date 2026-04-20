@@ -1,5 +1,3 @@
-import { EntityType } from '../support/entity/EntityDataClass.interface';
-
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,33 +11,34 @@ import { EntityType } from '../support/entity/EntityDataClass.interface';
  *  limitations under the License.
  */
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
-  '+': '\\+',
-  '-': '\\-',
-  '=': '\\=',
-  '&': '\\&',
-  '&&': '\\&&',
-  '||': '\\||',
-  '>': '\\>',
-  '<': '\\<',
-  '!': '\\!',
-  '(': '\\(',
-  ')': '\\)',
-  '{': '\\{',
-  '}': '\\}',
-  '[': '\\[',
-  ']': '\\]',
-  '^': '\\^',
-  '"': '\\"',
-  '~': '\\~',
-  '*': '\\*',
-  '?': '\\?',
-  ':': '\\:',
-  '\\': '\\\\',
-  '/': '\\/',
+  '+': String.raw`\+`,
+  '-': String.raw`\-`,
+  '=': String.raw`\=`,
+  '&': String.raw`\&`,
+  '&&': String.raw`\&&`,
+  '||': String.raw`\||`,
+  '>': String.raw`\>`,
+  '<': String.raw`\<`,
+  '!': String.raw`\!`,
+  '(': String.raw`\(`,
+  ')': String.raw`\)`,
+  '{': String.raw`\{`,
+  '}': String.raw`\}`,
+  '[': String.raw`\[`,
+  ']': String.raw`\]`,
+  '^': String.raw`\^`,
+  '"': String.raw`\"`,
+  '~': String.raw`\~`,
+  '*': String.raw`\*`,
+  '?': String.raw`\?`,
+  ':': String.raw`\:`,
+  '\\': String.raw`\\`,
+  '/': String.raw`\/`,
 };
 
-export const ENTITY_TYPES: EntityType[] = [
+export const ENTITY_TYPES = [
   'table',
+  'tableColumn',
   'database',
   'databaseSchema',
   'dashboard',

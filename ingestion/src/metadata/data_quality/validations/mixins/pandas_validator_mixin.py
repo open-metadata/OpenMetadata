@@ -135,7 +135,7 @@ class PandasValidatorMixin:
             runner: a PandasRunner instance
             column: column to compute row count for
         """
-        return self.run_dataframe_results(runner, Metrics.ROW_COUNT, column, **kwargs)
+        return self.run_dataframe_results(runner, Metrics.rowCount, column, **kwargs)
 
     @staticmethod
     def format_dimension_value(value) -> str:

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -396,6 +397,8 @@ public class IngestionPipelineResourceIT
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+    DatabaseServiceQueryUsagePipeline usagePipeline =
+        new DatabaseServiceQueryUsagePipeline().withQueryLogDuration(1);
 
     CreateIngestionPipeline metadataRequest =
         new CreateIngestionPipeline()
@@ -405,17 +408,28 @@ public class IngestionPipelineResourceIT
             .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    IngestionPipeline metadataPipelineEntity = createEntity(metadataRequest);
+    CreateIngestionPipeline usageRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("usage_pipeline"))
+            .withPipelineType(PipelineType.USAGE)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(usagePipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    ListParams params = new ListParams();
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("pipelineType", "metadata");
-    params.setQueryParams(queryParams);
+    IngestionPipeline metadataPipelineEntity = createEntity(metadataRequest);
+    IngestionPipeline usagePipelineEntity = createEntity(usageRequest);
+
+    ListParams params =
+        new ListParams()
+            .withService(service.getFullyQualifiedName())
+            .withPipelineType("metadata")
+            .withLimit(100);
 
     ListResponse<IngestionPipeline> result = listEntities(params);
-    assertTrue(result.getData().size() >= 1);
     assertTrue(
         result.getData().stream().anyMatch(p -> p.getId().equals(metadataPipelineEntity.getId())));
+    assertTrue(
+        result.getData().stream().noneMatch(p -> p.getId().equals(usagePipelineEntity.getId())));
   }
 
   @Test
@@ -756,6 +770,73 @@ public class IngestionPipelineResourceIT
 
     assertNotNull(retrieved);
     assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
+  }
+
+  @Test
+  void test_listPipelineStatusReturnsLatestRunsWithoutTimestampFilters(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_list_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    long baseTimestamp = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+    List<String> runIdsInAscendingTimestamp = new ArrayList<>();
+
+    for (int i = 0; i < 7; i++) {
+      String runId = UUID.randomUUID().toString();
+      runIdsInAscendingTimestamp.add(runId);
+      PipelineStatus status =
+          new PipelineStatus()
+              .withPipelineState(PipelineStatusType.SUCCESS)
+              .withRunId(runId)
+              .withTimestamp(baseTimestamp + (i * 1000L));
+      client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> response =
+        client.getHttpClient().execute(HttpMethod.GET, path, null, Map.class);
+    List<?> rawData = (List<?>) response.get("data");
+    Map<String, Object> paging = (Map<String, Object>) response.get("paging");
+
+    assertNotNull(rawData);
+    assertNotNull(paging);
+    assertNull(paging.get("before"));
+    assertNull(paging.get("after"));
+    assertEquals(5, rawData.size());
+
+    List<String> expectedLatestRunIds = new ArrayList<>(runIdsInAscendingTimestamp.subList(2, 7));
+    Collections.reverse(expectedLatestRunIds);
+
+    List<String> actualRunIds = new ArrayList<>();
+    List<Long> actualTimestamps = new ArrayList<>();
+    long oneDayAgo = System.currentTimeMillis() - (24L * 60 * 60 * 1000);
+
+    for (Object item : rawData) {
+      PipelineStatus status = JsonUtils.convertValue(item, PipelineStatus.class);
+      actualRunIds.add(status.getRunId());
+      actualTimestamps.add(status.getTimestamp());
+      assertTrue(status.getTimestamp() < oneDayAgo);
+    }
+
+    assertEquals(expectedLatestRunIds, actualRunIds);
+    for (int i = 1; i < actualTimestamps.size(); i++) {
+      assertTrue(actualTimestamps.get(i - 1) >= actualTimestamps.get(i));
+    }
   }
 
   @Test
@@ -1352,5 +1433,256 @@ public class IngestionPipelineResourceIT
     assertNull(
         created.getOpenMetadataServerConnection(),
         "SECURITY: CREATE response must NOT return openMetadataServerConnection");
+  }
+
+  @Test
+  void validate_listIngestionPipelines_openApiSchema_returnsArrayType() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> openApiSpec =
+        client.getHttpClient().execute(HttpMethod.GET, "/swagger.json", null, Map.class);
+
+    assertNotNull(openApiSpec, "OpenAPI spec should be accessible");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> paths = (Map<String, Object>) openApiSpec.get("paths");
+    assertNotNull(paths, "OpenAPI spec should contain paths");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> ingestionPipelinesPath =
+        (Map<String, Object>) paths.get("/v1/services/ingestionPipelines");
+    assertNotNull(ingestionPipelinesPath, "Should have /v1/services/ingestionPipelines path");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> getOperation = (Map<String, Object>) ingestionPipelinesPath.get("get");
+    assertNotNull(getOperation, "Should have GET operation for list endpoint");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> responses = (Map<String, Object>) getOperation.get("responses");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> response200 = (Map<String, Object>) responses.get("200");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> content = (Map<String, Object>) response200.get("content");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> jsonContent = (Map<String, Object>) content.get("application/json");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> schema = (Map<String, Object>) jsonContent.get("schema");
+
+    String schemaRef = (String) schema.get("$ref");
+    assertNotNull(schemaRef, "List endpoint should have schema reference");
+    assertTrue(
+        schemaRef.contains("IngestionPipelineList"),
+        "List endpoint schema should reference IngestionPipelineList (ResultList), not single IngestionPipeline. "
+            + "Actual: "
+            + schemaRef
+            + ". This is critical for generated Java client to return proper list with pagination.");
+  }
+
+  @Test
+  void validate_listPipelineStatuses_openApiSchema_returnsArrayType() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> openApiSpec =
+        client.getHttpClient().execute(HttpMethod.GET, "/swagger.json", null, Map.class);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> paths = (Map<String, Object>) openApiSpec.get("paths");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> statusPath =
+        (Map<String, Object>) paths.get("/v1/services/ingestionPipelines/{fqn}/pipelineStatus");
+    assertNotNull(statusPath, "Should have pipelineStatus path");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> getOperation = (Map<String, Object>) statusPath.get("get");
+    assertNotNull(getOperation, "Should have GET operation for list pipeline statuses");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> responses = (Map<String, Object>) getOperation.get("responses");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> response200 = (Map<String, Object>) responses.get("200");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> content = (Map<String, Object>) response200.get("content");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> jsonContent = (Map<String, Object>) content.get("application/json");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> schema = (Map<String, Object>) jsonContent.get("schema");
+
+    String schemaRef = (String) schema.get("$ref");
+    assertNotNull(schemaRef, "List pipeline statuses endpoint should have schema reference");
+    assertTrue(
+        schemaRef.contains("PipelineStatusList"),
+        "List pipeline statuses schema should reference PipelineStatusList, not single IngestionPipeline. "
+            + "Actual: "
+            + schemaRef);
+  }
+
+  @Test
+  void validate_getPipelineStatus_openApiSchema_returnsSingleStatus() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> openApiSpec =
+        client.getHttpClient().execute(HttpMethod.GET, "/swagger.json", null, Map.class);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> paths = (Map<String, Object>) openApiSpec.get("paths");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> statusByIdPath =
+        (Map<String, Object>)
+            paths.get("/v1/services/ingestionPipelines/{fqn}/pipelineStatus/{id}");
+    assertNotNull(statusByIdPath, "Should have pipelineStatus/{id} path");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> getOperation = (Map<String, Object>) statusByIdPath.get("get");
+    assertNotNull(getOperation, "Should have GET operation for single pipeline status");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> responses = (Map<String, Object>) getOperation.get("responses");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> response200 = (Map<String, Object>) responses.get("200");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> content = (Map<String, Object>) response200.get("content");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> jsonContent = (Map<String, Object>) content.get("application/json");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> schema = (Map<String, Object>) jsonContent.get("schema");
+
+    String schemaRef = (String) schema.get("$ref");
+    assertNotNull(schemaRef, "Get single pipeline status should have schema reference");
+    assertTrue(
+        schemaRef.contains("PipelineStatus") && !schemaRef.contains("PipelineStatusList"),
+        "Get single pipeline status should reference PipelineStatus (not IngestionPipeline or List). "
+            + "Actual: "
+            + schemaRef);
+  }
+
+  @Test
+  void test_listIngestionPipelines_returnsPaginatedList(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    int pipelineCount = 5;
+    List<UUID> createdIds = new ArrayList<>();
+
+    for (int i = 0; i < pipelineCount; i++) {
+      CreateIngestionPipeline request =
+          new CreateIngestionPipeline()
+              .withName(ns.prefix("pagination_pipeline_" + i))
+              .withPipelineType(PipelineType.METADATA)
+              .withService(service.getEntityReference())
+              .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+              .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+      IngestionPipeline pipeline = createEntity(request);
+      createdIds.add(pipeline.getId());
+    }
+
+    ListParams params = new ListParams();
+    params.setLimit(2);
+    params.setService(service.getFullyQualifiedName());
+
+    ListResponse<IngestionPipeline> result = listEntities(params);
+
+    assertNotNull(result, "List response should not be null");
+    assertNotNull(result.getData(), "List response data should not be null");
+    assertNotNull(result.getPaging(), "Paging information should be present");
+
+    assertTrue(
+        result.getData().size() <= 2,
+        "Page size should respect limit of 2, got: " + result.getData().size());
+
+    assertNotNull(
+        result.getPaging().getAfter(),
+        "Should have 'after' cursor for pagination when more items exist");
+
+    assertNull(result.getPaging().getBefore(), "First page should not have 'before' cursor");
+
+    int totalSeen = result.getData().size();
+    String afterCursor = result.getPaging().getAfter();
+
+    while (afterCursor != null) {
+      params.setAfter(afterCursor);
+      result = listEntities(params);
+      totalSeen += result.getData().size();
+      afterCursor = result.getPaging().getAfter();
+    }
+
+    assertEquals(
+        pipelineCount,
+        totalSeen,
+        "Should find all " + pipelineCount + " created pipelines through pagination");
+  }
+
+  @Test
+  void test_listPipelineStatuses_returnsPaginatedList(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_pagination_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String statusPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    int statusCount = 5;
+    List<String> createdRunIds = new ArrayList<>();
+    long baseTimestamp = System.currentTimeMillis();
+
+    for (int i = 0; i < statusCount; i++) {
+      String runId = UUID.randomUUID().toString();
+      createdRunIds.add(runId);
+
+      PipelineStatus status =
+          new PipelineStatus()
+              .withPipelineState(PipelineStatusType.SUCCESS)
+              .withRunId(runId)
+              .withTimestamp(baseTimestamp + (i * 1000));
+
+      client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+    }
+
+    long startTs = baseTimestamp - 1000;
+    long endTs = baseTimestamp + (statusCount * 1000) + 1000;
+
+    String listStatusPath =
+        "/v1/services/ingestionPipelines/"
+            + pipeline.getFullyQualifiedName()
+            + "/pipelineStatus?startTs="
+            + startTs
+            + "&endTs="
+            + endTs;
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> response =
+        client.getHttpClient().execute(HttpMethod.GET, listStatusPath, null, Map.class);
+
+    assertNotNull(response, "Pipeline status list response should not be null");
+    assertTrue(
+        response.containsKey("data"),
+        "Response should contain 'data' array indicating ResultList structure");
+    assertTrue(
+        response.containsKey("paging"),
+        "Response should contain 'paging' object for pagination support");
+
+    @SuppressWarnings("unchecked")
+    List<Object> data = (List<Object>) response.get("data");
+    assertNotNull(data, "Data array should not be null");
+    assertEquals(statusCount, data.size(), "Should return all " + statusCount + " status records");
   }
 }

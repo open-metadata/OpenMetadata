@@ -13,6 +13,7 @@ This module defines the CLI commands for OpenMetadata
 """
 import argparse
 import logging
+import sys
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -28,6 +29,14 @@ from metadata.cli.ingest import run_ingest
 from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
+from metadata.cli.scaffold import (
+    AUTH_CHOICES,
+    CAPABILITY_CHOICES,
+    CONNECTION_TYPES,
+    SERVICE_TYPES,
+    run_scaffold_cli,
+    run_scaffold_interactive,
+)
 from metadata.cli.usage import run_usage
 from metadata.utils.logger import cli_logger, set_loggers_level
 
@@ -44,6 +53,7 @@ class MetadataCommands(Enum):
     LINEAGE = "lineage"
     APP = "app"
     AUTO_CLASSIFICATION = "classify"
+    SCAFFOLD_CONNECTOR = "scaffold-connector"
 
 
 RUN_PATH_METHODS = {
@@ -161,6 +171,62 @@ def get_parser(args: Optional[List[str]] = None):
             help="Simple Webserver to test webhook metadata events",
         )
     )
+    scaffold_parser = sub_parser.add_parser(
+        MetadataCommands.SCAFFOLD_CONNECTOR.value,
+        help="Scaffold a new connector (interactive or with flags)",
+    )
+    scaffold_parser.add_argument(
+        "--name", help="Connector name in snake_case (e.g., my_db)"
+    )
+    scaffold_parser.add_argument(
+        "--service-type", choices=SERVICE_TYPES, help="Service type"
+    )
+    scaffold_parser.add_argument(
+        "--connection-type",
+        choices=CONNECTION_TYPES,
+        help="Connection type (default: sqlalchemy for database, rest_api otherwise)",
+    )
+    scaffold_parser.add_argument("--scheme", help="SQLAlchemy scheme (database only)")
+    scaffold_parser.add_argument("--default-port", type=int, help="Default port number")
+    scaffold_parser.add_argument(
+        "--auth-types",
+        nargs="+",
+        default=None,
+        choices=AUTH_CHOICES,
+        help="Auth types: basic, iam, azure, jwt, token, oauth",
+    )
+    scaffold_parser.add_argument(
+        "--capabilities",
+        nargs="+",
+        default=None,
+        choices=CAPABILITY_CHOICES,
+        help="Capabilities: metadata, lineage, usage, profiler, stored_procedures, data_diff",
+    )
+    scaffold_parser.add_argument("--display-name", help="Display name")
+    scaffold_parser.add_argument("--description", help="Short description")
+    scaffold_parser.add_argument(
+        "--docs-url", help="API/SDK documentation URL (included in AI context)"
+    )
+    scaffold_parser.add_argument(
+        "--sdk-package", help="Python SDK package name (included in AI context)"
+    )
+    scaffold_parser.add_argument(
+        "--api-endpoints",
+        help="Key API endpoints (included in AI context)",
+    )
+    scaffold_parser.add_argument(
+        "--docs-notes",
+        help="Additional notes about the source (included in AI context)",
+    )
+    scaffold_parser.add_argument(
+        "--docker-image",
+        help="Docker image for integration tests (e.g. 'metabase/metabase:latest')",
+    )
+    scaffold_parser.add_argument(
+        "--docker-port",
+        type=int,
+        help="Container port to expose for integration tests (e.g. 3000)",
+    )
 
     add_metadata_args(parser)
     parser.add_argument("--debug", help="Debug Mode", action="store_true")
@@ -190,6 +256,20 @@ def metadata(args: Optional[List[str]] = None):
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
         RUN_PATH_METHODS[metadata_workflow](path)
+
+    if metadata_workflow == MetadataCommands.SCAFFOLD_CONNECTOR.value:
+        has_name = contains_args.get("name")
+        has_type = contains_args.get("service_type")
+        if has_name and has_type:
+            run_scaffold_cli(argparse.Namespace(**contains_args))
+        elif has_name or has_type:
+            logger.error(
+                "Both --name and --service-type are required for non-interactive mode."
+            )
+            sys.exit(1)
+        else:
+            run_scaffold_interactive()
+        return
 
     if metadata_workflow == MetadataCommands.WEBHOOK.value:
 

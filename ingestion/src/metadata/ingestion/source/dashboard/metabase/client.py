@@ -20,8 +20,9 @@ import requests
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseChart,
     MetabaseCollection,
@@ -112,7 +113,7 @@ class MetabaseClient:
                 extra_headers={METABASE_SESSION_HEADER: session_token},
             )
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="metabase")
 
     def get_dashboards_list(
         self, collections: List[MetabaseCollection]

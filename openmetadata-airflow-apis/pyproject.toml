@@ -19,7 +19,6 @@ dependencies = [
     "apache-airflow>=2.2.2",
     "apache-airflow-providers-fab>=1.0.0",
     "Flask==2.2.5",
-    "Flask-Admin==1.6.0",
     "packaging>=20.0",
 ]
 

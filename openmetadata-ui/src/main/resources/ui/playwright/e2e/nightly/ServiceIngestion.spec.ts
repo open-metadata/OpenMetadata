@@ -28,9 +28,12 @@ import SupersetIngestionClass from '../../support/entity/ingestion/SupersetInges
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
+  getApiContext,
   INVALID_NAMES,
   redirectToHomePage,
 } from '../../utils/common';
+import { visitServiceDetailsPage } from '../../utils/service';
+import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -142,7 +145,7 @@ test.describe('Service form', () => {
     await page.click('[data-testid="Mysql"]');
     await page.click('[data-testid="next-button"]');
 
-    await page.waitForSelector('[data-testid="service-name"]');
+    await page.getByTestId('service-name').waitFor();
     await page.click('[data-testid="next-button"]');
 
     await expect(page.locator('#name_help')).toBeVisible();
@@ -201,3 +204,347 @@ test.describe('Service Ingestion Pagination', () => {
     await validateIngestionPipelineLimitSize;
   });
 });
+
+const TOTAL_RUNS = 5;
+const mysqlService = new MysqlIngestionClass({
+  shouldTestConnection: false,
+  shouldAddIngestion: false,
+});
+let metadataPipeline: { id: string; name: string; fullyQualifiedName: string };
+
+test.describe.serial(
+  'Agent Run History - Last 5 Runs Visible',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.beforeEach('Navigate to database services', async ({ page }) => {
+      await redirectToHomePage(page);
+      await settingClick(
+        page,
+        mysqlService.category as unknown as SettingOptionsType
+      );
+    });
+
+    test('Create MySQL service and ingest metadata', async ({ page }) => {
+      test.slow();
+      await mysqlService.createService(page);
+
+      const { apiContext } = await getApiContext(page);
+
+      const serviceResponse = await apiContext
+        .get(
+          `/api/v1/services/databaseServices/name/${encodeURIComponent(
+            mysqlService.getServiceName()
+          )}`
+        )
+        .then((res) => res.json());
+
+      const createPipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: `${mysqlService.getServiceName()}-metadata`,
+            pipelineType: 'metadata',
+            service: {
+              id: serviceResponse.id,
+              type: 'databaseService',
+            },
+            sourceConfig: {
+              config: {
+                type: 'DatabaseMetadata',
+              },
+            },
+          },
+        }
+      );
+
+      expect(createPipelineResponse.status()).toBe(201);
+      const createdPipeline = await createPipelineResponse.json();
+
+      await apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+      );
+
+      metadataPipeline = {
+        id: createdPipeline.id,
+        name: createdPipeline.name,
+        fullyQualifiedName: createdPipeline.fullyQualifiedName,
+      };
+    });
+
+    /**
+     * Tests that all 5 run statuses are visible in the UI after running
+     * the metadata agent 5 times.
+     * @description Validates the fix for #25800 — agent status shows true last 5 runs
+     */
+    test('Run metadata agent 5 times and verify all run statuses are visible', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext } = await getApiContext(page);
+
+      const pipeline = metadataPipeline;
+
+      expect(pipeline).toBeDefined();
+
+      type PipelineRun = { pipelineState?: string };
+
+      const listUrl = `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+        pipeline.fullyQualifiedName
+      )}/pipelineStatus?limit=10`;
+
+      for (let i = 0; i < TOTAL_RUNS; i++) {
+        await test.step(`Trigger run ${i + 1}`, async () => {
+          await expect
+            .poll(
+              async () => {
+                const res = await apiContext.post(
+                  `/api/v1/services/ingestionPipelines/trigger/${encodeURIComponent(
+                    pipeline.id
+                  )}`
+                );
+
+                return res.status();
+              },
+              {
+                message: `Wait for pipeline trigger to succeed for run ${
+                  i + 1
+                }`,
+                timeout: 60_000,
+                intervals: [5_000, 10_000],
+              }
+            )
+            .toBe(200);
+        });
+      }
+
+      await test.step('Wait for all runs to reach terminal state', async () => {
+        const terminalStates = /^(success|failed|partialSuccess)$/;
+
+        await expect
+          .poll(
+            async () => {
+              try {
+                const runs: PipelineRun[] =
+                  (await makeRetryRequest({ url: listUrl, page })).data ?? [];
+
+                return runs.filter((r) =>
+                  terminalStates.test(r.pipelineState ?? '')
+                ).length;
+              } catch {
+                return 0;
+              }
+            },
+            {
+              message: `Wait for ${TOTAL_RUNS} pipeline runs to complete`,
+              timeout: 600_000,
+              intervals: [30_000, 15_000, 5_000],
+            }
+          )
+          .toBeGreaterThanOrEqual(TOTAL_RUNS);
+      });
+
+      await test.step('Verify all 5 run statuses are visible in the UI', async () => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            type: mysqlService.category,
+            name: mysqlService.getServiceName(),
+          },
+          false,
+          false
+        );
+        await page.getByTestId('data-assets-header').waitFor();
+        await page.getByTestId('agents').click();
+
+        const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab.isVisible()) {
+          await metadataTab.click();
+        }
+
+        await page
+          .getByLabel('agents')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
+
+        const pipelineRow = page.locator(`[data-row-key*="${pipeline.name}"]`);
+
+        await expect(pipelineRow).toBeVisible();
+
+        const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
+
+        await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
+
+        const latestBadge = runStatusBadges.last();
+
+        await expect(latestBadge).toContainText(
+          /(Success|Failed|PartialSuccess)/i
+        );
+      });
+    });
+  }
+);
+
+const slowPipelineService = new MysqlIngestionClass({
+  shouldTestConnection: false,
+  shouldAddIngestion: false,
+});
+let slowTestPipeline: {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+};
+
+test.describe.serial(
+  'Action buttons visible despite slow pipelineStatus API',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.beforeEach('Navigate to database services', async ({ page }) => {
+      await redirectToHomePage(page);
+      await settingClick(
+        page,
+        slowPipelineService.category as unknown as SettingOptionsType
+      );
+    });
+
+    test('Setup: create MySQL service and ingestion pipeline', async ({
+      page,
+    }) => {
+      await slowPipelineService.createService(page);
+
+      const { apiContext } = await getApiContext(page);
+
+      const serviceResponse = await apiContext
+        .get(
+          `/api/v1/services/databaseServices/name/${encodeURIComponent(
+            slowPipelineService.getServiceName()
+          )}`
+        )
+        .then((res) => res.json());
+
+      const createPipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: `${slowPipelineService.getServiceName()}-metadata`,
+            pipelineType: 'metadata',
+            service: {
+              id: serviceResponse.id,
+              type: 'databaseService',
+            },
+            sourceConfig: {
+              config: {
+                type: 'DatabaseMetadata',
+              },
+            },
+          },
+        }
+      );
+
+      expect(createPipelineResponse.status()).toBe(201);
+      const createdPipeline = await createPipelineResponse.json();
+
+      await apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+      );
+
+      slowTestPipeline = {
+        id: createdPipeline.id,
+        name: createdPipeline.name,
+        fullyQualifiedName: createdPipeline.fullyQualifiedName,
+      };
+    });
+
+    /**
+     * Validates that action buttons (logs, pause, run) are visible and functional
+     * even when the pipelineStatus API response is delayed (simulated via route mock).
+     *
+     * Regression test for the issue where high pipelineStatus API latency blocked
+     * rendering of action icons and the pause/resume button until the slow API resolved.
+     */
+    test('Action buttons and pause visible when pipelineStatus API is slow', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await page.route(
+        `**/api/v1/services/ingestionPipelines/${encodeURIComponent(
+          slowTestPipeline.fullyQualifiedName
+        )}/pipelineStatus**`,
+        async (route) => {
+          // Mock the pipelineStatus endpoint to simulate high latency
+          // eslint-disable-next-line playwright/no-wait-for-timeout
+          await page.waitForTimeout(8000);
+          await route.continue();
+        }
+      );
+
+      await visitServiceDetailsPage(
+        page,
+        {
+          type: slowPipelineService.category,
+          name: slowPipelineService.getServiceName(),
+        },
+        false,
+        false
+      );
+
+      await page.getByTestId('data-assets-header').waitFor();
+      await page.getByTestId('agents').click();
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+
+      const pipelineRow = page.locator(
+        `[data-row-key*="${slowTestPipeline.name}"]`
+      );
+
+      await expect(pipelineRow).toBeVisible();
+
+      // skeleton while the slow pipelineStatus API is still in-flight —
+      // confirming the UI reflects the pending state in both columns
+      await expect(pipelineRow.locator('.ant-skeleton-input')).toHaveCount(2);
+
+      // Action buttons must be visible immediately — before the slow pipelineStatus
+      // API resolves — verifying permissions don't wait on run history
+      await expect(pipelineRow.getByTestId('pause-button')).toBeVisible();
+
+      await expect(pipelineRow.getByTestId('logs-button')).toBeVisible();
+
+      await expect(pipelineRow.getByTestId('more-actions')).toBeVisible();
+
+      // Open the more-actions dropdown and verify the run button is present
+      await pipelineRow.getByTestId('more-actions').click();
+      await expect(page.getByTestId('run-button')).toBeVisible();
+
+      // Trigger a pipeline run via the run button.
+      // Also register a waiter for the pipelineStatus refresh that follows the trigger
+      // (the route mock adds 8s latency, so we must await the response before asserting).
+      // Both waiters are registered before the click to avoid race conditions.
+      const triggerResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes('/services/ingestionPipelines/trigger/') &&
+          res.request().method() === 'POST'
+      );
+      const statusRefreshResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes('/pipelineStatus') &&
+          res.request().method() === 'GET'
+      );
+      await page.getByTestId('run-button').click();
+      await triggerResponse;
+      await statusRefreshResponse;
+
+      // Verify the run was triggered by checking the pipeline row shows a running state
+      await expect(
+        pipelineRow.getByTestId('pipeline-status').first()
+      ).toBeVisible();
+    });
+  }
+);

@@ -282,61 +282,63 @@ function DestinationSelectItem({
                 selectedDestinations[id]?.destinationType,
                 id
               )}
-            {destinationType && checkIfDestinationIsInternal(destinationType) && (
-              <>
-                <Col span={24}>
-                  <Form.Item
-                    required
-                    name={[id, 'type']}
-                    rules={[
-                      {
-                        required: true,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.field'),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      className="w-full"
-                      data-testid={`destination-type-select-${id}`}
-                      options={getSubscriptionTypeOptions(destinationType)}
-                      placeholder={t('label.select-field', {
-                        field: t('label.destination'),
-                      })}
-                      popupClassName="select-options-container"
-                    />
-                  </Form.Item>
-                </Col>
-                {destinationType && subscriptionType && (
+            {destinationType &&
+              checkIfDestinationIsInternal(destinationType) && (
+                <>
                   <Col span={24}>
-                    <Alert
-                      closable
-                      showIcon
-                      className="destination-warning-status"
-                      icon={<InfoCircleOutlined height={14} />}
-                      message={
-                        <Typography.Text className="text-sm">
-                          <Transi18next
-                            i18nKey={
-                              destinationType === SubscriptionCategory.Owners &&
-                              subscriptionType !== SubscriptionType.Email
-                                ? 'message.destination-owner-selection-warning'
-                                : 'message.destination-selection-warning'
-                            }
-                            renderElement={<b />}
-                            values={{
-                              subscriptionCategory: destinationType,
-                              subscriptionType,
-                            }}
-                          />
-                        </Typography.Text>
-                      }
-                      type="warning"
-                    />
+                    <Form.Item
+                      required
+                      name={[id, 'type']}
+                      rules={[
+                        {
+                          required: true,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.field'),
+                          }),
+                        },
+                      ]}>
+                      <Select
+                        className="w-full"
+                        data-testid={`destination-type-select-${id}`}
+                        options={getSubscriptionTypeOptions(destinationType)}
+                        placeholder={t('label.select-field', {
+                          field: t('label.destination'),
+                        })}
+                        popupClassName="select-options-container"
+                      />
+                    </Form.Item>
                   </Col>
-                )}
-              </>
-            )}
+                  {destinationType && subscriptionType && (
+                    <Col span={24}>
+                      <Alert
+                        closable
+                        showIcon
+                        className="destination-warning-status"
+                        icon={<InfoCircleOutlined height={14} />}
+                        message={
+                          <Typography.Text className="text-sm">
+                            <Transi18next
+                              i18nKey={
+                                destinationType ===
+                                  SubscriptionCategory.Owners &&
+                                subscriptionType !== SubscriptionType.Email
+                                  ? 'message.destination-owner-selection-warning'
+                                  : 'message.destination-selection-warning'
+                              }
+                              renderElement={<b />}
+                              values={{
+                                subscriptionCategory: destinationType,
+                                subscriptionType,
+                              }}
+                            />
+                          </Typography.Text>
+                        }
+                        type="warning"
+                      />
+                    </Col>
+                  )}
+                </>
+              )}
             {selectedDestinations && !isEmpty(selectedDestinations[id]) && (
               <Col span={24}>
                 <Form.Item

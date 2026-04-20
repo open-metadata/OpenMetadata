@@ -12,7 +12,7 @@
 Looker pydantic models
 """
 
-from typing import List, NewType, Optional
+from typing import Dict, List, NewType, Optional
 
 from pydantic import BaseModel, Field
 
@@ -76,3 +76,6 @@ class LookMLRepo(BaseModel):
 class LookMLManifest(BaseModel):
     project_name: str = Field(None, description="LookML project name")
     remote_dependency: dict = Field(None, description="Remote dependency information")
+    constants: Optional[List[Dict[str, str]]] = Field(
+        None, description="LookML constants defined in the manifest"
+    )

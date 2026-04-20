@@ -95,8 +95,9 @@ function DirectoryDetails({
 }: Readonly<DirectoryDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.CHILDREN } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.CHILDREN } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
 
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Directory);

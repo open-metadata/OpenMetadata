@@ -86,4 +86,3 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
 };
 
 export default EntityDetailsSection;
-

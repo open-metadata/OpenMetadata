@@ -3,7 +3,7 @@ import textwrap
 import uuid
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -36,20 +36,24 @@ def cockroach_container():
     ) as container:
         testcontainers_config.max_tries = old_max_tries
         engine = create_engine(container.get_connection_url())
-        engine.execute(
-            textwrap.dedent(
-                """
-                CREATE TABLE user_profiles (
-                    user_id UUID PRIMARY KEY,
-                    first_name TEXT,
-                    last_name TEXT,
-                    email TEXT,
-                    signup_date TIMESTAMP,
-                    is_active BOOLEAN
-                );
-                """
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    textwrap.dedent(
+                        """
+                    CREATE TABLE user_profiles (
+                        user_id UUID PRIMARY KEY,
+                        first_name TEXT,
+                        last_name TEXT,
+                        email TEXT,
+                        signup_date TIMESTAMP,
+                        is_active BOOLEAN
+                    );
+                    """
+                    )
+                )
             )
-        )
+            conn.commit()
 
         yield container
 
@@ -139,7 +143,9 @@ def create_test_data(cockroach_container):
         """,
     ]
 
-    for stmt in setup_statements:
-        engine.execute(textwrap.dedent(stmt))
+    with engine.connect() as conn:
+        for stmt in setup_statements:
+            conn.execute(text(textwrap.dedent(stmt)))
+        conn.commit()
 
     yield

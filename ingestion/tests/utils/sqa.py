@@ -3,10 +3,11 @@
 from typing import Sequence
 
 from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import Session, declarative_base
-from sqlalchemy.orm.decl_api import DeclarativeMeta
+from sqlalchemy.orm import DeclarativeBase, Session
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
@@ -33,11 +34,11 @@ class SQATestUtils:
         self.engine = create_engine(connection_url)
         self.session = Session(self.engine)
 
-    def load_data(self, data: Sequence[DeclarativeMeta]):
+    def load_data(self, data: Sequence[DeclarativeBase]):
         """load data into the database using sqlalchemy ORM
 
         Args:
-            data List[DeclarativeMeta]: list of ORM objects to load
+            data List[DeclarativeBase]: list of ORM objects to load
         """
         self.session.add_all(data)
         self.session.commit()

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Grid } from '@mui/material';
-import { Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -407,11 +406,10 @@ function AddObservabilityPage() {
                     )}
 
                     <Col span={24}>
-                      <Grid container justifyContent="end" spacing={2}>
+                      <div className="flex justify-end gap-2">
                         <Button
-                          className="float-right"
                           data-testid="cancel-button"
-                          variant="text"
+                          type="text"
                           onClick={() => navigate(-1)}>
                           {t('label.cancel')}
                         </Button>
@@ -430,14 +428,13 @@ function AddObservabilityPage() {
                           )
                         )}
                         <Button
-                          className="float-right"
                           data-testid="save-button"
+                          htmlType="submit"
                           loading={saving}
-                          type="submit"
-                          variant="contained">
+                          type="primary">
                           {t('label.save')}
                         </Button>
-                      </Grid>
+                      </div>
                     </Col>
                   </Row>
                 </Form>

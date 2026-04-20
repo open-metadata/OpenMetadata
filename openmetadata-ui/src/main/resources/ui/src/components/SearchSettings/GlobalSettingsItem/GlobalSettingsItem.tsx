@@ -23,6 +23,7 @@ interface GlobalSettingItemProps {
   value: number;
   min?: number;
   max?: number;
+  step?: number;
   onUpdate: (value: number) => Promise<void>;
 }
 
@@ -31,6 +32,7 @@ export const GlobalSettingItem = ({
   value,
   min,
   max,
+  step,
   onUpdate,
 }: GlobalSettingItemProps) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -75,9 +77,14 @@ export const GlobalSettingItem = ({
               max={max}
               min={min}
               placeholder="value"
+              step={step}
               type="number"
               value={updatedValue}
-              onChange={(e) => setUpdatedValue(parseInt(e.target.value))}
+              onChange={(e) =>
+                setUpdatedValue(
+                  step ? parseFloat(e.target.value) : parseInt(e.target.value)
+                )
+              }
             />
           </InlineEdit>
         </div>

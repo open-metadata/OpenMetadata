@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **7 Files** | **59 Tests** | **63 Scenarios** 🚀
+> **1 Components** | **7 Files** | **61 Tests** | **66 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -14,7 +14,7 @@
 ## Connectors
 
 <details open>
-<summary>📄 <b>ServiceIngestion.spec.ts</b> (45 tests, 45 scenarios)</summary>
+<summary>📄 <b>ServiceIngestion.spec.ts</b> (47 tests, 48 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts)
 
@@ -122,6 +122,15 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Service Ingestion Pagination** - Default Pagination size should be 15 | Tests default ingestion pagination size  Verifies ingestion pipelines load with a default page size of 15 |
+
+### Agent Run History - Last 5 Runs Visible
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Agent Run History - Last 5 Runs Visible** - Create MySQL service and ingest metadata | Create MySQL service and ingest metadata |
+| 2 | **Agent Run History - Last 5 Runs Visible** - Run metadata agent 5 times and verify all run statuses are visible | Tests that all 5 run statuses are visible in the UI after running the metadata agent 5 times.  Validates the fix for #25800 — agent status shows true last 5 runs |
+| | ↳ *Trigger and wait for run ${...}* | |
+| | ↳ *Verify all 5 run statuses are visible in the UI* | |
 
 </details>
 

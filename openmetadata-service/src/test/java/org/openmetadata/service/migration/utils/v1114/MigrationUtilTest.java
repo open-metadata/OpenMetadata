@@ -1,395 +1,327 @@
-/*
- *  Copyright 2021 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
 package org.openmetadata.service.migration.utils.v1114;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Map;
 import org.jdbi.v3.core.Handle;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.search.FieldValueBoost;
+import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class MigrationUtilTest extends OpenMetadataApplicationTest {
+class MigrationUtilTest {
+  private static final String APPS_WITHOUT_BOT_POSTGRES =
+      """
+          SELECT a.id, a.json->>'name' as name
+          FROM installed_apps a
+          WHERE NOT EXISTS (
+              SELECT 1 FROM entity_relationship er
+              WHERE er.fromId = a.id
+              AND er.toEntity = 'bot'
+              AND er.relation = 0
+          )
+          """;
 
-  private static MigrationDAO migrationDAO;
-  private static ConnectionType connectionType;
+  private static final String FIND_BOT_BY_NAME_POSTGRES =
+      """
+          SELECT id FROM bot_entity
+          WHERE json->>'name' = :botName
+          """;
 
-  @BeforeAll
-  public static void setup() {
-    migrationDAO = jdbi.onDemand(MigrationDAO.class);
-    connectionType =
-        ConnectionType.from(APP.getConfiguration().getDataSourceFactory().getDriverClass());
-  }
+  private static final String INSERT_APP_BOT_RELATIONSHIP_POSTGRES =
+      """
+          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+          VALUES (:appId, :botId, 'application', 'bot', :relation)
+          ON CONFLICT DO NOTHING
+          """;
+
+  private static final String CHECK_POLICY_EXISTS_POSTGRES =
+      """
+          SELECT COUNT(*) FROM policy_entity
+          WHERE json->>'name' = :name
+          """;
+
+  private static final String CHECK_ROLE_EXISTS_POSTGRES =
+      """
+          SELECT COUNT(*) FROM role_entity
+          WHERE json->>'name' = :name
+          """;
+
+  private static final List<String> SYSTEM_POLICIES =
+      List.of(
+          "OrganizationPolicy",
+          "DataConsumerPolicy",
+          "DataStewardPolicy",
+          "TeamOnlyPolicy",
+          "ApplicationBotPolicy",
+          "AutoClassificationBotPolicy",
+          "DefaultBotPolicy",
+          "DomainOnlyAccessPolicy",
+          "IngestionBotPolicy",
+          "LineageBotPolicy",
+          "ProfilerBotPolicy",
+          "QualityBotPolicy",
+          "ScimBotPolicy",
+          "UsageBotPolicy");
+
+  private static final List<String> SYSTEM_ROLES =
+      List.of(
+          "DataConsumer",
+          "DataSteward",
+          "ApplicationBotRole",
+          "AutoClassificationBotRole",
+          "DataQualityBotRole",
+          "DefaultBotRole",
+          "DomainOnlyAccessRole",
+          "GovernanceBotRole",
+          "IngestionBotRole",
+          "LineageBotRole",
+          "ProfilerBotRole",
+          "QualityBotRole",
+          "ScimBotRole",
+          "UsageBotRole");
 
   @Test
-  public void testGetSqlQueryParameterOrder() {
-    try (Handle handle = jdbi.open()) {
-      String testVersion = "test-1.11.4-param-order";
-      String testSql =
-          "SELECT 1 FROM dual WHERE id = 'test-parameter-order-" + System.nanoTime() + "'";
-      String checksum = EntityUtil.hash(testSql);
+  void updateSearchSettingsBoostConfigurationSavesMergedDefaults() {
+    Settings storedSettings = new Settings();
+    SearchSettings currentSettings = searchSettings(0.05);
+    SearchSettings defaultSettings = searchSettings(1.0);
 
-      migrationDAO.upsertServerMigrationSQL(testVersion, testSql, checksum);
+    try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
+        mockStatic(SearchSettingsMergeUtil.class, CALLS_REAL_METHODS)) {
+      mergeUtil
+          .when(SearchSettingsMergeUtil::getSearchSettingsFromDatabase)
+          .thenReturn(storedSettings);
+      mergeUtil
+          .when(() -> SearchSettingsMergeUtil.loadSearchSettings(storedSettings))
+          .thenReturn(currentSettings);
+      mergeUtil
+          .when(SearchSettingsMergeUtil::loadSearchSettingsFromFile)
+          .thenReturn(defaultSettings);
+      mergeUtil
+          .when(() -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings))
+          .thenAnswer(invocation -> null);
 
-      String resultCorrectOrder = migrationDAO.getSqlQuery(testVersion, checksum);
-      assertNotNull(
-          resultCorrectOrder, "Should find SQL with correct parameter order (version, checksum)");
-      assertEquals(testSql, resultCorrectOrder);
+      MigrationUtil.updateSearchSettingsBoostConfiguration();
 
-      String resultWrongOrder = migrationDAO.getSqlQuery(checksum, testVersion);
-      assertNull(
-          resultWrongOrder, "Should NOT find SQL with wrong parameter order (checksum, version)");
+      mergeUtil.verify(
+          () -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings));
     }
   }
 
   @Test
-  public void testCheckAndLogDataLossSymptomsDoesNotThrow() {
-    try (Handle handle = jdbi.open()) {
-      assertDoesNotThrow(
-          () -> MigrationUtil.checkAndLogDataLossSymptoms(handle),
-          "checkAndLogDataLossSymptoms should handle all cases without throwing");
+  void updateSearchSettingsBoostConfigurationSkipsMissingOrUnchangedSettings() {
+    SearchSettings currentSettings = searchSettings(0.05);
+    SearchSettings defaultSettings = searchSettings(1.0);
+
+    try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
+        mockStatic(SearchSettingsMergeUtil.class, CALLS_REAL_METHODS)) {
+      mergeUtil.when(SearchSettingsMergeUtil::getSearchSettingsFromDatabase).thenReturn(null);
+
+      assertDoesNotThrow(MigrationUtil::updateSearchSettingsBoostConfiguration);
+    }
+
+    Settings storedSettings = new Settings();
+    try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
+        mockStatic(SearchSettingsMergeUtil.class, CALLS_REAL_METHODS)) {
+      mergeUtil
+          .when(SearchSettingsMergeUtil::getSearchSettingsFromDatabase)
+          .thenReturn(storedSettings);
+      mergeUtil
+          .when(() -> SearchSettingsMergeUtil.loadSearchSettings(storedSettings))
+          .thenReturn(currentSettings);
+      mergeUtil
+          .when(SearchSettingsMergeUtil::loadSearchSettingsFromFile)
+          .thenReturn(defaultSettings);
+      mergeUtil
+          .when(() -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings))
+          .thenAnswer(invocation -> null);
+
+      currentSettings.getGlobalSettings().getFieldValueBoosts().getFirst().setFactor(0.25);
+
+      MigrationUtil.updateSearchSettingsBoostConfiguration();
+
+      mergeUtil.verify(
+          () -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings),
+          never());
     }
   }
 
   @Test
-  public void testRestoreBotRelationshipsIsIdempotent() {
-    try (Handle handle = jdbi.open()) {
-      String countQuery =
-          "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = 'application' AND toEntity = 'bot' AND relation = 0";
+  void updateSearchSettingsBoostConfigurationPropagatesUnexpectedFailures() {
+    try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
+        mockStatic(SearchSettingsMergeUtil.class)) {
+      mergeUtil
+          .when(SearchSettingsMergeUtil::getSearchSettingsFromDatabase)
+          .thenThrow(new IllegalStateException("settings repository unavailable"));
 
-      Integer countBefore = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
-      Integer countAfterFirst = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
-      Integer countAfterSecond = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      assertEquals(countAfterFirst, countAfterSecond, "Running twice should not create duplicates");
-      assertTrue(countAfterFirst >= countBefore, "Should not decrease relationship count");
-    }
-  }
-
-  @Test
-  public void testRestoreBotRelationshipsOnlyRestoresMissing() {
-    try (Handle handle = jdbi.open()) {
-      String appsWithoutBotQuery =
-          connectionType == ConnectionType.MYSQL
-              ? """
-                  SELECT COUNT(*) FROM installed_apps a
-                  WHERE NOT EXISTS (
-                      SELECT 1 FROM entity_relationship er
-                      WHERE er.fromId = a.id AND er.toEntity = 'bot' AND er.relation = 0
-                  )
-                  """
-              : """
-                  SELECT COUNT(*) FROM installed_apps a
-                  WHERE NOT EXISTS (
-                      SELECT 1 FROM entity_relationship er
-                      WHERE er.fromId = a.id AND er.toEntity = 'bot' AND er.relation = 0
-                  )
-                  """;
-
-      Integer missingBefore = handle.createQuery(appsWithoutBotQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
-
-      Integer missingAfter = handle.createQuery(appsWithoutBotQuery).mapTo(Integer.class).one();
-
-      assertTrue(
-          missingAfter <= missingBefore,
-          "Apps without bot relationships should decrease or stay same after restoration");
-    }
-  }
-
-  @Test
-  public void testAppsWithoutBotRelationshipsQuerySyntax() {
-    try (Handle handle = jdbi.open()) {
-      String query =
-          connectionType == ConnectionType.MYSQL
-              ? """
-                  SELECT a.id, JSON_UNQUOTE(JSON_EXTRACT(a.json, '$.name')) as name
-                  FROM installed_apps a
-                  WHERE NOT EXISTS (
-                      SELECT 1 FROM entity_relationship er
-                      WHERE er.fromId = a.id AND er.toEntity = 'bot' AND er.relation = 0
-                  )
-                  """
-              : """
-                  SELECT a.id, a.json->>'name' as name
-                  FROM installed_apps a
-                  WHERE NOT EXISTS (
-                      SELECT 1 FROM entity_relationship er
-                      WHERE er.fromId = a.id AND er.toEntity = 'bot' AND er.relation = 0
-                  )
-                  """;
-
-      assertDoesNotThrow(
-          () -> handle.createQuery(query).mapToMap().list(),
-          "Query to find apps without bot relationships should be valid SQL");
-    }
-  }
-
-  @Test
-  public void testFindBotByNameQuerySyntax() {
-    try (Handle handle = jdbi.open()) {
-      String query =
-          connectionType == ConnectionType.MYSQL
-              ? "SELECT id FROM bot_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :botName"
-              : "SELECT id FROM bot_entity WHERE json->>'name' = :botName";
-
-      assertDoesNotThrow(
-          () -> handle.createQuery(query).bind("botName", "TestBot").mapToMap().list(),
-          "Query to find bot by name should be valid SQL");
-    }
-  }
-
-  @Test
-  public void testInsertRelationshipQuerySyntax() {
-    try (Handle handle = jdbi.open()) {
-      String testAppId = "00000000-0000-0000-0000-000000000001";
-      String testBotId = "00000000-0000-0000-0000-000000000002";
-
-      String query =
-          connectionType == ConnectionType.MYSQL
-              ? """
-                  INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-                  VALUES (:appId, :botId, 'application', 'bot', :relation)
-                  """
-              : """
-                  INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-                  VALUES (:appId, :botId, 'application', 'bot', :relation)
-                  ON CONFLICT DO NOTHING
-                  """;
-
-      assertDoesNotThrow(
-          () ->
-              handle
-                  .createUpdate(query)
-                  .bind("appId", testAppId)
-                  .bind("botId", testBotId)
-                  .bind("relation", 0)
-                  .execute(),
-          "Insert relationship query should be valid SQL");
-    }
-  }
-
-  @Test
-  public void testDataLossDetectionWithNonEmptyTables() {
-    try (Handle handle = jdbi.open()) {
-      Integer roleCount =
-          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
-      Integer policyCount =
-          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
-
-      if (roleCount > 0 && policyCount > 0) {
-        assertDoesNotThrow(
-            () -> MigrationUtil.checkAndLogDataLossSymptoms(handle),
-            "Should not throw when tables have data");
-      }
-    }
-  }
-
-  @Test
-  public void testReseedRolesAndPoliciesDoesNotThrow() {
-    try (Handle handle = jdbi.open()) {
-      assertDoesNotThrow(
-          () -> MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType),
-          "reseedRolesAndPoliciesIfMissing should handle all cases without throwing");
-    }
-  }
-
-  @Test
-  public void testReseedRolesAndPoliciesIsIdempotent() {
-    try (Handle handle = jdbi.open()) {
-      Integer roleCountBefore =
-          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
-      Integer policyCountBefore =
-          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
-
-      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
-      Integer roleCountAfterFirst =
-          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
-      Integer policyCountAfterFirst =
-          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
-
-      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
-      Integer roleCountAfterSecond =
-          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
-      Integer policyCountAfterSecond =
-          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
-
+      RuntimeException exception =
+          assertThrows(
+              RuntimeException.class, MigrationUtil::updateSearchSettingsBoostConfiguration);
       assertEquals(
-          roleCountAfterFirst, roleCountAfterSecond, "Running twice should not create duplicates");
-      assertEquals(
-          policyCountAfterFirst,
-          policyCountAfterSecond,
-          "Running twice should not create duplicates");
-      assertTrue(roleCountAfterFirst >= roleCountBefore, "Should not decrease role count");
-      assertTrue(policyCountAfterFirst >= policyCountBefore, "Should not decrease policy count");
+          "Failed to update search settings percentileRank factors", exception.getMessage());
     }
   }
 
   @Test
-  public void testRestoreRolePolicyRelationshipsDoesNotThrow() {
-    try (Handle handle = jdbi.open()) {
-      assertDoesNotThrow(
-          () -> MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType),
-          "restoreRolePolicyRelationshipsIfMissing should handle all cases without throwing");
-    }
-  }
+  void restoreBotRelationshipsIfMissingInsertsOnlyWhenMatchingBotsExist() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery(APPS_WITHOUT_BOT_POSTGRES).mapToMap().list())
+        .thenReturn(
+            List.of(
+                Map.of("id", "app-1", "name", "Profiler"),
+                Map.of("id", "app-2", "name", "Missing")));
+    when(handle
+            .createQuery(FIND_BOT_BY_NAME_POSTGRES)
+            .bind("botName", "ProfilerBot")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of(Map.of("id", "bot-1")));
+    when(handle
+            .createQuery(FIND_BOT_BY_NAME_POSTGRES)
+            .bind("botName", "MissingBot")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of());
 
-  @Test
-  public void testRestoreRolePolicyRelationshipsIsIdempotent() {
-    try (Handle handle = jdbi.open()) {
-      String countQuery =
-          "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = 'role' AND toEntity = 'policy' AND relation = 1";
+    MigrationUtil.restoreBotRelationshipsIfMissing(handle, ConnectionType.POSTGRES);
 
-      Integer countBefore = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
-      Integer countAfterFirst = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
-      Integer countAfterSecond = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      assertEquals(
-          countAfterFirst, countAfterSecond, "Running twice should not create duplicate relations");
-      assertTrue(countAfterFirst >= countBefore, "Should not decrease relationship count");
-    }
-  }
-
-  @Test
-  public void testRestoreBotUserRolesDoesNotThrow() {
-    try (Handle handle = jdbi.open()) {
-      assertDoesNotThrow(
-          () -> MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType),
-          "restoreBotUserRolesIfMissing should handle all cases without throwing");
-    }
-  }
-
-  @Test
-  public void testRestoreBotUserRolesIsIdempotent() {
-    try (Handle handle = jdbi.open()) {
-      String countQuery =
-          "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = 'user' AND toEntity = 'role' AND relation = 1";
-
-      Integer countBefore = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
-      Integer countAfterFirst = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
-      Integer countAfterSecond = handle.createQuery(countQuery).mapTo(Integer.class).one();
-
-      assertEquals(
-          countAfterFirst, countAfterSecond, "Running twice should not create duplicate relations");
-      assertTrue(countAfterFirst >= countBefore, "Should not decrease relationship count");
-    }
-  }
-
-  @Test
-  public void testFullRecoveryFlowDoesNotThrow() {
-    try (Handle handle = jdbi.open()) {
-      assertDoesNotThrow(
-          () -> {
-            MigrationUtil.checkAndLogDataLossSymptoms(handle);
-            MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
-            MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
-            MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
-            MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
-          },
-          "Full recovery flow should complete without throwing");
-    }
-  }
-
-  @Test
-  public void testRecoveryPreservesExistingData() {
-    try (Handle handle = jdbi.open()) {
-      Integer roleCountBefore =
-          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
-      Integer policyCountBefore =
-          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
-      Integer relationCountBefore =
-          handle.createQuery("SELECT COUNT(*) FROM entity_relationship").mapTo(Integer.class).one();
-
-      MigrationUtil.checkAndLogDataLossSymptoms(handle);
-      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
-      MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
-      MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
-      MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
-
-      Integer roleCountAfter =
-          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
-      Integer policyCountAfter =
-          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
-      Integer relationCountAfter =
-          handle.createQuery("SELECT COUNT(*) FROM entity_relationship").mapTo(Integer.class).one();
-
-      assertTrue(roleCountAfter >= roleCountBefore, "Recovery should not delete existing roles");
-      assertTrue(
-          policyCountAfter >= policyCountBefore, "Recovery should not delete existing policies");
-      assertTrue(
-          relationCountAfter >= relationCountBefore,
-          "Recovery should not delete existing relationships");
-    }
-  }
-
-  @Test
-  public void testSystemRolesExistAfterRecovery() {
-    try (Handle handle = jdbi.open()) {
-      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
-
-      String checkRoleQuery =
-          connectionType == ConnectionType.MYSQL
-              ? "SELECT COUNT(*) FROM role_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name"
-              : "SELECT COUNT(*) FROM role_entity WHERE json->>'name' = :name";
-
-      String[] systemRoles = {"DataConsumer", "DataSteward", "IngestionBotRole"};
-      for (String roleName : systemRoles) {
-        Integer count =
-            handle.createQuery(checkRoleQuery).bind("name", roleName).mapTo(Integer.class).one();
-        assertTrue(count >= 0, "Query for role " + roleName + " should execute successfully");
-      }
-    }
-  }
-
-  @Test
-  public void testSystemPoliciesExistAfterRecovery() {
-    try (Handle handle = jdbi.open()) {
-      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
-
-      String checkPolicyQuery =
-          connectionType == ConnectionType.MYSQL
-              ? "SELECT COUNT(*) FROM policy_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name"
-              : "SELECT COUNT(*) FROM policy_entity WHERE json->>'name' = :name";
-
-      String[] systemPolicies = {"OrganizationPolicy", "DataConsumerPolicy", "DataStewardPolicy"};
-      for (String policyName : systemPolicies) {
-        Integer count =
+    verify(
             handle
-                .createQuery(checkPolicyQuery)
-                .bind("name", policyName)
-                .mapTo(Integer.class)
-                .one();
-        assertTrue(count >= 0, "Query for policy " + policyName + " should execute successfully");
-      }
+                .createUpdate(INSERT_APP_BOT_RELATIONSHIP_POSTGRES)
+                .bind("appId", "app-1")
+                .bind("botId", "bot-1")
+                .bind("relation", 0))
+        .execute();
+    verify(
+            handle
+                .createUpdate(INSERT_APP_BOT_RELATIONSHIP_POSTGRES)
+                .bind("appId", "app-2")
+                .bind("botId", "bot-1")
+                .bind("relation", 0),
+            never())
+        .execute();
+  }
+
+  @Test
+  void checkAndLogDataLossSymptomsHandlesCountsAndQueryFailuresGracefully() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one())
+        .thenReturn(0);
+    when(handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one())
+        .thenReturn(0);
+    when(handle.createQuery("SELECT COUNT(*) FROM installed_apps").mapTo(Integer.class).one())
+        .thenReturn(2);
+    when(handle.createQuery("SELECT COUNT(*) FROM bot_entity").mapTo(Integer.class).one())
+        .thenReturn(0);
+
+    assertDoesNotThrow(() -> MigrationUtil.checkAndLogDataLossSymptoms(handle));
+
+    Handle brokenHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(brokenHandle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one())
+        .thenThrow(new IllegalStateException("count failed"));
+
+    assertDoesNotThrow(() -> MigrationUtil.checkAndLogDataLossSymptoms(brokenHandle));
+  }
+
+  @Test
+  void reseedRolesAndPoliciesIfMissingSeedsDefaultsOnceThresholdIsReached() throws Exception {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    stubSystemCounts(handle, SYSTEM_POLICIES, CHECK_POLICY_EXISTS_POSTGRES, 0);
+    stubSystemCounts(handle, SYSTEM_ROLES, CHECK_ROLE_EXISTS_POSTGRES, 0);
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<org.openmetadata.schema.entity.policies.Policy> policyRepository =
+        mock(EntityRepository.class);
+    @SuppressWarnings("unchecked")
+    EntityRepository<Role> roleRepository = mock(EntityRepository.class);
+
+    var policyA = new org.openmetadata.schema.entity.policies.Policy().withName("PolicyA");
+    var policyB = new org.openmetadata.schema.entity.policies.Policy().withName("PolicyB");
+    var roleA = new Role().withName("RoleA");
+    var roleB = new Role().withName("RoleB");
+    when(policyRepository.getEntitiesFromSeedData()).thenReturn(List.of(policyA, policyB));
+    when(roleRepository.getEntitiesFromSeedData()).thenReturn(List.of(roleA, roleB));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(policyRepository);
+      entity.when(() -> Entity.getEntityRepository(Entity.ROLE)).thenReturn(roleRepository);
+
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, ConnectionType.POSTGRES);
+
+      verify(policyRepository).initializeEntity(policyA);
+      verify(policyRepository).initializeEntity(policyB);
+      verify(roleRepository).initializeEntity(roleA);
+      verify(roleRepository).initializeEntity(roleB);
+    }
+  }
+
+  @Test
+  void reseedRolesAndPoliciesIfMissingSkipsWhenBelowThreshold() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    stubSystemCounts(handle, SYSTEM_POLICIES, CHECK_POLICY_EXISTS_POSTGRES, 1);
+    stubSystemCounts(handle, SYSTEM_ROLES, CHECK_ROLE_EXISTS_POSTGRES, 1);
+    when(handle
+            .createQuery(CHECK_POLICY_EXISTS_POSTGRES)
+            .bind("name", SYSTEM_POLICIES.getFirst())
+            .mapTo(Integer.class)
+            .one())
+        .thenReturn(0);
+    when(handle
+            .createQuery(CHECK_ROLE_EXISTS_POSTGRES)
+            .bind("name", SYSTEM_ROLES.getFirst())
+            .mapTo(Integer.class)
+            .one())
+        .thenReturn(0);
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<org.openmetadata.schema.entity.policies.Policy> policyRepository =
+        mock(EntityRepository.class);
+    @SuppressWarnings("unchecked")
+    EntityRepository<Role> roleRepository = mock(EntityRepository.class);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(policyRepository);
+      entity.when(() -> Entity.getEntityRepository(Entity.ROLE)).thenReturn(roleRepository);
+
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, ConnectionType.POSTGRES);
+
+      verify(policyRepository, never()).initializeEntity(any());
+      verify(roleRepository, never()).initializeEntity(any());
+    }
+  }
+
+  private SearchSettings searchSettings(double factor) {
+    FieldValueBoost boost =
+        new FieldValueBoost()
+            .withField("usageSummary.weeklyStats.percentileRank")
+            .withFactor(factor);
+    return new SearchSettings()
+        .withGlobalSettings(new GlobalSettings().withFieldValueBoosts(List.of(boost)));
+  }
+
+  private void stubSystemCounts(Handle handle, List<String> names, String query, int count) {
+    for (String name : names) {
+      when(handle.createQuery(query).bind("name", name).mapTo(Integer.class).one())
+          .thenReturn(count);
     }
   }
 }

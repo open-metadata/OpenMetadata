@@ -23,13 +23,9 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfile,
-    ProfileSampleType,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -37,6 +33,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.time_utils import (
@@ -80,7 +77,9 @@ ingestion_config = {
     },
 }
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
@@ -253,7 +252,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
             "profiler": {
                 "name": "my_profiler",
                 "timeout_seconds": 60,
-                "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
+                "metrics": ["rowCount", "min", "max", "nullCount"],
             },
             "tableConfig": [
                 {
@@ -281,7 +280,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
 
     assert not table.tableProfilerConfig
     assert profile.profileSample == 75.0
-    assert profile.profileSampleType == ProfileSampleType.PERCENTAGE
+    assert profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
     workflow_config["processor"]["config"]["tableConfig"][0][
         "profileSampleType"
@@ -305,7 +304,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
     assert not table.tableProfilerConfig
     assert profile.profileSample == 3.0
     assert profile.rowCount == 4.0
-    assert profile.profileSampleType == ProfileSampleType.ROWS
+    assert profile.profileSampleType.root == ProfileSampleType.ROWS
 
 
 def test_workflow_sample_profile(ingest, metadata, service_name):
@@ -314,7 +313,13 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "Profiler",
-            "profileSample": 50,
+            "profileSampleConfig": {
+                "sampleConfigType": "STATIC",
+                "config": {
+                    "profileSample": 50,
+                    "profileSampleType": "PERCENTAGE",
+                },
+            },
             "tableFilterPattern": {"includes": ["newUsers"]},
         }
     )
@@ -596,12 +601,12 @@ def test_workflow_values_partition(ingest, metadata, service_name):
 def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service_name):
     """Test custom profiler config return expected sample and metric computation"""
     profiler_metrics = [
-        "MIN",
-        "MAX",
-        "MEAN",
-        "MEDIAN",
+        "min",
+        "max",
+        "mean",
+        "median",
     ]
-    id_metrics = ["MIN", "MAX"]
+    id_metrics = ["min", "max"]
     non_metric_values = ["name", "timestamp"]
 
     workflow_config = deepcopy(ingestion_config)
@@ -655,7 +660,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
 
     id_metric_ln = 0
     for metric_name, metric in latest_id_profile:
-        if metric_name.upper() in id_metrics:
+        if metric_name in id_metrics:
             assert metric is not None
             id_metric_ln += 1
         else:
@@ -674,7 +679,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
 
     age_metric_ln = 0
     for metric_name, metric in latest_age_profile:
-        if metric_name.upper() in profiler_metrics:
+        if metric_name in profiler_metrics:
             assert metric is not None
             age_metric_ln += 1
         else:

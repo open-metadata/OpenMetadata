@@ -15,7 +15,7 @@ Validator for column values to match regex test case
 
 from typing import List, Optional, Tuple
 
-from sqlalchemy import Column
+from sqlalchemy import Column, not_
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -25,9 +25,16 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
 )
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    SQARowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -37,7 +44,10 @@ logger = test_suite_logger()
 
 
 class ColumnValuesToMatchRegexValidator(
-    BaseColumnValuesToMatchRegexValidator, SQAValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValuesToMatchRegexValidator,
+    SQAValidatorMixin,
+    SQARowSamplerMixin,
 ):
     """Validator for column values to match regex test case"""
 
@@ -51,29 +61,27 @@ class ColumnValuesToMatchRegexValidator(
             column: column
         """
         try:
-            regex_count = Metrics.REGEX_COUNT(column)
+            regex_count = Metrics.regexCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
 
-            res = dict(
-                self.runner.dispatch_query_select_first(
-                    Metrics.COUNT(column).fn(),
-                    regex_count_fn,
-                )
+            row = self.runner.dispatch_query_select_first(
+                Metrics.valuesCount(column).fn(),
+                regex_count_fn,
             )
+            res = dict(row._mapping)
         except (CompileError, SQLAlchemyError) as err:
             logger.warning(
                 f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
             )
-            regex_count = Metrics.LIKE_COUNT(column)
+            regex_count = Metrics.likeCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
-            res = dict(
-                self.runner.dispatch_query_select_first(
-                    Metrics.COUNT(column).fn(),
-                    regex_count_fn,
-                )
+            row = self.runner.dispatch_query_select_first(
+                Metrics.valuesCount(column).fn(),
+                regex_count_fn,
             )
+            res = dict(row._mapping)
 
         if not res:
             # pylint: disable=line-too-long
@@ -85,7 +93,7 @@ class ColumnValuesToMatchRegexValidator(
             )
             # pylint: enable=line-too-long
 
-        return res.get(Metrics.COUNT.name), res.get(regex_count.name())
+        return res.get(Metrics.valuesCount.name), res.get(regex_count.name())
 
     def _execute_dimensional_validation(
         self,
@@ -93,6 +101,7 @@ class ColumnValuesToMatchRegexValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -114,17 +123,17 @@ class ColumnValuesToMatchRegexValidator(
             regex = test_params[BaseColumnValuesToMatchRegexValidator.REGEX]
 
             metric_expressions = {
-                Metrics.REGEX_COUNT.name: add_props(expression=regex)(
-                    Metrics.REGEX_COUNT.value
+                Metrics.regexCount.name: add_props(expression=regex)(
+                    Metrics.regexCount.value
                 )(column).fn(),
-                Metrics.COUNT.name: Metrics.COUNT(column).fn(),
-                Metrics.ROW_COUNT.name: Metrics.ROW_COUNT().fn(),
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
+                Metrics.valuesCount.name: Metrics.valuesCount(column).fn(),
+                Metrics.rowCount.name: Metrics.rowCount().fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
             }
 
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
-                metric_expressions[Metrics.COUNT.name]
-                - metric_expressions[Metrics.REGEX_COUNT.name]
+                metric_expressions[Metrics.valuesCount.name]
+                - metric_expressions[Metrics.regexCount.name]
             )
 
             normalized_dimension = self._get_normalized_dimension_expression(
@@ -135,23 +144,12 @@ class ColumnValuesToMatchRegexValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                # Build metric_values dict using helper method
-                metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute, test_params
-                )
-
-                # Evaluate test condition
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                # Create dimension result using helper method
-                dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation, test_params
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -169,3 +167,15 @@ class ColumnValuesToMatchRegexValidator(
             NotImplementedError:
         """
         return self._compute_row_count(self.runner, column)
+
+    def filter(self):
+        expression = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "regex",
+            str,
+        )
+        return not_(self.get_column().regexp_match(expression))
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

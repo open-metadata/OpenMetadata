@@ -14,6 +14,8 @@ Vertica usage module
 from abc import ABC
 from typing import Iterable, Optional
 
+from sqlalchemy import text
+
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
@@ -60,7 +62,8 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
         if database:
             yield from super().get_table_query()
         else:
-            results = self.engine.execute(VERTICA_LIST_DATABASES)
+            with self.engine.connect() as conn:
+                results = conn.execute(text(VERTICA_LIST_DATABASES)).all()
             for res in results:
                 row = list(res)
                 logger.info(f"Ingesting from database: {row[0]}")

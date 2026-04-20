@@ -324,6 +324,71 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
     assertEquals(CreateLearningResource.Status.DEPRECATED.value(), updated.getStatus().value());
   }
 
+  @Test
+  void put_statusOnlyChange_persistsAfterGet(TestNamespace ns) {
+    CreateLearningResource request =
+        new CreateLearningResource()
+            .withName(ns.prefix("status-only-update"))
+            .withDescription("Status-only update persistence test")
+            .withResourceType(CreateLearningResource.ResourceType.ARTICLE)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/status-only")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary")));
+
+    LearningResource resource = createEntity(request);
+    assertEquals(CreateLearningResource.Status.DRAFT.value(), resource.getStatus().value());
+
+    // Update ONLY the status field — no other changes
+    request.withStatus(CreateLearningResource.Status.ACTIVE);
+    LearningResource putResponse = getLearningResourceService().put(request);
+    assertEquals(CreateLearningResource.Status.ACTIVE.value(), putResponse.getStatus().value());
+
+    // Verify the change persisted by re-fetching via GET
+    LearningResource fetched = getEntity(resource.getId().toString());
+    assertEquals(
+        CreateLearningResource.Status.ACTIVE.value(),
+        fetched.getStatus().value(),
+        "Status should persist after a status-only PUT update");
+
+    // Verify version was bumped
+    assertTrue(
+        fetched.getVersion() > resource.getVersion(),
+        "Version should be incremented after status change");
+  }
+
+  @Test
+  void put_statusOnlyChange_recordsChangeDescription(TestNamespace ns) {
+    CreateLearningResource request =
+        new CreateLearningResource()
+            .withName(ns.prefix("status-change-history"))
+            .withDescription("Status change history test")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/status-history")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore")));
+
+    LearningResource resource = createEntity(request);
+
+    // Change only status from DRAFT to ACTIVE
+    request.withStatus(CreateLearningResource.Status.ACTIVE);
+    getLearningResourceService().put(request);
+
+    // Change only status from ACTIVE to DEPRECATED
+    request.withStatus(CreateLearningResource.Status.DEPRECATED);
+    getLearningResourceService().put(request);
+
+    // Verify version history has entries for the status changes
+    EntityHistory history = getVersionHistory(resource.getId());
+    assertTrue(
+        history.getVersions().size() >= 3,
+        "Should have at least 3 versions: create + 2 status updates");
+  }
+
   // ===================================================================
   // CONTEXT TESTS
   // ===================================================================

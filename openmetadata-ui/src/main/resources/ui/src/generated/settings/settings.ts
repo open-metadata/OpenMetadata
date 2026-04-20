@@ -38,9 +38,11 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    MCPConfiguration = "mcpConfiguration",
     OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
@@ -101,6 +103,11 @@ export enum SettingType {
  *
  * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
  * processes lineage events from external systems like Spark, Airflow, and Flink.
+ *
+ * This schema defines the Model Context Protocol (MCP) Server configuration
+ *
+ * This schema defines the Glossary Term Relation Settings for configuring typed semantic
+ * relations between glossary terms.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -128,6 +135,8 @@ export interface PipelineServiceClientConfiguration {
      * Is Task Notification Enabled?
      *
      * Enable or disable the OpenLineage HTTP API endpoint.
+     *
+     * Enable or disable the MCP server
      */
     enabled?: boolean;
     /**
@@ -269,6 +278,11 @@ export interface PipelineServiceClientConfiguration {
      * Filter for the request authorization.
      */
     containerRequestFilter?: string;
+    /**
+     * Default role assigned to new OAuth users during self-signup. If not specified, users will
+     * be created without roles.
+     */
+    defaultOAuthRole?: string;
     /**
      * Enable Secure Socket Connection.
      */
@@ -460,6 +474,11 @@ export interface PipelineServiceClientConfiguration {
     microsoftAppTenantId?: string;
     metricConfiguration?:  MetricConfigurationDefinition[];
     /**
+     * Whether to enable sample data collection at the platform level. This setting will
+     * override the source configuration.
+     */
+    sampleDataConfig?: SampleDataIngestionConfig;
+    /**
      * Configurations of allowed searchable fields for each entity type
      */
     allowedFields?: AllowedSearchFields[];
@@ -553,6 +572,51 @@ export interface PipelineServiceClientConfiguration {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+    /**
+     * List of allowed origins for CORS on OAuth endpoints. Use specific origins for production
+     * security. Wildcard (*) is NOT recommended.
+     */
+    allowedOrigins?: string[];
+    /**
+     * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
+     * set, falls back to system settings. For clustered deployments, set this to the
+     * external-facing URL.
+     */
+    baseUrl?: string;
+    /**
+     * HTTP connection timeout in milliseconds for SSO provider metadata fetching. Default:
+     * 30000ms (30 seconds)
+     */
+    connectTimeout?: number;
+    /**
+     * Name of the MCP server
+     */
+    mcpServerName?: string;
+    /**
+     * Version of the MCP server
+     */
+    mcpServerVersion?: string;
+    /**
+     * Expected origin header URI for validation
+     */
+    originHeaderUri?: string;
+    /**
+     * Enable or disable origin validation for requests
+     */
+    originValidationEnabled?: boolean;
+    /**
+     * Base path for MCP endpoints
+     */
+    path?: string;
+    /**
+     * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
+     * (30 seconds)
+     */
+    readTimeout?: number;
+    /**
+     * List of configured glossary term relation types.
+     */
+    relationTypes?: GlossaryTermRelationType[];
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -1556,6 +1620,11 @@ export interface AuthorizerConfiguration {
      */
     containerRequestFilter: string;
     /**
+     * Default role assigned to new OAuth users during self-signup. If not specified, users will
+     * be created without roles.
+     */
+    defaultOAuthRole?: string;
+    /**
      * Enable Secure Socket Connection.
      */
     enableSecureSocketConnection: boolean;
@@ -1710,10 +1779,18 @@ export interface GlobalSettings {
     /**
      * Which fields to highlight by default.
      */
-    highlightFields?:   string[];
+    highlightFields?: string[];
+    /**
+     * Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)
+     */
+    keywordWeight?:     number;
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
+    /**
+     * Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)
+     */
+    semanticWeight?: number;
     /**
      * List of field=value term-boost rules that apply only to this asset.
      */
@@ -2090,6 +2167,7 @@ export enum MetricType {
     NotLikeCount = "notLikeCount",
     NotRegexCount = "notRegexCount",
     NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
     NullProportion = "nullProportion",
     RegexCount = "regexCount",
     RowCount = "rowCount",
@@ -2099,6 +2177,7 @@ export enum MetricType {
     ThirdQuartile = "thirdQuartile",
     UniqueCount = "uniqueCount",
     UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
     ValuesCount = "valuesCount",
 }
 
@@ -2123,6 +2202,16 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
+     */
+    keywordWeight?: number;
+    /**
+     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
+     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
+     * limits.
+     */
+    maxConcurrentEmbeddingRequests?: number;
+    /**
      * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
      * endpoints.
      */
@@ -2135,6 +2224,10 @@ export interface NaturalLanguageSearch {
      * Enable or disable semantic search using vector embeddings
      */
     semanticSearchEnabled?: boolean;
+    /**
+     * Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)
+     */
+    semanticWeight?: number;
 }
 
 /**
@@ -2389,6 +2482,96 @@ export enum PipelineViewMode {
 }
 
 /**
+ * Definition of a glossary term relation type.
+ */
+export interface GlossaryTermRelationType {
+    /**
+     * Preset cardinality for this relation type. CUSTOM lets you set explicit source/target
+     * maxima.
+     */
+    cardinality?: RelationCardinality;
+    /**
+     * Category of the relation.
+     */
+    category: RelationCategory;
+    /**
+     * Hex color code for visualizing this relation type in graphs (e.g., '#1890ff').
+     */
+    color?: string;
+    /**
+     * Description of what this relation type represents.
+     */
+    description?: string;
+    /**
+     * Display name for the relation type.
+     */
+    displayName: string;
+    /**
+     * Name of the inverse relation type (e.g., 'narrower' for 'broader'). Null for symmetric
+     * relations.
+     */
+    inverseRelation?: string;
+    /**
+     * Whether relations can be created between terms in different glossaries.
+     */
+    isCrossGlossaryAllowed?: boolean;
+    /**
+     * Whether the relation is symmetric (A relates B implies B relates A).
+     */
+    isSymmetric?: boolean;
+    /**
+     * Whether this is a system-defined relation type (cannot be deleted).
+     */
+    isSystemDefined?: boolean;
+    /**
+     * Whether the relation is transitive (A relates B, B relates C implies A relates C).
+     */
+    isTransitive?: boolean;
+    /**
+     * Unique name of the relation type (e.g., 'broader', 'synonym').
+     */
+    name: string;
+    /**
+     * RDF predicate URI for this relation (e.g., 'skos:broader').
+     */
+    rdfPredicate?: string;
+    /**
+     * Maximum number of relations of this type that can originate from a term. Null means
+     * unbounded.
+     */
+    sourceMax?: number | null;
+    /**
+     * Maximum number of relations of this type that can target a term. Null means unbounded.
+     */
+    targetMax?: number | null;
+}
+
+/**
+ * Preset cardinality for this relation type. CUSTOM lets you set explicit source/target
+ * maxima.
+ *
+ * Preset cardinality for term-to-term relations.
+ */
+export enum RelationCardinality {
+    Custom = "CUSTOM",
+    ManyToMany = "MANY_TO_MANY",
+    ManyToOne = "MANY_TO_ONE",
+    OneToMany = "ONE_TO_MANY",
+    OneToOne = "ONE_TO_ONE",
+}
+
+/**
+ * Category of the relation.
+ *
+ * Category of the relation type.
+ */
+export enum RelationCategory {
+    Associative = "associative",
+    Equivalence = "equivalence",
+    Hierarchical = "hierarchical",
+}
+
+/**
  * Used to set up the History CleanUp Settings.
  */
 export interface RunTimeCleanUpConfiguration {
@@ -2396,6 +2579,27 @@ export interface RunTimeCleanUpConfiguration {
      * Batch size used when cleaning up Flowable Run Time data
      */
     batchSize?: number;
+}
+
+/**
+ * Whether to enable sample data collection at the platform level. This setting will
+ * override the source configuration.
+ *
+ * Define the configuration for sample data ingestion at the platform level. This
+ * configuration will override the source-level configuration for sample data collection.
+ */
+export interface SampleDataIngestionConfig {
+    /**
+     * Allows OpenMetadata to read the sample data. This setting won't save the sample data but
+     * sample data will temporarily be brought in OpenMetadata infrastructure for processing. If
+     * reading is disabled but storing is enabled, reading will be enabled by default.
+     */
+    readSampleData?: boolean;
+    /**
+     * Allows OpenMetadata to store the sample data. This setting will override the source
+     * configuration.
+     */
+    storeSampleData?: boolean;
 }
 
 /**

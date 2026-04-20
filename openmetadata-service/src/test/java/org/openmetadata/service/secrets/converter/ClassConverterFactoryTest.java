@@ -17,13 +17,13 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.IcebergConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
@@ -51,7 +51,7 @@ public class ClassConverterFactoryTest {
         TrinoConnection.class,
         Workflow.class,
         SalesforceConnection.class,
-        IcebergConnection.class,
+        MatillionConnection.class,
       })
   void testClassConverterIsSet(Class<?> clazz) {
     assertFalse(
@@ -60,6 +60,9 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(34, ClassConverterFactory.getConverterMap().size());
+    int originalSize = ClassConverterFactory.getConverterMap().size();
+    ClassConverterFactory.getConverter(AirflowConnection.class);
+    ClassConverterFactory.getConverter(BigQueryConnection.class);
+    assertEquals(originalSize, ClassConverterFactory.getConverterMap().size());
   }
 }

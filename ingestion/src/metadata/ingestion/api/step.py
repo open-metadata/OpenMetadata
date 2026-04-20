@@ -23,7 +23,9 @@ from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import StatusWarningHandler, ingestion_logger
+from metadata.utils.operation_metrics import OperationMetricsState
+from metadata.utils.progress_tracker import ProgressTrackerState
 
 logger = ingestion_logger()
 
@@ -43,6 +45,24 @@ class Step(ABC, Closeable):
 
     def __init__(self):
         self.status = Status()
+        self._warning_handler = StatusWarningHandler(self.status)
+
+    def _activate_handler(self) -> None:
+        """Attach the warning handler to the ingestion logger.
+
+        Called at the start of each run() so that warnings emitted
+        during step execution are captured in the step's Status.
+        Must be paired with _deactivate_handler in a finally block.
+        """
+        ingestion_logger().addHandler(self._warning_handler)
+
+    def _deactivate_handler(self) -> None:
+        """Remove the warning handler from the ingestion logger.
+
+        Called in the finally block of run() to ensure the handler
+        does not leak across step boundaries.
+        """
+        ingestion_logger().removeHandler(self._warning_handler)
 
     @classmethod
     @abstractmethod
@@ -75,6 +95,21 @@ class Summary(StepSummary):
     @classmethod
     def from_step(cls, step: Step) -> "Summary":
         """Compute summary from Step"""
+        progress_tracker = ProgressTrackerState()
+        operation_metrics = OperationMetricsState()
+
+        # Get workflow timing for source metrics
+        workflow_timing = operation_metrics.get_workflow_timing()
+
+        # Source time = source_fetch + source_db_queries + source_api_calls
+        source_time_ms = (
+            workflow_timing.get("source", {}).get("total_ms", 0)
+            + workflow_timing.get("source_db_queries", {}).get("total_ms", 0)
+            + workflow_timing.get("source_api_calls", {}).get("total_ms", 0)
+        )
+        # Stage time = time spent processing entities
+        stage_time_ms = workflow_timing.get("stage", {}).get("total_ms", 0)
+
         return Summary(
             name=step.name,
             records=step.status.record_count
@@ -85,6 +120,10 @@ class Summary(StepSummary):
             errors=len(step.status.failures),
             filtered=len(step.status.filtered),
             failures=step.status.failures[0:10] if step.status.failures else None,
+            progress=progress_tracker.get_progress_as_dict() or None,
+            operationMetrics=operation_metrics.get_summary() or None,
+            sourceTimeMs=source_time_ms if source_time_ms else None,
+            sinkTimeMs=stage_time_ms if stage_time_ms else None,
         )
 
     def __str__(self):
@@ -107,6 +146,7 @@ class ReturnStep(Step, ABC):
         """
         Run the step and handle the status and exceptions
         """
+        self._activate_handler()
         try:
             result: Either = self._run(record)
             if result:
@@ -141,6 +181,8 @@ class ReturnStep(Step, ABC):
                     name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
+        finally:
+            self._deactivate_handler()
 
         return None
 
@@ -165,6 +207,7 @@ class StageStep(Step, ABC):
         """
         Run the step and handle the status and exceptions.
         """
+        self._activate_handler()
         try:
             for result in self._run(record):
                 if result.left is not None:
@@ -196,6 +239,8 @@ class StageStep(Step, ABC):
                     name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
+        finally:
+            self._deactivate_handler()
 
 
 class IterStep(Step, ABC):
@@ -212,6 +257,7 @@ class IterStep(Step, ABC):
         Note that we are overwriting the default run implementation
         in order to create a generator with `yield`.
         """
+        self._activate_handler()
         try:
             for result in self._iter():
                 if result.left is not None:
@@ -245,6 +291,8 @@ class IterStep(Step, ABC):
                     name="Unhandled", error=error, stackTrace=traceback.format_exc()
                 )
             )
+        finally:
+            self._deactivate_handler()
 
 
 class BulkStep(Step, ABC):

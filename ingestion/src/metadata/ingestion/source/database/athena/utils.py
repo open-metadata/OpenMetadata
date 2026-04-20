@@ -15,7 +15,7 @@ from copy import deepcopy
 from typing import Dict, List, Optional
 
 from pyathena.sqlalchemy.util import _HashableDict
-from sqlalchemy import types
+from sqlalchemy import text, types
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source import sqa_types
@@ -157,11 +157,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             raw_connection = self._raw_connection(connection)
             schema = schema if schema else raw_connection.schema_name
 
-            # Use the provided Glue client or create one with default credentials
             glue_client = kw.get("glue_client")
+            catalog_id = kw.get("catalog_id")
 
-            # Get full table metadata from Glue
-            response = glue_client.get_table(DatabaseName=schema, Name=table_name)
+            get_table_params = {"DatabaseName": schema, "Name": table_name}
+            if catalog_id:
+                get_table_params["CatalogId"] = catalog_id
+            response = glue_client.get_table(**get_table_params)
 
             table_info = response["Table"]
 
@@ -234,7 +236,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     Gets the view definition
     """
     full_view_name = f'"{view_name}"' if not schema else f'"{schema}"."{view_name}"'
-    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
     return None

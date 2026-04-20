@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, useTheme } from '@mui/material';
+import { Badge } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { CHART_BLUE_1 } from '../../../constants/Color.constants';
+import {
+  CHART_BLUE_1,
+  GREY_100,
+  GREY_200,
+} from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
@@ -36,7 +41,6 @@ import {
 } from '../../../utils/ChartUtils';
 import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { DataPill } from '../../common/DataPill/DataPill.styled';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
@@ -44,7 +48,6 @@ const DataDistributionHistogram = ({
   data,
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
-  const theme = useTheme();
   const { t } = useTranslation();
 
   const renderHorizontalGridLine = useMemo(
@@ -61,16 +64,9 @@ const DataDistributionHistogram = ({
     isUndefined(data.currentDayData?.histogram)
   ) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          width: '100%',
-        }}>
+      <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full">
         <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
-      </Box>
+      </div>
     );
   }
 
@@ -79,13 +75,7 @@ const DataDistributionHistogram = ({
   );
 
   return (
-    <Box
-      data-testid="chart-container"
-      sx={{
-        display: 'flex',
-        width: '100%',
-        gap: 0,
-      }}>
+    <div className="tw:flex tw:w-full" data-testid="chart-container">
       {dataEntries.map(([key, columnProfile], index) => {
         const histogramData =
           (columnProfile?.histogram as HistogramClass) ||
@@ -101,46 +91,44 @@ const DataDistributionHistogram = ({
           'MMM dd, yyyy'
         );
 
-        const skewColorTheme = columnProfile?.nonParametricSkew
-          ? columnProfile?.nonParametricSkew > 0
-            ? theme.palette.allShades.success
-            : theme.palette.allShades.error
-          : theme.palette.allShades.info;
+        let skewColor: 'success' | 'error' | 'blue' = 'blue';
+        if (columnProfile?.nonParametricSkew) {
+          skewColor = columnProfile.nonParametricSkew > 0 ? 'success' : 'error';
+        }
+
+        const colClassName = classNames(
+          'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
+          showSingleGraph
+            ? 'tw:flex-1 tw:basis-full tw:px-4'
+            : 'tw:flex-1 tw:basis-1/2 tw:px-3',
+          {
+            'tw:border-r tw:border-border-secondary':
+              !showSingleGraph && index === 0,
+          }
+        );
 
         return (
-          <Box
-            key={key}
-            sx={{
-              flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              px: showSingleGraph ? 4 : 3,
-              py: 2,
-              borderRight:
-                !showSingleGraph && index === 0
-                  ? `1px solid ${theme.palette.grey[200]}`
-                  : 'none',
-            }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                mb: 5,
-              }}>
-              <DataPill>{graphDate}</DataPill>
-              <DataPill
-                sx={{
-                  backgroundColor: skewColorTheme[100],
-                  color: skewColorTheme[900],
-                }}>
+          <div className={colClassName} key={key}>
+            <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+              <Badge
+                className="tw:font-semibold"
+                color="gray"
+                data-testid="date"
+                size="lg"
+                type="color">
+                {graphDate}
+              </Badge>
+              <Badge
+                className="tw:font-semibold"
+                color={skewColor}
+                size="lg"
+                type="color">
                 {`${t('label.skew')}: ${
                   columnProfile?.nonParametricSkew || '--'
                 }`}
-              </DataPill>
-            </Box>
-            <Box sx={{ flex: 1, minHeight: 350 }}>
+              </Badge>
+            </div>
+            <div className="tw:flex-1 tw:min-h-87.5">
               <ResponsiveContainer
                 debounce={200}
                 height="100%"
@@ -180,8 +168,8 @@ const DataDistributionHistogram = ({
                       />
                     }
                     cursor={{
-                      fill: theme.palette.grey[100],
-                      stroke: theme.palette.grey[200],
+                      fill: GREY_100,
+                      stroke: GREY_200,
                       strokeDasharray: '3 3',
                     }}
                   />
@@ -193,11 +181,11 @@ const DataDistributionHistogram = ({
                   />
                 </BarChart>
               </ResponsiveContainer>
-            </Box>
-          </Box>
+            </div>
+          </div>
         );
       })}
-    </Box>
+    </div>
   );
 };
 

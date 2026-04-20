@@ -64,6 +64,7 @@ export const useColumnGridListingData = (
   setAllRows: React.Dispatch<React.SetStateAction<ColumnGridRowData[]>>;
   gridItems: ColumnGridItem[];
   setGridItems: React.Dispatch<React.SetStateAction<ColumnGridItem[]>>;
+  setSelectedEntities: (ids: string[] | ((prev: string[]) => string[])) => void;
   clearEditedValues: () => void;
 } => {
   const { t } = useTranslation();
@@ -81,8 +82,6 @@ export const useColumnGridListingData = (
   const [expandedStructRows, setExpandedStructRows] = useState<Set<string>>(
     new Set()
   );
-  const [_cursor, setCursor] = useState<string | undefined>();
-  const [_hasMore, setHasMore] = useState(false);
   // Use ref to store cursors to avoid infinite loops
   const cursorsByPageRef = useRef<Map<number, string>>(new Map());
   // Store items per page to avoid accumulating across pages
@@ -235,9 +234,6 @@ export const useColumnGridListingData = (
           setTotalUniqueColumns(totalUniqueColumnsRef.current);
           setTotalOccurrences(totalOccurrencesRef.current);
         }
-
-        setCursor(response.cursor);
-        setHasMore(!!response.cursor);
       } catch (error) {
         if (requestId !== latestRequestIdRef.current) {
           return;
@@ -576,6 +572,7 @@ export const useColumnGridListingData = (
     isIndeterminate: selectionState.isIndeterminate,
     handleSelectAll: selectionState.handleSelectAll,
     handleSelect: selectionState.handleSelect,
+    setSelectedEntities: selectionState.setSelectedEntities,
     isSelected: selectionState.isSelected,
     clearSelection: selectionState.clearSelection,
     urlState,

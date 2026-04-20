@@ -16,10 +16,10 @@
           "type": "string",
           "description": "Application Name"
         },
-        "preview": {
+        "enabled": {
           "type": "boolean",
-          "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
-          "default": false
+          "description": "Flag to enable/disable the application. If the app is not enabled, it can't be installed.",
+          "default": true
         },
         "schedule": {
           "$ref": "../entity/applications/app.json#/definitions/appSchedule"

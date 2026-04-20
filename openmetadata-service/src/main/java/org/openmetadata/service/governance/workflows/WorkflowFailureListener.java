@@ -45,8 +45,12 @@ public class WorkflowFailureListener implements FlowableEventListener {
         break;
       case PROCESS_CANCELLED:
         if (event instanceof FlowableCancelledEvent cancelledEvent
-            && "Cleanup before redeployment".equals(cancelledEvent.getCause())) {
-          LOG.debug("[WorkflowFailure] Ignoring PROCESS_CANCELLED during redeployment cleanup");
+            && ("Cleanup before redeployment".equals(cancelledEvent.getCause())
+                || "Terminated due to conflicting workflow instance"
+                    .equals(cancelledEvent.getCause()))) {
+          LOG.debug(
+              "[WorkflowFailure] Ignoring expected PROCESS_CANCELLED: {}",
+              cancelledEvent.getCause());
           break;
         }
         LOG.error("[WorkflowFailure] PROCESS_CANCELLED: {}", event);

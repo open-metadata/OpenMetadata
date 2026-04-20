@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
+import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import {
+  ERROR_MESSAGE,
+  NO_DATA_PLACEHOLDER,
+  TEXT_GREY_MUTED,
+} from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
@@ -46,7 +51,22 @@ export const commonUserDetailColumns = (
     dataIndex: 'username',
     key: 'username',
     ellipsis: { showTitle: false },
-    render: (_, record) => userCellRenderer(record),
+    render: (_, record) => (
+      <Space size={4}>
+        {record.isBot && (
+          <Tooltip title={t('label.bot')}>
+            <BotIcon
+              aria-label={t('label.bot')}
+              color={TEXT_GREY_MUTED}
+              data-testid="bot-icon"
+              height={16}
+              width={16}
+            />
+          </Tooltip>
+        )}
+        {userCellRenderer(record)}
+      </Space>
+    ),
   },
   {
     title: t('label.name'),

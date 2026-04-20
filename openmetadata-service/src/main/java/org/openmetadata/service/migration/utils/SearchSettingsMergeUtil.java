@@ -6,6 +6,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -407,5 +408,103 @@ public class SearchSettingsMergeUtil {
       }
     }
     return null;
+  }
+
+  /**
+   * Adds a new asset type configuration from defaults if it doesn't already exist in current
+   * settings.
+   *
+   * <p><b>WHEN TO USE:</b>
+   *
+   * <ul>
+   *   <li>When adding a new searchable entity type (e.g., tableColumn, metric)
+   *   <li>When the asset type is completely new and doesn't exist in user's settings
+   * </ul>
+   *
+   * <p><b>Example:</b>
+   *
+   * <pre>{@code
+   * boolean added = addMissingAssetTypeConfiguration(
+   *     currentSettings, defaultSettings, "tableColumn");
+   * }</pre>
+   *
+   * @param currentSettings Current settings from database
+   * @param defaultSettings Default settings from searchSettings.json file
+   * @param assetType The asset type to add (e.g., "tableColumn")
+   * @return true if the asset type configuration was added
+   */
+  public static boolean addMissingAssetTypeConfiguration(
+      SearchSettings currentSettings, SearchSettings defaultSettings, String assetType) {
+    if (defaultSettings == null || defaultSettings.getAssetTypeConfigurations() == null) {
+      LOG.warn("Default settings not available, skipping add for asset type: {}", assetType);
+      return false;
+    }
+
+    AssetTypeConfiguration existingConfig = findAssetTypeConfiguration(currentSettings, assetType);
+    if (existingConfig != null) {
+      LOG.info("Asset type configuration for {} already exists, skipping add", assetType);
+      return false;
+    }
+
+    AssetTypeConfiguration defaultConfig = findAssetTypeConfiguration(defaultSettings, assetType);
+    if (defaultConfig == null) {
+      LOG.warn("No default configuration found for asset type: {}", assetType);
+      return false;
+    }
+
+    if (currentSettings.getAssetTypeConfigurations() == null) {
+      currentSettings.setAssetTypeConfigurations(new java.util.ArrayList<>());
+    }
+
+    currentSettings.getAssetTypeConfigurations().add(defaultConfig);
+    LOG.info("Added new asset type configuration for: {}", assetType);
+    return true;
+  }
+
+  /**
+   * Adds a new allowed fields configuration from defaults if it doesn't already exist in current
+   * settings.
+   *
+   * @param currentSettings Current settings from database
+   * @param defaultSettings Default settings from searchSettings.json file
+   * @param entityType The entity type for the allowed fields (e.g., "tableColumn")
+   * @return true if the allowed fields configuration was added
+   */
+  public static boolean addMissingAllowedFields(
+      SearchSettings currentSettings, SearchSettings defaultSettings, String entityType) {
+    if (defaultSettings == null || defaultSettings.getAllowedFields() == null) {
+      LOG.warn("Default settings not available, skipping add for allowed fields: {}", entityType);
+      return false;
+    }
+
+    if (currentSettings.getAllowedFields() != null) {
+      for (AllowedSearchFields allowedField : currentSettings.getAllowedFields()) {
+        if (entityType.equals(allowedField.getEntityType())) {
+          LOG.info("Allowed fields for {} already exists, skipping add", entityType);
+          return false;
+        }
+      }
+    }
+
+    AllowedSearchFields defaultAllowedFields = null;
+    for (AllowedSearchFields allowedField : defaultSettings.getAllowedFields()) {
+      if (entityType.equals(allowedField.getEntityType())) {
+        defaultAllowedFields = allowedField;
+        break;
+      }
+    }
+
+    if (defaultAllowedFields == null) {
+      LOG.warn("No default allowed fields found for entity type: {}", entityType);
+      return false;
+    }
+
+    if (currentSettings.getAllowedFields() == null) {
+      currentSettings.setAllowedFields(new java.util.ArrayList<>());
+    }
+
+    currentSettings.getAllowedFields().add(defaultAllowedFields);
+    LOG.info("Added new allowed fields configuration for: {}", entityType);
+    return true;
   }
 }

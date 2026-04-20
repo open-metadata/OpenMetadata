@@ -24,6 +24,7 @@ from trino.sqlalchemy.datatype import JSON
 from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
@@ -34,8 +35,12 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.trino.queries import (
+    TRINO_GET_CATALOG_CONNECTOR,
     TRINO_TABLE_COMMENTS,
     TRINO_VIEW_DEFINITION,
     TRINO_VIEW_DEFINITION_FALLBACK,
@@ -110,7 +115,7 @@ def _get_columns(
     preparer = connection.dialect.identifier_preparer
     query = f"SHOW COLUMNS FROM {preparer.quote(schema)}.{preparer.quote(table_name)}"
 
-    res = connection.execute(sql.text(query), schema=schema, table=table_name)
+    res = connection.execute(sql.text(query))
     columns = []
     for record in res:
         col_type = datatype.parse_sqltype(record.Type)
@@ -275,13 +280,34 @@ class TrinoSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        table_type = TableType.Regular
+        try:
+            catalog_name = self.context.get().database
+            result = self.connection.execute(
+                sql.text(TRINO_GET_CATALOG_CONNECTOR),
+                {"catalog_name": catalog_name},
+            )
+            row = result.first()
+            if row and row[0] == "iceberg":
+                table_type = TableType.Iceberg
+        except Exception:
+            logger.debug(traceback.format_exc())
+
+        return [
+            TableNameAndType(name=name, type_=table_type)
+            for name in self.inspector.get_table_names(schema_name) or []
+        ]
+
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
         else:
-            results = self.connection.execute("SHOW CATALOGS")
+            results = self.connection.execute(sql.text("SHOW CATALOGS"))
             for res in results:
                 if res:
                     new_catalog = res[0]

@@ -23,6 +23,7 @@ from unittest.mock import MagicMock, patch
 from azure.core.exceptions import ResourceNotFoundError
 
 from metadata.ingestion.source.database.datalake.clients.azure_blob import (
+    AZURE_COLD_TIERS,
     DatalakeAzureBlobClient,
 )
 
@@ -349,7 +350,8 @@ class TestDatalakeAzureBlobClientTableMethods(unittest.TestCase):
         mock_container_client.list_blobs.assert_called_once_with(
             name_starts_with="atlas-wind/"
         )
-        self.assertEqual(result, ["atlas-wind/file1.csv", "atlas-wind/file2.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["atlas-wind/file1.csv", "atlas-wind/file2.csv"])
 
     def test_get_table_names_with_no_prefix(self):
         """
@@ -369,6 +371,114 @@ class TestDatalakeAzureBlobClientTableMethods(unittest.TestCase):
 
         # Assert
         mock_container_client.list_blobs.assert_called_once_with(name_starts_with=None)
+        self.assertEqual(result, [])
+
+
+class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
+    """Tests for skip_cold_storage filtering in get_table_names"""
+
+    def setUp(self):
+        self.mock_blob_service_client = MagicMock()
+        self.client = DatalakeAzureBlobClient(client=self.mock_blob_service_client)
+
+    def _make_blob(self, name, blob_tier=None, size=1024):
+        blob = MagicMock()
+        blob.name = name
+        blob.blob_tier = blob_tier
+        blob.size = size
+        return blob
+
+    def test_get_table_names_skip_cold_storage_filters_cold_tiers(self):
+        """
+        GIVEN: Blobs with mixed storage tiers
+        WHEN: get_table_names is called with skip_cold_storage=True
+        THEN: Only hot-tier blobs should be returned
+        """
+        mock_container_client = MagicMock()
+        mock_container_client.list_blobs.return_value = [
+            self._make_blob("hot_file.csv", blob_tier="Hot"),
+            self._make_blob("cool_file.csv", blob_tier="Cool"),
+            self._make_blob("cold_file.csv", blob_tier="Cold"),
+            self._make_blob("archive_file.csv", blob_tier="Archive"),
+            self._make_blob("no_tier_file.csv", blob_tier=None),
+        ]
+        self.mock_blob_service_client.get_container_client.return_value = (
+            mock_container_client
+        )
+
+        result = list(
+            self.client.get_table_names(
+                bucket_name="container", prefix=None, skip_cold_storage=True
+            )
+        )
+
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["hot_file.csv", "no_tier_file.csv"])
+
+    def test_get_table_names_skip_cold_storage_false_returns_all(self):
+        """
+        GIVEN: Blobs with mixed storage tiers
+        WHEN: get_table_names is called with skip_cold_storage=False
+        THEN: All blobs should be returned regardless of tier
+        """
+        mock_container_client = MagicMock()
+        mock_container_client.list_blobs.return_value = [
+            self._make_blob("hot_file.csv", blob_tier="Hot"),
+            self._make_blob("archive_file.csv", blob_tier="Archive"),
+        ]
+        self.mock_blob_service_client.get_container_client.return_value = (
+            mock_container_client
+        )
+
+        result = list(
+            self.client.get_table_names(
+                bucket_name="container", prefix=None, skip_cold_storage=False
+            )
+        )
+
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["hot_file.csv", "archive_file.csv"])
+
+    def test_get_table_names_default_skip_cold_storage_is_false(self):
+        """
+        GIVEN: Blobs with cold tiers
+        WHEN: get_table_names is called without skip_cold_storage
+        THEN: All blobs should be returned (default is False)
+        """
+        mock_container_client = MagicMock()
+        mock_container_client.list_blobs.return_value = [
+            self._make_blob("archive_file.csv", blob_tier="Archive"),
+        ]
+        self.mock_blob_service_client.get_container_client.return_value = (
+            mock_container_client
+        )
+
+        result = list(self.client.get_table_names(bucket_name="container", prefix=None))
+
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["archive_file.csv"])
+
+    def test_get_table_names_skip_cold_filters_each_cold_tier(self):
+        """
+        GIVEN: One blob per cold tier
+        WHEN: get_table_names is called with skip_cold_storage=True
+        THEN: All cold-tier blobs should be filtered out
+        """
+        mock_container_client = MagicMock()
+        blobs = [
+            self._make_blob(f"{tier}.csv", blob_tier=tier) for tier in AZURE_COLD_TIERS
+        ]
+        mock_container_client.list_blobs.return_value = blobs
+        self.mock_blob_service_client.get_container_client.return_value = (
+            mock_container_client
+        )
+
+        result = list(
+            self.client.get_table_names(
+                bucket_name="container", prefix=None, skip_cold_storage=True
+            )
+        )
+
         self.assertEqual(result, [])
 
 

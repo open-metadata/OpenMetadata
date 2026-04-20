@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpCircle, SearchLg } from "@untitledui/icons";
-import type { Meta, StoryObj } from "@storybook/react";
-import { Input } from "../components/base/input/input";
-import { TextArea } from "../components/base/textarea/textarea";
+import { HelpCircle, SearchLg } from '@untitledui/icons';
+import type { Meta, StoryObj } from '@storybook/react';
+import { Input } from '../components/base/input/input';
+import { TextArea } from '../components/base/textarea/textarea';
 
 const meta = {
-  title: "Components/Input",
+  title: 'Components/Input',
   component: Input,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 } satisfies Meta<typeof Input>;
 
 export default meta;
@@ -29,42 +29,49 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    placeholder: "Enter text...",
-    size: "sm",
+    placeholder: 'Enter text...',
+    size: 'sm',
   },
 };
 
 export const WithLabel: Story = {
   args: {
-    label: "Email address",
-    placeholder: "you@example.com",
-    size: "sm",
+    label: 'Email address',
+    placeholder: 'you@example.com',
+    size: 'sm',
   },
 };
 
 export const WithHint: Story = {
   args: {
-    label: "Username",
-    placeholder: "Enter username",
-    hint: "Your username must be 3–20 characters long.",
-    size: "sm",
+    label: 'Username',
+    placeholder: 'Enter username',
+    hint: 'Your username must be 3–20 characters long.',
+    size: 'sm',
   },
 };
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 320 }}>
-      <Input placeholder="Small input" size="sm" label="Small" />
-      <Input placeholder="Medium input" size="md" label="Medium" />
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
+      <Input label="Small" placeholder="Small input" size="sm" />
+      <Input label="Medium" placeholder="Medium input" size="md" />
     </div>
   ),
 };
 
 export const WithLeadingIcon: StoryObj = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 320 }}>
-      <Input label="Search" placeholder="Search..." icon={SearchLg} size="sm" />
-      <Input label="Email" placeholder="you@example.com" icon={HelpCircle} size="md" />
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
+      <Input icon={SearchLg} label="Search" placeholder="Search..." size="sm" />
+      <Input
+        icon={HelpCircle}
+        label="Email"
+        placeholder="you@example.com"
+        size="md"
+      />
     </div>
   ),
 };
@@ -75,8 +82,8 @@ export const WithTooltip: StoryObj = {
       <Input
         label="API Key"
         placeholder="Enter API key"
-        tooltip="Your API key is used to authenticate requests."
         size="sm"
+        tooltip="Your API key is used to authenticate requests."
       />
     </div>
   ),
@@ -86,10 +93,10 @@ export const Invalid: StoryObj = {
   render: () => (
     <div style={{ width: 320 }}>
       <Input
-        label="Email"
-        placeholder="you@example.com"
         isInvalid
         hint="Please enter a valid email address."
+        label="Email"
+        placeholder="you@example.com"
         size="sm"
       />
     </div>
@@ -100,9 +107,9 @@ export const Disabled: StoryObj = {
   render: () => (
     <div style={{ width: 320 }}>
       <Input
+        isDisabled
         label="Disabled Input"
         placeholder="Cannot edit"
-        isDisabled
         size="sm"
       />
     </div>
@@ -113,9 +120,9 @@ export const Required: StoryObj = {
   render: () => (
     <div style={{ width: 320 }}>
       <Input
+        isRequired
         label="Required Field"
         placeholder="This field is required"
-        isRequired
         size="sm"
       />
     </div>
@@ -138,9 +145,9 @@ export const TextAreaWithHint: StoryObj = {
   render: () => (
     <div style={{ width: 380 }}>
       <TextArea
+        hint="Maximum 500 characters"
         label="Bio"
         placeholder="Tell us about yourself"
-        hint="Maximum 500 characters"
         rows={4}
       />
     </div>
@@ -151,10 +158,10 @@ export const TextAreaInvalid: StoryObj = {
   render: () => (
     <div style={{ width: 380 }}>
       <TextArea
-        label="Description"
-        placeholder="Enter description..."
         isInvalid
         hint="This field is required."
+        label="Description"
+        placeholder="Enter description..."
         rows={4}
       />
     </div>

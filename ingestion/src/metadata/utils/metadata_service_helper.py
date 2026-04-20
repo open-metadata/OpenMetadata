@@ -20,7 +20,7 @@ SERVICE_TYPE_MAPPER = {
     "dynamo": {
         "service_name": "DynamoDB",
         "connection": {
-            "config": {"awsConfig": {"awsRegion": "aws_region"}, "type": "DynamoDB"}
+            "config": {"awsConfig": {"awsRegion": "us-east-1"}, "type": "DynamoDB"}
         },
     },
     "mysql": {

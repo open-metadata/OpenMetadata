@@ -21,6 +21,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
+@Deprecated(since = "1.12.0", forRemoval = true)
 public class OpenMetadataAuthenticationProvider implements AuthenticationProvider {
   private final OpenMetadataJWTClientConfig securityConfig;
   private String generatedAuthToken;

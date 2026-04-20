@@ -4,6 +4,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.St
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTask;
@@ -44,6 +46,8 @@ public class NodeFactory {
       case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
       case CHECK_ENTITY_ATTRIBUTES_TASK -> new CheckEntityAttributesTask(
           (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
+      case CHECK_CHANGE_DESCRIPTION_TASK -> new CheckChangeDescriptionTask(
+          (CheckChangeDescriptionTaskDefinition) nodeDefinition, config);
       case SET_ENTITY_ATTRIBUTE_TASK -> new SetEntityAttributeTask(
           (SetEntityAttributeTaskDefinition) nodeDefinition, config);
       case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(

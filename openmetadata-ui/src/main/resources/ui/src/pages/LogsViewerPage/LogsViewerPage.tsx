@@ -16,7 +16,6 @@ import { LazyLog } from '@melloware/react-logviewer';
 import {
   Box,
   Button,
-  CircularProgress,
   Divider,
   IconButton,
   Skeleton,
@@ -37,9 +36,11 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as TimeDateIcon } from '../../assets/svg/time-date.svg';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
@@ -84,6 +85,8 @@ import { LogViewerParams } from './LogsViewerPage.interfaces';
 const LogsViewerPage = () => {
   const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
+  const [searchParams] = useSearchParams();
+  const runId = searchParams.get('runId') ?? undefined;
 
   const { t } = useTranslation();
   const theme = useTheme();
@@ -116,7 +119,7 @@ const LogsViewerPage = () => {
           endTs: currentTime,
         });
 
-        const logs = await getLatestApplicationRuns(ingestionName);
+        const logs = await getLatestApplicationRuns(ingestionName, runId);
         setAppRuns(data);
         setLogs(logs.data_insight_task || logs.application_task);
 
@@ -314,7 +317,7 @@ const LogsViewerPage = () => {
       }.log`;
 
       if (isApplicationType) {
-        const logs = await downloadAppLogs(ingestionName);
+        const logs = await downloadAppLogs(ingestionName, runId);
         fileName = `${ingestionName}.log`;
         const element = document.createElement('a');
         const file = new Blob([logs || ''], { type: 'text/plain' });
@@ -344,6 +347,7 @@ const LogsViewerPage = () => {
     ingestionName,
     isApplicationType,
     reset,
+    runId,
     updateProgress,
   ]);
 
@@ -383,7 +387,7 @@ const LogsViewerPage = () => {
           )}
         />
         <Typography variant="h6">
-          {ingestionDetails?.name ?? appData?.name}
+          {getEntityName(ingestionDetails) || getEntityName(appData)}
         </Typography>
 
         <Stack
@@ -470,7 +474,7 @@ const LogsViewerPage = () => {
                 <Tooltip
                   placement="top"
                   title={t('label.downloading-log-plural')}>
-                  <CircularProgress size={16} />
+                  <Loader size="x-small" />
                 </Tooltip>
               ) : (
                 <IconButton
@@ -520,7 +524,7 @@ const LogsViewerPage = () => {
     } else {
       fetchIngestionDetailsByName();
     }
-  }, []);
+  }, [runId]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.log-viewer')}>

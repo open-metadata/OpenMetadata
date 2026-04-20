@@ -18,6 +18,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
+@Deprecated(since = "1.12.0", forRemoval = true)
 public class OktaSSOConfig {
   /** Okta Client ID for the service application. (Required) */
   @Getter @Setter private String clientId;

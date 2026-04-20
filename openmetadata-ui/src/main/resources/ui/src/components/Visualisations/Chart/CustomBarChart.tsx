@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { useTheme } from '@mui/material';
 import { Col, Row } from 'antd';
 import { useMemo, useState } from 'react';
 import {
@@ -26,6 +25,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { GREY_100, GREY_200 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
@@ -45,7 +45,6 @@ const CustomBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
-  const theme = useTheme();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -117,8 +116,8 @@ const CustomBarChart = ({
             />
           }
           cursor={{
-            fill: theme.palette.grey[100],
-            stroke: theme.palette.grey[200],
+            fill: GREY_100,
+            stroke: GREY_200,
             strokeDasharray: '3 3',
           }}
         />

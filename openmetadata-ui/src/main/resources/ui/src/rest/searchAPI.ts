@@ -257,15 +257,18 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
     sortOrder,
     queryFilter,
   } = payload;
+  const includeDeletedParam =
+    'includeDeleted' in payload ? payload.includeDeleted : false;
 
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
-    '/search/nlq/query',
+    '/hybrid/nlq/search',
     {
       params: {
         q: query,
         index: searchIndex,
         size: pageSize,
         from: (pageNumber - 1) * pageSize,
+        deleted: includeDeletedParam,
         sort_field: sortField,
         sort_order: sortOrder,
         query_filter: JSON.stringify(queryFilter),
@@ -373,6 +376,25 @@ export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
   const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
     '/search/stats/orphan'
   );
+
+  return response.data;
+};
+
+export const exportSearchResultsCsvStream = async (params: {
+  q?: string;
+  index?: string;
+  deleted?: boolean;
+  query_filter?: string;
+  post_filter?: string;
+  sort_field?: string;
+  sort_order?: string;
+  size?: number;
+  from?: number;
+}): Promise<Blob> => {
+  const response = await APIClient.get<Blob>('/search/export', {
+    params,
+    responseType: 'blob',
+  });
 
   return response.data;
 };

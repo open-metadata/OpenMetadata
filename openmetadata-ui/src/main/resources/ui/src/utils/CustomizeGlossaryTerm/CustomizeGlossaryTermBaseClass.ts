@@ -330,14 +330,6 @@ class CustomizeGlossaryTermPageClassBase {
               static: false,
             },
             {
-              h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
-              i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
-              w: 0.5,
-              x: 3,
-              y: 1,
-              static: false,
-            },
-            {
               h: this.detailPageWidgetDefaultHeights.REFERENCES,
               i: GlossaryTermDetailPageWidgetKeys.REFERENCES,
               w: 0.5,
@@ -394,6 +386,14 @@ class CustomizeGlossaryTermPageClassBase {
           w: 2,
           x: 6,
           y: 4,
+          static: false,
+        },
+        {
+          h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
+          i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+          w: 6,
+          x: 0,
+          y: 7,
           static: false,
         },
       ];

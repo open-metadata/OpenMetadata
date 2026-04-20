@@ -16,6 +16,7 @@ from copy import deepcopy
 from functools import partial
 from typing import Optional
 
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.inspection import inspect
@@ -71,7 +72,7 @@ class DatabricksEngineWrapper:
         """Get schemas and cache them"""
         if schema_name is not None:
             with self.engine.connect() as connection:
-                connection.execute(f"USE CATALOG `{self.first_catalog}`")
+                connection.execute(text(f"USE CATALOG `{self.first_catalog}`"))
             self.first_schema = schema_name
             return [schema_name]
         if self.schemas is None:
@@ -98,7 +99,7 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 tables = connection.execute(
-                    f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"
+                    text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`")
                 )
             return tables
         return []
@@ -110,7 +111,7 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 views = connection.execute(
-                    f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"
+                    text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`")
                 )
             return views
         return []
@@ -122,7 +123,7 @@ class DatabricksEngineWrapper:
             self.first_catalog = catalog_name
             return [catalog_name]
         with self.engine.connect() as connection:
-            catalogs = connection.execute(DATABRICKS_GET_CATALOGS).fetchall()
+            catalogs = connection.execute(text(DATABRICKS_GET_CATALOGS)).fetchall()
             for catalog in catalogs:
                 if catalog[0] != "__databricks_internal":
                     self.first_catalog = catalog[0]
@@ -181,7 +182,7 @@ def test_connection(
         """
         try:
             connection = engine.connect()
-            connection.execute(statement).fetchone()
+            connection.execute(text(statement)).fetchone()
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
 

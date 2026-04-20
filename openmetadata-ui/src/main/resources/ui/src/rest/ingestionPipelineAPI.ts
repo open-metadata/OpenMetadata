@@ -154,7 +154,11 @@ export const postKillIngestionPipelineById = (
 
 export const getRunHistoryForPipeline = async (
   fqn: string,
-  params: { startTs: number; endTs: number }
+  params?: {
+    startTs?: number;
+    endTs?: number;
+    limit?: number;
+  }
 ) => {
   const response = await APIClient.get<PagingResponse<PipelineStatus[]>>(
     `/services/ingestionPipelines/${getEncodedFqn(fqn)}/pipelineStatus`,

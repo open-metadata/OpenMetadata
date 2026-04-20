@@ -70,7 +70,7 @@ class ProfilerInterface(Root, ABC):
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
         sampler: SamplerInterface,
-        thread_count: int = 5,
+        thread_count: Optional[int] = None,
         timeout_seconds: int = 43200,
         **kwargs,
     ):

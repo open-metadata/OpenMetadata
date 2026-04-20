@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import AddIcon from '@mui/icons-material/Add';
 import { Button as MUIButton, useTheme } from '@mui/material';
+import { Plus } from '@untitledui/icons';
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AntTreeNodeProps } from 'antd/lib/tree';
@@ -242,7 +242,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           className: 'load-more-node',
           title: (
             <MUIButton
-              startIcon={isLoadingMore ? null : <AddIcon />}
+              startIcon={isLoadingMore ? null : <Plus />}
               sx={{
                 p: 0,
                 ml: 7,

@@ -8,6 +8,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -61,11 +62,7 @@ public class GoogleAuthValidator {
       FieldError publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
       if (publicKeyCheck != null) return publicKeyCheck;
 
-      FieldError clientIdCheck = validateClientId(authConfig.getClientId());
-      if (clientIdCheck != null) return clientIdCheck;
-
-      // Return null for success (no error)
-      return null;
+      return validateClientId(authConfig.getClientId());
     } catch (Exception e) {
       LOG.error("Google public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -126,16 +123,13 @@ public class GoogleAuthValidator {
         }
       }
 
-      FieldError credentialsCheck =
-          validateGoogleCredentials(
-              oidcConfig.getId(),
-              oidcConfig.getSecret(),
-              oidcConfig.getCallbackUrl(),
-              accessType,
-              prompt,
-              scope);
-      if (credentialsCheck != null) return credentialsCheck;
-      return null;
+      return validateGoogleCredentials(
+          oidcConfig.getId(),
+          oidcConfig.getSecret(),
+          oidcConfig.getCallbackUrl(),
+          accessType,
+          prompt,
+          scope);
     } catch (Exception e) {
       LOG.error("Google confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
@@ -452,11 +446,11 @@ public class GoogleAuthValidator {
           "grant_type=authorization_code"
               + "&code=invalid_authorization_code_for_validation"
               + "&client_id="
-              + java.net.URLEncoder.encode(clientId, "UTF-8")
+              + java.net.URLEncoder.encode(clientId, StandardCharsets.UTF_8)
               + "&client_secret="
-              + java.net.URLEncoder.encode(clientSecret, "UTF-8")
+              + java.net.URLEncoder.encode(clientSecret, StandardCharsets.UTF_8)
               + "&redirect_uri="
-              + java.net.URLEncoder.encode(DEFAULT_REDIRECT_URI, "UTF-8");
+              + java.net.URLEncoder.encode(DEFAULT_REDIRECT_URI, StandardCharsets.UTF_8);
 
       ValidationHttpUtil.HttpResponseData response =
           ValidationHttpUtil.postForm(GOOGLE_TOKEN_URL, formData);

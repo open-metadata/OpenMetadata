@@ -1,88 +1,133 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.rdf;
 
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import org.junit.jupiter.api.BeforeAll;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import java.lang.reflect.Field;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.TestInstance;
-import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.util.RdfTestUtils;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.security.Authorizer;
 
-/**
- * Tests for RDF functionality. These tests verify that entities are properly stored in the RDF
- * knowledge graph when RDF is enabled.
- *
- * <p>This test class extends OpenMetadataApplicationTest to get the test infrastructure (Dropwizard
- * app, test containers) but uses TableResourceTest as a helper for entity creation. It does NOT
- * extend TableResourceTest to avoid inheriting all its tests.
- */
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class RdfResourceTest extends OpenMetadataApplicationTest {
+class RdfResourceTest {
 
-  static {
-    // Enable RDF for these tests
-    runWithRdf = true;
+  private Authorizer authorizer;
+  private SecurityContext securityContext;
+  private RdfResource rdfResource;
+
+  @BeforeEach
+  void setUp() {
+    authorizer = Mockito.mock(Authorizer.class);
+    securityContext = Mockito.mock(SecurityContext.class);
+    doNothing().when(authorizer).authorizeAdmin(securityContext);
+    rdfResource = new RdfResource(authorizer);
   }
 
-  // RDF type for Table entities (from RdfUtils.java)
-  private static final String TABLE_RDF_TYPE = "dcat:Dataset";
-
-  private TableResourceTest tableResourceTest;
-
-  @BeforeAll
-  public void setup(TestInfo test) throws URISyntaxException, IOException {
-    // Initialize the TableResourceTest helper for creating entities
-    tableResourceTest = new TableResourceTest();
-    tableResourceTest.setup(test);
+  private void setRdfRepository(RdfRepository repository) throws Exception {
+    Field field = RdfResource.class.getDeclaredField("rdfRepository");
+    field.setAccessible(true);
+    field.set(rdfResource, repository);
   }
 
   @Test
-  void testEntityStoredInRdf(TestInfo test) throws Exception {
-    // Create a table
-    CreateTable createTable =
-        tableResourceTest.createRequest(test.getDisplayName() + "_rdf_storage");
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+  void exploreEntityGraphRejectsInvalidEntityType() {
+    Response response =
+        rdfResource.exploreEntityGraph(
+            securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", 2, null, null);
 
-    // Verify the entity was stored in RDF as dcat:Dataset
-    RdfTestUtils.verifyEntityInRdf(table, TABLE_RDF_TYPE);
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+    assertTrue(String.valueOf(response.getEntity()).contains("Invalid entity type"));
   }
 
   @Test
-  void testMultipleEntitiesStoredInRdf(TestInfo test) throws Exception {
-    // Create multiple tables
-    CreateTable createTable1 =
-        tableResourceTest.createRequest(test.getDisplayName() + "_rdf_multi1");
-    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+  void getFullLineageRejectsInvalidEntityType() {
+    Response response =
+        rdfResource.getFullLineage(
+            securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", "both");
 
-    CreateTable createTable2 =
-        tableResourceTest.createRequest(test.getDisplayName() + "_rdf_multi2");
-    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
-
-    // Verify both entities are stored in RDF
-    RdfTestUtils.verifyEntityInRdf(table1, TABLE_RDF_TYPE);
-    RdfTestUtils.verifyEntityInRdf(table2, TABLE_RDF_TYPE);
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+    assertTrue(String.valueOf(response.getEntity()).contains("Invalid entity type"));
   }
 
   @Test
-  void testEntityDeleteFromRdf(TestInfo test) throws Exception {
-    // Create a table
-    CreateTable createTable =
-        tableResourceTest.createRequest(test.getDisplayName() + "_rdf_delete");
-    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+  void exportEntityGraphRejectsUnsupportedFormat() {
+    Response response =
+        rdfResource.exportEntityGraph(
+            securityContext, UUID.randomUUID(), "table", 2, null, null, "rdfxml");
 
-    // Verify it's in RDF first
-    RdfTestUtils.verifyEntityInRdf(table, TABLE_RDF_TYPE);
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+  }
 
-    // Hard delete the table (recursive=true, hardDelete=true)
-    tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
+  @Test
+  void exploreEntityGraphClampsDepthToMaximum() throws Exception {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    UUID entityId = UUID.randomUUID();
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getEntityGraph(entityId, "table", 5, Set.of(), Set.of())).thenReturn("{}");
+    setRdfRepository(repository);
 
-    // After hard delete, entity should be removed from RDF
-    RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
+    Response response;
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      response = rdfResource.exploreEntityGraph(securityContext, entityId, "table", 99, null, null);
+    }
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    verify(repository).getEntityGraph(eq(entityId), eq("table"), eq(5), eq(Set.of()), eq(Set.of()));
+  }
+
+  @Test
+  void exportEntityGraphClampsDepthToMaximum() throws Exception {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    UUID entityId = UUID.randomUUID();
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.exportEntityGraph(entityId, "table", 5, Set.of(), Set.of(), "TURTLE"))
+        .thenReturn("@prefix ex: <https://example.org/> .");
+    setRdfRepository(repository);
+
+    Response response;
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      response =
+          rdfResource.exportEntityGraph(
+              securityContext, entityId, "table", 99, null, null, "turtle");
+    }
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    verify(repository)
+        .exportEntityGraph(
+            eq(entityId), eq("table"), eq(5), eq(Set.of()), eq(Set.of()), eq("TURTLE"));
+  }
+
+  @Test
+  void normalizeEntityGraphExportFormatAcceptsAliases() {
+    assertEquals("TURTLE", RdfRepository.normalizeEntityGraphExportFormat("ttl"));
+    assertEquals("TURTLE", RdfRepository.normalizeEntityGraphExportFormat("turtle"));
+    assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("jsonld"));
+    assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("json-ld"));
   }
 }

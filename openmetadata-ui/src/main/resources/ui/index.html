@@ -18,17 +18,15 @@
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta
       name="msapplication-TileImage"
-      content="${basePath}favicons/ms-icon-144x144.png"
-    />
+      content="${basePath}favicons/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="OpenMetadata Application" />
     <meta property="og:title" content="OpenMetadata" />
     <meta property="og:description" content="OpenMetadata Application" />
     <meta
       property="og:image"
-      content="${basePath}favicons/android-icon-192x192.png"
-    />
-    <script>
+      content="${basePath}favicons/android-icon-192x192.png" />
+    <script nonce="${cspNonce}">
       window.BASE_PATH = '${basePath}';
     </script>
 
@@ -36,76 +34,66 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="${basePath}favicons/apple-icon-57x57.png"
-    />
+      href="${basePath}favicons/apple-icon-57x57.png" />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="${basePath}favicons/apple-icon-60x60.png"
-    />
+      href="${basePath}favicons/apple-icon-60x60.png" />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="${basePath}favicons/apple-icon-72x72.png"
-    />
+      href="${basePath}favicons/apple-icon-72x72.png" />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="${basePath}favicons/apple-icon-76x76.png"
-    />
+      href="${basePath}favicons/apple-icon-76x76.png" />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="${basePath}favicons/apple-icon-114x114.png"
-    />
+      href="${basePath}favicons/apple-icon-114x114.png" />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="${basePath}favicons/apple-icon-120x120.png"
-    />
+      href="${basePath}favicons/apple-icon-120x120.png" />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="${basePath}favicons/apple-icon-144x144.png"
-    />
+      href="${basePath}favicons/apple-icon-144x144.png" />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="${basePath}favicons/apple-icon-152x152.png"
-    />
+      href="${basePath}favicons/apple-icon-152x152.png" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="${basePath}favicons/apple-icon-180x180.png"
-    />
+      href="${basePath}favicons/apple-icon-180x180.png" />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="${basePath}favicons/android-icon-192x192.png"
-    />
+      href="${basePath}favicons/android-icon-192x192.png" />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="${basePath}favicons/favicon-32x32.png"
-    />
+      href="${basePath}favicons/favicon-32x32.png" />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="${basePath}favicons/favicon-96x96.png"
-    />
+      href="${basePath}favicons/favicon-96x96.png" />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="${basePath}favicons/favicon-16x16.png"
-    />
+      href="${basePath}favicons/favicon-16x16.png" />
     <link rel="manifest" href="${basePath}manifest.json" />
 
-    <script>
-      let images = ['${basePath}images/governance.png', '${basePath}images/data-collaboration.png'];
+    <script nonce="${cspNonce}">
+      let images = [
+        '${basePath}images/governance.png',
+        '${basePath}images/data-collaboration.png',
+      ];
 
       images.forEach((image) => {
         let img = new Image();
@@ -114,21 +102,21 @@
       });
     </script>
 
-    <script id="google-tag-manager">
+    <script id="google-tag-manager" nonce="${cspNonce}">
       let isSandbox = location.host === 'sandbox.open-metadata.org';
 
       if (isSandbox) {
-        // Google Tag Manager
-        const gtmTagScript = document.createElement('script');
-        gtmTagScript.innerHTML = `
-                    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-                    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-                    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-                    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-                    })(window,document,'script','dataLayer','GTM-554C968W');
-                `;
-        gtmTagScript.id = 'gtm-init';
-        document.head.appendChild(gtmTagScript);
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          'gtm.start': new Date().getTime(),
+          event: 'gtm.js'
+        });
+
+        const gtmScript = document.createElement('script');
+        gtmScript.async = true;
+        gtmScript.setAttribute('nonce', '${cspNonce}');
+        gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-554C968W';
+        document.head.appendChild(gtmScript);
       }
     </script>
 
@@ -137,12 +125,11 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <img 
-      referrerpolicy="no-referrer-when-downgrade" 
-      src="https://static.scarf.sh/a.png?x-pxid=9744b844-501a-4ca1-ad54-29b13e6b4642" 
-      style="display: none;"
-      alt=""
-    />
+    <img
+      referrerpolicy="no-referrer-when-downgrade"
+      src="https://static.scarf.sh/a.png?x-pxid=9744b844-501a-4ca1-ad54-29b13e6b4642"
+      style="display: none"
+      alt="" />
     <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>

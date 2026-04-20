@@ -69,6 +69,11 @@ const MUISelect: FC<MUISelectProps> = ({
           disablePortal: false,
           // Additional props to ensure visibility
           PaperProps: {
+            // data-react-aria-top-layer prevents react-aria from treating
+            // this MUI portal as an "outside click" target, which would
+            // otherwise close any open react-aria overlay (e.g. Dialog,
+            // Popover) the moment the user clicks inside this dropdown.
+            'data-react-aria-top-layer': true,
             style: {
               maxHeight: 300, // Limit dropdown height
             },

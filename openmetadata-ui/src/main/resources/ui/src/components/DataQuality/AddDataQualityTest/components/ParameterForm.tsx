@@ -306,7 +306,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     };
 
     return data.dataType === TestDataType.Boolean ? (
-      <div className="d-flex gap-2 form-switch-container">
+      <div className="d-flex gap-2 items-center form-switch-container">
         <Form.Item {...commonFormItemProps} className="m-b-0">
           {Field}
         </Form.Item>

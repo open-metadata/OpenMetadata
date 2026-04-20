@@ -21,7 +21,10 @@ import {
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import {
+  visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -31,24 +34,20 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-export class TableClass extends EntityClass {
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        scheme: string;
-        username: string;
-        authType: { password: string };
-        hostPort: string;
-        supportsMetadataExtraction: boolean;
-        supportsDBTExtraction: boolean;
-        supportsProfiler: boolean;
-        supportsQueryComment: boolean;
-      };
-    };
+/**
+ * Database service shape used when creating tables in tests. `connection.config` is intentionally
+ * loose so tests can override with MySQL, BigQuery, or other connector configs.
+ */
+export type TableServiceConfig = {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
   };
+};
+
+export class TableClass extends EntityClass {
+  service: TableServiceConfig;
   database: { name: string; service: string };
   schema: { name: string; database: string };
   columnsName: string[];
@@ -78,7 +77,7 @@ export class TableClass extends EntityClass {
   constructor(
     name?: string,
     tableType?: string,
-    service?: Record<string, unknown>
+    service?: Partial<TableServiceConfig>
   ) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
@@ -86,7 +85,7 @@ export class TableClass extends EntityClass {
     this.type = 'Table';
     this.childrenTabId = 'schema';
 
-    const serviceName = name ?? `pw-database-service-${uuid()}`;
+    const serviceName = service?.name ?? `pw-database-service-${uuid()}`;
     const databaseName = `pw-database-${uuid()}`;
     const schemaName = `pw-database-schema-${uuid()}`;
 
@@ -217,7 +216,7 @@ export class TableClass extends EntityClass {
     ];
 
     this.entity = {
-      name: `pw-table-${fullUuid()}`,
+      name: name ?? `pw-table-${fullUuid()}`,
       displayName: `pw table ${fullUuid()}`,
       description: 'description',
       columns: this.children,
@@ -229,22 +228,53 @@ export class TableClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
+    // Create database service with 409 conflict handling for sharded test runs
+    let serviceResponse = await apiContext.post(
       '/api/v1/services/databaseServices',
       {
         data: this.service,
       }
     );
-    const service = await serviceResponse.json();
+
+    let service;
+    if (serviceResponse.status() === 409) {
+      // Service already exists, fetch it by name
+      const serviceName = this.service.name;
+      const getServiceResponse = await apiContext.get(
+        `/api/v1/services/databaseServices/name/${serviceName}`
+      );
+      if (!getServiceResponse.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing service "${serviceName}" (${getServiceResponse.status()}): ${await getServiceResponse.text()}`
+        );
+      }
+      service = await getServiceResponse.json();
+    } else if (!serviceResponse.ok()) {
+      throw new Error(
+        `TableClass: service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
+      );
+    } else {
+      service = await serviceResponse.json();
+    }
 
     const databaseResponse = await apiContext.post('/api/v1/databases', {
       data: { ...this.database, service: service.fullyQualifiedName },
     });
+    if (!databaseResponse.ok()) {
+      throw new Error(
+        `TableClass: database create failed (${databaseResponse.status()}): ${await databaseResponse.text()}`
+      );
+    }
     const database = await databaseResponse.json();
 
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
       data: { ...this.schema, database: database.fullyQualifiedName },
     });
+    if (!schemaResponse.ok()) {
+      throw new Error(
+        `TableClass: schema create failed (${schemaResponse.status()}): ${await schemaResponse.text()}`
+      );
+    }
     const schema = await schemaResponse.json();
 
     const entityResponse = await apiContext.post('/api/v1/tables', {
@@ -253,6 +283,11 @@ export class TableClass extends EntityClass {
         databaseSchema: schema.fullyQualifiedName,
       },
     });
+    if (!entityResponse.ok()) {
+      throw new Error(
+        `TableClass: table create failed (${entityResponse.status()}): ${await entityResponse.text()}`
+      );
+    }
 
     const entity = await entityResponse.json();
 
@@ -319,10 +354,24 @@ export class TableClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page, searchTerm?: string) {
+    const tableFqn = this.entityResponseData.fullyQualifiedName ?? '';
+    const canUseDirectNavigation =
+      !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
+
+    if (canUseDirectNavigation && tableFqn.length > 0) {
+      const tableResponse = page.waitForResponse(
+        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
+      );
+      await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+      await tableResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      return;
+    }
+
     await visitEntityPage({
       page,
-      searchTerm:
-        searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
+      searchTerm: searchTerm ?? tableFqn,
       dataTestId: `${
         this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
@@ -422,7 +471,7 @@ export class TableClass extends EntityClass {
     const testCase = await apiContext
       .post('/api/v1/dataQuality/testCases', {
         data: {
-          name: `pw%test$case#${uuid()}`,
+          name: `pw_test_case_${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.fullyQualifiedName}>`,
           testDefinition: 'tableRowCountToBeBetween',
           parameterValues: [
@@ -461,12 +510,20 @@ export class TableClass extends EntityClass {
   async patch({
     apiContext,
     patchData,
+    queryParams,
   }: {
     apiContext: APIRequestContext;
     patchData: Operation[];
+    queryParams?: Record<string, string>;
   }) {
+    const fqn = encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    );
+    const queryString = queryParams
+      ? `?${new URLSearchParams(queryParams).toString()}`
+      : '';
     const response = await apiContext.patch(
-      `/api/v1/tables/name/${this.entityResponseData?.fullyQualifiedName}`,
+      `/api/v1/tables/name/${fqn}${queryString}`,
       {
         data: patchData,
         headers: {

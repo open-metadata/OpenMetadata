@@ -161,6 +161,13 @@
       "default": 10000,
       "minimum": 1000,
       "maximum": 50000
+    },
+    "timeSeriesMaxDays": {
+      "title": "Time Series Max Days",
+      "description": "Maximum age in days for time series data during reindexing. Default 0 (index all data). Set to a positive value like 15 to limit to recent data only.",
+      "type": "integer",
+      "default": 0,
+      "minimum": -1
     }
   },
   "additionalProperties": false

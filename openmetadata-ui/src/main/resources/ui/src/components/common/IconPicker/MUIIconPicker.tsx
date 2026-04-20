@@ -207,6 +207,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
         style={{ zIndex: 1300 }}>
         <ClickAwayListener onClickAway={handleClose}>
           <Paper
+            data-react-aria-top-layer
             elevation={0}
             sx={{
               mt: 1,

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -20,13 +21,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 import {
   addAssetsToTag,
   editTagPageDescription,
@@ -42,6 +39,8 @@ import {
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
+
+base.describe.configure({ mode: 'serial' });
 
 const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
@@ -175,34 +174,14 @@ test.describe('Tag Page with Admin Roles', () => {
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
-    await adminPage.locator('button[type="submit"]').click();
+    await adminPage.getByTestId('save-button').click();
     await updateColor;
-
-    await adminPage.waitForLoadState('networkidle');
 
     await expect(adminPage.getByText(tag.data.name)).toBeVisible();
   });
 
   test('Edit Tag Description', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-    await tag.visitPage(adminPage);
-
-    await adminPage.getByTestId('edit-description').click();
-
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
-
-    await adminPage.locator(descriptionBox).clear();
-    await adminPage
-      .locator(descriptionBox)
-      .fill(`This is updated test description for tag ${tag.data.name}.`);
-
-    const editDescription = adminPage.waitForResponse(`/api/v1/tags/*`);
-    await adminPage.getByTestId('save').click();
-    await editDescription;
-
-    await expect(adminPage.getByTestId('viewer-container')).toContainText(
-      `This is updated test description for tag ${tag.data.name}.`
-    );
+    await editTagPageDescription(adminPage, tag);
   });
 
   test('Delete a Tag', async ({ adminPage }) => {
@@ -248,16 +227,24 @@ test.describe('Tag Page with Admin Roles', () => {
   });
 
   test('Create tag with domain', async ({ adminPage }) => {
-    await classification.visitPage(adminPage);
-
-    await adminPage.reload();
-    await adminPage.click(`text=${classification.data.displayName}`);
-
-    await expect(adminPage.locator('.activeCategory')).toContainText(
-      classification.data.displayName
+    await redirectToHomePage(adminPage);
+    await adminPage.goto(
+      `/tags/${encodeURIComponent(
+        classification.responseData.fullyQualifiedName ??
+          classification.responseData.name
+      )}`
     );
+    await adminPage
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
 
-    await adminPage.click('[data-testid="add-new-tag-button"]');
+    await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
+
+    await adminPage.getByTestId('add-new-tag-button').click();
 
     await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 
@@ -265,13 +252,30 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse('api/v1/tags');
+    const createTagResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.request().method() === 'POST' &&
+        response.ok()
+    );
 
     await submitForm(adminPage);
 
-    await createTagResponse;
+    const createdTagResponse = await createTagResponse;
+    const createdTagData = await createdTagResponse.json();
 
-    await adminPage.click(`[data-testid=${NEW_TAG.name}]`);
+    await adminPage.goto(
+      `/tag/${encodeURIComponent(
+        createdTagData.fullyQualifiedName ?? NEW_TAG.name
+      )}`
+    );
+    await adminPage
+      .getByTestId('tags-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({
+        state: 'detached',
+      });
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName
@@ -294,7 +298,6 @@ test.describe('Tag Page with Admin Roles', () => {
 
     // Verify in My Data page
     await visitUserProfilePage(adminPage, user1.responseData.name);
-    await adminPage.waitForLoadState('networkidle');
 
     const myDataRes = adminPage.waitForResponse(
       `/api/v1/search/query?q=*&index=all&*`
@@ -322,74 +325,132 @@ test.describe('Tag Page with Admin Roles', () => {
   test('Verify tag enable/disable toggle', async ({ adminPage }) => {
     await classification1.visitPage(adminPage);
 
-    // Verify toggle is visible and enabled (tag is enabled by default)
-    const tagToggle = adminPage
-      .getByTestId(`tag-disable-toggle-${tag1.data.name}`)
-      .getByRole('switch');
-
-    await expect(tagToggle).toBeVisible();
-    await expect(tagToggle).toBeChecked();
-
-    // Disable the tag
-    const disableTagResponse = adminPage.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response.url().includes('/api/v1/tags/')
+    const tagToggle = adminPage.getByTestId(
+      `tag-disable-toggle-${tag1.data.name}`
     );
-    await tagToggle.click();
-    await disableTagResponse;
 
-    // Verify tag is now disabled
-    await expect(tagToggle).not.toBeChecked();
+    // Verify initial state using role locator separately
+    const switchInput = tagToggle.getByRole('switch');
 
-    // Re-enable the tag
-    const enableTagResponse = adminPage.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response.url().includes('/api/v1/tags/')
-    );
-    await tagToggle.click();
-    await enableTagResponse;
+    await expect(switchInput).toBeVisible();
+    await expect(switchInput).toBeChecked();
 
-    // Verify tag is enabled again
-    await expect(tagToggle).toBeChecked();
+    // Disable
+    await Promise.all([
+      adminPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response.url().includes('/api/v1/tags/')
+      ),
+      tagToggle.click(), // <-- click wrapper, NOT hidden input
+    ]);
+
+    await expect(switchInput).not.toBeChecked();
+
+    // Enable
+    await Promise.all([
+      adminPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response.url().includes('/api/v1/tags/')
+      ),
+      tagToggle.click(),
+    ]);
+
+    await expect(switchInput).toBeChecked();
   });
 
   test('Tag toggle should be disabled when classification is disabled', async ({
     adminPage,
   }) => {
-    await classification.visitPage(adminPage);
+    const tagToggleTestId = `tag-disable-toggle-${tag1.data.name}`;
+
+    const openClassification = async () => {
+      await redirectToHomePage(adminPage);
+      await sidebarClick(adminPage, SidebarItem.TAGS);
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
+
+      const classificationEntry = adminPage
+        .locator('[data-testid="side-panel-classification"]')
+        .getByText(classification1.responseData.displayName, {
+          exact: true,
+        })
+        .first();
+      await expect(classificationEntry).toBeVisible({ timeout: 30000 });
+      await classificationEntry.click();
+      await expect(adminPage.locator('.activeCategory')).toContainText(
+        classification1.responseData.displayName
+      );
+    };
+
+    await openClassification();
 
     const tagToggle = adminPage
-      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByTestId(tagToggleTestId)
       .getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
+    await expect(tagToggle).toBeVisible({ timeout: 60000 });
     await expect(tagToggle).toBeEnabled();
 
-    // Disable the classification
-    await adminPage.click('[data-testid="manage-button"]');
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    try {
+      await apiContext.patch(
+        `/api/v1/classifications/${classification1.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/disabled',
+              value: true,
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    const disableClassificationResponse = adminPage.waitForResponse(
-      '/api/v1/classifications/*'
-    );
-    await adminPage.click('[data-testid="enable-disable-title"]');
-    await disableClassificationResponse;
+      await adminPage.reload();
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
+      await expect(tagToggle).toBeVisible({ timeout: 60000 });
+      await expect(tagToggle).toBeDisabled();
 
-    // Verify toggle is now disabled
-    await expect(tagToggle).toBeDisabled();
+      await apiContext.patch(
+        `/api/v1/classifications/${classification1.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/disabled',
+              value: false,
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    // Re-enable the classification
-    await adminPage.click('[data-testid="manage-button"]');
-
-    const enableClassificationResponse = adminPage.waitForResponse(
-      '/api/v1/classifications/*'
-    );
-    await adminPage.click('[data-testid="enable-disable-title"]');
-    await enableClassificationResponse;
-
-    // Verify toggle is enabled again
-    await expect(tagToggle).toBeEnabled();
+      await adminPage.reload();
+      await adminPage
+        .locator(
+          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
+        )
+        .waitFor({ state: 'detached' });
+      await expect(tagToggle).toBeVisible({ timeout: 60000 });
+      await expect(tagToggle).toBeEnabled();
+    } finally {
+      await afterAction();
+    }
   });
 });
 

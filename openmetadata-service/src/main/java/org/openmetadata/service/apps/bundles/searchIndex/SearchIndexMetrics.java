@@ -15,9 +15,13 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.SearchRepository;
 
 /**
@@ -40,10 +44,12 @@ public class SearchIndexMetrics {
       int currentShards,
       int maxShards,
       double shardUsagePercent,
+      int missingIndices,
+      int expectedIndices,
       long lastUpdated) {
 
     public static IndexStats empty() {
-      return new IndexStats(0, 0, 0, 0, 0, 0.0, 0);
+      return new IndexStats(0, 0, 0, 0, 0, 0.0, 0, 0, 0);
     }
   }
 
@@ -78,6 +84,14 @@ public class SearchIndexMetrics {
         .description("Shard usage as a percentage (0-100)")
         .register(meterRegistry);
 
+    Gauge.builder(METRIC_PREFIX + "missing_count", () -> cachedStats.get().missingIndices())
+        .description("Expected indices not found in the search cluster")
+        .register(meterRegistry);
+
+    Gauge.builder(METRIC_PREFIX + "expected_count", () -> cachedStats.get().expectedIndices())
+        .description("Total expected indices from entity index mappings")
+        .register(meterRegistry);
+
     LOG.info("Search index metrics registered with Prometheus");
   }
 
@@ -86,6 +100,10 @@ public class SearchIndexMetrics {
       int totalIndices = countTotalIndices();
       int rebuildIndices = countRebuildIndices();
       int orphanedIndices = countOrphanedIndices();
+
+      Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
+      int expectedIndices = indexMap.size();
+      int missingIndices = countMissingIndices(indexMap);
 
       SearchIndexClusterValidator validator = new SearchIndexClusterValidator();
       SearchIndexClusterValidator.ClusterCapacity capacity =
@@ -99,17 +117,21 @@ public class SearchIndexMetrics {
               capacity.currentShards(),
               capacity.maxShards(),
               capacity.usagePercent() * 100,
+              missingIndices,
+              expectedIndices,
               System.currentTimeMillis());
 
       cachedStats.set(stats);
 
       LOG.debug(
-          "Search index metrics refreshed: total={}, rebuild={}, orphaned={}, shards={}/{}",
+          "Search index metrics refreshed: total={}, rebuild={}, orphaned={}, shards={}/{}, missing={}, expected={}",
           totalIndices,
           rebuildIndices,
           orphanedIndices,
           capacity.currentShards(),
-          capacity.maxShards());
+          capacity.maxShards(),
+          missingIndices,
+          expectedIndices);
     } catch (Exception e) {
       LOG.warn("Failed to refresh search index metrics: {}", e.getMessage());
     }
@@ -127,6 +149,19 @@ public class SearchIndexMetrics {
       LOG.warn("Failed to count total indices: {}", e.getMessage());
       return 0;
     }
+  }
+
+  private int countMissingIndices(Map<String, IndexMapping> indexMap) {
+    List<String> missingNames = new ArrayList<>();
+    for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
+      if (!searchRepository.indexExists(entry.getValue())) {
+        missingNames.add(entry.getKey());
+      }
+    }
+    if (!missingNames.isEmpty()) {
+      LOG.warn("Missing search indices (expected but not found): {}", missingNames);
+    }
+    return missingNames.size();
   }
 
   private int countRebuildIndices() {

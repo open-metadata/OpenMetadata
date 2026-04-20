@@ -17,6 +17,7 @@ from time import sleep
 from typing import List, Tuple
 
 import pytest
+from sqlalchemy import text
 
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
@@ -30,6 +31,8 @@ from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
 
+# TODO: Paused due to credential issue - re-enable once credentials are restored
+@pytest.mark.skip(reason="TODO: Paused due to credential issue")
 class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
     Snowflake CLI Tests
@@ -100,14 +103,14 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        with cls.engine.connect() as connection:
+        with cls.engine.begin() as connection:
             for stmt in cls.teardown_sql_statements:
-                connection.execute(stmt)
+                connection.execute(text(stmt))
 
     def setUp(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             for sql_statements in self.prepare_snowflake_e2e:
-                connection.execute(sql_statements)
+                connection.execute(text(sql_statements))
 
     @staticmethod
     def get_connector_name() -> str:
@@ -131,18 +134,16 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
 
     def create_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.create_table_query)
+        with self.engine.begin() as connection:
+            connection.execute(text(self.create_table_query))
             for insert_query in self.insert_data_queries:
-                connection.execute(insert_query)
-            connection.execute(self.create_view_query)
-            connection.close()
+                connection.execute(text(insert_query))
+            connection.execute(text(self.create_view_query))
 
     def delete_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.drop_view_query)
-            connection.execute(self.drop_table_query)
-            connection.close()
+        with self.engine.begin() as connection:
+            connection.execute(text(self.drop_view_query))
+            connection.execute(text(self.drop_table_query))
 
     def delete_table_rows(self) -> None:
         SQACommonMethods.run_delete_queries(self)
@@ -322,17 +323,21 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @classmethod
     def wait_for_query_log(cls, timeout=600):
         start = datetime.now().timestamp()
-        cls.engine.execute("SELECT 'e2e_query_log_wait'")
+        with cls.engine.connect() as conn:
+            conn.execute(text("SELECT 'e2e_query_log_wait'"))
         latest = 0
         while latest < start:
             sleep(5)
-            latest = (
-                cls.engine.execute(
-                    'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
+            with cls.engine.connect() as conn:
+                latest = (
+                    conn.execute(
+                        text(
+                            'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
+                        )
+                    )
+                    .scalar()
+                    .timestamp()
                 )
-                .scalar()
-                .timestamp()
-            )
             if (datetime.now().timestamp() - start) > timeout:
                 raise TimeoutError(f"Query log not updated for {timeout} seconds")
 

@@ -23,6 +23,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.api.openAPISchemaFilePath import (
     OpenAPISchemaFilePath,
 )
+from metadata.generated.schema.entity.services.connections.api.openAPISchemaS3 import (
+    OpenAPISchemaS3,
+)
 from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL import (
     OpenAPISchemaURL,
 )
@@ -38,9 +41,11 @@ from metadata.ingestion.source.api.rest.parser import (
     OpenAPIParseError,
     parse_openapi_schema,
     parse_openapi_schema_from_file,
+    parse_openapi_schema_from_s3,
     validate_openapi_schema,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
 class SchemaURLError(Exception):
@@ -63,13 +68,25 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:
     """
     schema_conn = connection.openAPISchemaConnection
     if isinstance(schema_conn, OpenAPISchemaURL):
+        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
+        verify = verify_ssl_fn(connection.sslConfig)
+        if verify is None:
+            verify = True
+        headers = {}
         if connection.token:
-            headers = {"Authorization": f"Bearer {connection.token.get_secret_value()}"}
-            return requests.get(schema_conn.openAPISchemaURL, headers=headers)
-        return requests.get(schema_conn.openAPISchemaURL)
+            headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
+        return requests.get(
+            schema_conn.openAPISchemaURL, headers=headers, verify=verify
+        )
 
     if isinstance(schema_conn, OpenAPISchemaFilePath):
         return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
+
+    if isinstance(schema_conn, OpenAPISchemaS3):
+        return parse_openapi_schema_from_s3(
+            s3_url=str(schema_conn.openAPISchemaS3URL),
+            aws_credentials=schema_conn.awsCredentials,
+        )
 
     raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
 

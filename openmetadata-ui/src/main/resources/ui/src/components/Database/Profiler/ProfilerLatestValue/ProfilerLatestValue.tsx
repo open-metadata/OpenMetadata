@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Grid, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
 import { getStatisticsDisplayValue } from '../../../../utils/CommonUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
@@ -23,8 +22,6 @@ const ProfilerLatestValue = ({
   stringValue = false,
   extra,
 }: ProfilerLatestValueProps) => {
-  const theme = useTheme();
-
   const getLatestValue = (value?: number | string) => {
     if (isUndefined(value)) {
       return '--';
@@ -38,71 +35,38 @@ const ProfilerLatestValue = ({
   };
 
   return (
-    <Grid
-      container
-      alignItems="center"
-      data-testid="data-summary-container"
-      sx={{
-        backgroundColor: theme.palette.grey[50],
-        borderRadius: '10px',
-        p: '16px 30px',
-      }}>
-      <Grid display="flex" gap={20} size="grow">
+    <div
+      className="tw:flex tw:items-center tw:rounded-[10px] tw:bg-gray-50 tw:px-7.5 tw:py-4"
+      data-testid="data-summary-container">
+      <div className="tw:flex tw:grow tw:gap-20">
         {information.map((info) => (
-          <Box key={info.title}>
-            <Typography
-              className="break-all"
+          <div key={info.title}>
+            <p
+              className="tw:m-0 tw:mb-1 tw:break-all tw:pl-2 tw:text-[11px] tw:font-semibold tw:leading-3 tw:text-secondary"
               data-testid="title"
-              sx={{
-                color: theme.palette.grey[700],
-                fontSize: theme.typography.pxToRem(11),
-                fontWeight: 600,
-                borderLeft: `4px solid ${info.color}`,
-                paddingLeft: '8px',
-                lineHeight: '12px',
-                mb: 1,
-              }}>
+              style={{ borderLeft: `4px solid ${info.color}` }}>
               {info.title}
-            </Typography>
-            <Typography
-              className="break-all"
-              data-testid="value"
-              sx={{
-                color: theme.palette.grey[900],
-                fontSize: theme.typography.pxToRem(17),
-                fontWeight: 700,
-              }}>
+            </p>
+            <p
+              className="tw:m-0 tw:break-all tw:text-[17px] tw:font-bold tw:text-primary"
+              data-testid="value">
               {getLatestValue(info.latestValue)}
-            </Typography>
+            </p>
             {info.extra && (
               <>
-                <Divider
-                  sx={{
-                    my: 2,
-                    borderStyle: 'dashed',
-                    borderColor: theme.palette.allShades.gray[300],
-                  }}
-                />
-                <Typography
-                  className="break-all"
-                  data-testid="extra"
-                  sx={{
-                    color: theme.palette.grey[900],
-                    fontSize: theme.typography.pxToRem(11),
-                  }}>
+                <hr className="tw:my-2 tw:h-px tw:border-0 tw:border-t tw:border-dashed tw:border-border-primary" />
+                <p
+                  className="tw:m-0 tw:break-all tw:text-[11px] tw:text-primary"
+                  data-testid="extra">
                   {info.extra}
-                </Typography>
+                </p>
               </>
             )}
-          </Box>
+          </div>
         ))}
-      </Grid>
-      {extra && (
-        <Grid display="flex" justifyContent="flex-end" size={1}>
-          {extra}
-        </Grid>
-      )}
-    </Grid>
+      </div>
+      {extra && <div className="tw:flex tw:justify-end">{extra}</div>}
+    </div>
   );
 };
 

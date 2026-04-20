@@ -32,8 +32,9 @@ function PlatformInsightsWidget({
   chartsData,
   isLoading,
 }: Readonly<PlatformInsightsWidgetProps>) {
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceTypes }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceTypes;
+  }>();
   const { t } = useTranslation();
 
   const { filteredCharts, filteredChartsData, containerClassName } =

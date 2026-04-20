@@ -15,6 +15,7 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
@@ -84,12 +85,15 @@ class SupersetDBSource(SupersetSourceMixin):
         the required information which is not available in fetch_charts_with_id api
         """
         try:
-            if isinstance(self.service_connection.connection, MysqlConnection):
-                charts = self.engine.execute(FETCH_ALL_CHARTS.replace('"', "`"))
-            else:
-                charts = self.engine.execute(FETCH_ALL_CHARTS)
+            with self.engine.connect() as conn:
+                if isinstance(self.service_connection.connection, MysqlConnection):
+                    charts = conn.execute(
+                        text(FETCH_ALL_CHARTS.replace('"', "`"))
+                    ).all()
+                else:
+                    charts = conn.execute(text(FETCH_ALL_CHARTS)).all()
             for chart in charts:
-                chart_detail = FetchChart(**chart)
+                chart_detail = FetchChart(**dict(chart._mapping))
                 self.all_charts[chart_detail.id] = chart_detail
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -98,8 +102,11 @@ class SupersetDBSource(SupersetSourceMixin):
     def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:
         try:
             if table_id:
-                col_list = self.engine.execute(FETCH_COLUMN, table_id=table_id)
-                return [FetchColumn(**col) for col in col_list]
+                with self.engine.connect() as conn:
+                    col_list = conn.execute(
+                        text(FETCH_COLUMN), {"table_id": table_id}
+                    ).all()
+                return [FetchColumn(**dict(col._mapping)) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -118,9 +125,10 @@ class SupersetDBSource(SupersetSourceMixin):
             if self.source_config.includeDraftDashboard
             else FETCH_PUBLISHED_DASHBOARDS
         )
-        dashboards = self.engine.execute(query)
+        with self.engine.connect() as conn:
+            dashboards = conn.execute(text(query)).all()
         for dashboard in dashboards:
-            yield FetchDashboard(**dashboard)
+            yield FetchDashboard(**dict(dashboard._mapping))
 
     def yield_dashboard(
         self, dashboard_details: FetchDashboard
@@ -185,7 +193,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
 
                     continue
-                chart = CreateChartRequest(
+                chart_request = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
                     description=(
@@ -199,7 +207,8 @@ class SupersetDBSource(SupersetSourceMixin):
                     ),
                     service=self.context.get().dashboard_service,
                 )
-                yield Either(right=chart)
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

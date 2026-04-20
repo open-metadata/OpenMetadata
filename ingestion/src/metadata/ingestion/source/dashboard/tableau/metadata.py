@@ -11,6 +11,7 @@
 """
 Tableau source module
 """
+
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime
@@ -264,7 +265,8 @@ class TableauSource(DashboardServiceSource):
                 ),
                 sql=self._get_datamodel_sql_query(data_model=data_model),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                project=self.get_project_name(dashboard_details=dashboard_details),
+                project=data_model.projectName
+                or self.get_project_name(dashboard_details=dashboard_details),
             )
             yield Either(right=data_model_request)
             self.register_record_datamodel(datamodel_request=data_model_request)
@@ -759,8 +761,8 @@ class TableauSource(DashboardServiceSource):
                             data_model_entity=data_model_entity,
                             db_service_prefix=db_service_prefix,
                         )
-                    else:
-                        # else we'll create lineage only using Embedded Datasources in below format
+                    if datamodel.upstreamTables:
+                        # create lineage using Embedded Datasources in below format
                         # Table<->Embedded Datasource
                         yield from self._get_table_datamodel_lineage(
                             upstream_data_model=datamodel,
@@ -807,7 +809,7 @@ class TableauSource(DashboardServiceSource):
                     f"/{workbook_chart_name.chart_url_name}"
                 )
 
-                chart = CreateChartRequest(
+                chart_request = CreateChartRequest(
                     name=EntityName(chart.id),
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
@@ -822,7 +824,8 @@ class TableauSource(DashboardServiceSource):
                         self.context.get().dashboard_service
                     ),
                 )
-                yield Either(right=chart)
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -1144,12 +1147,20 @@ class TableauSource(DashboardServiceSource):
         datasource_columns = []
         for field in data_source.fields or []:
             try:
+                description = field.description or ""
+                if field.formula:
+                    formula_text = f"**Formula:** `{field.formula}`"
+                    description = (
+                        f"{description}\n\n{formula_text}"
+                        if description
+                        else formula_text
+                    )
                 parsed_fields = {
                     "dataTypeDisplay": "Tableau Field",
                     "dataType": DataType.RECORD,
                     "name": truncate_column_name(field.id),
                     "displayName": field.name if field.name else field.id,
-                    "description": field.description,
+                    "description": description or None,
                 }
                 child_columns = self.get_child_columns(field=field)
                 if child_columns:
@@ -1195,6 +1206,8 @@ class TableauSource(DashboardServiceSource):
         """
         Yield the usage of the dashboard
         """
+        if not self.source_config.includeUsage:
+            return
         try:
             dashboard_fqn = fqn.build(
                 metadata=self.metadata,

@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -68,6 +69,7 @@ import org.openmetadata.sdk.network.RequestOptions;
  * because multiple tests trigger SearchIndexingApplication which is a shared resource.
  */
 @Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class AppsResourceIT {
 
@@ -1067,5 +1069,83 @@ public class AppsResourceIT {
     App finalApp = Apps.getByName(autopilotAppName);
     Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
     assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
+  }
+
+  /** Verify that an enabled app can be installed and a disabled app cannot. */
+  @Test
+  void test_installEnabledAndDisabledApps(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String enabledAppName = ns.prefix("EnabledApp");
+    String disabledAppName = "DisabledTestApp";
+
+    try {
+      CreateAppMarketPlaceDefinitionReq enabledMarketPlace =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(enabledAppName)
+              .withDisplayName("Enabled Test App")
+              .withDescription("An app with default enabled config")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      httpClient.execute(
+          HttpMethod.PUT,
+          "/v1/apps/marketplace",
+          enabledMarketPlace,
+          AppMarketPlaceDefinition.class);
+
+      App installedApp = Apps.install().name(enabledAppName).execute();
+      assertNotNull(installedApp);
+      assertEquals(enabledAppName, installedApp.getName());
+
+      CreateAppMarketPlaceDefinitionReq disabledMarketPlace =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(disabledAppName)
+              .withDisplayName("Disabled Test App")
+              .withDescription("An app with enabled=false in its config")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      httpClient.execute(
+          HttpMethod.PUT,
+          "/v1/apps/marketplace",
+          disabledMarketPlace,
+          AppMarketPlaceDefinition.class);
+
+      Exception installException =
+          assertThrows(
+              Exception.class,
+              () -> Apps.install().name(disabledAppName).execute(),
+              "Disabled app should not be installable");
+      assertTrue(
+          installException.getMessage().contains("NotEnabled"),
+          "Install error should mention NotEnabled: " + installException.getMessage());
+    } finally {
+      try {
+        Apps.uninstall(enabledAppName, true);
+      } catch (Exception ignored) {
+      }
+      try {
+        Apps.uninstall(disabledAppName, true);
+      } catch (Exception ignored) {
+      }
+    }
   }
 }

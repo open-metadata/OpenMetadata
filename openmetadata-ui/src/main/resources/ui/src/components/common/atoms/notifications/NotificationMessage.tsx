@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Box, useTheme } from '@mui/material';
 import { iconRingVariants } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
@@ -22,6 +21,14 @@ import {
 import { VariantType } from 'notistack';
 import React from 'react';
 
+const VARIANT_COLOR_CLASS: Record<VariantType, string> = {
+  success: 'tw:text-success-primary',
+  error: 'tw:text-error-primary',
+  warning: 'tw:text-warning-primary',
+  info: 'tw:text-primary',
+  default: 'tw:text-gray-700',
+};
+
 interface NotificationMessageProps {
   message: string | React.ReactNode;
   variant: VariantType;
@@ -31,8 +38,6 @@ const NotificationMessage: React.FC<NotificationMessageProps> = ({
   message,
   variant,
 }) => {
-  const theme = useTheme();
-
   const getIcon = () => {
     const iconProps = {
       size: 20,
@@ -53,49 +58,21 @@ const NotificationMessage: React.FC<NotificationMessageProps> = ({
     }
   };
 
-  const getIconColor = () => {
-    switch (variant) {
-      case 'success':
-        return (
-          theme.palette.allShades?.success?.[600] || theme.palette.success.main
-        );
-      case 'error':
-        return (
-          theme.palette.allShades?.error?.[600] || theme.palette.error.main
-        );
-      case 'warning':
-        return (
-          theme.palette.allShades?.warning?.[600] || theme.palette.warning.main
-        );
-      case 'info':
-        return theme.palette.allShades?.brand?.[600] || theme.palette.info.main;
-      default:
-        return theme.palette.text.primary;
-    }
-  };
-
   const icon = getIcon();
   if (!icon) {
     return <>{message}</>;
   }
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-      <Box
+    <div className="tw:flex tw:items-center">
+      <div
+        className={`tw:flex tw:items-center tw:justify-center tw:shrink-0 tw:my-0 tw:mr-4.75 tw:ml-1.25 ${VARIANT_COLOR_CLASS[variant]}`}
         data-testid="alert-icon"
-        sx={{
-          ...iconRingVariants.notification,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: getIconColor(),
-          flexShrink: 0,
-          margin: '0 19px 0 5px',
-        }}>
+        style={iconRingVariants.notification as React.CSSProperties}>
         {icon}
-      </Box>
-      <Box sx={{ flex: 1 }}>{message}</Box>
-    </Box>
+      </div>
+      <div className="tw:flex-1">{message}</div>
+    </div>
   );
 };
 

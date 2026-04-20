@@ -74,8 +74,9 @@ const DashboardDetails = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const { tab: activeTab = EntityTabs.DETAILS } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.DETAILS } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
 
   const { entityFqn: decodedDashboardFQN } = useFqn({

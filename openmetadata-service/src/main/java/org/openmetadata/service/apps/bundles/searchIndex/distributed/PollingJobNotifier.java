@@ -70,7 +70,10 @@ public class PollingJobNotifier implements DistributedJobNotifier {
 
     scheduler =
         Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform().name("job-notifier-poll").factory());
+            Thread.ofPlatform()
+                .name(
+                    "reindex-job-notifier-" + serverId.substring(0, Math.min(8, serverId.length())))
+                .factory());
 
     // Schedule with fixed delay of 1 second, but actual polling is controlled by interval logic
     scheduler.scheduleWithFixedDelay(

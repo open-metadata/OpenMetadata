@@ -43,6 +43,8 @@ class MaxLength(StaticMetric):
     Only works for concatenable types
     """
 
+    schema_metric_type = MetricType.maxLength
+
     @classmethod
     def name(cls):
         return MetricType.maxLength.value

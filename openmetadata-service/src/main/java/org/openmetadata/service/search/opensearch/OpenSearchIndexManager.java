@@ -86,14 +86,18 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent)
+              : indexMappingContent;
+
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+                if (transformedContent != null && !transformedContent.isEmpty()) {
                   try {
-                    // Parse the mapping content to get the mappings section
-                    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+                    JsonNode rootNode = JsonUtils.readTree(transformedContent);
                     JsonNode mappingsNode = rootNode.get("mappings");
 
                     if (mappingsNode != null && !mappingsNode.isNull()) {
@@ -479,10 +483,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       response
           .result()
-          .forEach(
-              (index, aliasMetadata) -> {
-                aliases.addAll(aliasMetadata.aliases().keySet());
-              });
+          .forEach((index, aliasMetadata) -> aliases.addAll(aliasMetadata.aliases().keySet()));
 
       LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
     } catch (Exception e) {
@@ -537,23 +538,36 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
-      String pattern = prefix + "*";
+      String pattern = buildScopedPattern(prefix);
       GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
       GetAliasResponse response = client.indices().getAlias(request);
 
       indices.addAll(response.result().keySet());
 
-      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+      LOG.info(
+          "Retrieved {} indices matching pattern '{}' (prefix='{}'): {}",
+          indices.size(),
+          pattern,
+          prefix,
+          indices);
     } catch (Exception e) {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
   }
 
+  private String buildScopedPattern(String prefix) {
+    if (prefix != null && !prefix.isEmpty()) {
+      return prefix + "*";
+    }
+    return clusterAlias.isEmpty() ? "*" : clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
+  }
+
   @Override
   public List<IndexStats> getAllIndexStats() throws IOException {
     List<IndexStats> result = new ArrayList<>();
-    var statsResponse = client.indices().stats(s -> s.index("*"));
+    String statsPattern = buildScopedPattern(null);
+    var statsResponse = client.indices().stats(s -> s.index(statsPattern));
     var indices = statsResponse.indices();
     for (var entry : indices.entrySet()) {
       String indexName = entry.getKey();

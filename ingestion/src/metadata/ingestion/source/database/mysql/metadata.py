@@ -12,6 +12,7 @@
 import traceback
 from typing import Iterable, Optional, cast
 
+from sqlalchemy import text
 from sqlalchemy.dialects.mysql.base import ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 from sqlalchemy.engine.reflection import Inspector
@@ -80,11 +81,14 @@ class MysqlSource(CommonDbSourceService):
     def get_stored_procedures(self) -> Iterable[MysqlRoutine]:
         """List stored procedures and functions"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                MYSQL_GET_ROUTINES.format(
-                    schema_name=self.context.get().database_schema
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        MYSQL_GET_ROUTINES.format(
+                            schema_name=self.context.get().database_schema
+                        )
+                    )
+                ).all()
             for row in results:
                 try:
                     stored_procedure = MysqlRoutine.model_validate(

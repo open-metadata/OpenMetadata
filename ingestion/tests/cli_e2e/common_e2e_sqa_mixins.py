@@ -16,27 +16,23 @@ Add Common E2E Sqlalchemy Mixins
 
 class SQACommonMethods:
     def create_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.create_table_query)
+        with self.engine.begin() as connection:
+            connection.exec_driver_sql(self.create_table_query)
             for insert_query in self.insert_data_queries:
-                connection.execute(insert_query)
-            connection.execute(self.create_view_query)
-            connection.close()
+                connection.exec_driver_sql(insert_query)
+            connection.exec_driver_sql(self.create_view_query)
 
     def delete_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.drop_view_query)
-            connection.execute(self.drop_table_query)
-            connection.close()
+        with self.engine.begin() as connection:
+            connection.exec_driver_sql(self.drop_view_query)
+            connection.exec_driver_sql(self.drop_table_query)
 
     def run_update_queries(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             for update_query in self.update_queries():
-                connection.execute(update_query)
-            connection.close()
+                connection.exec_driver_sql(update_query)
 
     def run_delete_queries(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             for drop_query in self.delete_queries():
-                connection.execute(drop_query)
-            connection.close()
+                connection.exec_driver_sql(drop_query)

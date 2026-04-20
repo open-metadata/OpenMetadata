@@ -29,6 +29,7 @@ from metadata.sdk.entities import (
     Pipelines,
     Queries,
     SearchIndexes,
+    StorageServices,
     StoredProcedures,
     Tables,
     Tags,
@@ -183,6 +184,7 @@ mlmodels = MLModels  # pylint: disable=invalid-name
 pipelines = Pipelines  # pylint: disable=invalid-name
 queries = Queries  # pylint: disable=invalid-name
 search_indexes = SearchIndexes  # pylint: disable=invalid-name
+storage_services = StorageServices  # pylint: disable=invalid-name
 stored_procedures = StoredProcedures  # pylint: disable=invalid-name
 tables = Tables  # pylint: disable=invalid-name
 tags = Tags  # pylint: disable=invalid-name
@@ -243,6 +245,8 @@ __all__ = [
     "queries",
     "SearchIndexes",
     "search_indexes",
+    "StorageServices",
+    "storage_services",
     "StoredProcedures",
     "stored_procedures",
     "Tables",

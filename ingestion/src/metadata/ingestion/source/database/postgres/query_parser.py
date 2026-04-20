@@ -15,6 +15,7 @@ import traceback
 from abc import ABC
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from sqlalchemy.engine.base import Engine
 
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
@@ -88,7 +89,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     self.engine: Engine = get_connection(self.service_connection)
                     yield from self.process_table_query()
                 else:
-                    results = self.engine.execute(POSTGRES_GET_DATABASE)
+                    with self.engine.connect() as conn:
+                        results = conn.execute(text(POSTGRES_GET_DATABASE)).all()
                     for res in results:
                         row = list(res)
                         logger.info(f"Ingesting from database: {row[0]}")

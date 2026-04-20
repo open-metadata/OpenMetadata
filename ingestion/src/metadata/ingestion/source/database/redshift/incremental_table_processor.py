@@ -14,9 +14,10 @@ Incremental Processor for Redshift
 """
 import re
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple
 
 from sqlalchemy.engine import Connection
+from sqlalchemy.sql import text
 
 from metadata.ingestion.source.database.redshift.models import (
     RedshiftTable,
@@ -32,6 +33,11 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Pre-built translation table for _clean_statement.
+# Computed once at import time; str.translate() performs a single C-level pass
+# instead of four chained str.replace() calls that each create an intermediate
+# string object.  None as a value deletes the character.
+_CLEAN_TABLE: dict = str.maketrans({"\n": " ", "\t": " ", "\v": " ", '"': None})
 
 # ---- Regex Definitions
 TABLE_NAME_RE = r"(\w+\.){0,2}\w+"
@@ -51,30 +57,53 @@ DROP_VIEW = rf"^.*DROP\s+(EXTERNAL\s+|MATERIALIZED\s+)?VIEW\s+(IF\s+EXISTS\s+)?(
 # Not supporting Comment changes on Constraint
 COMMENT = rf"^.*COMMENT\s+ON\s+(TABLE|COLUMN|VIEW)\s+(?P<table>{TABLE_NAME_RE}).*$"
 
+# Named instances so _KW_TO_CANDIDATES can reference them without fragile indexing.
+_ALTER_TABLE_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(ALTER_TABLE, re.IGNORECASE), deleted=False
+)
+_CREATE_TABLE_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(CREATE_TABLE, re.IGNORECASE), deleted=False
+)
+_DROP_TABLE_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(DROP_TABLE, re.IGNORECASE), deleted=True
+)
+_ALTER_VIEW_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(ALTER_VIEW, re.IGNORECASE), deleted=False
+)
+_CREATE_VIEW_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(CREATE_VIEW, re.IGNORECASE), deleted=False
+)
+_DROP_VIEW_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(DROP_VIEW, re.IGNORECASE), deleted=True
+)
+_COMMENT_RE = RedshiftTableChangeQueryRegex(
+    regex=re.compile(COMMENT, re.IGNORECASE), deleted=False
+)
 
 REGEX_LIST = [
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(ALTER_TABLE, re.IGNORECASE), deleted=False
-    ),
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(CREATE_TABLE, re.IGNORECASE), deleted=False
-    ),
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(DROP_TABLE, re.IGNORECASE), deleted=True
-    ),
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(ALTER_VIEW, re.IGNORECASE), deleted=False
-    ),
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(CREATE_VIEW, re.IGNORECASE), deleted=False
-    ),
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(DROP_VIEW, re.IGNORECASE), deleted=True
-    ),
-    RedshiftTableChangeQueryRegex(
-        regex=re.compile(COMMENT, re.IGNORECASE), deleted=False
-    ),
+    _ALTER_TABLE_RE,
+    _CREATE_TABLE_RE,
+    _DROP_TABLE_RE,
+    _ALTER_VIEW_RE,
+    _CREATE_VIEW_RE,
+    _DROP_VIEW_RE,
+    _COMMENT_RE,
 ]
+
+# Keyword pre-filter: extracts the first DDL keyword from a statement in one
+# search call, then dispatches only to the 1-2 candidate patterns for that
+# keyword.  Reduces worst-case regex attempts from 7 to 2 (e.g. ALTER →
+# ALTER_TABLE or ALTER_VIEW).  Python's re module uses a backtracking engine
+# (not Thompson NFA), so alternation in a combined pattern does not give a
+# single-pass; keyword dispatch achieves the same reduction more predictably.
+_FIRST_KW_RE = re.compile(r"\b(ALTER|CREATE|DROP|COMMENT)\b", re.IGNORECASE)
+
+_KW_TO_CANDIDATES: Dict[str, List[RedshiftTableChangeQueryRegex]] = {
+    "ALTER": [_ALTER_TABLE_RE, _ALTER_VIEW_RE],
+    "CREATE": [_CREATE_TABLE_RE, _CREATE_VIEW_RE],
+    "DROP": [_DROP_TABLE_RE, _DROP_VIEW_RE],
+    "COMMENT": [_COMMENT_RE],
+}
 
 
 class RedshiftIncrementalTableProcessor:
@@ -113,8 +142,10 @@ class RedshiftIncrementalTableProcessor:
         """Queries the Redshift database for the Table Changes."""
         for row in (
             self.connection.execute(
-                self.table_changes_query.format(
-                    database=database, start_date=start_date
+                text(
+                    self.table_changes_query.format(
+                        database=database, start_date=start_date
+                    )
                 )
             )
             or []
@@ -122,13 +153,14 @@ class RedshiftIncrementalTableProcessor:
             yield row[0]
 
     def _clean_statement(self, statement: str) -> str:
-        """Gets rid of unwanted characters"""
-        return (
-            statement.replace("\n", " ")
-            .replace("\t", " ")
-            .replace("\v", " ")
-            .replace('"', "")
-        )  # Removes '"' to make the Regex Match easier.
+        """Normalise whitespace and strip double-quotes for regex matching.
+
+        Uses a module-level str.translate() table built once at import time.
+        A single C-level pass replaces \\n/\\t/\\v with spaces and deletes
+        double-quote characters — equivalent to four chained str.replace()
+        calls but without the intermediate string allocations.
+        """
+        return statement.translate(_CLEAN_TABLE)
 
     def _get_schema_and_table(
         self, full_table_name: str, statement: str
@@ -154,29 +186,42 @@ class RedshiftIncrementalTableProcessor:
         return schema, table_name
 
     def set_table_map(self, database: str, start_date: datetime):
-        """Sets the RedshiftTableMap for the given database, filtering by the given start_date."""
+        """Sets the RedshiftTableMap for the given database, filtering by the given start_date.
+
+        Uses a two-stage matching strategy:
+        1. A fast keyword search (_FIRST_KW_RE) extracts the leading DDL verb
+           (ALTER / CREATE / DROP / COMMENT) in a single pass.
+        2. Only the 1-2 candidate patterns for that verb are then tried, reducing
+           worst-case regex attempts from 7 to 2.
+        Falls back to the full self.regex_list when no keyword is found (edge
+        case: statement has been heavily mangled or starts with an unknown verb).
+        """
         for statement in self._query_for_changes(database, start_date):
             statement = self._clean_statement(statement)
+
+            kw_match = _FIRST_KW_RE.search(statement)
+            if kw_match:
+                candidates = _KW_TO_CANDIDATES.get(
+                    kw_match.group(1).upper(), self.regex_list
+                )
+            else:
+                candidates = self.regex_list
+
             match_found = False
-
-            for possible_match in self.regex_list:
+            for possible_match in candidates:
                 match = possible_match.regex.match(statement)
-
                 if not match:
                     continue
 
-                else:
-                    match_found = True
-                    schema, table_name = self._get_schema_and_table(
-                        match.group("table"), statement
-                    )
-                    deleted = possible_match.deleted
-
-                    self.table_map.update(
-                        schema, RedshiftTable(name=table_name, deleted=deleted)
-                    )
-
-                    break
+                match_found = True
+                schema, table_name = self._get_schema_and_table(
+                    match.group("table"), statement
+                )
+                self.table_map.update(
+                    schema,
+                    RedshiftTable(name=table_name, deleted=possible_match.deleted),
+                )
+                break
 
             if not match_found:
                 logger.debug("Match not found for %s", statement)
@@ -187,6 +232,6 @@ class RedshiftIncrementalTableProcessor:
         """Returns the deleted table names present in the table_map for a given schema."""
         return self.table_map.get_deleted(schema_name)
 
-    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:
         """Returns the not deleted table names present in the table_map for a given schema."""
         return self.table_map.get_not_deleted(schema_name)

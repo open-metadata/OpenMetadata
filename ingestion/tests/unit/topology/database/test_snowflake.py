@@ -14,7 +14,7 @@ snowflake unit tests
 """
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
@@ -508,9 +508,15 @@ class SnowflakeUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
     )
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels"
+    )
     @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
     def test_schema_tag_inheritance(
-        self, mock_get_tag_label, mock_parent_get_tag_labels
+        self,
+        mock_get_tag_label,
+        mock_parent_get_schema_tag_labels,
+        mock_parent_get_tag_labels,
     ):
         """Test schema tag inheritance"""
         for source in self.sources.values():
@@ -520,9 +526,13 @@ class SnowflakeUnitTest(TestCase):
                     SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_schema_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value = mock_schema_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(
+                return_value=mock_conn
+            )
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             source.set_schema_tags_map("TEST_DATABASE")
             self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
@@ -538,6 +548,7 @@ class SnowflakeUnitTest(TestCase):
                 state=State.Suggested,
                 source=TagSource.Classification,
             )
+            mock_parent_get_schema_tag_labels.return_value = None
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertIsNotNone(schema_labels)
@@ -559,6 +570,154 @@ class SnowflakeUnitTest(TestCase):
             tag_fqns = [tag.tagFQN.root for tag in table_labels]
             self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
             self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
+
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
+    )
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels"
+    )
+    @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
+    def test_database_tag_inheritance(
+        self,
+        mock_get_tag_label,
+        mock_parent_get_schema_tag_labels,
+        mock_parent_get_tag_labels,
+    ):
+        """Test database tag inheritance to schemas and tables"""
+        for source in self.sources.values():
+            # Setup mock database tags
+            mock_database_tags = [
+                Mock(
+                    DATABASE_NAME="TEST_DATABASE",
+                    TAG_NAME="DATABASE_TAG",
+                    TAG_VALUE="DB_VALUE",
+                ),
+            ]
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value = mock_database_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(
+                return_value=mock_conn
+            )
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+            # Test set_database_tags_map
+            source.set_database_tags_map("TEST_DATABASE")
+            self.assertEqual(len(source.database_tags_map["TEST_DATABASE"]), 1)
+            self.assertEqual(
+                source.database_tags_map["TEST_DATABASE"][0],
+                {"tag_name": "DATABASE_TAG", "tag_value": "DB_VALUE"},
+            )
+
+            # Setup schema tags for combined testing
+            source.schema_tags_map = {
+                "TEST_SCHEMA": [{"tag_name": "SCHEMA_TAG", "tag_value": "SCHEMA_VALUE"}]
+            }
+
+            # Mock tag label creation
+            def mock_tag_label_side_effect(metadata, tag_name, classification_name):
+                return TagLabel(
+                    tagFQN=f"{classification_name}.{tag_name}",
+                    labelType=LabelType.Automated,
+                    state=State.Suggested,
+                    source=TagSource.Classification,
+                )
+
+            mock_get_tag_label.side_effect = mock_tag_label_side_effect
+            mock_parent_get_schema_tag_labels.return_value = None
+
+            # Test schema inherits database tags
+            source.context.get().__dict__["database"] = "TEST_DATABASE"
+            schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
+            self.assertIsNotNone(schema_labels)
+            self.assertEqual(len(schema_labels), 2)
+            tag_fqns = [tag.tagFQN.root for tag in schema_labels]
+            self.assertIn("SCHEMA_TAG.SCHEMA_VALUE", tag_fqns)
+            self.assertIn("DATABASE_TAG.DB_VALUE", tag_fqns)
+
+            # Test table inherits both schema and database tags
+            source.context.get().__dict__["database_schema"] = "TEST_SCHEMA"
+            mock_parent_get_tag_labels.return_value = [
+                TagLabel(
+                    tagFQN="TABLE_TAG.TABLE_VALUE",
+                    labelType=LabelType.Automated,
+                    state=State.Suggested,
+                    source=TagSource.Classification,
+                )
+            ]
+
+            table_labels = source.get_tag_labels(table_name="TEST_TABLE")
+            self.assertEqual(len(table_labels), 3)
+            tag_fqns = [tag.tagFQN.root for tag in table_labels]
+            self.assertIn("TABLE_TAG.TABLE_VALUE", tag_fqns)
+            self.assertIn("SCHEMA_TAG.SCHEMA_VALUE", tag_fqns)
+            self.assertIn("DATABASE_TAG.DB_VALUE", tag_fqns)
+
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
+    )
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_schema_tag_labels"
+    )
+    @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
+    def test_tag_value_precedence(
+        self,
+        mock_get_tag_label,
+        mock_parent_get_schema_tag_labels,
+        mock_parent_get_tag_labels,
+    ):
+        """Test that tag values at lower levels take precedence over inherited values.
+
+        When database, schema, and table all have the same tag name (classification)
+        but different values, the object's own value should take precedence.
+        """
+        for source in self.sources.values():
+            # Setup: Database, schema, and table all have ENV tag with different values
+            # Database: ENV=dev
+            # Schema: ENV=staging
+            # Table: ENV=production
+
+            source.database_tags_map = {
+                "TEST_DATABASE": [{"tag_name": "ENV", "tag_value": "dev"}]
+            }
+
+            source.schema_tags_map = {
+                "TEST_SCHEMA": [{"tag_name": "ENV", "tag_value": "staging"}]
+            }
+
+            def mock_tag_label_side_effect(metadata, tag_name, classification_name):
+                return TagLabel(
+                    tagFQN=f"{classification_name}.{tag_name}",
+                    labelType=LabelType.Automated,
+                    state=State.Suggested,
+                    source=TagSource.Classification,
+                )
+
+            mock_get_tag_label.side_effect = mock_tag_label_side_effect
+            mock_parent_get_schema_tag_labels.return_value = None
+
+            source.context.get().__dict__["database"] = "TEST_DATABASE"
+            source.context.get().__dict__["database_schema"] = "TEST_SCHEMA"
+
+            # Test schema level: schema's own value takes precedence over database
+            schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
+            self.assertEqual(len(schema_labels), 1)
+            self.assertEqual(schema_labels[0].tagFQN.root, "ENV.staging")
+
+            # Test table level: table's own value takes precedence over schema and database
+            mock_parent_get_tag_labels.return_value = [
+                TagLabel(
+                    tagFQN="ENV.production",
+                    labelType=LabelType.Automated,
+                    state=State.Suggested,
+                    source=TagSource.Classification,
+                )
+            ]
+
+            table_labels = source.get_tag_labels(table_name="TEST_TABLE")
+            self.assertEqual(len(table_labels), 1)
+            self.assertEqual(table_labels[0].tagFQN.root, "ENV.production")
 
     def test_table_names_full_query_generation(self):
         """Test complete SQL query generation for full extraction with different parameters"""
@@ -583,7 +742,7 @@ class SnowflakeUnitTest(TestCase):
         )
 
         call_args = mock_connection.execute.call_args
-        executed_query_case1 = call_args[0][0]
+        executed_query_case1 = str(call_args[0][0])
 
         self.assertIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case1)
         self.assertNotIn("TABLE_TYPE != 'VIEW'", executed_query_case1)
@@ -601,7 +760,7 @@ class SnowflakeUnitTest(TestCase):
         )
 
         call_args = mock_connection.execute.call_args
-        executed_query_case2 = call_args[0][0]
+        executed_query_case2 = str(call_args[0][0])
 
         self.assertIn("TABLE_TYPE != 'VIEW'", executed_query_case2)
         self.assertNotIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case2)
@@ -619,11 +778,12 @@ class SnowflakeUnitTest(TestCase):
         source.context.get().__dict__["database"] = "test_db"
         source.context.get().__dict__["database_schema"] = "test_schema"
 
-        mock_engine = Mock()
+        mock_engine = MagicMock()
         source.engine = mock_engine
 
-        # Mock rows - fields aliased in SnowflakeStoredProcedure
-        row1 = {
+        # Mock rows as objects with _asdict() to mimic SQLAlchemy Row
+        row1 = MagicMock()
+        row1._asdict.return_value = {
             "NAME": "sp_include",
             "OWNER": "owner",
             "LANGUAGE": "SQL",
@@ -632,7 +792,8 @@ class SnowflakeUnitTest(TestCase):
             "COMMENT": "comment",
             "PROCEDURE_TYPE": "PROCEDURE",
         }
-        row2 = {
+        row2 = MagicMock()
+        row2._asdict.return_value = {
             "NAME": "sp_exclude",
             "OWNER": "owner",
             "LANGUAGE": "SQL",
@@ -642,7 +803,10 @@ class SnowflakeUnitTest(TestCase):
             "PROCEDURE_TYPE": "PROCEDURE",
         }
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = [row1, row2]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(source.get_stored_procedures())
 
@@ -674,9 +838,13 @@ class SnowflakeUnitTest(TestCase):
                     TAG_VALUE="123",
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_schema_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value = mock_schema_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(
+                return_value=mock_conn
+            )
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             source.set_schema_tags_map("TEST_DATABASE")
             # Only the tag with a value should be stored

@@ -286,7 +286,7 @@ public class MigrationUtil {
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
+      LOG.warn("Chart {} exists, Exception Message: {}", chartName, ex.getMessage());
     }
   }
 
@@ -326,7 +326,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"))));
+                            "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_pii",

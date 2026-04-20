@@ -18,6 +18,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -30,6 +31,12 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await testUser.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -37,12 +44,11 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('Should show online users under Settings > Members > Online Users for admins', async ({
     page,
   }) => {
+    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await onlineUsersRes;
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
     // Verify we're on the Online Users page
     await expect(
@@ -67,18 +73,11 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")
-    const timeWindowText = page.getByText('Time window:');
-
-    await expect(timeWindowText).toBeVisible();
-
-    // The dropdown component should be visible (it's an Ant Design Select, not a native select)
-    const timeFilterDropdown = page
-      .locator('.ant-select')
-      .filter({ hasText: /Last \d+ hours/ });
-
-    await expect(timeFilterDropdown).toBeVisible();
+    await expect(page.getByText('Time window:')).toBeVisible();
 
     // Current selection should show "Last 24 hours" by default
+    const timeFilterDropdown = page.getByTestId('time-window-select');
+
     await expect(timeFilterDropdown).toContainText('Last 24 hours');
   });
 
@@ -87,32 +86,41 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     // First, navigate around to generate activity
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
-    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
+    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await onlineUsersRes;
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
-    // Admin user should appear in the online users list
+    await expect(page.getByTestId('online-users-table')).toBeVisible();
+
+    // Admin user should appear in the online users list with recent activity
     const adminLink = page.locator('a').filter({ hasText: 'admin' }).first();
 
     await expect(adminLink).toBeVisible();
 
-    // Check that admin user shows as "Online now" since we just navigated
+    // Check that admin user shows recent activity since we just navigated
     const adminRow = page.locator('tr').filter({ has: adminLink });
+    const activityCell = adminRow.locator('td:nth-child(3)');
 
-    await expect(adminRow.getByText('Online now')).toBeVisible();
+    await expect(activityCell).toHaveText(
+      /(Online now|\d+\s+(seconds?|minutes?)\s+ago)/
+    );
   });
 
   test('Should not show bots in online users list', async ({ page }) => {
+    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await onlineUsersRes;
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('online-users-table')).toBeVisible();
 
     // Verify bot users are not shown (ingestion-bot should not be visible)
     const tableRows = page.locator('tbody tr');
@@ -127,17 +135,13 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Should filter users by time window', async ({ page }) => {
+    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await onlineUsersRes;
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
 
-    // Find the time filter dropdown by looking for the one that contains "Last"
-    const timeFilterDropdown = page
-      .getByTestId('time-window-select')
-      .filter({ hasText: /Last \d+ hours|Last hour|Last \d+ days|All time/ });
+    const timeFilterDropdown = page.getByTestId('time-window-select');
 
     // Verify default filter is "Last 24 hours"
     await expect(timeFilterDropdown).toContainText('Last 24 hours');
@@ -145,50 +149,58 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Click on the time filter dropdown
     await timeFilterDropdown.click();
 
-    // Verify dropdown options are visible
-    const dropdownOptions = page.locator('.ant-select-dropdown:visible');
+    // Wait for dropdown to fully render
+    await page.locator('.ant-select-dropdown:visible').waitFor({
+      state: 'visible',
+    });
 
-    await expect(dropdownOptions.getByText('Last 5 minutes')).toBeVisible();
-    await expect(dropdownOptions.getByText('Last hour')).toBeVisible();
-    await expect(dropdownOptions.getByText('Last 24 hours')).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown:visible [title="Last 5 minutes"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown:visible [title="Last hour"]')
+    ).toBeVisible();
+    await expect(
+      page.locator('.ant-select-dropdown:visible [title="Last 24 hours"]')
+    ).toBeVisible();
 
     const onlineRes = page.waitForResponse(
       '/api/v1/users/online?timeWindow=60&*'
     );
 
     // Select a different time window
-    await dropdownOptions.getByText('Last hour').click();
+    await page
+      .locator('.ant-select-dropdown:visible [title="Last hour"]')
+      .click();
     await onlineRes;
 
     // Verify the filter has changed
     await expect(timeFilterDropdown).toContainText('Last hour');
 
     // The table should exist (with or without data)
-    await expect(page.locator('.ant-table')).toBeVisible();
+    await expect(page.getByTestId('online-users-table')).toBeVisible();
   });
 
   test('Non-admin users should not see Online Users page', async ({
     dataConsumerPage,
   }) => {
-    // Use the existing dataConsumer auth
     await redirectToHomePage(dataConsumerPage);
     await sidebarClick(dataConsumerPage, SidebarItem.SETTINGS);
 
     await dataConsumerPage.getByTestId('members').click();
-    await dataConsumerPage.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(dataConsumerPage);
 
     await expect(
       dataConsumerPage.getByTestId('members.online-users')
-    ).not.toBeVisible();
+    ).toBeHidden();
   });
 
   test('Should show correct last activity format', async ({ page }) => {
+    const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-    await page.waitForLoadState('networkidle');
+    await onlineUsersRes;
 
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(page);
     // Check various time formats in the Last Activity column
     const activityCells = page.locator('tbody tr td:nth-child(3)');
     const count = await activityCells.count();
@@ -221,7 +233,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // 1 step - go to explore page using new user
       await sidebarClick(userPage, SidebarItem.EXPLORE);
-      await userPage.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(userPage);
 
       await userPage.close();
     });
@@ -231,22 +243,17 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // 2 step - go to online user page and check that user display name should present
       await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
-      await page.waitForLoadState('networkidle');
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       // Search for the user to ensure it is visible in the list
       const searchResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*&index=*&from=0&size=*'
+        '/api/v1/search/query?q=*&index=user&from=0&size=*'
       );
       await page.getByTestId('searchbar').fill(displayName);
       await searchResponse;
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByRole('cell', { name: displayName }).first()

@@ -1,0 +1,64 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.test-suite-details-domain-owner-section {
+  .domain-link-container {
+    background-color: @white;
+    border-color: @grey-200;
+  }
+
+  .owner-pills-content {
+    background-color: @white;
+    border-color: @grey-200;
+  }
+}
+
+.test-suite-details-tabs {
+  [role='tablist'] {
+    display: flex;
+    width: 100%;
+    position: relative;
+    min-height: @size-2xl;
+    flex-shrink: 0;
+    background-color: @white;
+    border: 1px solid @grey-200;
+    border-radius: @size-sm;
+    padding: 0;
+    margin-bottom: @size-sm;
+  }
+
+  [role='tab'] {
+    min-height: @size-2xl;
+    padding: 6px @size-sm;
+    font-size: @font-size-base;
+    font-weight: @font-semibold;
+    text-transform: none;
+    color: @grey-500;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+
+    &:hover {
+      color: @primary-color;
+    }
+
+    &[aria-selected='true'] {
+      color: @primary-color;
+      border-bottom-color: @primary-color;
+    }
+  }
+
+  [role='tabpanel'] {
+    outline: none;
+  }
+}

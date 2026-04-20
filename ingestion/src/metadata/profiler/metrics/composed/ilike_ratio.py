@@ -28,6 +28,8 @@ class ILikeRatio(ComposedMetric):
     compute the ILIKE ratio
     """
 
+    schema_metric_type = MetricType.iLikeRatio
+
     @classmethod
     def name(cls):
         return MetricType.iLikeRatio.value

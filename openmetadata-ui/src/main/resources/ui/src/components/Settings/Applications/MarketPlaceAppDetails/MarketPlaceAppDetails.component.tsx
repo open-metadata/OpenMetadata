@@ -55,7 +55,7 @@ const MarketPlaceAppDetails = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
-  const isPreviewApp = useMemo(() => !!appData?.preview, [appData]);
+  const isAppDisabled = useMemo(() => appData?.enabled === false, [appData]);
 
   const loadScreenshot = async (screenshotName: string) => {
     try {
@@ -125,7 +125,7 @@ const MarketPlaceAppDetails = () => {
     if (isInstalled) {
       return t('message.app-already-installed');
     }
-    if (isPreviewApp) {
+    if (isAppDisabled) {
       return (
         <Transi18next
           i18nKey="message.paid-addon-description"
@@ -140,7 +140,7 @@ const MarketPlaceAppDetails = () => {
     }
 
     return '';
-  }, [isInstalled, isPreviewApp, appData?.displayName]);
+  }, [isInstalled, isAppDisabled, appData?.displayName]);
 
   const leftPanel = useMemo(() => {
     return (
@@ -163,14 +163,14 @@ const MarketPlaceAppDetails = () => {
             block
             className="m-t-md"
             data-testid="install-application"
-            disabled={isInstalled || isPreviewApp}
+            disabled={isInstalled || isAppDisabled}
             type="primary"
             onClick={installApp}>
             {t('label.install')}
           </Button>
         </Tooltip>
 
-        {isPreviewApp && (
+        {isAppDisabled && (
           <Alert
             className="m-t-md text-xs d-flex items-start p-xs"
             message={

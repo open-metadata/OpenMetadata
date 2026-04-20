@@ -262,7 +262,13 @@ const MyDataPage = () => {
         className="p-b-lg"
         mainContainerClassName="p-t-0 my-data-page-main-container"
         pageTitle={t('label.my-data')}>
-        <div className="grid-wrapper">
+        {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
+        {/*
+            ReactGridLayout has known issues with RTL layouts, 
+            setting dir="ltr" on the container ensures correct behavior
+            without affecting the overall RTL layout of the page
+        */}
+        <div className="grid-wrapper" dir="ltr">
           <CustomiseLandingPageHeader
             overlappedContainer
             backgroundColor={backgroundColor}

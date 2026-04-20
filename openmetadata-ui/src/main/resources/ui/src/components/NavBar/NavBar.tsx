@@ -128,6 +128,10 @@ const NavBar = () => {
     return pathname.includes(ROUTES.TOUR);
   }, [location.pathname]);
 
+  const isDataMarketplacePage = useMemo(() => {
+    return location.pathname === ROUTES.DATA_MARKETPLACE;
+  }, [location.pathname]);
+
   const fetchOMVersion = async () => {
     try {
       const res = await getVersion();
@@ -442,16 +446,26 @@ const NavBar = () => {
 
   return (
     <>
-      <Header>
+      <Header
+        style={
+          isDataMarketplacePage
+            ? {
+                background: 'transparent',
+                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+                position: 'relative' as const,
+                zIndex: 10,
+              }
+            : undefined
+        }>
         <div className="navbar-container">
-          <div className="flex-center">
+          <div className="flex-center gap-2">
             <Tooltip
               placement="right"
               title={
                 isSidebarCollapsed ? t('label.expand') : t('label.collapse')
               }>
               <Button
-                className="mr-2 w-6 h-6 p-0 flex-center"
+                className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
                 icon={
                   isSidebarCollapsed ? (
@@ -467,7 +481,7 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {!isHomePage && !isTourPage && (
+            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList
@@ -485,7 +499,7 @@ const NavBar = () => {
                   onUpdate={handleDomainChange}>
                   <Button
                     className={classNames(
-                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
                       {
                         'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
                       }

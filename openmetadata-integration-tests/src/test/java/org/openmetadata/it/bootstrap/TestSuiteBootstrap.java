@@ -27,7 +27,9 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -58,9 +60,12 @@ import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
@@ -111,7 +116,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  private static final String DEFAULT_FUSEKI_IMAGE = "stain/jena-fuseki:latest";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -123,6 +128,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   // Database and search configuration (read from system properties)
   private static String databaseType;
   private static String searchType;
+  private static boolean rdfEnabled;
 
   private static JdbcDatabaseContainer<?> DATABASE_CONTAINER;
   private static GenericContainer<?> SEARCH_CONTAINER;
@@ -146,10 +152,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     // Read configuration from system properties
     databaseType = System.getProperty("databaseType", "postgres");
     searchType = System.getProperty("searchType", "elasticsearch");
+    rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
+    LOG.info("RDF enabled: {}", rdfEnabled);
     boolean k8sEnabled = isK8sTestsRequested();
     LOG.info("K8s tests enabled: {}", k8sEnabled);
     long startTime = System.currentTimeMillis();
@@ -157,7 +165,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     try {
       startDatabase();
       startSearch();
-      startFuseki();
+      if (rdfEnabled) {
+        startFuseki();
+      }
       if (k8sEnabled) {
         startK3s();
       }
@@ -167,7 +177,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("=== TestSuiteBootstrap: Infrastructure started in {}ms ===", duration);
       LOG.info("Database ({}): {}", databaseType, DATABASE_CONTAINER.getJdbcUrl());
       LOG.info("Search ({}): {}:{}", searchType, searchHost, searchPort);
-      LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      if (rdfEnabled) {
+        LOG.info("Fuseki SPARQL: {}", fusekiEndpoint);
+      }
       if (k8sEnabled) {
         LOG.info("K3s Kubernetes: enabled");
       }
@@ -329,13 +341,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void startFuseki() {
+    String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
     FUSEKI_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
+        new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
             .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -390,7 +402,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
-  private static boolean isK8sTestsRequested() {
+  public static boolean isK8sTestsRequested() {
     return "true".equalsIgnoreCase(System.getProperty("ENABLE_K8S_TESTS"))
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
   }
@@ -422,7 +434,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         projectRoot + "/bootstrap/sql/migrations/flyway/" + DATABASE_CONTAINER.getDriverClassName();
     String nativeMigrationScriptsLocation = projectRoot + "/bootstrap/sql/migrations/native/";
 
-    config.setElasticSearchConfiguration(getSearchConfig());
+    config.setElasticSearchConfiguration(getBaseSearchConfig());
 
     if (config.getMigrationConfiguration() == null) {
       config.setMigrationConfiguration(
@@ -440,7 +452,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     configurePipelineServiceClient(config);
     configureRdf(config);
 
-    IndexMappingLoader.init(getSearchConfig());
+    IndexMappingLoader.init(getBaseSearchConfig());
 
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
 
@@ -475,13 +487,45 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.warn("Seed data load failed: {}", se.getMessage());
     }
 
+    registerMcpServerIfAvailable();
+
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  private void registerMcpServerIfAvailable() {
+    try {
+      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
+      // Reinitialize to pick up apps created by seed data loading.
+      ApplicationContext.reinitialize();
+
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+        LOG.info("McpApplication not found, skipping MCP server registration");
+        return;
+      }
+
+      // registerMCPServer is protected, so we use reflection from the test bootstrap
+      OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
+      java.lang.reflect.Method method =
+          OpenMetadataApplication.class.getDeclaredMethod(
+              "registerMCPServer",
+              OpenMetadataApplicationConfig.class,
+              io.dropwizard.core.setup.Environment.class);
+      method.setAccessible(true);
+      method.invoke(application, APP.getConfiguration(), APP.getEnvironment());
+      LOG.info("MCP server registered successfully");
+    } catch (Exception e) {
+      LOG.info("MCP server registration skipped: {}", e.getMessage());
+    }
   }
 
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
       throws ConfigurationException, IOException {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
-    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    objectMapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -510,7 +554,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             flywayPath,
             config,
             forceMigrations);
-    SearchRepository searchRepository = new SearchRepository(getSearchConfig(), 50);
+    SearchRepository searchRepository = new SearchRepository(getBaseSearchConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
@@ -525,14 +569,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void createIndices() {
-    ElasticSearchConfiguration config = getSearchConfig();
+    ElasticSearchConfiguration config = getBaseSearchConfig();
     SearchRepository searchRepository = SearchRepositoryFactory.createSearchRepository(config, 50);
     Entity.setSearchRepository(searchRepository);
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
+    searchRepository.createOrUpdateIndexTemplates();
   }
 
-  private ElasticSearchConfiguration getSearchConfig() {
+  private ElasticSearchConfiguration getBaseSearchConfig() {
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     ElasticSearchConfiguration.SearchType type =
         "opensearch".equalsIgnoreCase(searchType)
@@ -551,15 +596,35 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
+    return config;
+  }
 
+  /**
+   * Returns a search config with NL search enabled for OpenSearch. Used by tests that need vector
+   * embeddings without affecting the global app configuration.
+   */
+  public static ElasticSearchConfiguration withNaturalLanguageSearch(
+      ElasticSearchConfiguration config) {
+    org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
+        nlSearch =
+            new org.openmetadata.schema.service.configuration.elasticsearch
+                .NaturalLanguageSearchConfiguration();
+    nlSearch.setSemanticSearchEnabled(true);
+    nlSearch.setEnabled(true);
+    nlSearch.setEmbeddingProvider("djl");
+
+    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
+        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
+    djlConfig.setEmbeddingModel(
+        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
+    nlSearch.setDjl(djlConfig);
+    config.setNaturalLanguageSearch(nlSearch);
     return config;
   }
 
   private void configurePipelineServiceClient(OpenMetadataApplicationConfig config) {
-    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
-
     if (kubeConfigYaml != null) {
-      // K3s was started - configure K8s pipeline client
+      PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
       LOG.info("Configuring K8sPipelineClient for pipeline operations");
       pipelineConfig.setEnabled(true);
       pipelineConfig.setClassName(
@@ -574,25 +639,27 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       params.setAdditionalProperty("serviceAccountName", "default");
       params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
       pipelineConfig.setParameters(params);
+      config.setPipelineServiceClientConfiguration(pipelineConfig);
     } else {
-      // No K3s - disable pipeline service client
-      pipelineConfig.setEnabled(false);
       LOG.info("Pipeline service client disabled (K8s not enabled)");
+      config.getPipelineServiceClientConfiguration().setEnabled(false);
     }
-
-    config.setPipelineServiceClientConfiguration(pipelineConfig);
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {
-    LOG.info("Configuring RDF with Fuseki endpoint: {}", fusekiEndpoint);
-
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig == null) {
       rdfConfig = new RdfConfiguration();
       config.setRdfConfiguration(rdfConfig);
     }
 
-    rdfConfig.setEnabled(false);
+    rdfConfig.setEnabled(rdfEnabled);
+    if (!rdfEnabled) {
+      LOG.info("RDF disabled for this test run");
+      return;
+    }
+
+    LOG.info("Configuring RDF with Fuseki endpoint: {}", fusekiEndpoint);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
     rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
     rdfConfig.setRemoteEndpoint(java.net.URI.create(fusekiEndpoint));
@@ -740,6 +807,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory
             .createPipelineServiceClient(pipelineConfig);
 
+    if (APP != null) {
+      APP.getConfiguration().setPipelineServiceClientConfiguration(pipelineConfig);
+    }
+
     // Update the IngestionPipelineRepository with the new client
     // This is necessary because the repository caches the client at startup
     try {
@@ -753,7 +824,40 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       throw new RuntimeException("Failed to configure K8s pipeline client", e);
     }
 
+    refreshIngestionPipelineResource();
+
     LOG.info("K8s pipeline service client configured and ready");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void refreshIngestionPipelineResource() {
+    if (APP == null) {
+      LOG.info("OpenMetadata application is not initialized yet; skipping resource refresh");
+      return;
+    }
+
+    try {
+      Field collectionMapField = CollectionRegistry.class.getDeclaredField("collectionMap");
+      collectionMapField.setAccessible(true);
+
+      Map<String, CollectionRegistry.CollectionDetails> collectionMap =
+          (Map<String, CollectionRegistry.CollectionDetails>)
+              collectionMapField.get(CollectionRegistry.getInstance());
+
+      for (CollectionRegistry.CollectionDetails details : collectionMap.values()) {
+        Object resource = details.getResource();
+        if (resource instanceof IngestionPipelineResource ingestionPipelineResource) {
+          ingestionPipelineResource.initialize(APP.getConfiguration());
+          LOG.info("Refreshed IngestionPipelineResource with K8s pipeline client");
+          return;
+        }
+      }
+
+      LOG.warn("IngestionPipelineResource is not registered; skipping resource refresh");
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to refresh IngestionPipelineResource with K8s pipeline client", e);
+    }
   }
 
   /**
@@ -818,6 +922,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "JDBI is not initialized. Ensure TestSuiteBootstrap has initialized.");
     }
     return jdbi;
+  }
+
+  /**
+   * Returns true if Fuseki was started for this test session.
+   */
+  public static boolean isFusekiEnabled() {
+    return fusekiEndpoint != null;
   }
 
   /**

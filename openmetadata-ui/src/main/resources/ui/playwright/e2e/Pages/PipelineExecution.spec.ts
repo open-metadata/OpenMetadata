@@ -38,7 +38,7 @@ test.describe('Pipeline Execution Tab', () => {
           startTime: now - 3600000,
           endTime: now - 3000000,
         })),
-      }
+      },
     ];
 
     for (const execution of executions) {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
+import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -29,7 +30,7 @@ import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compact, startCase, toString } from 'lodash';
+import { compact, isString, startCase, toString } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
@@ -49,7 +50,6 @@ import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDo
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
-import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
   MUIUserTeamSelectProps,
@@ -59,6 +59,9 @@ import { RichTextEditorProp } from '../components/common/RichTextEditor/RichText
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
+import TagSuggestion, {
+  TagSuggestionProps,
+} from '../components/common/TagSuggestion/TagSuggestion';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -67,7 +70,6 @@ import UserTeamSelectableListSearchInput from '../components/common/UserTeamSele
 import MUIAutocomplete, {
   MUIAutocompleteProps,
 } from '../components/form/MUIAutocomplete';
-import MUISwitch, { MUISwitchProps } from '../components/form/MUISwitch';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -75,8 +77,8 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../interface/FormUtils.interface';
-import TagSuggestion, {
-  TagSuggestionProps,
+import AntDTagSuggestion, {
+  TagSuggestionProps as AntDTagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
@@ -276,21 +278,24 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
-        <TagSuggestion {...(props as unknown as TagSuggestionProps)} newLook />
+        <AntDTagSuggestion
+          {...(props as unknown as AntDTagSuggestionProps)}
+          newLook
+        />
       );
 
       break;
 
-    case FieldTypes.TAG_SUGGESTION_MUI: {
+    case FieldTypes.UT_TAG_SUGGESTION: {
       const isRequired = fieldRules.some(
         (rule) => (rule as RuleObject).required
       );
 
       return (
         <Form.Item {...formProps}>
-          <MUITagSuggestion
+          <TagSuggestion
             {...(props as unknown as TagSuggestionProps)}
-            label={muiLabel}
+            label={typeof label === 'string' ? label : undefined}
             placeholder={placeholder}
             required={isRequired}
           />
@@ -306,7 +311,7 @@ export const getField = (field: FieldProp) => {
       return (
         <Form.Item {...formProps}>
           <MUIGlossaryTagSuggestion
-            {...(props as unknown as TagSuggestionProps)}
+            {...(props as unknown as AntDTagSuggestionProps)}
             label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
@@ -462,12 +467,18 @@ export const getField = (field: FieldProp) => {
       );
     }
 
-    case FieldTypes.SWITCH_MUI: {
+    case FieldTypes.UT_SWITCH: {
+      const { isDisabled, onChange, size, ...switchRest } =
+        props as ToggleProps;
+
       return (
-        <Form.Item {...formProps} valuePropName="checked">
-          <MUISwitch
-            label={muiLabel as string}
-            {...(props as MUISwitchProps)}
+        <Form.Item {...formProps} valuePropName="isSelected">
+          <Toggle
+            isDisabled={isDisabled}
+            label={isString(label) ? label : undefined}
+            size={size}
+            onChange={onChange}
+            {...switchRest}
           />
         </Form.Item>
       );

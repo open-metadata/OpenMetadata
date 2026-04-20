@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { waitForAllLoadersToDisappear } from './entity';
 import { setClassificationDisabled, setTagDisabledByFqn } from './tag';
 
 export { setTagDisabled, setTagDisabledByFqn } from './tag';
@@ -28,15 +29,15 @@ export const openCertificationDropdown = async (page: Page) => {
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
-  await page.waitForSelector('.certification-card-popover', {
+  await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
   });
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const closeCertificationDropdown = async (page: Page) => {
   await page.getByTestId('close-certification').click();
-  await page.waitForSelector('.certification-card-popover', {
+  await page.locator('.certification-card-popover').waitFor({
     state: 'hidden',
   });
 };
@@ -54,4 +55,21 @@ export const setAllSystemCertificationTagsDisabled = async (
   for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
     await setTagDisabledByFqn(apiContext, tagFqn, disabled);
   }
+};
+
+/**
+ * Restores the Certification classification and all system certification tags
+ * (Gold, Silver, Bronze) to an enabled state.
+ *
+ * Disabling a classification can cascade and mark individual tags as
+ * disabled=true at the tag level. Re-enabling the classification alone does NOT
+ * reverse that cascade. This helper must be used instead of
+ * setCertificationClassificationDisabled(false) in any finally/cleanup block to
+ * guarantee a clean state for subsequent tests.
+ */
+export const restoreCertificationState = async (
+  apiContext: APIRequestContext
+) => {
+  await setCertificationClassificationDisabled(apiContext, false);
+  await setAllSystemCertificationTagsDisabled(apiContext, false);
 };

@@ -1,0 +1,23 @@
+{
+  "name": "openmetadata-skills",
+  "version": "2.0.0",
+  "description": "Complete AI development workflow for OpenMetadata — structured planning, TDD, code review, test enforcement (90% coverage), systematic debugging, and connector development. Includes language-specific review agents for Java, Python, and TypeScript.",
+  "author": {
+    "name": "OpenMetadata Project",
+    "url": "https://open-metadata.org"
+  },
+  "repository": "https://github.com/open-metadata/OpenMetadata",
+  "license": "Collate Community License 1.0",
+  "keywords": [
+    "openmetadata",
+    "testing",
+    "tdd",
+    "code-review",
+    "connectors",
+    "playwright",
+    "java",
+    "python",
+    "typescript"
+  ],
+  "hooks": "./hooks/hooks.json"
+}

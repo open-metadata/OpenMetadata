@@ -65,6 +65,10 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   convertSecondsToHumanReadableFormat: jest
     .fn()
     .mockReturnValue('7Y 2M 22d 9m 24s'),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockReturnValue(1709424034000),
+  getEndOfDayInMillis: jest.fn().mockReturnValue(1709510434000),
+  getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
 jest.mock('../../../../utils/TasksUtils', () => ({

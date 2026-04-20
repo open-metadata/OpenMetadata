@@ -61,6 +61,7 @@ const Suggestions = ({
   const [options, setOptions] = useState<Array<Option>>([]);
   const [suggestions, setSuggestions] = useState<SuggestionsObject>({
     tableSuggestions: [],
+    columnSuggestions: [],
     topicSuggestions: [],
     dashboardSuggestions: [],
     pipelineSuggestions: [],
@@ -103,6 +104,7 @@ const Suggestions = ({
     apiEndpointSuggestions,
     apiCollectionSuggestions,
     metricSuggestions,
+    columnSuggestions,
   } = suggestions;
 
   const isMounting = useRef(true);
@@ -110,6 +112,7 @@ const Suggestions = ({
   const updateSuggestions = (options: Array<Option>) => {
     setSuggestions(() => ({
       tableSuggestions: filterOptionsByIndex(options, SearchIndex.TABLE),
+      columnSuggestions: filterOptionsByIndex(options, SearchIndex.COLUMN),
       topicSuggestions: filterOptionsByIndex(options, SearchIndex.TOPIC),
       dashboardSuggestions: filterOptionsByIndex(
         options,
@@ -150,31 +153,25 @@ const Suggestions = ({
       chartSuggestions: filterOptionsByIndex(options, SearchIndex.CHART),
       apiEndpointSuggestions: filterOptionsByIndex(
         options,
-        SearchIndex.API_ENDPOINT_INDEX
+        SearchIndex.API_ENDPOINT
       ),
       apiCollectionSuggestions: filterOptionsByIndex(
         options,
-        SearchIndex.API_COLLECTION_INDEX
+        SearchIndex.API_COLLECTION
       ),
-      metricSuggestions: filterOptionsByIndex(
-        options,
-        SearchIndex.METRIC_SEARCH_INDEX
-      ),
+      metricSuggestions: filterOptionsByIndex(options, SearchIndex.METRIC),
       directorySuggestions: filterOptionsByIndex(
         options,
-        SearchIndex.DIRECTORY_SEARCH_INDEX
+        SearchIndex.DIRECTORY
       ),
-      fileSuggestions: filterOptionsByIndex(
-        options,
-        SearchIndex.FILE_SEARCH_INDEX
-      ),
+      fileSuggestions: filterOptionsByIndex(options, SearchIndex.FILE),
       spreadsheetSuggestions: filterOptionsByIndex(
         options,
-        SearchIndex.SPREADSHEET_SEARCH_INDEX
+        SearchIndex.SPREADSHEET
       ),
       worksheetSuggestions: filterOptionsByIndex(
         options,
-        SearchIndex.WORKSHEET_SEARCH_INDEX
+        SearchIndex.WORKSHEET
       ),
     }));
   };
@@ -186,9 +183,9 @@ const Suggestions = ({
         : location.search
     );
 
-    return !isString(parsedSearch.quickFilter)
-      ? {}
-      : JSON.parse(parsedSearch.quickFilter);
+    return isString(parsedSearch.quickFilter)
+      ? JSON.parse(parsedSearch.quickFilter)
+      : {};
   }, [location.search]);
 
   const getSuggestionsForIndex = (
@@ -217,6 +214,7 @@ const Suggestions = ({
         role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
+          { suggestions: columnSuggestions, searchIndex: SearchIndex.COLUMN },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
           {
             suggestions: dashboardSuggestions,
@@ -266,31 +264,31 @@ const Suggestions = ({
           },
           {
             suggestions: apiCollectionSuggestions,
-            searchIndex: SearchIndex.API_COLLECTION_INDEX,
+            searchIndex: SearchIndex.API_COLLECTION,
           },
           {
             suggestions: apiEndpointSuggestions,
-            searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+            searchIndex: SearchIndex.API_ENDPOINT,
           },
           {
             suggestions: metricSuggestions,
-            searchIndex: SearchIndex.METRIC_SEARCH_INDEX,
+            searchIndex: SearchIndex.METRIC,
           },
           {
             suggestions: suggestions.directorySuggestions,
-            searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+            searchIndex: SearchIndex.DIRECTORY,
           },
           {
             suggestions: suggestions.fileSuggestions,
-            searchIndex: SearchIndex.FILE_SEARCH_INDEX,
+            searchIndex: SearchIndex.FILE,
           },
           {
             suggestions: suggestions.spreadsheetSuggestions,
-            searchIndex: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+            searchIndex: SearchIndex.SPREADSHEET,
           },
           {
             suggestions: suggestions.worksheetSuggestions,
-            searchIndex: SearchIndex.WORKSHEET_SEARCH_INDEX,
+            searchIndex: SearchIndex.WORKSHEET,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>

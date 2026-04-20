@@ -10,13 +10,77 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Column, DataType } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import '../../../../../test/unit/mocks/mui.mock';
 import TabFilters from './TabFilters';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Button = ({
+    children,
+    size,
+    ...props
+  }: PropsWithChildren<Record<string, unknown>>) => (
+    <button data-size={size} {...props}>
+      {children}
+    </button>
+  );
+
+  const DropdownRoot = ({ children }: PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  const DropdownPopover = ({ children }: PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  const DropdownMenu = <T extends { id: string }>({
+    items,
+    children,
+  }: {
+    items: T[];
+    children: (item: T) => ReactNode;
+  }) => (
+    <div>
+      {items.map((item) => (
+        <div key={item.id}>{children(item)}</div>
+      ))}
+    </div>
+  );
+
+  const DropdownItem = ({
+    id,
+    label,
+    onAction,
+  }: {
+    id: string;
+    label: string;
+    onAction?: () => void;
+  }) => (
+    <button data-testid={`dropdown-item-${id}`} onClick={onAction}>
+      {label}
+    </button>
+  );
+
+  const Tooltip = ({ children }: PropsWithChildren) => <>{children}</>;
+
+  const Dropdown = {
+    Root: DropdownRoot,
+    Popover: DropdownPopover,
+    Menu: DropdownMenu,
+    Item: DropdownItem,
+  };
+
+  return {
+    Button,
+    Dropdown,
+    Tooltip,
+  };
+});
 
 const mockNavigate = jest.fn();
 const mockOnSettingButtonClick = jest.fn();
@@ -525,6 +589,52 @@ describe('TabFilters', () => {
       const settingsButton = screen.getByTestId('profiler-setting-btn');
 
       expect(settingsButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Button Props', () => {
+    it('should render add button with color="primary"', () => {
+      renderComponent();
+
+      expect(screen.getByTestId('profiler-add-table-test-btn')).toHaveAttribute(
+        'color',
+        'primary'
+      );
+    });
+
+    it('should render add button with size="sm"', () => {
+      renderComponent();
+
+      expect(screen.getByTestId('profiler-add-table-test-btn')).toHaveAttribute(
+        'data-size',
+        'sm'
+      );
+    });
+
+    it('should render settings button with color="secondary"', () => {
+      renderComponent();
+
+      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
+        'color',
+        'secondary'
+      );
+    });
+
+    it('should render settings button with size="lg"', () => {
+      renderComponent();
+
+      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
+        'data-size',
+        'lg'
+      );
+    });
+
+    it('should call onSettingButtonClick when settings button is clicked', () => {
+      renderComponent();
+
+      fireEvent.click(screen.getByTestId('profiler-setting-btn'));
+
+      expect(mockOnSettingButtonClick).toHaveBeenCalledTimes(1);
     });
   });
 

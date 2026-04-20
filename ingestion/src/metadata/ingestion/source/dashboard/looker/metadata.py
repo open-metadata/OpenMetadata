@@ -97,15 +97,8 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
     SourceUrl,
-    Uuid,
 )
-from metadata.generated.schema.type.entityLineage import (
-    ColumnLineage,
-    EntitiesEdge,
-    LineageDetails,
-)
-from metadata.generated.schema.type.entityLineage import Source as LineageSource
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
@@ -156,7 +149,6 @@ GET_DASHBOARD_FIELDS = [
     "title",
     "dashboard_elements",
     "dashboard_filters",
-    "view_count",
     "description",
     "folder",
     "user_id",  # Use as owner
@@ -217,6 +209,7 @@ class LookerSource(DashboardServiceSource):
         self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None
         self._main_lookml_repos: Optional[List[LookMLRepo]] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
+        self._lookml_constants_map: Dict[str, str] = {}
         self._view_data_model: Optional[DashboardDataModel] = None
 
         self._parsed_views: Optional[Dict[str, str]] = {}
@@ -344,6 +337,14 @@ class LookerSource(DashboardServiceSource):
                 self._main__lookml_manifest = self.__read_manifest(
                     credentials, self._main_lookml_repos[0]
                 )
+                if (
+                    self._main__lookml_manifest
+                    and self._main__lookml_manifest.constants
+                ):
+                    self._lookml_constants_map = {
+                        c["name"]: c.get("value", "")
+                        for c in self._main__lookml_manifest.constants
+                    }
 
     @property
     def parser(self) -> Optional[Dict[str, BulkLkmlParser]]:
@@ -565,6 +566,11 @@ class LookerSource(DashboardServiceSource):
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     project=first_project,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
+                    )
+                    if view.source_file and first_project
+                    else None,
                 )
 
                 yield Either(right=data_model_request)
@@ -668,6 +674,9 @@ class LookerSource(DashboardServiceSource):
                     sql=self._get_explore_sql(model),
                     # In Looker, you need to create Explores and Views within a Project
                     project=model.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/explore/{model.model_name}/{model.name}"
+                    ),
                 )
                 yield Either(right=explore_datamodel)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
@@ -817,6 +826,11 @@ class LookerSource(DashboardServiceSource):
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     # In Looker, you need to create Explores and Views within a Project
                     project=explore.project_name,
+                    sourceUrl=SourceUrl(
+                        f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
+                    )
+                    if view.source_file and explore.project_name
+                    else None,
                 )
                 yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(datamodel_view_name)
@@ -824,12 +838,9 @@ class LookerSource(DashboardServiceSource):
                 self.register_record_datamodel(datamodel_request=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
-                yield Either(
-                    left=StackTraceError(
-                        name=view_name,
-                        error=f"Cannot find the view [{view_name}]: empty",
-                        stackTrace=traceback.format_exc(),
-                    )
+                logger.warning(
+                    f"Cannot find the view [{view_name}] in the configured repositories. "
+                    "It may be defined in an imported project not listed in 'additionalRepositories'."
                 )
 
     def replace_derived_references(self, sql_query):
@@ -1053,7 +1064,8 @@ class LookerSource(DashboardServiceSource):
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
-                sql_table_name = self._render_table_name(view.sql_table_name)
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(
@@ -1078,6 +1090,9 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
+                sql_query = self._resolve_lookml_constants(
+                    sql_query, strip_unresolved=False
+                )
                 if find_derived_references(sql_query):
                     sql_query = self.replace_derived_references(sql_query)
                     if view_references := find_derived_references(sql_query):
@@ -1171,7 +1186,8 @@ class LookerSource(DashboardServiceSource):
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
-                sql_table_name = self._render_table_name(view.sql_table_name)
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(
@@ -1196,6 +1212,9 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
+                sql_query = self._resolve_lookml_constants(
+                    sql_query, strip_unresolved=False
+                )
                 if find_derived_references(sql_query):
                     sql_query = self.replace_derived_references(sql_query)
                     # If we still have derived references, we cannot process the view
@@ -1298,9 +1317,10 @@ class LookerSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.dashboard(
-            dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
-        )
+        fields = GET_DASHBOARD_FIELDS.copy()
+        if self.source_config.includeUsage:
+            fields.append("view_count")
+        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
     def get_owner_ref(
         self, dashboard_details: LookerDashboard
@@ -1393,7 +1413,42 @@ class LookerSource(DashboardServiceSource):
         clean_table_name = table_name.lower().split(" as ")[0].strip()
         if dialect == Dialect.BIGQUERY:
             clean_table_name = clean_table_name.strip("`")
+        elif dialect == Dialect.DATABRICKS:
+            clean_table_name = clean_table_name.replace("`", "").strip()
         return clean_table_name
+
+    def _resolve_lookml_constants(
+        self, text: str, strip_unresolved: bool = True
+    ) -> str:
+        """Replace @{constant_name} references with values from manifest constants.
+        When strip_unresolved=True (default, for sql_table_name), unresolved constants
+        are removed and leftover dots cleaned up so the table name is still usable.
+        When strip_unresolved=False (for derived_table SQL), unresolved constants are
+        left as-is to avoid producing invalid SQL.
+        """
+        if "@{" not in text:
+            return text
+
+        def replace_constant(match):
+            const_name = match.group(1)
+            if strip_unresolved:
+                return self._lookml_constants_map.get(const_name, "")
+            return self._lookml_constants_map.get(const_name, match.group(0))
+
+        # Match LookML constant syntax: @{constant_name} where names are ASCII alphanumeric + underscore
+        resolved = re.sub(r"@\{([a-zA-Z0-9_]+)\}", replace_constant, text)
+
+        if strip_unresolved:
+            # Collapse consecutive dots left after stripping constants (e.g., "a..b" -> "a.b")
+            resolved = re.sub(r"\.{2,}", ".", resolved)
+            # Remove dots immediately after opening backtick (e.g., "`.table" -> "`table")
+            resolved = re.sub(r"(`)\.+", r"\1", resolved)
+            # Remove dots immediately before closing backtick (e.g., "table.`" -> "table`")
+            resolved = re.sub(r"\.+(`)", r"\1", resolved)
+            # Remove any remaining leading/trailing dots
+            resolved = resolved.strip(".")
+
+        return resolved
 
     @staticmethod
     def _render_table_name(table_name: str) -> str:
@@ -1423,21 +1478,24 @@ class LookerSource(DashboardServiceSource):
         return sql_table_name
 
     @staticmethod
-    def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:
+    def get_chart_source_mapping(
+        dashboard_details: LookerDashboard,
+    ) -> Dict[str, Set[str]]:
         """
-        Set explores to build lineage for the processed dashboard
+        Map each chart ID to its set of explore names.
         """
-        dashboard_sources: Set[str] = set()
+        chart_explore_map: Dict[str, Set[str]] = {}
 
         for chart in cast(
             Iterable[DashboardElement], dashboard_details.dashboard_elements
         ):
+            if not chart.id:
+                continue
+            explores: Set[str] = set()
             if chart.query and chart.query.view:
-                dashboard_sources.add(
-                    build_datamodel_name(chart.query.model, chart.query.view)
-                )
+                explores.add(build_datamodel_name(chart.query.model, chart.query.view))
             if chart.look and chart.look.query and chart.look.query.view:
-                dashboard_sources.add(
+                explores.add(
                     build_datamodel_name(chart.look.query.model, chart.look.query.view)
                 )
             if (
@@ -1445,12 +1503,25 @@ class LookerSource(DashboardServiceSource):
                 and chart.result_maker.query
                 and chart.result_maker.query.view
             ):
-                dashboard_sources.add(
+                explores.add(
                     build_datamodel_name(
                         chart.result_maker.query.model, chart.result_maker.query.view
                     )
                 )
+            if explores:
+                chart_explore_map[chart.id] = explores
 
+        return chart_explore_map
+
+    @staticmethod
+    def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:
+        """
+        Set explores to build lineage for the processed dashboard
+        """
+        dashboard_sources: Set[str] = set()
+        chart_explore_map = LookerSource.get_chart_source_mapping(dashboard_details)
+        for explores in chart_explore_map.values():
+            dashboard_sources.update(explores)
         return dashboard_sources
 
     def get_explore(self, explore_name: str) -> Optional[DashboardDataModel]:
@@ -1473,7 +1544,11 @@ class LookerSource(DashboardServiceSource):
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Get lineage between charts and data sources.
+        Get lineage between data models, charts, and dashboards.
+
+        We build:
+        - Explore (DataModel) -> Dashboard lineage
+        - Explore (DataModel) -> Chart lineage
 
         We look at:
         - chart.query
@@ -1482,42 +1557,65 @@ class LookerSource(DashboardServiceSource):
         """
 
         try:
-            source_explore_list = self.get_dashboard_sources(dashboard_details)
-            for explore_name in source_explore_list:
-                cached_explore = self.get_explore(explore_name)
-                if cached_explore:
-                    dashboard_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Dashboard,
-                        service_name=self.context.get().dashboard_service,
-                        dashboard_name=self.context.get().dashboard,
-                    )
-                    dashboard_entity = self.metadata.get_by_name(
-                        entity=Dashboard, fqn=dashboard_fqn
-                    )
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(cached_explore.id.root),
-                                    type="dashboardDataModel",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(dashboard_entity.id.root),
-                                    type="dashboard",
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DashboardLineage
-                                ),
-                            )
+            chart_explore_map = self.get_chart_source_mapping(dashboard_details)
+
+            # Collect all unique explores across all charts
+            all_explores: Set[str] = set()
+            for explores in chart_explore_map.values():
+                all_explores.update(explores)
+
+            # Yield Explore -> Dashboard lineage
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,
+                dashboard_name=self.context.get().dashboard,
+            )
+            dashboard_entity = self.metadata.get_by_name(
+                entity=Dashboard, fqn=dashboard_fqn
+            )
+            if dashboard_entity:
+                for explore_name in all_explores:
+                    cached_explore = self.get_explore(explore_name)
+                    if cached_explore:
+                        yield self._get_add_lineage_request(
+                            from_entity=cached_explore,
+                            to_entity=dashboard_entity,
                         )
+
+            # Yield Explore -> Chart lineage
+            for chart_id, explore_names in chart_explore_map.items():
+                try:
+                    chart_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart_id,
+                    )
+                    chart_entity = self.metadata.get_by_name(
+                        entity=Chart, fqn=chart_fqn
+                    )
+                    if not chart_entity:
+                        continue
+
+                    for explore_name in explore_names:
+                        cached_explore = self.get_explore(explore_name)
+                        if cached_explore:
+                            yield self._get_add_lineage_request(
+                                from_entity=cached_explore,
+                                to_entity=chart_entity,
+                            )
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error yielding chart lineage for chart [{chart_id}]: {err}"
                     )
 
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dashboard_entity.displayName,
-                    error=f"Unexpected exception yielding lineage from [{dashboard_entity.displayName}]: {exc}",
+                    name=dashboard_details.title,
+                    error=f"Unexpected exception yielding lineage from dashboard [{dashboard_details.title}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -1679,16 +1777,16 @@ class LookerSource(DashboardServiceSource):
                     source_url = chart.result_maker.query.share_url
                 else:
                     source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart.id),
-                        displayName=chart.title or chart.id,
-                        description=Markdown(description) if description else None,
-                        chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=SourceUrl(source_url),
-                        service=self.context.get().dashboard_service,
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.id),
+                    displayName=chart.title or chart.id,
+                    description=Markdown(description) if description else None,
+                    chartType=get_standard_chart_type(chart.type).value,
+                    sourceUrl=SourceUrl(source_url),
+                    service=self.context.get().dashboard_service,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
 
             except Exception as exc:
                 yield Either(
@@ -1754,6 +1852,8 @@ class LookerSource(DashboardServiceSource):
         :param dashboard_details: Looker Dashboard
         :return: UsageRequest, if not computed
         """
+        if not self.source_config.includeUsage:
+            return
 
         dashboard_name = self.context.get().dashboard
 

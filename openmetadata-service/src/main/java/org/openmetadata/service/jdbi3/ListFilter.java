@@ -5,10 +5,15 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -19,6 +24,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
+  private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -33,6 +39,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getIncludeCondition(tableName));
     conditions.add(getDatabaseCondition(tableName));
     conditions.add(getDatabaseSchemaCondition(tableName));
+    conditions.add(getTableNameRegexCondition(tableName));
     conditions.add(getServiceCondition(tableName));
     conditions.add(getServiceTypeCondition(tableName));
     conditions.add(getPipelineTypeCondition(tableName));
@@ -64,7 +71,9 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
-    conditions.add(getEntityStatusCondition());
+    conditions.add(getEntityStatusCondition(tableName));
+    conditions.add(getServerIdCondition(tableName));
+    conditions.add(getNameFilterCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -129,16 +138,43 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
-  private String getEntityStatusCondition() {
+  private String getEntityStatusCondition(String tableName) {
     String entityStatus = queryParams.get("entityStatus");
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
       return "";
     }
 
+    Set<String> validStatuses =
+        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+    List<String> statusValues =
+        Arrays.stream(entityStatus.split(","))
+            .map(String::trim)
+            .filter(Predicate.not(String::isEmpty))
+            .filter(validStatuses::contains)
+            .toList();
+
+    if (statusValues.isEmpty()) {
+      return "";
+    }
+
+    List<String> bindParams = new ArrayList<>();
+    for (int i = 0; i < statusValues.size(); i++) {
+      String key = "entityStatus_" + i;
+      queryParams.put(key, statusValues.get(i));
+      bindParams.add(":" + key);
+    }
+    String inCondition = String.join(",", bindParams);
+
+    // glossary_term_entity has indexed entityStatus column, use it directly
+    if (Entity.getCollectionDAO().glossaryTermDAO().getTableName().equals(tableName)) {
+      return String.format("entityStatus IN (%s)", inCondition);
+    }
+
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "json->>'$.entityStatus' = :entityStatus";
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
     } else {
-      return "json->>'entityStatus' = :entityStatus";
+      return String.format("json->>'entityStatus' IN (%s)", inCondition);
     }
   }
 
@@ -216,23 +252,53 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, database, "database");
+    String databaseRegex = queryParams.get("databaseRegex");
+    if (nullOrEmpty(database) && nullOrEmpty(databaseRegex)) {
+      return "";
+    }
+    String hashCondition = "TRUE";
+    String regexCondition = "TRUE";
+    if (!nullOrEmpty(database)) {
+      hashCondition = getFqnPrefixCondition(tableName, database, "database");
+    }
+    if (!nullOrEmpty(databaseRegex)) {
+      regexCondition = getFqnRegexCondition(tableName, databaseRegex, "database");
+    }
+    return String.format("(%s AND %s)", hashCondition, regexCondition);
   }
 
   public String getDatabaseSchemaCondition(String tableName) {
     String databaseSchema = queryParams.get("databaseSchema");
-    if (databaseSchema == null) {
+    String databaseSchemaRegex = queryParams.get("databaseSchemaRegex");
+    if (nullOrEmpty(databaseSchema) && nullOrEmpty(databaseSchemaRegex)) {
       return "";
     }
-
-    if (!nullOrEmpty(tableName)
-        && (tableName.equals("table_entity") || tableName.equals("stored_procedure_entity"))) {
-      String databaseSchemaHash = FullyQualifiedName.buildHash(databaseSchema);
-      queryParams.put("databaseSchemaHashExact", databaseSchemaHash);
-      return String.format("%s.databaseSchemaHash = :databaseSchemaHashExact", tableName);
+    String hashCondition = "TRUE";
+    String regexCondition = "TRUE";
+    if (!nullOrEmpty(databaseSchema)) {
+      if (!nullOrEmpty(tableName)
+          && (tableName.equals("table_entity") || tableName.equals("stored_procedure_entity"))) {
+        String databaseSchemaHash = FullyQualifiedName.buildHash(databaseSchema);
+        queryParams.put("databaseSchemaHashExact", databaseSchemaHash);
+        // Exact hash match — regex is not applied for these entity tables
+        return String.format("%s.databaseSchemaHash = :databaseSchemaHashExact", tableName);
+      }
+      hashCondition = getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
     }
 
-    return getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
+    if (!nullOrEmpty(databaseSchemaRegex)) {
+      regexCondition = getFqnRegexCondition(tableName, databaseSchemaRegex, "databaseSchema");
+    }
+
+    return String.format("(%s AND %s)", hashCondition, regexCondition);
+  }
+
+  public String getTableNameRegexCondition(String tableName) {
+    String tableParamRegex = queryParams.get("tableRegex");
+    if (nullOrEmpty(tableParamRegex)) {
+      return "";
+    }
+    return getFqnRegexCondition(tableName, tableParamRegex, "table");
   }
 
   public String getServiceCondition(String tableName) {
@@ -333,6 +399,13 @@ public class ListFilter extends Filter<ListFilter> {
     return apiCollection == null
         ? ""
         : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
+  }
+
+  private String getServerIdCondition(String tableName) {
+    String serverId = queryParams.get("serverId");
+    return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
+        ? ""
+        : "serverId = :serverId";
   }
 
   private String getEntityFQNHashCondition() {
@@ -476,6 +549,7 @@ public class ListFilter extends Filter<ListFilter> {
     String status = getQueryParam("testCaseStatus");
     String testSuiteId = getQueryParam("testSuiteId");
     String type = getQueryParam("testCaseType");
+    String columnName = getQueryParam("columnName");
 
     if (entityFQN != null) {
       if (includeAllTests) {
@@ -507,6 +581,17 @@ public class ListFilter extends Filter<ListFilter> {
             case "column" -> "entityLink LIKE '%::columns::%'";
             default -> "";
           });
+    }
+
+    if (columnName != null) {
+      queryParams.put("columnName", columnName);
+      String columnNameQuery = null;
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        columnNameQuery = "entityLink LIKE CONCAT('%::columns::', :columnName, '>')";
+      } else {
+        columnNameQuery = "entityLink LIKE '%::columns::' || :columnName || '>'";
+      }
+      conditions.add(columnNameQuery);
     }
 
     return addCondition(conditions);
@@ -560,6 +645,39 @@ public class ListFilter extends Filter<ListFilter> {
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");
+  }
+
+  private String getFqnRegexCondition(String tableName, String regex, String paramName) {
+    String fieldPath = queryParams.get(paramName + "RegexField");
+    if (nullOrEmpty(fieldPath)) {
+      fieldPath = "name";
+    }
+    if (Boolean.parseBoolean(queryParams.get("regexFilterByFqn"))) {
+      int lastDot = fieldPath.lastIndexOf(".name");
+      if (lastDot == -1) {
+        fieldPath = "fullyQualifiedName";
+      } else {
+        fieldPath = fieldPath.substring(0, lastDot) + ".fullyQualifiedName";
+      }
+    }
+    boolean exclude = RegexMode.EXCLUDE.value().equalsIgnoreCase(queryParams.get("regexMode"));
+    queryParams.put(paramName + "Regex", regex);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String expr =
+          tableName == null
+              ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s'))", fieldPath)
+              : String.format("JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.%s'))", tableName, fieldPath);
+      String operator = exclude ? "NOT REGEXP" : "REGEXP";
+      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+    } else {
+      String pgPath = "{" + fieldPath.replace(".", ",") + "}";
+      String expr =
+          tableName == null
+              ? String.format("json #>> '%s'", pgPath)
+              : String.format("%s.json #>> '%s'", tableName, pgPath);
+      String operator = exclude ? "!~" : "~";
+      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+    }
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {
@@ -636,6 +754,22 @@ public class ListFilter extends Filter<ListFilter> {
       }
     }
     return condition.toString();
+  }
+
+  private String getNameFilterCondition() {
+    String nameFilter = queryParams.get("nameFilter");
+    if (nullOrEmpty(nameFilter)) {
+      return "";
+    }
+    String escaped = "%" + escape(nameFilter.trim()) + "%";
+    queryParams.put("nameFilterParam", escaped);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "(LOWER(name) LIKE LOWER(:nameFilterParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:nameFilterParam))";
+    } else {
+      return "(LOWER(name) LIKE LOWER(:nameFilterParam) "
+          + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:nameFilterParam))";
+    }
   }
 
   public static String escapeApostrophe(String name) {

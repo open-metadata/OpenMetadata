@@ -32,6 +32,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.utils.VersionUtils;
 
 @Slf4j
+@Deprecated(since = "1.12.0", forRemoval = true)
 public class OpenMetadata {
   private static final OpenMetadataServerVersion OPENMETADATA_VERSION_CLIENT;
 

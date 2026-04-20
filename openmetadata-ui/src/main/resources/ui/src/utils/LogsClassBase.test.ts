@@ -17,6 +17,13 @@ import { IngestionPipeline } from '../generated/entity/services/ingestionPipelin
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import logsClassBase, { LogsClassBase } from './LogsClassBase';
 
+jest.mock('./EntityUtils', () => ({
+  getEntityName: jest.fn(
+    (e: { displayName?: string; name?: string }) =>
+      e?.displayName || e?.name || ''
+  ),
+}));
+
 jest.mock('./CommonUtils', () => ({
   getNameFromFQN: jest.fn((fqn: string) => {
     const parts = fqn.split('.');
@@ -375,6 +382,44 @@ describe('LogsClassBase', () => {
           url: index !== expectedPath.length - 1 ? `/storage/${path}` : '',
         }))
       );
+    });
+
+    it('should use displayName for OpenMetadata pipeline when ingestionName is pipeline id', () => {
+      const serviceType = 'database';
+      const ingestionName = `${OPEN_METADATA}.a1b2c3d4-5678-90ab-cdef-pipeline-id`;
+      const ingestionDetails = {
+        pipelineType: 'metadata',
+        name: 'technical-pipeline-name',
+        displayName: 'My Pipeline Display Name',
+      } as IngestionPipeline;
+
+      const result = logsClassBase.getLogBreadCrumbs(
+        serviceType,
+        ingestionName,
+        ingestionDetails
+      );
+
+      expect(result[1].name).toBe('My Pipeline Display Name');
+    });
+
+    it('should use displayName for last segment in regular service when ingestionName is pipeline id', () => {
+      const serviceType = 'database';
+      const ingestionName = 'service.database.a1b2c3d4-5678-90ab-cdef';
+      const ingestionDetails = {
+        name: 'pipeline-id',
+        displayName: 'Pipeline Display Name',
+        pipelineType: 'metadata',
+      } as IngestionPipeline;
+
+      const result = logsClassBase.getLogBreadCrumbs(
+        serviceType,
+        ingestionName,
+        ingestionDetails
+      );
+
+      const lastCrumb = result[result.length - 1];
+
+      expect(lastCrumb.name).toBe('Pipeline Display Name');
     });
   });
 });

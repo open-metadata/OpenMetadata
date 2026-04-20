@@ -96,7 +96,9 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
     reviewers: 180,
     actions: 100,
   }),
-  permissionForApproveOrReject: jest.fn().mockReturnValue(false),
+  permissionForApproveOrReject: jest
+    .fn()
+    .mockReturnValue({ permission: false, taskId: '' }),
 }));
 
 jest.mock('../../../utils/EntityStatusUtils', () => ({

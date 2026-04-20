@@ -34,7 +34,6 @@ import org.openmetadata.service.notifications.recipients.strategy.RecipientResol
 
 /**
  * Resolves system administrators.
- *
  * This resolver queries for users with admin role and converts them to recipients
  * with appropriate contact information based on the notification type.
  */

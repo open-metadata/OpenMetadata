@@ -93,8 +93,9 @@ function SpreadsheetDetails({
 }: Readonly<SpreadsheetDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.WORKSHEETS } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.WORKSHEETS } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
   const { fqn: decodedSpreadsheetFQN } = useFqn();
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Spreadsheet);

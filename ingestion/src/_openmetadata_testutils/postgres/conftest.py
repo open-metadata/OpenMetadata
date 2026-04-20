@@ -6,7 +6,7 @@ import zipfile
 from subprocess import CalledProcessError
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from testcontainers.postgres import PostgresContainer
 
 from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
@@ -69,7 +69,11 @@ def postgres_container(tmp_path_factory):
                 returncode=res[0], cmd=res, output=res[1].decode("utf-8")
             )
         engine = create_engine(container.get_connection_url())
-        engine.execute(
-            "ALTER TABLE customer ADD COLUMN json_field JSONB DEFAULT '{}'::JSONB;"
-        )
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE customer ADD COLUMN json_field JSONB DEFAULT '{}'::JSONB;"
+                )
+            )
+            conn.commit()
         yield container

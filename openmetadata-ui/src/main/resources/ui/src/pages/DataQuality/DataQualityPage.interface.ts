@@ -36,6 +36,7 @@ export type DataQualityDashboardChartFilters = {
   ownerFqn?: string;
   tags?: string[];
   tier?: string[];
+  dataProductFqns?: string[];
   startTs?: number;
   endTs?: number;
   entityFQN?: string;
@@ -45,4 +46,5 @@ export type DataQualityDashboardChartFilters = {
   dataQualityDimension?: string;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
+  domainFqn?: string;
 };

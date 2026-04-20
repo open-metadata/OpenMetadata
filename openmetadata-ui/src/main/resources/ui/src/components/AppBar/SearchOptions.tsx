@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -40,41 +40,40 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
     }
   }, [searchText]);
 
-  // alwyas Keep this useEffect at the end...
+  // Always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
   }, []);
 
   return (
-    <>
-      <div className="p-y-sm" role="none">
-        <Link
-          className="link-text d-flex justify-between text-sm"
-          data-testid="InOpenMetadata"
-          to={getExplorePath({ search: searchText })}
-          onClick={() => setIsOpen(false)}>
+    <div role="none">
+      <Link
+        className="link-text d-flex justify-between text-sm"
+        data-testid="InOpenMetadata"
+        to={getExplorePath({ search: searchText })}
+        onClick={() => setIsOpen(false)}>
+        {searchText}
+        <Typography.Text>
+          {t('label.in-open-metadata', {
+            brandName: brandClassBase.getPageTitle(),
+          })}
+        </Typography.Text>
+      </Link>
+      {options.map((option) => (
+        <Button
+          className="d-flex justify-between text-sm w-full p-x-0"
+          data-testid="InPage"
+          key={option}
+          type="text"
+          onClick={() => {
+            selectOption(searchText);
+            setIsOpen(false);
+          }}>
           {searchText}
-          <Typography.Text>
-            {t('label.in-open-metadata', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
-          </Typography.Text>
-        </Link>
-        {options.map((option, index) => (
-          <span
-            className="link-text d-flex justify-between text-sm"
-            data-testid="InPage"
-            key={index}
-            onClick={() => {
-              selectOption(searchText);
-              setIsOpen(false);
-            }}>
-            {searchText}
-            <Typography.Text>{option}</Typography.Text>
-          </span>
-        ))}
-      </div>
-    </>
+          <Typography.Text>{option}</Typography.Text>
+        </Button>
+      ))}
+    </div>
   );
 };
 

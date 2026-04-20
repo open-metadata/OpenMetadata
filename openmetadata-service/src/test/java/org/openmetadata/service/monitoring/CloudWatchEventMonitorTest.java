@@ -14,7 +14,6 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest.DATABASE_METADATA_CONFIG;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -28,6 +27,9 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.FilterPattern;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.monitoring.EventMonitorProvider;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -45,6 +47,17 @@ public class CloudWatchEventMonitorTest {
   private static final String NAMESPACE = "INGESTION_PIPELINE";
   private static final String EXPECTED_NAMESPACE = "openmetadata/INGESTION_PIPELINE";
   private static final String FQN = "service.ingestion";
+
+  private static final SourceConfig DATABASE_METADATA_CONFIG =
+      new SourceConfig()
+          .withConfig(
+              new DatabaseServiceMetadataPipeline()
+                  .withMarkDeletedTables(true)
+                  .withIncludeViews(true)
+                  .withSchemaFilterPattern(
+                      new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
+                  .withTableFilterPattern(
+                      new FilterPattern().withIncludes(List.of("sales.*", "users.*"))));
 
   private static CloudwatchEventMonitor eventMonitor;
 

@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ForkJoinPool;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -42,7 +41,18 @@ public class EventFilter implements ContainerResponseFilter {
   private final List<EventHandler> eventHandlers;
 
   public EventFilter(OpenMetadataApplicationConfig config) {
-    this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
+    this.forkJoinPool =
+        new ForkJoinPool(
+            FORK_JOIN_POOL_PARALLELISM,
+            pool -> {
+              ForkJoinPool.ForkJoinWorkerThreadFactory defaultFactory =
+                  ForkJoinPool.defaultForkJoinWorkerThreadFactory;
+              java.util.concurrent.ForkJoinWorkerThread thread = defaultFactory.newThread(pool);
+              thread.setName("om-event-filter-" + thread.getPoolIndex());
+              return thread;
+            },
+            null,
+            false);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config);
   }
@@ -86,8 +96,7 @@ public class EventFilter implements ContainerResponseFilter {
               if (JwtFilter.EXCLUDED_ENDPOINTS.stream()
                   .noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
                 ParallelStreamUtil.runAsync(
-                    (Callable<Void>) () -> eventHandler.process(requestContext, responseContext),
-                    forkJoinPool);
+                    () -> eventHandler.process(requestContext, responseContext), forkJoinPool);
               }
             });
   }

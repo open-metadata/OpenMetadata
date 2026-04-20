@@ -12,4 +12,4 @@ apiVersion: v3.1.0
 kind: DataContract
 id: missing-status
 name: Missing Status Contract
-version: "1.0.0"
+version: '1.0.0'

@@ -19,6 +19,7 @@ from metadata.generated.schema.api.classification.createClassification import (
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
+    ConflictResolution,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.piiEntity import PIIEntity
@@ -413,7 +414,10 @@ def person_column_name_recognizer() -> Recognizer:
 def pii_classification(
     metadata: OpenMetadata[Classification, CreateClassificationRequest]
 ) -> Classification:
-    create_classification_request = CreateClassificationRequestFactory.create(fqn="PII")
+    create_classification_request = CreateClassificationRequestFactory.create(
+        fqn="PII",
+        autoClassificationConfig__conflictResolution=ConflictResolution.highest_priority.value,
+    )
     entity = metadata.create_or_update(create_classification_request)
 
     return entity
@@ -461,6 +465,7 @@ def sensitive_pii_tag(
     create_tag_request: CreateTagRequest = CreateTagRequestFactory.create(
         tag_name="Sensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
+        autoClassificationPriority=100,
         recognizers=[
             credit_card_recognizer,
             aba_routing_recognizer,
@@ -512,6 +517,7 @@ def non_sensitive_pii_tag(
     create_tag_request: CreateTagRequest = CreateTagRequestFactory.create(
         tag_name="NonSensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
+        autoClassificationPriority=80,
         recognizers=[
             date_recognizer,
             phone_recognizer,

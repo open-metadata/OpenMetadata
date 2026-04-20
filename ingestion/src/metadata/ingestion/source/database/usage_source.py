@@ -125,7 +125,7 @@ class UsageSource(QueryParserSource, ABC):
                         row_count = 0
                         for row in rows:
                             row_count += 1
-                            row = dict(row)
+                            row = row._asdict()
                             try:
                                 row.update({k.lower(): v for k, v in row.items()})
                                 logger.debug(f"Processing row: {row}")

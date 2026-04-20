@@ -25,10 +25,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMaxToBeBetween import (
     BaseColumnValueMaxToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -61,6 +58,7 @@ class ColumnValueMaxToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
@@ -88,11 +86,11 @@ class ColumnValueMaxToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            max_impl = Metrics.MAX(column).get_pandas_computation()
+            max_impl = Metrics.max(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MAX.name: max_impl.create_accumulator(),
+                    Metrics.max.name: max_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -105,9 +103,9 @@ class ColumnValueMaxToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MAX.name
+                        Metrics.max.name
                     ] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MAX.name],
+                        dimension_aggregates[dimension_value][Metrics.max.name],
                         group_df,
                     )
 
@@ -117,7 +115,7 @@ class ColumnValueMaxToBeBetweenValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                max_value = agg[Metrics.MAX.name]
+                max_value = agg[Metrics.max.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 if max_value is None:
@@ -130,14 +128,14 @@ class ColumnValueMaxToBeBetweenValidator(
 
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.MAX.name: max_value})
+                    if checker.violates_pandas({Metrics.max.name: max_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MAX.name: max_value,
+                        Metrics.max.name: max_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -156,33 +154,21 @@ class ColumnValueMaxToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.MAX.name: "max",
+                        Metrics.max.name: "max",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
-                    top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metrics=[Metrics.MAX.name],
+                    top_n=top_n,
+                    violation_metrics=[Metrics.max.name],
                     violation_predicate=checker.violates_pandas,
                 )
 
-                for row_dict in results_df.to_dict("records"):
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

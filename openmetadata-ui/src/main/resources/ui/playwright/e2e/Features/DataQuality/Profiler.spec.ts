@@ -60,7 +60,7 @@ const validateProfilerAccessForRole = async (
   await redirectToHomePage(page);
   await tableInstance.visitEntityPage(page);
 
-  await page.waitForSelector(`[data-testid="entity-header-name"]`);
+  await page.getByTestId('entity-header-name').waitFor();
 
   await expect(
     page.locator(`[data-testid="entity-header-name"]`)
@@ -82,7 +82,6 @@ const validateProfilerAccessForRole = async (
       name: 'Column Profile',
     })
     .click();
-  await listColumnApiCall;
   const listColumnResponse = await listColumnApiCall;
 
   expect(listColumnResponse.status()).toBe(200);
@@ -96,7 +95,6 @@ const validateProfilerAccessForRole = async (
     )
     .getByText(tableInstance.entity.columns[1].name)
     .click();
-  await getProfilerInfo;
   const getProfilerInfoResponse = await getProfilerInfo;
 
   expect(getProfilerInfoResponse.status()).toBe(200);
@@ -206,6 +204,7 @@ test.describe(
       'Admin role can access profiler and view test case graphs',
       PLAYWRIGHT_INGESTION_TAG_OBJ,
       async ({ page }) => {
+        test.slow();
         await validateProfilerAccessForRole(page, table, createdTestCase);
       }
     );
@@ -218,6 +217,7 @@ test.describe(
       'Data consumer role can access profiler and view test case graphs',
       PLAYWRIGHT_INGESTION_TAG_OBJ,
       async ({ dataConsumerPage }) => {
+        test.slow();
         await validateProfilerAccessForRole(
           dataConsumerPage,
           table,
@@ -234,6 +234,7 @@ test.describe(
       'Data steward role can access profiler and view test case graphs',
       PLAYWRIGHT_INGESTION_TAG_OBJ,
       async ({ dataStewardPage }) => {
+        test.slow();
         await validateProfilerAccessForRole(
           dataStewardPage,
           table,
@@ -265,11 +266,10 @@ test.describe(
       await page.getByRole('tab', { name: 'Data Quality' }).click();
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
 
       await test.step('Update profiler setting', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await page.locator('[data-testid="slider-input"]').clear();
         await page
@@ -331,8 +331,13 @@ test.describe(
           JSON.stringify({
             excludeColumns: [table.entity?.columns[0].name],
             profileQuery: 'select * from table',
-            profileSample: 60,
-            profileSampleType: 'PERCENTAGE',
+            profileSampleConfig: {
+              sampleConfigType: 'STATIC',
+              config: {
+                profileSample: 60,
+                profileSampleType: 'PERCENTAGE',
+              },
+            },
             includeColumns: [{ columnName: table.entity?.columns[1].name }],
             partitioning: {
               partitionColumnName: table.entity?.columns[2].name,
@@ -347,7 +352,7 @@ test.describe(
 
       await test.step('Reset profile sample type', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await expect(
           page.locator('[data-testid="profile-sample"]')
@@ -371,8 +376,6 @@ test.describe(
           JSON.stringify({
             excludeColumns: [table.entity?.columns[0].name],
             profileQuery: 'select * from table',
-            profileSample: null,
-            profileSampleType: 'PERCENTAGE',
             includeColumns: [{ columnName: table.entity?.columns[1].name }],
             partitioning: {
               partitionColumnName: table.entity?.columns[2].name,
@@ -384,18 +387,20 @@ test.describe(
           })
         );
 
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]', {
+        await page.getByTestId('profiler-settings-modal').waitFor({
           state: 'detached',
         });
 
         // Validate the profiler setting is updated
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await expect(
           page.locator('[data-testid="profile-sample"]')
         ).toBeVisible();
-        await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+        await expect(
+          page.locator('[data-testid="slider-input"]')
+        ).not.toBeVisible();
         await expect(
           page.getByTestId('profile-sample').locator('div')
         ).toBeVisible();

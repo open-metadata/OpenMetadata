@@ -32,7 +32,7 @@ let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
   developerUrl: 'https://xyz.com',
   privacyPolicyUrl: 'https://xyz.com',
   appScreenshots: ['screenshot1', 'screenshot2'],
-  preview: false,
+  enabled: true,
 });
 
 jest.mock('react-router-dom', () => ({
@@ -143,7 +143,7 @@ describe('MarketPlaceAppDetails component', () => {
       developerUrl: 'https://xyz.com',
       privacyPolicyUrl: 'https://xyz.com',
       appScreenshots: ['screenshot1', 'screenshot2'],
-      preview: true,
+      enabled: false,
     });
 
     render(<MarketPlaceAppDetails />);
