@@ -580,21 +580,13 @@ export interface Pipeline {
     /**
      * List of metrics to compute. If empty, then all metrics will be computed
      */
-    metrics?:          MetricType[];
-    processingEngine?: ProcessingEngine;
-    /**
-     * Percentage of data or no. of rows used to compute the profiler metrics and run data
-     * quality tests
-     *
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
+    metrics?:             MetricType[];
+    processingEngine?:    ProcessingEngine;
+    profileSampleConfig?: ProfileSampleConfig;
     /**
      * Whether to randomize the sample data or not.
      */
-    randomizedSample?:   boolean;
-    samplingMethodType?: SamplingMethodType;
+    randomizedSample?: boolean;
     /**
      * Number of threads to use during metric computations
      */
@@ -771,6 +763,12 @@ export interface Pipeline {
      * Fully qualified name of the entity to be tested, if we're working with a basic suite.
      */
     entityFullyQualifiedName?: string;
+    /**
+     * Percentage of data or no. of rows we want to execute the profiler and tests on
+     */
+    profileSample?:      number;
+    profileSampleType?:  ProfileSampleType;
+    samplingMethodType?: SamplingMethodType;
     /**
      * Service connections to be used for the logical test suite.
      */
@@ -2247,6 +2245,11 @@ export interface DBTConfigurationSource {
      */
     dbtCatalogHttpPath?: string;
     /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
      * DBT manifest http file path to extract dbt models and associate with tables.
      */
     dbtManifestHttpPath?: string;
@@ -2258,6 +2261,15 @@ export interface DBTConfigurationSource {
      * DBT sources http file path to extract freshness test results information.
      */
     dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: DbtSSLConfigClass;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -2289,6 +2301,48 @@ export interface DBTPrefixConfig {
      * Path of the folder where the dbt files are stored
      */
     dbtObjectPrefix?: string;
+}
+
+/**
+ * Client SSL configuration
+ *
+ * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface DbtSSLConfigClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
 }
 
 /**
@@ -2500,6 +2554,21 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
+ *
+ * Flag to verify SSL Certificate for OpenMetadata Server.
+ *
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
 
 /**
@@ -2738,11 +2807,73 @@ export enum ProcessingEngineType {
 }
 
 /**
+ * Profile sample configuration supporting static and dynamic sampling strategies.
+ */
+export interface ProfileSampleConfig {
+    config?: ICSamplingConfig;
+    /**
+     * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
+     * runtime based on row count thresholds.
+     */
+    sampleConfigType?: SampleConfigType;
+}
+
+/**
+ * Configuration for dynamic sampling based on table row count.
+ *
+ * Configuration for static sampling based on table row count.
+ */
+export interface ICSamplingConfig {
+    /**
+     * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
+     * Tables below the lowest threshold are profiled at 100% (no sampling).
+     */
+    thresholds?: Threshold[];
+    /**
+     * Percentage of data or no. of rows used to compute the profiler metrics and run data
+     * quality tests
+     */
+    profileSample?:      number;
+    profileSampleType?:  ProfileSampleType;
+    samplingMethodType?: SamplingMethodType;
+}
+
+/**
  * Type of Profile Sample (percentage or rows)
  */
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
+}
+
+/**
+ * Type of Sampling Method (BERNOULLI or SYSTEM)
+ */
+export enum SamplingMethodType {
+    Bernoulli = "BERNOULLI",
+    System = "SYSTEM",
+}
+
+export interface Threshold {
+    /**
+     * Sample percentage or row count to use for tables at or above this threshold
+     */
+    profileSample:      number;
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Minimum row count for this tier to apply
+     */
+    rowCountThreshold:   number;
+    samplingMethodType?: SamplingMethodType;
+}
+
+/**
+ * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
+ * runtime based on row count thresholds.
+ */
+export enum SampleConfigType {
+    Dynamic = "DYNAMIC",
+    Static = "STATIC",
 }
 
 /**
@@ -2779,14 +2910,6 @@ export enum QueryParserType {
     Auto = "Auto",
     SQLFluff = "SqlFluff",
     SQLGlot = "SqlGlot",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
 }
 
 /**
@@ -4467,7 +4590,7 @@ export interface ConfigObject {
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
      */
-    consumerConfigSSL?: ConsumerConfigSSLClass;
+    consumerConfigSSL?: DbtSSLConfigClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -4491,7 +4614,7 @@ export interface ConfigObject {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: ConsumerConfigSSLClass;
+    schemaRegistrySSL?: DbtSSLConfigClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -5614,7 +5737,7 @@ export interface BrokerConfiguration {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Topic from where OpenLineage events will be pulled.
      */
@@ -5689,51 +5812,12 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details.
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface ConsumerConfigSSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Client Certificate
      */
@@ -6343,6 +6427,9 @@ export enum ConnectionScheme {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -6391,19 +6478,6 @@ export enum ConnectionType {
     RESTAPI = "RestAPI",
     S3 = "S3",
     SQLite = "SQLite",
-}
-
-/**
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- *
- * Client SSL verification.
- *
- * Flag to verify SSL Certificate for OpenMetadata Server.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
 }
 
 /**
@@ -6513,7 +6587,7 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -6733,7 +6807,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
@@ -7142,6 +7216,9 @@ export enum SpaceType {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *

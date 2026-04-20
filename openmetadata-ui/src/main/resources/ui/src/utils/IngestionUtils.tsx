@@ -47,8 +47,7 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
-import { Transi18next } from './CommonUtils';
-import i18n from './i18next/LocalUtil';
+import i18n, { Transi18next } from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
 import {
   getServiceDetailsPath,
