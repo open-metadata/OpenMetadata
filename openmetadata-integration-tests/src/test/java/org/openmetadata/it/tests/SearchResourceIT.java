@@ -1584,26 +1584,33 @@ public class SearchResourceIT {
               return r.statusCode() == 200 && r.body().split("\n").length >= 4;
             });
 
-    HttpResponse<String> page1 =
-        httpGetExport(
-            "/v1/search/export?q=export_page_test&index=table_search_index"
-                + "&sort_field=name.keyword&sort_order=asc&from=0&size=1");
-    assertEquals(200, page1.statusCode());
-    String[] page1Lines = page1.body().split("\n");
-    assertTrue(page1Lines.length <= 2, "from=0&size=1 should return at most 2 lines");
+    Awaitility.await("Page 1 and page 2 must return different rows")
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              HttpResponse<String> page1 =
+                  httpGetExport(
+                      "/v1/search/export?q=export_page_test&index=table_search_index"
+                          + "&sort_field=name.keyword&sort_order=asc&from=0&size=1");
+              assertEquals(200, page1.statusCode());
+              String[] page1Lines = page1.body().split("\n");
+              assertTrue(page1Lines.length <= 2, "from=0&size=1 should return at most 2 lines");
 
-    HttpResponse<String> page2 =
-        httpGetExport(
-            "/v1/search/export?q=export_page_test&index=table_search_index"
-                + "&sort_field=name.keyword&sort_order=asc&from=1&size=1");
-    assertEquals(200, page2.statusCode());
-    String[] page2Lines = page2.body().split("\n");
-    assertTrue(page2Lines.length <= 2, "from=1&size=1 should return at most 2 lines");
+              HttpResponse<String> page2 =
+                  httpGetExport(
+                      "/v1/search/export?q=export_page_test&index=table_search_index"
+                          + "&sort_field=name.keyword&sort_order=asc&from=1&size=1");
+              assertEquals(200, page2.statusCode());
+              String[] page2Lines = page2.body().split("\n");
+              assertTrue(page2Lines.length <= 2, "from=1&size=1 should return at most 2 lines");
 
-    if (page1Lines.length == 2 && page2Lines.length == 2) {
-      assertFalse(
-          page1Lines[1].equals(page2Lines[1]), "Page 1 and page 2 should return different rows");
-    }
+              if (page1Lines.length == 2 && page2Lines.length == 2) {
+                assertFalse(
+                    page1Lines[1].equals(page2Lines[1]),
+                    "Page 1 and page 2 should return different rows");
+              }
+            });
   }
 
   @Test
