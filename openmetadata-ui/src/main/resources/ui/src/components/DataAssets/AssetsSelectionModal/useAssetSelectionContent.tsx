@@ -91,7 +91,7 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import DomainAssetDryRunModal from '../DomainAssetDryRunModal/DomainAssetDryRunModal';
+import DomainAssetDryRunModal from '../DomainAssetDryRunModal/DomainAssetDryRunModal.component';
 import './asset-selection-model.style.less';
 
 export interface AssetSelectionContentProps {

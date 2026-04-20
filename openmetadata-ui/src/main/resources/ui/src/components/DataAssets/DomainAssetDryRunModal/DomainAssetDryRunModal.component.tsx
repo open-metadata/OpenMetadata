@@ -20,21 +20,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
-import { Response as BulkResponse } from '../../../generated/type/bulkOperationResult';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-
-interface DomainAssetDryRunModalProps {
-  visible: boolean;
-  header: string;
-  confirmText: string;
-  warnings: BulkResponse[];
-  warningsTestId?: string;
-  isLoading?: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}
+import { DomainAssetDryRunModalProps } from './DomainAssetDryRunModal.interface';
 
 const DomainAssetDryRunModal = ({
   visible,
@@ -86,6 +75,7 @@ const DomainAssetDryRunModal = ({
                       {link ? (
                         <Link
                           className="tw:break-all tw:text-sm tw:font-semibold tw:text-brand-secondary tw:hover:underline"
+                          rel="noopener noreferrer"
                           target="_blank"
                           to={link}>
                           {fqn}

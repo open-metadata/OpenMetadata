@@ -100,7 +100,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import DomainAssetDryRunModal from '../../../DataAssets/DomainAssetDryRunModal/DomainAssetDryRunModal';
+import DomainAssetDryRunModal from '../../../DataAssets/DomainAssetDryRunModal/DomainAssetDryRunModal.component';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
