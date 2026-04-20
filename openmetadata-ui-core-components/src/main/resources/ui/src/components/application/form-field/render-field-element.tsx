@@ -35,17 +35,6 @@ import {
 import { ColorPickerField } from './fields/color-picker-field';
 import { IconPickerField } from './fields/icon-picker-field';
 
-const MULTIPLE_SELECTION_FIELD_TYPES = new Set<FieldTypes>([
-  FieldTypes.MULTI_SELECT,
-  FieldTypes.ASYNC_SELECT,
-  FieldTypes.TREE_ASYNC_SELECT,
-  FieldTypes.TAG_SUGGESTION,
-  FieldTypes.UT_TAG_SUGGESTION,
-  FieldTypes.GLOSSARY_TAG_SUGGESTION,
-  FieldTypes.USER_TEAM_SELECT,
-  FieldTypes.USER_MULTI_SELECT,
-  FieldTypes.USER_TEAM_SELECT_INPUT,
-]);
 
 const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
   FieldTypes.AUTOCOMPLETE,
@@ -62,7 +51,6 @@ const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
 ]);
 
 const isMultipleSelection = (
-  type: FieldTypes,
   value: string | string[],
   props: FieldPropsMap
 ) => {
@@ -74,11 +62,7 @@ const isMultipleSelection = (
     return true;
   }
 
-  if (Array.isArray(value)) {
-    return true;
-  }
-
-  return MULTIPLE_SELECTION_FIELD_TYPES.has(type);
+  return Array.isArray(value);
 };
 
 const getItems = (props: FieldPropsMap): FormSelectItem[] =>
@@ -162,7 +146,7 @@ export const renderFieldElement = (
   const selectItems = getItems(props);
 
   if (AUTOCOMPLETE_FIELD_TYPES.has(type)) {
-    const multiple = isMultipleSelection(type, field.value, props);
+    const multiple = isMultipleSelection(field.value, props);
     const selectedAutocompleteItems = getSelectedItems(field.value);
 
     const handleInsert = (key: Key) => {
