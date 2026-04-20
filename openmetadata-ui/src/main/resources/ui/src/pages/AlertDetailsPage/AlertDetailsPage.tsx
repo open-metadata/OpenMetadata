@@ -208,7 +208,7 @@ function AlertDetailsPage({
     isNotificationAlert
       ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
       : navigate(ROUTES.OBSERVABILITY_ALERTS);
-  }, [history]);
+  }, [navigate, isNotificationAlert]);
 
   const handleAlertEdit = useCallback(async () => {
     navigate(
@@ -216,7 +216,7 @@ function AlertDetailsPage({
         ? getNotificationAlertsEditPath(fqn)
         : observabilityRouterClassBase.getObservabilityAlertsEditPath(fqn)
     );
-  }, [history]);
+  }, [navigate, fqn, isNotificationAlert]);
 
   const handleAlertSync = useCallback(async () => {
     try {
@@ -315,7 +315,7 @@ function AlertDetailsPage({
         { replace: true }
       );
     },
-    [history, fqn]
+    [navigate, fqn, isNotificationAlert]
   );
 
   const hideDeleteModal = useCallback(() => {

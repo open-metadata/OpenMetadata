@@ -31,9 +31,7 @@ jest.mock('./RouterUtils', () => ({
   getObservabilityAlertsEditPath: (fqn: string) =>
     `/observability/alerts/edit/${fqn}`,
   getObservabilityAlertDetailsPath: (fqn: string, tab?: string) =>
-    tab
-      ? `/observability/alerts/${fqn}/${tab}`
-      : `/observability/alerts/${fqn}`,
+    `/observability/alert/${fqn}/${tab ?? 'configuration'}`,
 }));
 
 jest.mock('../constants/constants', () => ({
@@ -99,16 +97,16 @@ describe('ObservabilityRouterClassBase', () => {
   });
 
   describe('getObservabilityAlertDetailsPath', () => {
-    it('should return the details path without tab', () => {
+    it('should return the details path with default configuration tab', () => {
       expect(router.getObservabilityAlertDetailsPath('my-alert')).toBe(
-        '/observability/alerts/my-alert'
+        '/observability/alert/my-alert/configuration'
       );
     });
 
-    it('should return the details path with tab', () => {
+    it('should return the details path with explicit tab', () => {
       expect(
-        router.getObservabilityAlertDetailsPath('my-alert', 'config')
-      ).toBe('/observability/alerts/my-alert/config');
+        router.getObservabilityAlertDetailsPath('my-alert', 'diagnostics')
+      ).toBe('/observability/alert/my-alert/diagnostics');
     });
   });
 
