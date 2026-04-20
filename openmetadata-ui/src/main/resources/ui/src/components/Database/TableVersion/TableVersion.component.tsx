@@ -86,8 +86,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
   const [searchText, setSearchText] = useState('');
-  // Pagination state for columns
-  const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const columnsLoading = isVersionLoading;
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -160,10 +158,17 @@ const TableVersion: React.FC<TableVersionProp> = ({
       [changeDescription, owners, tier, domains]
     );
 
-  const columns = useMemo(() => {
-    const colList = cloneDeep(tableColumns);
+  const tableColumns = useMemo(() => {
+    const offset = (currentPage - 1) * pageSize;
 
-    return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
+    return filteredHistoricalColumns.slice(offset, offset + pageSize);
+  }, [filteredHistoricalColumns, currentPage, pageSize]);
+
+  const columns = useMemo(() => {
+    return getColumnsDataWithVersionChanges<Column>(
+      changeDescription,
+      cloneDeep(tableColumns)
+    );
   }, [tableColumns, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
@@ -324,7 +329,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
       return;
     }
     const offset = (currentPage - 1) * pageSize;
-    setTableColumns(filteredHistoricalColumns.slice(offset, offset + pageSize));
     handlePagingChange({
       offset,
       limit: pageSize,
