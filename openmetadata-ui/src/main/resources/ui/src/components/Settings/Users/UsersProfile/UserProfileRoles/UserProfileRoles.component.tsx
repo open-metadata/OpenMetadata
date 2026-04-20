@@ -13,7 +13,6 @@
 
 import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -25,8 +24,6 @@ import {
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../../../../constants/constants';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
 import '../../../../users.less';
 import { AsyncSelect } from '../../../../common/AsyncSelect/AsyncSelect';

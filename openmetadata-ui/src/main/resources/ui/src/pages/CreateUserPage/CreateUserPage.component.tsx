@@ -14,7 +14,7 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -23,7 +23,6 @@ import CreateUserComponent from '../../components/Settings/Users/CreateUser/Crea
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
-import { Role } from '../../generated/entity/teams/role';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createBot } from '../../rest/botsAPI';
 import {
