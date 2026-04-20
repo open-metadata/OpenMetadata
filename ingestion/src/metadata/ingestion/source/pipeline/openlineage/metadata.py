@@ -296,12 +296,13 @@ class OpenlineageSource(PipelineServiceSource):
         Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
                 src/main/java/io/openlineage/client/dataset/Naming.java (CosmosNaming)
         """
-        match = re.search(r"/dbs/([^/]+)", namespace)
-        if not match:
+        db_match = re.search(r"/dbs/([^/]+)", namespace)
+        coll_match = re.fullmatch(r"colls/([^/]+)", name)
+        if not db_match or not coll_match:
             return None
-        database = match.group(1).lower()
-        collection = name.split("/")[-1].lower() if "/" in name else name.lower()
-        return TableDetails(name=collection, schema=database)
+        return TableDetails(
+            name=coll_match.group(1).lower(), schema=db_match.group(1).lower()
+        )
 
     def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
         """Wrapper around metadata.get_by_name with in-memory caching."""

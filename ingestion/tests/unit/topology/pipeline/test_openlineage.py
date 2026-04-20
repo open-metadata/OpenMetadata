@@ -2163,6 +2163,14 @@ class OpenLineageUnitTest(unittest.TestCase):
             )
         )
 
+    def test_parse_cosmos_table_name_non_colls_name_returns_none(self):
+        """A Cosmos name not matching colls/{collection} is non-conformant and returns None."""
+        self.assertIsNone(
+            OpenlineageSource._parse_cosmos_table_name(
+                "azurecosmos://host/dbs/mydb", "mycollection"
+            )
+        )
+
     def test_get_table_details_glue_namespace_parses_slash_name(self):
         """AWS Glue EMR events use arn:aws:glue namespace + table/{db}/{table} name."""
         data = {
