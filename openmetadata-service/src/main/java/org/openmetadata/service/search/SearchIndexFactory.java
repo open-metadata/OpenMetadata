@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.*;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -116,6 +117,7 @@ public class SearchIndexFactory {
       case Entity.INGESTION_PIPELINE -> new IngestionPipelineIndex((IngestionPipeline) entity);
       case Entity.USER -> new UserIndex((User) entity);
       case Entity.TEAM -> new TeamIndex((Team) entity);
+      case Entity.ROLE -> new RoleIndex((Role) entity);
       case Entity.METRIC -> new MetricIndex((Metric) entity);
       case Entity.GLOSSARY -> new GlossaryIndex((Glossary) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);

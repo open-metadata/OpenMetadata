@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
+import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,13 +28,14 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { getRoles } from '../../../../../rest/rolesAPIV1';
-import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
+import '../../../../users.less';
+import { AsyncSelect } from '../../../../common/AsyncSelect/AsyncSelect';
+import { SearchIndex } from '../../../../../enums/search.enum';
+import { searchQuery } from '../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
 import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';
-import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
@@ -49,43 +50,47 @@ const UserProfileRoles = ({
 
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-
-  const useRolesOption = useMemo(() => {
-    const options = roles?.map((role) => ({
-      label: getEntityName(role),
-      value: role.id,
-    }));
-
-    if (!isUserAdmin) {
-      options.push({
-        label: TERM_ADMIN,
-        value: toLower(TERM_ADMIN),
-      });
-    }
-
-    return options;
-  }, [roles, isUserAdmin, getEntityName]);
-
-  const fetchRoles = async () => {
+  const fetchRoleOptions = async (searchText: string, page?: number) => {
     try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data);
-    } catch (err) {
+      const response = await searchQuery({
+        query: searchText || '*',
+        searchIndex: SearchIndex.ROLE,
+        pageSize: PAGE_SIZE_LARGE,
+        pageNumber: page ?? 1,
+        fetchSource: true,
+      });
+
+      const options = response.hits.hits.map((hit) => ({
+        label: getEntityName(hit._source),
+        value: hit._source.id,
+        data: hit._source,
+      }));
+
+      if (!isUserAdmin && (isEmpty(searchText) || toLower(TERM_ADMIN).includes(toLower(searchText)))) {
+        options.push({
+          label: TERM_ADMIN,
+          value: toLower(TERM_ADMIN),
+          data: undefined,
+        } as any);
+      }
+
+      return {
+        data: options,
+        paging: {
+          total: response.hits.total.value + (!isUserAdmin ? 1 : 0),
+        },
+      };
+    } catch (error) {
       showErrorToast(
-        err as AxiosError,
+        error as AxiosError,
         t('server.entity-fetch-error', {
           entity: t('label.role-plural'),
         })
       );
+
+      return { data: [], paging: { total: 0 } };
     }
   };
 
@@ -114,7 +119,7 @@ const UserProfileRoles = ({
     await updateUserDetails(
       {
         roles: updatedRoles.map((roleId) => {
-          const role = roles.find((r) => r.id === roleId);
+          const role = userRoles?.find((r) => r.id === roleId);
 
           return { id: roleId, type: 'role', name: role?.name ?? '' };
         }),
@@ -152,12 +157,6 @@ const UserProfileRoles = ({
   useEffect(() => {
     setUserRoles();
   }, [setUserRoles]);
-
-  useEffect(() => {
-    if (isRolesEdit && isEmpty(roles)) {
-      fetchRoles();
-    }
-  }, [isRolesEdit, roles]);
 
   useEffect(() => {
     setIsDropdownOpen(isRolesEdit);
@@ -231,14 +230,14 @@ const UserProfileRoles = ({
                   style={{
                     borderRadius: '5px',
                   }}>
-                  <Select
+                  <AsyncSelect
                     allowClear
                     showSearch
+                    api={fetchRoleOptions}
                     aria-label="Roles"
                     className="w-full"
                     data-testid="profile-edit-roles-select"
                     dropdownMatchSelectWidth={false}
-                    filterOption={handleSearchFilterOption}
                     loading={isLoading}
                     maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
@@ -250,7 +249,6 @@ const UserProfileRoles = ({
                     )}
                     mode="multiple"
                     open={isDropdownOpen}
-                    options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
                     ref={dropdownRef as any}
                     tagRender={TagRenderer}

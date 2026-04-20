@@ -18,16 +18,19 @@ import {
   Button,
   Card,
   Input,
-  Select,
   Space,
   Typography as AntDTypography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
-import { getRoles } from '../../../../../../rest/rolesAPIV1';
+import { SearchIndex } from '../../../../../../enums/search.enum';
+import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getEntityName } from '../../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import { AsyncSelect } from '../../../../../common/AsyncSelect/AsyncSelect';
+import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import './ldap-role-mapping-widget.less';
 
 const { Text } = AntDTypography;
@@ -52,8 +55,6 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const { value, onChange, id, disabled, readonly } = props;
 
   const [mappings, setMappings] = useState<RoleMappingEntry[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
-  const [isLoadingRoles, setIsLoadingRoles] = useState(false);
   const [errors, setErrors] = useState<MappingError>({});
 
   const idCounterRef = useRef(0);
@@ -97,25 +98,31 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     }
   }, [value, getStableId]);
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      setIsLoadingRoles(true);
-      try {
-        const response = await getRoles('*', undefined, undefined, true, 1000);
-        const roleOptions: RoleOption[] = (response.data || []).map((role) => ({
-          label: role.displayName || role.name,
-          value: role.name,
-        }));
-        setAvailableRoles(roleOptions);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoadingRoles(false);
-      }
-    };
+  const fetchRoleOptions = async (searchText: string, page?: number) => {
+    try {
+      const response = await searchQuery({
+        query: searchText || '*',
+        searchIndex: SearchIndex.ROLE,
+        pageSize: 10,
+        pageNumber: page ?? 1,
+        fetchSource: true,
+      });
 
-    fetchRoles();
-  }, []);
+      return {
+        data: response.hits.hits.map((hit) => ({
+          label: getEntityName(hit._source),
+          value: hit._source.name,
+        })),
+        paging: {
+          total: response.hits.total.value,
+        },
+      };
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return { data: [], paging: { total: 0 } };
+    }
+  };
 
   const checkDuplicates = useCallback(
     (newMappings: RoleMappingEntry[]) => {
@@ -261,14 +268,13 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
               </Grid.Item>
 
               <Grid.Item span={12}>
-                <Select
+                <AsyncSelect
                   showSearch
+                  api={fetchRoleOptions}
                   className="w-full"
                   data-testid={`roles-select-${mapping.id}`}
                   disabled={disabled || readonly}
-                  loading={isLoadingRoles}
                   mode="multiple"
-                  options={availableRoles}
                   placeholder={t('label.select-field', {
                     field: t('label.role-plural'),
                   })}

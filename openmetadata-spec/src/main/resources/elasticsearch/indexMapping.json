@@ -351,6 +351,13 @@
     "parentAliases": [],
     "childAliases": []
   },
+  "role": {
+    "indexName": "role_search_index",
+    "indexMappingFile": "/elasticsearch/%s/role_index_mapping.json",
+    "alias": "role",
+    "parentAliases": [],
+    "childAliases": []
+  },
   "entityReportData": {
     "indexName": "entity_report_data_index",
     "indexMappingFile": "/elasticsearch/entity_report_data_index.json",

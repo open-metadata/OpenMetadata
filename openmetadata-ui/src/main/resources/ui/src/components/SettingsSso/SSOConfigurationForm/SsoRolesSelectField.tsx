@@ -12,35 +12,47 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRoles } from '../../../rest/rolesAPIV1';
+import { SearchIndex } from '../../../enums/search.enum';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import './sso-configuration-form-array-field-template.less';
 
 const SsoRolesSelectField = (props: FieldProps) => {
   const { t } = useTranslation();
 
-  const [roleOptions, setRoleOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const fetchRoleOptions = async (searchText: string, page?: number) => {
+    try {
+      const response = await searchQuery({
+        query: searchText || '*',
+        searchIndex: SearchIndex.ROLE,
+        pageSize: 10,
+        pageNumber: page ?? 1,
+        fetchSource: true,
+      });
 
-  useEffect(() => {
-    getRoles('*', undefined, undefined, true, 1000)
-      .then((response) => {
-        setRoleOptions(
-          (response.data || []).map((role) => ({
-            label: role.displayName || role.name,
-            value: role.name,
-          }))
-        );
-      })
-      .catch((error: AxiosError) => showErrorToast(error));
-  }, []);
+      return {
+        data: response.hits.hits.map((hit) => ({
+          label: getEntityName(hit._source),
+          value: hit._source.name,
+        })),
+        paging: {
+          total: response.hits.total.value,
+        },
+      };
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return { data: [], paging: { total: 0 } };
+    }
+  };
 
   const id = props.idSchema.$id;
   const value: string[] = props.formData ?? [];
@@ -78,9 +90,9 @@ const SsoRolesSelectField = (props: FieldProps) => {
         </Typography>
       </Col>
       <Col className="sso-select-container" span={24}>
-        <Select
-          allowClear
+        <AsyncSelect
           showSearch
+          api={fetchRoleOptions}
           className={classNames('m-t-xss w-full', {
             'ant-select-status-error': hasError,
           })}
@@ -88,8 +100,6 @@ const SsoRolesSelectField = (props: FieldProps) => {
           disabled={props.disabled}
           id={id}
           mode="multiple"
-          optionFilterProp="label"
-          options={roleOptions}
           placeholder={placeholder}
           status={hasError ? 'error' : undefined}
           value={value}
