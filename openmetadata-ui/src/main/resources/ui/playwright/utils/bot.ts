@@ -89,11 +89,7 @@ export const createBot = async (page: Page) => {
     page.getByRole('cell', { name: BOT_DETAILS.description })
   ).toBeVisible();
 
-  await expect
-    .poll(async () => page.getByTestId('revoke-button').count(), {
-      timeout: 30000,
-    })
-    .toBeGreaterThan(0);
+  await getCreatedBot(page, { botName });
 
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
@@ -158,8 +154,12 @@ export const updateBotDetails = async (page: Page) => {
     page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`)
   ).toContainText(BOT_DETAILS.updatedBotName);
 
+  const updatedBotRow = page
+    .getByRole('row')
+    .filter({ has: page.getByTestId(`bot-link-${BOT_DETAILS.updatedBotName}`) });
+
   await expect(
-    page.locator(`[data-row-key="${botName}"] [data-testid="markdown-parser"]`)
+    updatedBotRow.getByTestId('markdown-parser')
   ).toContainText(BOT_DETAILS.updatedDescription);
 };
 
@@ -172,29 +172,38 @@ export const verifyBotSearch = async (page: Page) => {
   const uniqueNameToken = BOT_DETAILS.updatedBotName.split('-').slice(-1)[0];
   const uniqueEmailToken = BOT_DETAILS.botEmail.split('@')[0];
 
-  const searchBotAndWait = async (searchTerm: string) => {
+  const searchBot = async (searchTerm: string) => {
     await searchInput.clear();
     await searchInput.fill(searchTerm);
-    await waitForAllLoadersToDisappear(page);
+    await expect(searchInput).toHaveValue(searchTerm);
   };
 
-  await searchBotAndWait(BOT_DETAILS.updatedBotName);
+  await searchBot(BOT_DETAILS.updatedBotName);
   await expect(createdBotLink).toBeVisible();
 
-  await searchBotAndWait(BOT_DETAILS.botEmail);
+  await searchBot(nonMatchingSearchTerm);
+  await expect(createdBotLink).toHaveCount(0);
+
+  await searchBot(BOT_DETAILS.botEmail);
   await expect(createdBotLink).toBeVisible();
 
-  await searchBotAndWait(uniqueNameToken);
+  await searchBot(nonMatchingSearchTerm);
+  await expect(createdBotLink).toHaveCount(0);
+
+  await searchBot(uniqueNameToken);
   await expect(createdBotLink).toBeVisible();
 
-  await searchBotAndWait(uniqueEmailToken);
+  await searchBot(nonMatchingSearchTerm);
+  await expect(createdBotLink).toHaveCount(0);
+
+  await searchBot(uniqueEmailToken);
   await expect(createdBotLink).toBeVisible();
 
-  await searchBotAndWait(nonMatchingSearchTerm);
-  await expect(createdBotLink).not.toBeVisible();
+  await searchBot(nonMatchingSearchTerm);
+  await expect(createdBotLink).toHaveCount(0);
 
   await searchInput.clear();
-  await waitForAllLoadersToDisappear(page);
+  await expect(searchInput).toHaveValue('');
   await expect(createdBotLink).toBeVisible();
 };
 

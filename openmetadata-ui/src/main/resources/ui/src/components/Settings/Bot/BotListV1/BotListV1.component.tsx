@@ -122,6 +122,30 @@ const BotListV1 = ({
     };
   }, []);
 
+  const getLocalSearchMatchedBots = useCallback(
+    (text: string) => {
+      const normalizedSearchText = text.trim().toLowerCase();
+
+      return botUsers.filter((bot) => {
+        const searchableFields = [
+          bot.name,
+          bot.fullyQualifiedName,
+          bot.displayName,
+          bot.description,
+          bot.botUser?.name,
+          bot.botUser?.fullyQualifiedName,
+          bot.botUser?.displayName,
+          (bot.botUser as unknown as User | undefined)?.email,
+        ];
+
+        return searchableFields.some((field) =>
+          field?.toLowerCase().includes(normalizedSearchText)
+        );
+      });
+    },
+    [botUsers]
+  );
+
   const enrichBotsWithBotUsers = async (bots: Bot[]) => {
     if (!bots.length) {
       return bots;
@@ -224,6 +248,12 @@ const BotListV1 = ({
   };
 
   const searchBots = async (text: string) => {
+    const localMatchedBots = getLocalSearchMatchedBots(text);
+
+    if (localMatchedBots.length) {
+      return localMatchedBots;
+    }
+
     const getMatchedBots = async (matchedBotUsers: User[]) => {
       const matchedBotUserNames = Array.from(
         new Set(
@@ -459,9 +489,16 @@ const BotListV1 = ({
       return;
     }
 
+    const currentSearchRequestId = latestSearchRequest.current + 1;
     setLoading(true);
-    await runActiveSearch(normalizedSearchTerm);
-    setLoading(false);
+
+    try {
+      await runActiveSearch(normalizedSearchTerm);
+    } finally {
+      if (latestSearchRequest.current === currentSearchRequestId) {
+        setLoading(false);
+      }
+    }
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
