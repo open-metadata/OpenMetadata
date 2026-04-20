@@ -658,7 +658,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       User assigneeUser = SdkClients.adminClient().users().getByName(testUser1().getName());
       CreateThread createThread =
           new CreateThread()
-              .withFrom("admin")
               .withMessage("Please approve glossary term")
               .withAbout(String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName()))
               .withType(ThreadType.Task)

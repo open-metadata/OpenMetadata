@@ -64,7 +64,7 @@ import {
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -107,6 +107,7 @@ import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { Avatar } from '@openmetadata/ui-core-components';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
