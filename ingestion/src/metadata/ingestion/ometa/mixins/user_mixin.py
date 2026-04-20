@@ -186,40 +186,56 @@ class OMetaUserMixin:
         if not name:
             return None
 
-        maybe_team = self.get_by_name(entity=Team, fqn=name)
-        if maybe_team is None:
-            maybe_team = self._search_by_name(
-                entity=Team, name=name, from_count=from_count, size=size, fields=fields
+        try:
+            maybe_team = self.get_by_name(entity=Team, fqn=name)
+            if maybe_team is None:
+                maybe_team = self._search_by_name(
+                    entity=Team,
+                    name=name,
+                    from_count=from_count,
+                    size=size,
+                    fields=fields,
+                )
+            if maybe_team:
+                if is_owner and maybe_team.teamType != TeamType.Group:
+                    return None
+                return EntityReferenceList(
+                    root=[
+                        EntityReference(
+                            id=maybe_team.id.root,
+                            type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                            name=maybe_team.name.root,
+                            displayName=maybe_team.displayName,
+                        )
+                    ]
+                )
+            maybe_user = self.get_by_name(entity=User, fqn=name)
+            if maybe_user is None:
+                maybe_user = self._search_by_name(
+                    entity=User,
+                    name=name,
+                    from_count=from_count,
+                    size=size,
+                    fields=fields,
+                )
+            if maybe_user:
+                return EntityReferenceList(
+                    root=[
+                        EntityReference(
+                            id=maybe_user.id.root,
+                            type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                            name=maybe_user.name.root,
+                            displayName=maybe_user.displayName,
+                        )
+                    ]
+                )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to resolve owner reference for '{name}' due to: {err}. "
+                "Skipping owner assignment."
             )
-        if maybe_team:
-            if is_owner and maybe_team.teamType != TeamType.Group:
-                return None
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_team.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
-                        name=maybe_team.name.root,
-                        displayName=maybe_team.displayName,
-                    )
-                ]
-            )
-        maybe_user = self.get_by_name(entity=User, fqn=name)
-        if maybe_user is None:
-            maybe_user = self._search_by_name(
-                entity=User, name=name, from_count=from_count, size=size, fields=fields
-            )
-        if maybe_user:
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_user.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
-                        name=maybe_user.name.root,
-                        displayName=maybe_user.displayName,
-                    )
-                ]
-            )
+
         return None
 
     def get_user_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:

@@ -173,6 +173,39 @@ class TestGetReferenceByNameExactMatch:
 
         assert result is None
 
+    def test_api_failure_returns_none_and_logs_warning(self, caplog):
+        import logging
+
+        mixin = _make_mixin()
+        mixin.get_by_name = MagicMock(side_effect=ConnectionError("API unreachable"))
+        mixin._search_by_name = MagicMock()
+
+        with caplog.at_level(logging.WARNING):
+            result = mixin.get_reference_by_name.__wrapped__(
+                mixin, name="SomeTeam", is_owner=True
+            )
+
+        assert result is None
+        assert any("Failed to resolve owner reference" in r.message for r in caplog.records)
+        mixin._search_by_name.assert_not_called()
+
+    def test_search_failure_returns_none_and_logs_warning(self, caplog):
+        import logging
+
+        mixin = _make_mixin()
+        mixin.get_by_name = MagicMock(return_value=None)
+        mixin._search_by_name = MagicMock(
+            side_effect=RuntimeError("ES search index unavailable")
+        )
+
+        with caplog.at_level(logging.WARNING):
+            result = mixin.get_reference_by_name.__wrapped__(
+                mixin, name="SomeTeam", is_owner=True
+            )
+
+        assert result is None
+        assert any("Failed to resolve owner reference" in r.message for r in caplog.records)
+
     def test_user_exact_match_preferred_over_fuzzy(self):
         mixin = _make_mixin()
         exact_user = _make_user("john.doe", USER_EXACT_ID)
