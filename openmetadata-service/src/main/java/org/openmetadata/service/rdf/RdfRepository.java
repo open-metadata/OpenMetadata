@@ -18,6 +18,8 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.configuration.RelationCardinality;
@@ -2587,15 +2589,15 @@ public class RdfRepository {
       }
 
       java.io.StringWriter writer = new java.io.StringWriter();
-      String rdfFormat =
+      RDFFormat rdfFormat =
           switch (format.toLowerCase()) {
-            case "rdfxml", "xml" -> "RDF/XML";
-            case "ntriples", "nt" -> "N-TRIPLES";
-            case "jsonld", "json-ld" -> "JSON-LD";
-            default -> "TURTLE";
+            case "rdfxml", "xml" -> RDFFormat.RDFXML_PLAIN;
+            case "ntriples", "nt" -> RDFFormat.NTRIPLES;
+            case "jsonld", "json-ld" -> RDFFormat.JSONLD;
+            default -> RDFFormat.TURTLE_FLAT;
           };
 
-      model.write(writer, rdfFormat);
+      RDFDataMgr.write(writer, model, rdfFormat);
       return writer.toString();
 
     } catch (Exception e) {
