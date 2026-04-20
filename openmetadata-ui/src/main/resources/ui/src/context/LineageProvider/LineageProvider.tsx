@@ -462,7 +462,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         // else fallback to rootNode
         const nodeToFocus =
           typeof recenter === 'string'
-            ? visibleNodes.find((n) => n.data.fullyQualifiedName === recenter)
+            ? visibleNodes.find(
+                (n) => n.data.node.fullyQualifiedName === recenter
+              )
             : visibleNodes.find((n) => n.data.isRootNode);
 
         if (nodeToFocus) {
