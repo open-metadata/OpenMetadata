@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "您最近沒有檢視任何資料資產。探索以尋找有趣的東西！",
     "no-reference-available": "沒有可用的參考。",
     "no-related-terms-available": "沒有可用的相關術語。",
+    "no-relations-for-selected-filter": "未找到所選關係類型的關係。請嘗試選擇其他類型。",
     "no-relations-found": "找不到此術語的關係",
     "no-retry-queue-records": "未發現即時索引重試記錄。所有實體均已成功索引。",
     "no-roles-assigned": "未指派角色",
