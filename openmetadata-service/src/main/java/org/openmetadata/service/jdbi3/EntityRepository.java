@@ -1981,7 +1981,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
-      entities = listInternal(jsons, fields, uriInfo, filter.getInclude());
+      entities = listInternal(jsons, fields, uriInfo);
 
       String beforeCursor;
       String afterCursor = null;
@@ -2003,13 +2003,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int total = dao.listCount(filter);
     List<String> jsons = dao.listAfter(filter, limit, offset);
 
-    List<T> entities = listInternal(jsons, fields, uriInfo, filter.getInclude());
+    List<T> entities = listInternal(jsons, fields, uriInfo);
 
     return new ResultList<>(entities, offset, limit, total);
   }
 
-  private List<T> listInternal(
-      List<String> jsons, Fields fields, UriInfo uriInfo, Include include) {
+  private List<T> listInternal(List<String> jsons, Fields fields, UriInfo uriInfo) {
     List<T> entities;
     try (var ignored = phase("jsonDeserialize")) {
       entities = JsonUtils.readObjects(jsons, entityClass);
@@ -2039,8 +2038,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean hasMoreData = jsons.size() > limitParam;
       List<String> jsonsToProcess = hasMoreData ? jsons.subList(0, limitParam) : jsons;
 
-      Iterator<Either<T, EntityError>> iterator =
-          serializeJsons(jsonsToProcess, fields, null, filter.getInclude());
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsonsToProcess, fields, null);
       while (iterator.hasNext()) {
         Either<T, EntityError> either = iterator.next();
         if (either.right().isPresent()) {
@@ -2195,8 +2193,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String beforeOffset = getBeforeOffset(offsetInt, limitParam);
     if (limitParam > 0) {
       List<String> jsons = callable.apply(filter, limitParam, offsetInt);
-      Iterator<Either<T, EntityError>> iterator =
-          serializeJsons(jsons, fields, uriInfo, filter.getInclude());
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsons, fields, uriInfo);
       while (iterator.hasNext()) {
         Either<T, EntityError> either = iterator.next();
         if (either.right().isPresent()) {
@@ -9470,7 +9467,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Iterator<Either<T, EntityError>> serializeJsons(
-      List<String> jsons, Fields fields, UriInfo uriInfo, Include include) {
+      List<String> jsons, Fields fields, UriInfo uriInfo) {
     List<Either<T, EntityError>> results = new ArrayList<>();
     List<T> entities = new ArrayList<>();
 
