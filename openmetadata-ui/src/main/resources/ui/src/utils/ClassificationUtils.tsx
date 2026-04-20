@@ -145,9 +145,7 @@ export const getCommonColumns = (options?: {
       width: 100,
       align: 'center',
       render: (usageCount: number) => (
-        <Typography.Text>
-          {usageCount ?? NO_DATA_PLACEHOLDER}
-        </Typography.Text>
+        <Typography.Text>{usageCount ?? NO_DATA_PLACEHOLDER}</Typography.Text>
       ),
     }
   );

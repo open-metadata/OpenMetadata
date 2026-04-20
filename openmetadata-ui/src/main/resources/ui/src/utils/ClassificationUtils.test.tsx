@@ -12,8 +12,8 @@
  */
 
 import React from 'react';
-import { EntityField } from '../constants/Feeds.constants';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
@@ -439,7 +439,13 @@ describe('ClassificationUtils', () => {
       const columns = getCommonColumns();
       const usageCountCol = columns.find(
         (col) => (col as { key?: string }).key === 'usageCount'
-      ) as { render?: (val: number, record: Tag, index: number) => React.ReactElement };
+      ) as {
+        render?: (
+          val: number,
+          record: Tag,
+          index: number
+        ) => React.ReactElement;
+      };
 
       const element = usageCountCol.render?.(42, mockTag, 0);
 
@@ -450,7 +456,13 @@ describe('ClassificationUtils', () => {
       const columns = getCommonColumns();
       const usageCountCol = columns.find(
         (col) => (col as { key?: string }).key === 'usageCount'
-      ) as { render?: (val: number, record: Tag, index: number) => React.ReactElement };
+      ) as {
+        render?: (
+          val: number,
+          record: Tag,
+          index: number
+        ) => React.ReactElement;
+      };
 
       const element = usageCountCol.render?.(0, mockTag, 0);
 
@@ -461,7 +473,13 @@ describe('ClassificationUtils', () => {
       const columns = getCommonColumns();
       const usageCountCol = columns.find(
         (col) => (col as { key?: string }).key === 'usageCount'
-      ) as { render?: (val: number, record: Tag, index: number) => React.ReactElement };
+      ) as {
+        render?: (
+          val: number,
+          record: Tag,
+          index: number
+        ) => React.ReactElement;
+      };
 
       const element = usageCountCol.render?.(
         undefined as unknown as number,

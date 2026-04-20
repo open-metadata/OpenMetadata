@@ -677,7 +677,10 @@ describe('ClassificationDetails', () => {
         usageCount: 5,
       },
     ];
-    mockGetTags.mockResolvedValueOnce({ data: tagsWithUsage, paging: { total: 1 } });
+    mockGetTags.mockResolvedValueOnce({
+      data: tagsWithUsage,
+      paging: { total: 1 },
+    });
 
     render(
       <MemoryRouter>
