@@ -21,6 +21,7 @@ from typing import List, Optional
 from pydantic import Field
 
 from metadata.config.common import ConfigModel
+from metadata.data_quality.rca.models import AiConfig
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
@@ -46,6 +47,7 @@ class TestSuiteProcessorConfig(ConfigModel):
 
     testCases: Optional[List[TestCaseDefinition]] = None
     forceUpdate: Optional[bool] = False
+    aiConfig: Optional[AiConfig] = None
 
 
 class TestCaseResultResponse(BaseModel):
