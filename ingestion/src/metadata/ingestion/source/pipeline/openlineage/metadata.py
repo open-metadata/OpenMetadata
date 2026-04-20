@@ -101,7 +101,8 @@ class OpenlineageSource(PipelineServiceSource):
     Works under the assumption that OpenLineage integrations produce events to Kafka topic or Kinesis stream,
     which is a source of events for this connector.
 
-    Only OpenLineage events that indicate successfull data movement (COMPLETE, RUNNING, START) are taken into account in this connector.
+    Only OpenLineage events that indicate successful data movement (COMPLETE, RUNNING, START) are taken into account
+    in this connector.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
