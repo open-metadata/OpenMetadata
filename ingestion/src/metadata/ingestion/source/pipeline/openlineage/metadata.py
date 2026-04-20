@@ -13,6 +13,7 @@
 OpenLineage source to extract metadata from Kafka or Kinesis events
 """
 import json
+import re
 import time
 import traceback
 from collections import defaultdict
@@ -184,6 +185,27 @@ class OpenlineageSource(PipelineServiceSource):
                     "input table name cannot be retrieved from name attribute."
                 )
 
+        namespace = data.get("namespace", "")
+
+        # AWS Glue: arn:aws:glue:{region}:{account} / table/{database}/{table}
+        # Source: https://openlineage.io/docs/spec/naming/
+        if namespace.startswith("arn:aws:glue:"):
+            result = OpenlineageSource._parse_glue_table_name(name)
+            if result:
+                return result
+
+        # Azure Data Explorer (Kusto): azurekusto://{host} / {database}/{table}
+        if namespace.startswith("azurekusto://"):
+            result = OpenlineageSource._parse_slash_table_name(name)
+            if result:
+                return result
+
+        # Azure Cosmos DB: azurecosmos://{host}/dbs/{db} / colls/{collection}
+        if namespace.startswith("azurecosmos://"):
+            result = OpenlineageSource._parse_cosmos_table_name(namespace, name)
+            if result:
+                return result
+
         name_parts = name.split(".")
 
         if len(name_parts) < 2:
@@ -228,6 +250,58 @@ class OpenlineageSource(PipelineServiceSource):
             broker_hostname = f"{broker_hostname}:{parsed.port}"
 
         return TopicDetails(name=name, broker_hostname=broker_hostname)
+
+    @staticmethod
+    def _parse_glue_table_name(name: str) -> Optional[TableDetails]:
+        """
+        Parse AWS Glue OL dataset name: ``table/{database}/{table}``.
+
+        Glue EMR jobs emit a slash-separated name with a ``table/`` prefix instead
+        of the dot-separated ``schema.table`` convention used by SQL engines.
+
+        Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+                src/main/java/io/openlineage/client/dataset/Naming.java (GlueNaming)
+        """
+        if not name.startswith("table/"):
+            return None
+        parts = name[len("table/") :].split("/")
+        if len(parts) < 2:
+            return None
+        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+
+    @staticmethod
+    def _parse_slash_table_name(name: str) -> Optional[TableDetails]:
+        """
+        Parse slash-separated ``{database}/{table}`` OL dataset names.
+
+        Used by Azure Data Explorer (Kusto):
+          namespace ``azurekusto://{host}`` / name ``{database}/{table}``
+
+        Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+                src/main/java/io/openlineage/client/dataset/Naming.java (KustoNaming)
+        """
+        parts = name.split("/")
+        if len(parts) < 2:
+            return None
+        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+
+    @staticmethod
+    def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:
+        """
+        Parse Azure Cosmos DB OL dataset names.
+
+        The database lives in the namespace path (``azurecosmos://{host}/dbs/{db}``)
+        while the name field is ``colls/{collection}``.
+
+        Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+                src/main/java/io/openlineage/client/dataset/Naming.java (CosmosNaming)
+        """
+        match = re.search(r"/dbs/([^/]+)", namespace)
+        if not match:
+            return None
+        database = match.group(1).lower()
+        collection = name.split("/")[-1].lower() if "/" in name else name.lower()
+        return TableDetails(name=collection, schema=database)
 
     def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
         """Wrapper around metadata.get_by_name with in-memory caching."""
