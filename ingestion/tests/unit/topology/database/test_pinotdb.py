@@ -12,14 +12,16 @@
 Unit tests for PinotDB column type mapping.
 
 Verifies that Pinot scalar types resolve to the correct
-OpenMetadata DataType string via get_type_custom + ColumnTypeParser.
-Complex types (struct, map, array) are excluded: ARRAY requires a
-constructor argument and their BLOB/ARRAY mappings are covered by
-the generic column_type_parser tests.
+OpenMetadata DataType string via get_type_custom + ColumnTypeParser, and
+that Pinot JSON values are normalized consistently regardless of whether the
+driver returns already-deserialized containers or raw JSON strings.
 """
+import logging
+
 import pytest
 
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.pinotdb.custom_types import PinotJSONType
 from metadata.ingestion.source.database.pinotdb.metadata import get_type_custom
 
 
@@ -54,3 +56,46 @@ def test_double_not_mapped_to_int():
     result = _resolve("double")
     assert result != "INT", "Pinot DOUBLE is incorrectly mapped to INT"
     assert result == "DOUBLE"
+
+
+def test_json_type_uses_pinot_custom_type():
+    assert get_type_custom("json", None) is PinotJSONType
+    assert ColumnTypeParser.get_column_type(PinotJSONType()) == "JSON"
+
+
+@pytest.mark.parametrize(
+    "raw_value, expected",
+    [
+        pytest.param(
+            [{"name": "alpha"}, {"name": "beta"}],
+            [{"name": "alpha"}, {"name": "beta"}],
+            id="single-stage-list",
+        ),
+        pytest.param(
+            '[{"name": "alpha"}, {"name": "beta"}]',
+            [{"name": "alpha"}, {"name": "beta"}],
+            id="multistage-string",
+        ),
+        pytest.param(
+            b'{"name": "alpha"}',
+            {"name": "alpha"},
+            id="bytes-payload",
+        ),
+        pytest.param(None, None, id="null"),
+    ],
+)
+def test_pinot_json_result_processor_normalizes_values(raw_value, expected):
+    processor = PinotJSONType().result_processor(dialect=None, coltype=None)
+    assert processor is not None
+    assert processor(raw_value) == expected
+
+
+def test_pinot_json_result_processor_falls_back_for_malformed_json(caplog):
+    raw_value = "{not-json"
+    processor = PinotJSONType().result_processor(dialect=None, coltype=None)
+    assert processor is not None
+
+    with caplog.at_level(logging.WARNING):
+        assert processor(raw_value) == raw_value
+
+    assert "Failed to deserialize Pinot JSON value" in caplog.text

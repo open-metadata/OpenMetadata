@@ -23,6 +23,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.pinotdb.custom_types import PinotJSONType
 
 
 def get_type_custom(data_type, field_size):
@@ -36,7 +37,7 @@ def get_type_custom(data_type, field_size):
         "boolean": types.Boolean,
         "timestamp": types.TIMESTAMP,
         "string": types.String,
-        "json": types.JSON,
+        "json": PinotJSONType,
         "bytes": types.LargeBinary,
         "big_decimal": types.DECIMAL,
         # Complex types
