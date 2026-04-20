@@ -73,6 +73,48 @@ class SqlColumnHandlerMixin:
         By Default there are no additional table constraints
         """
 
+    @staticmethod
+    def _filter_invalid_constraints(
+        table_columns: Optional[List[Column]],
+        table_constraints: Optional[List[Optional[TableConstraint]]],
+    ) -> List[TableConstraint]:
+        """
+        Remove constraints referencing columns not present in the processed
+        column list.  This can happen when hidden system columns (e.g.
+        Redshift AUTO-distribution columns) are returned by the catalog but
+        fail to be processed into Column objects.  Constraints without any
+        column references are also filtered to avoid server-side NPE during
+        validation.
+        """
+        if not table_constraints:
+            return []
+        if not table_columns:
+            return []
+        column_names_lower = {col.name.root.lower() for col in table_columns}
+        valid = []
+        for constraint in table_constraints:
+            if constraint is None:
+                continue
+            if not constraint.columns:
+                logger.warning(
+                    "Filtering out table constraint %s: missing or empty columns",
+                    constraint.constraintType.name,
+                )
+            elif all(c.lower() in column_names_lower for c in constraint.columns):
+                valid.append(constraint)
+            else:
+                logger.warning(
+                    "Filtering out table constraint %s: references columns %s "
+                    "not found in processed columns",
+                    constraint.constraintType.name,
+                    [
+                        c
+                        for c in constraint.columns
+                        if c.lower() not in column_names_lower
+                    ],
+                )
+        return valid
+
     def _get_display_datatype(
         self,
         data_type_display: str,
@@ -385,6 +427,10 @@ class SqlColumnHandlerMixin:
                 )
                 continue
             table_columns.append(om_column)
+
+        table_constraints = self._filter_invalid_constraints(
+            table_columns, table_constraints
+        )
 
         self._extract_json_schema_for_columns(
             table_columns=table_columns,
