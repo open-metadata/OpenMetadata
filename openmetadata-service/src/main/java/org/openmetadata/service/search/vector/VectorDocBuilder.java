@@ -110,10 +110,10 @@ public class VectorDocBuilder {
 
   /**
    * Generate embedding fields to merge into an entity's search index document. Returns a map with:
-   * embedding, textToEmbed, textToEmbedSemantic, chunkIndex, chunkCount, parentId, fingerprint.
+   * embedding, textToLLMContext, textToEmbed, chunkIndex, chunkCount, parentId, fingerprint.
    *
-   * <p>{@code textToEmbed} preserves the legacy rich-context format (empty fields rendered as
-   * {@code []}) and is consumed by agent tooling as LLM context. {@code textToEmbedSemantic} is
+   * <p>{@code textToLLMContext} preserves the legacy rich-context format (empty fields rendered as
+   * {@code []}) and is consumed by agent tooling as LLM context. {@code textToEmbed} is
    * the compact variant that omits empty fields and is the actual input fed to the embedding
    * model.
    */
@@ -133,17 +133,17 @@ public class VectorDocBuilder {
     List<String> semanticChunks = TextChunkManager.chunk(semanticBody);
 
     String contTag = "";
-    String textToEmbed =
+    String textToLLMContext =
         String.format("%s%s%s | chunk %d/%d", metaLight, contTag, chunks.get(0), 1, chunkCount);
     String semanticBodyChunk = semanticChunks.get(0);
-    String textToEmbedSemantic = joinSemanticParts(semanticMetaLight, semanticBodyChunk);
+    String textToEmbed = joinSemanticParts(semanticMetaLight, semanticBodyChunk);
 
-    float[] embedding = embeddingClient.embed(textToEmbedSemantic);
+    float[] embedding = embeddingClient.embed(textToEmbed);
 
     Map<String, Object> fields = new HashMap<>();
     fields.put("embedding", embedding);
+    fields.put("textToLLMContext", textToLLMContext);
     fields.put("textToEmbed", textToEmbed);
-    fields.put("textToEmbedSemantic", textToEmbedSemantic);
     fields.put("chunkIndex", 0);
     fields.put("chunkCount", chunkCount);
     fields.put("parentId", parentId);

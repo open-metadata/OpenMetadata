@@ -43,8 +43,8 @@ class VectorDocBuilderTest {
     assertNotNull(fields);
     assertEquals(table.getId().toString(), fields.get("parentId"));
     assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToLLMContext"));
     assertNotNull(fields.get("textToEmbed"));
-    assertNotNull(fields.get("textToEmbedSemantic"));
     assertNotNull(fields.get("fingerprint"));
     assertEquals(0, fields.get("chunkIndex"));
     assertTrue((int) fields.get("chunkCount") >= 1);
@@ -103,7 +103,7 @@ class VectorDocBuilderTest {
     table.setDeleted(false);
 
     Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
-    String semantic = (String) fields.get("textToEmbedSemantic");
+    String semantic = (String) fields.get("textToEmbed");
 
     assertEquals("table lonely", semantic);
   }
@@ -113,7 +113,7 @@ class VectorDocBuilderTest {
     Table table = createTestTable("customers", "Customers dashboard", "A sample dashboard");
 
     Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
-    String semantic = (String) fields.get("textToEmbedSemantic");
+    String semantic = (String) fields.get("textToEmbed");
 
     assertTrue(semantic.startsWith("table Customers dashboard (customers)"));
     assertTrue(semantic.contains(". A sample dashboard"));
@@ -178,10 +178,11 @@ class VectorDocBuilderTest {
     Table table = createTestTable("orders", null, "Order table");
 
     Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
-    String legacy = (String) fields.get("textToEmbed");
-    String semantic = (String) fields.get("textToEmbedSemantic");
+    String legacy = (String) fields.get("textToLLMContext");
+    String semantic = (String) fields.get("textToEmbed");
 
-    assertTrue(legacy.contains("displayName: []"), "legacy textToEmbed keeps empty placeholders");
+    assertTrue(
+        legacy.contains("displayName: []"), "legacy textToLLMContext keeps empty placeholders");
     assertTrue(legacy.contains(" | chunk 1/"));
     assertFalse(semantic.contains("[]"));
     assertFalse(semantic.contains("name:"));
@@ -206,10 +207,10 @@ class VectorDocBuilderTest {
 
     Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    String textToEmbed = (String) fields.get("textToEmbed");
-    assertNotNull(textToEmbed);
-    assertTrue(textToEmbed.contains("info_table"));
-    assertTrue(textToEmbed.contains("Important description"));
+    String textToLLMContext = (String) fields.get("textToLLMContext");
+    assertNotNull(textToLLMContext);
+    assertTrue(textToLLMContext.contains("info_table"));
+    assertTrue(textToLLMContext.contains("Important description"));
   }
 
   @Test
@@ -397,11 +398,11 @@ class VectorDocBuilderTest {
 
     assertNotNull(fields);
     assertNotNull(fields.get("embedding"));
-    assertNotNull(fields.get("textToEmbed"));
-    String textToEmbed = (String) fields.get("textToEmbed");
-    assertTrue(textToEmbed.contains("finance.profit"));
-    assertTrue(textToEmbed.contains("finance.cost"));
-    assertTrue(textToEmbed.contains("relatedTerms:"));
+    assertNotNull(fields.get("textToLLMContext"));
+    String textToLLMContext = (String) fields.get("textToLLMContext");
+    assertTrue(textToLLMContext.contains("finance.profit"));
+    assertTrue(textToLLMContext.contains("finance.cost"));
+    assertTrue(textToLLMContext.contains("relatedTerms:"));
   }
 
   @Test
@@ -412,10 +413,10 @@ class VectorDocBuilderTest {
     Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(term, MOCK_CLIENT);
 
     assertNotNull(fields);
-    assertNotNull(fields.get("textToEmbed"));
-    String textToEmbed = (String) fields.get("textToEmbed");
-    assertTrue(textToEmbed.contains("relatedTerms:"));
-    assertFalse(textToEmbed.contains("finance."));
+    assertNotNull(fields.get("textToLLMContext"));
+    String textToLLMContext = (String) fields.get("textToLLMContext");
+    assertTrue(textToLLMContext.contains("relatedTerms:"));
+    assertFalse(textToLLMContext.contains("finance."));
   }
 
   @Test

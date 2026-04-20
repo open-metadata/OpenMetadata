@@ -664,10 +664,10 @@
       "fingerprint": {
         "type": "keyword"
       },
-      "textToEmbed": {
+      "textToLLMContext": {
         "type": "text"
       },
-      "textToEmbedSemantic": {
+      "textToEmbed": {
         "type": "text"
       },
       "chunkIndex": {
