@@ -2225,6 +2225,11 @@ export interface DBTConfigurationSource {
      */
     dbtCatalogHttpPath?: string;
     /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
      * DBT manifest http file path to extract dbt models and associate with tables.
      */
     dbtManifestHttpPath?: string;
@@ -2236,6 +2241,15 @@ export interface DBTConfigurationSource {
      * DBT sources http file path to extract freshness test results information.
      */
     dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: DbtSSLConfigClass;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -2267,6 +2281,48 @@ export interface DBTPrefixConfig {
      * Path of the folder where the dbt files are stored
      */
     dbtObjectPrefix?: string;
+}
+
+/**
+ * Client SSL configuration
+ *
+ * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface DbtSSLConfigClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
 }
 
 /**
@@ -2478,6 +2534,21 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
+ *
+ * Flag to verify SSL Certificate for OpenMetadata Server.
+ *
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
 
 /**
@@ -4499,7 +4570,7 @@ export interface ConfigObject {
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
      */
-    consumerConfigSSL?: ConsumerConfigSSLClass;
+    consumerConfigSSL?: DbtSSLConfigClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -4523,7 +4594,7 @@ export interface ConfigObject {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: ConsumerConfigSSLClass;
+    schemaRegistrySSL?: DbtSSLConfigClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -5646,7 +5717,7 @@ export interface BrokerConfiguration {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Topic from where OpenLineage events will be pulled.
      */
@@ -5721,51 +5792,12 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details.
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface ConsumerConfigSSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Client Certificate
      */
@@ -6375,6 +6407,9 @@ export enum ConnectionScheme {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -6423,19 +6458,6 @@ export enum ConnectionType {
     RESTAPI = "RestAPI",
     S3 = "S3",
     SQLite = "SQLite",
-}
-
-/**
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- *
- * Client SSL verification.
- *
- * Flag to verify SSL Certificate for OpenMetadata Server.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
 }
 
 /**
@@ -6545,7 +6567,7 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -6765,7 +6787,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
@@ -7173,6 +7195,9 @@ export enum SpaceType {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
