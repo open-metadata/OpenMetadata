@@ -142,6 +142,8 @@ class ClickhouseSource(CommonDbSourceService):
         regular_tables = [
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(schema_name) or []
+            if table_name
+            not in (self.inspector.get_dictionary_names(schema_name) or [])
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)

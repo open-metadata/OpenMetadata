@@ -279,15 +279,21 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
                         dict_db = row_dict["database"]
                         dict_name = row_dict["dict_name"]
 
-                        # Four-part FQN: service.db.db.table
-                        source_fqn = (
-                            f"{self.config.serviceName}"
-                            f".{source_db}.{source_db}.{source_table}"
+                        # Four-part OM FQN for ClickHouse:
+                        # service.{root_database}.{clickhouse_database_as_schema}.table
+                        # In ClickHouse, databases map to OM schemas, so we
+                        # need to know the root OM database name from config.
+                        database_name = (
+                            getattr(
+                                getattr(self.config, "sourceConfig", None),
+                                "database",
+                                None,
+                            )
+                            or getattr(self.config, "database", None)
+                            or "default"
                         )
-                        dict_fqn = (
-                            f"{self.config.serviceName}"
-                            f".{dict_db}.{dict_db}.{dict_name}"
-                        )
+                        source_fqn = f"{self.config.serviceName}.{database_name}.{source_db}.{source_table}"
+                        dict_fqn = f"{self.config.serviceName}.{database_name}.{dict_db}.{dict_name}"
 
                         from_entity: Optional[Table] = self.metadata.get_by_name(
                             Table, fqn=source_fqn
@@ -366,4 +372,4 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
 
         if self.source_config.processViewLineage:
             logger.info("Processing Clickhouse Dictionary Lineage")
-            yield from self.yield_dictionary_lineage() or []
+            yield from self.yield_dictionary_lineage()

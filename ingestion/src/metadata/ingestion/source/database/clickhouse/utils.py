@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utils module to define overrided sqlalchamy methods
+Utils module to define overridden SQLAlchemy methods
 """
 
 # pylint: disable=protected-access,unused-argument
