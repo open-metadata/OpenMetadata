@@ -129,6 +129,7 @@ import {
   updateNodeType,
 } from '../../utils/EntityUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
@@ -137,8 +138,6 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
-import { LineageNodeData } from '../../components/LineageTable/LineageTable.interface';
-import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -692,7 +691,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           };
         }
 
-        const updatedNodes = addBaseNodeDepthToNodes(node.nodeDepth ?? 0, res.nodes)
+        const updatedNodes = addBaseNodeDepthToNodes(
+          node.nodeDepth ?? 0,
+          res.nodes
+        );
 
         const concatenatedLineageData = {
           nodes: {
