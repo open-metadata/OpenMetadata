@@ -94,10 +94,10 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
-import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Table entity operations.

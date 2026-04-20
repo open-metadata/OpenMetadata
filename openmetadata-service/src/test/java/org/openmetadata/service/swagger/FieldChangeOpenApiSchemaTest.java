@@ -1,8 +1,8 @@
 package org.openmetadata.service.swagger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.swagger.v3.core.converter.ModelConverters;
@@ -40,15 +40,11 @@ class FieldChangeOpenApiSchemaTest {
   private void assertValueSchema(Schema<?> schema, String propertyName) {
     assertNotNull(schema, propertyName + " should be present in the generated OpenAPI schema");
     assertInstanceOf(
-        ComposedSchema.class,
-        schema,
-        propertyName + " should resolve to a composed schema");
+        ComposedSchema.class, schema, propertyName + " should resolve to a composed schema");
 
     ComposedSchema composedSchema = (ComposedSchema) schema;
     List<String> anyOfTypes =
-        composedSchema.getAnyOf().stream()
-            .map(Schema::getType)
-            .collect(Collectors.toList());
+        composedSchema.getAnyOf().stream().map(Schema::getType).collect(Collectors.toList());
 
     assertEquals("object", schema.getType(), propertyName + " should still allow object values");
     assertEquals(
@@ -58,7 +54,6 @@ class FieldChangeOpenApiSchemaTest {
     assertTrue(anyOfTypes.contains("string"), propertyName + " should allow strings");
     assertTrue(anyOfTypes.contains("boolean"), propertyName + " should allow booleans");
     assertTrue(anyOfTypes.contains("number"), propertyName + " should allow numbers");
-    assertTrue(
-        Boolean.TRUE.equals(schema.getNullable()), propertyName + " should remain nullable");
+    assertTrue(Boolean.TRUE.equals(schema.getNullable()), propertyName + " should remain nullable");
   }
 }
