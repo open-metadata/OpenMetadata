@@ -995,7 +995,10 @@ export const assignGlossaryTerm = async (
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
-  const glossaryInput = page.getByTestId('tag-selector').locator('input').last();
+  const glossaryInput = page
+    .getByTestId('tag-selector')
+    .locator('input')
+    .last();
   await glossaryInput.waitFor({ state: 'visible' });
   const searchGlossaryTerm = page.waitForResponse(
     (response) =>
