@@ -29,16 +29,20 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Domain entity operations.
@@ -1281,5 +1285,78 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertTrue(
         listed.getExperts() == null || listed.getExperts().isEmpty(),
         "Soft-deleted expert must not appear even when include=all (applies to top-level only)");
+  }
+
+  @Test
+  void softDeletedFollower_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("follower_list");
+    User follower =
+        client
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    Domain domain = createEntity(createRequest(ns.prefix("dom_follower"), ns));
+
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getId() + "/followers",
+            follower.getId(),
+            ChangeEvent.class);
+
+    client.users().delete(follower.getId().toString());
+
+    ListParams params = new ListParams().setFields("followers").withLimit(100);
+    ListResponse<Domain> list = listEntities(params);
+    Domain listed =
+        list.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Domain not found in list"));
+    assertTrue(
+        listed.getFollowers() == null || listed.getFollowers().isEmpty(),
+        "Soft-deleted follower must not appear in list endpoint");
+  }
+
+  @Test
+  void softDeletedVoter_notReturnedInListEndpoint(TestNamespace ns) {
+    String userName = ns.shortPrefix("voter_list");
+    String userEmail = userName + "@test.openmetadata.org";
+
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    User voter =
+        adminClient.users().create(new CreateUser().withName(userName).withEmail(userEmail));
+
+    Domain domain = createEntity(createRequest(ns.prefix("dom_voter"), ns));
+
+    OpenMetadataClient voterClient = SdkClients.createClient(userEmail, userEmail, new String[] {});
+    voterClient
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getId() + "/vote",
+            new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP),
+            ChangeEvent.class);
+
+    adminClient.users().delete(voter.getId().toString());
+
+    ListParams params = new ListParams().setFields("votes").withLimit(100);
+    ListResponse<Domain> list = listEntities(params);
+    Domain listed =
+        list.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Domain not found in list"));
+    Votes votes = listed.getVotes();
+    boolean voterInUpVotes =
+        votes != null
+            && votes.getUpVoters() != null
+            && votes.getUpVoters().stream()
+                .anyMatch(ref -> ref != null && voter.getId().equals(ref.getId()));
+    assertFalse(voterInUpVotes, "Soft-deleted voter must not appear in list endpoint votes");
   }
 }

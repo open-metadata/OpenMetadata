@@ -1383,7 +1383,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final List<T> get(UriInfo uriInfo, List<UUID> ids, Fields fields, Include include) {
     List<T> entities = find(ids, include);
     try (var ignored = phase("setFieldsBulk")) {
-      setFieldsInBulk(fields, entities, include);
+      setFieldsInBulk(fields, entities);
     }
     entities.forEach(entity -> withHref(uriInfo, entity));
     return entities;
@@ -1826,7 +1826,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final List<T> getByNames(
       UriInfo uriInfo, List<String> entityFQNs, Fields fields, Include include) {
     List<T> entities = findByNames(entityFQNs, include);
-    setFieldsInBulk(fields, entities, include);
+    setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
     return entities;
   }
@@ -1908,7 +1908,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T entity = JsonUtils.readValue(json, entityClass);
       entities.add(entity);
     }
-    setFieldsInBulk(fields, entities, filter.getInclude());
+    setFieldsInBulk(fields, entities);
     return entities;
   }
 
@@ -1953,10 +1953,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       clearFieldsInternal(entity, fields);
     }
-  }
-
-  public final void setFieldsInBulk(Fields fields, List<T> entities, Include include) {
-    setFieldsInBulk(fields, entities);
   }
 
   public List<String> listAllByParentFqn(String parentFqn) {
@@ -2019,7 +2015,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entities = JsonUtils.readObjects(jsons, entityClass);
     }
     try (var ignored = phase("setFieldsBulk")) {
-      setFieldsInBulk(fields, entities, include);
+      setFieldsInBulk(fields, entities);
     }
     entities.forEach(entity -> withHref(uriInfo, entity));
     return entities;
@@ -2097,7 +2093,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<String> jsons = dao.listBefore(filter, limitParam + 1, beforeName, beforeId);
 
     List<T> entities = JsonUtils.readObjects(jsons, entityClass);
-    setFieldsInBulk(fields, entities, filter.getInclude());
+    setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
 
     int total = dao.listCount(filter);
@@ -9089,7 +9085,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           UUID entityId = UUID.fromString(record.getToId());
           UUID followerId = UUID.fromString(record.getFromId());
           EntityReference followerRef = followerRefs.get(followerId);
-          followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+          if (followerRef != null) {
+            followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+          }
         });
 
     return followersMap;
@@ -9491,7 +9489,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!entities.isEmpty()) {
       try {
-        setFieldsInBulk(fields, entities, include);
+        setFieldsInBulk(fields, entities);
         if (!nullOrEmpty(uriInfo)) {
           entities.forEach(entity -> withHref(uriInfo, entity));
         }
