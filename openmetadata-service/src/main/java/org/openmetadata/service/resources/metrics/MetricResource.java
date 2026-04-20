@@ -65,6 +65,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.CSVImportResponse;
 
 @Path("/v1/metrics")
 @Tag(
@@ -727,7 +728,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CsvImportResult.class)))
+                    schema = @Schema(implementation = CSVImportResponse.class)))
       })
   public Response importCsvAsync(
       @Context UriInfo uriInfo,

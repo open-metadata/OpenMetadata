@@ -516,12 +516,10 @@ public class MetricRepository extends EntityRepository<Metric> {
         }
 
         String metricName = csvRecord.get(0);
-        // Metric FQN is just the name (no parent in current schema)
-        Metric metric;
-        try {
-          metric = Entity.getEntityByName(METRIC, metricName, "*", Include.NON_DELETED);
-        } catch (EntityNotFoundException ex) {
-          LOG.debug("Metric not found: {}, it will be created during import.", metricName);
+        // Metric FQN is just the name (no parent in current schema). Use a lightweight
+        // existence-check lookup; fields populated below from the CSV row are the source of truth.
+        Metric metric = findByNameOrNull(metricName, Include.NON_DELETED);
+        if (metric == null) {
           metric = new Metric().withName(metricName).withFullyQualifiedName(metricName);
         }
 
