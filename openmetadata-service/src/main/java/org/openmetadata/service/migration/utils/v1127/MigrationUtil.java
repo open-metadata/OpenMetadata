@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.utils.v1127;
 
+import java.sql.Timestamp;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.settings.Settings;
@@ -12,9 +13,10 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   public static void backfillConfigSourceEnvHash(CollectionDAO collectionDAO) {
-    LOG.info("Backfilling env_hash for openmetadata_settings rows");
+    LOG.info("Backfilling env_hash and env_sync_timestamp for openmetadata_settings rows");
     CollectionDAO.SystemDAO systemDAO = collectionDAO.systemDAO();
     List<Settings> allSettings = systemDAO.getAllConfig();
+    Timestamp migrationTime = ConfigSourceResolver.now();
     int success = 0;
     int skipped = 0;
     int failed = 0;
@@ -30,15 +32,18 @@ public class MigrationUtil {
       }
       try {
         String hash = ConfigSourceResolver.computeHash(setting.getConfigValue());
-        systemDAO.updateEnvHash(configType, hash);
+        systemDAO.updateConfigMetadata(configType, hash, migrationTime, migrationTime);
         success++;
       } catch (Exception e) {
         failed++;
-        LOG.warn("Failed to backfill env_hash for configType={}: {}", configType, e.getMessage());
+        LOG.warn(
+            "Failed to backfill config-source metadata for configType={}: {}",
+            configType,
+            e.getMessage());
       }
     }
     LOG.info(
-        "env_hash backfill complete: {} succeeded, {} skipped, {} failed",
+        "config-source metadata backfill complete: {} succeeded, {} skipped, {} failed",
         success,
         skipped,
         failed);
