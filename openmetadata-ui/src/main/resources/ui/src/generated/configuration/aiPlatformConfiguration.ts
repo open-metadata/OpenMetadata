@@ -15,6 +15,11 @@
  */
 export interface AIPlatformConfiguration {
     /**
+     * Context Memory tuning for the T0 user-preference block assembled by Collate and shipped
+     * to the AI Platform.
+     */
+    contextMemory?: ContextMemoryConfiguration;
+    /**
      * Indicates whether the AI Platform is enabled
      */
     enabled?: boolean;
@@ -42,6 +47,25 @@ export interface AIPlatformConfiguration {
      * Path to the trusted CA certificate for the AI Platform server
      */
     trustedCertsPath?: string;
+}
+
+/**
+ * Context Memory tuning for the T0 user-preference block assembled by Collate and shipped
+ * to the AI Platform.
+ *
+ * Tuning for the Context Memory T0 (user preferences) block shipped to the AI Platform via
+ * the gRPC user_memory_context field.
+ */
+export interface ContextMemoryConfiguration {
+    /**
+     * Maximum number of T0 user-preference memories to include regardless of token budget.
+     */
+    maxItems?: number;
+    /**
+     * Maximum number of tokens worth of T0 user-preference memories to include. Memories are
+     * ranked by freshness + usage and filled in order until the budget or item cap is reached.
+     */
+    tokenBudget?: number;
 }
 
 /**

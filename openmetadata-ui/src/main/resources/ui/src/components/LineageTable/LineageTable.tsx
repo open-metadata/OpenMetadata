@@ -55,7 +55,6 @@ import {
   getLineageByEntityCount,
   getLineageDataByFQN,
 } from '../../rest/lineageAPI';
-import { Transi18next } from '../../utils/CommonUtils';
 import {
   getEntityLinkFromType,
   getEntityName,
@@ -63,6 +62,7 @@ import {
 } from '../../utils/EntityUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
 import Fqn from '../../utils/Fqn';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   getSearchNameEsQuery,
   LINEAGE_IMPACT_OPTIONS,
