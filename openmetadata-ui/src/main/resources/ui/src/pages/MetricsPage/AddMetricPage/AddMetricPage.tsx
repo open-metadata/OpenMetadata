@@ -188,18 +188,18 @@ const AddMetricPage = () => {
   }, []);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+    const target = event.target as HTMLElement;
     let activeField = '';
-    const isDescription = event.target.classList.contains('ProseMirror');
+    const isDescription = target.classList.contains('ProseMirror');
     const isMetricExpression =
-      event.target.classList.contains('CodeMirror') ||
-      event.target.id === 'root/language';
+      Boolean(target.closest('.cm-editor')) || target.id === 'root/language';
 
     if (isDescription) {
       activeField = 'root/description';
     } else if (isMetricExpression) {
       activeField = 'root/metricExpression';
     } else {
-      activeField = event.target.id;
+      activeField = target.id;
     }
 
     setActiveField(activeField);

@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
-import { descriptionBox, uuid } from './common';
+import { descriptionBox, fillCodeMirrorEditor, uuid } from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 
 export const updateMetricType = async (page: Page, metric: string) => {
@@ -117,8 +117,11 @@ export const updateExpression = async (
   await page.locator('[id="root\\/language"]').fill(language);
   await page.getByTitle(`${language}`, { exact: true }).click();
 
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(code);
+  await fillCodeMirrorEditor({
+    page,
+    value: code,
+    container: page.getByTestId('expression-code-container'),
+  });
 
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
@@ -289,8 +292,10 @@ export const addMetric = async (page: Page) => {
   );
 
   // Enter the code
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(metricData.metricExpression.code);
+  await fillCodeMirrorEditor({
+    page,
+    value: metricData.metricExpression.code,
+  });
 
   const postPromise = page.waitForResponse(
     (response) => response.request().method() === 'POST'

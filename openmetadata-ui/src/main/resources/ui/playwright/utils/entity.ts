@@ -995,14 +995,22 @@ export const assignGlossaryTerm = async (
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
+  const glossaryInput = page.getByTestId('tag-selector').locator('input').last();
+  await glossaryInput.waitFor({ state: 'visible' });
   const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(glossaryTerm.displayName)) &&
+      response.request().method() === 'GET' &&
+      response.ok()
   );
-  await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await glossaryInput.fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
 
+  await page
+    .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
+    .waitFor({ state: 'visible' });
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
   await page

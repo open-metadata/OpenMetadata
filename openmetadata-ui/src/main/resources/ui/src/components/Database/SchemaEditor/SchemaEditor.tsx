@@ -37,6 +37,7 @@ const SchemaEditor = ({
     name: CSMode.JAVASCRIPT,
     json: true,
   },
+  readOnly,
   options,
   editorClass,
   showCopyButton = true,
@@ -54,20 +55,28 @@ const SchemaEditor = ({
   const wasHiddenRef = useRef(false);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
-  const isReadOnly = options?.readOnly === true;
+  const isReadOnly = readOnly === true || Boolean(options?.readOnly);
+  const showLineNumbers = options?.lineNumbers ?? true;
+  const enableLineWrapping = options?.lineWrapping ?? true;
 
   const extensions: Extension[] = useMemo(() => {
     const exts: Extension[] = [
       getLanguageExtension(mode),
       EditorState.tabSize.of(JSON_TAB_SIZE),
       indentUnit.of(' '.repeat(JSON_TAB_SIZE)),
-      lineNumbers(),
-      EditorView.lineWrapping,
       highlightActiveLine(),
       bracketMatching(),
       closeBrackets(),
       foldGutter(),
     ];
+
+    if (showLineNumbers) {
+      exts.push(lineNumbers());
+    }
+
+    if (enableLineWrapping) {
+      exts.push(EditorView.lineWrapping);
+    }
 
     if (isReadOnly) {
       exts.push(EditorView.editable.of(false));
@@ -75,7 +84,7 @@ const SchemaEditor = ({
     }
 
     return exts;
-  }, [mode, isReadOnly]);
+  }, [mode, showLineNumbers, enableLineWrapping, isReadOnly]);
 
   const handleChange = useCallback(
     (val: string) => {

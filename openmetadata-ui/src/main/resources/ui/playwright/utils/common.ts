@@ -197,6 +197,39 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
+export const fillCodeMirrorEditor = async ({
+  page,
+  value,
+  container,
+}: {
+  page: Page;
+  value: string;
+  container?: Locator;
+}) => {
+  const editorContainer =
+    container ?? page.getByTestId('code-mirror-container').last();
+
+  await expect(editorContainer).toBeVisible();
+
+  const textBox = editorContainer.getByRole('textbox').last();
+
+  if ((await textBox.count()) > 0) {
+    await textBox.waitFor({ state: 'visible' });
+    await textBox.fill(value);
+
+    return;
+  }
+
+  const editorContent = editorContainer.locator('.cm-content').last();
+  await expect(editorContent).toBeVisible();
+  await editorContent.click();
+
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.press(`${modifier}+A`);
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type(value);
+};
+
 export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.locator('[role="menu"].profile-dropdown').waitFor({

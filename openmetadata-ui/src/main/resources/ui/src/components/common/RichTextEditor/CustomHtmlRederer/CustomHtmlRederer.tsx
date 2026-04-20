@@ -169,7 +169,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
 
       codeFragments = runHighlight(codeText, resolvedLang);
     } else {
-      codeFragments = [<React.Fragment>{codeText}</React.Fragment>];
+      codeFragments = [<React.Fragment key={0}>{codeText}</React.Fragment>];
     }
 
     return [

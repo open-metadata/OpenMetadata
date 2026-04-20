@@ -27,6 +27,7 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  fillCodeMirrorEditor,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -158,8 +159,11 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await fillCodeMirrorEditor({
+        page,
+        value,
+        container: container.getByTestId('code-mirror-container'),
+      });
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -225,9 +229,13 @@ export const setValueForProperty = async (data: {
           val
         )}*`;
         await page.route(searchApi, (route) => route.continue());
-        await page.locator('#entityReference').clear();
+        const input = page
+          .getByTestId('asset-select-list')
+          .getByRole('combobox');
+        await input.click();
+        await input.clear();
         const searchEntity = page.waitForResponse(searchApi);
-        await page.locator('#entityReference').fill(val);
+        await input.fill(val);
         await searchEntity;
         await page.locator(`[data-testid="${val}"]`).click();
       }
@@ -1002,12 +1010,13 @@ export const editColumnCustomProperty = async (
     await editor.blur();
     await page.getByTestId('save').click();
   } else if (propertyType === 'sqlQuery') {
-    const codeMirror = page.locator(
-      '.custom-properties-section-container .cm-editor'
-    );
-    await expect(codeMirror).toBeVisible();
-    await codeMirror.click();
-    await page.keyboard.type(testValue);
+    await fillCodeMirrorEditor({
+      page,
+      value: testValue,
+      container: page
+        .locator('.custom-properties-section-container')
+        .getByTestId('code-mirror-container'),
+    });
   } else if (propertyType === 'timeInterval') {
     const [start, end] = testValue.split(',');
     await page.getByTestId('start-input').fill(start);
@@ -1388,9 +1397,13 @@ export const updateCustomPropertyInRightPanel = async (data: {
           val
         )}*`;
         await page.route(searchApi, (route) => route.continue());
-        await page.locator('#entityReference').clear();
+        const input = page
+          .getByTestId('asset-select-list')
+          .getByRole('combobox');
+        await input.click();
+        await input.clear();
         const searchEntity = page.waitForResponse(searchApi);
-        await page.locator('#entityReference').fill(val);
+        await input.fill(val);
         await searchEntity;
         await page.locator(`[data-testid="${val}"]`).click();
       }
@@ -1422,8 +1435,11 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await fillCodeMirrorEditor({
+        page,
+        value,
+        container: container.getByTestId('code-mirror-container'),
+      });
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;

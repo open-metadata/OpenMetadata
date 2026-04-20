@@ -14,7 +14,7 @@
 import { closeBrackets } from '@codemirror/autocomplete';
 import { bracketMatching, foldGutter, indentUnit } from '@codemirror/language';
 import { EditorState, Extension } from '@codemirror/state';
-import { EditorView, highlightActiveLine } from '@codemirror/view';
+import { EditorView, highlightActiveLine, lineNumbers } from '@codemirror/view';
 import CodeMirror, { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
@@ -36,6 +36,7 @@ const CodeEditor = ({
     name: CSMode.JAVASCRIPT,
     json: true,
   },
+  readOnly,
   options,
   editorClass,
   showCopyButton = true,
@@ -52,7 +53,9 @@ const CodeEditor = ({
   );
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
-  const isReadOnly = options?.readOnly === true;
+  const isReadOnly = readOnly === true || Boolean(options?.readOnly);
+  const showLineNumbers = options?.lineNumbers ?? false;
+  const enableLineWrapping = options?.lineWrapping ?? false;
 
   const extensions: Extension[] = useMemo(() => {
     const exts: Extension[] = [
@@ -65,13 +68,21 @@ const CodeEditor = ({
       foldGutter(),
     ];
 
+    if (showLineNumbers) {
+      exts.push(lineNumbers());
+    }
+
+    if (enableLineWrapping) {
+      exts.push(EditorView.lineWrapping);
+    }
+
     if (isReadOnly) {
       exts.push(EditorView.editable.of(false));
       exts.push(EditorState.readOnly.of(true));
     }
 
     return exts;
-  }, [mode, isReadOnly]);
+  }, [mode, showLineNumbers, enableLineWrapping, isReadOnly]);
 
   const handleChange = useCallback(
     (val: string) => {

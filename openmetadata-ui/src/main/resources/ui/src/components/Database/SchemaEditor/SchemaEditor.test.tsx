@@ -17,6 +17,9 @@ import SchemaEditor from './SchemaEditor';
 
 const mockOnChange = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
+let lastCodeMirrorProps: {
+  extensions?: unknown[];
+} = {};
 
 const mockScrollDOM = { scrollTop: 0 };
 const mockView = {
@@ -44,9 +47,15 @@ jest.mock('@uiw/react-codemirror', () => {
   return {
     __esModule: true,
     default: React.forwardRef(function MockCodeMirror(
-      props: { value: string; onChange?: (val: string) => void },
+      props: {
+        value: string;
+        onChange?: (val: string) => void;
+        extensions?: unknown[];
+      },
       ref: React.Ref<{ view: typeof mockView }>
     ) {
+      lastCodeMirrorProps = props;
+
       React.useImperativeHandle(ref, () => ({
         view: mockView,
       }));
@@ -72,6 +81,7 @@ const mockDisconnect = jest.fn();
 class MockIntersectionObserver implements IntersectionObserver {
   readonly root: Element | Document | null = null;
   readonly rootMargin: string = '';
+  readonly scrollMargin: string = '';
   readonly thresholds: ReadonlyArray<number> = [];
 
   constructor(callback: IntersectionObserverCallback) {
@@ -129,6 +139,7 @@ describe('SchemaEditor component test', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockScrollDOM.scrollTop = 0;
+    lastCodeMirrorProps = {};
     window.requestAnimationFrame = jest
       .fn()
       .mockImplementation((cb: FrameRequestCallback) => {
@@ -178,6 +189,29 @@ describe('SchemaEditor component test', () => {
     });
 
     expect(mockOnChange).toHaveBeenCalled();
+  });
+
+  it('should honor top-level readOnly prop', () => {
+    render(<SchemaEditor {...mockProps} readOnly />);
+
+    expect(lastCodeMirrorProps.extensions).toHaveLength(11);
+  });
+
+  it('should treat legacy nocursor option as read-only', () => {
+    render(<SchemaEditor {...mockProps} options={{ readOnly: 'nocursor' }} />);
+
+    expect(lastCodeMirrorProps.extensions).toHaveLength(11);
+  });
+
+  it('should honor lineNumbers and lineWrapping options', () => {
+    render(
+      <SchemaEditor
+        {...mockProps}
+        options={{ lineNumbers: false, lineWrapping: false }}
+      />
+    );
+
+    expect(lastCodeMirrorProps.extensions).toHaveLength(7);
   });
 
   describe('refreshEditor prop', () => {

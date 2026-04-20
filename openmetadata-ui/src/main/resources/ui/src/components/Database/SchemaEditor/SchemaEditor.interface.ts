@@ -25,7 +25,7 @@ export interface SchemaEditorProps {
   options?: {
     lineNumbers?: boolean;
     lineWrapping?: boolean;
-    readOnly?: boolean;
+    readOnly?: boolean | 'nocursor';
     [key: string]: string | boolean | Array<string> | undefined;
   };
   editorClass?: string;

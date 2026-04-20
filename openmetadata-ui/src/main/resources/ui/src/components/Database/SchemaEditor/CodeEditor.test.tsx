@@ -19,6 +19,9 @@ import CodeEditor from './CodeEditor';
 const mockOnChange = jest.fn();
 const mockOnFocus = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
+let lastCodeMirrorProps: {
+  extensions?: unknown[];
+} = {};
 
 const mockView = {
   requestMeasure: jest.fn(),
@@ -54,6 +57,8 @@ jest.mock('@uiw/react-codemirror', () => {
       },
       ref: React.Ref<{ view: typeof mockView }>
     ) {
+      lastCodeMirrorProps = props;
+
       React.useImperativeHandle(ref, () => ({
         view: mockView,
       }));
@@ -85,6 +90,7 @@ const defaultProps = {
 describe('CodeEditor Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    lastCodeMirrorProps = {};
   });
 
   it('should render component with default props', () => {
@@ -176,6 +182,24 @@ describe('CodeEditor Component', () => {
     render(<CodeEditor mode={customMode} />);
 
     expect(screen.getByTestId('code-mirror-editor')).toBeInTheDocument();
+  });
+
+  it('should honor top-level readOnly prop', () => {
+    render(<CodeEditor readOnly />);
+
+    expect(lastCodeMirrorProps.extensions).toHaveLength(9);
+  });
+
+  it('should treat legacy nocursor option as read-only', () => {
+    render(<CodeEditor options={{ readOnly: 'nocursor' }} />);
+
+    expect(lastCodeMirrorProps.extensions).toHaveLength(9);
+  });
+
+  it('should honor lineNumbers and lineWrapping options', () => {
+    render(<CodeEditor options={{ lineNumbers: true, lineWrapping: true }} />);
+
+    expect(lastCodeMirrorProps.extensions).toHaveLength(9);
   });
 
   it('should refresh editor when refreshEditor prop changes to true', () => {

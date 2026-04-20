@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import {
   clickOutside,
   descriptionBox,
+  fillCodeMirrorEditor,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -89,8 +90,10 @@ test.describe(
 
         await clickOutside(page);
 
-        await page.locator("pre[role='presentation']").last().click();
-        await page.keyboard.type('SELECT SUM(amount) FROM sales');
+        await fillCodeMirrorEditor({
+          page,
+          value: 'SELECT SUM(amount) FROM sales',
+        });
 
         // Save the metric
         const postPromise = page.waitForResponse(
