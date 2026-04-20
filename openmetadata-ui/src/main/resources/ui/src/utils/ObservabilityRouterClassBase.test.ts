@@ -12,7 +12,9 @@
  */
 
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { ObservabilityRouterClassBase } from './ObservabilityRouterClassBase';
+import observabilityRouterClassBase, {
+  ObservabilityRouterClassBase,
+} from './ObservabilityRouterClassBase';
 
 jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: (tab?: string, subTab?: string) => {
@@ -28,6 +30,10 @@ jest.mock('./RouterUtils', () => ({
   },
   getObservabilityAlertsEditPath: (fqn: string) =>
     `/observability/alerts/edit/${fqn}`,
+  getObservabilityAlertDetailsPath: (fqn: string, tab?: string) =>
+    tab
+      ? `/observability/alerts/${fqn}/${tab}`
+      : `/observability/alerts/${fqn}`,
 }));
 
 jest.mock('../constants/constants', () => ({
@@ -89,6 +95,36 @@ describe('ObservabilityRouterClassBase', () => {
       expect(router.getObservabilityAlertsEditPath('my-alert')).toBe(
         '/observability/alerts/edit/my-alert'
       );
+    });
+  });
+
+  describe('getObservabilityAlertDetailsPath', () => {
+    it('should return the details path without tab', () => {
+      expect(router.getObservabilityAlertDetailsPath('my-alert')).toBe(
+        '/observability/alerts/my-alert'
+      );
+    });
+
+    it('should return the details path with tab', () => {
+      expect(
+        router.getObservabilityAlertDetailsPath('my-alert', 'config')
+      ).toBe('/observability/alerts/my-alert/config');
+    });
+  });
+
+  describe('singleton default export', () => {
+    it('default export should be an instance of ObservabilityRouterClassBase', () => {
+      expect(observabilityRouterClassBase).toBeInstanceOf(
+        ObservabilityRouterClassBase
+      );
+    });
+
+    it('repeated imports should reference the same singleton', () => {
+      const { default: reimport } = jest.requireActual<{
+        default: ObservabilityRouterClassBase;
+      }>('./ObservabilityRouterClassBase');
+
+      expect(reimport).toBe(observabilityRouterClassBase);
     });
   });
 });

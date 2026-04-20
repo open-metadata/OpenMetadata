@@ -62,11 +62,10 @@ import {
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
-  getObservabilityAlertDetailsPath,
-  getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -215,7 +214,7 @@ function AlertDetailsPage({
     navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
-        : getObservabilityAlertsEditPath(fqn)
+        : observabilityRouterClassBase.getObservabilityAlertsEditPath(fqn)
     );
   }, [history]);
 
@@ -309,7 +308,7 @@ function AlertDetailsPage({
       navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
-          : getObservabilityAlertDetailsPath(fqn, activeKey),
+          : observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn, activeKey),
         { replace: true }
       );
     },

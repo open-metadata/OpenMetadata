@@ -49,7 +49,6 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -204,7 +203,7 @@ const ObservabilityAlertsPage = () => {
           return (
             <Link
               data-testid="alert-name"
-              to={getObservabilityAlertDetailsPath(
+              to={observabilityRouterClassBase.getObservabilityAlertDetailsPath(
                 record.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record)}
@@ -221,7 +220,7 @@ const ObservabilityAlertsPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EventSubscription>(),
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',

@@ -15,6 +15,7 @@ import { ROUTES } from '../constants/constants';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   getDataQualityPagePath,
+  getObservabilityAlertDetailsPath,
   getObservabilityAlertsEditPath,
 } from './RouterUtils';
 
@@ -40,6 +41,10 @@ class ObservabilityRouterClassBase {
 
   public getObservabilityAlertsEditPath(fqn: string): string {
     return getObservabilityAlertsEditPath(fqn);
+  }
+
+  public getObservabilityAlertDetailsPath(fqn: string, tab?: string): string {
+    return getObservabilityAlertDetailsPath(fqn, tab);
   }
 }
 
