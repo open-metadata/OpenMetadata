@@ -14,8 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
-    """
+CLICKHOUSE_SQL_STATEMENT = textwrap.dedent("""
         Select
           query_start_time start_time,
           DATEADD(query_duration_ms, query_start_time) end_time,
@@ -36,12 +35,10 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
         {filters}
         and (`type`='QueryFinish' or `type`='QueryStart')
         LIMIT {result_limit}
-"""
-)
+""")
 
 
-CLICKHOUSE_TABLE_COMMENTS = textwrap.dedent(
-    """
+CLICKHOUSE_TABLE_COMMENTS = textwrap.dedent("""
 SELECT
       database as schema,
       name as table_name,
@@ -49,18 +46,15 @@ SELECT
   FROM system.tables
  WHERE name NOT LIKE '.inner%%'
  and comment <> ''
-"""
-)
+""")
 
-CLICKHOUSE_VIEW_DEFINITIONS = textwrap.dedent(
-    """
+CLICKHOUSE_VIEW_DEFINITIONS = textwrap.dedent("""
 select
 	name as view_name,
 	database as schema,
 	create_table_query as view_def
 from system.tables where engine in ['MaterializedView', 'View']
-"""
-)
+""")
 
 CLICKHOUSE_SQL_STATEMENT_TEST = """
         Select
@@ -77,3 +71,18 @@ CLICKHOUSE_SQL_STATEMENT_TEST = """
         From system.query_log
         LIMIT 2
 """
+
+# Query system.dictionaries to discover all LOADED dictionaries that have a
+# ClickHouse-native backing source.  The `source` column stores a
+# human-readable description of the SOURCE() clause, e.g.:
+#   "ClickHouse: host: localhost, port: 9000, user: default, db: mydb, table: orders"
+# We read `database`, `name`, and `source` so the lineage step can parse the
+# upstream table reference and build an AddLineageRequest edge.
+CLICKHOUSE_DICTIONARY_LINEAGE = textwrap.dedent("""
+    SELECT
+        database,
+        name       AS dict_name,
+        source     AS source_config
+    FROM system.dictionaries
+    WHERE status = 'LOADED'
+""")

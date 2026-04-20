@@ -9,8 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utils module to define overrided sqlalchamy methods 
+Utils module to define overrided sqlalchamy methods
 """
+
 # pylint: disable=protected-access,unused-argument
 
 
@@ -140,6 +141,34 @@ def get_mview_names(self, schema=None):
 def get_mview_names_dialect(self, connection, schema=None, **kw):
     query = text(
         "SELECT name FROM system.tables WHERE engine = 'MaterializedView' "
+        "AND database = :database"
+    )
+    database = schema or connection.engine.url.database
+    rows = self._execute(connection, query, database=database)
+    return [row.name for row in rows]
+
+
+def get_dictionary_names(self, schema=None):
+    """Return all dictionary names in `schema`.
+
+    Clickhouse Dictionary objects appear in ``system.tables`` with
+    engine = ``'Dictionary'``.  We surface them as a separate list so
+    that the metadata workflow can assign them ``TableType.External``
+    instead of treating them as regular tables.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+    """
+    with self._operation_context() as conn:
+        return self.dialect.get_dictionary_names(
+            conn, schema, info_cache=self.info_cache
+        )
+
+
+def get_dictionary_names_dialect(self, connection, schema=None, **kw):
+    """Dialect-level implementation for get_dictionary_names."""
+    query = text(
+        "SELECT name FROM system.tables WHERE engine = 'Dictionary' "
         "AND database = :database"
     )
     database = schema or connection.engine.url.database
