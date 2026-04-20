@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -200,107 +200,96 @@ class ParquetDataFrameReader(DataFrameReader):
                 dataframes=chunk_generator, raw_data=None, columns=None
             )
 
-    @_read_parquet_dispatch.register
-    def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _build_s3fs_filesystem(self):
+        """Build an s3fs filesystem using credentials from the boto3 session.
+
+        Uses the session created by AWSClient which already handles
+        AssumeRole, instance profiles, ECS task roles, etc.
+        Falls back to default credential chain if no session is available
+        (e.g., when called from profiler).
+        """
         # pylint: disable=import-outside-toplevel
-        from pyarrow.fs import S3FileSystem
-        from pyarrow.parquet import ParquetDataset, ParquetFile
+        from s3fs import S3FileSystem
 
-        client_kwargs = {
-            "endpoint_override": (
-                str(self.config_source.securityConfig.endPointURL)
-                if self.config_source.securityConfig.endPointURL
-                else None
-            ),
-            "region": (
-                self.config_source.securityConfig.awsRegion
-                if self.config_source.securityConfig.awsRegion
-                else None
-            ),
-        }
-
-        # In order to use S3FileSystem Refreshing mechanism when appropriate we are doing the following:
-        # If both assumeRoleArn and awsAccessKeyId are present, we are setting the credentials as environment variables in order for S3FileSystem to use them as source credentials when assuming the role.
-        if self.config_source.securityConfig.assumeRoleArn:
-            client_kwargs.update(
-                {
-                    "role_arn": self.config_source.securityConfig.assumeRoleArn,
-                    "session_name": self.config_source.securityConfig.assumeRoleSessionName,
-                }
-            )
-
-            if self.config_source.securityConfig.awsAccessKeyId:
-                os.environ[
-                    "AWS_ACCESS_KEY_ID"
-                ] = self.config_source.securityConfig.awsAccessKeyId
-                os.environ[
-                    "AWS_SECRET_ACCESS_KEY"
+        kwargs = {}
+        if self.session:
+            credentials = self.session.get_credentials()
+            if credentials is not None:
+                creds = credentials.get_frozen_credentials()
+                kwargs["key"] = creds.access_key
+                kwargs["secret"] = creds.secret_key
+                kwargs["token"] = creds.token
+        elif self.config_source.securityConfig.awsAccessKeyId:
+            kwargs["key"] = self.config_source.securityConfig.awsAccessKeyId
+            if self.config_source.securityConfig.awsSecretAccessKey:
+                kwargs[
+                    "secret"
                 ] = (
                     self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
                 )
+            if self.config_source.securityConfig.awsSessionToken:
+                kwargs["token"] = self.config_source.securityConfig.awsSessionToken
 
-                if self.config_source.securityConfig.awsSessionToken:
-                    os.environ[
-                        "AWS_SESSION_TOKEN"
-                    ] = self.config_source.securityConfig.awsSessionToken
-
-        elif self.config_source.securityConfig.awsAccessKeyId:
-            client_kwargs.update(
-                {
-                    "access_key": self.config_source.securityConfig.awsAccessKeyId,
-                    "secret_key": self.config_source.securityConfig.awsSecretAccessKey.get_secret_value(),
-                    "session_token": self.config_source.securityConfig.awsSessionToken,
-                }
+        client_kwargs = {}
+        if self.config_source.securityConfig.endPointURL:
+            client_kwargs["endpoint_url"] = str(
+                self.config_source.securityConfig.endPointURL
             )
+        if self.config_source.securityConfig.awsRegion:
+            client_kwargs["region_name"] = self.config_source.securityConfig.awsRegion
 
-        s3_fs = S3FileSystem(**client_kwargs)
+        if client_kwargs:
+            kwargs["client_kwargs"] = client_kwargs
 
-        bucket_uri = f"{bucket_name}/{key}"
+        return S3FileSystem(**kwargs)
 
-        # Check file size to determine reading strategy
-        try:
-            file_info = s3_fs.get_file_info(bucket_uri)
-            file_size = file_info.size if hasattr(file_info, "size") else 0
+    @_read_parquet_dispatch.register
+    def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+        # pylint: disable=import-outside-toplevel
+        from pyarrow.parquet import ParquetFile
 
-            if self._should_use_chunking(file_size):
-                # Use ParquetFile for batched reading of large files
-                def chunk_generator():
-                    logger.info(
-                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
-                        f"Using batched reading for file: {bucket_uri}"
-                    )
-                    parquet_file = ParquetFile(bucket_uri, filesystem=s3_fs)
-                    yield from self._read_parquet_in_batches(parquet_file)
+        s3_fs = self._build_s3fs_filesystem()
+        file_path = f"{bucket_name}/{key}"
+        file_size = getattr(self, "_file_size", None)
 
-                return DatalakeColumnWrapper(
-                    dataframes=chunk_generator, raw_data=None, columns=None
+        if file_size is None:
+            try:
+                file_size = s3_fs.info(file_path)["size"]
+            except Exception as exc:
+                logger.warning(
+                    f"Could not determine file size for {file_path}: {exc}. "
+                    f"Assuming large file."
                 )
-            else:
-                # Use ParquetDataset for regular reading of smaller files
-                def chunk_generator():
-                    logger.debug(
-                        f"Reading small parquet file ({file_size} bytes): {bucket_uri}"
-                    )
-                    dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
-                    yield from dataframe_to_chunks(dataset.read_pandas().to_pandas())
+                file_size = 0
 
-                return DatalakeColumnWrapper(
-                    dataframes=chunk_generator, raw_data=None, columns=None
-                )
-
-        except Exception as exc:
-            # Fallback to regular reading if size check fails
-            logger.warning(
-                f"Could not determine file size for {bucket_uri}: {exc}. Using regular reading"
-            )
+        if self._should_use_chunking(file_size):
 
             def chunk_generator():
-                dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
-                yield from dataframe_to_chunks(dataset.read_pandas().to_pandas())
+                if file_size:
+                    logger.info(
+                        f"Large parquet file detected ({file_size} bytes > "
+                        f"{MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
+                        f"Using batched reading for file: {file_path}"
+                    )
+                else:
+                    logger.info(
+                        f"Unknown file size. "
+                        f"Using batched reading for file: {file_path}"
+                    )
+                with s3_fs.open(file_path) as f:
+                    parquet_file = ParquetFile(f)
+                    yield from self._read_parquet_in_batches(parquet_file)
 
-            return DatalakeColumnWrapper(
-                dataframes=chunk_generator, raw_data=None, columns=None
-            )
+        else:
+
+            def chunk_generator():
+                with s3_fs.open(file_path) as f:
+                    parquet_file = ParquetFile(f)
+                    yield from dataframe_to_chunks(parquet_file.read().to_pandas())
+
+        return DatalakeColumnWrapper(
+            dataframes=chunk_generator, raw_data=None, columns=None
+        )
 
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -424,7 +413,10 @@ class ParquetDataFrameReader(DataFrameReader):
                 dataframes=chunk_generator, raw_data=None, columns=None
             )
 
-    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
+    def _read(
+        self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__
+    ) -> DatalakeColumnWrapper:
+        self._file_size = file_size
         return self._read_parquet_dispatch(
             self.config_source, key=key, bucket_name=bucket_name
         )

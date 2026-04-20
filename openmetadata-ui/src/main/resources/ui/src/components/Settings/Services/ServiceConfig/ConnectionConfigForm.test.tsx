@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { forwardRef } from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act, forwardRef } from 'react';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import * as CommonUtils from '../../../../utils/CommonUtils';
+import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
@@ -140,10 +140,6 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  Transi18next: jest.fn().mockReturnValue('message.airflow-host-ip-address'),
-}));
-
 jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
   __esModule: true,
   default: {
@@ -216,6 +212,12 @@ const mockProps = {
 };
 
 describe('ServiceConfig', () => {
+  beforeEach(() => {
+    jest
+      .spyOn(LocalUtils, 'Transi18next')
+      .mockImplementation(() => <>message.airflow-host-ip-address</>);
+  });
+
   it('should render Service Config', async () => {
     render(<ConnectionConfigForm {...mockProps} />);
 
@@ -305,9 +307,7 @@ describe('ServiceConfig', () => {
       </div>
     ));
 
-    jest
-      .spyOn(CommonUtils, 'Transi18next')
-      .mockImplementation(mockTransi18next);
+    jest.spyOn(LocalUtils, 'Transi18next').mockImplementation(mockTransi18next);
 
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);

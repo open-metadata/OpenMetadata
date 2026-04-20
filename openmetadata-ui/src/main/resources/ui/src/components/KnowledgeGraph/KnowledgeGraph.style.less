@@ -13,25 +13,22 @@
 
 @import (reference) '../../styles/variables.less';
 
+@knowledge-graph-card-header-height: 68px;
+
 .knowledge-graph-empty {
-  height: @asset-details-tab-pane-height;
+  height: calc(
+    @asset-details-tab-pane-height - @knowledge-graph-card-header-height
+  );
 }
 
 .knowledge-graph-container {
   height: @asset-details-tab-pane-height;
   position: relative;
 
-  .knowledge-graph-controls {
-    position: absolute;
-    top: 16px;
-    left: 1%;
-    z-index: 1000;
-    width: 98%;
-  }
-
   .knowledge-graph-canvas {
-    height: @asset-details-tab-pane-height;
-    border-radius: 0.75rem;
+    height: calc(
+      @asset-details-tab-pane-height - @knowledge-graph-card-header-height
+    );
     background: #ffffff;
     background-image: radial-gradient(circle, #e8e8e8 1px, transparent 1px);
     background-size: 15px 15px;

@@ -12,13 +12,10 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
-import { Auth0Provider } from '@auth0/auth0-react';
-import {
+import type {
   Configuration,
   IPublicClientApplication,
-  PublicClientApplication,
 } from '@azure/msal-browser';
-import { MsalProvider } from '@azure/msal-react';
 import {
   AxiosError,
   AxiosRequestHeaders,
@@ -41,7 +38,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
-import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
+import {
+  APP_ROUTER_ROUTES as ROUTES,
+  REDIRECT_PATHNAME,
+} from '../../../constants/router.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
@@ -50,6 +50,7 @@ import {
 } from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
+import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import axiosClient from '../../../rest';
@@ -68,7 +69,6 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
-import { withDomainFilter } from '../../../utils/DomainUtils';
 import {
   clearOidcToken,
   getOidcToken,
@@ -78,15 +78,21 @@ import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
-import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
-import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
-import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator';
-import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
-import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
-import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
+import {
+  LazyAuth0Authenticator,
+  LazyBasicAuthAuthenticator,
+  LazyGenericAuthenticator,
+  LazyMsalAuthenticator,
+  LazyOidcAuthenticator,
+  LazyOktaAuthenticator,
+} from '../AppAuthenticators/LazyAuthenticators';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
-import BasicAuthProvider from './BasicAuthProvider';
-import OktaAuthProvider from './OktaAuthProvider';
+import {
+  LazyAuth0ProviderWrapper,
+  LazyBasicAuthProviderWrapper,
+  LazyMsalProviderWrapper,
+  LazyOktaAuthProviderWrapper,
+} from './LazyAuthProviderWrappers';
 
 interface AuthProviderProps {
   childComponentType: ComponentType;
@@ -109,7 +115,11 @@ const isEmailVerifyField = 'isEmailVerified';
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
 
-let pendingRequests: any[] = [];
+let pendingRequests: {
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+  config: InternalAxiosRequestConfig<unknown>;
+}[] = [];
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -142,7 +152,6 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
     isAuthenticating,
-    initializeAuthState,
   } = useApplicationStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
@@ -324,10 +333,6 @@ export const AuthProvider = ({
   };
 
   useEffect(() => {
-    initializeAuthState();
-  }, []);
-
-  useEffect(() => {
     if (authenticatorRef.current?.renewIdToken) {
       tokenService.current.updateRenewToken(
         authenticatorRef.current?.renewIdToken
@@ -424,15 +429,15 @@ export const AuthProvider = ({
       } catch (error) {
         const err = error as AxiosError;
         if (err?.response?.status === 404) {
-          if (!authConfig?.enableSelfSignup) {
-            resetUserDetails();
-            navigate(ROUTES.UNAUTHORISED);
-            showErrorToast(err);
-          } else {
+          if (authConfig?.enableSelfSignup) {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
             setIsSigningUp(true);
             navigate(ROUTES.SIGNUP);
+          } else {
+            resetUserDetails();
+            navigate(ROUTES.UNAUTHORISED);
+            showErrorToast(err);
           }
         } else {
           // eslint-disable-next-line no-console
@@ -472,20 +477,17 @@ export const AuthProvider = ({
     configJson: AuthenticationConfiguration
   ) => {
     const { provider, ...otherConfigs } = configJson;
-    switch (provider) {
-      case AuthProviderEnum.Azure:
-        {
-          const instance = new PublicClientApplication(
-            otherConfigs as unknown as Configuration
-          );
+    if (provider === AuthProviderEnum.Azure) {
+      const AzureBrowser = await import('@azure/msal-browser');
+      const { PublicClientApplication } = AzureBrowser;
+      const instance = new PublicClientApplication(
+        otherConfigs as unknown as Configuration
+      );
 
-          // Need to initialize the instance before setting it
-          await instance.initialize();
+      // Need to initialize the instance before setting it
+      await instance.initialize();
 
-          setMsalInstance(instance);
-        }
-
-        break;
+      setMsalInstance(instance);
     }
   };
 
@@ -504,7 +506,7 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      config: InternalAxiosRequestConfig<any>
+      config: InternalAxiosRequestConfig<unknown>
     ) {
       // Need to read token from local storage as it might have been updated with refresh
       const token: string = await getOidcToken();
@@ -544,7 +546,16 @@ export const AuthProvider = ({
             handleStoreProtectedRedirectPath();
 
             // If 401 error and refresh is not in progress, trigger the refresh
-            if (!tokenService.current?.isTokenUpdateInProgress()) {
+            if (tokenService.current?.isTokenUpdateInProgress()) {
+              // If refresh is in progress, queue the request
+              return new Promise((resolve, reject) => {
+                pendingRequests.push({
+                  resolve,
+                  reject,
+                  config: error.config,
+                });
+              });
+            } else {
               // Start the refresh process
               return new Promise((resolve, reject) => {
                 // Add this request to the pending queue
@@ -576,15 +587,6 @@ export const AuthProvider = ({
 
                     return Promise.reject(error);
                   });
-              });
-            } else {
-              // If refresh is in progress, queue the request
-              return new Promise((resolve, reject) => {
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
               });
             }
           }
@@ -666,64 +668,64 @@ export const AuthProvider = ({
       authConfig?.provider === AuthProviderEnum.Saml
     ) {
       return (
-        <GenericAuthenticator ref={authenticatorRef}>
+        <LazyGenericAuthenticator ref={authenticatorRef}>
           {childElement}
-        </GenericAuthenticator>
+        </LazyGenericAuthenticator>
       );
     }
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
         return (
-          <BasicAuthProvider>
-            <BasicAuthAuthenticator ref={authenticatorRef}>
+          <LazyBasicAuthProviderWrapper>
+            <LazyBasicAuthAuthenticator ref={authenticatorRef}>
               {childElement}
-            </BasicAuthAuthenticator>
-          </BasicAuthProvider>
+            </LazyBasicAuthAuthenticator>
+          </LazyBasicAuthProviderWrapper>
         );
       }
       case AuthProviderEnum.Auth0: {
         return (
-          <Auth0Provider
+          <LazyAuth0ProviderWrapper
             useRefreshTokens
             cacheLocation="memory"
             clientId={authConfig.clientId?.toString() ?? ''}
             domain={authConfig.authority?.toString() ?? ''}
-            redirectUri={authConfig.callbackUrl?.toString()}>
-            <Auth0Authenticator ref={authenticatorRef}>
+            redirectUri={authConfig.callbackUrl?.toString() ?? ''}>
+            <LazyAuth0Authenticator ref={authenticatorRef}>
               {childElement}
-            </Auth0Authenticator>
-          </Auth0Provider>
+            </LazyAuth0Authenticator>
+          </LazyAuth0ProviderWrapper>
         );
       }
       case AuthProviderEnum.Okta: {
         return (
-          <OktaAuthProvider>
-            <OktaAuthenticator ref={authenticatorRef}>
+          <LazyOktaAuthProviderWrapper>
+            <LazyOktaAuthenticator ref={authenticatorRef}>
               {childElement}
-            </OktaAuthenticator>
-          </OktaAuthProvider>
+            </LazyOktaAuthenticator>
+          </LazyOktaAuthProviderWrapper>
         );
       }
       case AuthProviderEnum.Google:
       case AuthProviderEnum.CustomOidc:
       case AuthProviderEnum.AwsCognito: {
         return (
-          <OidcAuthenticator
+          <LazyOidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
             userConfig={userConfig}>
             {childElement}
-          </OidcAuthenticator>
+          </LazyOidcAuthenticator>
         );
       }
       case AuthProviderEnum.Azure: {
         return msalInstance ? (
-          <MsalProvider instance={msalInstance}>
-            <MsalAuthenticator ref={authenticatorRef}>
+          <LazyMsalProviderWrapper instance={msalInstance}>
+            <LazyMsalAuthenticator ref={authenticatorRef}>
               {childElement}
-            </MsalAuthenticator>
-          </MsalProvider>
+            </LazyMsalAuthenticator>
+          </LazyMsalProviderWrapper>
         ) : (
           <Loader fullScreen />
         );
