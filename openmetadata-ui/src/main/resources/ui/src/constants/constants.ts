@@ -154,6 +154,7 @@ export const ROUTES = {
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
+  IDENTITY_TRUST: '/governance/identity-trust',
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
