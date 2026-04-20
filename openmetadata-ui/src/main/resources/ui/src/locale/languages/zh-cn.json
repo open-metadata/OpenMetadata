@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "无最近查看过的数据",
     "no-reference-available": "无可用参考",
     "no-related-terms-available": "无相关术语可用",
+    "no-relations-for-selected-filter": "未找到所选关系类型的关系。请尝试选择其他类型。",
     "no-relations-found": "未找到该术语的关系",
     "no-retry-queue-records": "未发现实时索引重试记录。所有实体均已成功索引。",
     "no-roles-assigned": "未分配角色",

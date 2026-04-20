@@ -2880,6 +2880,7 @@
     "no-recently-viewed-date": "Geen recent bekeken data.",
     "no-reference-available": "Geen referenties beschikbaar.",
     "no-related-terms-available": "Geen gerelateerde termen beschikbaar.",
+    "no-relations-for-selected-filter": "Geen relaties gevonden voor de geselecteerde relatietypes. Probeer andere types te selecteren.",
     "no-relations-found": "Geen relaties gevonden voor deze term",
     "no-retry-queue-records": "Geen live indexering herhalingspogingen gevonden. Alle entiteiten zijn succesvol geïndexeerd.",
     "no-roles-assigned": "Geen rollen toegewezen",
