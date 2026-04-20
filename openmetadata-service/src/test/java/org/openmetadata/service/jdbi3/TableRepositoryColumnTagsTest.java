@@ -2,8 +2,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -85,12 +86,14 @@ class TableRepositoryColumnTagsTest {
             .withState(State.CONFIRMED);
     String columnFqn = table.getColumns().getFirst().getFullyQualifiedName();
 
-    when(tagUsageDAO.getTagsInternalBatch(anyList()))
+    when(tagUsageDAO.getTagsInternalBatch(List.of(columnFqn)))
         .thenReturn(List.of(tagUsage(columnFqn, piiTag)));
 
     repository.setFieldsInBulk(
         new Fields(repository.getAllowedFields(), "columns"), List.of(table));
 
+    verify(tagUsageDAO).getTagsInternalBatch(List.of(columnFqn));
+    verifyNoMoreInteractions(tagUsageDAO);
     assertNull(table.getTags());
     assertColumnTags(table, piiTag);
   }
