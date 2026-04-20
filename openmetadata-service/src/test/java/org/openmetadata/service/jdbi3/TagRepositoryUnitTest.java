@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -291,47 +292,59 @@ public class TagRepositoryUnitTest {
   }
 
   @Test
-  void test_usageCountQuery_containsCorrectHashNotRawFqn() {
+  void test_usageCountQuery_bindingsContainCorrectHashNotRawFqn() {
     String tagFqn = "PII.Sensitive";
-    String query = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
+    TagRepository.UsageCountQuery result = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
     String expectedHash = FullyQualifiedName.buildHash(tagFqn);
 
-    assertTrue(
-        query.contains(expectedHash), "Query must embed the buildHash result, not the raw FQN");
+    assertEquals(
+        expectedHash, result.bindings().get("hash_0"), "Binding hash_0 must use buildHash result");
     assertTrue(expectedHash.contains("."), "buildHash of a multi-segment FQN must contain '.'");
   }
 
   @Test
-  void test_usageCountQuery_doesNotContainRawFqnAsHash() {
+  void test_usageCountQuery_templateUsesNamedParams() {
     String tagFqn = "PII.Sensitive";
-    String query = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
-
-    // The raw FQN appears once as the SELECT label — but must NOT appear inside tagFQNHash = '...'
-    // (which would be the broken MD5(fqn) pattern — a flat hash with no dot)
+    TagRepository.UsageCountQuery result = realTagRepository.buildUsageCountQuery(List.of(tagFqn));
+    String template = result.template();
     String expectedHash = FullyQualifiedName.buildHash(tagFqn);
-    String brokenPattern = "tagFQNHash = '" + tagFqn + "'";
-    assertTrue(!query.contains(brokenPattern), "Query must not use raw FQN as the hash value");
+
+    assertTrue(template.contains(":hash_0"), "Template must use named param :hash_0, not raw hash");
     assertTrue(
-        query.contains("tagFQNHash = '" + expectedHash + "'"),
-        "Query must use buildHash result for tagFQNHash comparison");
+        template.contains(":tagFQN_0"), "Template must use named param :tagFQN_0, not raw FQN");
+    assertFalse(
+        template.contains("tagFQNHash = '" + tagFqn + "'"),
+        "Template must not embed raw FQN as hash value");
+    assertFalse(
+        template.contains("tagFQNHash = '" + expectedHash + "'"),
+        "Template must use named params, not inline hash literals");
   }
 
   @Test
   void test_usageCountQuery_multipleTagsUnionAll() {
     List<String> tagFqns = List.of("PII.Sensitive", "PII.Personal", "Tier.Tier1");
-    String query = realTagRepository.buildUsageCountQuery(tagFqns);
+    TagRepository.UsageCountQuery result = realTagRepository.buildUsageCountQuery(tagFqns);
+    String template = result.template();
 
-    assertEquals(2, countOccurrences(query, "UNION ALL"), "3 tags must produce 2 UNION ALL joins");
-    for (String fqn : tagFqns) {
-      String hash = FullyQualifiedName.buildHash(fqn);
-      assertTrue(query.contains(hash), "Query must contain the correct hash for: " + fqn);
+    assertEquals(
+        2, countOccurrences(template, "UNION ALL"), "3 tags must produce 2 UNION ALL joins");
+    for (int i = 0; i < tagFqns.size(); i++) {
+      String expectedHash = FullyQualifiedName.buildHash(tagFqns.get(i));
+      assertEquals(
+          expectedHash,
+          result.bindings().get("hash_" + i),
+          "Binding hash_" + i + " must use buildHash result for: " + tagFqns.get(i));
+      assertEquals(
+          tagFqns.get(i),
+          result.bindings().get("tagFQN_" + i),
+          "Binding tagFQN_" + i + " must equal the original FQN");
     }
   }
 
   @Test
-  void test_usageCountQuery_emptyList_returnsEmptyString() {
-    String query = realTagRepository.buildUsageCountQuery(List.of());
-    assertTrue(query.isEmpty(), "Empty tag list must produce empty query string");
+  void test_usageCountQuery_emptyList_returnsEmptyTemplate() {
+    TagRepository.UsageCountQuery result = realTagRepository.buildUsageCountQuery(List.of());
+    assertTrue(result.template().isEmpty(), "Empty tag list must produce empty query template");
   }
 
   private static int countOccurrences(String text, String pattern) {
