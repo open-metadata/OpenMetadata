@@ -42,7 +42,9 @@
     },
     "size": {
       "description": "Content size in bytes.",
-      "type": "number"
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
     },
     "checksum": {
       "description": "SHA-256 checksum of the stored content.",

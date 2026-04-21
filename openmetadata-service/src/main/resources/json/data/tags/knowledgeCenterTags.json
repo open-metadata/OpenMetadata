@@ -3,7 +3,7 @@
     "name": "KnowledgeCenter",
     "description": "Category describing the knowledge center articles or quickLinks. E.g., How-To-Guide, Quick-Link etc.",
     "provider": "system",
-    "mutuallyExclusive": "false"
+    "mutuallyExclusive": false
   },
   "createTags": [
     {

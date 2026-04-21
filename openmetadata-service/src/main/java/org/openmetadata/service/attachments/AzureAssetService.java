@@ -84,14 +84,24 @@ public class AzureAssetService implements AssetService {
   public CompletableFuture<String> upload(Asset asset, InputStream content) {
     return AsyncService.executeAsync(
         () -> {
+          String fullPath = basePathPrefix + asset.getId();
+          BlobClient blobClient = containerClient.getBlobClient(fullPath);
+
+          // Stream the upload straight through to Azure using the known size on the
+          // Asset. Previously we read the whole payload into a byte[] via
+          // IOUtils.toByteArray, which put full-file pressure on heap for every
+          // upload and risked OOM for larger files. Fall back to buffering only
+          // when the upload hasn't populated a size (shouldn't happen in the
+          // production path, but keeps this resilient to unusual callers).
           try {
-            byte[] bytes = IOUtils.toByteArray(content);
-            String fullPath = basePathPrefix + asset.getId();
-            BlobClient blobClient = containerClient.getBlobClient(fullPath);
-
-            blobClient.upload(new ByteArrayInputStream(bytes), bytes.length, true);
+            Long size = asset.getSize() == null ? null : asset.getSize().longValue();
+            if (size != null && size >= 0) {
+              blobClient.upload(content, size, true);
+            } else {
+              byte[] bytes = IOUtils.toByteArray(content);
+              blobClient.upload(new ByteArrayInputStream(bytes), bytes.length, true);
+            }
             blobClient.setHttpHeaders(new BlobHttpHeaders().setContentType(asset.getContentType()));
-
             return generateDownloadUrlWithExpiry(asset, Duration.ofMinutes(15));
           } catch (IOException e) {
             throw AssetServiceException.byMessage(

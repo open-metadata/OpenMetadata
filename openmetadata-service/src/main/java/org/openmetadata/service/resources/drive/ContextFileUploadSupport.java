@@ -160,7 +160,7 @@ final class ContextFileUploadSupport {
     asset.setId(UUID.randomUUID().toString());
     asset.setFileName(originalFileName);
     asset.setContentType(contentType);
-    asset.setSize((double) fileSize);
+    asset.setSize(Math.toIntExact(fileSize));
     asset.setEntityLink(entityLink);
     asset.setFullyQualifiedName(assetLink.getEntityFQN());
     asset.setUrl("");

@@ -248,7 +248,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {
-      createFile.setFileSize((double) bufferedUpload.getSize());
+      createFile.setFileSize(Math.toIntExact(bufferedUpload.getSize()));
 
       ContextFile file = mapper.createToEntity(createFile, user);
       repository.prepareInternal(file, false);

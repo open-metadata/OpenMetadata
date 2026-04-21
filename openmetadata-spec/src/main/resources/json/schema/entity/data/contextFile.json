@@ -80,7 +80,9 @@
     },
     "fileSize": {
       "description": "File size in bytes.",
-      "type": "number"
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
     },
     "contentType": {
       "description": "MIME type of the file.",

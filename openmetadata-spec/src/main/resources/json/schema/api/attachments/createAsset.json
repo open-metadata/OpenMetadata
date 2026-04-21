@@ -15,7 +15,9 @@
       "description": "MIME type of the asset."
     },
     "size": {
-      "type": "number",
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0,
       "description": "File size in bytes."
     },
     "assetType": {

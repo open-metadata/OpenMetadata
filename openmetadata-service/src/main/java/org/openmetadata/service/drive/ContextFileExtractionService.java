@@ -106,6 +106,16 @@ public class ContextFileExtractionService {
     updateContent(
         contentId,
         current -> {
+          // Re-read the file inside the content updater so we don't mark an
+          // older content "Analyzing" when headContentId changed concurrently.
+          // Without this guard, a no-op updateFile above would still be followed
+          // by a status update on the now-stale content, leaving it stuck once
+          // the later head-check early-returns.
+          ContextFile currentHead = getFile(fileId);
+          if (currentHead == null
+              || !contentId.toString().equals(currentHead.getHeadContentId())) {
+            return null;
+          }
           ContextFileContent updated = JsonUtils.deepCopy(current, ContextFileContent.class);
           updated.setProcessingStatus(ProcessingStatus.Analyzing);
           updated.setProcessingError(null);

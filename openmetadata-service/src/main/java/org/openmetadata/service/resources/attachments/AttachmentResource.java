@@ -328,7 +328,7 @@ public class AttachmentResource {
 
     Asset asset = buildAsset(createAsset, "", securityContext.getUserPrincipal().getName());
     asset.setFileName(originalFileName);
-    asset.setSize((double) fileBytes.length);
+    asset.setSize(fileBytes.length);
     asset.setContentType(contentType);
     asset.setAssetType(assetType);
     asset.setExtension(extension);
