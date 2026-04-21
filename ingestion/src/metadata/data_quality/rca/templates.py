@@ -27,11 +27,6 @@ SIGNAL_HINTS = {
         "step missing, fan-out JOIN creating duplicates, "
         "incremental load inserting existing keys."
     ),
-    "columnValuesToBeBetween": (
-        "Values outside expected range. Likely causes: upstream "
-        "unit change, data entry error, overflow/underflow in "
-        "transformation, wrong column mapped."
-    ),
     "columnValuesToMatchRegex": (
         "Format mismatch. Likely causes: source system format "
         "change, encoding issue, schema migration, mixed formats "

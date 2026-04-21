@@ -49,6 +49,8 @@ class DQRcaAgent:
 
     def __init__(self, ai_config: AiConfig) -> None:
         self.config = ai_config
+        self._openai_client = None
+        self._anthropic_client = None
 
     # ──────────────────────────────────────────────────────────────────────────
     # Public API
@@ -169,22 +171,26 @@ class DQRcaAgent:
 
         The openai SDK (>=1.0.0) is imported lazily so that the module can be
         loaded without the SDK installed — only actual RCA calls will fail.
+        The client is cached on self._openai_client to avoid opening a new
+        HTTP connection on every call.
         """
         try:
             # pylint: disable=import-outside-toplevel
             from openai import AzureOpenAI, OpenAI  # lazy import
 
-            if self.config.provider.lower() == "azure_openai":
-                client = AzureOpenAI(
-                    api_key=self.config.api_key,
-                    azure_endpoint=self.config.base_url or "",
-                    api_version="2024-02-01",
-                )
-            else:
-                kwargs = {"api_key": self.config.api_key}
-                if self.config.base_url:
-                    kwargs["base_url"] = self.config.base_url
-                client = OpenAI(**kwargs)
+            if self._openai_client is None:
+                if self.config.provider.lower() == "azure_openai":
+                    self._openai_client = AzureOpenAI(
+                        api_key=self.config.api_key.get_secret_value(),
+                        azure_endpoint=self.config.base_url or "",
+                        api_version="2024-02-01",
+                    )
+                else:
+                    kwargs = {"api_key": self.config.api_key.get_secret_value()}
+                    if self.config.base_url:
+                        kwargs["base_url"] = self.config.base_url
+                    self._openai_client = OpenAI(**kwargs)
+            client = self._openai_client
 
             response = client.chat.completions.create(
                 model=self.config.model,
@@ -210,12 +216,20 @@ class DQRcaAgent:
         Call Anthropic Messages API.
 
         The anthropic SDK is imported lazily for the same reason as openai.
+        The client is cached on self._anthropic_client to avoid opening a new
+        HTTP connection on every call.
         """
         try:
             # pylint: disable=import-outside-toplevel
             import anthropic  # lazy import
 
-            client = anthropic.Anthropic(api_key=self.config.api_key)
+            if self._anthropic_client is None:
+                self._anthropic_client = anthropic.Anthropic(
+                    api_key=self.config.api_key.get_secret_value(),
+                    timeout=self.config.timeout_seconds,
+                )
+            client = self._anthropic_client
+
             message = client.messages.create(
                 model=self.config.model,
                 max_tokens=self.config.max_tokens,

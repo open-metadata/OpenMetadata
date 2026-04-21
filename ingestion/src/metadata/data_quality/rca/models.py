@@ -21,7 +21,7 @@ from typing import Optional
 from pydantic import ConfigDict
 from pydantic.alias_generators import to_camel
 
-from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
 
 
 class AiConfig(BaseModel):
@@ -36,6 +36,9 @@ class AiConfig(BaseModel):
     YAML keys are camelCase (apiKey, baseUrl, maxTokens, timeoutSeconds).
     Python attribute access uses snake_case (api_key, base_url, etc.).
     Both forms are accepted thanks to populate_by_name=True.
+
+    Note: use api_key.get_secret_value() to extract the raw string when
+    passing to LLM clients; never pass the CustomSecretStr object directly.
     """
 
     model_config = ConfigDict(
@@ -44,7 +47,7 @@ class AiConfig(BaseModel):
     )
 
     provider: str
-    api_key: str
+    api_key: CustomSecretStr
     model: str
     base_url: Optional[str] = None
     max_tokens: int = 500

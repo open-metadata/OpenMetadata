@@ -17,7 +17,7 @@ rich result object into a flat, serialisable dict that the RCA agent prompt buil
 can consume without knowing about generated schema types.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.utils.logger import test_suite_logger
@@ -102,7 +102,11 @@ class SignalBuilder:
             dim_results = getattr(result, "dimensionResults", None) or []
             for dr in dim_results:
                 status = getattr(dr, "testCaseStatus", None)
-                if status is not None and str(status) == "Failed":
+                if status is not None and (
+                    str(status) == "Failed"
+                    or getattr(status, "value", None) == "Failed"
+                    or status == "Failed"
+                ):
                     dim_vals = getattr(dr, "dimensionValues", None) or []
                     for dv in dim_vals:
                         dv_name = getattr(dv, "name", None)
