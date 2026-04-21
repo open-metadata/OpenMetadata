@@ -27,7 +27,7 @@ export interface CreateFolder {
      */
     displayName?: string;
     /**
-     * Domains this folder belongs to.
+     * Fully qualified names of the domains this folder belongs to.
      */
     domains?: string[];
     /**

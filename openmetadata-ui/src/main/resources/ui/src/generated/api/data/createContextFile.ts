@@ -32,7 +32,7 @@ export interface CreateContextFile {
      */
     displayName?: string;
     /**
-     * Domains this file belongs to.
+     * Fully qualified names of the domains this file belongs to.
      */
     domains?: string[];
     /**

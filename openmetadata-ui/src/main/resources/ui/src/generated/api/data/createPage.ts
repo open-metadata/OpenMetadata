@@ -23,7 +23,7 @@ export interface CreatePage {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domains the Knowledge Page belongs to.
+     * Fully qualified names of the domains the Knowledge Page belongs to.
      */
     domains?: string[];
     /**
