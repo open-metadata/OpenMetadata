@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from tests.cli_e2e_v2.core.source.types import BaselineSpec
+from .types import BaselineSpec
 
 
 @dataclass

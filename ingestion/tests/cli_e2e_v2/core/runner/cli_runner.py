@@ -15,9 +15,9 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from tests.cli_e2e_v2.core.config.builder import WorkflowConfig
-from tests.cli_e2e_v2.core.runner.errors import CliExecutionError
-from tests.cli_e2e_v2.core.runner.status import Status
+from ..config.builder import WorkflowConfig
+from .errors import CliExecutionError
+from .status import Status
 
 
 class CliRunner:

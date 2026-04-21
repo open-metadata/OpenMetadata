@@ -46,9 +46,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from tests.cli_e2e_v2.core.config.env import Env
-from tests.cli_e2e_v2.core.source.orchestrator import EnforcementPolicy
-from tests.cli_e2e_v2.core.source.sql import (
+from ..core.config.env import Env
+from ..core.source.orchestrator import EnforcementPolicy
+from ..core.source.sql import (
     BaselineColumn,
     BaselineStoredProcedure,
     BaselineTable,
@@ -56,7 +56,7 @@ from tests.cli_e2e_v2.core.source.sql import (
     Seed,
     SqlSourceBaseline,
 )
-from tests.cli_e2e_v2.mysql.enforcer import MySqlEnforcer
+from .enforcer import MySqlEnforcer
 
 
 # -----------------------------------------------------------------------------

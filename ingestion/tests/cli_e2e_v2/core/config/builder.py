@@ -20,7 +20,7 @@ from typing import Any
 
 import yaml
 
-from tests.cli_e2e_v2.core.config.server import ServerConfig
+from .server import ServerConfig
 
 
 # Maps pipeline_type → CLI subcommand name (what `metadata <cmd>` expects).

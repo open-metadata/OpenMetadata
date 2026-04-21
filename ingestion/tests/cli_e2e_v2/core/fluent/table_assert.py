@@ -11,9 +11,9 @@ from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 if TYPE_CHECKING:
-    from tests.cli_e2e_v2.core.fluent.lineage_assert import LineageAssert
-    from tests.cli_e2e_v2.core.fluent.profile_assert import ProfileAssert
-    from tests.cli_e2e_v2.core.fluent.tests_assert import TestsAssert
+    from .lineage_assert import LineageAssert
+    from .profile_assert import ProfileAssert
+    from .tests_assert import TestsAssert
 
 
 class TableAssert:
@@ -73,7 +73,7 @@ class TableAssert:
 
     def _apply_maybe_eventually(self, check, *, name: str) -> None:
         if self._eventually_timeout is not None:
-            from tests.cli_e2e_v2.core.fluent.eventually import retry_until
+            from .eventually import retry_until
             retry_until(check, timeout=self._eventually_timeout, name=name)
             self._eventually_timeout = None
         else:
@@ -81,17 +81,17 @@ class TableAssert:
 
     @property
     def lineage(self) -> "LineageAssert":
-        from tests.cli_e2e_v2.core.fluent.lineage_assert import LineageAssert
+        from .lineage_assert import LineageAssert
         return LineageAssert(self._om, self._fqn)
 
     @property
     def profile(self) -> "ProfileAssert":
-        from tests.cli_e2e_v2.core.fluent.profile_assert import ProfileAssert
+        from .profile_assert import ProfileAssert
         return ProfileAssert(self._om, self._fqn)
 
     @property
     def tests(self) -> "TestsAssert":
-        from tests.cli_e2e_v2.core.fluent.tests_assert import TestsAssert
+        from .tests_assert import TestsAssert
         return TestsAssert(self._om, self._fqn)
 
 

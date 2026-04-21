@@ -8,7 +8,7 @@ from __future__ import annotations
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from tests.cli_e2e_v2.core.fluent.eventually import retry_until
+from .eventually import retry_until
 
 
 class LineageAssert:

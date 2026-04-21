@@ -24,13 +24,13 @@ from typing import Any
 from sqlalchemy import bindparam, create_engine, text
 from sqlalchemy.engine import Engine
 
-from tests.cli_e2e_v2.core.source.sql import (
+from ..core.source.sql import (
     BaselineStoredProcedure,
     BaselineTable,
     BaselineView,
     SqlSourceBaseline,
 )
-from tests.cli_e2e_v2.core.source.types import BaselineSpec, Drift, SourceState
+from ..core.source.types import BaselineSpec, Drift, SourceState
 
 logger = logging.getLogger(__name__)
 

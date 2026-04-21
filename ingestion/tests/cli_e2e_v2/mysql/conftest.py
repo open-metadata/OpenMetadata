@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import pytest
 
-from tests.cli_e2e_v2.core.config.builder import WorkflowConfig
-from tests.cli_e2e_v2.core.config.server import ServerConfig
-from tests.cli_e2e_v2.core.source.orchestrator import ensure_baseline
-from tests.cli_e2e_v2.mysql.baseline import MYSQL_BASELINE, get_policy
-from tests.cli_e2e_v2.mysql.connector import build_mysql_config, mysql_service_name
+from ..core.config.builder import WorkflowConfig
+from ..core.config.server import ServerConfig
+from ..core.source.orchestrator import ensure_baseline
+from .baseline import MYSQL_BASELINE, get_policy
+from .connector import build_mysql_config, mysql_service_name
 
 
 @pytest.fixture(scope="session")

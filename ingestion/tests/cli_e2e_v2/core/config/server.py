@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from tests.cli_e2e_v2.core.config.env import Env
+from .env import Env
 
 # Default dev JWT for the local Docker stack. Matches the token baked into
 # docker-compose.yml so local runs work without env var plumbing. Tests

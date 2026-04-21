@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from tests.cli_e2e_v2.core.expected.types import (
+from ..core.expected.types import (
     ExpectedColumn,
     ExpectedDatabase,
     ExpectedSchema,

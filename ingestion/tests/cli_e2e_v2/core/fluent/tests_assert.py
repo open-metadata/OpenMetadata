@@ -9,7 +9,7 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from tests.cli_e2e_v2.core.fluent.eventually import retry_until
+from .eventually import retry_until
 
 
 class TestsAssert:

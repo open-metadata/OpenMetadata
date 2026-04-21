@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from tests.cli_e2e_v2.core.expected.types import (
+from .types import (
     ExpectedColumn,
     ExpectedDatabase,
     ExpectedSchema,
@@ -33,7 +33,7 @@ from tests.cli_e2e_v2.core.expected.types import (
     ExpectedTable,
     MatchMode,
 )
-from tests.cli_e2e_v2.core.fluent.om_client import OmClient
+from ..fluent.om_client import OmClient
 
 
 @dataclass

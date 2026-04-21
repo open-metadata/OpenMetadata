@@ -17,11 +17,11 @@ from typing import TYPE_CHECKING
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from tests.cli_e2e_v2.core.fluent.table_assert import TableAssert
+from .table_assert import TableAssert
 
 if TYPE_CHECKING:
-    from tests.cli_e2e_v2.core.fluent.service_assert import ServiceAssert
-    from tests.cli_e2e_v2.core.fluent.stored_procedure_assert import (
+    from .service_assert import ServiceAssert
+    from .stored_procedure_assert import (
         StoredProcedureAssert,
     )
 
@@ -39,14 +39,14 @@ class OmClient:
 
     def service(self, name: str) -> "ServiceAssert":
         # Lazy import — ServiceAssert lands in Task 14.
-        from tests.cli_e2e_v2.core.fluent.service_assert import ServiceAssert
+        from .service_assert import ServiceAssert
 
         return ServiceAssert(self._om, name)
 
     def stored_procedure(self, fqn: str) -> "StoredProcedureAssert":
         # Lazy import keeps Task 13's test-time importability even if this file
         # is loaded before Task 14-style classes.
-        from tests.cli_e2e_v2.core.fluent.stored_procedure_assert import (
+        from .stored_procedure_assert import (
             StoredProcedureAssert,
         )
 

@@ -18,8 +18,8 @@ import logging
 from dataclasses import dataclass
 from typing import Literal
 
-from tests.cli_e2e_v2.core.runner.errors import SourceBaselineDrift
-from tests.cli_e2e_v2.core.source.types import BaselineSpec, SourceBaselineEnforcer
+from ..runner.errors import SourceBaselineDrift
+from .types import BaselineSpec, SourceBaselineEnforcer
 
 logger = logging.getLogger(__name__)
 

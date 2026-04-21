@@ -10,9 +10,9 @@ variant-named services for isolation.
 
 from __future__ import annotations
 
-from tests.cli_e2e_v2.core.config.builder import WorkflowConfig
-from tests.cli_e2e_v2.core.config.env import Env
-from tests.cli_e2e_v2.core.config.server import ServerConfig
+from ..core.config.builder import WorkflowConfig
+from ..core.config.env import Env
+from ..core.config.server import ServerConfig
 
 
 def mysql_service_name(session_uuid: str, variant: str = "") -> str:
