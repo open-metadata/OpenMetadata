@@ -117,6 +117,7 @@ def _clean(source_type: str):
     source_type = source_type.replace("-", "_")
     source_type = source_type.replace("_usage", "")
     source_type = source_type.replace("_lineage", "")
+    source_type = source_type.replace("_policy", "")
     source_type = source_type.replace("_", "")
     if source_type == "metadataelasticsearch":
         source_type = "metadataes"

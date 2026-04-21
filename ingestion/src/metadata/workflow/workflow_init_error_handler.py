@@ -38,6 +38,7 @@ URLS: Dict[PipelineType, str] = {
     PipelineType.lineage: "https://docs.open-metadata.org/connectors/ingestion/workflows/lineage",
     PipelineType.usage: "https://docs.open-metadata.org/connectors/ingestion/workflows/usage",
     PipelineType.dbt: "https://docs.open-metadata.org/connectors/ingestion/workflows/dbt",
+    PipelineType.policyAgent: "https://docs.open-metadata.org/connectors/ingestion/workflows/policy-agent",
 }
 
 
@@ -47,6 +48,7 @@ DEFAULT_EXAMPLE_FILE: Dict[PipelineType, str] = {
     PipelineType.TestSuite: "test_suite",
     PipelineType.lineage: "bigquery_lineage",
     PipelineType.usage: "bigquery_usage",
+    PipelineType.policyAgent: "snowflake_policy",
 }
 
 
