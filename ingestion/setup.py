@@ -197,6 +197,8 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
+    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
+    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
         "google-cloud-datacatalog>=3.6.2",
