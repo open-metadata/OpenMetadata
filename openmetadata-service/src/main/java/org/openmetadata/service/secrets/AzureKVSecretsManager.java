@@ -16,7 +16,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
 
 public class AzureKVSecretsManager extends ExternalSecretsManager {
 
-  private static AzureKVSecretsManager instance = null;
+  private static volatile AzureKVSecretsManager instance = null;
   private final SecretClient client;
 
   public static final String CLIENT_ID = "clientId";
@@ -108,7 +108,11 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new AzureKVSecretsManager(SecretsManagerProvider.MANAGED_AZURE_KV, secretsConfig);
+      synchronized (AzureKVSecretsManager.class) {
+        if (instance == null)
+          instance =
+              new AzureKVSecretsManager(SecretsManagerProvider.MANAGED_AZURE_KV, secretsConfig);
+      }
     }
     return instance;
   }

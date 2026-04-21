@@ -16,7 +16,7 @@ package org.openmetadata.service.secrets;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class DBSecretsManager extends SecretsManager {
-  private static DBSecretsManager instance;
+  private static volatile DBSecretsManager instance;
 
   private DBSecretsManager(
       SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
@@ -26,7 +26,9 @@ public class DBSecretsManager extends SecretsManager {
   public static DBSecretsManager getInstance(
       SecretsManagerProvider provider, SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new DBSecretsManager(provider, secretsConfig);
+      synchronized (DBSecretsManager.class) {
+        if (instance == null) instance = new DBSecretsManager(provider, secretsConfig);
+      }
     }
     return instance;
   }

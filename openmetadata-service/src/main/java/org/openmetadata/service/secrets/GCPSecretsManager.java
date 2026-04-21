@@ -15,13 +15,15 @@ import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32C;
 import java.util.zip.Checksum;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
 
+@Slf4j
 public class GCPSecretsManager extends ExternalSecretsManager {
   private static final String FIXED_VERSION_ID = "latest";
   public static final String PROJECT_ID_NAME = "projectId";
-  private static GCPSecretsManager instance = null;
+  private static volatile GCPSecretsManager instance = null;
   private final String projectId;
 
   private GCPSecretsManager(SecretsConfig secretsConfig) {
@@ -118,14 +120,18 @@ public class GCPSecretsManager extends ExternalSecretsManager {
 
       // Delete the secret.
       client.deleteSecret(secretName);
-      System.out.printf("Deleted secret %s\n", secretId);
+      LOG.info("Deleted secret {}", secretId);
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e);
     }
   }
 
   public static GCPSecretsManager getInstance(SecretsConfig secretsConfig) {
-    if (instance == null) instance = new GCPSecretsManager(secretsConfig);
+    if (instance == null) {
+      synchronized (GCPSecretsManager.class) {
+        if (instance == null) instance = new GCPSecretsManager(secretsConfig);
+      }
+    }
     return instance;
   }
 }

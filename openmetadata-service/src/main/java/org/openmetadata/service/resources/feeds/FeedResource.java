@@ -522,7 +522,8 @@ public class FeedResource {
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext =
         new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new ThreadResourceContext(thread.getCreatedBy());
+    ResourceContextInterface resourceContext =
+        new ThreadResourceContext(thread.getCreatedBy(), thread.getDomains());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
   }

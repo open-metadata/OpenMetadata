@@ -58,6 +58,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaBulkPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_dlt_table_dependencies,
     extract_kafka_sources,
@@ -232,7 +233,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             return [
                 Task(
-                    name=str(task.name),
+                    name=task.name or "",
                     taskType=pipeline_details.settings.task_type,
                     sourceUrl=SourceUrl(job_url),
                     description=(
@@ -269,7 +270,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     break
                 task_status = [
                     TaskStatus(
-                        name=str(task.name),
+                        name=task.name or "",
                         executionStatus=STATUS_MAP.get(
                             run.state.result_state, StatusType.Failed
                         ),

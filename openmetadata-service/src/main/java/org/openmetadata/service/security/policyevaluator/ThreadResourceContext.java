@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -9,7 +10,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /** Conversation threads require special handling */
-public record ThreadResourceContext(String createdBy) implements ResourceContextInterface {
+public record ThreadResourceContext(String createdBy, List<UUID> domainIds)
+    implements ResourceContextInterface {
   @Override
   public String getResource() {
     return Entity.THREAD;
@@ -32,9 +34,20 @@ public record ThreadResourceContext(String createdBy) implements ResourceContext
     return null;
   }
 
-  // TODO: Fix this this should be thread.getEntity().getDomain()
   @Override
   public List<EntityReference> getDomains() {
-    return null;
+    if (domainIds == null || domainIds.isEmpty()) {
+      return null;
+    }
+    List<EntityReference> domains = new ArrayList<>();
+    for (UUID domainId : domainIds) {
+      try {
+        domains.add(
+            Entity.getEntityReferenceById(Entity.DOMAIN, domainId, Include.NON_DELETED));
+      } catch (Exception ignored) {
+        // Domain may have been deleted; skip it rather than blocking thread access
+      }
+    }
+    return domains.isEmpty() ? null : domains;
   }
 }
