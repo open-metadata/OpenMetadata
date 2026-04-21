@@ -922,9 +922,7 @@ export const DataAssetsHeader = ({
         () => setIsRequestDataAccessOpen(false),
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
-        (dataAsset as Table).columns
-          ?.map((col) => col.name ?? '')
-          .filter(Boolean)
+        entityType
       )}
     </>
   );
