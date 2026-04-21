@@ -19,7 +19,7 @@ export interface CreatePage {
      */
     description?: string;
     /**
-     * Display Name that identifies this query.
+     * Display name of the Knowledge Page.
      */
     displayName?: string;
     /**
@@ -27,15 +27,15 @@ export interface CreatePage {
      */
     domains?: string[];
     /**
-     * Status of the tag.
+     * Status of this Knowledge Page (Draft, In Review, Approved, Rejected).
      */
     entityStatus?: EntityStatus;
     /**
-     * Name of Page belongs to
+     * Name of the Knowledge Page.
      */
     name: string;
     /**
-     * Owner of this entity
+     * Owners of this Knowledge Page.
      */
     owners?: EntityReference[];
     /**
@@ -55,7 +55,7 @@ export interface CreatePage {
      */
     relatedEntities?: EntityReference[];
     /**
-     * User references of the reviewers for this tag.
+     * Reviewers of this Knowledge Page.
      */
     reviewers?: EntityReference[];
     /**
@@ -65,7 +65,7 @@ export interface CreatePage {
 }
 
 /**
- * Status of the tag.
+ * Status of this Knowledge Page (Draft, In Review, Approved, Rejected).
  *
  * Status of an entity. It is used for governance and is applied to all the entities in the
  * catalog.
@@ -81,7 +81,7 @@ export enum EntityStatus {
 }
 
 /**
- * Owner of this entity
+ * Owners of this Knowledge Page.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
