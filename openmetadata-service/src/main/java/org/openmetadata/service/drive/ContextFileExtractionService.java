@@ -32,18 +32,25 @@ public class ContextFileExtractionService {
     this(
         repository,
         AssetServiceFactory::getService,
-        defaultExtractionExecutor(),
+        DEFAULT_EXECUTOR,
         new ContextFileTextExtractor());
   }
 
   /**
-   * Dedicated thread pool for text extraction. Must stay separate from
+   * Single shared thread pool for text extraction. Kept separate from
    * {@code AsyncService.getExecutorService()} because {@link #process(UUID, UUID)}
    * blocks on {@code AssetService.read(...).join()} for S3/Azure reads, which are
-   * themselves scheduled on AsyncService. Sharing the pool would starve the read
-   * tasks (and potentially deadlock) once all threads are busy running extractions.
+   * themselves scheduled on AsyncService — sharing the pool would starve those read
+   * tasks (and potentially deadlock) once every thread is busy running extractions.
+   *
+   * <p>Held {@code static final} so every production {@link ContextFileExtractionService}
+   * instance reuses one pool — tests that instantiate the service repeatedly no longer
+   * leak a new pool each construction. Threads are daemons, so the pool never blocks
+   * JVM shutdown; explicit lifecycle management isn't required.
    */
-  private static Executor defaultExtractionExecutor() {
+  private static final Executor DEFAULT_EXECUTOR = createDefaultExtractionExecutor();
+
+  private static Executor createDefaultExtractionExecutor() {
     int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
     ThreadFactory threadFactory =
         new ThreadFactory() {

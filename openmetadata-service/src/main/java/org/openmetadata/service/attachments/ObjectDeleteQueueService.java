@@ -2,9 +2,11 @@ package org.openmetadata.service.attachments;
 
 import io.dropwizard.lifecycle.Managed;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,13 +51,18 @@ public class ObjectDeleteQueueService implements Managed {
     this.queueCapacity = queueCapacity;
     this.enqueueTimeoutMillis = enqueueTimeoutMillis;
     this.capacitySemaphore = new Semaphore(workerCount + queueCapacity, true);
+    // queueCapacity == 0 means "reject when all workers are busy, no buffering".
+    // SynchronousQueue preserves that semantic; ArrayBlockingQueue(1) would silently
+    // buffer one task past the semaphore's accounting.
+    BlockingQueue<Runnable> workQueue =
+        queueCapacity == 0 ? new SynchronousQueue<>() : new ArrayBlockingQueue<>(queueCapacity);
     this.executorService =
         new ThreadPoolExecutor(
             workerCount,
             workerCount,
             DEFAULT_KEEP_ALIVE_MILLIS,
             TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<>(Math.max(1, queueCapacity)),
+            workQueue,
             new DeleteThreadFactory(),
             new ThreadPoolExecutor.AbortPolicy());
     this.executorService.allowCoreThreadTimeOut(true);
