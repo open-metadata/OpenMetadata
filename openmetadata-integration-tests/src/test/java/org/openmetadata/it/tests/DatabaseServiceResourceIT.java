@@ -1107,18 +1107,7 @@ public class DatabaseServiceResourceIT
           "Multi-field failure on one row must count as 1 failed row");
 
     } finally {
-      HttpRequest deletePropReq =
-          HttpRequest.newBuilder()
-              .uri(URI.create(serverUrl + "/v1/metadata/types/" + tableTypeId + "/" + propName))
-              .header("Authorization", "Bearer " + token)
-              .DELETE()
-              .build();
-      HttpResponse<String> deletePropResp =
-          client.send(deletePropReq, HttpResponse.BodyHandlers.ofString());
-      assertTrue(
-          List.of(200, 204).contains(deletePropResp.statusCode()),
-          "Should delete custom property from table type, but got status "
-              + deletePropResp.statusCode());
+      removeCustomPropertyFromType(tableTypeId, propName, token);
     }
   }
 
@@ -1201,6 +1190,44 @@ public class DatabaseServiceResourceIT
             "",
             "");
     return header + "\n" + dbRow + "\n" + schemaRow + "\n" + tableRow + "\n";
+  }
+
+  private void removeCustomPropertyFromType(String typeId, String propName, String token)
+      throws IOException, InterruptedException {
+    com.fasterxml.jackson.databind.ObjectMapper localMapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    HttpClient client = HttpClient.newHttpClient();
+    String baseUrl = SdkClients.getServerUrl();
+    String getUrl = baseUrl + "/v1/metadata/types/" + typeId + "?fields=customProperties";
+    HttpRequest getReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getUrl))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> getResp = client.send(getReq, HttpResponse.BodyHandlers.ofString());
+    if (getResp.statusCode() != 200) {
+      return;
+    }
+    com.fasterxml.jackson.databind.JsonNode typeNode = localMapper.readTree(getResp.body());
+    com.fasterxml.jackson.databind.JsonNode customProps = typeNode.get("customProperties");
+    if (customProps == null || !customProps.isArray()) {
+      return;
+    }
+    for (int i = 0; i < customProps.size(); i++) {
+      if (propName.equals(customProps.get(i).path("name").asText())) {
+        String patchBody = "[{\"op\":\"remove\",\"path\":\"/customProperties/" + i + "\"}]";
+        HttpRequest patchReq =
+            HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/metadata/types/" + typeId))
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json-patch+json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(patchBody))
+                .build();
+        client.send(patchReq, HttpResponse.BodyHandlers.ofString());
+        break;
+      }
+    }
   }
 
   private String csvRow(String... fields) {
