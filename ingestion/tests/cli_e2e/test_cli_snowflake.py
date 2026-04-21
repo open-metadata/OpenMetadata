@@ -20,7 +20,12 @@ import pytest
 from sqlalchemy import text
 
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
+    DmlOperationType,
+    SystemProfile,
+    Table,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
@@ -703,15 +708,36 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             stream, "Stream should be ingested when includeStreams=true"
         )
 
-        # FK constraint
-        countries_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.COUNTRIES")
+        # FK constraint — tableConstraints is a lazy field, request it explicitly
+        countries_table = self.openmetadata.get_by_name(
+            entity=Table,
+            fqn="e2e_snowflake.E2E_DB.E2E_TEST.COUNTRIES",
+            fields=["tableConstraints"],
+        )
         self.assertIsNotNone(countries_table)
         regions_table = self.retrieve_table("e2e_snowflake.E2E_DB.E2E_TEST.REGIONS")
         self.assertIsNotNone(regions_table)
-        pk_columns = [
-            col for col in regions_table.columns if col.name.root == "REGION_ID"
+        self.assertIsNotNone(
+            countries_table.tableConstraints,
+            "COUNTRIES should have table constraints ingested",
+        )
+        fk_constraints = [
+            c
+            for c in countries_table.tableConstraints
+            if c.constraintType == ConstraintType.FOREIGN_KEY
+            and c.columns
+            and "REGION_ID" in c.columns
         ]
-        self.assertGreater(len(pk_columns), 0, "REGION_ID column should exist")
+        self.assertGreater(
+            len(fk_constraints),
+            0,
+            "COUNTRIES.REGION_ID should have a FOREIGN_KEY constraint referencing REGIONS",
+        )
+        referred = fk_constraints[0].referredColumns or []
+        self.assertTrue(
+            any("REGIONS.REGION_ID" in r.root for r in referred),
+            f"FK should reference REGIONS.REGION_ID, got: {[r.root for r in referred]}",
+        )
 
         # Clustering / partition detection
         clustered_table = self.retrieve_table(
