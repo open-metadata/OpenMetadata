@@ -25,7 +25,6 @@ import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { withEntityTypeFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -162,7 +161,7 @@ export const getDomainChildrenPaginated = async (
 export const searchDomains = async (
   search: string,
   page = 1,
-  queryFilter?: Record<string, unknown>
+  queryFilter?: { query: Record<string, unknown> }
 ) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
@@ -175,9 +174,15 @@ export const searchDomains = async (
     getHierarchy: true,
   };
 
-  params.query_filter = JSON.stringify(
-    withEntityTypeFilter(EntityType.DOMAIN, queryFilter)
-  );
+  params.query_filter = JSON.stringify({
+    query: {
+      bool: {
+        must: queryFilter
+          ? [{ term: { entityType: EntityType.DOMAIN } }, queryFilter.query]
+          : [{ term: { entityType: EntityType.DOMAIN } }],
+      },
+    },
+  });
 
   const { data } = await APIClient.get(apiUrl, {
     params,

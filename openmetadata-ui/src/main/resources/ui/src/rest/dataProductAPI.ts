@@ -34,10 +34,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
-import {
-  buildDomainFilter,
-  withEntityTypeFilter,
-} from '../utils/elasticsearchQueryBuilder';
+import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
@@ -108,10 +105,24 @@ export const fetchDataProductsElasticSearch = async (
   }[];
   paging: Paging;
 }> => {
-  const queryFilter = withEntityTypeFilter(
-    EntityType.DATA_PRODUCT,
-    buildDomainFilter(domainFQNs)
-  );
+  const domainFilter = buildDomainFilter(domainFQNs);
+
+  // entityType is nested alongside the caller's query (not flattened into the
+  // same bool) so an inner `should` list keeps ES's default
+  // minimum_should_match of 1 — flattening would drop it to 0 and silently
+  // turn required matches into score-only boosts.
+  const queryFilter = {
+    query: {
+      bool: {
+        must: domainFilter
+          ? [
+              { term: { entityType: EntityType.DATA_PRODUCT } },
+              domainFilter.query,
+            ]
+          : [{ term: { entityType: EntityType.DATA_PRODUCT } }],
+      },
+    },
+  };
 
   const res = await searchQuery({
     query: searchText,
