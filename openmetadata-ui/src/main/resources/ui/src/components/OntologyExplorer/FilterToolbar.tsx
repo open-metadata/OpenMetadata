@@ -12,81 +12,19 @@
  */
 
 import {
-  Autocomplete,
-  BadgeWithButton,
   Button,
-  Divider,
   Select,
   Toggle,
   Typography,
-  type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import React, { useCallback, useMemo } from 'react';
-import type { Key } from 'react-aria-components';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ONTOLOGY_AUTOCOMPLETE_ALL_ID } from './OntologyExplorer.constants';
+import SearchDropdown from '../SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   FilterToolbarProps,
   GraphViewMode,
 } from './OntologyExplorer.interface';
-
-type OntologyFilterListItem = {
-  id: string;
-  label?: string;
-  isDisabled?: boolean;
-};
-
-const OntologyFilterAutocompleteTag = ({
-  item,
-  onRemove,
-}: {
-  item: SelectItemType;
-  onRemove: () => void;
-}) => (
-  <BadgeWithButton
-    color="gray"
-    size="lg"
-    type="modern"
-    onButtonClick={onRemove}>
-    <div className="tw:min-w-0 tw:max-w-12.5">
-      <Typography ellipsis as="p" weight="medium">
-        {item.label ?? String(item.id)}
-      </Typography>
-    </div>
-  </BadgeWithButton>
-);
-
-const OntologyFilterAutocompleteOption = ({
-  isDisabled: listDisabled,
-  item,
-}: {
-  isDisabled: boolean;
-  item: OntologyFilterListItem;
-}) => {
-  const disabled = Boolean(item.isDisabled || listDisabled);
-
-  return (
-    <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center">
-      <span
-        className={`tw:min-w-0 tw:flex-1 tw:truncate tw:text-md tw:font-medium${
-          disabled ? ' tw:text-disabled' : ' tw:text-primary'
-        }`}>
-        {item.label}
-      </span>
-    </div>
-  );
-};
-
-const renderOntologyFilterTag = (
-  item: SelectItemType,
-  onRemove: () => void
-) => (
-  <OntologyFilterAutocompleteTag
-    item={item}
-    key={item.id}
-    onRemove={onRemove}
-  />
-);
 
 const VIEW_MODES: { label: string; value: GraphViewMode }[] = [
   { label: 'label.overview', value: 'overview' },
@@ -105,77 +43,91 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const handleGlossaryInserted = useCallback(
-    (key: Key) => {
-      const id = String(key);
-      if (filters.glossaryIds.includes(id)) {
-        return;
-      }
-      if (id === ONTOLOGY_AUTOCOMPLETE_ALL_ID) {
-        onFiltersChange({
-          ...filters,
-          glossaryIds: [ONTOLOGY_AUTOCOMPLETE_ALL_ID],
-        });
+  const [glossaryOptions, setGlossaryOptions] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [relationTypeOptions, setRelationTypeOptions] = useState<
+    SearchDropdownOption[]
+  >([]);
 
-        return;
-      }
+  const allGlossaryOptions = useMemo<SearchDropdownOption[]>(
+    () =>
+      glossaries.map((g) => ({
+        key: g.id ?? '',
+        label: g.displayName || g.name,
+      })),
+    [glossaries]
+  );
+
+  const allRelationTypeOptions = useMemo<SearchDropdownOption[]>(
+    () =>
+      relationTypes.map((rt) => ({
+        key: rt.name,
+        label: rt.displayName || rt.name,
+      })),
+    [relationTypes]
+  );
+
+  const selectedGlossaryKeys = useMemo<SearchDropdownOption[]>(
+    () => allGlossaryOptions.filter((o) => filters.glossaryIds.includes(o.key)),
+    [allGlossaryOptions, filters.glossaryIds]
+  );
+
+  const selectedRelationTypeKeys = useMemo<SearchDropdownOption[]>(
+    () =>
+      allRelationTypeOptions.filter((o) =>
+        filters.relationTypes.includes(o.key)
+      ),
+    [allRelationTypeOptions, filters.relationTypes]
+  );
+
+  const handleGlossarySearch = useCallback(
+    (value: string) => {
+      const filtered = value
+        ? allGlossaryOptions.filter((o) =>
+            o.label.toLowerCase().includes(value.toLowerCase())
+          )
+        : allGlossaryOptions;
+      setGlossaryOptions(filtered);
+    },
+    [allGlossaryOptions]
+  );
+
+  const handleRelationTypeSearch = useCallback(
+    (value: string) => {
+      const filtered = value
+        ? allRelationTypeOptions.filter((o) =>
+            o.label.toLowerCase().includes(value.toLowerCase())
+          )
+        : allRelationTypeOptions;
+      setRelationTypeOptions(filtered);
+    },
+    [allRelationTypeOptions]
+  );
+
+  const handleGlossaryInitialOptions = useCallback(() => {
+    setGlossaryOptions(allGlossaryOptions);
+  }, [allGlossaryOptions]);
+
+  const handleRelationTypeInitialOptions = useCallback(() => {
+    setRelationTypeOptions(allRelationTypeOptions);
+  }, [allRelationTypeOptions]);
+
+  const handleGlossaryChange = useCallback(
+    (values: SearchDropdownOption[]) => {
       onFiltersChange({
         ...filters,
-        glossaryIds: [
-          ...filters.glossaryIds.filter(
-            (g) => g !== ONTOLOGY_AUTOCOMPLETE_ALL_ID
-          ),
-          id,
-        ],
+        glossaryIds: values.map((v) => v.key),
       });
     },
     [filters, onFiltersChange]
   );
 
-  const handleGlossaryCleared = useCallback(
-    (key: Key) => {
-      const id = String(key);
+  const handleRelationTypeChange = useCallback(
+    (values: SearchDropdownOption[]) => {
       onFiltersChange({
         ...filters,
-        glossaryIds: filters.glossaryIds.filter((g) => g !== id),
-      });
-    },
-    [filters, onFiltersChange]
-  );
-
-  const handleRelationTypeInserted = useCallback(
-    (key: Key) => {
-      const id = String(key);
-      if (filters.relationTypes.includes(id)) {
-        return;
-      }
-      if (id === ONTOLOGY_AUTOCOMPLETE_ALL_ID) {
-        onFiltersChange({
-          ...filters,
-          relationTypes: [ONTOLOGY_AUTOCOMPLETE_ALL_ID],
-        });
-
-        return;
-      }
-      onFiltersChange({
-        ...filters,
-        relationTypes: [
-          ...filters.relationTypes.filter(
-            (rt) => rt !== ONTOLOGY_AUTOCOMPLETE_ALL_ID
-          ),
-          id,
-        ],
-      });
-    },
-    [filters, onFiltersChange]
-  );
-
-  const handleRelationTypeCleared = useCallback(
-    (key: Key) => {
-      const id = String(key);
-      onFiltersChange({
-        ...filters,
-        relationTypes: filters.relationTypes.filter((rt) => rt !== id),
+        relationTypes: values.map((v) => v.key),
       });
     },
     [filters, onFiltersChange]
@@ -183,55 +135,6 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
   const hasActiveFilters =
     filters.glossaryIds.length > 0 || filters.relationTypes.length > 0;
-
-  const glossaryAllOnlySelected = filters.glossaryIds.includes(
-    ONTOLOGY_AUTOCOMPLETE_ALL_ID
-  );
-
-  const glossaryItems = useMemo(
-    () => [
-      {
-        id: ONTOLOGY_AUTOCOMPLETE_ALL_ID,
-        label: t('label.all'),
-      },
-      ...glossaries.map((g) => ({
-        id: g.id ?? '',
-        label: g.displayName || g.name,
-        isDisabled: glossaryAllOnlySelected,
-      })),
-    ],
-    [glossaries, t, glossaryAllOnlySelected]
-  );
-
-  const selectedGlossaryItems = useMemo(
-    () => glossaryItems.filter((g) => filters.glossaryIds.includes(g.id)),
-    [glossaryItems, filters.glossaryIds]
-  );
-
-  const relationTypeAllOnlySelected = filters.relationTypes.includes(
-    ONTOLOGY_AUTOCOMPLETE_ALL_ID
-  );
-
-  const relationTypeItems = useMemo(
-    () => [
-      {
-        id: ONTOLOGY_AUTOCOMPLETE_ALL_ID,
-        label: t('label.all'),
-      },
-      ...relationTypes.map((rt) => ({
-        id: rt.name,
-        label: rt.displayName || rt.name,
-        isDisabled: relationTypeAllOnlySelected,
-      })),
-    ],
-    [relationTypes, t, relationTypeAllOnlySelected]
-  );
-
-  const selectedRelationTypeItems = useMemo(
-    () =>
-      relationTypeItems.filter((rt) => filters.relationTypes.includes(rt.id)),
-    [relationTypeItems, filters.relationTypes]
-  );
 
   const viewModeItems = useMemo(
     () =>
@@ -243,7 +146,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:w-full tw:items-center tw:gap-3">
+    <div className="tw:flex tw:w-full tw:items-center tw:gap-5 tw:pl-2">
       {/* View Mode dropdown — disabled in data mode */}
       <div
         className={
@@ -260,6 +163,8 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         <Select
           className="tw:w-36"
           data-testid="view-mode-select"
+          fontSize="sm"
+          isDisabled={viewModeDisabled}
           items={viewModeItems}
           size="sm"
           value={filters.viewMode}
@@ -278,82 +183,37 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       </div>
 
       {/* Glossary filter */}
-      {glossaryItems.length > 0 && (
-        <>
-          <Divider orientation="vertical" />
-          <div
-            className="tw:flex tw:shrink-0 tw:items-center tw:gap-2"
-            data-testid="glossary-filter-section">
-            <Typography as="span" size="text-sm" weight="medium">
-              {t('label.glossary')}:
-            </Typography>
-            <div className="tw:w-56">
-              <Autocomplete
-                items={glossaryItems}
-                maxVisibleItems={1}
-                placeholder={t('label.all')}
-                renderTag={renderOntologyFilterTag}
-                selectedItems={selectedGlossaryItems}
-                onItemCleared={handleGlossaryCleared}
-                onItemInserted={handleGlossaryInserted}>
-                {(item) => (
-                  <Autocomplete.Item
-                    id={item.id}
-                    isDisabled={item.isDisabled}
-                    label={item.label ?? ''}>
-                    {(state) => (
-                      <OntologyFilterAutocompleteOption
-                        isDisabled={state.isDisabled}
-                        item={item}
-                      />
-                    )}
-                  </Autocomplete.Item>
-                )}
-              </Autocomplete>
-            </div>
-          </div>
-        </>
-      )}
+      <div
+        className="tw:flex tw:shrink-0 tw:items-center"
+        data-testid="glossary-filter-section">
+        <SearchDropdown
+          hideCounts
+          label={t('label.glossary')}
+          options={glossaryOptions}
+          searchKey="glossaryIds"
+          selectedKeys={selectedGlossaryKeys}
+          triggerButtonSize="middle"
+          onChange={handleGlossaryChange}
+          onGetInitialOptions={handleGlossaryInitialOptions}
+          onSearch={handleGlossarySearch}
+        />
+      </div>
 
-      {/* Relation type filter */}
-      {relationTypeItems.length > 0 && (
-        <>
-          <Divider orientation="vertical" />
-          <div
-            className="tw:flex tw:shrink-0 tw:items-center tw:gap-2"
-            data-testid="relation-type-filter-section">
-            <Typography as="span" size="text-sm" weight="medium">
-              {t('label.relationship-type')}:
-            </Typography>
-            <div className="tw:w-56">
-              <Autocomplete
-                items={relationTypeItems}
-                maxVisibleItems={1}
-                placeholder={t('label.all')}
-                renderTag={renderOntologyFilterTag}
-                selectedItems={selectedRelationTypeItems}
-                onItemCleared={handleRelationTypeCleared}
-                onItemInserted={handleRelationTypeInserted}>
-                {(item) => (
-                  <Autocomplete.Item
-                    id={item.id}
-                    isDisabled={item.isDisabled}
-                    label={item.label ?? ''}>
-                    {(state) => (
-                      <OntologyFilterAutocompleteOption
-                        isDisabled={state.isDisabled}
-                        item={item}
-                      />
-                    )}
-                  </Autocomplete.Item>
-                )}
-              </Autocomplete>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="tw:h-5 tw:w-px tw:shrink-0 tw:bg-gray-200" />
+      <div
+        className="tw:flex tw:shrink-0 tw:items-center"
+        data-testid="relation-type-filter-section">
+        <SearchDropdown
+          hideCounts
+          label={t('label.relationship-type')}
+          options={relationTypeOptions}
+          searchKey="relationTypes"
+          selectedKeys={selectedRelationTypeKeys}
+          triggerButtonSize="middle"
+          onChange={handleRelationTypeChange}
+          onGetInitialOptions={handleRelationTypeInitialOptions}
+          onSearch={handleRelationTypeSearch}
+        />
+      </div>
 
       {/* Isolated toggle */}
       <Toggle

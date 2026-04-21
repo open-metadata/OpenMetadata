@@ -34,10 +34,8 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import { ReactNode } from 'react';
-import { Trans } from 'react-i18next';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { imageTypes } from '../constants/constants';
 import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
@@ -52,7 +50,7 @@ import { getFeedCount } from '../rest/feedsAPI';
 import brandClassBase from './BrandData/BrandClassBase';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import i18n, { t } from './i18next/LocalUtil';
+import i18n, { t, Transi18next } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { showErrorToast } from './ToastUtils';
 
@@ -343,18 +341,6 @@ export const requiredField = (label: string, excludeSpace = false) => (
     <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getImages = (imageUri: string) => {
-  const imagesObj: typeof imageTypes = imageTypes;
-  for (const type in imageTypes) {
-    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
-      's96-c',
-      imageTypes[type as keyof typeof imageTypes]
-    );
-  }
-
-  return imagesObj;
-};
 
 export const getServiceLogo = (
   serviceType: string,
@@ -647,21 +633,6 @@ export const getTrimmedContent = (content: string, limit: number) => {
   return refinedContent.join(' ');
 };
 
-export const Transi18next = ({
-  i18nKey,
-  values,
-  renderElement,
-  ...otherProps
-}: {
-  i18nKey: string;
-  values?: object;
-  renderElement: ReactNode;
-}): JSX.Element => (
-  <Trans i18nKey={i18nKey} values={values} {...otherProps}>
-    {renderElement}
-  </Trans>
-);
-
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
     return t('message.permanently-delete-metadata-and-dependents', {
@@ -702,24 +673,6 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
-
-export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
-  let errorMessage = '';
-
-  if (error) {
-    errorMessage = get(error, 'response.data.message', '');
-    if (!errorMessage) {
-      // if error text is undefined or null or empty, try responseMessage in data
-      errorMessage = get(error, 'response.data.responseMessage', '');
-    }
-    if (!errorMessage) {
-      errorMessage = get(error, 'response.data', '') as string;
-      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
-    }
-  }
-
-  return errorMessage.includes(key);
-};
 
 /**
  * @param color hex have color code

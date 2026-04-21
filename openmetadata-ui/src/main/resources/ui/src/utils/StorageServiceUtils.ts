@@ -21,7 +21,7 @@ import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Conne
 export const getStorageConfig = (type: StorageServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (type as unknown as StorageServiceType) {
+  switch (type) {
     case StorageServiceType.S3: {
       schema = s3Connection;
 
@@ -37,6 +37,9 @@ export const getStorageConfig = (type: StorageServiceType) => {
 
       break;
     }
+
+    default:
+      break;
   }
 
   return cloneDeep({ schema, uiSchema });
