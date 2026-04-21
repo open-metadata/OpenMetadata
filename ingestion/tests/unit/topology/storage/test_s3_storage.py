@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
+    PartitionColumn,
     StorageContainerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -368,7 +369,7 @@ class StorageUnitTest(TestCase):
             dataPath="transactions",
             structureFormat="parquet",
             isPartitioned=True,
-            partitionColumns=[Column(name="date", dataType=DataType.DATE)],
+            partitionColumns=[PartitionColumn(name="date", dataType=DataType.DATE)],
         )
         self.assertEqual(
             "transactions/",
