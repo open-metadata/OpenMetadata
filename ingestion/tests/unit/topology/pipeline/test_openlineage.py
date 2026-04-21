@@ -799,6 +799,28 @@ class OpenLineageUnitTest(unittest.TestCase):
                 create_request.columns[i].dataTypeDisplay, expected_type_display
             )
 
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om"
+    )
+    def test_get_create_table_request_schema_not_found_returns_none(
+        self, mock_get_schema_fqn, mock_get_table_fqn
+    ):
+        """Schema not found in any configured service — returns None without raising."""
+        mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
+        mock_get_schema_fqn.side_effect = FQNNotFoundException("Schema not found")
+        table_data = {
+            "name": "unknown_schema.employees",
+            "namespace": "bigquery",
+            "facets": {},
+        }
+
+        result = self.open_lineage_source.get_create_table_request(table_data)
+
+        assert result is None
+
     @patch("confluent_kafka.Consumer")
     def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns COMPLETE events"""
@@ -1689,16 +1711,18 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_pipeline = Mock()
         mock_pipeline.id.root = pipeline_id
 
-        with patch.object(
-            self.open_lineage_source, "metadata"
-        ) as mock_metadata, patch.object(
-            self.open_lineage_source,
-            "_get_table_fqn",
-            return_value="db-service.public.some_table",
-        ), patch.object(
-            self.open_lineage_source,
-            "get_create_table_request",
-            return_value=None,
+        with (
+            patch.object(self.open_lineage_source, "metadata") as mock_metadata,
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.some_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
         ):
             # Empty messaging services list — no broker match for unknown-broker
             mock_metadata.list_all_entities.return_value = iter([])
@@ -2095,7 +2119,8 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_parse_glue_table_name_trino_glue_catalog_schema(self):
         """Trino backed by AWS Glue Data Catalog uses the public schema and underscore-separated table names.
-        Verifies the parser handles the common Glue catalog table naming pattern correctly."""
+        Verifies the parser handles the common Glue catalog table naming pattern correctly.
+        """
         result = OpenlineageSource._parse_glue_table_name(
             "table/public/order_line_items"
         )
