@@ -191,6 +191,12 @@ const IntakeFormDesignerModal = ({
       entityType,
       enabled,
       requiredFields,
+      // Carry forward server-managed fields on edit. The designer UI doesn't
+      // expose an owners picker today, but `createOrUpdateIntakeForm` PUTs
+      // the whole entity — without this, any previously configured owners
+      // would be silently wiped. If/when the designer grows an owners widget,
+      // it can overwrite this value before submit.
+      ...(initialValue?.owners ? { owners: initialValue.owners } : {}),
     };
     await onSubmit(payload);
   };

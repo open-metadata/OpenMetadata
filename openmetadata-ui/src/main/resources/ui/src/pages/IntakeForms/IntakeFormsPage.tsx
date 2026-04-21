@@ -157,16 +157,12 @@ const IntakeFormsPage = () => {
   };
 
   const handleSubmit = async (payload: CreateIntakeForm) => {
+    // The designer modal is responsible for carrying forward server-managed
+    // fields like `owners` on edit (see IntakeFormDesignerModal#handleOk) —
+    // we just hand the payload to the API verbatim.
     try {
       if (modalState.initialValue) {
-        // Preserve server-managed fields (owners) on edit. The designer
-        // modal doesn't collect owners, but PUT replaces the whole entity,
-        // so we must carry them forward or they'll be cleared.
-        const preservedOwners = modalState.initialValue.owners;
-        const mergedPayload: CreateIntakeForm = preservedOwners
-          ? { ...payload, owners: preservedOwners }
-          : payload;
-        await createOrUpdateIntakeForm(mergedPayload);
+        await createOrUpdateIntakeForm(payload);
         showSuccessToast(t('message.intake-form-updated-successfully'));
       } else {
         await createIntakeForm(payload);
