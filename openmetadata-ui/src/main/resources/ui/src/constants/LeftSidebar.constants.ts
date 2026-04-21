@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
+import { Building02, Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -27,6 +27,7 @@ import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as WorkflowsNavIcon } from '../assets/svg/ic-workflows.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
@@ -45,8 +46,18 @@ const DataProductIcon = createIconWithStroke(
   1.2
 );
 
+const MarketplaceIcon = createIconWithStroke(
+  Building02 as React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  1.2
+);
+
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+  [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
@@ -118,11 +129,18 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: 'domains-section',
-    title: 'label.domain-plural',
-    icon: DomainsIcon,
-    dataTestId: SidebarItem.DOMAINS_SECTION,
+    key: ROUTES.DATA_MARKETPLACE_SECTION,
+    title: 'label.data-marketplace',
+    icon: MarketplaceIcon,
+    dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
     children: [
+      {
+        key: ROUTES.DATA_MARKETPLACE,
+        title: 'label.data-marketplace',
+        icon: MarketplaceIcon,
+        redirect_url: ROUTES.DATA_MARKETPLACE,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
+      },
       {
         key: ROUTES.DOMAIN,
         title: 'label.domain-plural',
@@ -180,6 +198,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: ColumnBulkIcon,
         dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
         isBeta: true,
+      },
+      {
+        key: ROUTES.WORKFLOWS,
+        title: 'label.workflow-plural',
+        redirect_url: ROUTES.WORKFLOWS,
+        icon: WorkflowsNavIcon,
+        dataTestId: `app-bar-item-${SidebarItem.WORKFLOWS}`,
       },
     ],
   },

@@ -61,6 +61,7 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
+        filter: blob:none
 
     - name: Set up JDK 21
       uses: actions/setup-java@v4

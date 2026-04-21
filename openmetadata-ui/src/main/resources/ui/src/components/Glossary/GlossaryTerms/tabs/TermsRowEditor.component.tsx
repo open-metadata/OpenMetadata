@@ -165,6 +165,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
       <div className="tw:w-67.5 tw:shrink-0">
         <Select
           className="w-full"
+          fontSize="sm"
           items={relationTypeOptions}
           size="sm"
           value={relationType}

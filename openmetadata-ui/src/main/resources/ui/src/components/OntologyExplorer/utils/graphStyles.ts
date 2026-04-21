@@ -21,12 +21,13 @@ import {
 import {
   COMBO_FILL_DEFAULT,
   COMBO_HEADER_HEIGHT,
+  COMBO_INTERIOR_PADDING_SIDES,
+  COMBO_INTERIOR_PADDING_TOP,
   COMBO_LABEL_FONT_SIZE,
   COMBO_LABEL_FONT_WEIGHT,
   COMBO_LABEL_PADDING_LEFT,
   COMBO_LABEL_PADDING_TOP_BOTTOM,
   COMBO_LINE_WIDTH,
-  COMBO_PADDING,
   COMBO_RADIUS,
   DATA_MODE_ASSET_BADGE_Z_INDEX,
   DATA_MODE_ASSET_CARD_CLEAR_BELOW_CIRCLE,
@@ -93,6 +94,7 @@ import {
   RELATION_META,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
+import './ontologyComboAwarePolylineEdge';
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
@@ -322,6 +324,15 @@ class DataModeAssetNode extends Circle {
   ): void {
     super.render(attributes, container);
     const attrs = attributes as Record<string, unknown>;
+    const testId = attrs['testId'];
+    const nodeId = attrs['nodeId'];
+    const keyShape = this.getShape('key');
+    if (typeof testId === 'string' && testId.length > 0) {
+      keyShape?.setAttribute('data-testid', testId);
+    }
+    if (typeof nodeId === 'string' && nodeId.length > 0) {
+      keyShape?.setAttribute('data-node-id', nodeId);
+    }
     const iconSrc = attrs['entityIconSrc'];
     const iconX = attrs['entityIconX'];
     const iconY = attrs['entityIconY'];
@@ -372,9 +383,8 @@ export function truncateHierarchyBadgeToFitWidth(
   return `${t.slice(0, maxChars - 1)}\u2026`;
 }
 
-/** Perpendicular offset from edge — keep 0 so the label box stays vertically balanced. */
 const EDGE_LABEL_OFFSET_Y = 0;
-const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [6, 8, 0, 8];
+const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [4, 8, 4, 8];
 const EDGE_LABEL_BADGE_RADIUS = 6;
 const EDGE_LABEL_BADGE_FONT_WEIGHT = 700;
 
@@ -392,7 +402,6 @@ export function getEdgeRelationLabelStyle(
   return {
     labelText,
     labelPosition: 'center',
-    labelTextBaseline: 'middle',
     labelBackground: true,
     labelBackgroundOpacity: 1,
     labelBackgroundFill: meta
@@ -405,7 +414,6 @@ export function getEdgeRelationLabelStyle(
     labelBackgroundRadius: meta
       ? EDGE_LABEL_BADGE_RADIUS
       : EDGE_LABEL_BG_RADIUS,
-    labelBackgroundPadding: edgeLabelPadding,
     labelPadding: edgeLabelPadding,
     labelBackgroundShadowColor: meta
       ? 'transparent'
@@ -421,9 +429,8 @@ export function getEdgeRelationLabelStyle(
       ? EDGE_LABEL_BADGE_FONT_WEIGHT
       : EDGE_LABEL_FONT_WEIGHT,
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,
-    labelLineHeight: EDGE_LABEL_FONT_SIZE,
     labelLetterSpacing: EDGE_LABEL_LETTER_SPACING,
-    labelAutoRotate: false,
+    labelAutoRotate: true,
     labelOffsetY: EDGE_LABEL_OFFSET_Y,
     labelMaxWidth: 120,
   };
@@ -837,7 +844,12 @@ export function buildComboStyle(
     stroke: color,
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
-    padding: COMBO_PADDING,
+    padding: [
+      COMBO_INTERIOR_PADDING_TOP,
+      COMBO_INTERIOR_PADDING_SIDES,
+      COMBO_INTERIOR_PADDING_SIDES,
+      COMBO_INTERIOR_PADDING_SIDES,
+    ],
     label: true,
     labelText,
     labelFill: color,

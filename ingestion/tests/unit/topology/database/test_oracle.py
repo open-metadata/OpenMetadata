@@ -212,6 +212,10 @@ class OracleUnitTest(TestCase):
         self.oracle.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.oracle.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [

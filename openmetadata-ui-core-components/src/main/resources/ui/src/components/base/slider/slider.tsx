@@ -1,5 +1,5 @@
-import { cx, sortCx } from '@/utils/cx';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
+import { cx, sortCx } from '@/utils/cx';
 import {
   type MouseEvent,
   type ReactNode,
@@ -187,9 +187,10 @@ export const Slider = ({
       return;
     }
 
-    const rect =
-      trackRectRef.current ?? trackRef.current.getBoundingClientRect();
-    if (rect.width === 0) {
+    // The track rect must be up to date to position the hover ghost and calculate
+    updateTrackRect();
+    const rect = trackRectRef.current;
+    if (!rect || rect.width === 0) {
       return;
     }
     const rawPercent = Math.max(

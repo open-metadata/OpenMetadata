@@ -250,6 +250,16 @@ JOIN sys.sql_modules l on l.object_id = p.object_id
     """
 )
 
+MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT p.name AS procedure_name
+FROM sys.procedures p
+JOIN sys.schemas s ON s.schema_id = p.schema_id
+WHERE s.name = :schema_name
+  AND OBJECTPROPERTY(p.object_id, 'IsEncrypted') = 1
+    """
+)
+
 MSSQL_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY (start_time, end_time, procedure_name, query_text) AS (

@@ -330,28 +330,28 @@ class RedashSource(DashboardServiceSource):
                     self.status.filter(chart_display_name, "Chart Pattern not allowed")
                     continue
 
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(str(widgets["id"])),
-                        displayName=(
-                            chart_display_name
-                            if visualization and visualization["query"]
-                            else ""
-                        ),
-                        chartType=get_standard_chart_type(
-                            visualization["type"] if visualization else ""
-                        ),
-                        service=FullyQualifiedEntityName(
-                            self.context.get().dashboard_service
-                        ),
-                        sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
-                        description=(
-                            Markdown(visualization["description"])
-                            if visualization
-                            else None
-                        ),
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(str(widgets["id"])),
+                    displayName=(
+                        chart_display_name
+                        if visualization and visualization["query"]
+                        else ""
+                    ),
+                    chartType=get_standard_chart_type(
+                        visualization["type"] if visualization else ""
+                    ),
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
+                    sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
+                    description=(
+                        Markdown(visualization["description"])
+                        if visualization
+                        else None
+                    ),
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

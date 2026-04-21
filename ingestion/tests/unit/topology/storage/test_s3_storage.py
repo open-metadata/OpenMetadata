@@ -83,9 +83,24 @@ MOCK_OBJECT_STORE_CONFIG = {
 }
 MOCK_S3_BUCKETS_RESPONSE = {
     "Buckets": [
-        {"Name": "test_transactions", "CreationDate": datetime.datetime(2000, 1, 1)},
-        {"Name": "test_sales", "CreationDate": datetime.datetime(2000, 2, 2)},
-        {"Name": "events", "CreationDate": datetime.datetime(2000, 3, 3)},
+        {
+            "Name": "test_transactions",
+            "CreationDate": datetime.datetime(2000, 1, 1),
+            "BucketArn": "arn:aws:s3:::test_transactions",
+            "BucketRegion": "us-east-1",
+        },
+        {
+            "Name": "test_sales",
+            "CreationDate": datetime.datetime(2000, 2, 2),
+            "BucketArn": "arn:aws:s3:::test_sales",
+            "BucketRegion": "us-east-1",
+        },
+        {
+            "Name": "events",
+            "CreationDate": datetime.datetime(2000, 3, 3),
+            "BucketArn": "arn:aws:s3:::events",
+            "BucketRegion": "us-east-1",
+        },
     ]
 }
 MOCK_S3_METADATA_FILE_RESPONSE = {

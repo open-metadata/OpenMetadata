@@ -166,7 +166,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.0.2",
+    "collate-sqllineage>=2.1.1",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -294,6 +294,11 @@ plugins: Dict[str, Set[str]] = {
         "pure-sasl",
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
+    },
+    "iomete": {
+        "iomete-sqlalchemy>=1.0.22",
+        "adbc-driver-flightsql",
+        "adbc-driver-manager",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
