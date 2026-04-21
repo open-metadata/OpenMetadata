@@ -61,10 +61,18 @@ export const checkName = async (page: Page, name: string) => {
 
 export const selectActiveGlossary = async (
   page: Page,
-  glossaryName: string,
+  glossaryLabel: string,
   bWaitForResponse = true
 ) => {
-  const menuItem = page.getByRole('menuitem', { name: glossaryName }).first();
+  const sidebar = page.getByTestId('glossary-left-panel');
+  await sidebar.locator('[role="menuitem"]').first().waitFor();
+
+  const menuItem = sidebar.getByRole('menuitem', {
+    name: glossaryLabel,
+    exact: true,
+  });
+  await menuItem.waitFor({ state: 'visible' });
+
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
@@ -264,6 +272,8 @@ export const createGlossary = async (
   }
 
   await page.fill('[data-testid="name"]', glossaryData.name);
+
+  await page.fill('[data-testid="display-name"]', glossaryData.displayName);
 
   await page.locator(descriptionBox).fill(glossaryData.description);
 
@@ -740,7 +750,7 @@ export const createGlossaryTerms = async (
   page: Page,
   glossary: GlossaryData
 ) => {
-  await selectActiveGlossary(page, glossary.name);
+  await selectActiveGlossary(page, glossary.displayName ?? glossary.name);
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
 
