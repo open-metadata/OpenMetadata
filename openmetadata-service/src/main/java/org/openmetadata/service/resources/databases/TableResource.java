@@ -582,7 +582,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportTable",

@@ -1242,7 +1242,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @GET
   @Path("/name/{fqn}/exportAsync")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportGlossaryTermAsync",

@@ -536,7 +536,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportGlossary",

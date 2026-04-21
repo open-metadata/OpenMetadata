@@ -102,7 +102,7 @@ describe('ExportUtils', () => {
       downloadFile('content', 'file.csv', 'text/csv;charset=utf-8;');
 
       expect(MockBlob).toHaveBeenCalledWith(['\uFEFFcontent'], {
-        type: 'text/csv;charset=utf-8;',
+        type: 'text/csv; charset=utf-8',
       });
     });
 
@@ -114,7 +114,7 @@ describe('ExportUtils', () => {
       downloadFile('\uFEFFcontent', 'file.csv', 'text/csv;charset=utf-8;');
 
       expect(MockBlob).toHaveBeenCalledWith(['\uFEFFcontent'], {
-        type: 'text/csv;charset=utf-8;',
+        type: 'text/csv; charset=utf-8',
       });
     });
 

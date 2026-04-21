@@ -25,7 +25,7 @@ export const downloadFile = (
 ): void => {
   const isCsvFile = fileName.toLowerCase().endsWith('.csv');
   const isCsvMime = mimeType.toLowerCase().includes('text/csv');
-  const csvMimeType = 'text/csv;charset=utf-8;';
+  const csvMimeType = 'text/csv; charset=utf-8';
   const effectiveMimeType = isCsvFile || isCsvMime ? csvMimeType : mimeType;
   const effectiveContent =
     isCsvFile || isCsvMime
