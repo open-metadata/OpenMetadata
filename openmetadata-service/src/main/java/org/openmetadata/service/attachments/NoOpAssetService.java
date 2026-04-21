@@ -22,12 +22,19 @@ public class NoOpAssetService implements AssetService {
   }
 
   /**
-   * Return the asset's own URL (which is empty when object storage is disabled) instead
-   * of a synthetic CDN URL. Returning a fake URL would let clients issue downloads that
-   * can never succeed and would mask the misconfiguration.
+   * Return the asset's own URL when present, otherwise an empty string. We deliberately
+   * avoid returning a synthetic CDN URL here — a fake URL would let clients issue
+   * downloads that can never succeed and would mask the "storage disabled"
+   * misconfiguration. {@link org.openmetadata.schema.attachments.Asset#getUrl()} is
+   * optional in the schema, so normalize null/blank to "" to preserve the non-null
+   * contract callers rely on.
    */
   @Override
   public String generateDownloadUrlWithExpiry(Asset asset, Duration expiry) {
-    return asset == null ? "" : asset.getUrl();
+    if (asset == null) {
+      return "";
+    }
+    String url = asset.getUrl();
+    return url == null || url.isBlank() ? "" : url;
   }
 }
