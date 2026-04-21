@@ -8,20 +8,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -57,17 +65,37 @@ public class VectorDocBuilder {
    * Child-entity enumeration spec for container-like types. When an entity has children on the
    * object (populated during reindexing via {@code fields=*}), their names are joined into a
    * short natural-language phrase and appended to the semantic body, so queries match against
-   * what a container actually contains.
+   * what a container actually contains. The cast inside each getter is guarded by the map key:
+   * an entry keyed by {@link Entity#DATABASE} is only consulted for {@link Database} entities.
    */
-  private record SemanticChildrenSpec(String getterName, String phrasePrefix) {}
+  private record SemanticChildrenSpec(
+      Function<EntityInterface, List<EntityReference>> childGetter, String phrasePrefix) {}
 
   private static final Map<String, SemanticChildrenSpec> SEMANTIC_CHILDREN_SPECS =
       Map.of(
-          "database", new SemanticChildrenSpec("getDatabaseSchemas", "Contains schemas"),
-          "databaseSchema", new SemanticChildrenSpec("getTables", "Contains tables"),
-          "apiCollection", new SemanticChildrenSpec("getApiEndpoints", "Contains endpoints"),
-          "container", new SemanticChildrenSpec("getChildren", "Contains"),
-          "dataProduct", new SemanticChildrenSpec("getAssets", "Contains assets"));
+          Entity.DATABASE,
+              new SemanticChildrenSpec(
+                  e -> ((Database) e).getDatabaseSchemas(), "Contains schemas"),
+          Entity.DATABASE_SCHEMA,
+              new SemanticChildrenSpec(e -> ((DatabaseSchema) e).getTables(), "Contains tables"),
+          Entity.API_COLLECTION,
+              new SemanticChildrenSpec(
+                  e -> ((APICollection) e).getApiEndpoints(), "Contains endpoints"),
+          Entity.CONTAINER,
+              new SemanticChildrenSpec(e -> ((Container) e).getChildren(), "Contains"),
+          Entity.DATA_PRODUCT,
+              new SemanticChildrenSpec(e -> ((DataProduct) e).getAssets(), "Contains assets"));
+
+  /**
+   * Entity-type-specific enrichments appended to {@link #buildSemanticMetaLightText} after the
+   * shared subject/type phrase. Table-driven so new type enrichers are one map entry rather than
+   * another {@code instanceof} branch.
+   */
+  private static final Map<String, BiConsumer<List<String>, EntityInterface>> SEMANTIC_ENRICHERS =
+      Map.of(
+          Entity.GLOSSARY_TERM,
+              (phrases, e) -> appendGlossaryTermPhrases(phrases, (GlossaryTerm) e),
+          Entity.METRIC, (phrases, e) -> appendMetricPhrases(phrases, (Metric) e));
 
   /**
    * Register a custom {@link BodyTextExtractor} for an entity type. The registry is consulted by
@@ -317,10 +345,27 @@ public class VectorDocBuilder {
   static String buildSemanticMetaLightText(EntityInterface entity, String entityType) {
     boolean isGlossary = entity instanceof Glossary;
     boolean isGlossaryTerm = entity instanceof GlossaryTerm;
-    boolean isMetric = entity instanceof Metric;
 
     List<String> phrases = new ArrayList<>();
+    appendSubjectPhrase(phrases, entity, entityType);
 
+    BiConsumer<List<String>, EntityInterface> enricher = SEMANTIC_ENRICHERS.get(entityType);
+    if (enricher != null) {
+      enricher.accept(phrases, entity);
+    }
+
+    appendTagPhrases(phrases, entity, isGlossary, isGlossaryTerm);
+    appendDomainPhrase(phrases, entity);
+
+    if (!isGlossary && !isGlossaryTerm) {
+      appendTierAndCertificationPhrases(phrases, entity);
+    }
+
+    return String.join(". ", phrases);
+  }
+
+  private static void appendSubjectPhrase(
+      List<String> phrases, EntityInterface entity, String entityType) {
     String name = entity.getName();
     String displayName = entity.getDisplayName();
     String subject = null;
@@ -337,29 +382,18 @@ public class VectorDocBuilder {
     } else if (subject != null) {
       phrases.add(subject);
     }
+  }
 
-    if (isGlossaryTerm) {
-      appendGlossaryTermPhrases(phrases, (GlossaryTerm) entity);
+  private static void appendTierAndCertificationPhrases(
+      List<String> phrases, EntityInterface entity) {
+    String tier = extractTierLabel(entity);
+    if (tier != null) {
+      phrases.add(tier.replace('.', ' '));
     }
-    if (isMetric) {
-      appendMetricPhrases(phrases, (Metric) entity);
+    String cert = extractCertificationLabel(entity);
+    if (cert != null) {
+      phrases.add(cert.replace('.', ' '));
     }
-
-    appendTagPhrases(phrases, entity, isGlossary, isGlossaryTerm);
-    appendDomainPhrase(phrases, entity);
-
-    if (!isGlossary && !isGlossaryTerm) {
-      String tier = extractTierLabel(entity);
-      if (tier != null) {
-        phrases.add(tier.replace('.', ' '));
-      }
-      String cert = extractCertificationLabel(entity);
-      if (cert != null) {
-        phrases.add(cert.replace('.', ' '));
-      }
-    }
-
-    return String.join(". ", phrases);
   }
 
   private static void appendGlossaryTermPhrases(List<String> phrases, GlossaryTerm term) {
@@ -504,10 +538,10 @@ public class VectorDocBuilder {
 
   /**
    * Produce a "Contains X, Y, Z" phrase listing the names of a container entity's direct
-   * children (database schemas, tables, endpoints, charts, etc.). Children are read via
-   * reflection using the getter name in {@link #SEMANTIC_CHILDREN_SPECS}, so this does not
-   * introduce compile-time coupling to every container type. Returns null when the entity is
-   * not a known container, when the getter is missing, or when the child list is empty.
+   * children (database schemas, tables, endpoints, charts, etc.). The per-type getter is looked
+   * up in {@link #SEMANTIC_CHILDREN_SPECS} as a typed method reference, so this stays
+   * compile-time checked. Returns null when the entity is not a known container or when the
+   * child list is empty.
    */
   static String buildChildContextPhrase(EntityInterface entity, String entityType) {
     if (entityType == null) {
@@ -517,7 +551,7 @@ public class VectorDocBuilder {
     if (spec == null) {
       return null;
     }
-    List<String> childNames = readChildNames(entity, spec.getterName());
+    List<String> childNames = readChildNames(spec.childGetter().apply(entity));
     if (childNames.isEmpty()) {
       return null;
     }
@@ -528,28 +562,19 @@ public class VectorDocBuilder {
     return spec.phrasePrefix() + " " + String.join(", ", limited);
   }
 
-  private static List<String> readChildNames(EntityInterface entity, String getterName) {
-    try {
-      Method method = entity.getClass().getMethod(getterName);
-      Object result = method.invoke(entity);
-      if (!(result instanceof List<?> refs) || refs.isEmpty()) {
-        return Collections.emptyList();
-      }
-      List<String> names = new ArrayList<>(refs.size());
-      for (Object ref : refs) {
-        if (ref instanceof EntityReference entityRef) {
-          String displayName = entityRef.getDisplayName();
-          String name =
-              displayName != null && !displayName.isBlank() ? displayName : entityRef.getName();
-          if (name != null && !name.isBlank()) {
-            names.add(name);
-          }
-        }
-      }
-      return names;
-    } catch (Exception e) {
+  private static List<String> readChildNames(List<EntityReference> refs) {
+    if (refs == null || refs.isEmpty()) {
       return Collections.emptyList();
     }
+    List<String> names = new ArrayList<>(refs.size());
+    for (EntityReference ref : refs) {
+      String displayName = ref.getDisplayName();
+      String name = displayName != null && !displayName.isBlank() ? displayName : ref.getName();
+      if (name != null && !name.isBlank()) {
+        names.add(name);
+      }
+    }
+    return names;
   }
 
   static String extractServiceType(EntityInterface entity) {
