@@ -1721,6 +1721,7 @@
     "reposition": "Repositionner",
     "repository-url": "URL du Dépôt",
     "request": "Requête",
+    "request-data-access": "Demander l'accès aux données",
     "request-method": "Méthode de Requête",
     "request-schema-field": "Champ de Schéma de Requête",
     "request-tag-plural": "Demander l'ajout de tags",

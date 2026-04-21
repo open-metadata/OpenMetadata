@@ -1721,6 +1721,7 @@
     "reposition": "Reposition",
     "repository-url": "Repository URL",
     "request": "Request",
+    "request-data-access": "Request Data Access",
     "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Request Tags",
