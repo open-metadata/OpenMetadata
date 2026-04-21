@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -119,10 +120,13 @@ public final class IntakeFormValidator {
   }
 
   private static boolean hasMeaningfulValue(JsonNode value) {
-    if (value == null || value.isNull() || value.isMissingNode()) return false;
-    if (value.isTextual()) return !value.asText().isEmpty();
-    if (value.isArray()) return value.size() > 0;
-    if (value.isObject()) return value.size() > 0;
+    // nullOrEmpty covers null/JSON-null/missing/empty-text/empty-array/empty-object.
+    if (nullOrEmpty(value)) return false;
+    // Whitespace-only strings are effectively missing values for required-field
+    // enforcement — treating them as present would let users bypass validation
+    // by typing spaces. nullOrEmpty uses isEmpty() to match the (String) overload,
+    // so we re-check blankness explicitly here.
+    if (value.isTextual()) return !value.asText().isBlank();
     return true;
   }
 

@@ -1112,6 +1112,46 @@ public class IntakeFormResourceIT {
   }
 
   @Test
+  void dataProduct_create_entityReference_acceptsFqnWithoutId(TestNamespace ns) {
+    // The EntityReference JSON Schema treats 'id' and 'fullyQualifiedName' as
+    // alternative identifiers (both + type is a valid lookup). Clients (incl.
+    // ColumnCustomPropertiesIT) rely on passing only {type, fullyQualifiedName}
+    // when the caller doesn't know the UUID yet.
+    Domain domain = createDomain(ns);
+    Map<String, Object> stewardRef = new LinkedHashMap<>();
+    stewardRef.put("type", "user");
+    stewardRef.put("fullyQualifiedName", "admin");
+    Map<String, Object> ext = new LinkedHashMap<>();
+    ext.put(DP_STEWARD_REF_PROPERTY, stewardRef);
+    CreateDataProduct req =
+        minimalDataProductRequest(ns, domain, "ref-fqn-only").withExtension(ext);
+
+    DataProduct created = SdkClients.adminClient().dataProducts().create(req);
+    assertNotNull(created.getId());
+    assertNotNull(created.getExtension());
+  }
+
+  @Test
+  void dataProduct_create_entityReference_rejectsFqnForNonExistentUser(TestNamespace ns) {
+    Domain domain = createDomain(ns);
+    Map<String, Object> stewardRef = new LinkedHashMap<>();
+    stewardRef.put("type", "user");
+    stewardRef.put("fullyQualifiedName", "definitely-not-a-real-user-42");
+    Map<String, Object> ext = new LinkedHashMap<>();
+    ext.put(DP_STEWARD_REF_PROPERTY, stewardRef);
+    CreateDataProduct req =
+        minimalDataProductRequest(ns, domain, "ref-fqn-missing").withExtension(ext);
+
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().dataProducts().create(req));
+    assertTrue(
+        ex.getMessage().toLowerCase().contains("does not exist"),
+        "Expected 'does not exist' for FQN-only lookup of a missing user, got: " + ex.getMessage());
+  }
+
+  @Test
   void dataProduct_create_entityRefValidatedEvenWhenNotRequiredByIntakeForm(TestNamespace ns) {
     Domain domain = createDomain(ns);
     // No IntakeForm — entity reference resolution happens via the general
@@ -1202,6 +1242,47 @@ public class IntakeFormResourceIT {
             || ex.getMessage().toLowerCase().contains("invalid")
             || ex.getMessage().toLowerCase().contains("must"),
         "Expected shape error for array-expected property, got: " + ex.getMessage());
+  }
+
+  @Test
+  void dataProduct_create_entityReferenceList_rejectsWhenElementIsString(TestNamespace ns) {
+    // Array containing a primitive string instead of an entity-ref object should fail
+    // with a message that points at the element shape, not a generic NPE from reading
+    // 'id'/'type' on a non-object.
+    Domain domain = createDomain(ns);
+    Map<String, Object> ext = new LinkedHashMap<>();
+    ext.put(DP_STEWARDS_REF_LIST_PROPERTY, List.of("not-an-object"));
+    CreateDataProduct req =
+        minimalDataProductRequest(ns, domain, "ref-list-str-element").withExtension(ext);
+
+    Exception ex =
+        assertThrows(Exception.class, () -> SdkClients.adminClient().dataProducts().create(req));
+    String msg = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
+    assertTrue(
+        msg.contains("object")
+            || msg.contains("'id'")
+            || msg.contains("'type'")
+            || msg.contains("index"),
+        "Expected non-object element error, got: " + ex.getMessage());
+  }
+
+  @Test
+  void dataProduct_create_entityReferenceList_rejectsWhenElementIsNumber(TestNamespace ns) {
+    Domain domain = createDomain(ns);
+    Map<String, Object> ext = new LinkedHashMap<>();
+    ext.put(DP_STEWARDS_REF_LIST_PROPERTY, List.of(42));
+    CreateDataProduct req =
+        minimalDataProductRequest(ns, domain, "ref-list-num-element").withExtension(ext);
+
+    Exception ex =
+        assertThrows(Exception.class, () -> SdkClients.adminClient().dataProducts().create(req));
+    String msg = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
+    assertTrue(
+        msg.contains("object")
+            || msg.contains("'id'")
+            || msg.contains("'type'")
+            || msg.contains("index"),
+        "Expected non-object element error, got: " + ex.getMessage());
   }
 
   @Test

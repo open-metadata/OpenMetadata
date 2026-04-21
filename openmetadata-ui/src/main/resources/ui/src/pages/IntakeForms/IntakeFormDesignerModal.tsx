@@ -61,10 +61,10 @@ interface FieldRow {
   errorMessage?: string;
 }
 
-const ENTITY_TYPE_LABELS: Record<TargetEntityType, string> = {
-  [TargetEntityType.DataProduct]: 'Data Product',
-  [TargetEntityType.Domain]: 'Domain',
-  [TargetEntityType.GlossaryTerm]: 'Glossary Term',
+const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
+  [TargetEntityType.DataProduct]: 'label.data-product',
+  [TargetEntityType.Domain]: 'label.domain',
+  [TargetEntityType.GlossaryTerm]: 'label.glossary-term',
 };
 
 const IntakeFormDesignerModal = ({
@@ -135,7 +135,7 @@ const IntakeFormDesignerModal = ({
 
       return {
         path: nf.path,
-        label: nf.label,
+        label: t(nf.labelKey),
         kind: FieldKind.Native,
         selected: Boolean(existing),
         errorMessage: existing?.errorMessage,
@@ -156,7 +156,7 @@ const IntakeFormDesignerModal = ({
     });
 
     setRows([...nativeRows, ...customRows]);
-  }, [entityType, customProperties, initialValue]);
+  }, [entityType, customProperties, initialValue, t]);
 
   const updateRow = useCallback((path: string, patch: Partial<FieldRow>) => {
     setRows((prev) =>
@@ -174,11 +174,19 @@ const IntakeFormDesignerModal = ({
         errorMessage: row.errorMessage || undefined,
       }));
 
-    // One intake form per entity type — name is deterministically derived
+    // One intake form per entity type — name is deterministically derived.
+    // On edit, keep whatever displayName the form already has (users may
+    // have renamed it via API). On create, fall back to a localized default
+    // of "<Entity> <IntakeForm>" so the listing shows a meaningful label
+    // without forcing the user to type one.
     const name = ENTITY_TYPE_API_NAME[entityType];
+    const defaultDisplayName = t('label.entity-intake-form', {
+      entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+    });
+    const displayName = initialValue?.displayName ?? defaultDisplayName;
     const payload: CreateIntakeForm = {
       name,
-      displayName: `${ENTITY_TYPE_LABELS[entityType]} Intake Form`,
+      displayName,
       description: description || undefined,
       entityType,
       enabled,
@@ -267,10 +275,14 @@ const IntakeFormDesignerModal = ({
       title={
         initialValue
           ? t('label.edit-entity', {
-              entity: `${ENTITY_TYPE_LABELS[entityType]} Intake Form`,
+              entity: t('label.entity-intake-form', {
+                entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+              }),
             })
           : t('label.add-entity', {
-              entity: `${ENTITY_TYPE_LABELS[entityType]} Intake Form`,
+              entity: t('label.entity-intake-form', {
+                entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+              }),
             })
       }
       width="75%"
@@ -279,7 +291,7 @@ const IntakeFormDesignerModal = ({
         showIcon
         className="tw:mb-4"
         description={t('message.intake-form-one-per-type-help', {
-          entityType: ENTITY_TYPE_LABELS[entityType],
+          entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
         })}
         type="info"
       />

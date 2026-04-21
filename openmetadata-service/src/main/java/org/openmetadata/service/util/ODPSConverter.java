@@ -249,6 +249,11 @@ public final class ODPSConverter {
    * Sanitize an ODPS product name into a valid OpenMetadata entity name.
    * Replaces disallowed characters with `_`, collapses runs of underscores,
    * trims leading/trailing underscores, and truncates to 64 characters.
+   *
+   * @throws IllegalArgumentException if the input has no characters that
+   *     survive sanitization (e.g. pure whitespace, punctuation-only, or
+   *     all-non-ASCII strings like {@code "数据产品"}). The caller gets a
+   *     clear message instead of an invalid empty-name entity.
    */
   static String sanitizeEntityName(String raw) {
     if (raw == null) return null;
@@ -257,6 +262,14 @@ public final class ODPSConverter {
     replaced = trimUnderscores(replaced);
     if (replaced.length() > MAX_ENTITY_NAME_LENGTH) {
       replaced = trimUnderscores(replaced.substring(0, MAX_ENTITY_NAME_LENGTH));
+    }
+    if (replaced.isEmpty()) {
+      throw new IllegalArgumentException(
+          "ODPS product name '"
+              + raw
+              + "' has no characters valid for an OpenMetadata entity name "
+              + "(allowed: a-z, A-Z, 0-9, '_', '-', '.'). "
+              + "Rename the product in your ODPS source or import it under a different ID.");
     }
     return replaced;
   }

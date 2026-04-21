@@ -15,7 +15,8 @@ import { TargetEntityType } from '../../generated/governance/intakeForm';
 
 export interface IntakeFormNativeField {
   path: string;
-  label: string;
+  /** i18n key resolved via t() at render time. */
+  labelKey: string;
 }
 
 /**
@@ -23,32 +24,35 @@ export interface IntakeFormNativeField {
  * Schema-required fields (name, description, domains/domainType/glossary) are intentionally
  * excluded — they are enforced by the entity's JSON schema and cannot be overridden. System
  * fields (id, version, updatedAt, etc.) are likewise omitted.
+ *
+ * The `labelKey` values are i18n keys; callers resolve them with t() at render time so the
+ * designer UI and validation messages both display the localized field name.
  */
 export const NATIVE_FIELDS_BY_ENTITY_TYPE: Record<
   TargetEntityType,
   IntakeFormNativeField[]
 > = {
   [TargetEntityType.DataProduct]: [
-    { path: 'displayName', label: 'Display Name' },
-    { path: 'dataProductType', label: 'Type' },
-    { path: 'visibility', label: 'Visibility' },
-    { path: 'portfolioPriority', label: 'Portfolio Priority' },
-    { path: 'tags', label: 'Tags' },
-    { path: 'owners', label: 'Owners' },
-    { path: 'reviewers', label: 'Reviewers' },
-    { path: 'experts', label: 'Experts' },
+    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'dataProductType', labelKey: 'label.data-product-type' },
+    { path: 'visibility', labelKey: 'label.visibility' },
+    { path: 'portfolioPriority', labelKey: 'label.portfolio-priority' },
+    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'owners', labelKey: 'label.owner-plural' },
+    { path: 'reviewers', labelKey: 'label.reviewer-plural' },
+    { path: 'experts', labelKey: 'label.expert-plural' },
   ],
   [TargetEntityType.Domain]: [
-    { path: 'displayName', label: 'Display Name' },
-    { path: 'tags', label: 'Tags' },
-    { path: 'owners', label: 'Owners' },
-    { path: 'experts', label: 'Experts' },
+    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'owners', labelKey: 'label.owner-plural' },
+    { path: 'experts', labelKey: 'label.expert-plural' },
   ],
   [TargetEntityType.GlossaryTerm]: [
-    { path: 'displayName', label: 'Display Name' },
-    { path: 'synonyms', label: 'Synonyms' },
-    { path: 'tags', label: 'Tags' },
-    { path: 'reviewers', label: 'Reviewers' },
+    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'synonyms', labelKey: 'label.synonym-plural' },
+    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'reviewers', labelKey: 'label.reviewer-plural' },
   ],
 };
 

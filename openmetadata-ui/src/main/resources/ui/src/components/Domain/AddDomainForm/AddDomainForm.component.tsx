@@ -15,6 +15,11 @@ import { omit } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
+import {
+  DATA_PRODUCT_TYPE_LABEL_KEYS,
+  PORTFOLIO_PRIORITY_LABEL_KEYS,
+  VISIBILITY_LABEL_KEYS,
+} from '../../../constants/DataProduct.constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -170,18 +175,18 @@ const AddDomainForm = ({
   }));
 
   const dataProductTypeOptions = Object.values(DataProductType).map((v) => ({
-    label: v.replace(/_/g, ' ').toLowerCase(),
+    label: t(DATA_PRODUCT_TYPE_LABEL_KEYS[v]),
     value: v,
   }));
 
   const visibilityOptions = Object.values(Visibility).map((v) => ({
-    label: v.toLowerCase(),
+    label: t(VISIBILITY_LABEL_KEYS[v]),
     value: v,
   }));
 
   const portfolioPriorityOptions = Object.values(PortfolioPriority).map(
     (v) => ({
-      label: v.toLowerCase(),
+      label: t(PORTFOLIO_PRIORITY_LABEL_KEYS[v]),
       value: v,
     })
   );

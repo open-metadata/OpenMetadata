@@ -15,6 +15,11 @@ import { Form, Modal, Select } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  DATA_PRODUCT_TYPE_LABEL_KEYS,
+  PORTFOLIO_PRIORITY_LABEL_KEYS,
+  VISIBILITY_LABEL_KEYS,
+} from '../../../constants/DataProduct.constants';
+import {
   DataProductType,
   PortfolioPriority,
   Visibility,
@@ -74,7 +79,7 @@ const DataProductMetadataModal = ({
             allowClear
             data-testid="type-select"
             options={Object.values(DataProductType).map((v) => ({
-              label: v.replace(/_/g, ' ').toLowerCase(),
+              label: t(DATA_PRODUCT_TYPE_LABEL_KEYS[v]),
               value: v,
             }))}
             placeholder={t('label.select-entity', { entity: t('label.type') })}
@@ -85,7 +90,7 @@ const DataProductMetadataModal = ({
             allowClear
             data-testid="visibility-select"
             options={Object.values(Visibility).map((v) => ({
-              label: v.toLowerCase(),
+              label: t(VISIBILITY_LABEL_KEYS[v]),
               value: v,
             }))}
             placeholder={t('label.select-entity', {
@@ -100,7 +105,7 @@ const DataProductMetadataModal = ({
             allowClear
             data-testid="priority-select"
             options={Object.values(PortfolioPriority).map((v) => ({
-              label: v.toLowerCase(),
+              label: t(PORTFOLIO_PRIORITY_LABEL_KEYS[v]),
               value: v,
             }))}
             placeholder={t('label.select-entity', {

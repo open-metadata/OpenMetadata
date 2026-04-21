@@ -39,18 +39,23 @@ import {
   createOrUpdateIntakeForm,
   deleteIntakeForm,
   listIntakeForms,
+  patchIntakeForm,
 } from '../../rest/intakeFormsAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import IntakeFormDesignerModal from './IntakeFormDesignerModal';
 
-const ENTITY_TYPE_LABELS: Record<TargetEntityType, string> = {
-  [TargetEntityType.DataProduct]: 'Data Product',
-  [TargetEntityType.Domain]: 'Domain',
-  [TargetEntityType.GlossaryTerm]: 'Glossary Term',
+const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
+  [TargetEntityType.DataProduct]: 'label.data-product',
+  [TargetEntityType.Domain]: 'label.domain',
+  [TargetEntityType.GlossaryTerm]: 'label.glossary-term',
 };
 
 const IntakeFormsPage = () => {
   const { t } = useTranslation();
+  const entityTypeLabel = useCallback(
+    (et: TargetEntityType) => t(ENTITY_TYPE_LABEL_KEYS[et]),
+    [t]
+  );
   const [forms, setForms] = useState<IntakeForm[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalState, setModalState] = useState<{
@@ -113,15 +118,12 @@ const IntakeFormsPage = () => {
 
   const handleToggleEnabled = async (form: IntakeForm, enabled: boolean) => {
     try {
-      const payload: CreateIntakeForm = {
-        name: form.name,
-        displayName: form.displayName,
-        description: form.description,
-        entityType: form.entityType,
-        enabled,
-        requiredFields: form.requiredFields ?? [],
-      };
-      await createOrUpdateIntakeForm(payload);
+      // PATCH just /enabled. A PUT with the CreateIntakeForm payload would
+      // replace the whole entity and the backend mapper copies owners from
+      // the request — so any previously set owners would be cleared.
+      await patchIntakeForm(form.id, [
+        { op: 'replace', path: '/enabled', value: enabled },
+      ]);
       showSuccessToast(t('message.intake-form-updated-successfully'));
       await fetchForms();
     } catch (err) {
@@ -132,7 +134,14 @@ const IntakeFormsPage = () => {
   const handleSubmit = async (payload: CreateIntakeForm) => {
     try {
       if (modalState.initialValue) {
-        await createOrUpdateIntakeForm(payload);
+        // Preserve server-managed fields (owners) on edit. The designer
+        // modal doesn't collect owners, but PUT replaces the whole entity,
+        // so we must carry them forward or they'll be cleared.
+        const preservedOwners = modalState.initialValue.owners;
+        const mergedPayload: CreateIntakeForm = preservedOwners
+          ? { ...payload, owners: preservedOwners }
+          : payload;
+        await createOrUpdateIntakeForm(mergedPayload);
         showSuccessToast(t('message.intake-form-updated-successfully'));
       } else {
         await createIntakeForm(payload);
@@ -156,8 +165,8 @@ const IntakeFormsPage = () => {
       return {
         key: et,
         label: alreadyExists
-          ? `${ENTITY_TYPE_LABELS[et]} (${t('label.already-configured')})`
-          : ENTITY_TYPE_LABELS[et],
+          ? `${entityTypeLabel(et)} (${t('label.already-configured')})`
+          : entityTypeLabel(et),
         disabled: alreadyExists,
         'data-testid': `add-${et}`,
         onClick: () => handleCreate(et),
@@ -171,9 +180,7 @@ const IntakeFormsPage = () => {
       dataIndex: 'entityType',
       key: 'entityType',
       render: (entityType: TargetEntityType) => (
-        <Typography.Text strong>
-          {ENTITY_TYPE_LABELS[entityType]}
-        </Typography.Text>
+        <Typography.Text strong>{entityTypeLabel(entityType)}</Typography.Text>
       ),
     },
     {

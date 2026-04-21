@@ -181,6 +181,36 @@ class IntakeFormValidatorTest {
   }
 
   @Test
+  void validate_rejectsWhenExtensionCustomPropertyIsWhitespaceOnly() {
+    // Whitespace-only strings are effectively missing values — treating them as "set"
+    // would let users bypass required-field enforcement by typing spaces.
+    IntakeForm form = intakeFormRequiring("extension.riskAssessment", FieldKind.CUSTOM_PROPERTY);
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    Map<String, Object> ext = new LinkedHashMap<>();
+    ext.put("riskAssessment", "   \t\n ");
+    DataProduct dp = validDataProduct().withExtension(ext);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
+  }
+
+  @Test
+  void validate_rejectsWhenNativeRequiredFieldIsWhitespaceOnly() {
+    // Same logic as the extension case, but for native fields mapped via Jackson
+    // into strings (e.g. a required description clobbered with spaces).
+    IntakeForm form = intakeFormRequiring("description", FieldKind.NATIVE);
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    DataProduct dp = validDataProduct().withDescription("   ");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
+  }
+
+  @Test
   void validate_collectsAllMissingIntakeFormFieldsInSingleErrorMessage() {
     IntakeFormRequiredField f1 =
         new IntakeFormRequiredField()

@@ -416,6 +416,57 @@ class ODPSConverterTest {
     assertEquals("sales-analytics", dp.getDisplayName());
   }
 
+  @Test
+  void fromODPS_rejectsNameThatSanitizesToEmptyFromPunctuationOnly() {
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("///");
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
+    assertTrue(
+        ex.getMessage().toLowerCase().contains("name"),
+        "Expected error to mention the name field: " + ex.getMessage());
+    assertTrue(
+        ex.getMessage().contains("///"),
+        "Expected error to include the original unsanitizable value: " + ex.getMessage());
+  }
+
+  @Test
+  void fromODPS_rejectsNameThatSanitizesToEmptyFromWhitespaceOnly() {
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("   ");
+
+    // Whitespace-only is caught by the validateRequiredODPSFields check (name.isBlank) — but
+    // if that guard is ever relaxed, sanitizeEntityName must still refuse to emit an empty
+    // name. Covered by the punctuation case and by sanitizeEntityName_throwsOnEmptyResult.
+    assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
+  }
+
+  @Test
+  void fromODPS_rejectsNameThatSanitizesToEmptyFromNonAsciiOnly() {
+    ODPSDataProduct odps = basicODPS();
+    // CJK-only name has no chars in the [a-zA-Z0-9_\-.] allow-list.
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("数据产品");
+
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
+    assertTrue(
+        ex.getMessage().contains("数据产品"),
+        "Expected error to include the original unsanitizable value: " + ex.getMessage());
+  }
+
+  @Test
+  void sanitizeEntityName_returnsNullForNull() {
+    assertEquals(null, ODPSConverter.sanitizeEntityName(null));
+  }
+
+  @Test
+  void sanitizeEntityName_throwsForAllInvalidChars() {
+    IllegalArgumentException ex =
+        assertThrows(IllegalArgumentException.class, () -> ODPSConverter.sanitizeEntityName("///"));
+    assertTrue(ex.getMessage().contains("///"));
+  }
+
   // ---------------------------------------------------------------------------
   // Enum round-trip — guards against silent misses if entity/create enums
   // diverge or new values are added without updating the converter.
