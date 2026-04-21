@@ -315,6 +315,8 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should render ChangeParentHierarchy component after clicking dropdown menu item', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -341,6 +343,8 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should not render ChangeParentHierarchy component after onCancel call', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
