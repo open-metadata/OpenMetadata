@@ -222,7 +222,9 @@ test.describe('Glossary Bulk Import Export', () => {
       const rowStatus = ['Entity updated', 'Entity created'];
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
-      await expect(page.getByText(chineseGlossaryTermDetails.name)).toBeVisible();
+      await expect(
+        page.getByText(chineseGlossaryTermDetails.name)
+      ).toBeVisible();
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
