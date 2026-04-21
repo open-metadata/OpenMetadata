@@ -152,7 +152,13 @@ entities.forEach((EntityClass) => {
       await expect
         .poll(
           async () => {
+            const entityResponse = page.waitForResponse(
+              (r) =>
+                r.url().includes(`/api/v1/${entity.endpoint}/`) &&
+                r.status() === 200
+            );
             await page.reload();
+            await entityResponse;
             await waitForAllLoadersToDisappear(page);
 
             return page
