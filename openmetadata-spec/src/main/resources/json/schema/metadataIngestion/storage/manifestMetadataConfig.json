@@ -105,8 +105,7 @@
                 "type": "string"
               }
             },
-            "required": ["name", "dataType"],
-            "additionalProperties": false
+            "required": ["name", "dataType"]
           },
           "default": null
         },

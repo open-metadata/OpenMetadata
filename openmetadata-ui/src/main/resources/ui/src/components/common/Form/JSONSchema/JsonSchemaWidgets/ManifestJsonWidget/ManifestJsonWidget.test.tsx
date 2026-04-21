@@ -17,10 +17,7 @@ import {
   WidgetProps,
 } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
-import ManifestJsonWidget, {
-  SAMPLE_MANIFEST_JSON,
-  validateManifestJson,
-} from './ManifestJsonWidget';
+import ManifestJsonWidget, { validateManifestJson } from './ManifestJsonWidget';
 
 // Mock the SchemaEditor so the widget can be rendered without the
 // heavy CodeMirror dependency. We surface the props we care about as
@@ -39,10 +36,10 @@ const mockSchemaEditor = jest
       readOnly?: boolean;
     }) => (
       <div
-        data-testid="schema-editor"
-        data-mode-name={mode?.name}
         data-mode-json={String(Boolean(mode?.json))}
-        data-readonly={String(Boolean(readOnly))}>
+        data-mode-name={mode?.name}
+        data-readonly={String(Boolean(readOnly))}
+        data-testid="schema-editor">
         {value || '<empty>'}
       </div>
     )
@@ -341,9 +338,7 @@ describe('ManifestJsonWidget', () => {
 
     expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
     // Sample is displayed in the editor...
-    expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-      /"entries"/
-    );
+    expect(screen.getByTestId('schema-editor')).toHaveTextContent(/"entries"/);
     // ...but we do NOT call onChange on mount — the field may be
     // populated asynchronously from the saved pipeline config.
     expect(onChange).not.toHaveBeenCalled();
@@ -357,9 +352,7 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-      /"entries"/
-    );
+    expect(screen.getByTestId('schema-editor')).toHaveTextContent(/"entries"/);
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -372,14 +365,17 @@ describe('ManifestJsonWidget', () => {
         {...makeProps({ value: '', onChange, disabled: true })}
       />
     );
+
     // Nothing fires on mount either.
     expect(onChange).not.toHaveBeenCalled();
+
     // Still silent on any re-render.
     rerender(
       <ManifestJsonWidget
         {...makeProps({ value: '', onChange, disabled: true })}
       />
     );
+
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -450,6 +446,7 @@ describe('ManifestJsonWidget', () => {
       />
     );
     const editor = screen.getByTestId('schema-editor');
+
     expect(editor).toHaveAttribute('data-mode-name', 'javascript');
     expect(editor).toHaveAttribute('data-mode-json', 'true');
   });
@@ -465,6 +462,7 @@ describe('ManifestJsonWidget', () => {
         })}
       />
     );
+
     expect(screen.getByTestId('schema-editor')).toHaveAttribute(
       'data-readonly',
       'true'

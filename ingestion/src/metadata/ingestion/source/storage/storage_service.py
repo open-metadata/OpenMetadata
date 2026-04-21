@@ -675,14 +675,18 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         and expanded entries are filtered uniformly.
         """
         from metadata.utils.filters import filter_by_container
+        from metadata.utils.storage_utils import is_excluded_artifact
 
         pattern = getattr(self.source_config, "containerFilterPattern", None)
         filtered: List[MetadataEntry] = []
         for entry in entries:
             path = entry.dataPath or ""
-            segments = set(path.split(KEY_SEPARATOR))
-            # 1. Default skip list — never let Spark artifacts become containers.
-            if segments & DEFAULT_EXCLUDE_PATHS:
+            # 1. Default skip list — never let Spark artifacts become
+            #    containers. Uses the full is_excluded_artifact check
+            #    (segment-based + leaf-name sentinels like _SUCCESS.crc,
+            #    _committed_*, *.crc) so glob-expanded unstructured
+            #    entries pointing at sidecar files are caught too.
+            if is_excluded_artifact(path):
                 logger.info(
                     f"Skipping manifest entry '{path}' in bucket "
                     f"'{bucket_name}' — matches a default excluded "

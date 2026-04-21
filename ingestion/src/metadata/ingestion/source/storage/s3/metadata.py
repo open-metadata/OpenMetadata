@@ -46,6 +46,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.custom_pydantic import format_validation_error
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
@@ -555,9 +556,9 @@ class S3Source(StorageServiceSource):
     def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:
         """List (key, size_bytes) for all files under prefix.
 
-        Filters out directories and cold storage objects. Path-based
-        exclusions (Delta log, Spark temp, etc.) are handled by the
-        caller via ManifestEntry.excludePaths.
+        Filters out directories, cold storage objects, and Spark/Delta
+        sentinel artifacts (``_SUCCESS``, ``*.crc``, ``_committed_*``,
+        etc.) so they never participate in glob matching or grouping.
         """
         for obj in list_s3_objects(self.s3_client, Bucket=bucket_name, Prefix=prefix):
             key = obj.get("Key", "")
@@ -565,6 +566,8 @@ class S3Source(StorageServiceSource):
                 continue
             storage_class = obj.get("StorageClass", "STANDARD")
             if storage_class in COLD_STORAGE_CLASSES:
+                continue
+            if is_excluded_artifact(key):
                 continue
             yield key, obj.get("Size", 0)
 
@@ -861,10 +864,6 @@ class S3Source(StorageServiceSource):
         try:
             metadata_config = StorageContainerConfig.model_validate(content)
         except ValidationError as exc:
-            from metadata.ingestion.models.custom_pydantic import (
-                format_validation_error,
-            )
-
             msg = (
                 f"Bucket manifest {manifest_uri} does not match the expected "
                 f"schema: {format_validation_error(exc)}. This bucket will use the defaultManifest "

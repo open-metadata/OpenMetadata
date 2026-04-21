@@ -13,8 +13,8 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Alert, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
-import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
+import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
 import './manifest-json-widget.less';
 
 // SchemaEditor uses CodeMirror's JavaScript mode with the ``json: true``
@@ -333,8 +333,7 @@ const ManifestJsonWidget = ({
   // state on mount — the field may be populated asynchronously after a
   // saved pipeline config loads, and writing our sample into form data
   // would overwrite the real value. We also skip when disabled.
-  const hasUserValue =
-    typeof value === 'string' && value.trim().length > 0;
+  const hasUserValue = typeof value === 'string' && value.trim().length > 0;
   const effectiveValue = hasUserValue ? value : SAMPLE_MANIFEST_JSON;
 
   // If the user starts editing the placeholder, commit that edit to form
