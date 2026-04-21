@@ -139,6 +139,7 @@ export const ComboBox = ({
   placeholder = 'Search',
   shortcut = true,
   size = 'sm',
+  fontSize = 'md',
   children,
   items,
   shortcutClassName,
@@ -165,7 +166,7 @@ export const ComboBox = ({
   });
 
   return (
-    <SelectContext.Provider value={{ size }}>
+    <SelectContext.Provider value={{ fontSize, size }}>
       <AriaComboBox menuTrigger="focus" {...otherProps}>
         {(state) => (
           <div className="tw:flex tw:flex-col tw:gap-1.5">

@@ -62,6 +62,8 @@ import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
+import WorkflowBuilderPage from '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder';
+import WorkflowsListPage from '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -681,6 +683,29 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.GLOSSARY_TERM_RELATIONS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.WORKFLOW_DEFINITIONS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.WORKFLOW_DEFINITIONS,
+          true
         )}
       />
     </Routes>
