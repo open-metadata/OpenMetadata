@@ -129,19 +129,20 @@ const GlossaryHeader = ({
 
   const importExportPermissions = useMemo(
     () =>
-      permissions?.All ||
-      permissions?.EditAll ||
-      checkPermission(
-        Operation.All,
-        ResourceEntity.GLOSSARY,
-        globalPermissions
-      ) ||
-      checkPermission(
-        Operation.EditAll,
-        ResourceEntity.GLOSSARY,
-        globalPermissions
-      ),
-    [globalPermissions, permissions]
+      isGlossary &&
+      (permissions?.All ||
+        permissions?.EditAll ||
+        checkPermission(
+          Operation.All,
+          ResourceEntity.GLOSSARY,
+          globalPermissions
+        ) ||
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.GLOSSARY,
+          globalPermissions
+        )),
+    [globalPermissions, permissions?.All, permissions?.EditAll, isGlossary]
   );
 
   // To fetch the latest glossary data

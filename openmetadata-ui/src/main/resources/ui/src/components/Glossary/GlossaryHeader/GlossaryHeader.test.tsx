@@ -228,8 +228,8 @@ describe('GlossaryHeader component', () => {
       fireEvent.click(screen.getByTestId('manage-button'));
     });
 
-    expect(screen.queryByText('label.import')).toBeInTheDocument();
-    expect(screen.queryByText('label.export')).toBeInTheDocument();
+    expect(await screen.findByText('label.import')).toBeInTheDocument();
+    expect(await screen.findByText('label.export')).toBeInTheDocument();
 
     expect(
       screen.queryByText('label.change-parent-entity')
@@ -272,8 +272,8 @@ describe('GlossaryHeader component', () => {
       fireEvent.click(screen.getByTestId('manage-button'));
     });
 
-    expect(screen.queryByText('label.import')).toBeInTheDocument();
-    expect(screen.queryByText('label.export')).toBeInTheDocument();
+    expect(await screen.findByText('label.import')).toBeInTheDocument();
+    expect(await screen.findByText('label.export')).toBeInTheDocument();
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
