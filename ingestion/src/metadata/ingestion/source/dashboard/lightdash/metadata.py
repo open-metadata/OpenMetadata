@@ -176,18 +176,18 @@ class LightdashSource(DashboardServiceSource):
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                yield Either(
-                    right=CreateChartRequest(
-                        name=EntityName(chart.uuid),
-                        displayName=chart.name,
-                        description=(
-                            Markdown(chart.description) if chart.description else None
-                        ),
-                        sourceUrl=SourceUrl(chart_url),
-                        service=self.context.get().dashboard_service,
-                        chartType=chart_type,
-                    )
+                chart_request = CreateChartRequest(
+                    name=EntityName(chart.uuid),
+                    displayName=chart.name,
+                    description=(
+                        Markdown(chart.description) if chart.description else None
+                    ),
+                    sourceUrl=SourceUrl(chart_url),
+                    service=self.context.get().dashboard_service,
+                    chartType=chart_type,
                 )
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())

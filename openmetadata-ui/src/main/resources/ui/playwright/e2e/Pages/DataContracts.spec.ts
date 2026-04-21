@@ -142,7 +142,8 @@ test.describe('Data Contracts', () => {
     test(`Create Data Contract and validate for ${entityType}`, async ({
       page,
     }) => {
-      test.slow(true);
+      // 12-min timeout so waitForDataContractExecution completes first.
+      test.setTimeout(720_000);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
@@ -475,19 +476,12 @@ test.describe('Data Contracts', () => {
           if (
             typeof response === 'object' &&
             response !== null &&
-            'latestResult' in response
+            'id' in response
           ) {
-            const {
-              id: contractId,
-              latestResult: { resultId: latestResultId },
-            } = response;
+            const { id: contractId } = response as { id: string };
 
-            if (contractId && latestResultId) {
-              await waitForDataContractExecution(
-                page,
-                contractId,
-                latestResultId
-              );
+            if (contractId) {
+              await waitForDataContractExecution(page, contractId);
             }
           }
 

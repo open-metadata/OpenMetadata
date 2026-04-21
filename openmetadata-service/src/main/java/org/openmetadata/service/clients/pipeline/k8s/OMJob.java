@@ -17,6 +17,7 @@ import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
 import io.kubernetes.client.openapi.models.V1PodSecurityContext;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
+import io.kubernetes.client.openapi.models.V1Toleration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,7 @@ public class OMJob {
     private List<V1EnvVar> env;
     private V1ResourceRequirements resources;
     private Map<String, String> nodeSelector;
+    private List<V1Toleration> tolerations;
     private V1PodSecurityContext securityContext;
     private Map<String, String> labels;
     private Map<String, String> annotations;

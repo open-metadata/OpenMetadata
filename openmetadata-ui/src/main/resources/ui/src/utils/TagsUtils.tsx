@@ -14,7 +14,6 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import i18next from 'i18next';
 import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -52,6 +51,7 @@ import {
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
+import i18n from './i18next/LocalUtil';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import {
   getClassificationTagPath,
@@ -228,11 +228,11 @@ export const getUsageCountLink = (tagFQN: string) => {
 
 export const getTagPlaceholder = (isGlossaryType: boolean): string =>
   isGlossaryType
-    ? i18next.t('label.search-entity', {
-        entity: i18next.t('label.glossary-term-plural'),
+    ? i18n.t('label.search-entity', {
+        entity: i18n.t('label.glossary-term-plural'),
       })
-    : i18next.t('label.search-entity', {
-        entity: i18next.t('label.tag-plural'),
+    : i18n.t('label.search-entity', {
+        entity: i18n.t('label.tag-plural'),
       });
 
 export const tagRender = (customTagProps: CustomTagProps) => {

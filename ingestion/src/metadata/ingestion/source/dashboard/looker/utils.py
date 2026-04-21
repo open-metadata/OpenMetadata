@@ -14,7 +14,6 @@ Utilities for Looker service
 """
 
 import os
-import re
 import shutil
 from typing import Optional, Union
 
@@ -32,7 +31,7 @@ from metadata.generated.schema.security.credentials.githubCredentials import (
 from metadata.generated.schema.security.credentials.gitlabCredentials import (
     GitlabCredentials,
 )
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import ingestion_logger, sanitize_url_credentials
 
 logger = ingestion_logger()
 
@@ -102,5 +101,5 @@ def _clone_repo(
 
         logger.info(f"repo {repo_name} cloned to {path}")
     except Exception as exc:
-        sanitized_msg = re.sub(r"https://[^@]+@", "https://****@", str(exc))
-        logger.error(f"GitHubCloneReader::_clone: ERROR {sanitized_msg}")
+        sanitized_msg = sanitize_url_credentials(str(exc))
+        logger.error(f"_clone_repo: ERROR {sanitized_msg}")

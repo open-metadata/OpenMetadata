@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
