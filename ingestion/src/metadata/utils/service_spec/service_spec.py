@@ -123,6 +123,16 @@ class DefaultSourceLoader(SourceLoader):
 def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
+    """
+    Import the source class for a given service type and source type.
+    The source type can follow the format {base_source_type}:{source_class_type},
+    where source_class_type is one of "metadata", "lineage", "usage", or "policy".
+    If in this format, the class is imported from:
+    metadata.{from_}.source.{service_type}.{base_source_type}.{source_class_type}.Source
+
+    Otherwise, it is imported from:
+    metadata.{from_}.source.{service_type}.{source_type}.Source
+    """
     source_class_type = source_type.split(TYPE_SEPARATOR)[-1]
     if source_class_type == "policy":
         base_source_type = source_type.split(TYPE_SEPARATOR)[0]
