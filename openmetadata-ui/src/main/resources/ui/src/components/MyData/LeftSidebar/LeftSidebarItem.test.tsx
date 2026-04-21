@@ -26,12 +26,9 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
 
 const mockUseCurrentUserPreferences = jest.fn();
 
-jest.mock(
-  '../../../hooks/currentUserStore/useCurrentUserStore',
-  () => ({
-    useCurrentUserPreferences: () => mockUseCurrentUserPreferences(),
-  })
-);
+jest.mock('../../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: () => mockUseCurrentUserPreferences(),
+}));
 
 const BETA_ITEM = {
   key: '/ontology-explorer',
