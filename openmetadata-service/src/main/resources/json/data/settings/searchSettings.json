@@ -3893,6 +3893,201 @@
       ]
     },
     {
+      "entityType": "contextFile",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on context file name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on context file name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on context file name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable context file name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on context file descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the context file including folder path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "fileType",
+          "description": "Exact match on the context file type (e.g., PDF, Image, Spreadsheet, Text)."
+        },
+        {
+          "name": "contentType",
+          "description": "Exact match on the MIME content type of the context file."
+        },
+        {
+          "name": "fileExtension",
+          "description": "Exact match on the context file extension (e.g., pdf, docx, xlsx)."
+        },
+        {
+          "name": "processingStatus",
+          "description": "Exact match on the extraction processing status of the context file."
+        },
+        {
+          "name": "folder.displayName.keyword",
+          "description": "Exact match on the folder that contains this context file."
+        },
+        {
+          "name": "extractedText",
+          "description": "Full-text search on text extracted from the uploaded context file."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find context files with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for context files."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with context file."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with context file."
+        }
+      ]
+    },
+    {
+      "entityType": "folder",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on folder name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on folder name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on folder name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable folder name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on folder descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the folder including parent path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "description": "Exact match on parent folder display name to find subfolders."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find folders with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for folders."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with folder."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with folder."
+        }
+      ]
+    },
+    {
+      "entityType": "page",
+      "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on knowledge page name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on knowledge page name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on knowledge page name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable knowledge page name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on knowledge page descriptions to find by purpose or content."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the knowledge page including parent path."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
+        },
+        {
+          "name": "pageType",
+          "description": "Exact match on the knowledge page type (Article or QuickLink)."
+        },
+        {
+          "name": "parent.displayName.keyword",
+          "description": "Exact match on parent knowledge page display name to find child pages."
+        },
+        {
+          "name": "tags.tagFQN.text",
+          "description": "Search within parts of tag names to find knowledge pages with specific tags."
+        },
+        {
+          "name": "tier.tagFQN.text",
+          "description": "Search within parts of tier classification names for knowledge pages."
+        },
+        {
+          "name": "domains.displayName.keyword",
+          "description": "Exact match on domain associated with knowledge page."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with knowledge page."
+        }
+      ]
+    },
+    {
       "entityType": "default",
       "fields": [
         {
