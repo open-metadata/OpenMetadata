@@ -210,4 +210,39 @@ class DescriptionSanitizerTest {
     assertTrue(result.contains("<#E::table::clean.fqn>"));
     assertFalse(result.contains("<script"));
   }
+
+  @Test
+  void entityMentionAttributesOnAnchorArePreserved() {
+    String input =
+        "<p><a data-type=\"hashtag\" data-id=\"abc123\" data-label=\"Article\""
+            + " href=\"https://open-metadata.example.org/tags/KnowledgeCenter\""
+            + " data-entitytype=\"tag\" data-fqn=\"KnowledgeCenter.Article\">"
+            + "<#E::tag::KnowledgeCenter.Article|[#Article](https://open-metadata.example.org/tags/KnowledgeCenter)>"
+            + "</a></p>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("data-type=\"hashtag\""));
+    assertTrue(result.contains("data-label=\"Article\""));
+    assertTrue(result.contains("data-fqn=\"KnowledgeCenter.Article\""));
+    assertTrue(result.contains("data-entitytype=\"tag\""));
+    assertTrue(
+        result.contains(
+            "<#E::tag::KnowledgeCenter.Article|[#Article](https://open-metadata.example.org/tags/KnowledgeCenter)>"));
+  }
+
+  @Test
+  void entityMentionAttributesOnAnchorArePreservedForMention() {
+    String input =
+        "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""
+            + " href=\"https://open-metadata.example.org/users/admin\""
+            + " data-entitytype=\"user\" data-fqn=\"admin\">"
+            + "<#E::user::admin|[@admin](https://open-metadata.example.org/users/admin)>"
+            + "</a>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertTrue(result.contains("data-type=\"mention\""));
+    assertTrue(result.contains("data-label=\"admin\""));
+    assertTrue(result.contains("data-fqn=\"admin\""));
+    assertTrue(result.contains("data-entitytype=\"user\""));
+  }
 }
