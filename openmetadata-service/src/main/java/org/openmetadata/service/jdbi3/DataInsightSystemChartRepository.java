@@ -178,7 +178,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           // Search for ingestion pipelines with the service name
           var response =
               searchClient.searchByField(
-                  "service.name.keyword", serviceName, INGESTION_PIPELINE, false);
+                  "service.name.keyword", serviceName, INGESTION_PIPELINE, false, 0, 10);
 
           if (response != null && response.getStatus() == 200) {
             // Parse the response to extract pipeline information
