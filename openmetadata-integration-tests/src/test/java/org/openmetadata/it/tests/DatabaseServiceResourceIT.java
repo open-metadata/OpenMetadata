@@ -1113,7 +1113,12 @@ public class DatabaseServiceResourceIT
               .header("Authorization", "Bearer " + token)
               .DELETE()
               .build();
-      client.send(deletePropReq, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> deletePropResp =
+          client.send(deletePropReq, HttpResponse.BodyHandlers.ofString());
+      assertTrue(
+          List.of(200, 204).contains(deletePropResp.statusCode()),
+          "Should delete custom property from table type, but got status "
+              + deletePropResp.statusCode());
     }
   }
 

@@ -298,6 +298,9 @@ public class DatabaseServiceRepository
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
 
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE;
