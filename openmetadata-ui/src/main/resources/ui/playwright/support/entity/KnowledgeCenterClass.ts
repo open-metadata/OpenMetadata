@@ -1,11 +1,11 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { navigateToArticle } from '../../utils/KnowledgeCenter';
-import { TableClass } from './TableClass';
 import {
   KnowledgeCenterData,
   KnowledgeCenterResponseDataType,
 } from './KnowledgeCenter.interface';
+import { TableClass } from './TableClass';
 
 export class KnowledgeCenterClass {
   data: KnowledgeCenterData;

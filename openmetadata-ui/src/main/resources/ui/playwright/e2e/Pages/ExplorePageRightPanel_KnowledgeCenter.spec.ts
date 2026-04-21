@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
-import {
-  RIGHT_PANEL_TAB,
-  RightPanelPageObject,
-} from '../PageObject/Explore/RightPanelPageObject';
-import {
-  test as baseTest,
-  expect,
-} from '../../support/fixtures/userPages';
+import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
+import { expect, test as baseTest } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -29,7 +22,11 @@ import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { performUserLogin } from '../../utils/user';
-import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
+import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
+import {
+  RightPanelPageObject,
+  RIGHT_PANEL_TAB,
+} from '../PageObject/Explore/RightPanelPageObject';
 import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 
 // Test data setup

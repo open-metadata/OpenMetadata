@@ -12,14 +12,10 @@
  */
 
 import { expect } from '@playwright/test';
-import { test } from '../fixtures/pages';
-import {
-  getApiContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { performAdminLogin } from '../../utils/admin';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { test } from '../fixtures/pages';
 import {
   addReviewerToEntity,
   checkNotificationAndApproveTask,

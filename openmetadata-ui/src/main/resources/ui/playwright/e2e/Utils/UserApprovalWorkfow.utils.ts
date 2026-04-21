@@ -13,19 +13,16 @@
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { randomUUID } from 'crypto';
-const uuidv4 = () => randomUUID();
+import { WorkflowDefinition } from '../../../src/generated/governance/workflows/workflowDefinition';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { TagClass } from '../../support/tag/TagClass';
-import {
-  redirectToHomePage,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { TASK_OPEN_FETCH_LINK } from '../../utils/task';
-import { WorkflowDefinition } from '../../../src/generated/governance/workflows/workflowDefinition';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+const uuidv4 = () => randomUUID();
 
 export type OwnerInfo = {
   id: string;

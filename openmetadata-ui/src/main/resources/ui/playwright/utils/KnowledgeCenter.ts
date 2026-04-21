@@ -1,5 +1,10 @@
-import { SidebarItem } from '../constant/sidebar';
 import { expect, Locator, Page } from '@playwright/test';
+import {
+  SHORTCUTS,
+  SLASH_COMMANDS,
+} from '../constant/KnowledgeCenter.constant';
+import { SidebarItem } from '../constant/sidebar';
+import { TopicClass } from '../support/entity/TopicClass';
 import {
   descriptionBox,
   descriptionBoxReadOnly,
@@ -7,11 +12,6 @@ import {
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-import {
-  SHORTCUTS,
-  SLASH_COMMANDS,
-} from '../constant/KnowledgeCenter.constant';
-import { TopicClass } from '../support/entity/TopicClass';
 
 const KNOWLEDGE_PAGE_ROUTE = '/knowledge-center/:fqn';
 const FQN_PLACEHOLDER = ':fqn';
@@ -884,10 +884,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
       response.status() === 200
   );
 
-  const articlePath = KNOWLEDGE_PAGE_ROUTE.replace(
-    FQN_PLACEHOLDER,
-    articleFqn
-  );
+  const articlePath = KNOWLEDGE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
   await page.goto(articlePath);
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);

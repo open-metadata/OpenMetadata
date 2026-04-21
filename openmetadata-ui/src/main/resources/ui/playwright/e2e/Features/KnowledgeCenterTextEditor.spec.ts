@@ -1,18 +1,15 @@
-import {
-  createNewPage,
-  redirectToHomePage,
-} from '../../utils/common';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
+import { performAdminLogin } from '../../utils/admin';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { test } from '../fixtures/pages';
 import {
-  runSlashCommandsAndBasicBlocksTest,
-  runTextFormattingTest,
+  runAdvancedBlocksTest,
+  runContentPersistenceTest,
   runEditorOperationsTest,
   runNestedListsTest,
-  runContentPersistenceTest,
-  runAdvancedBlocksTest,
+  runSlashCommandsAndBasicBlocksTest,
+  runTextFormattingTest,
 } from './KnowledgeCenterTextEditor.common';
-import { test } from '../fixtures/pages';
-import { performAdminLogin } from '../../utils/admin';
 
 test.describe('Knowledge Center - Text Editor (Admin Role)', () => {
   const knowledgeCenter = new KnowledgeCenterClass();

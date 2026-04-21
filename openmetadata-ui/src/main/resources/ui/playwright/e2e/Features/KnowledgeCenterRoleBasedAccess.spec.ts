@@ -16,8 +16,8 @@ import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
-import { test as testWithRolesPages } from '../fixtures/pages';
 import { navigateToKnowledgeCenter } from '../../utils/KnowledgeCenter';
+import { test as testWithRolesPages } from '../fixtures/pages';
 
 let testUser: UserClass;
 const testPolicy = new PolicyClass();

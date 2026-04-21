@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -23,8 +24,6 @@ import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { sidebarClick } from '../../utils/sidebar';
-import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import {
   addTitle,
   createMentionInConversation,
@@ -39,6 +38,7 @@ import {
   updateTags,
   verifyNotificationAndClick,
 } from '../../utils/KnowledgeCenter';
+import { sidebarClick } from '../../utils/sidebar';
 
 const knowledgePageArticle = {
   title: `Playwright Article Title-${uuid()}`,

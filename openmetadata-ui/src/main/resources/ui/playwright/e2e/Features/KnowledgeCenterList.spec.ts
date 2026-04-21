@@ -1,13 +1,13 @@
-import { SidebarItem } from '../../constant/sidebar';
 import { expect, test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
-import { sidebarClick } from '../../utils/sidebar';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   getKnowledgePageCardByIndex,
   getKnowledgePageCardEntityIdentifier,
   toggleKnowledgePageBookmark,
 } from '../../utils/KnowledgeCenter';
+import { sidebarClick } from '../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -26,7 +26,7 @@ test.describe('Knowledge Center List', () => {
 
     try {
       for (let i = 0; i < MIN_CARDS; i++) {
-         await context.request.post('/api/v1/knowledgeCenter', {
+        await context.request.post('/api/v1/knowledgeCenter', {
           data: {
             name: `00pw-kc-list-${Date.now()}-${i}`,
             pageType: 'Article',

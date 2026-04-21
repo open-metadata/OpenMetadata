@@ -1,5 +1,10 @@
 import { expect, Page, test } from '@playwright/test';
 import {
+  SHORTCUTS,
+  SLASH_COMMANDS,
+} from '../../constant/KnowledgeCenter.constant';
+import { KnowledgeCenterResponseDataType } from '../../support/entity/KnowledgeCenter.interface';
+import {
   applyTextFormatting,
   copyContent,
   createCallout,
@@ -14,9 +19,11 @@ import {
   getEditor,
   moveToNewLine,
   moveToNewParagraph,
+  navigateToArticle,
   pasteContent,
   redo,
   selectAll,
+  selectAllText,
   selectLastWord,
   toggleTask,
   typeInTableCell,
@@ -28,14 +35,7 @@ import {
   verifyTable,
   verifyTaskList,
   verifyTextFormatting,
-  navigateToArticle,
-  selectAllText,
 } from '../../utils/KnowledgeCenter';
-import {
-  SHORTCUTS,
-  SLASH_COMMANDS,
-} from '../../constant/KnowledgeCenter.constant';
-import { KnowledgeCenterResponseDataType } from '../../support/entity/KnowledgeCenter.interface';
 
 export const runSlashCommandsAndBasicBlocksTest = async (
   page: Page,
@@ -293,35 +293,32 @@ export const runContentPersistenceTest = async (
   const editor = await getEditor(page);
   await editor.waitFor({ state: 'visible' });
 
-  await test.step(
-    'Create content and verify persistence after reload',
-    async () => {
-      await editor.click();
-      await createHeading(page, 1, 'Persistent Heading');
-      await page.keyboard.press(SHORTCUTS.enter);
+  await test.step('Create content and verify persistence after reload', async () => {
+    await editor.click();
+    await createHeading(page, 1, 'Persistent Heading');
+    await page.keyboard.press(SHORTCUTS.enter);
 
-      await page.keyboard.type('Persistent paragraph text');
-      await page.keyboard.press(SHORTCUTS.enter);
+    await page.keyboard.type('Persistent paragraph text');
+    await page.keyboard.press(SHORTCUTS.enter);
 
-      await executeSlashCommand(page, SLASH_COMMANDS.bullet);
-      await expect(editor.locator('ul')).toBeVisible();
-      await createListItems(page, ['Persistent Item 1', 'Persistent Item 2']);
-      await page.keyboard.press(SHORTCUTS.enter);
+    await executeSlashCommand(page, SLASH_COMMANDS.bullet);
+    await expect(editor.locator('ul')).toBeVisible();
+    await createListItems(page, ['Persistent Item 1', 'Persistent Item 2']);
+    await page.keyboard.press(SHORTCUTS.enter);
 
-      await page.keyboard.type('Bold persistent text');
-      await expect(page.getByText('Bold persistent text')).toBeVisible();
-      await selectLastWord(page, 3, editor);
-      await applyTextFormatting(page, 'bold');
+    await page.keyboard.type('Bold persistent text');
+    await expect(page.getByText('Bold persistent text')).toBeVisible();
+    await selectLastWord(page, 3, editor);
+    await applyTextFormatting(page, 'bold');
 
-      await verifyContentPersistence(page, [
-        'Persistent Heading',
-        'Persistent paragraph text',
-        'Persistent Item 1',
-        'Persistent Item 2',
-        'Bold persistent text',
-      ]);
-    }
-  );
+    await verifyContentPersistence(page, [
+      'Persistent Heading',
+      'Persistent paragraph text',
+      'Persistent Item 1',
+      'Persistent Item 2',
+      'Bold persistent text',
+    ]);
+  });
 };
 
 export const runAdvancedBlocksTest = async (
