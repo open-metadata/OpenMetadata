@@ -276,13 +276,17 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   value={mapping.roles}
                   onChange={(roles) => handleRolesChange(mapping.id, roles)}
                   onSearch={async (val) => {
-                    const results = await searchRoles(val);
-                    setAvailableRoles(
-                      results.map((r) => ({
-                        label: r.displayName || r.name,
-                        value: r.name,
-                      }))
-                    );
+                    try {
+                      const results = await searchRoles(val);
+                      setAvailableRoles(
+                        results.map((r) => ({
+                          label: r.displayName || r.name,
+                          value: r.name,
+                        }))
+                      );
+                    } catch (err) {
+                      showErrorToast(err as AxiosError);
+                    }
                   }}
                 />
               </Grid.Item>

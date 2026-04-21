@@ -20,7 +20,7 @@ import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Function } from '../generated/type/function';
 import { Paging } from '../generated/type/paging';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const patchConfig = {
@@ -189,11 +189,12 @@ export const searchRoles = async (
   query: string,
   limit = 25
 ): Promise<Role[]> => {
+  const sanitized = escapeESReservedCharacters(query);
   const response = await APIClient.get<{
     hits: { hits: { _source: Role }[] };
   }>('/search/query', {
     params: {
-      q: query ? `*${query}*` : '*',
+      q: sanitized ? `*${sanitized}*` : '*',
       index: 'role_search_index',
       from: 0,
       size: limit,

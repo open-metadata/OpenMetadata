@@ -97,13 +97,17 @@ const SsoRolesSelectField = (props: FieldProps) => {
           onChange={handleChange}
           onFocus={handleFocus}
           onSearch={async (val) => {
-            const results = await searchRoles(val);
-            setRoleOptions(
-              results.map((r) => ({
-                label: r.displayName || r.name,
-                value: r.name,
-              }))
-            );
+            try {
+              const results = await searchRoles(val);
+              setRoleOptions(
+                results.map((r) => ({
+                  label: r.displayName || r.name,
+                  value: r.name,
+                }))
+              );
+            } catch (err) {
+              showErrorToast(err as AxiosError);
+            }
           }}
         />
       </Col>
