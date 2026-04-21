@@ -1,21 +1,19 @@
----
-title: Okta SSO Configuration | OpenMetadata
-description: Configure Okta Single Sign-On for OpenMetadata with complete field reference
-slug: /main-concepts/metadata-standard/schemas/security/client/okta-sso
----
 
 Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and OpenID Connect (OIDC).
 
 ## Authentication Configuration
 
-### <span data-id="providerName">Provider Name</span>
+$$section
+### Provider Name $(id="providerName")
 
 - **Definition:** A human-readable name for this Okta SSO configuration instance.
 - **Example:** Okta SSO, Company Okta, Corporate Identity
 - **Why it matters:** Helps identify this specific SSO configuration in logs and user interfaces.
 - **Note:** This is a display name and doesn't affect authentication functionality.
+$$
 
-### <span data-id="clientType">Client Type</span>
+$$section
+### Client Type $(id="clientType")
 
 - **Definition:** Defines whether the application is public (no client secret) or confidential (requires client secret).
 - **Options:** Public | Confidential
@@ -25,23 +23,29 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
   - Choose **Public** for SPAs and mobile apps
   - Choose **Confidential** for backend services and web applications
   - Okta typically uses **Confidential** client type
+$$
 
-### <span data-id="selfSignup">Enable Self Signup</span>
+$$section
+### Enable Self Signup $(id="selfSignup")
 
 - **Definition:** Allows users to automatically create accounts on first login.
 - **Options:** Enabled | Disabled
 - **Example:** Enabled
 - **Why it matters:** Controls whether new users can join automatically or need manual approval.
 - **Note:** Disable for stricter control over user access.
+$$
 
-### <span data-id="clientId">Client ID</span>
+$$section
+### Client ID $(id="clientId")
 
 - **Definition:** Client ID assigned to your app in Okta.
 - **Example:** 0oabc123def456ghi789
 - **Why it matters:** Okta uses this to identify your application during authentication.
 - **Note:** Found in Okta Admin Console → Applications → Your app → General → Client ID
+$$
 
-### <span data-id="callbackUrl">Callback URL</span>
+$$section
+### Callback URL $(id="callbackUrl")
 
 - **Definition:** Redirect URI where Okta sends authentication responses.
 - **Example:** https://yourapp.company.com/callback
@@ -49,22 +53,28 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
 - **Note:**
   - Must be registered in Okta → Applications → Your app → General → Sign-in redirect URIs
   - Always use HTTPS in production
+$$
 
-### <span data-id="authority">Authority</span>
+$$section
+### Authority $(id="authority")
 
 - **Definition:** Okta domain that issues tokens for your organization.
 - **Example:** https://dev-123456.okta.com or https://company.okta.com
 - **Why it matters:** Tells OpenMetadata which Okta org to authenticate against.
 - **Note:** Use your full Okta domain URL
+$$
 
-### <span data-id="publicKey">Public Key URLs</span>
+$$section
+### Public Key URLs $(id="publicKey")
 
 - **Definition:** List of URLs where Okta publishes its public keys for token verification.
 - **Example:** ["https://dev-123456.okta.com/oauth2/v1/keys"]
 - **Why it matters:** Used to verify JWT token signatures from Okta.
 - **Note:** Usually auto-discovered from the discovery URI, rarely needs manual configuration
+$$
 
-### <span data-id="principals">JWT Principal Claims</span>
+$$section
+### JWT Principal Claims $(id="principals")
 
 > ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
 > - These claims MUST exist in JWT tokens from Okta
@@ -78,8 +88,10 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Okta claims: email, preferred_username, sub, login
   - Order matters; first matching claim is used
+$$
 
-### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
+$$section
+### JWT Principal Claims Mapping $(id="jwtPrincipalClaimsMapping")
 
 - **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
 - **Example:** ["email:email", "username:preferred_username"]
@@ -90,8 +102,10 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
 - **Important:** JWT Principal Claims Mapping is **rarely needed** for most Okta configurations. The default JWT Principal Claims (`email`, `preferred_username`, `sub`) handle user identification correctly. Only configure this if you have specific custom claim requirements.
+$$
 
-### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+$$section
+### JWT Team Claim Mapping $(id="jwtTeamClaimMapping")
 
 - **Definition:** Okta claim or attribute containing team/department information for automatic team assignment.
 - **Example:** "department", "groups", "division", or custom profile attributes
@@ -117,15 +131,19 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
 ## OIDC Configuration (Confidential Client Only)
 
 These fields are only shown when Client Type is set to **Confidential**.
+$$
 
-### <span data-id="id">OIDC Client ID</span>
+$$section
+### OIDC Client ID $(id="id")
 
 - **Definition:** Client ID for OIDC authentication with Okta.
 - **Example:** 0oabc123def456ghi789
 - **Why it matters:** Identifies your application to Okta in OIDC flows.
 - **Note:** Same as the Client ID from your Okta app registration
+$$
 
-### <span data-id="clientSecret">OIDC Client Secret</span>
+$$section
+### OIDC Client Secret $(id="clientSecret")
 
 - **Definition:** Secret key for confidential client authentication with Okta.
 - **Example:** abc123def456ghi789jkl012mno345pqr678st
@@ -134,72 +152,87 @@ These fields are only shown when Client Type is set to **Confidential**.
   - Generate in Okta → Applications → Your app → General → Client secret
   - Store securely and rotate regularly
   - Only shown for Confidential client type
+$$
 
-### <span data-id="scopes">OIDC Request Scopes</span>
+$$section
+### OIDC Request Scopes $(id="scopes")
 
 - **Definition:** Permissions requested from Okta during authentication.
 - **Default:** openid email profile
 - **Example:** openid email profile groups
 - **Why it matters:** Determines what user information OpenMetadata can access.
 - **Note:** Add `groups` scope if you need group information for authorization
+$$
 
-### <span data-id="discoveryUri">OIDC Discovery URI</span>
+$$section
+### OIDC Discovery URI $(id="discoveryUri")
 
 - **Definition:** Okta's OpenID Connect metadata endpoint.
 - **Example:** https://dev-123456.okta.com/.well-known/openid-configuration
 - **Why it matters:** Allows OpenMetadata to automatically discover Okta's OIDC endpoints.
 - **Note:** Replace with your actual Okta domain
+$$
 
-### <span data-id="useNonce">OIDC Use Nonce</span>
+$$section
+### OIDC Use Nonce $(id="useNonce")
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
 - **Default:** false
 - **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
 - **Note:** Can be enabled for additional security if your provider supports it
+$$
 
-
-
-### <span data-id="disablePkce">OIDC Disable PKCE</span>
+$$section
+### OIDC Disable PKCE $(id="disablePkce")
 
 - **Definition:** Whether to disable Proof Key for Code Exchange (security extension).
 - **Default:** false
 - **Example:** false
 - **Why it matters:** PKCE adds security to the authorization code flow.
 - **Note:** Should typically be left enabled (false) for security
+$$
 
-### <span data-id="maxClockSkew">OIDC Max Clock Skew</span>
+$$section
+### OIDC Max Clock Skew $(id="maxClockSkew")
 
 - **Definition:** Maximum allowed time difference between systems when validating tokens.
 - **Example:** 0 (seconds)
 - **Why it matters:** Prevents token validation failures due to minor time differences.
 - **Note:** Usually 0 is fine unless you have significant clock skew issues
+$$
 
-### <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
+$$section
+### OIDC Client Authentication Method $(id="clientAuthenticationMethod")
 
 - **Definition:** Method used to authenticate the client with Okta.
 - **Default:** client_secret_post
 - **Options:** client_secret_basic | client_secret_post | client_secret_jwt | private_key_jwt
 - **Example:** client_secret_post
 - **Why it matters:** Must match your Okta app configuration.
+$$
 
-### <span data-id="tokenValidity">OIDC Token Validity</span>
+$$section
+### OIDC Token Validity $(id="tokenValidity")
 
 - **Definition:** How long (in seconds) the issued tokens remain valid.
 - **Default:** 0 (use provider default)
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls token lifetime and security vs usability balance.
 - **Note:** Use 0 to inherit Okta's default token lifetime
+$$
 
-### <span data-id="customParams">OIDC Custom Parameters</span>
+$$section
+### OIDC Custom Parameters $(id="customParams")
 
 - **Definition:** Additional parameters to send in OIDC requests.
 - **Example:** {"prompt": "login", "max_age": "3600"}
 - **Why it matters:** Allows customization of Okta authentication behavior.
 - **Note:** Common parameters include `prompt`, `max_age`, `login_hint`
+$$
 
-
-### <span data-id="callbackUrl">OIDC Callback URL / Redirect URI</span>
+$$section
+### OIDC Callback URL / Redirect URI $(id="callbackUrl")
 
 - **Definition:** URL where Okta redirects after authentication.
 - **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
@@ -209,15 +242,19 @@ These fields are only shown when Client Type is set to **Confidential**.
   - **This field is read-only** - it cannot be edited
   - **Copy this exact URL** and add it to Okta's allowed redirect URIs list
   - Format is always: `{your-domain}/callback`
+$$
 
-### <span data-id="maxAge">OIDC Max Age</span>
+$$section
+### OIDC Max Age $(id="maxAge")
 
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
 - **Note:** Leave empty for no specific max age requirement
+$$
 
-### <span data-id="prompt">OIDC Prompt</span>
+$$section
+### OIDC Prompt $(id="prompt")
 
 - **Definition:** Controls Okta's authentication prompts.
 - **Options:** none | login | consent | select_account
@@ -227,8 +264,10 @@ These fields are only shown when Client Type is set to **Confidential**.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `none`: Don't show prompts (SSO only)
+$$
 
-### <span data-id="sessionExpiry">OIDC Session Expiry</span>
+$$section
+### OIDC Session Expiry $(id="sessionExpiry")
 
 - **Definition:** How long (in seconds) user sessions remain valid.
 - **Default:** 604800 (7 days)
@@ -237,29 +276,37 @@ These fields are only shown when Client Type is set to **Confidential**.
 - **Note:** Only applies to confidential clients
 
 ## Authorizer Configuration
+$$
 
-### <span data-id="adminPrincipals">Admin Principals</span>
+$$section
+### Admin Principals $(id="adminPrincipals")
 
 - **Definition:** List of user principals who will have admin access.
 - **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
+$$
 
-### <span data-id="principalDomain">Principal Domain</span>
+$$section
+### Principal Domain $(id="principalDomain")
 
 - **Definition:** Default domain for user principals.
 - **Example:** company.com
 - **Why it matters:** Used to construct full user principals when only username is provided.
 - **Note:** Typically your organization's primary domain
+$$
 
-### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+$$section
+### Enforce Principal Domain $(id="enforcePrincipalDomain")
 
 - **Definition:** Whether to enforce that all users belong to the principal domain.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+$$
 
-### <span data-id="allowedDomains">Allowed Domains</span>
+$$section
+### Allowed Domains $(id="allowedDomains")
 
 - **Definition:** List of email domains that are permitted to access OpenMetadata.
 - **Example:** ["company.com", "partner.com"]
@@ -269,11 +316,14 @@ These fields are only shown when Client Type is set to **Confidential**.
   - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
   - Leave empty or use single `principalDomain` if you only have one Okta org
   - Useful when your Okta org contains users from multiple domains
+$$
 
-### <span data-id="enableSecureSocketConnection">Enable Secure Socket Connection</span>
+$$section
+### Enable Secure Socket Connection $(id="enableSecureSocketConnection")
 
 - **Definition:** Whether to use SSL/TLS for secure connections.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Ensures encrypted communication for security.
 - **Note:** Should be enabled in production environments
+$$
