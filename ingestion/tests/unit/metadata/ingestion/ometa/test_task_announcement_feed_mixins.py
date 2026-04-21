@@ -415,14 +415,11 @@ class TestFeedMixin:
         create_thread_request = CreateThreadRequest.model_validate(
             {
                 "message": "Open thread",
-                "from": "admin",
                 "about": "<#E::table::sample.table::description>",
                 "type": ThreadType.Task.value,
             }
         )
-        create_post_request = CreatePostRequest.model_validate(
-            {"message": "Reply", "from": "admin"}
-        )
+        create_post_request = CreatePostRequest.model_validate({"message": "Reply"})
         resolve_request = FeedResolveTaskRequest(newValue="updated-description")
         close_request = CloseTaskRequest(comment="closing")
 
