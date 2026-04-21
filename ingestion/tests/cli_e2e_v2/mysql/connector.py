@@ -7,11 +7,11 @@ Split out from conftest.py because pytest discourages importing from
 conftest modules; filter tests need build_mysql_config to construct
 variant-named services for isolation.
 
-Secrets handling: every env-backed field in the rendered YAML is a
-${E2E_MYSQL_*} reference built via Env.ref(), which validates presence
-and emits the shell-style reference string in one step. The metadata
-CLI's load_config_file expands references at subprocess invocation.
-Rendered cfg_*.yaml artifacts never embed raw credentials.
+Secrets handling: every env-backed YAML field uses Env(key).ref() — the
+rendered cfg_*.yaml carries ${E2E_MYSQL_*} literal references, not real
+credentials. Env's construction validates presence (raises EnvLoadError
+at build time if a required var is unset). The metadata CLI expands the
+references at subprocess load time via os.path.expandvars.
 """
 
 from __future__ import annotations
@@ -38,20 +38,22 @@ def mysql_service_name(session_uuid: str, variant: str = "") -> str:
 def build_mysql_config(service_name: str, server: ServerConfig) -> WorkflowConfig:
     """Build a base MySQL WorkflowConfig with the given service name.
 
-    Each env-backed field emits a ${E2E_MYSQL_*} reference via Env.ref().
-    Presence validation happens inside ref() — missing vars raise EnvLoadError
-    with a clear message at build time. The real values never enter the dict.
+    All env-backed fields emit ${E2E_MYSQL_*} references. Presence validation
+    happens in Env's constructor; missing required vars raise EnvLoadError at
+    build time with a clear message. Real values never enter the dict.
 
-    E2E_MYSQL_DATABASE is optional: included only when set.
+    E2E_MYSQL_DATABASE is optional — instance constructs without raising;
+    the field is added to the config only when the env var is actually set.
     """
     service_connection: dict = {
         "type": "Mysql",
-        "username": Env.ref("E2E_MYSQL_USER"),
-        "authType": {"password": Env.ref("E2E_MYSQL_PASSWORD")},
-        "hostPort": Env.ref("E2E_MYSQL_HOST_PORT"),
+        "username": Env("E2E_MYSQL_USER").ref(),
+        "authType": {"password": Env("E2E_MYSQL_PASSWORD").ref()},
+        "hostPort": Env("E2E_MYSQL_HOST_PORT").ref(),
     }
-    if Env.optional("E2E_MYSQL_DATABASE"):
-        service_connection["databaseSchema"] = Env.ref("E2E_MYSQL_DATABASE")
+    db = Env("E2E_MYSQL_DATABASE", required=False)
+    if db.get():
+        service_connection["databaseSchema"] = db.ref()
 
     return WorkflowConfig.build(
         source_type="mysql",

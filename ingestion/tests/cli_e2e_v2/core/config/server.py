@@ -7,9 +7,10 @@ Instance fields hold resolved values for the session HTTP client (which
 authenticates directly, no YAML indirection). Rendered YAML emits ${OM_*}
 references so cfg_*.yaml artifacts never embed raw JWTs — safe to share.
 
-Local dev convenience: from_env() backfills OM_SERVER_URL / OM_JWT_TOKEN
-with local-Docker defaults via Env.set_default, so rendered YAMLs expand
-cleanly without requiring the developer to export anything.
+Local dev convenience: Env's `default` kwarg backfills OM_SERVER_URL and
+OM_JWT_TOKEN with local-Docker defaults via os.environ.setdefault, so
+rendered YAMLs expand cleanly without requiring the developer to export
+anything.
 """
 
 from __future__ import annotations
@@ -39,26 +40,22 @@ class ServerConfig:
 
     @classmethod
     def from_env(cls) -> "ServerConfig":
-        # Backfill defaults before reading so instance fields and later
-        # Env.ref() calls both resolve cleanly.
-        Env.set_default("OM_SERVER_URL", _DEFAULT_OM_SERVER_URL)
-        Env.set_default("OM_JWT_TOKEN", _DEFAULT_DEV_JWT)
         return cls(
-            server_url=Env.required("OM_SERVER_URL"),
-            jwt_token=Env.required("OM_JWT_TOKEN"),
+            server_url=Env("OM_SERVER_URL", default=_DEFAULT_OM_SERVER_URL).get(),
+            jwt_token=Env("OM_JWT_TOKEN", default=_DEFAULT_DEV_JWT).get(),
         )
 
     def to_workflow_config_dict(self) -> dict[str, Any]:
         """Builds the workflowConfig block for a rendered config YAML.
 
-        Emits ${OM_*} references — rendered YAML carries no real JWT. The
-        metadata CLI expands them via os.path.expandvars at subprocess load.
+        Emits ${OM_*} refs. metadata CLI expands them at subprocess load time;
+        the rendered YAML on disk never embeds the raw JWT.
         """
         return {
             "openMetadataServerConfig": {
-                "hostPort": Env.ref("OM_SERVER_URL"),
+                "hostPort": Env("OM_SERVER_URL").ref(),
                 "authProvider": "openmetadata",
-                "securityConfig": {"jwtToken": Env.ref("OM_JWT_TOKEN")},
+                "securityConfig": {"jwtToken": Env("OM_JWT_TOKEN").ref()},
             }
         }
 
