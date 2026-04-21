@@ -1263,3 +1263,143 @@ class HiveSourceMetastoreValidationTest(TestCase):
         self.hive.service_connection.metastoreConnection = invalid_dict
         result = self.hive._get_validated_metastore_connection()
         self.assertIsNone(result)
+
+
+class TestHivePartitionKeyFlag(TestCase):
+    """Tests for the is_partition_column flag introduced in utils.get_columns
+    and the get_table_partition_details method in HiveSource."""
+
+    # ------------------------------------------------------------------
+    # _get_partition_column_names helpers
+    # ------------------------------------------------------------------
+
+    def test_no_partition_section_returns_empty_set(self):
+        """Tables without a Partition Information section yield an empty set."""
+        rows = [
+            ["id", "int", None],
+            ["name", "string", None],
+        ]
+        result = hive_dialect._get_partition_column_names(rows)
+        self.assertEqual(result, set())
+
+    def test_single_partition_column_detected(self):
+        """A single partition column after the sentinel is returned."""
+        rows = [
+            ["id", "int", None],
+            ["name", "string", None],
+            ["# Partition Information", None, None],
+            ["# col_name", "data_type", "comment"],
+            ["dt", "string", None],
+        ]
+        result = hive_dialect._get_partition_column_names(rows)
+        self.assertEqual(result, {"dt"})
+
+    def test_multiple_partition_columns_detected(self):
+        """All columns in the Partition Information section are returned."""
+        rows = [
+            ["id", "int", None],
+            ["value", "double", None],
+            ["# Partition Information", None, None],
+            ["# col_name", "data_type", "comment"],
+            ["year", "int", None],
+            ["country", "string", None],
+        ]
+        result = hive_dialect._get_partition_column_names(rows)
+        self.assertEqual(result, {"year", "country"})
+
+    def test_section_exits_on_next_hash_header(self):
+        """Parser exits the partition section when another # header is found."""
+        rows = [
+            ["id", "int", None],
+            ["# Partition Information", None, None],
+            ["# col_name", "data_type", "comment"],
+            ["dt", "string", None],
+            ["# Detailed Table Information", None, None],
+            ["Owner:", "root", None],   # should NOT be treated as a partition col
+        ]
+        result = hive_dialect._get_partition_column_names(rows)
+        self.assertEqual(result, {"dt"})
+
+    # ------------------------------------------------------------------
+    # get_columns — is_partition_column flag
+    # ------------------------------------------------------------------
+
+    def test_get_columns_flags_partition_columns(self):
+        """Partition columns are flagged with is_partition_column=True."""
+        table_columns = [
+            ("id", "int", None),
+            ("name", "string", None),
+            ("dt", "string", None),
+            (None, None, None),
+            ("# Partition Information", None, None),
+            ("# col_name", "data_type", "comment"),
+            ("dt", "string", None),
+        ]
+        hive_dialect._get_table_columns = (
+            lambda connection, table_name, schema_name: table_columns
+        )
+
+        cols = hive_dialect.get_columns(
+            self=hive_dialect,
+            connection={},
+            table_name="partitioned_table",
+            schema="test_schema",
+        )
+
+        col_map = {c["name"]: c for c in cols}
+        self.assertFalse(col_map["id"]["is_partition_column"])
+        self.assertFalse(col_map["name"]["is_partition_column"])
+        self.assertTrue(col_map["dt"]["is_partition_column"])
+
+    def test_get_columns_non_partitioned_table_flag_false(self):
+        """All columns in a non-partitioned table have is_partition_column=False."""
+        table_columns = [
+            ("id", "int", None),
+            ("value", "double", None),
+        ]
+        hive_dialect._get_table_columns = (
+            lambda connection, table_name, schema_name: table_columns
+        )
+
+        cols = hive_dialect.get_columns(
+            self=hive_dialect,
+            connection={},
+            table_name="simple_table",
+            schema="test_schema",
+        )
+
+        for col in cols:
+            self.assertFalse(
+                col["is_partition_column"],
+                f"Column {col['name']} should not be flagged as a partition column",
+            )
+
+    def test_get_columns_multiple_partition_keys(self):
+        """Multiple partition columns are all flagged correctly."""
+        table_columns = [
+            ("id", "int", None),
+            ("amount", "double", None),
+            ("year", "int", None),
+            ("month", "int", None),
+            (None, None, None),
+            ("# Partition Information", None, None),
+            ("# col_name", "data_type", "comment"),
+            ("year", "int", None),
+            ("month", "int", None),
+        ]
+        hive_dialect._get_table_columns = (
+            lambda connection, table_name, schema_name: table_columns
+        )
+
+        cols = hive_dialect.get_columns(
+            self=hive_dialect,
+            connection={},
+            table_name="multi_part_table",
+            schema="test_schema",
+        )
+
+        col_map = {c["name"]: c for c in cols}
+        self.assertFalse(col_map["id"]["is_partition_column"])
+        self.assertFalse(col_map["amount"]["is_partition_column"])
+        self.assertTrue(col_map["year"]["is_partition_column"])
+        self.assertTrue(col_map["month"]["is_partition_column"])
