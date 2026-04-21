@@ -77,22 +77,20 @@ public class InMemoryAssetService implements AssetService {
 
   @Override
   public CompletableFuture<InputStream> read(Asset asset) {
-    return CompletableFuture.supplyAsync(
-        () -> {
-          byte[] assetBytes = assetStore.get(asset.getId());
-          if (assetBytes == null) {
-            LOG.warn("Asset {} not found in in-memory storage", asset.getId());
-            return null;
-          }
-
-          LOG.debug(
-              "Retrieved asset {} ({} bytes) from in-memory storage",
-              asset.getId(),
-              assetBytes.length);
-
-          return new ByteArrayInputStream(assetBytes);
-        },
-        executor());
+    // Return synchronously — the in-memory fetch is trivial and every caller
+    // immediately joins on the returned future. Matches S3AssetService.read
+    // and AzureAssetService.read so none of the providers route read traffic
+    // through AsyncService (callers already block, no benefit to queueing).
+    byte[] assetBytes = assetStore.get(asset.getId());
+    if (assetBytes == null) {
+      LOG.warn("Asset {} not found in in-memory storage", asset.getId());
+      return CompletableFuture.completedFuture(null);
+    }
+    LOG.debug(
+        "Retrieved asset {} ({} bytes) from in-memory storage",
+        asset.getId(),
+        assetBytes.length);
+    return CompletableFuture.completedFuture(new ByteArrayInputStream(assetBytes));
   }
 
   @Override

@@ -114,21 +114,23 @@ public class AzureAssetService implements AssetService {
 
   @Override
   public CompletableFuture<InputStream> read(Asset asset) {
-    return AsyncService.executeAsync(
-        () -> {
-          try {
-            LOG.debug("Reading asset {} from Azure blob storage", asset.getId());
-            BlobClient blobClient = containerClient.getBlobClient(basePathPrefix + asset.getId());
-            InputStream inputStream = blobClient.openInputStream();
-            LOG.debug("Successfully opened input stream for asset {}", asset.getId());
-            return inputStream;
-          } catch (Exception e) {
-            throw AssetServiceException.byMessage(
-                "Failed to read asset: " + asset.getId(), e.getMessage());
-          }
-        },
-        "Read",
-        asset.getId());
+    // Open the blob on the caller's thread (see S3AssetService.read for the
+    // full rationale) — every read() caller immediately joins, so wrapping
+    // through AsyncService only added scheduling overhead and a starvation
+    // path when AsyncService was saturated.
+    try {
+      LOG.debug("Reading asset {} from Azure blob storage", asset.getId());
+      BlobClient blobClient = containerClient.getBlobClient(basePathPrefix + asset.getId());
+      InputStream inputStream = blobClient.openInputStream();
+      LOG.debug("Successfully opened input stream for asset {}", asset.getId());
+      return CompletableFuture.completedFuture(inputStream);
+    } catch (Exception e) {
+      CompletableFuture<InputStream> failed = new CompletableFuture<>();
+      failed.completeExceptionally(
+          AssetServiceException.byMessage(
+              "Failed to read asset: " + asset.getId(), e.getMessage()));
+      return failed;
+    }
   }
 
   @Override

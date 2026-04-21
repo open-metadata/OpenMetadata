@@ -141,23 +141,26 @@ public class S3AssetService implements AssetService {
 
   @Override
   public CompletableFuture<InputStream> read(Asset asset) {
-    return AsyncService.executeAsync(
-        () -> {
-          try {
-            LOG.debug("Reading asset {} from S3 bucket {}", asset.getId(), actualBucketName);
-            String key = resolveKey(asset.getId());
-            GetObjectRequest getRequest =
-                GetObjectRequest.builder().bucket(actualBucketName).key(key).build();
-
-            InputStream inputStream = s3Client.getObject(getRequest);
-            LOG.debug("Successfully opened input stream for asset {}", asset.getId());
-            return inputStream;
-          } catch (Exception e) {
-            throw new CompletionException(e);
-          }
-        },
-        "Read",
-        asset.getId());
+    // Open the S3 object on the caller's thread rather than hopping through
+    // AsyncService. Every caller of read() immediately joins on the returned
+    // future, so routing the blocking getObject through AsyncService's bounded
+    // pool just added scheduling overhead and created a starvation path — when
+    // a caller already running on AsyncService (or a caller that can monopolize
+    // AsyncService throughput) blocks on join(), the submitted read task has to
+    // fight for a worker before it can run.
+    try {
+      LOG.debug("Reading asset {} from S3 bucket {}", asset.getId(), actualBucketName);
+      String key = resolveKey(asset.getId());
+      GetObjectRequest getRequest =
+          GetObjectRequest.builder().bucket(actualBucketName).key(key).build();
+      InputStream inputStream = s3Client.getObject(getRequest);
+      LOG.debug("Successfully opened input stream for asset {}", asset.getId());
+      return CompletableFuture.completedFuture(inputStream);
+    } catch (Exception e) {
+      CompletableFuture<InputStream> failed = new CompletableFuture<>();
+      failed.completeExceptionally(e);
+      return failed;
+    }
   }
 
   @Override
