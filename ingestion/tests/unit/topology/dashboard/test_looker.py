@@ -949,3 +949,33 @@ class LookerUnitTest(TestCase):
                 result.sourceUrl.root,
                 "https://my-looker.com/dashboards/1",
             )
+
+    def test_process_view_missing_view_yields_no_error(self):
+        """
+        When a view is not found in the configured repos,
+        _process_view should log a warning but NOT yield an error.
+        """
+        from unittest.mock import MagicMock
+
+        from metadata.ingestion.source.dashboard.looker.models import ViewName
+
+        mock_parser = MagicMock()
+        mock_parser.find_view.return_value = None
+
+        explore = LookmlModelExplore(
+            model_name="test_model", project_name="test_project"
+        )
+        self.looker._repo_credentials = True
+        self.looker._project_parsers = {"test_project": mock_parser}
+
+        results = list(self.looker._process_view(ViewName("missing_view"), explore))
+        assert len(results) == 0
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        self.looker.chart_source_state = set()
+        list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
+        assert len(self.looker.chart_source_state) == 1
+        assert any(
+            "looker_source_test" in fqn for fqn in self.looker.chart_source_state
+        )

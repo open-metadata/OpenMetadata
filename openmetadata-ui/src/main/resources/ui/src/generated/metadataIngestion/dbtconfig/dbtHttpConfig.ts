@@ -23,6 +23,11 @@ export interface DbtHTTPConfig {
      */
     dbtConfigType: DbtConfigType;
     /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
      * DBT manifest http file path to extract dbt models and associate with tables.
      */
     dbtManifestHttpPath: string;
@@ -34,6 +39,15 @@ export interface DbtHTTPConfig {
      * DBT sources http file path to extract freshness test results information.
      */
     dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: Config;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
 }
 
 /**
@@ -41,4 +55,38 @@ export interface DbtHTTPConfig {
  */
 export enum DbtConfigType {
     HTTP = "http",
+}
+
+/**
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+ *
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

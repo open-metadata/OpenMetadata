@@ -28,9 +28,9 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';

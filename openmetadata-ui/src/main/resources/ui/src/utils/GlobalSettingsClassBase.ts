@@ -69,6 +69,7 @@ import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
+import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflows.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
@@ -131,6 +132,10 @@ class GlobalSettingsClassBase {
     [GlobalSettingsMenuCategory.GOVERNANCE]: {
       name: t('label.governance'),
       url: GlobalSettingsMenuCategory.GOVERNANCE,
+    },
+    [GlobalSettingOptions.WORKFLOW_DEFINITIONS]: {
+      name: t('label.workflow-plural'),
+      url: `${GlobalSettingsMenuCategory.GOVERNANCE}/${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
     },
   };
 
@@ -934,6 +939,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`,
             icon: GlossaryIcon,
+          },
+          {
+            label: t('label.workflow-plural'),
+            description: t(
+              'message.governance-workflow-definitions-description'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
+            icon: WorkflowsSettingsIcon,
           },
         ],
       },
