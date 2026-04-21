@@ -51,8 +51,9 @@ public final class SearchUtils {
       page.withId(pageId);
     }
 
-    if (pageTypeStr != null) {
-      page.withPageType(PageType.fromValue(pageTypeStr));
+    PageType pageType = parsePageType(pageTypeStr);
+    if (pageType != null) {
+      page.withPageType(pageType);
     }
 
     page.withName(name)
@@ -75,6 +76,23 @@ public final class SearchUtils {
       return UUID.fromString(value);
     } catch (IllegalArgumentException e) {
       LOG.warn("Ignoring malformed UUID in search hit: {}", value);
+      return null;
+    }
+  }
+
+  /**
+   * Parse a PageType string safely — returns null for missing or unknown values (e.g. an
+   * index written by a newer server version) so a single bad hit does not break the
+   * entire hierarchy response.
+   */
+  private static PageType parsePageType(String value) {
+    if (value == null || value.isEmpty()) {
+      return null;
+    }
+    try {
+      return PageType.fromValue(value);
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Ignoring unknown pageType in search hit: {}", value);
       return null;
     }
   }

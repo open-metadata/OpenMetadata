@@ -1377,6 +1377,10 @@ public class OpenSearchClient implements SearchClient {
     java.util.Map<java.util.UUID, org.openmetadata.schema.entity.data.PageHierarchy>
         pageHierarchyMap =
             pageHierarchyList.stream()
+                // Skip hits that lost their id during parsing (SearchUtils returns a
+                // null id for malformed/missing UUID strings) so Collectors.toMap
+                // does not throw on the null key.
+                .filter(p -> p.getId() != null)
                 .collect(
                     java.util.stream.Collectors.toMap(
                         org.openmetadata.schema.entity.data.PageHierarchy::getId,
