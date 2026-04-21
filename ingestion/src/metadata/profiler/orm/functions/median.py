@@ -207,11 +207,11 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 {col},
                 ROW_NUMBER() OVER () AS row_num
             FROM
-                {table} AS median_inner,
+                `{table}` AS median_inner,
                 (SELECT @counter := COUNT(*)
-                 FROM {table} AS median_count
-                 WHERE median_count.{dimension_col} = {table}.{dimension_col}) t_count
-            WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+                 FROM `{table}` AS median_count
+                 WHERE median_count.{dimension_col} = `{table}`.{dimension_col}) t_count
+            WHERE median_inner.{dimension_col} = `{table}`.{dimension_col}
             ORDER BY {col}
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
@@ -229,8 +229,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 {col},
                 ROW_NUMBER() OVER () AS row_num
             FROM
-                {table},
-                (SELECT @counter := COUNT(*) FROM {table}) t_count
+                `{table}`,
+                (SELECT @counter := COUNT(*) FROM `{table}`) t_count
             ORDER BY {col}
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
@@ -275,8 +275,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
            SELECT {col},
                   ROW_NUMBER() OVER (ORDER BY {col}) as rn,
                   COUNT(*) OVER () as cnt
-           FROM {table} AS median_inner
-           WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+           FROM "{table}" AS median_inner
+           WHERE median_inner.{dimension_col} = "{table}".{dimension_col}
              AND {col} IS NOT NULL
          )
          WHERE rn IN (
@@ -292,13 +292,13 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         return """
         (SELECT
             {col}
-        FROM {table}
+        FROM "{table}"
         WHERE {col} IS NOT NULL
         ORDER BY {col}
         LIMIT 1
         OFFSET (
                 SELECT ROUND(COUNT(*) * {percentile} -1)
-                FROM {table}
+                FROM "{table}"
                 WHERE {col} IS NOT NULL
             )
         )

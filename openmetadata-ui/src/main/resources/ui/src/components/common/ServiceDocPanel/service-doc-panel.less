@@ -12,16 +12,139 @@
  */
 @import '../../../styles/variables.less';
 
+@markdown-bg-color: #f8f8fa;
+
 .service-doc-panel {
-  .toastui-editor-contents {
+  .service-doc-content {
+    font-size: 14px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+
+    .ProseMirror > *:not(section),
+    section > * {
+      padding: @padding-xss @padding-lg;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0 !important;
+      border: none;
+      padding: @padding-md @padding-lg @padding-xss !important;
+      color: @text-color;
+    }
+
     h1 {
-      &:first-child {
-        padding-top: 8px !important;
+      font-size: 24px;
+      line-height: 48px;
+      font-weight: 600;
+    }
+
+    h2 {
+      font-size: 20px;
+      line-height: 32px;
+      font-weight: 600;
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 4px 0;
+      line-height: 24px;
+    }
+
+    a {
+      color: @primary-color;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
       }
     }
 
-    & > * {
-      padding: 4px 24px !important;
+    ul,
+    ol {
+      margin: 4px 0;
+      padding-inline-start: 42px;
+      list-style: disc;
+    }
+
+    strong {
+      font-weight: bold;
+    }
+
+    code {
+      white-space: break-spaces;
+      background: @markdown-bg-color;
+      color: @text-color;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+    pre {
+      margin: 8px 0;
+      padding: 0;
+      background: transparent;
+
+      code {
+        display: block;
+        padding: 15px;
+        overflow: auto;
+        border-radius: 8px;
+        border-bottom: 2px solid @border-color;
+        background: @markdown-bg-color;
+      }
+    }
+
+    blockquote {
+      border-left: 4px solid @border-color;
+      margin: 4px 0;
+      padding-left: 12px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 8px 0;
+    }
+
+    th,
+    td {
+      border: 1px solid @border-color;
+      padding: 8px 16px;
+    }
+
+    th {
+      background: @markdown-bg-color;
+      font-weight: 500;
+    }
+
+    section {
+      padding: 0;
+    }
+
+    section[data-highlighted='true'] {
+      background-color: @primary-50;
+      border-left: 3px solid @primary-6;
+      padding-bottom: 12px;
+      margin-top: 12px;
+      transition: ease-in-out;
     }
   }
 

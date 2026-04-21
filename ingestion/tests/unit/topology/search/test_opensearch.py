@@ -19,6 +19,9 @@ from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
 from metadata.generated.schema.entity.data.searchIndex import DataType, SearchIndexField
+from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
+    OpenSearchConnection,
+)
 from metadata.generated.schema.entity.services.searchService import (
     SearchConnection,
     SearchService,
@@ -27,6 +30,8 @@ from metadata.generated.schema.entity.services.searchService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.source.search.opensearch.connection import get_connection
 from metadata.ingestion.source.search.opensearch.metadata import OpensearchSource
 
 # Mock OpenSearch configuration
@@ -208,3 +213,44 @@ class OpenSearchUnitTest(TestCase):
     def test_partition_parse_columns(self):
         actual_index = next(self.os_source.yield_search_index(MOCK_DETAILS)).right
         self.assertEqual(actual_index, EXPECTED_RESULT)
+
+
+class OpenSearchConnectionTest(TestCase):
+    """
+    Test OpenSearch connection handler with AWS credentials
+    """
+
+    @patch("metadata.ingestion.source.search.opensearch.connection.OpenSearch")
+    @patch("metadata.ingestion.source.search.opensearch.connection.AWS4Auth")
+    def test_aws_auth_with_session_token(self, mock_aws4auth, mock_opensearch):
+        """
+        Regression test for issue #21941: session token should not crash
+        and should be passed as a plain string.
+        """
+        from unittest.mock import MagicMock
+
+        mock_opensearch.return_value = MagicMock()
+        mock_aws4auth.return_value = MagicMock()
+
+        conn = OpenSearchConnection(
+            hostPort="https://fake.us-east-1.es.amazonaws.com:443",
+            authType=AWSCredentials(
+                awsAccessKeyId="ASIAXXX",
+                awsSecretAccessKey="mysecret",
+                awsSessionToken="mytoken",  # This is the string that was causing crashes
+                awsRegion="us-east-1",
+            ),
+        )
+
+        # This should NOT raise AttributeError: 'str' object has no attribute 'get_secret_value'
+        client = get_connection(conn)
+        self.assertIsNotNone(client)
+
+        # Verify AWS4Auth was called with the session_token as a plain string
+        mock_aws4auth.assert_called_once_with(
+            "ASIAXXX",
+            "mysecret",
+            "us-east-1",
+            "es",
+            session_token="mytoken",
+        )
