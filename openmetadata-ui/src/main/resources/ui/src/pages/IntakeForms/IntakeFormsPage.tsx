@@ -11,21 +11,33 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, DownOutlined, EditOutlined } from '@ant-design/icons';
 import {
-  Button,
-  Dropdown,
-  MenuProps,
-  Popconfirm,
-  Space,
+  Box,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  Menu,
+  MenuItem,
+  Stack,
   Switch,
   Table,
-  Tag,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tooltip,
   Typography,
-} from 'antd';
+} from '@mui/material';
+import { Button } from '@openmetadata/ui-core-components';
+import { ChevronDown, Edit01, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
@@ -67,6 +79,8 @@ const IntakeFormsPage = () => {
     entityType: TargetEntityType.DataProduct,
     initialValue: null,
   });
+  const [addMenuAnchor, setAddMenuAnchor] = useState<HTMLElement | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<IntakeForm | null>(null);
 
   const fetchForms = useCallback(async () => {
     setLoading(true);
@@ -94,7 +108,13 @@ const IntakeFormsPage = () => {
   const allEntityTypesCovered =
     existingEntityTypes.size === Object.values(TargetEntityType).length;
 
+  const openAddMenu = (event: MouseEvent<HTMLElement>) => {
+    setAddMenuAnchor(event.currentTarget);
+  };
+  const closeAddMenu = () => setAddMenuAnchor(null);
+
   const handleCreate = (entityType: TargetEntityType) => {
+    closeAddMenu();
     setModalState({ open: true, entityType, initialValue: null });
   };
 
@@ -106,7 +126,12 @@ const IntakeFormsPage = () => {
     });
   };
 
-  const handleDelete = async (form: IntakeForm) => {
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    const form = deleteTarget;
+    setDeleteTarget(null);
     try {
       await deleteIntakeForm(form.id);
       showSuccessToast(t('message.intake-form-deleted-successfully'));
@@ -158,104 +183,15 @@ const IntakeFormsPage = () => {
     }
   };
 
-  const addMenu: MenuProps = {
-    items: Object.values(TargetEntityType).map((et) => {
-      const alreadyExists = existingEntityTypes.has(et);
-
-      return {
-        key: et,
-        label: alreadyExists
-          ? `${entityTypeLabel(et)} (${t('label.already-configured')})`
-          : entityTypeLabel(et),
-        disabled: alreadyExists,
-        'data-testid': `add-${et}`,
-        onClick: () => handleCreate(et),
-      } as MenuProps['items'] extends (infer I)[] ? I : never;
-    }),
-  };
-
-  const columns = [
-    {
-      title: t('label.entity-type'),
-      dataIndex: 'entityType',
-      key: 'entityType',
-      render: (entityType: TargetEntityType) => (
-        <Typography.Text strong>{entityTypeLabel(entityType)}</Typography.Text>
-      ),
-    },
-    {
-      title: t('label.required-fields'),
-      dataIndex: 'requiredFields',
-      key: 'requiredFields',
-      render: (_: unknown, record: IntakeForm) => (
-        <Space direction="vertical" size={2}>
-          {(record.requiredFields ?? []).map((rf) => (
-            <Tag
-              color={
-                rf.fieldKind === FieldKind.CustomProperty ? 'purple' : 'blue'
-              }
-              key={rf.fieldPath}>
-              {rf.fieldLabel}
-              <Typography.Text className="tw:ml-1" type="secondary">
-                ({rf.fieldPath})
-              </Typography.Text>
-            </Tag>
-          ))}
-          {(record.requiredFields ?? []).length === 0 && (
-            <Typography.Text type="secondary">
-              {t('label.none')}
-            </Typography.Text>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: t('label.enabled'),
-      dataIndex: 'enabled',
-      key: 'enabled',
-      render: (enabled: boolean, record: IntakeForm) => (
-        <Switch
-          checked={enabled}
-          data-testid={`toggle-${record.entityType}`}
-          onChange={(checked) => handleToggleEnabled(record, checked)}
-        />
-      ),
-    },
-    {
-      title: t('label.action-plural'),
-      key: 'actions',
-      render: (_: unknown, record: IntakeForm) => (
-        <Space>
-          <Tooltip title={t('label.edit')}>
-            <Button
-              data-testid={`edit-${record.entityType}`}
-              icon={<EditOutlined />}
-              type="text"
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            cancelText={t('label.cancel')}
-            okText={t('label.delete')}
-            title={t('message.delete-intake-form-confirmation')}
-            onConfirm={() => handleDelete(record)}>
-            <Tooltip title={t('label.delete')}>
-              <Button
-                danger
-                data-testid={`delete-${record.entityType}`}
-                icon={<DeleteOutlined />}
-                type="text"
-              />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
   return (
-    <div className="tw:p-6">
-      <div className="tw:flex tw:justify-between tw:items-center tw:mb-4">
+    <Box sx={{ p: 3 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 2,
+        }}>
         <PageHeader
           data={{
             header: t('label.intake-form-plural'),
@@ -266,27 +202,174 @@ const IntakeFormsPage = () => {
           title={
             allEntityTypesCovered
               ? t('message.intake-form-all-types-covered')
-              : undefined
+              : ''
           }>
-          <Dropdown
-            disabled={allEntityTypesCovered}
-            menu={addMenu}
-            trigger={['click']}>
-            <Button data-testid="add-intake-form" type="primary">
+          <span>
+            <Button
+              color="primary"
+              data-testid="add-intake-form"
+              iconTrailing={ChevronDown}
+              isDisabled={allEntityTypesCovered}
+              size="sm"
+              onClick={openAddMenu}>
               {t('label.add-entity', { entity: t('label.intake-form') })}
-              <DownOutlined />
             </Button>
-          </Dropdown>
+          </span>
         </Tooltip>
-      </div>
+        <Menu
+          anchorEl={addMenuAnchor}
+          data-testid="add-intake-form-menu"
+          open={Boolean(addMenuAnchor)}
+          onClose={closeAddMenu}>
+          {Object.values(TargetEntityType).map((et) => {
+            const alreadyExists = existingEntityTypes.has(et);
 
-      <Table
-        columns={columns}
-        dataSource={forms}
-        loading={loading}
-        pagination={false}
-        rowKey="id"
-      />
+            return (
+              <MenuItem
+                data-testid={`add-${et}`}
+                disabled={alreadyExists}
+                key={et}
+                onClick={() => handleCreate(et)}>
+                {alreadyExists
+                  ? `${entityTypeLabel(et)} (${t('label.already-configured')})`
+                  : entityTypeLabel(et)}
+              </MenuItem>
+            );
+          })}
+        </Menu>
+      </Box>
+
+      <TableContainer>
+        <Table data-testid="intake-forms-table" size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>{t('label.entity-type')}</TableCell>
+              <TableCell>{t('label.required-fields')}</TableCell>
+              <TableCell>{t('label.enabled')}</TableCell>
+              <TableCell>{t('label.action-plural')}</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading && (
+              <TableRow>
+                <TableCell align="center" colSpan={4}>
+                  <CircularProgress data-testid="intake-forms-loading" />
+                </TableCell>
+              </TableRow>
+            )}
+            {!loading && forms.length === 0 && (
+              <TableRow>
+                <TableCell align="center" colSpan={4}>
+                  <Typography color="text.secondary" variant="body2">
+                    {t('label.none')}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {!loading &&
+              forms.map((record) => (
+                <TableRow
+                  data-testid={`row-${record.entityType}`}
+                  key={record.id}>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 600 }}>
+                      {entityTypeLabel(record.entityType)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="column" spacing={0.5}>
+                      {(record.requiredFields ?? []).map((rf) => (
+                        <Chip
+                          color={
+                            rf.fieldKind === FieldKind.CustomProperty
+                              ? 'secondary'
+                              : 'primary'
+                          }
+                          key={rf.fieldPath}
+                          label={
+                            <>
+                              {rf.fieldLabel}
+                              <Typography
+                                className="tw:ml-1"
+                                color="text.secondary"
+                                component="span"
+                                variant="caption">
+                                ({rf.fieldPath})
+                              </Typography>
+                            </>
+                          }
+                          size="small"
+                          variant="outlined"
+                        />
+                      ))}
+                      {(record.requiredFields ?? []).length === 0 && (
+                        <Typography color="text.secondary" variant="body2">
+                          {t('label.none')}
+                        </Typography>
+                      )}
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={record.enabled ?? false}
+                      data-testid={`toggle-${record.entityType}`}
+                      onChange={(e) =>
+                        handleToggleEnabled(record, e.target.checked)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Tooltip title={t('label.edit')}>
+                        <IconButton
+                          data-testid={`edit-${record.entityType}`}
+                          size="small"
+                          onClick={() => handleEdit(record)}>
+                          <Edit01 height={16} width={16} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={t('label.delete')}>
+                        <IconButton
+                          color="error"
+                          data-testid={`delete-${record.entityType}`}
+                          size="small"
+                          onClick={() => setDeleteTarget(record)}>
+                          <Trash01 height={16} width={16} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Dialog
+        data-testid="intake-form-delete-confirm"
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>{t('label.delete-entity', { entity: '' })}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('message.delete-intake-form-confirmation')}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            color="tertiary"
+            size="sm"
+            onClick={() => setDeleteTarget(null)}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary-destructive"
+            size="sm"
+            onClick={handleDeleteConfirm}>
+            {t('label.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {modalState.open && (
         <IntakeFormDesignerModal
@@ -303,7 +386,7 @@ const IntakeFormsPage = () => {
           onSubmit={handleSubmit}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

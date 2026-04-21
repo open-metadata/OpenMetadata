@@ -4217,7 +4217,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     if (!fieldValue.isObject()) {
       throw new IllegalArgumentException(
-          "Custom property '" + fieldName + "' must be an object with 'id' and 'type'");
+          "Custom property '"
+              + fieldName
+              + "' must be an object with 'type' and either 'id' or 'fullyQualifiedName'");
     }
     resolveCustomPropertyReference(fieldValue, fieldName);
   }
@@ -4243,7 +4245,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         throw new IllegalArgumentException(
             "Custom property '"
                 + fieldName
-                + "' must contain only objects with 'id' and 'type' at index "
+                + "' must contain only objects with 'type' and either 'id' or"
+                + " 'fullyQualifiedName' at index "
                 + index);
       }
       resolveCustomPropertyReference(ref, fieldName);

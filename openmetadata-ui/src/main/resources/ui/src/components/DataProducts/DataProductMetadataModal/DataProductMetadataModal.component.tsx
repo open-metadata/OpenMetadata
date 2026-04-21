@@ -10,9 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Form, Modal, Select } from 'antd';
-import { useEffect } from 'react';
+import {
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+} from '@mui/material';
+import { Button } from '@openmetadata/ui-core-components';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DATA_PRODUCT_TYPE_LABEL_KEYS,
@@ -37,6 +47,10 @@ export interface DataProductMetadataModalProps {
   }) => Promise<void> | void;
 }
 
+// MUI Select treats an empty string "" as "no selection" (matches the
+// undefined-means-unset semantics of our DataProduct fields).
+const NONE = '';
+
 const DataProductMetadataModal = ({
   open,
   dataProduct,
@@ -44,77 +58,137 @@ const DataProductMetadataModal = ({
   onSubmit,
 }: DataProductMetadataModalProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const [dataProductType, setDataProductType] = useState<string>(NONE);
+  const [visibility, setVisibility] = useState<string>(NONE);
+  const [portfolioPriority, setPortfolioPriority] = useState<string>(NONE);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
-      form.setFieldsValue({
-        dataProductType: dataProduct.dataProductType,
-        visibility: dataProduct.visibility,
-        portfolioPriority: dataProduct.portfolioPriority,
-      });
+      setDataProductType(dataProduct.dataProductType ?? NONE);
+      setVisibility(dataProduct.visibility ?? NONE);
+      setPortfolioPriority(dataProduct.portfolioPriority ?? NONE);
+      setSubmitting(false);
     }
-  }, [open, dataProduct, form]);
+  }, [open, dataProduct]);
 
-  const handleOk = async () => {
-    const values = await form.validateFields();
-    await onSubmit(values);
+  const handleSave = async () => {
+    try {
+      setSubmitting(true);
+      await onSubmit({
+        dataProductType: dataProductType
+          ? (dataProductType as DataProductType)
+          : undefined,
+        visibility: visibility ? (visibility as Visibility) : undefined,
+        portfolioPriority: portfolioPriority
+          ? (portfolioPriority as PortfolioPriority)
+          : undefined,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <Modal
-      destroyOnClose
-      cancelText={t('label.cancel')}
+    <Dialog
+      fullWidth
       data-testid="data-product-metadata-modal"
-      okText={t('label.save')}
+      maxWidth="sm"
       open={open}
-      title={t('label.edit-entity', {
-        entity: t('label.data-product'),
-      })}
-      onCancel={onCancel}
-      onOk={handleOk}>
-      <Form data-testid="metadata-form" form={form} layout="vertical">
-        <Form.Item label={t('label.type')} name="dataProductType">
-          <Select
-            allowClear
-            data-testid="type-select"
-            options={Object.values(DataProductType).map((v) => ({
-              label: t(DATA_PRODUCT_TYPE_LABEL_KEYS[v]),
-              value: v,
-            }))}
-            placeholder={t('label.select-entity', { entity: t('label.type') })}
-          />
-        </Form.Item>
-        <Form.Item label={t('label.visibility')} name="visibility">
-          <Select
-            allowClear
-            data-testid="visibility-select"
-            options={Object.values(Visibility).map((v) => ({
-              label: t(VISIBILITY_LABEL_KEYS[v]),
-              value: v,
-            }))}
-            placeholder={t('label.select-entity', {
-              entity: t('label.visibility'),
-            })}
-          />
-        </Form.Item>
-        <Form.Item
-          label={t('label.portfolio-priority')}
-          name="portfolioPriority">
-          <Select
-            allowClear
-            data-testid="priority-select"
-            options={Object.values(PortfolioPriority).map((v) => ({
-              label: t(PORTFOLIO_PRIORITY_LABEL_KEYS[v]),
-              value: v,
-            }))}
-            placeholder={t('label.select-entity', {
-              entity: t('label.portfolio-priority'),
-            })}
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+      onClose={onCancel}>
+      <DialogTitle>
+        {t('label.edit-entity', { entity: t('label.data-product') })}
+      </DialogTitle>
+      <DialogContent>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            pt: 1,
+          }}>
+          <FormControl fullWidth>
+            <InputLabel id="type-label">{t('label.type')}</InputLabel>
+            <Select
+              data-testid="type-select"
+              inputProps={{ 'data-testid': 'type-select-input' }}
+              label={t('label.type')}
+              labelId="type-label"
+              value={dataProductType}
+              onChange={(e) => setDataProductType(e.target.value as string)}>
+              <MenuItem value={NONE}>
+                <em>{t('label.none')}</em>
+              </MenuItem>
+              {Object.values(DataProductType).map((v) => (
+                <MenuItem key={v} value={v}>
+                  {t(DATA_PRODUCT_TYPE_LABEL_KEYS[v])}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="visibility-label">
+              {t('label.visibility')}
+            </InputLabel>
+            <Select
+              data-testid="visibility-select"
+              inputProps={{ 'data-testid': 'visibility-select-input' }}
+              label={t('label.visibility')}
+              labelId="visibility-label"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as string)}>
+              <MenuItem value={NONE}>
+                <em>{t('label.none')}</em>
+              </MenuItem>
+              {Object.values(Visibility).map((v) => (
+                <MenuItem key={v} value={v}>
+                  {t(VISIBILITY_LABEL_KEYS[v])}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel id="priority-label">
+              {t('label.portfolio-priority')}
+            </InputLabel>
+            <Select
+              data-testid="priority-select"
+              inputProps={{ 'data-testid': 'priority-select-input' }}
+              label={t('label.portfolio-priority')}
+              labelId="priority-label"
+              value={portfolioPriority}
+              onChange={(e) => setPortfolioPriority(e.target.value as string)}>
+              <MenuItem value={NONE}>
+                <em>{t('label.none')}</em>
+              </MenuItem>
+              {Object.values(PortfolioPriority).map((v) => (
+                <MenuItem key={v} value={v}>
+                  {t(PORTFOLIO_PRIORITY_LABEL_KEYS[v])}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button
+          color="tertiary"
+          data-testid="metadata-modal-cancel"
+          isDisabled={submitting}
+          size="sm"
+          onClick={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="metadata-modal-save"
+          isLoading={submitting}
+          size="sm"
+          onClick={handleSave}>
+          {t('label.save')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

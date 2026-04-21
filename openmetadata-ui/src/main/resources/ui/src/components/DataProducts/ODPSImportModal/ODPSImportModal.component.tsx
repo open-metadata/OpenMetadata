@@ -13,17 +13,22 @@
 
 import {
   Alert,
-  Button,
-  Input,
-  Modal,
+  AlertTitle,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
   Radio,
-  Space,
+  RadioGroup,
+  TextField,
   Typography,
-  Upload,
-} from 'antd';
+} from '@mui/material';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isNil } from 'lodash';
-import { ChangeEvent, useCallback, useState } from 'react';
+import { ChangeEvent, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
@@ -53,6 +58,7 @@ const ODPSImportModal = ({
   onSuccess,
 }: ODPSImportModalProps) => {
   const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [yamlContent, setYamlContent] = useState<string>('');
   const [strategy, setStrategy] =
     useState<ODPSImportStrategy>(DEFAULT_STRATEGY);
@@ -68,6 +74,9 @@ const ODPSImportModal = ({
     setValidation(null);
     setIsValidating(false);
     setIsImporting(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }, []);
 
   const handleClose = useCallback(() => {
@@ -75,22 +84,27 @@ const ODPSImportModal = ({
     onClose();
   }, [onClose, resetState]);
 
-  const handleFileUpload = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result;
-      if (typeof text === 'string') {
-        setYamlContent(text);
-        setValidation(null);
+  const handleFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
       }
-    };
-    reader.readAsText(file);
-
-    return false;
-  }, []);
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const text = loadEvent.target?.result;
+        if (typeof text === 'string') {
+          setYamlContent(text);
+          setValidation(null);
+        }
+      };
+      reader.readAsText(file);
+    },
+    []
+  );
 
   const handleTextChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
+    (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
       setYamlContent(event.target.value);
       setValidation(null);
     },
@@ -145,93 +159,145 @@ const ODPSImportModal = ({
     t,
   ]);
 
+  const triggerFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <Modal
-      destroyOnClose
-      cancelText={t('label.cancel')}
+    <Dialog
+      fullWidth
       data-testid="odps-import-modal"
-      okButtonProps={{
-        disabled: !yamlContent.trim(),
-        loading: isImporting,
-      }}
-      okText={t('label.import')}
+      maxWidth="md"
       open={open}
-      title={t('label.import-entity', { entity: t('label.odps-data-product') })}
-      width={720}
-      onCancel={handleClose}
-      onOk={handleImport}>
-      <Space className="tw:w-full" direction="vertical" size="middle">
-        <Typography.Text>
-          {t('message.odps-import-description')}
-        </Typography.Text>
+      onClose={handleClose}>
+      <DialogTitle>
+        {t('label.import-entity', { entity: t('label.odps-data-product') })}
+      </DialogTitle>
+      <DialogContent>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            pt: 1,
+          }}>
+          <Typography variant="body2">
+            {t('message.odps-import-description')}
+          </Typography>
 
-        <Upload
-          accept=".yaml,.yml"
-          beforeUpload={handleFileUpload}
-          maxCount={1}
-          showUploadList={false}>
-          <Button>{t('label.upload-yaml-file')}</Button>
-        </Upload>
+          <Box>
+            {/* Hidden native file input; triggered by the styled core-components
+                Button above. Avoids the AntD Upload widget and keeps the YAML
+                payload entirely in local state. */}
+            <input
+              accept=".yaml,.yml"
+              data-testid="odps-yaml-file-input"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              type="file"
+              onChange={handleFileChange}
+            />
+            <Button
+              color="secondary"
+              data-testid="odps-upload-button"
+              size="sm"
+              onClick={triggerFilePicker}>
+              {t('label.upload-yaml-file')}
+            </Button>
+          </Box>
 
-        <Input.TextArea
-          autoSize={{ minRows: 10, maxRows: 20 }}
-          data-testid="odps-yaml-content"
-          placeholder={t('message.paste-odps-yaml-here')}
-          value={yamlContent}
-          onChange={handleTextChange}
-        />
-
-        {existingDataProduct && (
-          <Radio.Group
-            value={strategy}
-            onChange={(e) => setStrategy(e.target.value as ODPSImportStrategy)}>
-            <Space direction="vertical">
-              <Radio value="merge">
-                <strong>{t('label.merge')}</strong>{' '}
-                <Typography.Text type="secondary">
-                  — {t('message.odps-merge-description')}
-                </Typography.Text>
-              </Radio>
-              <Radio value="replace">
-                <strong>{t('label.replace')}</strong>{' '}
-                <Typography.Text type="secondary">
-                  — {t('message.odps-replace-description')}
-                </Typography.Text>
-              </Radio>
-            </Space>
-          </Radio.Group>
-        )}
-
-        <Space>
-          <Button
-            data-testid="odps-validate-button"
-            disabled={!yamlContent.trim()}
-            loading={isValidating}
-            onClick={handleValidate}>
-            {t('label.validate')}
-          </Button>
-        </Space>
-
-        {validation && validation.valid && (
-          <Alert
-            showIcon
-            description={t('message.odps-yaml-valid-description', {
-              version: validation.version ?? '4.1',
-              languages: validation.languages ?? 'en',
-            })}
-            message={t('label.valid')}
-            type="success"
+          <TextField
+            fullWidth
+            multiline
+            InputProps={{
+              inputProps: { 'data-testid': 'odps-yaml-content' },
+            }}
+            maxRows={20}
+            minRows={10}
+            placeholder={t('message.paste-odps-yaml-here')}
+            value={yamlContent}
+            onChange={handleTextChange}
           />
-        )}
-        {validation && validation.valid === false && (
-          <Alert
-            showIcon
-            message={t('message.odps-yaml-invalid')}
-            type="error"
-          />
-        )}
-      </Space>
-    </Modal>
+
+          {existingDataProduct && (
+            <RadioGroup
+              value={strategy}
+              onChange={(e) =>
+                setStrategy(e.target.value as ODPSImportStrategy)
+              }>
+              <FormControlLabel
+                control={<Radio data-testid="odps-strategy-merge" />}
+                label={
+                  <Typography variant="body2">
+                    <strong>{t('label.merge')}</strong>{' '}
+                    <Typography component="span" variant="caption">
+                      — {t('message.odps-merge-description')}
+                    </Typography>
+                  </Typography>
+                }
+                value="merge"
+              />
+              <FormControlLabel
+                control={<Radio data-testid="odps-strategy-replace" />}
+                label={
+                  <Typography variant="body2">
+                    <strong>{t('label.replace')}</strong>{' '}
+                    <Typography component="span" variant="caption">
+                      — {t('message.odps-replace-description')}
+                    </Typography>
+                  </Typography>
+                }
+                value="replace"
+              />
+            </RadioGroup>
+          )}
+
+          <Box>
+            <Button
+              color="secondary"
+              data-testid="odps-validate-button"
+              isDisabled={!yamlContent.trim()}
+              isLoading={isValidating}
+              size="sm"
+              onClick={handleValidate}>
+              {t('label.validate')}
+            </Button>
+          </Box>
+
+          {validation && validation.valid && (
+            <Alert severity="success">
+              <AlertTitle>{t('label.valid')}</AlertTitle>
+              {t('message.odps-yaml-valid-description', {
+                version: validation.version ?? '4.1',
+                languages: validation.languages ?? 'en',
+              })}
+            </Alert>
+          )}
+          {validation && validation.valid === false && (
+            <Alert severity="error">{t('message.odps-yaml-invalid')}</Alert>
+          )}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button
+          color="tertiary"
+          data-testid="odps-import-cancel"
+          isDisabled={isImporting}
+          size="sm"
+          onClick={handleClose}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="odps-import-submit"
+          isDisabled={!yamlContent.trim()}
+          isLoading={isImporting}
+          size="sm"
+          onClick={handleImport}>
+          {t('label.import')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

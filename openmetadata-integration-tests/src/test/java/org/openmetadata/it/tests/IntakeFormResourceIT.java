@@ -26,10 +26,12 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -59,14 +61,20 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
 /**
- * Integration tests for the IntakeForm entity and the two-layered validation it enforces on
- * DataProduct and Domain creation/update. Covers the full matrix requested: schema-required vs
+ * Integration tests for the IntakeForm entity and the validation it enforces on DataProduct,
+ * Domain, and GlossaryTerm creation/update. Covers the full matrix requested:
  * IntakeForm-required, enable/disable, custom-property vs native fields, add/remove required
  * fields mid-flight, and the update path.
  *
- * <p>Runs single-threaded because IntakeForm is keyed by entityType (only one per type) — parallel
- * tests would collide on the uniqueness constraint.
+ * <p>Runs {@link Isolated isolated} from other test classes: an IntakeForm applies to ALL
+ * entities of its target type (dataProduct/domain/glossaryTerm), so while these tests seed
+ * forms, any parallel test class that creates a governance entity (e.g. {@code
+ * DataInsightAggregationIT} creating GlossaryTerms) would be rejected mid-flight by the
+ * server-side validator. {@code @Isolated} ensures no other class runs concurrently with this
+ * one. Within this class the tests also run {@code SAME_THREAD} because IntakeForm is
+ * singleton-per-entityType — parallel methods would collide on the uniqueness constraint.
  */
+@Isolated("IntakeForms apply server-wide per entity type; serialize with all other ITs")
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class IntakeFormResourceIT {
@@ -97,35 +105,61 @@ public class IntakeFormResourceIT {
 
   /**
    * Defensive cleanup: tests in this suite wrap intake-form creation in try/finally, but if a
-   * test fails before the finally runs (timeout, assertion in setup) the form would leak and
-   * poison unrelated tests that create DataProduct/Domain/GlossaryTerm entities. Paginate the
-   * full intake-form list and hard-delete anything the test class could have produced for the
-   * three governance entity types.
+   * test fails before the finally runs (timeout, assertion in setup) the form would leak and —
+   * because intake forms apply server-wide to all entities of their target type — poison
+   * unrelated tests that create DataProduct/Domain/GlossaryTerm entities. Runs both before AND
+   * after every test for maximum safety: {@code @BeforeEach} catches any forms a prior crashed
+   * test left behind; {@code @AfterEach} does the normal post-test cleanup.
+   *
+   * <p>Uses the paginated list endpoint (not {@code /entityType/…}) so disabled forms are also
+   * found; {@code findEnabledForEntityType} returns {@code null} for disabled forms and would
+   * leave them behind.
    */
+  @BeforeEach
+  void purgeIntakeFormsBeforeTest() {
+    purgeAllIntakeFormsForGovernanceEntities();
+  }
+
   @AfterEach
-  void purgeAllIntakeFormsForGovernanceEntities() {
-    for (String entityType : List.of("dataProduct", "domain", "glossaryTerm")) {
-      hardDeleteAllIntakeFormsForEntityType(entityType);
+  void purgeIntakeFormsAfterTest() {
+    purgeAllIntakeFormsForGovernanceEntities();
+  }
+
+  private static void purgeAllIntakeFormsForGovernanceEntities() {
+    try {
+      String body =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, INTAKE_FORMS_PATH + "?limit=100&include=all", null);
+      ObjectMapper mapper = new ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(body);
+      com.fasterxml.jackson.databind.JsonNode data = root.path("data");
+      if (!data.isArray()) {
+        return;
+      }
+      for (com.fasterxml.jackson.databind.JsonNode form : data) {
+        String entityType = form.path("entityType").asText();
+        if (!GOVERNANCE_ENTITY_TYPES.contains(entityType)) {
+          continue;
+        }
+        String idStr = form.path("id").asText();
+        if (idStr.isEmpty()) {
+          continue;
+        }
+        try {
+          deleteIntakeForm(UUID.fromString(idStr));
+        } catch (Exception ignored) {
+          // best-effort — a concurrent test in this class (same thread) would
+          // have already deleted it, or the server is shutting down
+        }
+      }
+    } catch (Exception ignored) {
+      // list endpoint unavailable or empty — nothing to purge
     }
   }
 
-  private static void hardDeleteAllIntakeFormsForEntityType(String entityType) {
-    try {
-      IntakeForm form =
-          SdkClients.adminClient()
-              .getHttpClient()
-              .execute(
-                  HttpMethod.GET,
-                  INTAKE_FORMS_PATH + "/entityType/" + entityType,
-                  null,
-                  IntakeForm.class);
-      if (form != null && form.getId() != null) {
-        deleteIntakeForm(form.getId());
-      }
-    } catch (Exception ignored) {
-      // 404 (no form for this entity type) is the expected steady state.
-    }
-  }
+  private static final List<String> GOVERNANCE_ENTITY_TYPES =
+      List.of("dataProduct", "domain", "glossaryTerm");
 
   // ---------------------------------------------------------------------------
   // CRUD on IntakeForm itself

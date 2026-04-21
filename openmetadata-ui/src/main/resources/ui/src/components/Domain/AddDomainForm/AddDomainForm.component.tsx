@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, FormProps, Row, Space } from 'antd';
+import { NamePath } from 'antd/lib/form/interface';
 import { omit } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +58,7 @@ import {
 } from '../../../utils/DomainUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DEFAULT_DATA_PRODUCT_ICON,
   DEFAULT_DOMAIN_ICON,
@@ -106,9 +108,14 @@ const AddDomainForm = ({
           setIntakeForm(result);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelled) {
           setIntakeForm(null);
+          // getIntakeFormByEntityType returns null for 404 (no form configured);
+          // anything reaching this catch is an unexpected failure (auth, 5xx,
+          // network). Surface it so admins aren't silently shown an unrestricted
+          // form when server-side validation will still reject their submission.
+          showErrorToast(err);
         }
       });
 
@@ -136,9 +143,12 @@ const AddDomainForm = ({
           setCustomProperties(props ?? []);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelled) {
           setCustomProperties([]);
+          // Silently empty custom properties would let the designer render
+          // without required extension fields — surface the failure instead.
+          showErrorToast(err);
         }
       });
 
@@ -147,18 +157,22 @@ const AddDomainForm = ({
     };
   }, [targetEntityType]);
 
-  const nativeRequiredPaths = useMemo(() => {
-    const paths = new Set<string>();
+  // Map of native fieldPath → RequiredField so applyIntakeFormRequired can
+  // consult the admin-configured errorMessage / fieldLabel when injecting
+  // the required rule below. A Set of paths isn't enough because the rule
+  // message needs the per-field metadata from the intake form.
+  const nativeRequiredFieldsByPath = useMemo(() => {
+    const map = new Map<string, RequiredField>();
     (intakeForm?.requiredFields ?? []).forEach((rf: RequiredField) => {
       const isCustom =
         rf.fieldKind === FieldKind.CustomProperty ||
         rf.fieldPath.startsWith('extension.');
       if (!isCustom) {
-        paths.add(rf.fieldPath);
+        map.set(rf.fieldPath, rf);
       }
     });
 
-    return paths;
+    return map;
   }, [intakeForm]);
 
   const extensionRequiredFields = useMemo<RequiredField[]>(() => {
@@ -452,11 +466,31 @@ const AddDomainForm = ({
   ]);
 
   const applyIntakeFormRequired = (field: FieldProp): FieldProp => {
-    if (!nativeRequiredPaths.has(field.name as string)) {
+    const rf = nativeRequiredFieldsByPath.get(field.name as string);
+    if (!rf) {
       return field;
     }
+    // Inject a field-specific required rule so the intake form's configured
+    // errorMessage (or fieldLabel) surfaces in the UI instead of a generic
+    // "Required" message. Keeps any existing rules on the field.
+    const requiredRule = {
+      required: true,
+      message:
+        rf.errorMessage || t('label.field-required', { field: rf.fieldLabel }),
+    };
+    const existingRules = field.rules ? [...field.rules] : [];
+    const withoutGenericRequired = existingRules.filter(
+      (r) =>
+        typeof r !== 'object' ||
+        r === null ||
+        !(r as { required?: boolean }).required
+    );
 
-    return { ...field, required: true };
+    return {
+      ...field,
+      required: true,
+      rules: [...withoutGenericRequired, requiredRule],
+    };
   };
 
   const extensionFields: FieldProp[] = useMemo(() => {
@@ -475,7 +509,10 @@ const AddDomainForm = ({
           rf.errorMessage ||
           t('label.field-required', { field: rf.fieldLabel }),
       };
-      const baseName = ['extension', propertyName] as unknown as string;
+      // AntD's Form.Item accepts a NamePath (array or string) to address
+      // nested fields like `extension.steward`. Keep the array form typed
+      // correctly instead of casting through `unknown`.
+      const baseName: NamePath = ['extension', propertyName];
       const baseId = `root/extension/${propertyName}`;
       const dataTestId = `extension-${propertyName}`;
 

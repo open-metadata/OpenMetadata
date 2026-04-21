@@ -180,7 +180,7 @@ test.describe(
         await page.getByTestId('add-intake-form').click();
 
         const menuItem = page
-          .locator('.ant-dropdown-menu:visible')
+          .getByRole('menu')
           .getByRole('menuitem', { name: /^Data Product$/ });
         await expect(menuItem).toBeVisible();
         await menuItem.click();
@@ -245,15 +245,15 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('add-intake-form').click();
-      const menu = page.locator('.ant-dropdown-menu:visible');
+      const menu = page.getByRole('menu');
       const disabledItem = menu.getByText(/Data Product.*already configured/i);
       await expect(disabledItem).toBeVisible();
 
-      // The parent menu item should carry the disabled class
+      // MUI disables menuitems via aria-disabled (not an AntD class)
       const parent = menu
         .getByRole('menuitem')
         .filter({ hasText: /Data Product/ });
-      await expect(parent).toHaveClass(/ant-dropdown-menu-item-disabled/);
+      await expect(parent).toHaveAttribute('aria-disabled', 'true');
     });
 
     test('intake form with required field blocks Data Product create when missing', async ({
@@ -389,16 +389,27 @@ test.describe(
       });
 
       await redirectToHomePage(page);
+      // Wait for the listIntakeForms response so the table is guaranteed to
+      // have rendered the seeded row before we look for the toggle. The MUI
+      // table has no generic "loader" testid for waitForAllLoadersToDisappear
+      // to latch onto, so we anchor on the API response directly.
+      const listResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/governance/intakeForms') &&
+          r.request().method() === 'GET'
+      );
       await page.goto(INTAKE_FORMS_URL);
-      await waitForAllLoadersToDisappear(page);
+      await listResponse;
 
       const toggle = page.getByTestId('toggle-dataProduct');
-      await expect(toggle).toBeVisible();
+      await expect(toggle).toBeVisible({ timeout: 30000 });
 
+      // UI now PATCHes just `/enabled` (see IntakeFormsPage#handleToggleEnabled)
+      // to avoid clobbering server-managed fields like owners via a PUT round-trip.
       const updateResponse = page.waitForResponse(
         (r) =>
-          r.url().endsWith('/api/v1/governance/intakeForms') &&
-          r.request().method() === 'PUT' &&
+          r.url().includes('/api/v1/governance/intakeForms/') &&
+          r.request().method() === 'PATCH' &&
           r.status() === 200
       );
       await toggle.click();
@@ -476,7 +487,7 @@ test.describe(
 
       await page.getByTestId('delete-dataProduct').click();
       const confirm = page
-        .locator('.ant-popover:visible')
+        .getByRole('dialog')
         .getByRole('button', { name: 'Delete' });
       const deleteResponse = page.waitForResponse(
         (r) =>
@@ -492,7 +503,7 @@ test.describe(
       // offer Data Product again
       await page.getByTestId('add-intake-form').click();
       const menuItem = page
-        .locator('.ant-dropdown-menu:visible')
+        .getByRole('menu')
         .getByRole('menuitem', { name: /^Data Product$/ });
       await expect(menuItem).toBeVisible();
     });
@@ -523,25 +534,28 @@ test.describe(
       const deleteButton = page.getByTestId('delete-dataProduct');
       await expect(deleteButton).toBeVisible({ timeout: 30000 });
       await deleteButton.click();
-      const cancel = page
-        .locator('.ant-popover:visible')
-        .getByRole('button', { name: 'Cancel' });
+      const confirmDialog = page.getByRole('dialog');
+      const cancel = confirmDialog.getByRole('button', { name: 'Cancel' });
       await expect(cancel).toBeVisible();
       await cancel.click();
 
-      // Popconfirm should close and the row is still there
-      await expect(page.locator('.ant-popover:visible')).not.toBeVisible();
+      // Dialog should close and the row is still there
+      await expect(confirmDialog).not.toBeVisible();
       await expect(page.getByTestId('delete-dataProduct')).toBeVisible();
-      await expect(page.getByTestId('toggle-dataProduct')).toBeChecked();
+      // MUI Switch puts the data-testid on the outer span; the checkbox is an
+      // inner <input>. Target it directly for toBeChecked().
+      await expect(
+        page.getByTestId('toggle-dataProduct').locator('input')
+      ).toBeChecked();
 
       // Re-confirm the form still exists via API-level probe: dropdown shows
       // Data Product as unavailable
       await page.getByTestId('add-intake-form').click();
       const disabledItem = page
-        .locator('.ant-dropdown-menu:visible')
+        .getByRole('menu')
         .getByRole('menuitem')
         .filter({ hasText: /Data Product/ });
-      await expect(disabledItem).toHaveClass(/ant-dropdown-menu-item-disabled/);
+      await expect(disabledItem).toHaveAttribute('aria-disabled', 'true');
     });
 
     test('designer does not list schema-required fields', async ({ page }) => {
@@ -551,7 +565,7 @@ test.describe(
 
       await page.getByTestId('add-intake-form').click();
       const menuItem = page
-        .locator('.ant-dropdown-menu:visible')
+        .getByRole('menu')
         .getByRole('menuitem', { name: /^Data Product$/ });
       await menuItem.click();
 
