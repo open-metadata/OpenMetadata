@@ -21,65 +21,64 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/policy';
-import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
-import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
-import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
-import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
-import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
-import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
-const DomainRouter = withSuspenseFallback(
+// Previously statically imported — lazify so they stay out of the main chunk
+const AddCustomMetricPage = withSuspenseFallback(
   React.lazy(
-    () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
-  )
-);
-const DataProductListPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "DataProductListPage" */ '../DataProduct/DataProductListPage'
-      )
-  )
-);
-const SettingsRouter = withSuspenseFallback(
-  React.lazy(
-    () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
-  )
-);
-const EntityRouter = withSuspenseFallback(
-  React.lazy(
-    () => import(/* webpackChunkName: "EntityRouter" */ './EntityRouter')
-  )
-);
-const ClassificationRouter = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "ClassificationRouter" */ './ClassificationRouter'
-      )
-  )
-);
-const GlossaryRouter = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "GlossaryRouter" */ './GlossaryRouter/GlossaryRouter'
-      )
+    () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
   )
 );
 
-const GlossaryTermRouter = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "GlossaryTermRouter" */ './GlossaryTermRouter/GlossaryTermRouter'
-      )
+const CustomizablePage = withSuspenseFallback(
+  React.lazy(() =>
+    import('../../pages/CustomizablePage/CustomizablePage').then((m) => ({
+      default: m.CustomizablePage,
+    }))
   )
+);
+
+const DataQualityPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/DataQuality/DataQualityPage'))
+);
+
+const ForbiddenPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/ForbiddenPage/ForbiddenPage'))
+);
+
+const PlatformLineage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/PlatformLineage/PlatformLineage'))
+);
+
+const TagPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/TagPage/TagPage'))
+);
+
+const DomainRouter = withSuspenseFallback(
+  React.lazy(() => import('./DomainRouter'))
+);
+const DataProductListPage = withSuspenseFallback(
+  React.lazy(() => import('../DataProduct/DataProductListPage'))
+);
+const SettingsRouter = withSuspenseFallback(
+  React.lazy(() => import('./SettingsRouter'))
+);
+const EntityRouter = withSuspenseFallback(
+  React.lazy(() => import('./EntityRouter'))
+);
+const ClassificationRouter = withSuspenseFallback(
+  React.lazy(() => import('./ClassificationRouter'))
+);
+const GlossaryRouter = withSuspenseFallback(
+  React.lazy(() => import('./GlossaryRouter/GlossaryRouter'))
+);
+
+const GlossaryTermRouter = withSuspenseFallback(
+  React.lazy(() => import('./GlossaryTermRouter/GlossaryTermRouter'))
 );
 
 const MyDataPage = withSuspenseFallback(
@@ -197,6 +196,24 @@ const ExplorePageV1 = withSuspenseFallback(
 const OntologyExplorerPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
+  )
+);
+
+const WorkflowsListPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowsPage" */ '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage'
+      )
+  )
+);
+
+const WorkflowBuilderPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowBuilderPage" */ '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder'
+      )
   )
 );
 
@@ -360,6 +377,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<OntologyExplorerPage />}
         path={ROUTES.ONTOLOGY_EXPLORER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS_WITH_FQN_TAB}
       />
       <Route
         element={

@@ -17,15 +17,17 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { test } from '../fixtures/pages';
-
-const table = new TableClass();
 
 test.describe(
   'ChangeSummary DescriptionSourceBadge',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
+    let table: TableClass;
+
     test.beforeAll('Setup test entities', async ({ browser }) => {
+      table = new TableClass();
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
@@ -115,6 +117,28 @@ test.describe(
 
         await expect(tooltip).toBeVisible();
       });
+
+      await test.step('Verify AI badge on table description in Explore summary panel', async () => {
+        const changeSummaryResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/changeSummary/table/')
+        );
+
+        await navigateToExploreAndSelectEntity({
+          page,
+          entityName: table.entity.name,
+          fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
+        });
+
+        await changeSummaryResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const badge = page
+          .locator('.entity-summary-panel-container')
+          .getByTestId('ai-suggested-badge')
+          .first();
+
+        await expect(badge).toBeVisible();
+      });
     });
 
     test('AI badge should appear on column description with Suggested source', async ({
@@ -136,6 +160,34 @@ test.describe(
           .getByTestId('ai-suggested-badge');
 
         await expect(descriptionCells.first()).toBeVisible();
+      });
+
+      await test.step('Verify AI badge on column description in Explore summary panel', async () => {
+        const column = table.entityResponseData?.columns?.[0];
+
+        const changeSummaryResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/changeSummary/table/')
+        );
+
+        await navigateToExploreAndSelectEntity({
+          page,
+          entityName: column?.name ?? '',
+          exploreTab: 'Column',
+        });
+
+        await page
+          .getByTestId(`table-data-card_${column?.fullyQualifiedName}`)
+          .click();
+
+        await changeSummaryResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        const badge = page
+          .locator('.entity-summary-panel-container')
+          .getByTestId('ai-suggested-badge')
+          .first();
+
+        await expect(badge).toBeVisible();
       });
     });
 

@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -42,6 +45,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -1701,5 +1705,48 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     assertTrue(
         databases.stream().noneMatch(d -> d.getName().startsWith("temp")),
         "Excluded databases should not appear in results");
+  }
+
+  @Test
+  void test_listEntityHistoryByTimestamp_returnsServiceField(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    long startTs = System.currentTimeMillis();
+
+    CreateDatabase createRequest = createRequest(ns.prefix("history_service_field"), ns);
+    Database database = createEntity(createRequest);
+
+    database.setDescription("Updated for history test - " + System.currentTimeMillis());
+    patchEntity(database.getId().toString(), database);
+
+    long endTs = System.currentTimeMillis();
+    String basePath = getResourcePath() + "history";
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=10",
+                null);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode result = mapper.readTree(response);
+    JsonNode data = result.get("data");
+
+    assertTrue(data.isArray(), "Data should be an array");
+    assertTrue(data.size() > 0, "Should have at least one version in the time range");
+
+    for (JsonNode entityNode : data) {
+      assertTrue(
+          entityNode.has("service") && !entityNode.get("service").isNull(),
+          "Each database version must include the required 'service' field, but got: "
+              + entityNode);
+
+      Database deserialized = mapper.treeToValue(entityNode, Database.class);
+      EntityReference service = deserialized.getService();
+      assertNotNull(service, "Deserialized database must have a non-null service reference");
+      assertNotNull(service.getId(), "Service reference must have an id");
+      assertNotNull(service.getType(), "Service reference must have a type");
+    }
   }
 }
