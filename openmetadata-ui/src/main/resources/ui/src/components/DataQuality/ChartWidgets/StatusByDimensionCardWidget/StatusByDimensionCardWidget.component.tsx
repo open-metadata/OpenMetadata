@@ -26,7 +26,7 @@ import {
   getDimensionIcon,
   transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityUtils';
-import { getDataQualityPagePath } from '../../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import StatusByDimensionWidget from '../StatusCardWidget/StatusCardWidget.component';
 import './status-by-dimension-card-widget.less';
@@ -81,7 +81,9 @@ const StatusByDimensionCardWidget = ({
             isLoading={isDqByDimensionLoading}
             key={dimension.title}
             redirectPath={{
-              pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+              pathname: observabilityRouterClassBase.getDataQualityPagePath(
+                DataQualityPageTabs.TEST_CASES
+              ),
               search: QueryString.stringify({
                 dataQualityDimension: dimension.title,
               }),
