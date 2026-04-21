@@ -84,7 +84,7 @@ describe('validateManifestJson', () => {
     expect(result.status).toBe('error');
 
     if (result.status === 'error') {
-      expect(result.message).toMatch(/Invalid JSON/i);
+      expect(result.error.code).toBe('invalid-json');
     }
   });
 
@@ -94,6 +94,13 @@ describe('validateManifestJson', () => {
 
     expect(array.status).toBe('error');
     expect(scalar.status).toBe('error');
+
+    if (array.status === 'error') {
+      expect(array.error.code).toBe('top-level-must-be-object');
+    }
+    if (scalar.status === 'error') {
+      expect(scalar.error.code).toBe('top-level-must-be-object');
+    }
   });
 
   it('rejects unknown top-level fields', () => {
@@ -101,8 +108,11 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/Unknown top-level field "entrys"/);
+    if (
+      result.status === 'error' &&
+      result.error.code === 'unknown-top-level-field'
+    ) {
+      expect(result.error.field).toBe('entrys');
     }
   });
 
@@ -114,7 +124,7 @@ describe('validateManifestJson', () => {
     expect(result.status).toBe('error');
 
     if (result.status === 'error') {
-      expect(result.message).toMatch(/"entries" must be an array/);
+      expect(result.error.code).toBe('entries-must-be-array');
     }
   });
 
@@ -127,9 +137,12 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/containerName/);
-      expect(result.message).toMatch(/Entry 1/);
+    if (
+      result.status === 'error' &&
+      result.error.code === 'entry-required-field'
+    ) {
+      expect(result.error.field).toBe('containerName');
+      expect(result.error.index).toBe(1);
     }
   });
 
@@ -142,8 +155,11 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/dataPath/);
+    if (
+      result.status === 'error' &&
+      result.error.code === 'entry-required-field'
+    ) {
+      expect(result.error.field).toBe('dataPath');
     }
   });
 
@@ -162,9 +178,12 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/unknown field "structuredFormat"/);
-      expect(result.message).toMatch(/did you mean "structureFormat"/);
+    if (
+      result.status === 'error' &&
+      result.error.code === 'entry-unknown-field'
+    ) {
+      expect(result.error.field).toBe('structuredFormat');
+      expect(result.error.suggestion).toBe('structureFormat');
     }
   });
 
@@ -183,9 +202,9 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/autoPartitionDetection/);
-      expect(result.message).toMatch(/true or false/);
+    if (result.status === 'error' && result.error.code === 'entry-type-error') {
+      expect(result.error.field).toBe('autoPartitionDetection');
+      expect(result.error.mismatch.kind).toBe('expected-boolean');
     }
   });
 
@@ -204,9 +223,9 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/excludePaths/);
-      expect(result.message).toMatch(/array of strings/);
+    if (result.status === 'error' && result.error.code === 'entry-type-error') {
+      expect(result.error.field).toBe('excludePaths');
+      expect(result.error.mismatch.kind).toBe('expected-string-array');
     }
   });
 
@@ -225,8 +244,11 @@ describe('validateManifestJson', () => {
 
     expect(missingName.status).toBe('error');
 
-    if (missingName.status === 'error') {
-      expect(missingName.message).toMatch(/name is required/);
+    if (
+      missingName.status === 'error' &&
+      missingName.error.code === 'partition-column-required'
+    ) {
+      expect(missingName.error.field).toBe('name');
     }
 
     const typoField = validateManifestJson(
@@ -245,9 +267,12 @@ describe('validateManifestJson', () => {
 
     expect(typoField.status).toBe('error');
 
-    if (typoField.status === 'error') {
-      expect(typoField.message).toMatch(/unknown field "datatype"/);
-      expect(typoField.message).toMatch(/dataType/);
+    if (
+      typoField.status === 'error' &&
+      typoField.error.code === 'partition-column-unknown-field'
+    ) {
+      expect(typoField.error.field).toBe('datatype');
+      expect(typoField.error.suggestion).toBe('dataType');
     }
   });
 
@@ -317,8 +342,11 @@ describe('validateManifestJson', () => {
 
     expect(result.status).toBe('error');
 
-    if (result.status === 'error') {
-      expect(result.message).toMatch(/Entry 1 must be an object/);
+    if (
+      result.status === 'error' &&
+      result.error.code === 'entry-must-be-object'
+    ) {
+      expect(result.error.index).toBe(1);
     }
   });
 });
@@ -357,8 +385,6 @@ describe('ManifestJsonWidget', () => {
   });
 
   it('swallows onChange when disabled', () => {
-    // Sanity: if the consuming form marks the widget disabled, the
-    // wrapper must not propagate edits to form state.
     const onChange = jest.fn();
     const { rerender } = render(
       <ManifestJsonWidget
@@ -366,10 +392,8 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    // Nothing fires on mount either.
     expect(onChange).not.toHaveBeenCalled();
 
-    // Still silent on any re-render.
     rerender(
       <ManifestJsonWidget
         {...makeProps({ value: '', onChange, disabled: true })}
@@ -429,18 +453,15 @@ describe('ManifestJsonWidget', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows an error alert when the JSON is malformed', () => {
+  it('shows a localized error alert when the JSON is malformed', () => {
     render(<ManifestJsonWidget {...makeProps({ value: '{ broken' })} />);
 
-    expect(screen.getByText(/Invalid JSON/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/message.manifest-invalid-json/)
+    ).toBeInTheDocument();
   });
 
   it('wires the SchemaEditor with JSON-aware syntax highlighting', () => {
-    // Regression guard: the editor must be driven with CodeMirror's
-    // JavaScript mode plus the ``json: true`` flag — that's what gives
-    // us string, key, brace, and number colors in the JSON editor.
-    // Anything else (e.g. the ``application/json`` mime-type string)
-    // silently downgrades the editor to plain-text rendering.
     render(
       <ManifestJsonWidget
         {...makeProps({
