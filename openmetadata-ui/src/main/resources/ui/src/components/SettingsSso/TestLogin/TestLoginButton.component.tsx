@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button, Form, Input, Modal, Typography } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { validateSecurityConfiguration } from '../../../rest/securityConfigAPI';
@@ -41,6 +41,10 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const popupRef = useRef<Window | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ldapModalOpen, setLdapModalOpen] = useState(false);
+  const [ldapModalLoading, setLdapModalLoading] = useState(false);
+  const [ldapEmail, setLdapEmail] = useState('');
+  const [ldapPassword, setLdapPassword] = useState('');
 
   const processTestLoginResult = useCallback(
     (resultJson: string) => {
@@ -185,6 +189,50 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
     }, 300000);
   }, [formData, openPopup, t]);
 
+  const submitLdapTestLogin = useCallback(async () => {
+    setLdapModalLoading(true);
+    try {
+      const response = await fetch(
+        `${window.location.origin}/api/v1/system/config/auth/test-login/ldap-initiate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            ldapConfiguration: formData?.ldapConfiguration,
+            email: ldapEmail,
+            password: ldapPassword,
+          }),
+        }
+      );
+      const data = await response.json();
+
+      if (data?.success) {
+        setLdapModalOpen(false);
+        setLdapPassword('');
+        setStatus('success');
+        setIsLoading(false);
+        onSuccess({
+          claims: {},
+          suggestedEmailClaim: null,
+          derivedPrincipalDomain: data.derivedPrincipalDomain ?? null,
+          suggestedAdminPrincipal: data.suggestedAdminPrincipal ?? null,
+          hasRefreshToken: false,
+        });
+      } else {
+        const msg = data?.error ?? 'LDAP test login failed';
+        setErrorMessage(msg);
+        showErrorToast(msg);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'LDAP test login failed';
+      setErrorMessage(msg);
+      showErrorToast(msg);
+    } finally {
+      setLdapModalLoading(false);
+    }
+  }, [formData, ldapEmail, ldapPassword, onSuccess]);
+
   const handleTestLogin = useCallback(async () => {
     setIsLoading(true);
     setStatus('idle');
@@ -192,6 +240,15 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
 
     if (formData?.provider === 'saml') {
       handleSamlTestLogin();
+
+      return;
+    }
+
+    if (formData?.provider === 'ldap') {
+      setIsLoading(false);
+      setLdapEmail('');
+      setLdapPassword('');
+      setLdapModalOpen(true);
 
       return;
     }
@@ -360,6 +417,35 @@ const TestLoginButton: React.FC<TestLoginButtonProps> = ({
           </Typography.Text>
         )}
       </div>
+      <Modal
+        confirmLoading={ldapModalLoading}
+        okText={t('label.test')}
+        open={ldapModalOpen}
+        title={t('label.test-login')}
+        onCancel={() => setLdapModalOpen(false)}
+        onOk={submitLdapTestLogin}>
+        <Typography.Paragraph type="secondary">
+          Enter your LDAP credentials. The backend binds as admin, looks up
+          your user, then binds as you to verify the password.
+        </Typography.Paragraph>
+        <Form layout="vertical">
+          <Form.Item label={t('label.email-or-username')} required>
+            <Input
+              autoFocus
+              placeholder="user@example.com"
+              value={ldapEmail}
+              onChange={(e) => setLdapEmail(e.target.value)}
+            />
+          </Form.Item>
+          <Form.Item label={t('label.password')} required>
+            <Input.Password
+              value={ldapPassword}
+              onChange={(e) => setLdapPassword(e.target.value)}
+              onPressEnter={submitLdapTestLogin}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

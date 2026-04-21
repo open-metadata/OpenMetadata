@@ -224,6 +224,18 @@ const SSOConfigurationFormRJSF = ({
       );
     }
 
+    if (auth.provider === AuthProvider.LDAP) {
+      const ldap = auth.ldapConfiguration as Record<string, unknown> | undefined;
+      return (
+        !!(ldap?.host as string) &&
+        !!(ldap?.port as number) &&
+        !!(ldap?.dnAdminPrincipal as string) &&
+        !!(ldap?.dnAdminPassword as string) &&
+        !!(ldap?.userBaseDN as string) &&
+        !!(ldap?.mailAttributeName as string)
+      );
+    }
+
     if (auth.clientType !== ClientType.Confidential) {
       return true;
     }
@@ -261,6 +273,19 @@ const SSOConfigurationFormRJSF = ({
       );
     }
 
+    if (n.provider === AuthProvider.LDAP) {
+      const pLdap = p.ldapConfiguration as Record<string, unknown> | undefined;
+      const nLdap = n.ldapConfiguration as Record<string, unknown> | undefined;
+      return (
+        pLdap?.host !== nLdap?.host ||
+        pLdap?.port !== nLdap?.port ||
+        pLdap?.dnAdminPrincipal !== nLdap?.dnAdminPrincipal ||
+        pLdap?.dnAdminPassword !== nLdap?.dnAdminPassword ||
+        pLdap?.userBaseDN !== nLdap?.userBaseDN ||
+        pLdap?.mailAttributeName !== nLdap?.mailAttributeName
+      );
+    }
+
     if (p.discoveryUri !== n.discoveryUri) {
       return true;
     }
@@ -271,9 +296,39 @@ const SSOConfigurationFormRJSF = ({
 
   const handleTestLoginSuccess = useCallback(
     (result: TestLoginResult) => {
+      // LDAP skips ClaimSelector. The OM-issued JWT after LDAP bind always has
+      // claim name "email" (hardcoded in JWTTokenGenerator), so emailClaim is NOT
+      // the LDAP mailAttributeName — it's the JWT claim. We leave it unset and let
+      // jwtPrincipalClaims fallback ("email", "preferred_username", "sub") resolve
+      // it. Only principalDomain and adminPrincipals are auto-filled here.
+      if (currentProvider === AuthProvider.LDAP) {
+        setInternalData((prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const existingAdmins = prev.authorizerConfiguration?.adminPrincipals ?? [];
+          const suggested = result.suggestedAdminPrincipal ?? '';
+          const mergedAdmins = suggested
+            ? Array.from(new Set([...existingAdmins, suggested]))
+            : existingAdmins;
+
+          return {
+            ...prev,
+            authorizerConfiguration: {
+              ...prev.authorizerConfiguration,
+              principalDomain: result.derivedPrincipalDomain ?? '',
+              adminPrincipals: mergedAdmins,
+            },
+          };
+        });
+        setValidationStatus('tested');
+        showSuccessToast(t('message.test-login-success'));
+        return;
+      }
+      // OIDC / SAML — show ClaimSelector for the user to pick the email claim.
       setTestLoginResult(result);
     },
-    []
+    [currentProvider, internalData, t]
   );
 
   const handleClaimConfirm = useCallback(
@@ -1224,6 +1279,7 @@ const SSOConfigurationFormRJSF = ({
   }
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
+  const isLdapProvider = currentProvider === AuthProvider.LDAP;
 
   const selectedOidcOption = OIDC_PROVIDER_OPTIONS.find(
     (opt) => opt.key === currentProvider
@@ -1405,7 +1461,7 @@ const SSOConfigurationFormRJSF = ({
               <>
                 {formContent}
                 {isEditMode &&
-                  (isOidcProvider || isSamlProvider) &&
+                  (isOidcProvider || isSamlProvider || isLdapProvider) &&
                   !testLoginResult && (
                   <div className="m-t-md m-b-md p-x-md">
                     {validationStatus !== 'validated' ? (
@@ -1454,7 +1510,7 @@ const SSOConfigurationFormRJSF = ({
                       data-testid="save-sso-configuration"
                       disabled={
                         isLoading ||
-                        ((isOidcProvider || isSamlProvider) &&
+                        ((isOidcProvider || isSamlProvider || isLdapProvider) &&
                           !hasExistingConfig &&
                           validationStatus !== 'tested')
                       }
@@ -1545,7 +1601,7 @@ const SSOConfigurationFormRJSF = ({
               <div className="sso-form-sticky-header" />
               {wrappedFormContent}
               {isEditMode &&
-                (isOidcProvider || isSamlProvider) &&
+                (isOidcProvider || isSamlProvider || isLdapProvider) &&
                 !testLoginResult && (
                 <div className="m-t-md m-b-md">
                   {validationStatus !== 'validated' ? (
@@ -1594,7 +1650,7 @@ const SSOConfigurationFormRJSF = ({
                     data-testid="save-sso-configuration"
                     disabled={
                       isLoading ||
-                      ((isOidcProvider || isSamlProvider) &&
+                      ((isOidcProvider || isSamlProvider || isLdapProvider) &&
                         !hasExistingConfig &&
                         validationStatus !== 'tested')
                     }

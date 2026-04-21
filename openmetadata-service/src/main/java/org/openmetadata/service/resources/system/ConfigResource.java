@@ -45,6 +45,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLdapHandler;
 import org.openmetadata.service.security.auth.TestLoginHandler;
 import org.openmetadata.service.security.auth.TestSamlHandler;
 import org.openmetadata.service.security.jwt.JWKSResponse;
@@ -293,13 +294,69 @@ public class ConfigResource {
   @Path("/auth/test-login")
   @Operation(
       operationId = "testLoginLdap",
-      summary = "Test Login (LDAP)",
-      description = "Tests LDAP authentication with provided credentials and returns user email.")
+      summary = "Test Login (LDAP) — saved config",
+      description =
+          "Tests LDAP authentication using the SAVED LDAP configuration. "
+              + "For pre-save LDAP Test Login, use /auth/test-login/ldap-initiate instead.")
   public Response testLoginLdap(Map<String, String> credentials) {
     String email = credentials.get("email");
     String password = credentials.get("password");
     Map<String, Object> result = TestLoginHandler.handleLdapTestLogin(email, password);
 
     return Response.ok(result).build();
+  }
+
+  @POST
+  @Path("/auth/test-login/ldap-initiate")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "ldapTestLoginInitiate",
+      summary = "Initiate LDAP Test Login (pre-save)",
+      description =
+          "Tests LDAP authentication using form-provided configuration — does not rely on "
+              + "saved state. Accepts { ldapConfiguration, email, password } as JSON body. "
+              + "Binds as admin, searches for the user by mailAttributeName, binds as the user "
+              + "to verify password, and returns the derived email + domain + admin principal.")
+  public Response ldapTestLoginInitiate(LdapTestLoginRequest body) {
+    if (body == null || body.getLdapConfiguration() == null) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("success", false, "error", "ldapConfiguration is required"))
+          .build();
+    }
+    Map<String, Object> result =
+        TestLdapHandler.handleLdapTestLogin(
+            body.getLdapConfiguration(), body.getEmail(), body.getPassword());
+    return Response.ok(result).build();
+  }
+
+  public static class LdapTestLoginRequest {
+    private org.openmetadata.schema.auth.LdapConfiguration ldapConfiguration;
+    private String email;
+    private String password;
+
+    public org.openmetadata.schema.auth.LdapConfiguration getLdapConfiguration() {
+      return ldapConfiguration;
+    }
+
+    public void setLdapConfiguration(
+        org.openmetadata.schema.auth.LdapConfiguration ldapConfiguration) {
+      this.ldapConfiguration = ldapConfiguration;
+    }
+
+    public String getEmail() {
+      return email;
+    }
+
+    public void setEmail(String email) {
+      this.email = email;
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = password;
+    }
   }
 }

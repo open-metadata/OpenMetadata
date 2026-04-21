@@ -162,7 +162,7 @@ public final class TestSamlHandler {
     }
   }
 
-  private static Saml2Settings buildSamlSettings(
+  static Saml2Settings buildSamlSettings(
       String idpEntityId,
       String idpSsoLoginUrl,
       String idpX509Certificate,
@@ -206,7 +206,7 @@ public final class TestSamlHandler {
     return new SettingsBuilder().fromValues(samlData).build();
   }
 
-  private static Map<String, Object> buildClaimsFromAuth(Auth auth) {
+  static Map<String, Object> buildClaimsFromAuth(Auth auth) {
     Map<String, Object> claims = new LinkedHashMap<>();
     if (!nullOrEmpty(auth.getNameId())) {
       claims.put("nameId", auth.getNameId());

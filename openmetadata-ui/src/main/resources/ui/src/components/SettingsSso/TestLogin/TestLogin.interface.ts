@@ -47,6 +47,7 @@ export interface TestLoginFormData {
     maxAge?: string;
     customParams?: Record<string, string>;
   };
+  ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: {
     idp?: {
       entityId?: string;
