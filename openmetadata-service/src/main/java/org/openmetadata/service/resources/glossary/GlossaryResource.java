@@ -571,7 +571,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             description = "Exported csv with glossary terms",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/plain; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(

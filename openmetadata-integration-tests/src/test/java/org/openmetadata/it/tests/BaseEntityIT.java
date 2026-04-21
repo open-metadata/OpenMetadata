@@ -5660,17 +5660,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       String exportedCsv = service.exportCsv(containerName);
       assertNotNull(exportedCsv, "Export should return CSV data");
       assertTrue(
-          exportedCsv.contains(unicodeDescription),
-          "Exported CSV should contain Unicode text");
+          exportedCsv.contains(unicodeDescription), "Exported CSV should contain Unicode text");
 
       CsvImportResult importResult = performImportCsv(ns, exportedCsv, false);
-      assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Unicode round-trip should succeed");
+      assertEquals(
+          ApiStatus.SUCCESS, importResult.getStatus(), "Unicode round-trip should succeed");
 
       String reExportedCsv = service.exportCsv(containerName);
       assertNotNull(reExportedCsv, "Re-export should return CSV data");
       assertTrue(
-          reExportedCsv.contains(unicodeDescription),
-          "Re-exported CSV should retain Unicode text");
+          reExportedCsv.contains(unicodeDescription), "Re-exported CSV should retain Unicode text");
     } catch (Exception e) {
       fail("Unicode import/export round-trip failed: " + e.getMessage());
     }

@@ -751,7 +751,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             description = "Exported csv with teams information",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/plain; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)

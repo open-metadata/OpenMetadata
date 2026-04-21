@@ -1696,7 +1696,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             description = "Exported csv with user information",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/plain; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportUsersCsv(
