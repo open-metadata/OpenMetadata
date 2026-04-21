@@ -27,6 +27,7 @@ import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as WorkflowsNavIcon } from '../assets/svg/ic-workflows.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
@@ -56,6 +57,7 @@ const MarketplaceIcon = createIconWithStroke(
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+  [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
@@ -174,7 +176,6 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
         icon: LineageIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
-        isBeta: true,
       },
       {
         key: ROUTES.TAGS,
@@ -197,6 +198,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: ColumnBulkIcon,
         dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
         isBeta: true,
+      },
+      {
+        key: ROUTES.WORKFLOWS,
+        title: 'label.workflow-plural',
+        redirect_url: ROUTES.WORKFLOWS,
+        icon: WorkflowsNavIcon,
+        dataTestId: `app-bar-item-${SidebarItem.WORKFLOWS}`,
       },
     ],
   },

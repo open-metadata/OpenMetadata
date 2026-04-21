@@ -17,7 +17,7 @@ import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './upload-file.less';

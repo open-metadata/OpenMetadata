@@ -96,6 +96,9 @@ public final class DescriptionSanitizer {
           // Common safe attributes
           .allowAttributes("class", "id", "data-id", "data-highlighted", "data-testid")
           .globally()
+          // Entity mention attributes on anchor tags (hashtag/mention nodes in BlockEditor)
+          .allowAttributes("data-type", "data-label", "data-fqn", "data-entitytype")
+          .onElements("a")
           .allowAttributes("align")
           .onElements("td", "th", "tr", "table")
           .allowAttributes("colspan", "rowspan")
