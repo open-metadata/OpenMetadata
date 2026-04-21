@@ -385,15 +385,51 @@ public class EntityCsvTest {
 
     assertNull(extension);
     assertFalse(missingSeparatorCsv.isProcessRecord());
+  }
 
-    TestCsv emptyValueCsv = new TestCsv();
-    emptyValueCsv.enableProcessing();
+  @Test
+  void test_extensionValidationSkipsEmptyValues() throws IOException {
+    TestCsv allEmptyCsv = new TestCsv();
+    allEmptyCsv.enableProcessing();
 
-    Map<String, Object> emptyValueExtension =
-        emptyValueCsv.parseExtension(singleRecord(emptyValueCsv, "", "key:", ""), 1);
+    Map<String, Object> allEmptyExtension =
+        allEmptyCsv.parseExtension(singleRecord(allEmptyCsv, "", "key:", ""), 1);
 
-    assertNull(emptyValueExtension);
-    assertFalse(emptyValueCsv.isProcessRecord());
+    assertNotNull(allEmptyExtension);
+    assertTrue(allEmptyExtension.isEmpty());
+    assertTrue(allEmptyCsv.isProcessRecord());
+  }
+
+  @Test
+  void test_extensionValidationSkipsEmptyValuesInMixedInput() throws IOException {
+    Schema schema = mock(Schema.class);
+    Mockito.when(schema.validate(Mockito.any())).thenReturn(List.of());
+
+    TypeRegistry registry = mock(TypeRegistry.class);
+    Mockito.when(registry.getSchema(Entity.TABLE, "region")).thenReturn(schema);
+
+    try (MockedStatic<TypeRegistry> typeRegistry = Mockito.mockStatic(TypeRegistry.class)) {
+      typeRegistry.when(TypeRegistry::instance).thenReturn(registry);
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyType(Entity.TABLE, "region"))
+          .thenReturn("string");
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyConfig(Entity.TABLE, "region"))
+          .thenReturn(null);
+
+      TestCsv testCsv = new TestCsv();
+      testCsv.enableProcessing();
+
+      Map<String, Object> extension =
+          testCsv.parseExtension(
+              singleRecord(testCsv, "", "inputformat:;outputformat:;region:eu-west-1", ""), 1);
+
+      assertNotNull(extension);
+      assertFalse(extension.containsKey("inputformat"));
+      assertFalse(extension.containsKey("outputformat"));
+      assertEquals("eu-west-1", extension.get("region"));
+      assertTrue(testCsv.isProcessRecord());
+    }
   }
 
   @Test

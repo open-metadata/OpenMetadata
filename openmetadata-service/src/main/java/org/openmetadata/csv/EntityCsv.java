@@ -606,9 +606,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String key = extensions.substring(0, separatorIndex);
       String value = extensions.substring(separatorIndex + 1);
 
-      if (key.isEmpty() || value.isEmpty()) {
+      if (key.isEmpty()) {
         deferredFailure(csvRecord, invalidExtension(fieldNumber, key, value));
         return null;
+      }
+      if (value.isEmpty()) {
+        continue;
       }
       extensionMap.put(key, value);
     }
