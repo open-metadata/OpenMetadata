@@ -12,7 +12,11 @@ public class AssetServiceFactory {
   public static synchronized void init(OpenMetadataApplicationConfig config) {
     ObjectStorageConfiguration objectStorageConfiguration = config.getObjectStorage();
     if (objectStorageConfiguration == null || !objectStorageConfiguration.isEnabled()) {
-      if (instance == null) {
+      // Storage disabled — always swap to a fresh NoOp provider. If a previous init
+      // wired up S3/Azure/InMemory, leaving that instance live after a reload to the
+      // disabled state would keep serving real uploads/downloads against the old
+      // backend, which hides the misconfiguration and leaks connections in tests.
+      if (!(instance instanceof NoOpAssetService)) {
         instance = new NoOpAssetService();
       }
       return;
