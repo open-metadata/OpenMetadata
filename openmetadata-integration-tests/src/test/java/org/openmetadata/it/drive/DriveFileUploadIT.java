@@ -189,8 +189,13 @@ class DriveFileUploadIT {
 
   private void assertStoredInMinIO(String assetId, byte[] expectedBytes) {
     try (S3Client s3Client = buildMinioClient()) {
+      // atMost must stay above the global Awaitility pollInterval that
+      // K8sOMJobOperatorIT raises to 5s; otherwise Awaitility rejects with
+      // "Timeout must be greater than the poll delay".
       await()
-          .atMost(Duration.ofSeconds(5))
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(200))
+          .atMost(Duration.ofSeconds(20))
           .untilAsserted(
               () -> {
                 String objectKey = resolveStoredObjectKey(s3Client, assetId);
@@ -608,7 +613,9 @@ class DriveFileUploadIT {
     ContextFile file = JsonUtils.readValue(body, ContextFile.class);
 
     await()
-        .atMost(Duration.ofSeconds(5))
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(20))
         .untilAsserted(
             () -> {
               try (Response downloadResponse =
@@ -639,7 +646,9 @@ class DriveFileUploadIT {
     ContextFile file = JsonUtils.readValue(body, ContextFile.class);
 
     await()
-        .atMost(Duration.ofSeconds(5))
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(20))
         .untilAsserted(
             () -> {
               try (Response redirectResponse =
