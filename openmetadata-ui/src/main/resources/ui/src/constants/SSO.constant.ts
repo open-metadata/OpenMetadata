@@ -198,6 +198,11 @@ export const LDAP_UI_SCHEMA = {
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
     groupAttributeValue: { 'ui:title': 'Group Attribute Value' },
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
+    recursiveGroupMembership: {
+      'ui:title': 'Recursive Group Membership',
+      'ui:help':
+        'Enable this for Active Directory nested groups. OpenMetadata will use AD transitive membership matching when checking role mappings.',
+    },
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
       'ui:widget': 'LdapRoleMappingWidget',
