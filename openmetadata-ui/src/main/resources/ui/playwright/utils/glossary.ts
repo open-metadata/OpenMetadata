@@ -267,6 +267,8 @@ export const createGlossary = async (
 
   await page.fill('[data-testid="name"]', glossaryData.name);
 
+  await page.fill('[data-testid="display-name"]', glossaryData.displayName);
+
   await page.locator(descriptionBox).fill(glossaryData.description);
 
   await expect(
@@ -330,7 +332,7 @@ export const verifyGlossaryDetails = async (
   glossaryDetails: GlossaryData
 ) => {
   await page
-    .getByRole('menuitem', { name: glossaryDetails.name })
+    .getByRole('menuitem', { name: glossaryDetails.displayName, exact: true })
     .locator('span')
     .click();
 
