@@ -241,26 +241,108 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Card.Footer = ({ children, className, ...rest }) =>
     React.createElement('div', { ...rest, className }, children);
 
+  const renderIcon = (icon) => {
+    if (!icon) {
+      return null;
+    }
+    if (React.isValidElement(icon)) {
+      return icon;
+    }
+    if (typeof icon === 'function') {
+      return React.createElement(icon, {});
+    }
+
+    return null;
+  };
+
   const ButtonUtility = ({
     onClick,
     isDisabled,
     tabIndex,
     className,
     tooltip,
+    icon,
     'data-testid': testId,
   }) =>
-    React.createElement('button', {
-      'aria-label': tooltip,
-      className,
-      'data-testid': testId,
-      disabled: isDisabled,
-      onClick,
-      tabIndex,
-      type: 'button',
-    });
+    React.createElement(
+      'button',
+      {
+        'aria-label': tooltip,
+        className,
+        'data-testid': testId,
+        disabled: isDisabled,
+        onClick,
+        tabIndex,
+        type: 'button',
+      },
+      renderIcon(icon)
+    );
 
   const Avatar = ({ children, ...rest }) =>
     React.createElement('div', { ...rest }, children);
+
+  const Badge = ({ children, className, 'data-testid': testId, ...rest }) =>
+    React.createElement(
+      'span',
+      { className, 'data-testid': testId, ...rest },
+      children
+    );
+
+  const Grid = ({ children, className, style, ...rest }) =>
+    React.createElement('div', { ...rest, className, style }, children);
+  Grid.Item = ({ children, className, style, ...rest }) =>
+    React.createElement('div', { ...rest, className, style }, children);
+
+  const DropdownRoot = ({ children }) =>
+    React.createElement(React.Fragment, null, children);
+  const DropdownPopover = ({ children, className }) =>
+    React.createElement('div', { className }, children);
+  const DropdownMenu = ({ children, items }) => {
+    if (typeof children === 'function' && Array.isArray(items)) {
+      return React.createElement(
+        'div',
+        null,
+        items.map((item, index) =>
+          React.createElement(
+            React.Fragment,
+            { key: item?.key ?? item?.id ?? index },
+            children(item)
+          )
+        )
+      );
+    }
+
+    return React.createElement('div', null, children);
+  };
+  const DropdownItem = ({ label, id, isDisabled, onAction, children }) =>
+    React.createElement(
+      'button',
+      {
+        'data-id': id,
+        disabled: isDisabled,
+        onClick: onAction,
+        type: 'button',
+      },
+      label ?? children
+    );
+  const DropdownSection = ({ children }) =>
+    React.createElement('div', null, children);
+  const DropdownSectionHeader = ({ children }) =>
+    React.createElement('div', null, children);
+  const DropdownSeparator = () => React.createElement('hr', null);
+  const DropdownDotsButton = (props) =>
+    React.createElement('button', { ...props, type: 'button' });
+
+  const Dropdown = {
+    Root: DropdownRoot,
+    Popover: DropdownPopover,
+    Menu: DropdownMenu,
+    Section: DropdownSection,
+    SectionHeader: DropdownSectionHeader,
+    Item: DropdownItem,
+    Separator: DropdownSeparator,
+    DotsButton: DropdownDotsButton,
+  };
 
   return {
     Box,
@@ -268,6 +350,26 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Typography,
     ButtonUtility,
     Avatar,
+    Badge,
+    Grid,
+    Dropdown,
+    createMuiTheme: () =>
+      require('@mui/material/styles').createTheme({
+        palette: {
+          allShades: new Proxy(
+            {},
+            {
+              get: () =>
+                new Proxy(
+                  {},
+                  {
+                    get: () => '#ffffff',
+                  }
+                ),
+            }
+          ),
+        },
+      }),
     Tooltip: ({ children, title }) =>
       React.createElement(React.Fragment, null, [
         children,
@@ -280,6 +382,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
         { ...rest, onClick, type: 'button' },
         children
       ),
+    Toggle: ({ isSelected, onChange, isDisabled, 'data-testid': testId }) =>
+      React.createElement('button', {
+        'aria-checked': isSelected,
+        'aria-disabled': isDisabled,
+        'data-testid': testId,
+        role: 'switch',
+        onClick: () => onChange?.(!isSelected),
+        type: 'button',
+      }),
+    SlideoutMenu: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
     Drawer: ({ children }) => children,
     Elevation: ({ children }) => children,
     NavList: ({ children }) => children,
