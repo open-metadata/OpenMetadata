@@ -1721,6 +1721,7 @@
     "reposition": "Herpositioneren",
     "repository-url": "Repository-URL",
     "request": "Verzoek",
+    "request-data-access": "Gegevenstoegang aanvragen",
     "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Aanvraagtags",
