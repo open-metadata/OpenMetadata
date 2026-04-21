@@ -212,9 +212,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             logger.warning("No steps to calculate success")
             return None
 
-        return mean(
-            [step.get_status().calculate_success() for step in self.workflow_steps()]
-        )
+        success_values = [
+            step.get_status().calculate_success()
+            for step in self.workflow_steps()
+            if step.get_status().calculate_success() is not None]
+
+        return mean(success_values) if success_values else None
 
     @abstractmethod
     def get_failures(self) -> List[StackTraceError]:
@@ -262,7 +265,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         try:
             self.execute_internal()
 
-            if self.workflow_config.successThreshold <= self.calculate_success() < 100:
+            success = self.calculate_success()
+
+            if success is not None and self.workflow_config.successThreshold <= success < 100:
                 pipeline_state = PipelineState.partialSuccess
 
             # If there's any steps that should raise a failed status,
@@ -406,7 +411,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Wild exception reporting status - {exc}")
+            logger.error(
+                f"Error while reporting ingestion status "
+                f"[pipeline={self.config.ingestionPipelineFQN}]: {exc}"
+                )
 
     def _is_debug_enabled(self) -> bool:
         return (
@@ -417,7 +425,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         )
 
     def print_status(self):
-        start_time = self.workflow_steps()[0].get_status().source_start_time
+        steps = self.workflow_steps()
+
+        start_time = (
+            steps[0].get_status().source_start_time if steps else None)
 
         self.output_handler.print_status(
             self.result_status(),
