@@ -13,11 +13,28 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { FormEvent, ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
+import {
+  CreateDomain,
+  DomainType,
+} from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import '../../../test/unit/mocks/mui.mock';
 import { DomainFormType } from '../DomainPage.interface';
-import AddDomainForm, { DOMAIN_FORM_DEFAULTS } from './AddDomainForm.component';
-import { DomainFormValues } from './AddDomainForm.interface';
+import AddDomainForm, {
+  DOMAIN_FORM_DEFAULTS,
+  transformDomainFormData,
+} from './AddDomainForm.component';
+import {
+  DomainFormSelectItem,
+  DomainFormValues,
+} from './AddDomainForm.interface';
 
 // Mock i18next
 jest.mock('react-i18next', () => ({
@@ -308,5 +325,178 @@ describe('AddDomainForm', () => {
     const cancelButton = screen.getByTestId('cancel-domain');
 
     expect(cancelButton).not.toBeDisabled();
+  });
+});
+
+describe('transformDomainFormData', () => {
+  const tagLabel: TagLabel = {
+    tagFQN: 'PII.Sensitive',
+    source: TagSource.Classification,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  };
+
+  const glossaryTerm: TagLabel = {
+    tagFQN: 'Business.Revenue',
+    source: TagSource.Glossary,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  };
+
+  const ownerRef: EntityReference = {
+    id: 'owner-1',
+    name: 'alice',
+    type: 'user',
+  };
+
+  const expertRef: EntityReference = {
+    id: 'expert-1',
+    name: 'bob',
+    type: 'user',
+  };
+
+  const buildItem = (id: string, value: unknown): DomainFormSelectItem =>
+    ({ id, value } as unknown as DomainFormSelectItem);
+
+  const baseForm: DomainFormValues = {
+    name: 'marketing',
+    displayName: 'Marketing',
+    description: 'Marketing domain',
+    color: '#FF0000',
+    iconURL: 'https://example.com/icon.svg',
+    coverImage: null,
+    tags: [],
+    glossaryTerms: [],
+    owners: [],
+    experts: [],
+    domainType: null,
+    domains: undefined,
+  };
+
+  it('maps a populated DOMAIN form into a CreateDomain payload', () => {
+    const formData: DomainFormValues = {
+      ...baseForm,
+      tags: [buildItem('PII.Sensitive', tagLabel)],
+      glossaryTerms: [glossaryTerm],
+      owners: [buildItem('owner-1', ownerRef)],
+      experts: [buildItem('expert-1', expertRef)],
+      domainType: buildItem(DomainType.Aggregate, DomainType.Aggregate),
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DOMAIN
+    ) as CreateDomain;
+
+    expect(result).toMatchObject({
+      name: 'marketing',
+      displayName: 'Marketing',
+      description: 'Marketing domain',
+      domainType: DomainType.Aggregate,
+      style: { color: '#FF0000', iconURL: 'https://example.com/icon.svg' },
+      owners: [ownerRef],
+      experts: ['bob'],
+      tags: [tagLabel, glossaryTerm],
+    });
+    expect(result).not.toHaveProperty('color');
+    expect(result).not.toHaveProperty('iconURL');
+    expect(result).not.toHaveProperty('glossaryTerms');
+    expect(result).not.toHaveProperty('domains');
+  });
+
+  it('falls back to empty string when an expert has no name', () => {
+    const anonymousExpert = buildItem('expert-2', {
+      id: 'expert-2',
+      type: 'user',
+    } as EntityReference);
+
+    const result = transformDomainFormData(
+      { ...baseForm, experts: [anonymousExpert] },
+      DomainFormType.DOMAIN
+    );
+
+    expect(result.experts).toEqual(['']);
+  });
+
+  it('yields an undefined domainType when the form field is null', () => {
+    const result = transformDomainFormData(
+      baseForm,
+      DomainFormType.DOMAIN
+    ) as CreateDomain;
+
+    expect(result.domainType).toBeUndefined();
+  });
+
+  it('strips the domains key for SUBDOMAIN type', () => {
+    const parentDomain = { fullyQualifiedName: 'Finance' } as Domain;
+
+    const result = transformDomainFormData(
+      baseForm,
+      DomainFormType.SUBDOMAIN,
+      parentDomain
+    );
+
+    expect(result).not.toHaveProperty('domains');
+  });
+
+  it('uses the form-provided domain FQN for DATA_PRODUCT', () => {
+    const selectedDomain = buildItem('Marketing.Sales', {
+      id: 'domain-1',
+      type: 'domain',
+      fullyQualifiedName: 'Marketing.Sales',
+    } as EntityReference);
+    const parentDomain = { fullyQualifiedName: 'Finance' } as Domain;
+
+    const result = transformDomainFormData(
+      { ...baseForm, domains: selectedDomain },
+      DomainFormType.DATA_PRODUCT,
+      parentDomain
+    );
+
+    expect(result).toHaveProperty('domains', ['Marketing.Sales']);
+  });
+
+  it('falls back to parentDomain FQN when DATA_PRODUCT has no domain selection', () => {
+    const parentDomain = { fullyQualifiedName: 'Finance' } as Domain;
+
+    const result = transformDomainFormData(
+      baseForm,
+      DomainFormType.DATA_PRODUCT,
+      parentDomain
+    );
+
+    expect(result).toHaveProperty('domains', ['Finance']);
+  });
+
+  it('omits domains when DATA_PRODUCT has neither selection nor parent FQN', () => {
+    const result = transformDomainFormData(
+      baseForm,
+      DomainFormType.DATA_PRODUCT
+    );
+
+    expect(result).not.toHaveProperty('domains');
+  });
+
+  it('produces empty arrays when collections are empty', () => {
+    const result = transformDomainFormData(baseForm, DomainFormType.DOMAIN);
+
+    expect(result.tags).toEqual([]);
+    expect(result.owners).toEqual([]);
+    expect(result.experts).toEqual([]);
+  });
+
+  it('passes non-UI fields through unchanged', () => {
+    const coverImage = { file: new File([], 'cover.png') };
+    const formData: DomainFormValues = { ...baseForm, coverImage };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DOMAIN
+    ) as CreateDomain & { coverImage?: typeof coverImage };
+
+    expect(result.name).toBe('marketing');
+    expect(result.displayName).toBe('Marketing');
+    expect(result.description).toBe('Marketing domain');
+    expect(result.coverImage).toBe(coverImage);
   });
 });
