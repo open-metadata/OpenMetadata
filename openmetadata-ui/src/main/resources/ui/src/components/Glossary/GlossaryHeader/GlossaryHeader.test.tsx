@@ -33,9 +33,21 @@ const mockGlossaryTermPermission = {
   EditCustomFields: true,
 };
 
+const mockGlossaryPermission = {
+  All: true,
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
+      glossary: mockGlossaryPermission,
       glossaryTerm: mockGlossaryTermPermission,
     },
   })),
@@ -184,6 +196,8 @@ describe('GlossaryHeader component', () => {
   beforeEach(() => {
     mockGlossaryTermPermission.All = true;
     mockGlossaryTermPermission.EditAll = true;
+    mockGlossaryPermission.All = true;
+    mockGlossaryPermission.EditAll = true;
     mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
     mockContext.type = EntityType.GLOSSARY;
   });
@@ -240,6 +254,8 @@ describe('GlossaryHeader component', () => {
   it('should render import and export dropdown menu items when global permission is false but contextual entity permission is true', async () => {
     mockGlossaryTermPermission.All = false;
     mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryPermission.All = false;
+    mockGlossaryPermission.EditAll = false;
     mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     mockContext.type = EntityType.GLOSSARY;
     render(

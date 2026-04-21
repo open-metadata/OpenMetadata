@@ -133,12 +133,12 @@ const GlossaryHeader = ({
       permissions?.EditAll ||
       checkPermission(
         Operation.All,
-        ResourceEntity.GLOSSARY_TERM,
+        ResourceEntity.GLOSSARY,
         globalPermissions
       ) ||
       checkPermission(
         Operation.EditAll,
-        ResourceEntity.GLOSSARY_TERM,
+        ResourceEntity.GLOSSARY,
         globalPermissions
       ),
     [globalPermissions, permissions]
