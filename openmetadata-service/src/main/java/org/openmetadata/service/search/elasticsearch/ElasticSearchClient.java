@@ -1225,7 +1225,8 @@ public class ElasticSearchClient implements SearchClient {
       processPageHierarchyHits(
           es.co.elastic.clients.elasticsearch.core.SearchResponse<
                   es.co.elastic.clients.json.JsonData>
-              searchResponse) {
+              searchResponse)
+          throws java.io.IOException {
     java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
         new java.util.ArrayList<>();
 
@@ -1242,23 +1243,85 @@ public class ElasticSearchClient implements SearchClient {
       }
     }
 
-    // Derive childrenCount from the already-fetched batch instead of issuing an extra
-    // search per hit (N+1). A page's childrenCount reflects how many of the returned
-    // pages name it as parent — accurate when the caller fetches adjacent depths
-    // together (as getHierarchyWithSearchForActivePage does) and a harmless zero for
-    // the pure top-level listing (the UI loads deeper levels lazily).
-    java.util.Map<java.util.UUID, java.lang.Integer> childrenCountByParentId =
-        new java.util.HashMap<>();
-    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
-      if (page.getParent() != null && page.getParent().getId() != null) {
-        childrenCountByParentId.merge(page.getParent().getId(), 1, java.lang.Integer::sum);
-      }
-    }
-    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
-      page.setChildrenCount(childrenCountByParentId.getOrDefault(page.getId(), 0));
+    populateChildrenCounts(pageHierarchies);
+    return pageHierarchies;
+  }
+
+  /**
+   * Populate {@code childrenCount} on each page using a single aggregation round-trip
+   * instead of one search per page (N+1). Uses a filters aggregation keyed by page id,
+   * where each bucket matches descendants via the page's fullyQualifiedName prefix.
+   */
+  private void populateChildrenCounts(
+      java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies)
+      throws java.io.IOException {
+    if (pageHierarchies.isEmpty()) {
+      return;
     }
 
-    return pageHierarchies;
+    java.util.Map<String, es.co.elastic.clients.elasticsearch._types.query_dsl.Query> filters =
+        new java.util.HashMap<>();
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null
+          || page.getFullyQualifiedName() == null
+          || page.getFullyQualifiedName().isEmpty()) {
+        continue;
+      }
+      String fqnPrefix = page.getFullyQualifiedName() + ".";
+      filters.put(
+          page.getId().toString(),
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+              q -> q.prefix(p -> p.field("fullyQualifiedName").value(fqnPrefix))));
+      page.setChildrenCount(0);
+    }
+
+    if (filters.isEmpty()) {
+      return;
+    }
+
+    es.co.elastic.clients.elasticsearch.core.SearchRequest aggregationRequest =
+        es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .size(0)
+                    .aggregations(
+                        "children_by_parent",
+                        a -> a.filters(f -> f.filters(fs -> fs.keyed(filters)))));
+
+    es.co.elastic.clients.elasticsearch.core.SearchResponse<es.co.elastic.clients.json.JsonData>
+        aggregationResponse =
+            newClient.search(
+                aggregationRequest, es.co.elastic.clients.json.JsonData.class);
+
+    if (aggregationResponse == null
+        || aggregationResponse.aggregations() == null
+        || aggregationResponse.aggregations().get("children_by_parent") == null) {
+      return;
+    }
+
+    java.util.Map<String, es.co.elastic.clients.elasticsearch._types.aggregations.FiltersBucket>
+        buckets =
+            aggregationResponse
+                .aggregations()
+                .get("children_by_parent")
+                .filters()
+                .buckets()
+                .keyed();
+
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null) {
+        continue;
+      }
+      es.co.elastic.clients.elasticsearch._types.aggregations.FiltersBucket bucket =
+          buckets.get(page.getId().toString());
+      if (bucket != null) {
+        page.setChildrenCount((int) bucket.docCount());
+      }
+    }
   }
 
   private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
