@@ -53,6 +53,9 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
   const [mappings, setMappings] = useState<RoleMappingEntry[]>([]);
   const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
+  const [searchResults, setSearchResults] = useState<Map<string, RoleOption[]>>(
+    new Map()
+  );
   const [isLoadingRoles, setIsLoadingRoles] = useState(false);
   const [errors, setErrors] = useState<MappingError>({});
 
@@ -269,7 +272,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   filterOption={false}
                   loading={isLoadingRoles}
                   mode="multiple"
-                  options={availableRoles}
+                  options={searchResults.get(mapping.id) ?? availableRoles}
                   placeholder={t('label.select-field', {
                     field: t('label.role-plural'),
                   })}
@@ -278,12 +281,17 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   onSearch={async (val) => {
                     try {
                       const results = await searchRoles(val);
-                      setAvailableRoles(
-                        results.map((r) => ({
-                          label: r.displayName || r.name,
-                          value: r.name,
-                        }))
-                      );
+                      setSearchResults((prev) => {
+                        const next = new Map(prev);
+                        next.set(
+                          mapping.id,
+                          results.map((r) => ({
+                            label: r.displayName || r.name,
+                            value: r.name,
+                          }))
+                        );
+                        return next;
+                      });
                     } catch (err) {
                       showErrorToast(err as AxiosError);
                     }
