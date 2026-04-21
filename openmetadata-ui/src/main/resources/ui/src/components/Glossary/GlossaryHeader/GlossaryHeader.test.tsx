@@ -194,6 +194,7 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should render import and export dropdown menu items only for glossary', async () => {
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, All: true };
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -227,6 +228,27 @@ describe('GlossaryHeader component', () => {
     );
 
     expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+  });
+
+  it('should render import and export dropdown menu items when global permission is false but contextual entity permission is true', async () => {
+    mockGlossaryTermPermission.All = false;
+    mockGlossaryTermPermission.EditAll = false;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+    mockContext.type = EntityType.GLOSSARY;
+    render(
+      <GlossaryHeader
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('manage-button'));
+    });
+
+    expect(screen.queryByText('label.import')).toBeInTheDocument();
+    expect(screen.queryByText('label.export')).toBeInTheDocument();
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
