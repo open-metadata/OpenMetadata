@@ -714,7 +714,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
           const createdThread = await postThread(threadData);
           setEntityThread((prev) => [createdThread, ...prev]);
-          setActivityThread(createdThread);
+
+          await postFeedById(createdThread.id, {
+            message,
+          } as Post);
+          const { data: refreshedThread } = await getFeedById(createdThread.id);
+          setActivityThread(refreshedThread);
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
