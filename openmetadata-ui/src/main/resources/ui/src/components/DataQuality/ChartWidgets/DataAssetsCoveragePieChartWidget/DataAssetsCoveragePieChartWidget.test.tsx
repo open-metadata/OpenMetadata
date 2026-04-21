@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import {
   fetchEntityCoveredWithDQ,
   fetchTotalEntityCount,
@@ -35,8 +36,11 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
   fetchTotalEntityCount: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
-jest.mock('../../../../utils/RouterUtils', () => ({
-  getDataQualityPagePath: jest.fn((tab: string) => `/data-quality/${tab}`),
+jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getDataQualityPagePath: jest.fn((tab: string) => `/data-quality/${tab}`),
+  },
 }));
 
 jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
@@ -45,7 +49,7 @@ jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
     .mockImplementation(
       (props: { onSegmentClick?: (e: unknown, i: number) => void }) => (
         <div>
-          CustomPieChart.component
+          <p>CustomPieChart.component</p>
           <button
             data-testid="segment-covered"
             onClick={() =>
@@ -107,9 +111,6 @@ describe('DataAssetsCoveragePieChartWidget', () => {
   });
 
   it('should pass onSegmentClick to CustomPieChart and navigate to Test Suites on Covered click', async () => {
-    const { getDataQualityPagePath } = jest.requireMock(
-      '../../../../utils/RouterUtils'
-    ) as { getDataQualityPagePath: jest.Mock };
     const mockNavigate = (
       jest.requireMock('react-router-dom') as {
         __getMockNavigate: () => jest.Mock;
@@ -134,7 +135,13 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       segmentCovered.click();
     });
 
-    expect(getDataQualityPagePath).toHaveBeenCalledWith('test-suites');
+    const { default: observabilityRouterMock } = jest.requireMock(
+      '../../../../utils/ObservabilityRouterClassBase'
+    ) as { default: { getDataQualityPagePath: jest.Mock } };
+
+    expect(observabilityRouterMock.getDataQualityPagePath).toHaveBeenCalledWith(
+      'test-suites'
+    );
     expect(mockNavigate).toHaveBeenCalledWith('/data-quality/test-suites');
   });
 
