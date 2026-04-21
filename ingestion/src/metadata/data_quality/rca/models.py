@@ -18,6 +18,9 @@ RcaResult — the structured output returned after a successful LLM analysis.
 
 from typing import Optional
 
+from pydantic import ConfigDict
+from pydantic.alias_generators import to_camel
+
 from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
@@ -29,7 +32,16 @@ class AiConfig(BaseModel):
       - provider="openai"        → OpenAI chat completions API
       - provider="azure_openai"  → Azure OpenAI deployment (requires base_url)
       - provider="anthropic"     → Anthropic Messages API
+
+    YAML keys are camelCase (apiKey, baseUrl, maxTokens, timeoutSeconds).
+    Python attribute access uses snake_case (api_key, base_url, etc.).
+    Both forms are accepted thanks to populate_by_name=True.
     """
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
 
     provider: str
     api_key: str
