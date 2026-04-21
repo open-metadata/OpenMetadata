@@ -136,6 +136,61 @@ def _diff_schema(
     for exp_sp in exp_schema.stored_procedures:
         _diff_stored_procedure(exp_sp, schema_fqn, om, diffs)
 
+    if mode == MatchMode.STRICT:
+        _check_strict_schema_extras(
+            exp_schema=exp_schema,
+            schema_fqn=schema_fqn,
+            om=om,
+            diffs=diffs,
+        )
+
+
+def _check_strict_schema_extras(
+    *,
+    exp_schema: ExpectedSchema,
+    schema_fqn: str,
+    om: OpenMetadata,
+    diffs: list[Diff],
+) -> None:
+    """In STRICT mode, flag actual tables and stored procedures in the schema
+    that weren't declared in the expected spec. Required by filter tests that
+    need to verify "exclude" semantics — merely walking declared items isn't
+    enough, because missing the walk of actuals leaves extras invisible.
+    """
+    expected_table_names = {t.name for t in exp_schema.tables}
+    actual_tables = om.list_all_entities(
+        entity=Table,
+        params={"databaseSchema": schema_fqn},
+        limit=1000,
+    )
+    for actual in actual_tables:
+        actual_name = actual.name.root
+        if actual_name not in expected_table_names:
+            diffs.append(
+                Diff(
+                    path=f"{schema_fqn}.schema[{exp_schema.name}].table[{actual_name}](strict)",
+                    expected="not present",
+                    actual="present",
+                )
+            )
+
+    expected_sp_names = {sp.name for sp in exp_schema.stored_procedures}
+    actual_sps = om.list_all_entities(
+        entity=StoredProcedure,
+        params={"databaseSchema": schema_fqn},
+        limit=1000,
+    )
+    for actual in actual_sps:
+        actual_name = actual.name.root
+        if actual_name not in expected_sp_names:
+            diffs.append(
+                Diff(
+                    path=f"{schema_fqn}.schema[{exp_schema.name}].procedure[{actual_name}](strict)",
+                    expected="not present",
+                    actual="present",
+                )
+            )
+
 
 def _diff_table(
     exp_table: ExpectedTable,
