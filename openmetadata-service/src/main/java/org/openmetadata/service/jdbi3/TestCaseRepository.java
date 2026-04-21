@@ -1019,41 +1019,39 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that collide
+    // with concurrent test-case creation. MySQL raises "Deadlock found when trying to get lock"
+    // intermittently under IT parallel load. Wrap the retry *outside* the @Transaction boundary
+    // so each attempt runs in a fresh transaction instead of replaying on a rolled-back handle.
+    return DeadlockRetry.execute(
+        () -> addAllTestCasesToLogicalTestSuiteTxn(testSuite, excludedTestCaseIds));
+  }
 
+  @Transaction
+  RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteTxn(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
     List<EntityReference> originalTestCaseReferences =
         findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
 
     String tableName = daoCollection.testCaseDAO().getTableName();
-    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that
-    // collide with concurrent test-case creation. MySQL raises "Deadlock found when trying
-    // to get lock" intermittently under IT parallel load. Retry a few times before giving up.
-    DeadlockRetry.execute(
-        () -> {
-          if (nullOrEmpty(excludedTestCaseIds)) {
-            daoCollection
-                .relationshipDAO()
-                .bulkInsertAllToRelationship(
-                    testSuite.getId(),
-                    TEST_SUITE,
-                    TEST_CASE,
-                    Relationship.CONTAINS.ordinal(),
-                    tableName);
-          } else {
-            daoCollection
-                .relationshipDAO()
-                .bulkInsertAllToRelationshipWithExclusions(
-                    excludedTestCaseIds.stream().map(UUID::toString).toList(),
-                    testSuite.getId(),
-                    TEST_SUITE,
-                    TEST_CASE,
-                    Relationship.CONTAINS.ordinal(),
-                    tableName);
-          }
-          return null;
-        });
+    if (nullOrEmpty(excludedTestCaseIds)) {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationship(
+              testSuite.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal(), tableName);
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationshipWithExclusions(
+              excludedTestCaseIds.stream().map(UUID::toString).toList(),
+              testSuite.getId(),
+              TEST_SUITE,
+              TEST_CASE,
+              Relationship.CONTAINS.ordinal(),
+              tableName);
+    }
 
     List<EntityReference> updatedTestCaseReferences =
         findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);

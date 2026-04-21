@@ -71,6 +71,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -354,13 +355,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   /**
-   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured. With
-   * Redis, invalidation in {@code EntityRepository.invalidateCache} keeps all instances coherent so
-   * cached reads stay fresh. Without Redis we fall back to {@code fromCache=false} to avoid
-   * serving stale reads from a per-instance Guava cache in a multi-instance deployment.
+   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured *and*
+   * currently reachable. With Redis, invalidation in {@code EntityRepository.invalidateCache}
+   * keeps all instances coherent so cached reads stay fresh. If Redis isn't wired, or the
+   * provider flipped to unavailable after a connection loss, we fall back to {@code
+   * fromCache=false} to avoid serving stale reads from a per-instance Guava cache in a
+   * multi-instance deployment.
    */
   private static boolean isDistributedCacheEnabled() {
-    return CacheBundle.getCachedEntityDao() != null;
+    if (CacheBundle.getCachedEntityDao() == null) {
+      return false;
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    return provider != null && provider.available();
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {

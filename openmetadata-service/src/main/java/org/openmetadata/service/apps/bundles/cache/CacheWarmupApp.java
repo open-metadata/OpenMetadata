@@ -219,19 +219,23 @@ public class CacheWarmupApp extends AbstractNativeApplication {
 
       Map<String, Map<String, String>> hsetBatch = new HashMap<>(page.size() * 2);
       Map<String, String> setBatch = new HashMap<>(page.size());
+      // Per-page deltas — updateEntityStats adds to the running totals, so passing cumulative
+      // counts would double-count entries from earlier pages.
+      int pageSuccess = 0;
+      int pageFailed = 0;
       for (String json : page) {
         if (json == null || json.isEmpty()) continue;
         try {
           EntityInterface entity = JsonUtils.readValue(json, entityClass);
           if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
-            failed++;
+            pageFailed++;
             continue;
           }
           hsetBatch.put(keys.entity(entityType, entity.getId()), Map.of("base", json));
           setBatch.put(keys.entityByName(entityType, entity.getFullyQualifiedName()), json);
-          success++;
+          pageSuccess++;
         } catch (Exception e) {
-          failed++;
+          pageFailed++;
         }
       }
       try {
@@ -240,8 +244,10 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       } catch (Exception e) {
         LOG.warn("Pipelined write failed for {} batch at offset {}", entityType, offset, e);
       }
+      success += pageSuccess;
+      failed += pageFailed;
       offset += page.size();
-      updateEntityStats(entityType, success, failed);
+      updateEntityStats(entityType, pageSuccess, pageFailed);
       sendUpdates(jobExecutionContext, false);
       if (page.size() < batchSize) break;
     }

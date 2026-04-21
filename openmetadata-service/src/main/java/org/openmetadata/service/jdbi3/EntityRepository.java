@@ -1587,12 +1587,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     boolean onlyNonDeleted = isReadPlanNonDeletedOnly(readPlan);
     CachedReadBundle bundleCache = onlyNonDeleted ? CacheBundle.getCachedReadBundle() : null;
 
-    boolean relationsFilledFromCache = false;
-    boolean tagsFilledFromCache = false;
-    boolean certificationFilledFromCache = false;
     java.util.concurrent.locks.Lock loadLock = null;
+    CachedReadBundle.Dto initialDto = null;
     if (bundleCache != null) {
-      CachedReadBundle.Dto initialDto;
       try (var ignored = phase("readBundleCacheGet")) {
         initialDto = bundleCache.get(entityType, entity.getId());
       }
@@ -1607,31 +1604,57 @@ public abstract class EntityRepository<T extends EntityInterface> {
           loadLock.lock();
         }
         // Re-check under the lock — another thread on this instance may have just populated.
-        try (var ignored = phase("readBundleCacheGet")) {
-          initialDto = bundleCache.get(entityType, entity.getId());
+        // Any throw from here on must still unlock; use a try/catch so we fail-closed if the
+        // get itself throws.
+        try {
+          try (var ignored = phase("readBundleCacheGet")) {
+            initialDto = bundleCache.get(entityType, entity.getId());
+          }
+        } catch (RuntimeException | java.lang.Error e) {
+          loadLock.unlock();
+          loadLock = null;
+          throw e;
         }
       }
-      final CachedReadBundle.Dto dto = initialDto;
-      if (dto != null) {
-        if (dto.relations != null && readPlanCoversRelations(readPlan, dto.relations)) {
-          readPlan
-              .getRelationSpecs()
-              .forEach(
-                  (field, spec) -> {
-                    List<EntityReference> refs =
-                        dto.relations.getOrDefault(field, Collections.emptyList());
-                    bundle.putRelations(entity.getId(), field, spec.include(), refs);
-                  });
-          relationsFilledFromCache = true;
-        }
-        if (dto.tagsLoaded && readPlan.shouldLoadTags()) {
-          bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
-          tagsFilledFromCache = true;
-        }
-        if (dto.certificationLoaded && supportsCertification) {
-          bundle.putCertification(entity.getId(), dto.certification);
-          certificationFilledFromCache = true;
-        }
+    }
+    try {
+      return fillReadBundle(entity, readPlan, bundle, bundleCache, initialDto);
+    } finally {
+      if (loadLock != null) {
+        loadLock.unlock();
+      }
+    }
+  }
+
+  private ReadBundle fillReadBundle(
+      T entity,
+      ReadPlan readPlan,
+      ReadBundle bundle,
+      CachedReadBundle bundleCache,
+      CachedReadBundle.Dto initialDto) {
+    boolean relationsFilledFromCache = false;
+    boolean tagsFilledFromCache = false;
+    boolean certificationFilledFromCache = false;
+    final CachedReadBundle.Dto dto = initialDto;
+    if (dto != null) {
+      if (dto.relations != null && readPlanCoversRelations(readPlan, dto.relations)) {
+        readPlan
+            .getRelationSpecs()
+            .forEach(
+                (field, spec) -> {
+                  List<EntityReference> refs =
+                      dto.relations.getOrDefault(field, Collections.emptyList());
+                  bundle.putRelations(entity.getId(), field, spec.include(), refs);
+                });
+        relationsFilledFromCache = true;
+      }
+      if (dto.tagsLoaded && readPlan.shouldLoadTags()) {
+        bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
+        tagsFilledFromCache = true;
+      }
+      if (dto.certificationLoaded && supportsCertification) {
+        bundle.putCertification(entity.getId(), dto.certification);
+        certificationFilledFromCache = true;
       }
     }
 
@@ -1704,19 +1727,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       prefetchEntitySpecificReadData(entity, readPlan, bundle);
     }
 
-    try {
-      if (bundleCache != null
-          && (!relationsFilledFromCache || !tagsFilledFromCache || !certificationFilledFromCache)) {
-        CachedReadBundle.Dto dto = buildBundleDto(entity, readPlan, bundle, supportsCertification);
-        if (dto != null) {
-          try (var ignored = phase("readBundleCachePut")) {
-            bundleCache.put(entityType, entity.getId(), dto);
-          }
+    if (bundleCache != null
+        && (!relationsFilledFromCache || !tagsFilledFromCache || !certificationFilledFromCache)) {
+      CachedReadBundle.Dto populated =
+          buildBundleDto(entity, readPlan, bundle, supportsCertification);
+      if (populated != null) {
+        try (var ignored = phase("readBundleCachePut")) {
+          bundleCache.put(entityType, entity.getId(), populated);
         }
-      }
-    } finally {
-      if (loadLock != null) {
-        loadLock.unlock();
       }
     }
     return bundle;

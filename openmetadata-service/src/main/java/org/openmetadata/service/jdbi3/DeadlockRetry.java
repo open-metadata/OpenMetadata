@@ -27,9 +27,11 @@ import lombok.extern.slf4j.Slf4j;
  * not push this down into {@code CollectionDAO} — retrying one DAO statement outside its original
  * transaction context would leave earlier writes in that txn lost.
  *
- * <p>Backoff: resilience4j schedules the delay on its own executor, so the request thread yields
- * instead of blocking on {@link Thread#sleep}. Exponential base 50 ms × 2^(attempt-1) with 50%
- * jitter — attempt 1 ≈ 25-75 ms, attempt 2 ≈ 50-150 ms, attempt 3 ≈ 100-300 ms.
+ * <p>Backoff: retries are synchronous when invoked via {@link Retry#executeSupplier(Supplier)} —
+ * the calling thread waits between attempts according to the configured interval. This matches
+ * the existing retry pattern in {@code SearchRetryUtil} so operators see consistent behaviour
+ * across subsystems. Exponential base 50 ms × 2^(attempt-1) with 50% jitter — attempt 1 ≈ 25-75
+ * ms, attempt 2 ≈ 50-150 ms, attempt 3 ≈ 100-300 ms.
  */
 @Slf4j
 public final class DeadlockRetry {
