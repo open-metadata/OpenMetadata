@@ -1,19 +1,31 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Col, Divider, Row, Typography } from 'antd';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import CommonEntitySummaryInfo from 'components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import { EntityUnion } from 'components/Explore/ExplorePage.interface';
 import {
   KnowledgePage,
   PageType,
   QuickLink,
 } from 'interface/knowledge-center.interface';
 import { isEmpty } from 'lodash';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import CommonEntitySummaryInfo from 'components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import { EntityUnion } from 'components/Explore/ExplorePage.interface';
 
 import SummaryPanelSkeleton from 'components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import i18n, { t } from 'utils/i18next/LocalUtil';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 

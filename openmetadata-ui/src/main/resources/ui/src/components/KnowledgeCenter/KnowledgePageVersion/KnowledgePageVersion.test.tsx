@@ -24,23 +24,18 @@ jest.mock('utils/EntityUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock(
-  'components/common/OwnerLabel/OwnerLabel.component',
-  () => ({
-    OwnerLabel: jest.fn().mockImplementation(() => {
-      return <div data-testid="owner-label">OwnerLabel</div>;
-    }),
-  })
-);
+jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => {
+    return <div data-testid="owner-label">OwnerLabel</div>;
+  }),
+}));
 
-jest.mock(
-  'components/Tag/TagsContainerV2/TagsContainerV2',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="tags-container">TagsContainerV2</div>
-      ))
+jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="tags-container">TagsContainerV2</div>
+    ))
 );
 
 jest.mock('components/common/Loader/Loader', () =>
@@ -58,12 +53,9 @@ jest.mock('components/BlockEditor/BlockEditor', () => {
     .mockReturnValue(<div data-testid="block-editor">Block Editor</div>);
 });
 
-jest.mock(
-  'components/common/ProfilePicture/ProfilePicture',
-  () => {
-    return jest.fn().mockReturnValue(<div data-testid="avatar">Avatar</div>);
-  }
-);
+jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<div data-testid="avatar">Avatar</div>);
+});
 
 const mockProps = {
   knowledgePage: MOCK_KNOWLEDGE_PAGE_VERSION_DATA,

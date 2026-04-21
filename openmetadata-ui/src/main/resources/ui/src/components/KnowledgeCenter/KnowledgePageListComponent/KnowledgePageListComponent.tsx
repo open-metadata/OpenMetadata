@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
@@ -9,11 +21,22 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { ReactComponent as AddPlaceHolderIcon } from 'assets/svg/add-placeholder.svg';
 import { AxiosError } from 'axios';
-import { CREATE_PAGE_HASH } from 'constants/constants';
+import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from 'components/common/Loader/Loader';
+import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
+import { CREATE_PAGE_HASH, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { KNOWLEDGE_CENTER_DOC_LINK } from 'constants/docs.constant';
 import { getKnowledgePageFields } from 'constants/KnowledgeCenter.constant';
+import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
+import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
+import { Paging } from 'generated/type/paging';
+import LimitWrapper from 'hoc/LimitWrapper';
+import { useApplicationStore } from 'hooks/useApplicationStore';
+import { useElementInView } from 'hooks/useElementInView';
 import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
@@ -22,23 +45,6 @@ import {
   PageType,
 } from 'interface/knowledge-center.interface';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
-import { ReactComponent as AddPlaceHolderIcon } from 'assets/svg/add-placeholder.svg';
-import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from 'components/common/Loader/Loader';
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import {
-  ERROR_PLACEHOLDER_TYPE,
-  SIZE,
-} from 'enums/common.enum';
-import { Paging } from 'generated/type/paging';
-import LimitWrapper from 'hoc/LimitWrapper';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import { useElementInView } from 'hooks/useElementInView';
-import { Transi18next } from 'utils/CommonUtils';
-import { showErrorToast } from 'utils/ToastUtils';
 import {
   forwardRef,
   RefObject,
@@ -57,7 +63,9 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from 'rest/knowledgeCenterAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
 import {

@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import { getTags } from 'rest/tagAPI';
 import { MemoryRouter } from 'react-router-dom';
+import { getTags } from 'rest/tagAPI';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePageListRightPanel, {
   KnowledgePageListRightPanelProps,

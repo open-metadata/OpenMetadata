@@ -1,7 +1,17 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { KnowledgePage } from 'interface/knowledge-center.interface';
-import { EntityTags } from 'Models';
 import { useGenericContext } from 'components/Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from 'components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from 'components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -14,8 +24,10 @@ import { EntityType } from 'enums/entity.enum';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { EntityReference } from 'generated/entity/type';
 import { TagSource } from 'generated/type/tagLabel';
-import { showErrorToast } from 'utils/ToastUtils';
+import { KnowledgePage } from 'interface/knowledge-center.interface';
+import { EntityTags } from 'Models';
 import { FC, useCallback, useMemo } from 'react';
+import { showErrorToast } from 'utils/ToastUtils';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';
 import KnowledgePageDetailRightPanelSkeleton from './KnowledgePageDetailRightPanelSkeleton';

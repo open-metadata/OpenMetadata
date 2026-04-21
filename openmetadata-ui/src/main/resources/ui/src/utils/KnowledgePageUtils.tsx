@@ -1,7 +1,19 @@
-import { ROUTES } from 'constants/constants';
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { DataNode } from 'antd/lib/tree';
-import { cloneDeep, get, isEmpty } from 'lodash';
+import { ROUTES } from 'constants/constants';
 import { EntityTabs } from 'enums/entity.enum';
+import { cloneDeep, get, isEmpty } from 'lodash';
 import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_SUB_TAB,
@@ -20,7 +32,6 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Space } from 'antd';
-import { RecentlyViewedData } from 'Models';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import {
@@ -29,10 +40,11 @@ import {
 } from 'constants/CustomizeWidgets.constants';
 import { usePersistentStorage } from 'hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from 'hooks/useApplicationStore';
+import { RecentlyViewedData } from 'Models';
+import { Link } from 'react-router-dom';
 import { arraySorterByKey } from 'utils/CommonUtils';
 import Fqn from 'utils/Fqn';
 import { t } from 'utils/i18next/LocalUtil';
-import { Link } from 'react-router-dom';
 import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import i18n from './i18next/LocalUtil';
 
@@ -110,9 +122,7 @@ export const getKnowledgePagePath = (
   tab?: string,
   subTab = 'all'
 ) => {
-  let path = tab
-    ? ROUTES.KNOWLEDGE_PAGE_WITH_TAB
-    : ROUTES.KNOWLEDGE_PAGE;
+  let path = tab ? ROUTES.KNOWLEDGE_PAGE_WITH_TAB : ROUTES.KNOWLEDGE_PAGE;
 
   if (tab === EntityTabs.ACTIVITY_FEED) {
     path = ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB;
@@ -407,8 +417,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
       }`}
       key={knowledgePage.id}
       target={isQuickLink ? '_blank' : '_self'}
-      to={path}
-    >
+      to={path}>
       <Space align="baseline">
         {isQuickLink ? (
           <ExternalLinkIcon

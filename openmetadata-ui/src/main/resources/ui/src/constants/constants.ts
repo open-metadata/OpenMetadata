@@ -13,11 +13,6 @@
 
 import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
-
-export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
-export const CREATE_PAGE_HASH = 'create';
-export const SHORT_DELAY = 3000;
-export const LONG_DELAY = 10000;
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { Status } from '../generated/entity/applications/appRunRecord';
@@ -26,6 +21,11 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
+
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
+export const CREATE_PAGE_HASH = 'create';
+export const SHORT_DELAY = 3000;
+export const LONG_DELAY = 10000;
 
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';

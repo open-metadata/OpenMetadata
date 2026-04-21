@@ -1,15 +1,27 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import {
   fireEvent,
   getAllByTestId,
   render,
   screen,
 } from '@testing-library/react';
+import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+import { User } from 'generated/entity/teams/user';
 import {
   ContentChangeState,
   KnowledgePage,
 } from 'interface/knowledge-center.interface';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import { User } from 'generated/entity/teams/user';
 import { MOCK_KNOWLEDGE_PAGE_DATA } from 'pages/KnowledgePage/KnowledgePage.mock';
 import { MemoryRouter } from 'react-router-dom';
 import KnowledgeDetailPageHeader, {
@@ -72,22 +84,17 @@ jest.mock('hooks/useFqn', () => ({
   }),
 }));
 
-jest.mock(
-  'components/common/PopOverCard/UserPopOverCard',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="user-popover-card">UserPopOverCard</div>
-      ))
+jest.mock('components/common/PopOverCard/UserPopOverCard', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="user-popover-card">UserPopOverCard</div>
+    ))
 );
 
-jest.mock(
-  'components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => {
-    return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
-  }
-);
+jest.mock('components/common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
+  return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
+});
 
 const mockOnSetThreadLink = jest.fn();
 const mockOnVoteChange = jest.fn();

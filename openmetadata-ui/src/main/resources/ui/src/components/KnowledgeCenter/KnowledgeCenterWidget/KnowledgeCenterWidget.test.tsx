@@ -41,9 +41,8 @@ jest.mock('hooks/useApplicationStore', () => ({
   }),
 }));
 
-jest.mock(
-  'components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock(

@@ -1,25 +1,36 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Col, Row, Typography } from 'antd';
 import { ReactComponent as IconArticle } from 'assets/svg/ic-articles.svg';
 import { ReactComponent as LinkIcon } from 'assets/svg/ic-link.svg';
 import classNames from 'classnames';
-import { ROUTES } from 'constants/constants';
+import ExpandableCard from 'components/common/ExpandableCard/ExpandableCard';
+import Loader from 'components/common/Loader/Loader';
+import { useGenericContext } from 'components/Customization/GenericProvider/GenericProvider';
+import { PAGE_SIZE, ROUTES } from 'constants/constants';
 import { DetailPageWidgetKeys } from 'enums/CustomizeDetailPage.enum';
+import { Paging } from 'generated/type/paging';
 import {
   KnowledgePage,
   PageType,
   QuickLink,
 } from 'interface/knowledge-center.interface';
 import { isEmpty, map } from 'lodash';
-import ExpandableCard from 'components/common/ExpandableCard/ExpandableCard';
-import Loader from 'components/common/Loader/Loader';
-import { useGenericContext } from 'components/Customization/GenericProvider/GenericProvider';
-import { PAGE_SIZE } from 'constants/constants';
-import { Paging } from 'generated/type/paging';
-import { getEntityName } from 'utils/EntityUtils';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
 
 const KnowledgePages: FC = () => {

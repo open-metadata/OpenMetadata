@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import Icon, { LoadingOutlined } from '@ant-design/icons';
 import {
   Button,
@@ -13,19 +25,12 @@ import {
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as ConversationIcon } from 'assets/svg/ic-conversation.svg';
 import { ReactComponent as IconSaved } from 'assets/svg/ic-saved.svg';
-import { ReactComponent as IconUnSaved } from 'assets/svg/ic-unsaved.svg';
-import classNames from 'classnames';
-import { EntityType } from 'enums/entity.enum';
-import {
-  ContentChangeState,
-  KnowledgePage,
-  RecentlyViewedQuickLinks,
-} from 'interface/knowledge-center.interface';
-import { isEmpty, isUndefined, map, toString, uniqBy, uniqueId } from 'lodash';
 import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
 import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
+import { ReactComponent as IconUnSaved } from 'assets/svg/ic-unsaved.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
+import classNames from 'classnames';
 import { DeleteType } from 'components/common/DeleteWidget/DeleteWidget.interface';
 import ManageButton from 'components/common/EntityPageInfos/ManageButton/ManageButton';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
@@ -34,22 +39,26 @@ import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.int
 import { EntityStatusBadge } from 'components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from 'components/Entity/Voting/Voting.component';
 import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import {
-  ROUTES,
-  TEXT_BODY_COLOR,
-} from 'constants/constants';
+import { ROUTES, TEXT_BODY_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from 'enums/entity.enum';
 import { EntityStatus } from 'generated/entity/data/glossaryTerm';
 import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from 'hooks/useApplicationStore';
 import { useClipboard } from 'hooks/useClipBoard';
 import { useFqn } from 'hooks/useFqn';
+import {
+  ContentChangeState,
+  KnowledgePage,
+  RecentlyViewedQuickLinks,
+} from 'interface/knowledge-center.interface';
+import { isEmpty, isUndefined, map, toString, uniqBy, uniqueId } from 'lodash';
+import { FC, useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import deleteWidgetClassBase from 'utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from 'utils/EntityLink';
 import { getEntityName } from 'utils/EntityUtils';
-import { FC, useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import i18n from 'utils/i18next/LocalUtil';
 import {
   getKnowledgeVersionsPath,
@@ -117,13 +126,15 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
     const shouldShowStatus = true;
     const entityStatus = knowledgePage?.entityStatus;
 
-    if (!shouldShowStatus || !entityStatus || entityStatus === EntityStatus.Unprocessed) {
+    if (
+      !shouldShowStatus ||
+      !entityStatus ||
+      entityStatus === EntityStatus.Unprocessed
+    ) {
       return null;
     }
 
-    return (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
-    );
+    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
   }, [knowledgePage?.entityStatus]);
 
   const contentChangeIcon = useMemo(() => {
@@ -250,9 +261,7 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
       updateKnowledgeCenterRecentViewed(
         recentlyViewed.filter((page) => page.id !== knowledgePage?.id)
       );
-      isSoftDelete
-        ? onToggleDelete()
-        : navigate(ROUTES.KNOWLEDGE_CENTER);
+      isSoftDelete ? onToggleDelete() : navigate(ROUTES.KNOWLEDGE_CENTER);
 
       // fetch knowledge page hierarchy with force refresh to ensure updates are shown
       fetchKnowledgePageHierarchy?.(true);
@@ -398,9 +407,7 @@ const KnowledgeDetailPageHeader: FC<KnowledgeDetailPageHeaderProps> = ({
                 entityFQN={knowledgePage?.fullyQualifiedName}
                 entityId={knowledgePage?.id}
                 entityName={knowledgePage?.displayName ?? t('label.untitled')}
-                entityType={
-                  EntityType.KNOWLEDGE_PAGE as unknown as EntityType
-                }
+                entityType={EntityType.KNOWLEDGE_PAGE as unknown as EntityType}
                 prepareType={false}
                 successMessage={t('server.entity-deleted-successfully', {
                   entity: entityType,

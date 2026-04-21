@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
 import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
+import { Operation } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/type';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
+import { PagingResponse } from 'Models';
 import APIClient from 'rest/index';
 import {
   CreateKnowledgePage,

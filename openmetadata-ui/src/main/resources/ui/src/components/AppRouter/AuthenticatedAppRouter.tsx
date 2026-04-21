@@ -324,7 +324,8 @@ const KnowledgeCenterFilterPage = withSuspenseFallback(
 
 const KnowledgePageVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/KnowledgePageVersionPage/KnowledgePageVersionPage')
+    () =>
+      import('../../pages/KnowledgePageVersionPage/KnowledgePageVersionPage')
   )
 );
 

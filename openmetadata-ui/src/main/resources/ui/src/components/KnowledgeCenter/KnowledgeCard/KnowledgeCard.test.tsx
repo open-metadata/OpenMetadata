@@ -55,19 +55,15 @@ jest.mock('hooks/useApplicationStore', () => ({
   })),
 }));
 
-jest.mock(
-  'components/common/RichTextEditor/RichTextEditorPreviewerV1',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="viewer-container">Viewer</div>)
+jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockReturnValue(<div data-testid="viewer-container">Viewer</div>)
 );
-jest.mock(
-  'components/common/PopOverCard/UserPopOverCard',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ userName }) => (
-        <div data-testid="owner-name">{userName}</div>
-      ))
+jest.mock('components/common/PopOverCard/UserPopOverCard', () =>
+  jest
+    .fn()
+    .mockImplementation(({ userName }) => (
+      <div data-testid="owner-name">{userName}</div>
+    ))
 );
 
 jest.mock('../QuickLinkFormModal/QuickLinkFormModal', () => ({
@@ -78,32 +74,27 @@ jest.mock('../QuickLinkFormModal/QuickLinkFormModal', () => ({
     ),
 }));
 
-jest.mock(
-  'components/common/DeleteWidget/DeleteWidgetModal',
-  () =>
-    jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="delete-widget-modal">DeleteWidgetModal</div>
-      )
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="delete-widget-modal">DeleteWidgetModal</div>
+    )
 );
 
-jest.mock(
-  'context/PermissionProvider/PermissionProvider',
-  () => ({
-    usePermissionProvider: jest.fn().mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        EditAll: true,
-        EditDescription: true,
-        EditDisplayName: true,
-        EditTags: true,
-      })),
-    }),
-  })
-);
+jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditTags: true,
+    })),
+  }),
+}));
 
 describe('Knowledge Card', () => {
   beforeAll(() => {

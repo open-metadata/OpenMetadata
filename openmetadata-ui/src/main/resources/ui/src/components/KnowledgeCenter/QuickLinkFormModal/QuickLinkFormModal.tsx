@@ -15,30 +15,24 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash';
 
-import { getKnowledgePageFields } from 'constants/KnowledgeCenter.constant';
 import DataAssetAsyncSelectList from 'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from 'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { getKnowledgePageFields } from 'constants/KnowledgeCenter.constant';
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from 'generated/entity/type';
-import {
-  TagLabel,
-  TagSource,
-} from 'generated/type/tagLabel';
-import {
-  FieldProp,
-  FieldTypes,
-} from 'interface/FormUtils.interface';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields } from 'utils/formUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { getTagsWithoutTier } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { TagLabel, TagSource } from 'generated/type/tagLabel';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from 'rest/knowledgeCenterAPI';
+import { getEntityName } from 'utils/EntityUtils';
+import { generateFormFields } from 'utils/formUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import { getTagsWithoutTier } from 'utils/TableUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -339,7 +333,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       },
     },
   ];
-
 
   return (
     <Modal

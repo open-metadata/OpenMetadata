@@ -1,15 +1,24 @@
-import { ROUTES } from 'constants/constants';
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
-import KnowledgeCard from 'components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
-import { getKnowledgePageFields } from 'constants/KnowledgeCenter.constant';
-import { KnowledgePage } from 'interface/knowledge-center.interface';
-import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from 'components/common/Loader/Loader';
 import TitleBreadcrumb from 'components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import KnowledgeCard from 'components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
 import PageLayoutV1 from 'components/PageLayoutV1/PageLayoutV1';
-import { PAGE_SIZE_BASE } from 'constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from 'constants/constants';
+import { getKnowledgePageFields } from 'constants/KnowledgeCenter.constant';
 import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -20,15 +29,14 @@ import { EntityType } from 'enums/entity.enum';
 import { Paging } from 'generated/type/paging';
 import { useLocationSearch } from 'hooks/LocationSearch/useLocationSearch';
 import { useElementInView } from 'hooks/useElementInView';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-} from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { KnowledgePage } from 'interface/knowledge-center.interface';
+import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 
 type KnowledgeCenterFilter = {
   entityId: string;

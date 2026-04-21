@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import {
   act,
   fireEvent,
@@ -6,8 +18,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { User } from 'generated/entity/teams/user';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
 
 const PageHierarchy = [
@@ -216,12 +228,10 @@ jest.mock('context/LimitsProvider/useLimitsStore', () => ({
     .mockImplementation(() => ({ getResourceLimit: jest.fn() })),
 }));
 
-jest.mock(
-  'components/common/DeleteWidget/DeleteWidgetModal',
-  () =>
-    jest
-      .fn()
-      .mockReturnValue(<div data-testid="delete-widget">DeleteWidgetModal</div>)
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest
+    .fn()
+    .mockReturnValue(<div data-testid="delete-widget">DeleteWidgetModal</div>)
 );
 
 describe('KnowledgePagesHierarchy', () => {

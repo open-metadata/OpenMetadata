@@ -1,16 +1,51 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import {
-  CREATE_PAGE_HASH,
-  LONG_DELAY,
-  SHORT_DELAY,
-} from 'constants/constants';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import BlockEditor from 'components/BlockEditor/BlockEditor';
+import { BlockEditorRef } from 'components/BlockEditor/BlockEditor.interface';
+import { EntityAttachmentProvider } from 'components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TabsLabel from 'components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from 'components/Customization/GenericProvider/GenericProvider';
+import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.interface';
+import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
+import { CREATE_PAGE_HASH, LONG_DELAY, SHORT_DELAY } from 'constants/constants';
+import { CustomizeEntityType } from 'constants/Customize.constants';
+import { FEED_COUNT_INITIAL_DATA } from 'constants/entity.constants';
 import {
   getKnowledgePageFields,
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from 'constants/KnowledgeCenter.constant';
+import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
+import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
+import { TagLabel } from 'generated/type/tagLabel';
+import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from 'hooks/useApplicationStore';
+import useCustomLocation from 'hooks/useCustomLocation/useCustomLocation';
+import { FeedCounts } from 'interface/feed.interface';
 import {
   ContentChangeState,
   KnowledgeCenterPageProps,
@@ -26,43 +61,6 @@ import {
   isUndefined,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { ActivityFeedLayoutType } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import BlockEditor from 'components/BlockEditor/BlockEditor';
-import { BlockEditorRef } from 'components/BlockEditor/BlockEditor.interface';
-import { EntityAttachmentProvider } from 'components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import TabsLabel from 'components/common/TabsLabel/TabsLabel.component';
-import { GenericProvider } from 'components/Customization/GenericProvider/GenericProvider';
-import { QueryVoteType } from 'components/Database/TableQueries/TableQueries.interface';
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import { CustomizeEntityType } from 'constants/Customize.constants';
-import { FEED_COUNT_INITIAL_DATA } from 'constants/entity.constants';
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from 'generated/api/feed/createThread';
-import { TagLabel } from 'generated/type/tagLabel';
-import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from 'hooks/useApplicationStore';
-import useCustomLocation from 'hooks/useCustomLocation/useCustomLocation';
-import { FeedCounts } from 'interface/feed.interface';
-import { postThread } from 'rest/feedsAPI';
-import { getFeedCounts } from 'utils/CommonUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getTagsWithoutTier } from 'utils/TableUtils';
-import { createTagObject } from 'utils/TagsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { useRequiredParams } from 'utils/useRequiredParams';
 import {
   FC,
   KeyboardEvent,
@@ -73,6 +71,7 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { postThread } from 'rest/feedsAPI';
 import {
   followKnowledgePage,
   getKnowledgePageByFqn,
@@ -80,12 +79,18 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from 'rest/knowledgeCenterAPI';
+import { getFeedCounts } from 'utils/CommonUtils';
 import i18n from 'utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
   getKnowledgePagePath,
   updateKnowledgeCenterRecentViewed,
 } from 'utils/KnowledgePageUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getTagsWithoutTier } from 'utils/TableUtils';
+import { createTagObject } from 'utils/TagsUtils';
+import { showErrorToast } from 'utils/ToastUtils';
+import { useRequiredParams } from 'utils/useRequiredParams';
 import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
@@ -671,7 +676,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     };
   }, [isContentUnsaved, location.pathname]);
 
-
   const pageConfig = useMemo(() => {
     let rightPanel = null;
     if (activeTab !== EntityTabs.ACTIVITY_FEED && knowledgePage) {
@@ -679,9 +683,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         <GenericProvider
           data={knowledgePage}
           permissions={permissions}
-          type={
-            EntityType.KNOWLEDGE_PAGE as unknown as CustomizeEntityType
-          }
+          type={EntityType.KNOWLEDGE_PAGE as unknown as CustomizeEntityType}
           onUpdate={updatePage}>
           <KnowledgePageDetailRightPanel
             handleRelatedEntitiesUpdate={handleRelatedEntitiesUpdate}

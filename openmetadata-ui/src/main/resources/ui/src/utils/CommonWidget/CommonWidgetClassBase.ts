@@ -30,6 +30,7 @@ export class CommonWidgetClassBase {
     if (isKnowledgeArticle) {
       return KnowledgePages;
     }
+
     return null;
   }
 }

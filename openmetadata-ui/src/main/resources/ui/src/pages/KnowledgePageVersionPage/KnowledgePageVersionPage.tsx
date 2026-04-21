@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { toString, uniqueId } from 'lodash';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { EntityHistory } from 'generated/type/entityHistory';
+import { toString, uniqueId } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import KnowledgePageVersion from '../../components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion';
@@ -30,9 +30,9 @@ import {
 import { Col, Row, Skeleton, Space } from 'antd';
 import TitleBreadcrumb from 'components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES } from 'constants/constants';
+import i18n from 'utils/i18next/LocalUtil';
 import { showErrorToast } from 'utils/ToastUtils';
 import { useRequiredParams } from 'utils/useRequiredParams';
-import i18n from 'utils/i18next/LocalUtil';
 import {
   getKnowledgePagePath,
   getKnowledgeVersionsPath,
@@ -47,8 +47,10 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
 }) => {
   const { t } = i18n;
   const navigate = useNavigate();
-  const { fqn, version } =
-    useRequiredParams<{ fqn: string; version: string }>();
+  const { fqn, version } = useRequiredParams<{
+    fqn: string;
+    version: string;
+  }>();
   const [loading, setLoading] = useState(false);
   const [knowledgePage, setKnowledgePage] = useState<KnowledgePage>();
   const [versionList, setVersionList] = useState<EntityHistory>(

@@ -12,24 +12,21 @@
  */
 import { Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import ErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ExpandableCard from 'components/common/ExpandableCard/ExpandableCard';
 import Loader from 'components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
-import {
-  ERROR_PLACEHOLDER_TYPE,
-  SIZE,
-} from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { TabSpecificField } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
-import { getTags } from 'rest/tagAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTags } from 'rest/tagAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
 import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
 import { KNOWLEDGE_CENTER_CLASSIFICATION } from '../../../constants/constants';

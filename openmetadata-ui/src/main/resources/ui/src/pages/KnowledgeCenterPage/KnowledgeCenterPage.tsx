@@ -1,7 +1,20 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { withActivityFeed } from 'components/AppRouter/withActivityFeed';
 import KnowledgeCenterLayout from 'components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
 import KnowledgePageDetailComponent from 'components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
 import KnowledgePageListComponent from 'components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
@@ -10,18 +23,9 @@ import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from 'components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
-import { CREATE_PAGE_HASH } from 'constants/constants';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import {
-  CreateKnowledgePage,
-  KnowledgeCenterPageProps,
-  KnowledgeCenterPageRef,
-  KnowledgePagesHierarchyRef,
-  PageType,
-} from 'interface/knowledge-center.interface';
-import { withActivityFeed } from 'components/AppRouter/withActivityFeed';
 import { LearningIcon } from 'components/Learning/LearningIcon/LearningIcon.component';
 import PageLayoutV1 from 'components/PageLayoutV1/PageLayoutV1';
+import { CREATE_PAGE_HASH } from 'constants/constants';
 import { LEARNING_PAGE_IDS } from 'constants/Learning.constants';
 import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
@@ -29,18 +33,26 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'context/PermissionProvider/PermissionProvider.interface';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import LimitWrapper from 'hoc/LimitWrapper';
 import { useApplicationStore } from 'hooks/useApplicationStore';
 import { useFqn } from 'hooks/useFqn';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { useRequiredParams } from 'utils/useRequiredParams';
+import {
+  CreateKnowledgePage,
+  KnowledgeCenterPageProps,
+  KnowledgeCenterPageRef,
+  KnowledgePagesHierarchyRef,
+  PageType,
+} from 'interface/knowledge-center.interface';
 import KnowledgePageVersionPage from 'pages/KnowledgePageVersionPage/KnowledgePageVersionPage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { postKnowledgePage } from 'rest/knowledgeCenterAPI';
 import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { showErrorToast } from 'utils/ToastUtils';
+import { useRequiredParams } from 'utils/useRequiredParams';
 import './knowledge-center-page.less';
 
 const KnowledgeCenterPage = () => {

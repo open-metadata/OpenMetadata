@@ -12,17 +12,19 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
-import classNames from 'classnames';
-import { diffWordsWithSpace } from 'diff';
-import { isEmpty, map, toString } from 'lodash';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
+import classNames from 'classnames';
 import BlockEditor from 'components/BlockEditor/BlockEditor';
 import Loader from 'components/common/Loader/Loader';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from 'constants/Feeds.constants';
+import { diffWordsWithSpace } from 'diff';
 import { TagSource } from 'generated/type/tagLabel';
+import { isEmpty, map, toString } from 'lodash';
+import { FC, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDate } from 'utils/date-time/DateTimeUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import {
@@ -36,8 +38,6 @@ import {
 import { VersionEntityTypes } from 'utils/EntityVersionUtils.interface';
 import { getFrontEndFormat } from 'utils/FeedUtils';
 import { stringToHTML } from 'utils/StringsUtils';
-import { FC, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';

@@ -1,9 +1,21 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Button, Modal, Skeleton, Tree, Typography } from 'antd';
-import { ROUTES, CREATE_PAGE_HASH } from 'constants/constants';
 import { DataNode } from 'antd/es/tree';
 import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
 import { ReactComponent as KnowLedgePageIcon } from 'assets/svg/ic-knowledge-page.svg';
 import { AxiosError } from 'axios';
+import { CREATE_PAGE_HASH, ROUTES } from 'constants/constants';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -14,7 +26,6 @@ import {
   RecentlyViewedQuickLinks,
 } from 'interface/knowledge-center.interface';
 
-import { showErrorToast } from 'utils/ToastUtils';
 import {
   forwardRef,
   Key,
@@ -34,9 +45,18 @@ import {
   patchKnowledgePage,
   postKnowledgePage,
 } from 'rest/knowledgeCenterAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 
 import { PlusOutlined } from '@ant-design/icons';
+import { ReactComponent as DragIcon } from 'assets/svg/drag.svg';
+import { ReactComponent as IconDown } from 'assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from 'assets/svg/ic-arrow-right.svg';
+import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import classNames from 'classnames';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import CreateErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
+import Loader from 'components/common/Loader/Loader';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import {
   KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH,
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
@@ -44,29 +64,20 @@ import {
   KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET,
   KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET_CHILD_ARTICLE,
 } from 'constants/KnowledgeCenter.constant';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityType } from 'enums/entity.enum';
-import { compare } from 'fast-json-patch';
-import { isUndefined, uniq } from 'lodash';
-import { ReactComponent as DragIcon } from 'assets/svg/drag.svg';
-import { ReactComponent as IconDown } from 'assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from 'assets/svg/ic-arrow-right.svg';
-import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import CreateErrorPlaceHolder from 'components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
-import Loader from 'components/common/Loader/Loader';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { useLimitStore } from 'context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { SIZE } from 'enums/common.enum';
+import { EntityType } from 'enums/entity.enum';
+import { compare } from 'fast-json-patch';
 import { useCurrentUserPreferences } from 'hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from 'hooks/useApplicationStore';
 import useCustomLocation from 'hooks/useCustomLocation/useCustomLocation';
+import { isUndefined, uniq } from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import Fqn from 'utils/Fqn';
-import { useRequiredParams } from 'utils/useRequiredParams';
-import { useTranslation } from 'react-i18next';
 import {
   convertToTreeData,
   extractKnowledgePageParentFQN,
@@ -83,6 +94,7 @@ import {
   updateKnowledgeCenterRecentViewed,
   updateTreeData,
 } from 'utils/KnowledgePageUtils';
+import { useRequiredParams } from 'utils/useRequiredParams';
 import './knowledge-pages-hierarchy.less';
 const { DirectoryTree } = Tree;
 
@@ -767,9 +779,7 @@ const KnowledgePagesHierarchy = forwardRef<
             allowSoftDelete={false}
             entityId={deletePage.id}
             entityName={deletePage.displayName || t('label.untitled')}
-            entityType={
-              EntityType.KNOWLEDGE_PAGE as unknown as EntityType
-            }
+            entityType={EntityType.KNOWLEDGE_PAGE as unknown as EntityType}
             prepareType={false}
             successMessage={t('server.entity-deleted-successfully', {
               entity: t('label.article'),
