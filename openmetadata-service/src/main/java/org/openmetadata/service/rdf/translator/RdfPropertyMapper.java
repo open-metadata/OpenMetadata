@@ -16,6 +16,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -31,6 +32,8 @@ public class RdfPropertyMapper {
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
   private final Map<String, UUID> glossaryTermIdCache = new ConcurrentHashMap<>();
+  private final Map<String, UUID> classificationTagIdCache = new ConcurrentHashMap<>();
+  private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
 
   // Common namespace URIs
   private static final String OM_NS = "https://open-metadata.org/ontology/";
@@ -43,10 +46,10 @@ public class RdfPropertyMapper {
 
   // Properties that should be mapped to structured RDF instead of JSON literals
   private static final Set<String> STRUCTURED_PROPERTIES =
-      Set.of("votes", "lifeCycle", "customProperties", "extension");
+      Set.of("lifeCycle", "customProperties", "extension", "certification");
 
   // Properties that should be omitted from RDF because they are audit/helper data.
-  private static final Set<String> IGNORED_PROPERTIES = Set.of("changeDescription");
+  private static final Set<String> IGNORED_PROPERTIES = Set.of("changeDescription", "votes");
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
@@ -123,6 +126,20 @@ public class RdfPropertyMapper {
       // Skip fields that are handled separately with typed predicates
       // (e.g., relatedTerms which use typed relations like broader, synonym, etc.)
       if (TYPED_RELATION_FIELDS.contains(fieldName) || IGNORED_PROPERTIES.contains(fieldName)) {
+        continue;
+      }
+
+      // Structured properties (certification, lifeCycle, etc.) are handled before the JSON-LD
+      // context lookup so they get proper RDF triples even when no context entry exists for them.
+      if (STRUCTURED_PROPERTIES.contains(fieldName)
+          && fieldValue != null
+          && !fieldValue.isNull()
+          && (fieldValue.isObject() || fieldValue.isArray())) {
+        if (fieldValue.isArray()) {
+          addStructuredArrayProperty(fieldName, fieldValue, entityResource, model);
+        } else {
+          addStructuredProperty(fieldName, fieldValue, entityResource, model);
+        }
         continue;
       }
 
@@ -268,73 +285,84 @@ public class RdfPropertyMapper {
 
   private void addTagLabel(Resource resource, Property property, JsonNode tagLabel, Model model) {
     String tagFqn = tagLabel.get("tagFQN").asText();
+    String source = tagLabel.has("source") ? tagLabel.get("source").asText() : "Classification";
+    boolean isGlossary = "Glossary".equalsIgnoreCase(source);
 
-    // Create a URI for the tag based on its FQN
-    // Convert FQN like "PII.None" to a valid URI
-    String tagUri = baseUri + "tag/" + tagFqn.replace(".", "/");
-    Resource tagResource = model.createResource(tagUri);
-
-    // Link the entity to the tag
+    Resource tagResource = resolveTagResource(tagFqn, source, tagLabel, model);
     resource.addProperty(property, tagResource);
 
-    // Add tag type
-    tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
+    if (isGlossary) {
+      tagResource.addProperty(RDF.type, model.createResource(getRdfType("glossaryTerm")));
+      tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
+      resource.addProperty(model.createProperty(OM_NS, "hasGlossaryTerm"), tagResource);
+    } else {
+      tagResource.addProperty(RDF.type, model.createResource(getRdfType("tag")));
+      tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
+      if (tagFqn.startsWith(TIER_CLASSIFICATION_PREFIX)) {
+        resource.addProperty(model.createProperty(OM_NS, "hasTier"), tagResource);
+      }
+    }
 
-    // Add tagFQN as a property
     tagResource.addProperty(model.createProperty(OM_NS, "tagFQN"), tagFqn);
-
-    // Add tag name if available
+    tagResource.addProperty(model.createProperty(OM_NS, "tagSource"), source);
     if (tagLabel.has("name")) {
       tagResource.addProperty(RDFS.label, tagLabel.get("name").asText());
     }
-
-    // Add displayName if available
     if (tagLabel.has("displayName")) {
       tagResource.addProperty(SKOS.prefLabel, tagLabel.get("displayName").asText());
     }
-
-    // Add labelType
     if (tagLabel.has("labelType")) {
       tagResource.addProperty(
           model.createProperty(OM_NS, "labelType"), tagLabel.get("labelType").asText());
     }
-
-    // Add source (Classification or Glossary)
-    if (tagLabel.has("source")) {
-      String source = tagLabel.get("source").asText();
-      tagResource.addProperty(model.createProperty(OM_NS, "tagSource"), source);
-
-      // Also add appropriate type based on source
-      if ("Glossary".equalsIgnoreCase(source)) {
-        tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
-        addGlossaryTermReference(resource, tagFqn, tagLabel, model);
-      }
-    }
-
-    // Add state
     if (tagLabel.has("state")) {
       tagResource.addProperty(
           model.createProperty(OM_NS, "tagState"), tagLabel.get("state").asText());
     }
-
-    // Add description if available
     if (tagLabel.has("description")) {
       tagResource.addProperty(
           model.createProperty(DCT_NS, "description"), tagLabel.get("description").asText());
     }
   }
 
-  private void addGlossaryTermReference(
-      Resource resource, String termFqn, JsonNode tagLabel, Model model) {
-    UUID termId = resolveGlossaryTermId(termFqn, tagLabel);
-    if (termId == null) {
-      return;
+  /**
+   * Resolves a TagLabel to the canonical entity URI. When the underlying tag or glossary term can
+   * be looked up by FQN, the asset is linked to the real entity (e.g. {@code entity/tag/{uuid}})
+   * so SPARQL traversals reach the tag's metadata, owners, classification, etc. Falls back to a
+   * deterministic synthetic URI only if lookup fails (e.g. tag deleted concurrently).
+   */
+  private Resource resolveTagResource(
+      String tagFqn, String source, JsonNode tagLabel, Model model) {
+    UUID id =
+        "Glossary".equalsIgnoreCase(source)
+            ? resolveGlossaryTermId(tagFqn, tagLabel)
+            : resolveClassificationTagId(tagFqn);
+    String entityType = "Glossary".equalsIgnoreCase(source) ? "glossaryTerm" : "tag";
+    if (id != null) {
+      return model.createResource(baseUri + "entity/" + entityType + "/" + id);
     }
+    return model.createResource(baseUri + "tag/" + tagFqn.replace(".", "/"));
+  }
 
-    String termUri = baseUri + "entity/glossaryTerm/" + termId;
-    Resource termResource = model.createResource(termUri);
-    resource.addProperty(model.createProperty(OM_NS, "hasGlossaryTerm"), termResource);
-    termResource.addProperty(RDF.type, model.createResource(getRdfType("glossaryTerm")));
+  private UUID resolveClassificationTagId(String tagFqn) {
+    if (tagFqn == null || tagFqn.isEmpty()) {
+      return null;
+    }
+    UUID cached = classificationTagIdCache.get(tagFqn);
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      Tag tag = Entity.getEntityByName(Entity.TAG, tagFqn, "", Include.NON_DELETED, false);
+      UUID id = tag != null ? tag.getId() : null;
+      if (id != null) {
+        classificationTagIdCache.put(tagFqn, id);
+      }
+      return id;
+    } catch (Exception e) {
+      LOG.debug("Could not resolve classification tag id for FQN {}: {}", tagFqn, e.getMessage());
+      return null;
+    }
   }
 
   private UUID resolveGlossaryTermId(String termFqn, JsonNode tagLabel) {
@@ -354,7 +382,7 @@ public class RdfPropertyMapper {
       }
 
       GlossaryTerm term =
-          Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "id", Include.NON_DELETED, false);
+          Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED, false);
       UUID termId = term != null ? term.getId() : null;
       if (termId != null) {
         glossaryTermIdCache.put(termFqn, termId);
@@ -403,9 +431,9 @@ public class RdfPropertyMapper {
   private void addStructuredProperty(
       String fieldName, JsonNode value, Resource entityResource, Model model) {
     switch (fieldName) {
-      case "votes" -> addVotes(value, entityResource, model);
       case "lifeCycle" -> addLifeCycle(value, entityResource, model);
       case "extension" -> addExtension(value, entityResource, model);
+      case "certification" -> addCertification(value, entityResource, model);
       default -> LOG.warn("Unknown structured property: {}", fieldName);
     }
   }
@@ -424,37 +452,43 @@ public class RdfPropertyMapper {
   }
 
   /**
-   * Converts Votes to structured RDF triples. Enables SPARQL queries like: "Find all entities with
-   * more than 10 upvotes" without exposing individual voter identities as graph edges.
+   * Converts AssetCertification into a real RDF link. Emits {@code asset om:hasCertification
+   * tag/Certification/Bronze}, plus the certification level as the human-readable name and the
+   * applied/expiry timestamps as typed literals — instead of dumping the whole JSON as a string
+   * literal under {@code om:certification}.
    */
-  private void addVotes(JsonNode votes, Resource entityResource, Model model) {
-    if (votes == null || votes.isNull()) {
+  private void addCertification(JsonNode certification, Resource entityResource, Model model) {
+    if (certification == null || certification.isNull() || !certification.has("tagLabel")) {
       return;
     }
-
-    // Create a resource for votes
-    String votesUri = baseUri + "votes/" + entityResource.getLocalName();
-    Resource votesNode = model.createResource(votesUri);
-
-    // Link entity to votes
-    Property hasVotes = model.createProperty(OM_NS, "hasVotes");
-    entityResource.addProperty(hasVotes, votesNode);
-
-    // Add type
-    votesNode.addProperty(RDF.type, model.createResource(OM_NS + "Votes"));
-
-    // Add upVotes count
-    if (votes.has("upVotes")) {
-      votesNode.addProperty(
-          model.createProperty(OM_NS, "upVotes"),
-          model.createTypedLiteral(votes.get("upVotes").asInt()));
+    JsonNode tagLabel = certification.get("tagLabel");
+    if (!tagLabel.has("tagFQN")) {
+      return;
+    }
+    String tagFqn = tagLabel.get("tagFQN").asText();
+    String source = tagLabel.has("source") ? tagLabel.get("source").asText() : "Classification";
+    Resource tagResource = resolveTagResource(tagFqn, source, tagLabel, model);
+    tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
+    tagResource.addProperty(model.createProperty(OM_NS, "tagFQN"), tagFqn);
+    if (tagLabel.has("name")) {
+      tagResource.addProperty(RDFS.label, tagLabel.get("name").asText());
     }
 
-    // Add downVotes count
-    if (votes.has("downVotes")) {
-      votesNode.addProperty(
-          model.createProperty(OM_NS, "downVotes"),
-          model.createTypedLiteral(votes.get("downVotes").asInt()));
+    entityResource.addProperty(model.createProperty(OM_NS, "hasCertification"), tagResource);
+    if (tagFqn.startsWith("Certification.")) {
+      entityResource.addProperty(
+          model.createProperty(OM_NS, "certificationLevel"),
+          tagFqn.substring("Certification.".length()));
+    }
+    if (certification.has("appliedDate") && certification.get("appliedDate").isNumber()) {
+      entityResource.addProperty(
+          model.createProperty(OM_NS, "certificationAppliedAt"),
+          model.createTypedLiteral(certification.get("appliedDate").asLong()));
+    }
+    if (certification.has("expiryDate") && certification.get("expiryDate").isNumber()) {
+      entityResource.addProperty(
+          model.createProperty(OM_NS, "certificationExpiresAt"),
+          model.createTypedLiteral(certification.get("expiryDate").asLong()));
     }
   }
 
