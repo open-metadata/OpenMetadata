@@ -32,6 +32,11 @@ public class OpenSearchQueryBuilderFactory implements QueryBuilderFactory {
   }
 
   @Override
+  public OMQueryBuilder prefixQuery(String field, String value) {
+    return new OpenSearchQueryBuilder().prefixQuery(field, value);
+  }
+
+  @Override
   public OMQueryBuilder existsQuery(String field) {
     return new OpenSearchQueryBuilder().existsQuery(field);
   }

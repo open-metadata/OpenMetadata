@@ -173,6 +173,11 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
     return this;
   }
 
+  public OpenSearchQueryBuilder prefixQuery(String field, String value) {
+    this.query = Query.of(q -> q.prefix(p -> p.field(field).value(value)));
+    return this;
+  }
+
   public OpenSearchQueryBuilder nestedQuery(String path, OMQueryBuilder innerQuery) {
     Query inner = ((OpenSearchQueryBuilder) innerQuery).build();
     this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner).ignoreUnmapped(true)));

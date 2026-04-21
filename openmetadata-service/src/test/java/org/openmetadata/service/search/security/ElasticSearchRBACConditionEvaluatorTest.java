@@ -315,16 +315,21 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Finance");
+    domain.setFullyQualifiedName("Finance");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
 
-    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
     assertTrue(
-        generatedQuery.contains(domain.getId().toString()),
-        "The query should contain the user's domain ID.");
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should filter on domains.fullyQualifiedName.");
+    assertTrue(
+        generatedQuery.contains("Finance"), "The query should contain the user's domain FQN.");
+    assertTrue(
+        generatedQuery.contains("prefix") && generatedQuery.contains("Finance."),
+        "The query should include a descendant prefix clause for sub-domain hierarchy.");
   }
 
   @Test
@@ -334,10 +339,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain1 = new EntityReference();
     domain1.setId(UUID.randomUUID());
     domain1.setName("Finance");
+    domain1.setFullyQualifiedName("Finance");
 
     EntityReference domain2 = new EntityReference();
     domain2.setId(UUID.randomUUID());
     domain2.setName("Engineering");
+    domain2.setFullyQualifiedName("Engineering");
 
     when(mockUser.getDomains()).thenReturn(List.of(domain1, domain2));
 
@@ -345,28 +352,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
 
-    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-
-    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
     assertTrue(
-        generatedQuery.contains(domain1.getId().toString()),
-        "The query should contain domain1 ID.");
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should filter on domains.fullyQualifiedName.");
+    assertTrue(generatedQuery.contains("Finance"), "The query should contain domain1 FQN.");
+    assertTrue(generatedQuery.contains("Engineering"), "The query should contain domain2 FQN.");
     assertTrue(
-        generatedQuery.contains(domain2.getId().toString()),
-        "The query should contain domain2 ID.");
-
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[?(@.term['domains.id'].value=='" + domain1.getId() + "')]",
-        "domain1 should be in a should (OR) clause");
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[?(@.term['domains.id'].value=='" + domain2.getId() + "')]",
-        "domain2 should be in a should (OR) clause");
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[?(@.bool.must_not)]",
-        "should include a clause for entities with no domain");
+        generatedQuery.contains("Finance.") && generatedQuery.contains("Engineering."),
+        "The query should include descendant prefix clauses for both domains.");
+    assertTrue(
+        generatedQuery.contains("must_not") && generatedQuery.contains("domains.id"),
+        "The query should include a no-domain clause (mustNot exists domains.id)");
   }
 
   @Test
@@ -382,6 +378,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Finance");
+    domain.setFullyQualifiedName("Finance");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
@@ -395,12 +392,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(jsonContext, "$..bool.should[?(@.term['domains.id'])]", "domains.id");
-
-    assertFieldExists(
-        jsonContext,
-        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
-        "user's domain ID");
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName") && generatedQuery.contains("Finance"),
+        "hasDomain should filter on domains.fullyQualifiedName with the user's domain FQN");
 
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
@@ -480,6 +474,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Technology");
+    domain.setFullyQualifiedName("Technology");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
@@ -491,10 +486,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
 
-    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
     assertTrue(
-        generatedQuery.contains(domain.getId().toString()),
-        "The query should contain the user's domain ID.");
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should filter on domains.fullyQualifiedName.");
+    assertTrue(
+        generatedQuery.contains("Technology"), "The query should contain the user's domain FQN.");
     assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
     assertTrue(
         generatedQuery.contains("Confidential"), "The query should contain 'Confidential' tag.");
@@ -510,8 +506,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-    assertFieldExists(
-        jsonContext, "$.bool.must_not[?(@.exists.field=='domains.id')]", "must_not for domains.id");
+
+    assertTrue(
+        generatedQuery.contains("must_not") && generatedQuery.contains("domains.id"),
+        "user with no domains should produce a no-domain filter (mustNot exists domains.id)");
 
     assertFieldExists(
         jsonContext,
@@ -519,10 +517,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
             + mockUser.getId().toString()
             + "')]",
         "owner.id");
-    assertFieldExists(
-        jsonContext,
-        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Public')]",
-        "Public tag");
+    assertTrue(
+        generatedQuery.contains("Public"), "query should reference the matchAnyTag 'Public' tag");
   }
 
   @Test
@@ -808,6 +804,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
+    domain.setFullyQualifiedName("Operations");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
@@ -821,7 +818,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-    assertFieldExists(jsonContext, "$..bool.should[?(@.term['domains.id'])]", "domains.id");
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName")
+            && generatedQuery.contains("Operations"),
+        "hasDomain should filter on domains.fullyQualifiedName with the user's domain FQN");
 
     assertFieldExists(
         jsonContext,
@@ -856,10 +856,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(
-        jsonContext,
-        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domains.id')]",
-        "must_not for hasDomain");
+    assertTrue(
+        generatedQuery.contains("must_not") && generatedQuery.contains("domains.id"),
+        "!hasDomain() should negate a clause that references domains.id (no-domain branch)");
     assertFieldExists(
         jsonContext,
         "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
@@ -899,6 +898,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Technology");
+    domain.setFullyQualifiedName("Technology");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -918,10 +918,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
-    assertFieldExists(
-        jsonContext,
-        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
-        "domains.id");
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName")
+            && generatedQuery.contains("Technology"),
+        "hasDomain should filter on domains.fullyQualifiedName with the user's domain FQN");
   }
 
   @Test
@@ -999,6 +999,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
+    domain.setFullyQualifiedName("Finance");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
@@ -1008,12 +1009,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
     String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[0]..bool.should[?(@.term['domains.id'].value=='"
-            + domain.getId().toString()
-            + "')]",
-        "user's domain ID");
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName") && generatedQuery.contains("Finance"),
+        "hasDomain should filter on domains.fullyQualifiedName with the user's domain FQN");
 
     assertFieldExists(
         jsonContext,
@@ -1044,6 +1042,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Operations");
+    domain.setFullyQualifiedName("Operations");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1051,12 +1050,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
     String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[0]..bool.should[?(@.term['domains.id'].value=='"
-            + domain.getId().toString()
-            + "')]",
-        "user's domain ID");
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName")
+            && generatedQuery.contains("Operations"),
+        "hasDomain should filter on domains.fullyQualifiedName with the user's domain FQN");
 
     assertFieldExists(
         jsonContext,

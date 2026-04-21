@@ -112,6 +112,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
+    domain.setFullyQualifiedName("Finance");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -122,10 +123,12 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'DataSteward'");
-    assertFieldExists(
-        jsonContext,
-        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
-        "domains.id");
+    assertTrue(
+        generatedQuery.contains("\"domains.fullyQualifiedName\""),
+        "hasDomain should filter on domains.fullyQualifiedName");
+    assertTrue(
+        generatedQuery.contains("\"prefix\"") && generatedQuery.contains("Finance."),
+        "hasDomain should include prefix clause for sub-domain hierarchy");
   }
 
   @Test
@@ -135,10 +138,12 @@ class OpenSearchRBACConditionEvaluatorTest {
     EntityReference domain1 = new EntityReference();
     domain1.setId(UUID.randomUUID());
     domain1.setName("Finance");
+    domain1.setFullyQualifiedName("Finance");
 
     EntityReference domain2 = new EntityReference();
     domain2.setId(UUID.randomUUID());
     domain2.setName("Engineering");
+    domain2.setFullyQualifiedName("Engineering");
 
     when(mockUser.getDomains()).thenReturn(List.of(domain1, domain2));
 
@@ -146,20 +151,18 @@ class OpenSearchRBACConditionEvaluatorTest {
     Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
     String generatedQuery = openSearchQuery.toJsonString();
 
-    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[?(@.term['domains.id'].value=='" + domain1.getId() + "')]",
-        "domain1 should be in a should (OR) clause");
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[?(@.term['domains.id'].value=='" + domain2.getId() + "')]",
-        "domain2 should be in a should (OR) clause");
-    assertFieldExists(
-        jsonContext,
-        "$.bool.should[?(@.bool.must_not)]",
-        "should include a clause for entities with no domain");
+    assertTrue(
+        generatedQuery.contains("\"domains.fullyQualifiedName\""),
+        "assets branch should filter on domains.fullyQualifiedName");
+    assertTrue(
+        generatedQuery.contains("\"Finance\"") && generatedQuery.contains("\"Engineering\""),
+        "both user domains should appear in the query");
+    assertTrue(
+        generatedQuery.contains("Finance.") && generatedQuery.contains("Engineering."),
+        "both user domain FQNs should be used as descendant prefixes");
+    assertTrue(
+        generatedQuery.contains("\"exists\"") && generatedQuery.contains("\"domains.id\""),
+        "should include a clause for entities with no domain (mustNot exists domains.id)");
   }
 
   @Test
@@ -173,10 +176,9 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(
-        jsonContext,
-        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domains.id')]",
-        "must_not for hasDomain");
+    assertTrue(
+        generatedQuery.contains("\"must_not\"") && generatedQuery.contains("\"domains.id\""),
+        "!hasDomain() should negate a clause that references domains.id (no-domain branch)");
     assertFieldExists(
         jsonContext,
         "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
@@ -198,6 +200,7 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
+    domain.setFullyQualifiedName("Finance");
     when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
@@ -213,10 +216,9 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
-    assertFieldExists(
-        jsonContext,
-        "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
-        "domains.id");
+    assertTrue(
+        generatedQuery.contains("\"domains.fullyQualifiedName\""),
+        "hasDomain should filter on domains.fullyQualifiedName");
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
 

@@ -14,6 +14,8 @@ public interface QueryBuilderFactory {
 
   OMQueryBuilder termsQuery(String field, List<String> values);
 
+  OMQueryBuilder prefixQuery(String field, String value);
+
   OMQueryBuilder existsQuery(String field);
 
   OMQueryBuilder nestedQuery(String path, OMQueryBuilder query);
