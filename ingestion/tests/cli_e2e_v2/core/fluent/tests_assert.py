@@ -9,14 +9,14 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from .eventually import retry_until
+from .eventually import EventuallyRunner
 
 
 class TestsAssert:
     """Tests namespace — reached via TableAssert.tests.
 
-    Serves as a builder for per-test-case assertions; the actual .passes() /
-    .fails() live on TestCaseAssert.
+    Builder for per-test-case assertions; the actual `.passes()` / `.fails()`
+    live on TestCaseAssert.
     """
 
     def __init__(self, om: OpenMetadata, table_fqn: str) -> None:
@@ -34,24 +34,22 @@ class TestCaseAssert:
         self._om = om
         self._table_fqn = table_fqn
         self._test_case_name = test_case_name
-        self._eventually_timeout: int | None = None
+        self._eventually = EventuallyRunner()
 
     def eventually(self, timeout: int = 60) -> "TestCaseAssert":
-        self._eventually_timeout = timeout
+        self._eventually.arm(timeout)
         return self
 
     def _test_case_fqn(self) -> str:
         return f"{self._table_fqn}.{self._test_case_name}"
 
     def _latest_result_status(self) -> TestCaseStatus | None:
-        fqn = self._test_case_fqn()
-        test_case = self._om.get_by_name(entity=TestCase, fqn=fqn, fields=["testCaseResult"])
-        if test_case is None:
+        test_case = self._om.get_by_name(
+            entity=TestCase, fqn=self._test_case_fqn(), fields=["testCaseResult"]
+        )
+        if test_case is None or test_case.testCaseResult is None:
             return None
-        result = getattr(test_case, "testCaseResult", None)
-        if result is None:
-            return None
-        return result.testCaseStatus
+        return test_case.testCaseResult.testCaseStatus
 
     def _run(self, expected: TestCaseStatus) -> None:
         fqn = self._test_case_fqn()
@@ -63,11 +61,7 @@ class TestCaseAssert:
                     f"Test case {fqn}: expected {expected}, got {actual}"
                 )
 
-        if self._eventually_timeout is not None:
-            retry_until(_check, timeout=self._eventually_timeout, name=f"test_case({self._test_case_name})")
-            self._eventually_timeout = None
-        else:
-            _check()
+        self._eventually.run(_check, name=f"test_case({self._test_case_name})")
 
     def passes(self) -> None:
         self._run(TestCaseStatus.Success)

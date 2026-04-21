@@ -4,10 +4,19 @@
 """Runs the metadata CLI in a subprocess and returns a parsed Status.
 
 Function-scoped — one CliRunner per pytest test, bound to that test's
-tmp_path. Each .run() invocation writes its own numbered config YAML and
-status JSON so multiple runs within a single test (e.g., ingest → profile)
-keep distinct artifacts. Artifacts survive test teardown when pytest
-preserves tmp_path (default: last 3 sessions under --basetemp).
+tmp_path. Each `.run()` invocation writes its own numbered config YAML,
+status JSON, and stdout log so multiple runs within a single test (e.g.,
+ingest -> profile) keep distinct artifacts. Artifacts survive test
+teardown when pytest preserves tmp_path (default: last 3 sessions under
+--basetemp).
+
+Subprocess invariants:
+  - bounded timeout (default 10 min, override per call)
+  - stdout and stderr both captured; stdout also persisted alongside the
+    rendered cfg_* / status_* artifacts for post-mortem
+  - CliExecutionError carries exit_code, stderr, stdout, config_path, and
+    the full argv so pytest's default failure rendering surfaces
+    everything a dev needs
 """
 
 from __future__ import annotations
@@ -19,27 +28,35 @@ from ..config.builder import WorkflowConfig
 from .errors import CliExecutionError
 from .status import Status
 
+DEFAULT_TIMEOUT_SECONDS = 600
+
 
 class CliRunner:
     """Runs `metadata <subcommand>` via subprocess and returns a typed Status.
 
     Usage:
         runner = CliRunner(tmp_path)
-        status = runner.run(cfg)                 # ingest
-        status2 = runner.run(cfg.as_profiler())  # profile (separate artifacts)
+        status = runner.run(cfg)                        # ingest
+        status2 = runner.run(cfg.pipeline(Profiler...))  # profile
     """
 
     def __init__(self, tmp_path: Path) -> None:
         self.tmp_path = tmp_path
         self._invocation_counter: dict[str, int] = {}
 
-    def run(self, config: WorkflowConfig) -> Status:
-        pipeline = config.pipeline_type
-        n = self._invocation_counter.get(pipeline, 0)
-        self._invocation_counter[pipeline] = n + 1
+    def run(
+        self,
+        config: WorkflowConfig,
+        *,
+        timeout: int = DEFAULT_TIMEOUT_SECONDS,
+    ) -> Status:
+        identifier = config.pipeline_identifier
+        n = self._invocation_counter.get(identifier, 0)
+        self._invocation_counter[identifier] = n + 1
 
         cfg_path = config.write_tmp(self.tmp_path, invocation=n)
-        status_path = self.tmp_path / f"status_{pipeline}_{n}.json"
+        status_path = self.tmp_path / f"status_{identifier}_{n}.json"
+        stdout_path = self.tmp_path / f"stdout_{identifier}_{n}.log"
 
         command = [
             "metadata",
@@ -50,12 +67,39 @@ class CliRunner:
             str(status_path),
         ]
 
-        result = subprocess.run(command, capture_output=True, text=True)
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            # exc.stdout / exc.stderr may be bytes or str depending on
+            # capture config — normalize to str for consistent logging.
+            out = _coerce_text(exc.stdout)
+            err = _coerce_text(exc.stderr)
+            stdout_path.write_text(out)
+            raise CliExecutionError(
+                exit_code=-1,
+                stderr=(
+                    f"CLI timed out after {timeout}s.\n"
+                    f"stderr so far:\n{err}"
+                ),
+                stdout=out,
+                config_path=cfg_path,
+                command=command,
+            ) from exc
+
+        # Persist stdout unconditionally — useful for debugging both
+        # successful runs (checking warnings) and failed ones.
+        stdout_path.write_text(result.stdout or "")
 
         if result.returncode != 0:
             raise CliExecutionError(
                 exit_code=result.returncode,
                 stderr=result.stderr,
+                stdout=result.stdout,
                 config_path=cfg_path,
                 command=command,
             )
@@ -67,12 +111,19 @@ class CliRunner:
             raise CliExecutionError(
                 exit_code=0,
                 stderr=(
-                    f"CLI exited 0 but no status file was written at {status_path}.\n"
-                    f"stdout:\n{result.stdout}\n"
-                    f"stderr:\n{result.stderr}"
+                    f"CLI exited 0 but no status file was written at {status_path}."
                 ),
+                stdout=result.stdout,
                 config_path=cfg_path,
                 command=command,
             )
 
         return Status.from_json(status_path)
+
+
+def _coerce_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)

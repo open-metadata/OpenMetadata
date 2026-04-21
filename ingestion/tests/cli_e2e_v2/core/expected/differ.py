@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.storedProcedure import StoredProcedur
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 
 from .types import (
     ExpectedColumn,
@@ -99,6 +100,9 @@ def _diff_service(
     for exp_db in exp.databases:
         _diff_database(exp_db, exp.name, om, mode, diffs)
 
+    if mode == MatchMode.STRICT:
+        _check_strict_service_extras(exp, om, diffs)
+
 
 def _diff_database(
     exp_db: ExpectedDatabase,
@@ -115,6 +119,63 @@ def _diff_database(
         return
     for exp_schema in exp_db.schemas:
         _diff_schema(exp_schema, db_fqn, om, mode, diffs)
+
+    if mode == MatchMode.STRICT:
+        _check_strict_database_extras(exp_db, db_fqn, om, diffs)
+
+
+def _check_strict_service_extras(
+    exp_service: ExpectedService,
+    om: OpenMetadata,
+    diffs: list[Diff],
+) -> None:
+    """STRICT: flag actual databases under the service that weren't declared.
+
+    Listing params cap at limit=1000 — sufficient for every e2e scenario
+    (services under test rarely have >1 database). Larger production-like
+    catalogs would need pagination.
+    """
+    expected_names = {d.name for d in exp_service.databases}
+    actual_dbs = om.list_all_entities(
+        entity=Database,
+        params={"service": exp_service.name},
+        limit=1000,
+    )
+    for actual in actual_dbs:
+        actual_name = model_str(actual.name)
+        if actual_name not in expected_names:
+            diffs.append(
+                Diff(
+                    path=f"service[{exp_service.name}].database[{actual_name}](strict)",
+                    expected="not present",
+                    actual="present",
+                )
+            )
+
+
+def _check_strict_database_extras(
+    exp_db: ExpectedDatabase,
+    db_fqn: str,
+    om: OpenMetadata,
+    diffs: list[Diff],
+) -> None:
+    """STRICT: flag actual schemas under the database that weren't declared."""
+    expected_names = {s.name for s in exp_db.schemas}
+    actual_schemas = om.list_all_entities(
+        entity=DatabaseSchema,
+        params={"database": db_fqn},
+        limit=1000,
+    )
+    for actual in actual_schemas:
+        actual_name = model_str(actual.name)
+        if actual_name not in expected_names:
+            diffs.append(
+                Diff(
+                    path=f"{db_fqn}.schema[{actual_name}](strict)",
+                    expected="not present",
+                    actual="present",
+                )
+            )
 
 
 def _diff_schema(
@@ -164,7 +225,7 @@ def _check_strict_schema_extras(
         limit=1000,
     )
     for actual in actual_tables:
-        actual_name = actual.name.root
+        actual_name = model_str(actual.name)
         if actual_name not in expected_table_names:
             diffs.append(
                 Diff(
@@ -181,7 +242,7 @@ def _check_strict_schema_extras(
         limit=1000,
     )
     for actual in actual_sps:
-        actual_name = actual.name.root
+        actual_name = model_str(actual.name)
         if actual_name not in expected_sp_names:
             diffs.append(
                 Diff(
@@ -215,9 +276,11 @@ def _diff_table(
         if exp_table.owner not in actual_owners:
             diffs.append(Diff(f"{path}.owner", exp_table.owner, sorted(actual_owners)))
 
-    # tags (subset match — all expected tags must be present)
+    # tags (subset match — all expected tags must be present).
+    # tagFQN is a Pydantic RootModel[str], so compare via model_str rather
+    # than relying on str() / enum equality.
     if exp_table.tags:
-        actual_tags = {t.tagFQN for t in (actual.tags or [])}
+        actual_tags = {model_str(t.tagFQN) for t in (actual.tags or [])}
         missing = exp_table.tags - actual_tags
         if missing:
             diffs.append(
@@ -226,7 +289,7 @@ def _diff_table(
 
     # description (substring match per Decision #16)
     if exp_table.description is not None:
-        actual_desc = actual.description.root if actual.description else ""
+        actual_desc = model_str(actual.description) if actual.description else ""
         if exp_table.description not in actual_desc:
             diffs.append(
                 Diff(
@@ -237,7 +300,7 @@ def _diff_table(
             )
 
     # columns
-    actual_columns_by_name = {c.name.root: c for c in (actual.columns or [])}
+    actual_columns_by_name = {model_str(c.name): c for c in (actual.columns or [])}
     for exp_col in exp_table.columns:
         _diff_column(exp_col, path, actual_columns_by_name, diffs)
 
@@ -274,14 +337,14 @@ def _diff_column(
                 Diff(f"{path}.constraint", exp_col.constraint, actual.constraint)
             )
     if exp_col.tags:
-        actual_tags = {t.tagFQN for t in (actual.tags or [])}
+        actual_tags = {model_str(t.tagFQN) for t in (actual.tags or [])}
         missing = exp_col.tags - actual_tags
         if missing:
             diffs.append(
                 Diff(f"{path}.tags", sorted(exp_col.tags), sorted(actual_tags))
             )
     if exp_col.description is not None:
-        actual_desc = actual.description.root if actual.description else ""
+        actual_desc = model_str(actual.description) if actual.description else ""
         if exp_col.description not in actual_desc:
             diffs.append(
                 Diff(
@@ -305,7 +368,7 @@ def _diff_stored_procedure(
         diffs.append(Diff(path, "present", "missing"))
         return
     if exp_sp.description is not None:
-        actual_desc = actual.description.root if actual.description else ""
+        actual_desc = model_str(actual.description) if actual.description else ""
         if exp_sp.description not in actual_desc:
             diffs.append(
                 Diff(

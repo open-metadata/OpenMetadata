@@ -18,8 +18,14 @@ ingestion/src/metadata/workflow/base.py). Observed live in smoke testing:
     ]
   }
 
-`warnings` / `errors` / `filtered` are counts (ints). `failures` is the
-optional detail list (None when no failures, list of dicts when present).
+Parsing contract:
+  - required keys must be present (pipeline_type, success, steps)
+  - required step keys must be present (name, records, updated_records,
+    warnings, errors, filtered, failures)
+  - step `failures` may be `null` (mapped to empty list) or a list of dicts
+  - A schema change on the CLI side surfaces as a KeyError at parse time,
+    not a silent mis-count — the test halts loudly rather than passing with
+    zeroes it inferred from missing keys.
 """
 
 from __future__ import annotations
@@ -33,23 +39,23 @@ from typing import Any
 @dataclass(frozen=True)
 class StepStatus:
     name: str
-    records: int = 0
-    updated_records: int = 0
-    warnings: int = 0
-    errors: int = 0
-    filtered: int = 0
+    records: int
+    updated_records: int
+    warnings: int
+    errors: int
+    filtered: int
     failures: list[dict] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, step: dict[str, Any]) -> "StepStatus":
         return cls(
-            name=str(step.get("name", "unknown")),
-            records=int(step.get("records") or 0),
-            updated_records=int(step.get("updated_records") or 0),
-            warnings=int(step.get("warnings") or 0),
-            errors=int(step.get("errors") or 0),
-            filtered=int(step.get("filtered") or 0),
-            failures=list(step.get("failures") or []),
+            name=str(step["name"]),
+            records=int(step["records"] or 0),
+            updated_records=int(step["updated_records"] or 0),
+            warnings=int(step["warnings"] or 0),
+            errors=int(step["errors"] or 0),
+            filtered=int(step["filtered"] or 0),
+            failures=list(step["failures"] or []),
         )
 
 
@@ -64,9 +70,9 @@ class Status:
     def from_json(cls, path: Path) -> "Status":
         data: dict[str, Any] = json.loads(path.read_text())
         return cls(
-            pipeline_type=str(data.get("pipeline_type", "unknown")),
+            pipeline_type=str(data["pipeline_type"]),
             ingestion_pipeline_fqn=data.get("ingestion_pipeline_fqn"),
-            success=bool(data.get("success", False)),
+            success=bool(data["success"]),
             steps=[StepStatus.from_dict(s) for s in (data.get("steps") or [])],
         )
 

@@ -4,26 +4,22 @@
 """Fluent entry point wrapping the existing OpenMetadata HTTP client.
 
 Per Decision #21 of the v2 spec, OmClient is a thin facade — we do NOT build
-a new HTTP client. All actual REST calls delegate to metadata.ingestion.ometa.OpenMetadata,
-which already handles auth, retries, and Pydantic deserialization.
+a new HTTP client. All actual REST calls delegate to
+metadata.ingestion.ometa.OpenMetadata, which already handles auth, retries,
+and Pydantic deserialization.
 
 OmClient's public surface is the fluent layer: .table(fqn), .service(name),
-plus .raw for escape-hatch tests that need the underlying client directly.
+.stored_procedure(fqn), plus .raw for escape-hatch tests that need the
+underlying client directly.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+from .service_assert import ServiceAssert
+from .stored_procedure_assert import StoredProcedureAssert
 from .table_assert import TableAssert
-
-if TYPE_CHECKING:
-    from .service_assert import ServiceAssert
-    from .stored_procedure_assert import (
-        StoredProcedureAssert,
-    )
 
 
 class OmClient:
@@ -37,17 +33,8 @@ class OmClient:
     def table(self, fqn: str) -> TableAssert:
         return TableAssert(self._om, fqn)
 
-    def service(self, name: str) -> "ServiceAssert":
-        # Lazy import — ServiceAssert lands in Task 14.
-        from .service_assert import ServiceAssert
-
+    def service(self, name: str) -> ServiceAssert:
         return ServiceAssert(self._om, name)
 
-    def stored_procedure(self, fqn: str) -> "StoredProcedureAssert":
-        # Lazy import keeps Task 13's test-time importability even if this file
-        # is loaded before Task 14-style classes.
-        from .stored_procedure_assert import (
-            StoredProcedureAssert,
-        )
-
+    def stored_procedure(self, fqn: str) -> StoredProcedureAssert:
         return StoredProcedureAssert(self._om, fqn)

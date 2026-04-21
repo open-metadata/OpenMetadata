@@ -24,7 +24,7 @@ from .types import BaselineSpec, SourceBaselineEnforcer
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class EnforcementPolicy:
     """Binds an enforcer to a mode.
 
@@ -63,9 +63,6 @@ def ensure_baseline(
         )
         return
 
-    # introspect is called for side effects (e.g., warming a connection cache)
-    # and structure — compare() uses introspect() internally.
-    policy.enforcer.introspect()
     drifts = policy.enforcer.compare(expected)
 
     if not drifts:

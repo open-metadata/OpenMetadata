@@ -55,6 +55,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from sqlalchemy.engine import URL
+
 from ..core.config.env import Env
 from ..core.source.orchestrator import EnforcementPolicy
 from ..core.source.sql import (
@@ -377,10 +379,22 @@ def get_policy() -> EnforcementPolicy:
     Reads E2E_MYSQL_* env vars on first call. EnvLoadError surfaces at
     fixture time with a clear message when a required var is missing —
     better than opaque failures deeper in the pipeline.
+
+    Builds the SQLAlchemy URL via `URL.create` so usernames / passwords
+    containing URL-reserved characters (`@`, `:`, `/`, `#`, `%`, `?`)
+    encode correctly rather than breaking the URL parser.
     """
     user = Env("E2E_MYSQL_USER").get()
     password = Env("E2E_MYSQL_PASSWORD").get()
     host_port = Env("E2E_MYSQL_HOST_PORT").get()
-    url = f"mysql+pymysql://{user}:{password}@{host_port}"
+    host, _, port_str = host_port.partition(":")
+    port = int(port_str) if port_str else None
+    url = URL.create(
+        drivername="mysql+pymysql",
+        username=user,
+        password=password,
+        host=host,
+        port=port,
+    )
     enforcer = MySqlEnforcer.from_url(url, MYSQL_BASELINE)
     return EnforcementPolicy(enforcer=enforcer, mode="apply")

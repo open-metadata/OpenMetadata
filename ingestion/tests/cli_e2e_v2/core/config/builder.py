@@ -1,14 +1,24 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Immutable Python builder for a workflow config rendered to YAML for the metadata CLI.
+"""Immutable builder for the YAML config consumed by the metadata CLI.
 
-Replaces v1's YAML-per-test-variant pattern. Each test builds a base config from
-the connector factory and derives variants via `.as_*()` / `.with_*()` overlays.
-All overlays return new instances (deep copy) so composing never mutates the base.
+Construction is a two-step builder: the connector factory returns a base
+`WorkflowConfig` carrying connection + service + sink + server config, then
+the test chooses a pipeline and passes its options in via `.pipeline(...)`:
 
-Pipeline type → CLI subcommand mapping is owned here; the CliRunner reads
-`cli_subcommand` to decide which `metadata` subcommand to invoke.
+    base = build_mysql_config(service_name, server)
+    cfg  = base.pipeline(
+               MetadataPipeline(includeStoredProcedures=True),
+           ).with_filter(tables_include=["customers"])
+
+Rules:
+  - All overlays are non-mutating; each returns a new frozen WorkflowConfig.
+  - Filter patterns applied via `.with_filter(...)` persist across a later
+    `.pipeline(...)` transition. Filters set inline on the pipeline options
+    take precedence — preserved filters only fill gaps.
+  - Rendering (`write_tmp`, `cli_subcommand`, `pipeline_identifier`) fails
+    loudly when no pipeline is set — no silent render of half-built configs.
 """
 
 from __future__ import annotations
@@ -20,43 +30,39 @@ from typing import Any
 
 import yaml
 
+from .pipelines import (
+    PipelineOptions,
+    cli_subcommand_for,
+    pipeline_identifier,
+)
 from .server import ServerConfig
 
-
-# Maps pipeline_type → CLI subcommand name (what `metadata <cmd>` expects).
-#
-# "lineage" maps to "ingest", not "lineage": `metadata lineage` is a separate
-# raw-SQL-parse tool (LineageWorkflow with filePath/query/serviceName) that has
-# nothing to do with connector-based DatabaseLineage pipelines. Connector lineage
-# runs through `metadata ingest` exactly like DatabaseMetadata — the pipeline
-# type is signalled only by sourceConfig.config.type = "DatabaseLineage" and by
-# pointing source.type at the connector's lineage variant (e.g. "mysql-lineage").
-_PIPELINE_CLI_SUBCOMMAND: dict[str, str] = {
-    "metadata": "ingest",
-    "profiler": "profile",
-    "lineage": "ingest",
-    "usage": "usage",
-    "test": "test",
-    "auto_classification": "classify",
-}
-
-# Maps pipeline_type → sourceConfig.config.type (what the workflow Pydantic expects)
-_PIPELINE_SOURCE_CONFIG_TYPE: dict[str, str] = {
-    "metadata": "DatabaseMetadata",
-    "profiler": "Profiler",
-    "lineage": "DatabaseLineage",
-    "usage": "DatabaseUsage",
-    "test": "TestSuite",
-    "auto_classification": "AutoClassification",
-}
+_FILTER_KEYS: tuple[str, ...] = (
+    "databaseFilterPattern",
+    "schemaFilterPattern",
+    "tableFilterPattern",
+)
 
 
-@dataclass
+class PipelineNotSetError(RuntimeError):
+    """Raised when a WorkflowConfig is rendered or queried before a pipeline
+    has been selected via `.pipeline(...)`."""
+
+
+@dataclass(frozen=True)
 class WorkflowConfig:
-    """Holds the workflow config as a nested dict; overlays return new instances."""
+    """Frozen carrier for one workflow's rendered config + active pipeline.
 
-    _doc: dict[str, Any]  # the full YAML document as a dict
-    _pipeline: str  # one of _PIPELINE_CLI_SUBCOMMAND keys
+    Two fields:
+      _doc       — the full YAML document as a dict tree
+      _options   — the Pydantic pipeline options model (None on base configs
+                   returned from the factory; set by .pipeline())
+
+    Instances are frozen — overlays return new instances via copy.deepcopy.
+    """
+
+    _doc: dict[str, Any]
+    _options: PipelineOptions | None = None
 
     # --- construction ---------------------------------------------------
     @classmethod
@@ -68,190 +74,48 @@ class WorkflowConfig:
         service_connection: dict[str, Any],
         server: ServerConfig,
     ) -> "WorkflowConfig":
-        """Build a base config starting in 'metadata' pipeline mode.
+        """Build a base config without any pipeline selected.
 
-        Callers provide `service_connection` as a plain dict (already
-        model_dump'd from an OM Pydantic connection class, or built manually).
+        Callers pass `service_connection` as a plain dict (either model_dump'd
+        from an OM connection class or built manually with env refs).
         """
         doc: dict[str, Any] = {
             "source": {
                 "type": source_type,
                 "serviceName": service_name,
                 "serviceConnection": {"config": dict(service_connection)},
-                "sourceConfig": {
-                    "config": {"type": _PIPELINE_SOURCE_CONFIG_TYPE["metadata"]}
-                },
+                "sourceConfig": {"config": {}},
             },
             "sink": server.to_sink_config_dict(),
             "workflowConfig": server.to_workflow_config_dict(),
         }
-        return cls(_doc=doc, _pipeline="metadata")
+        return cls(_doc=doc, _options=None)
 
-    # --- immutability helper --------------------------------------------
-    def _clone_with(
-        self,
-        *,
-        pipeline: str,
-        source_config_changes: dict[str, Any] | None = None,
-    ) -> "WorkflowConfig":
-        """Return a new WorkflowConfig with the given pipeline and sourceConfig overrides.
+    # --- pipeline transition --------------------------------------------
+    def pipeline(self, options: PipelineOptions) -> "WorkflowConfig":
+        """Transition to a concrete pipeline.
 
-        Replaces sourceConfig.config entirely (keyed only by new pipeline's type)
-        then layers in the requested changes. Other parts of the doc are deep-copied
-        unchanged.
+        `options` is one of the OM-generated Pydantic pipeline models
+        (re-exported with short aliases in `pipelines.py`). The instance's
+        `.type` field discriminator is carried through into the rendered
+        YAML as `sourceConfig.config.type`.
+
+        Filter patterns already set on this config (via `.with_filter(...)`)
+        persist across the transition. Filters set inline on `options` take
+        precedence over preserved filters.
         """
+        dumped = options.model_dump(mode="json", exclude_none=True)
+
         new_doc = copy.deepcopy(self._doc)
-        new_doc["source"]["sourceConfig"]["config"] = {
-            "type": _PIPELINE_SOURCE_CONFIG_TYPE[pipeline]
-        }
-        if source_config_changes:
-            new_doc["source"]["sourceConfig"]["config"].update(source_config_changes)
-        return WorkflowConfig(_doc=new_doc, _pipeline=pipeline)
+        prior_cfg = new_doc["source"]["sourceConfig"]["config"]
+        for key in _FILTER_KEYS:
+            if key in prior_cfg:
+                dumped.setdefault(key, prior_cfg[key])
 
-    # --- pipeline switchers ---------------------------------------------
-    def as_metadata(
-        self,
-        *,
-        mark_deleted_tables: bool = True,
-        include_tables: bool = True,
-        include_views: bool = True,
-        include_stored_procedures: bool = False,
-    ) -> "WorkflowConfig":
-        """Switch to 'metadata' ingestion pipeline with optional flags.
+        new_doc["source"]["sourceConfig"]["config"] = dumped
+        return WorkflowConfig(_doc=new_doc, _options=options)
 
-        Default matches a sensible production-like shape: pick up tables & views,
-        mark soft-deleted tables, skip stored procedures.
-        """
-        return self._clone_with(
-            pipeline="metadata",
-            source_config_changes={
-                "markDeletedTables": mark_deleted_tables,
-                "includeTables": include_tables,
-                "includeViews": include_views,
-                "includeStoredProcedures": include_stored_procedures,
-            },
-        )
-
-    # --- accessors ------------------------------------------------------
-    @property
-    def pipeline_type(self) -> str:
-        return self._pipeline
-
-    @property
-    def cli_subcommand(self) -> str:
-        """CLI subcommand corresponding to the current pipeline type.
-
-        Used by CliRunner to pick the right `metadata <cmd>` invocation.
-        """
-        return _PIPELINE_CLI_SUBCOMMAND[self._pipeline]
-
-    # --- rendering ------------------------------------------------------
-    def write_tmp(self, tmp_path: Path, invocation: int = 0) -> Path:
-        """Dump to tmp_path/cfg_<pipeline>_<n>.yaml and return the path.
-
-        Per-invocation numbering avoids overwrites when a single test calls
-        cli_runner.run() multiple times (e.g., ingest → profile → test).
-        """
-        path = tmp_path / f"cfg_{self._pipeline}_{invocation}.yaml"
-        path.write_text(yaml.safe_dump(self._doc, sort_keys=False))
-        return path
-
-    def to_dict(self) -> dict[str, Any]:
-        """Deep copy of the internal document. For tests or debugging only."""
-        return copy.deepcopy(self._doc)
-
-    def as_profiler(
-        self,
-        *,
-        profile_sample: float | None = None,
-        include_views: bool = False,
-        compute_table_metrics: bool = True,
-        compute_column_metrics: bool = True,
-    ) -> "WorkflowConfig":
-        """Switch to the profiler pipeline.
-
-        `profile_sample` maps to sourceConfig.config.profileSample (percentage of rows,
-        0-100). Omitted when None, which lets OM use its default (full table scan).
-        `include_views` / `compute_table_metrics` / `compute_column_metrics` map to
-        their OM profiler schema flags.
-        """
-        changes: dict[str, Any] = {
-            "includeViews": include_views,
-            "computeTableMetrics": compute_table_metrics,
-            "computeColumnMetrics": compute_column_metrics,
-        }
-        if profile_sample is not None:
-            changes["profileSample"] = profile_sample
-        return self._clone_with(pipeline="profiler", source_config_changes=changes)
-
-    def as_lineage(
-        self,
-        *,
-        query_log_duration_days: int = 1,
-        result_limit: int = 1000,
-    ) -> "WorkflowConfig":
-        """Switch to the connector-based lineage pipeline.
-
-        Despite the name, the rendered CLI command is `metadata ingest` (not
-        `metadata lineage`, which is a separate raw-SQL tool). Pipeline type
-        `"lineage"` resolves to CLI subcommand `"ingest"` via the mapping
-        defined at module top.
-        """
-        return self._clone_with(
-            pipeline="lineage",
-            source_config_changes={
-                "queryLogDuration": query_log_duration_days,
-                "resultLimit": result_limit,
-            },
-        )
-
-    def as_usage(
-        self,
-        *,
-        query_log_duration_days: int = 1,
-        result_limit: int = 1000,
-    ) -> "WorkflowConfig":
-        """Switch to the usage pipeline.
-
-        CLI subcommand is `metadata usage`.
-        """
-        return self._clone_with(
-            pipeline="usage",
-            source_config_changes={
-                "queryLogDuration": query_log_duration_days,
-                "resultLimit": result_limit,
-            },
-        )
-
-    def as_test(self) -> "WorkflowConfig":
-        """Switch to the data-quality test pipeline (metadata test)."""
-        return self._clone_with(pipeline="test")
-
-    def as_auto_classification(
-        self,
-        *,
-        store_sample_data: bool = False,
-        enable_auto_classification: bool = True,
-        sample_data_count: int | None = None,
-        include_views: bool = True,
-    ) -> "WorkflowConfig":
-        """Switch to the auto-classification pipeline (metadata classify).
-
-        `store_sample_data` controls whether sample rows are persisted in OM.
-        `enable_auto_classification` toggles PII tagging inference.
-        `sample_data_count` maps to sampleDataCount (omitted when None, uses OM default of 50).
-        `include_views` mirrors the OM schema flag (default true for auto-classification).
-        """
-        changes: dict[str, Any] = {
-            "storeSampleData": store_sample_data,
-            "enableAutoClassification": enable_auto_classification,
-            "includeViews": include_views,
-        }
-        if sample_data_count is not None:
-            changes["sampleDataCount"] = sample_data_count
-        return self._clone_with(pipeline="auto_classification", source_config_changes=changes)
-
-    # --- universal tweaks -----------------------------------------------
+    # --- filter overlay -------------------------------------------------
     def with_filter(
         self,
         *,
@@ -262,14 +126,11 @@ class WorkflowConfig:
         tables_include: list[str] | None = None,
         tables_exclude: list[str] | None = None,
     ) -> "WorkflowConfig":
-        """Adds include/exclude filter patterns at database, schema, or table level.
+        """Append include/exclude patterns at database, schema, or table level.
 
-        Multiple calls MERGE lists (append), not replace. Supports simultaneous
-        include AND exclude at the same level (OM's filter model allows this and
-        v1 tests use the combination).
-
-        Each pattern dict has shape {"includes": [...], "excludes": [...]}.
-        Empty / omitted levels are not written at all.
+        Multiple calls MERGE (append), not replace. Include AND exclude at the
+        same level are allowed — OM's filter semantic applies exclude over
+        include on overlapping matches.
         """
         new_doc = copy.deepcopy(self._doc)
         cfg = new_doc["source"]["sourceConfig"]["config"]
@@ -287,4 +148,38 @@ class WorkflowConfig:
         _merge("schemaFilterPattern", schemas_include, schemas_exclude)
         _merge("tableFilterPattern", tables_include, tables_exclude)
 
-        return WorkflowConfig(_doc=new_doc, _pipeline=self._pipeline)
+        return WorkflowConfig(_doc=new_doc, _options=self._options)
+
+    # --- accessors ------------------------------------------------------
+    @property
+    def pipeline_identifier(self) -> str:
+        """Short id for artifact filenames and invocation counters."""
+        if self._options is None:
+            raise PipelineNotSetError(
+                "pipeline not set — call .pipeline(options) before querying identifier"
+            )
+        return pipeline_identifier(self._options)
+
+    @property
+    def cli_subcommand(self) -> str:
+        """The `metadata <cmd>` subcommand CliRunner will invoke."""
+        if self._options is None:
+            raise PipelineNotSetError(
+                "pipeline not set — call .pipeline(options) before querying subcommand"
+            )
+        return cli_subcommand_for(self._options)
+
+    # --- rendering ------------------------------------------------------
+    def write_tmp(self, tmp_path: Path, invocation: int = 0) -> Path:
+        """Dump to `<tmp_path>/cfg_<id>_<invocation>.yaml` and return the path."""
+        if self._options is None:
+            raise PipelineNotSetError(
+                "pipeline not set — call .pipeline(options) before rendering"
+            )
+        path = tmp_path / f"cfg_{self.pipeline_identifier}_{invocation}.yaml"
+        path.write_text(yaml.safe_dump(self._doc, sort_keys=False))
+        return path
+
+    def to_dict(self) -> dict[str, Any]:
+        """Deep copy of the rendered document. For tests or debugging only."""
+        return copy.deepcopy(self._doc)

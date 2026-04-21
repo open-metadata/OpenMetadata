@@ -47,31 +47,34 @@ class MatchMode(Enum):
     SUBSET = "subset"
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpectedColumn:
     """A single column's expected shape in OM."""
 
     name: str
     data_type: DataType
-    tags: set[str] = field(default_factory=set)
+    tags: frozenset[str] = field(default_factory=frozenset)
     constraint: Constraint | None = None
     description: str | None = None  # None = don't assert; str = substring match
     primary_key: bool = False
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpectedTable:
-    """A single table's expected shape in OM."""
+    """A single table's expected shape in OM.
+
+    Column matching is always by-name (dict lookup). Use STRICT match mode
+    on the differ to fail when actual tables carry unexpected extra columns.
+    """
 
     name: str
     columns: list[ExpectedColumn]
-    ordered: bool = False  # column match: False = by-name (default); True = by-position
     owner: str | None = None
-    tags: set[str] = field(default_factory=set)
+    tags: frozenset[str] = field(default_factory=frozenset)
     description: str | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpectedStoredProcedure:
     """A single stored procedure's expected presence in OM."""
 
@@ -79,20 +82,20 @@ class ExpectedStoredProcedure:
     description: str | None = None  # None = don't assert; str = substring match
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpectedSchema:
     name: str
     tables: list[ExpectedTable]
     stored_procedures: list[ExpectedStoredProcedure] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpectedDatabase:
     name: str
     schemas: list[ExpectedSchema]
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExpectedService:
     name: str
     service_type: DatabaseServiceType

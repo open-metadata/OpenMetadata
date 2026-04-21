@@ -25,6 +25,7 @@ from __future__ import annotations
 import pytest
 
 from ..core.config.builder import WorkflowConfig
+from ..core.config.pipelines import MetadataPipeline
 from ..core.config.server import ServerConfig
 from ..core.runner.cli_runner import CliRunner
 from ..core.source.orchestrator import ensure_baseline
@@ -84,7 +85,9 @@ def mysql_metadata_ingested(
         registered_services.append(service)
 
     runner = CliRunner(tmp_path_factory.mktemp("mysql_ingest"))
-    status = runner.run(mysql_cfg.as_metadata(include_stored_procedures=True))
+    status = runner.run(
+        mysql_cfg.pipeline(MetadataPipeline(includeStoredProcedures=True))
+    )
     assert status.success, (
         f"module-scoped mysql metadata ingest failed: {status.all_failures}"
     )

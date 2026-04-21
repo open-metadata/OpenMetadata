@@ -1,32 +1,52 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""TableAssert + ColumnAssert — fluent assertions on Table entities."""
+"""TableAssert + ColumnAssert — fluent assertions on Table entities.
+
+TableAssert dispatches terminal checks through a single `EventuallyRunner`
+collaborator so `.eventually(timeout)` is a one-shot toggle implemented in
+exactly one place (see `core/fluent/eventually.py`).
+
+ColumnAssert is synchronous — column-level assertions against a freshly
+ingested table have been consistent without polling in practice. Callers
+who need polling at the column level should chain off TableAssert:
+
+    om.table(fqn).eventually().column("x").has_tag("PII.Sensitive")
+    # ^^^ currently still synchronous — Bucket D (sticky eventually).
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from metadata.generated.schema.entity.data.table import DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ConstraintType,
+    DataType,
+    Table,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 
-if TYPE_CHECKING:
-    from .lineage_assert import LineageAssert
-    from .profile_assert import ProfileAssert
-    from .tests_assert import TestsAssert
+from .eventually import EventuallyRunner
+from .lineage_assert import LineageAssert
+from .profile_assert import ProfileAssert
+from .tests_assert import TestsAssert
 
 
 class TableAssert:
+    """Fluent assertions on a single Table identified by FQN."""
+
     def __init__(self, om: OpenMetadata, fqn: str) -> None:
         self._om = om
         self._fqn = fqn
-        self._eventually_timeout: int | None = None
+        self._eventually = EventuallyRunner()
 
-    def _fetch(self) -> Table:
+    # --- fetch --------------------------------------------------------
+
+    def _fetch(self, *, fields: list[str] | None = None) -> Table:
         table = self._om.get_by_name(
             entity=Table,
             fqn=self._fqn,
-            fields=["tags", "owners", "columns"],
+            fields=fields or ["tags", "owners", "columns"],
         )
         if table is None:
             raise AssertionError(f"Table not found: {self._fqn}")
@@ -40,15 +60,24 @@ class TableAssert:
         """Escape hatch — returns the raw Pydantic Table."""
         return self._fetch()
 
+    # --- eventually ---------------------------------------------------
+
+    def eventually(self, timeout: int = 60) -> "TableAssert":
+        """One-shot: the next terminal check polls until success/timeout."""
+        self._eventually.arm(timeout)
+        return self
+
+    # --- terminals ----------------------------------------------------
+
     def has_tag(self, fqn: str) -> "TableAssert":
         def _check() -> None:
             table = self._fetch()
-            actual = {t.tagFQN for t in (table.tags or [])}
+            actual = {model_str(t.tagFQN) for t in (table.tags or [])}
             if fqn not in actual:
                 raise AssertionError(
                     f"Table {self._fqn} missing tag {fqn!r}. Actual tags: {sorted(actual)}"
                 )
-        self._apply_maybe_eventually(_check, name=f"has_tag({fqn})")
+        self._eventually.run(_check, name=f"has_tag({fqn})")
         return self
 
     def has_owner(self, name: str) -> "TableAssert":
@@ -60,19 +89,19 @@ class TableAssert:
                 raise AssertionError(
                     f"Table {self._fqn} missing owner {name!r}. Actual owners: {sorted(actual)}"
                 )
-        self._apply_maybe_eventually(_check, name=f"has_owner({name})")
+        self._eventually.run(_check, name=f"has_owner({name})")
         return self
 
     def has_description_containing(self, text: str) -> "TableAssert":
         def _check() -> None:
             table = self._fetch()
-            desc = table.description.root if table.description else ""
+            desc = model_str(table.description) if table.description else ""
             if text not in desc:
                 raise AssertionError(
                     f"Table {self._fqn} description does not contain {text!r}. "
                     f"Actual: {desc!r}"
                 )
-        self._apply_maybe_eventually(_check, name=f"has_description_containing({text!r})")
+        self._eventually.run(_check, name=f"has_description_containing({text!r})")
         return self
 
     def has_foreign_key_constraint(
@@ -84,81 +113,68 @@ class TableAssert:
         """Assert the table carries a FOREIGN_KEY TableConstraint on `column`
         pointing at `referenced_table.referenced_column`.
 
-        MySQL connector lands FK data here — not as a lineage edge. Reads
-        Table.tableConstraints; matches constraint_type=FOREIGN_KEY + the
-        column on either side of the reference.
+        MySQL connector lands FK data here — not as a lineage edge (see
+        `project-mysql-fk-no-lineage.md`). Reads Table.tableConstraints;
+        matches on constraintType=FOREIGN_KEY + the owning column + a suffix
+        match on the referredColumn FQN.
         """
         def _check() -> None:
-            table = self._om.get_by_name(
-                entity=Table,
-                fqn=self._fqn,
-                fields=["tableConstraints"],
-            )
-            if table is None:
-                raise AssertionError(f"Table not found: {self._fqn}")
+            table = self._fetch(fields=["tableConstraints"])
             constraints = list(table.tableConstraints or [])
             for c in constraints:
-                if str(c.constraintType) != "FOREIGN_KEY":
+                if c.constraintType != ConstraintType.FOREIGN_KEY:
                     continue
-                own_cols = {str(x) for x in (c.columns or [])}
+                own_cols = {model_str(x) for x in (c.columns or [])}
                 if column not in own_cols:
                     continue
                 for ref in c.referredColumns or []:
-                    ref_str = str(ref.root) if hasattr(ref, "root") else str(ref)
+                    ref_str = model_str(ref)
+                    # Referenced column FQN looks like
+                    # "<service>.<database>.<schema>.<table>.<column>", so
+                    # we suffix-match against "<referenced_table>.<referenced_column>"
+                    # to stay schema/service-agnostic.
                     if ref_str.endswith(f".{referenced_table}.{referenced_column}"):
                         return
-                    if ref_str.endswith(f"{referenced_table}.{referenced_column}"):
+                    if ref_str == f"{referenced_table}.{referenced_column}":
                         return
             raise AssertionError(
                 f"Table {self._fqn} missing FOREIGN_KEY({column}) -> "
                 f"{referenced_table}({referenced_column}). "
                 f"Constraints present: {constraints!r}"
             )
-        self._apply_maybe_eventually(
+        self._eventually.run(
             _check,
             name=f"has_foreign_key_constraint({column}->{referenced_table}.{referenced_column})",
         )
         return self
 
+    # --- descent into column / namespaces -----------------------------
+
     def column(self, name: str) -> "ColumnAssert":
         return ColumnAssert(self._om, self._fqn, name)
 
-    def eventually(self, timeout: int = 60) -> "TableAssert":
-        """One-shot: the next terminal check on this builder polls until success/timeout."""
-        self._eventually_timeout = timeout
-        return self
-
-    def _apply_maybe_eventually(self, check, *, name: str) -> None:
-        if self._eventually_timeout is not None:
-            from .eventually import retry_until
-            retry_until(check, timeout=self._eventually_timeout, name=name)
-            self._eventually_timeout = None
-        else:
-            check()
-
     @property
-    def lineage(self) -> "LineageAssert":
-        from .lineage_assert import LineageAssert
+    def lineage(self) -> LineageAssert:
         return LineageAssert(self._om, self._fqn)
 
     @property
-    def profile(self) -> "ProfileAssert":
-        from .profile_assert import ProfileAssert
+    def profile(self) -> ProfileAssert:
         return ProfileAssert(self._om, self._fqn)
 
     @property
-    def tests(self) -> "TestsAssert":
-        from .tests_assert import TestsAssert
+    def tests(self) -> TestsAssert:
         return TestsAssert(self._om, self._fqn)
 
 
 class ColumnAssert:
+    """Synchronous assertions on a named column of a Table."""
+
     def __init__(self, om: OpenMetadata, table_fqn: str, column_name: str) -> None:
         self._om = om
         self._table_fqn = table_fqn
         self._column_name = column_name
 
-    def _fetch_column(self):
+    def _fetch_column(self) -> Column:
         table = self._om.get_by_name(
             entity=Table,
             fqn=self._table_fqn,
@@ -167,7 +183,7 @@ class ColumnAssert:
         if table is None:
             raise AssertionError(f"Table not found: {self._table_fqn}")
         for c in table.columns or []:
-            if c.name.root == self._column_name:
+            if model_str(c.name) == self._column_name:
                 return c
         raise AssertionError(
             f"Column {self._column_name!r} not found on table {self._table_fqn}"
@@ -175,7 +191,7 @@ class ColumnAssert:
 
     def has_tag(self, fqn: str) -> "ColumnAssert":
         column = self._fetch_column()
-        actual = {t.tagFQN for t in (column.tags or [])}
+        actual = {model_str(t.tagFQN) for t in (column.tags or [])}
         if fqn not in actual:
             raise AssertionError(
                 f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. "
@@ -194,7 +210,7 @@ class ColumnAssert:
 
     def has_description_containing(self, text: str) -> "ColumnAssert":
         column = self._fetch_column()
-        desc = column.description.root if column.description else ""
+        desc = model_str(column.description) if column.description else ""
         if text not in desc:
             raise AssertionError(
                 f"Column {self._table_fqn}.{self._column_name} description does not contain {text!r}. "

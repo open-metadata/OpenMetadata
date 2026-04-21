@@ -29,6 +29,11 @@ from __future__ import annotations
 from metadata.generated.schema.entity.data.table import DataType
 
 from ..core.config.builder import WorkflowConfig
+from ..core.config.pipelines import (
+    AutoClassificationPipeline,
+    MetadataPipeline,
+    ProfilerPipeline,
+)
 from ..core.config.server import ServerConfig
 from ..core.expected.differ import MatchMode, assert_service_matches
 from ..core.fluent.om_client import OmClient
@@ -96,7 +101,7 @@ def test_profiler_row_counts(
     has targets; the test itself only runs the profiler pipeline.
     """
     service = mysql_service_name(session_uuid)
-    status = cli_runner.run(mysql_cfg.as_profiler())
+    status = cli_runner.run(mysql_cfg.pipeline(ProfilerPipeline()))
     assert status.success, f"profiler failures: {status.all_failures}"
 
     om_client.table(
@@ -210,7 +215,7 @@ def test_auto_classification_tags_pii_columns(
     what the pipeline emits for each column-name recognizer.
     """
     service = mysql_service_name(session_uuid)
-    status = cli_runner.run(mysql_cfg.as_auto_classification())
+    status = cli_runner.run(mysql_cfg.pipeline(AutoClassificationPipeline()))
     assert status.success, f"auto-classification failures: {status.all_failures}"
 
     customers_fqn = f"{service}.default.e2e.customers"
@@ -241,7 +246,7 @@ def test_filter_tables_include_exact(
 
     cfg = build_mysql_config(service, om_server_config)
     status = cli_runner.run(
-        cfg.as_metadata(include_stored_procedures=True).with_filter(
+        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
             tables_include=["customers"],
         )
     )
@@ -268,7 +273,7 @@ def test_filter_tables_exclude_exact(
 
     cfg = build_mysql_config(service, om_server_config)
     status = cli_runner.run(
-        cfg.as_metadata(include_stored_procedures=True).with_filter(
+        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
             tables_exclude=["all_types"],
         )
     )
@@ -298,7 +303,7 @@ def test_filter_schemas_include_only_e2e(
 
     cfg = build_mysql_config(service, om_server_config)
     status = cli_runner.run(
-        cfg.as_metadata(include_stored_procedures=True).with_filter(
+        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
             schemas_include=["e2e"],
         )
     )
@@ -328,7 +333,7 @@ def test_filter_regex_exclude_has_priority_over_include(
 
     cfg = build_mysql_config(service, om_server_config)
     status = cli_runner.run(
-        cfg.as_metadata(include_stored_procedures=True).with_filter(
+        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
             tables_include=["customer.*"],
             tables_exclude=["customer_txn.*"],
         )

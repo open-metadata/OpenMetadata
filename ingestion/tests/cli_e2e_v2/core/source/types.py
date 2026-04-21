@@ -24,7 +24,7 @@ class BaselineSpec:
     """
 
 
-@dataclass
+@dataclass(frozen=True)
 class Drift:
     """One discrepancy between declared baseline and observed source state.
 
@@ -37,7 +37,7 @@ class Drift:
     actual: Any
 
 
-@dataclass
+@dataclass(frozen=True)
 class SourceState:
     """Opaque container for whatever `introspect()` found.
 

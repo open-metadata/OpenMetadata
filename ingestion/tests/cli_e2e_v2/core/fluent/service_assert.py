@@ -12,7 +12,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from .eventually import retry_until
+from .eventually import EventuallyRunner
+
+_ENTITY_COUNT_LIMIT = 1000
 
 
 class ServiceAssert:
@@ -21,16 +23,16 @@ class ServiceAssert:
     Provides smoke-level checks: existence, bulk entity counts. Service-level
     operations are eventually-consistent (ingest completion doesn't guarantee
     every table is immediately queryable via list_all_entities), so
-    has_entity_count supports .eventually(timeout).
+    has_entity_count supports `.eventually(timeout)`.
     """
 
     def __init__(self, om: OpenMetadata, name: str) -> None:
         self._om = om
         self._name = name
-        self._eventually_timeout: int | None = None
+        self._eventually = EventuallyRunner()
 
     def eventually(self, timeout: int = 60) -> "ServiceAssert":
-        self._eventually_timeout = timeout
+        self._eventually.arm(timeout)
         return self
 
     def _fetch(self) -> DatabaseService:
@@ -47,19 +49,15 @@ class ServiceAssert:
 
     def _count_entities(self, kind: Literal["tables", "schemas"]) -> int:
         self._fetch()
-        if kind == "tables":
-            items = self._om.list_all_entities(
-                entity=Table,
-                limit=1000,
+        entity_cls = Table if kind == "tables" else DatabaseSchema
+        items = list(
+            self._om.list_all_entities(
+                entity=entity_cls,
+                limit=_ENTITY_COUNT_LIMIT,
                 params={"service": self._name},
             )
-        else:
-            items = self._om.list_all_entities(
-                entity=DatabaseSchema,
-                limit=1000,
-                params={"service": self._name},
-            )
-        return sum(1 for _ in items)
+        )
+        return len(items)
 
     def has_entity_count(
         self,
@@ -67,15 +65,24 @@ class ServiceAssert:
         *,
         at_least: int,
     ) -> None:
+        """Assert the service has at least `at_least` entities of `kind`.
+
+        The underlying list call caps at limit=1000. `at_least` larger than
+        that cap can't be verified reliably — raise at the call site so the
+        ambiguity surfaces as a test error rather than a silent pass.
+        """
+        if at_least > _ENTITY_COUNT_LIMIT:
+            raise ValueError(
+                f"has_entity_count(at_least={at_least}) exceeds the "
+                f"list_all_entities cap ({_ENTITY_COUNT_LIMIT}); pagination "
+                f"is not implemented for this assertion."
+            )
+
         def _check() -> None:
             actual = self._count_entities(kind)
             if actual < at_least:
                 raise AssertionError(
-                    f"Service {self._name}: expected ≥ {at_least} {kind}, got {actual}"
+                    f"Service {self._name}: expected >= {at_least} {kind}, got {actual}"
                 )
 
-        if self._eventually_timeout is not None:
-            retry_until(_check, timeout=self._eventually_timeout, name=f"has_entity_count({kind},{at_least})")
-            self._eventually_timeout = None
-        else:
-            _check()
+        self._eventually.run(_check, name=f"has_entity_count({kind},{at_least})")

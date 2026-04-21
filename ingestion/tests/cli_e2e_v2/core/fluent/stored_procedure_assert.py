@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 
 
 class StoredProcedureAssert:
-    """Fluent assertions on a single stored procedure identified by FQN."""
+    """Synchronous fluent assertions on a single stored procedure by FQN."""
 
     def __init__(self, om: OpenMetadata, fqn: str) -> None:
         self._om = om
@@ -32,7 +33,7 @@ class StoredProcedureAssert:
 
     def has_description_containing(self, text: str) -> "StoredProcedureAssert":
         sp = self._fetch()
-        desc = sp.description.root if sp.description else ""
+        desc = model_str(sp.description) if sp.description else ""
         if text not in desc:
             raise AssertionError(
                 f"StoredProcedure {self._fqn} description does not contain {text!r}. "
@@ -43,14 +44,12 @@ class StoredProcedureAssert:
     def has_code_containing(self, text: str) -> "StoredProcedureAssert":
         """Assert the stored procedure's SQL body contains the given substring.
 
-        The OM StoredProcedureCode model wraps the code in .code (a plain str).
+        The OM StoredProcedureCode model wraps the code in .code (plain str).
         """
         sp = self._fetch()
         code = ""
-        if sp.storedProcedureCode is not None:
-            code_value = getattr(sp.storedProcedureCode, "code", None)
-            if code_value is not None:
-                code = code_value
+        if sp.storedProcedureCode is not None and sp.storedProcedureCode.code is not None:
+            code = sp.storedProcedureCode.code
         if text not in code:
             raise AssertionError(
                 f"StoredProcedure {self._fqn} code does not contain {text!r}. "

@@ -1,26 +1,34 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Polling helper for fluent assertion chains.
+"""Polling helpers for fluent assertion chains.
 
-Replaces v1's time.sleep-in-a-while-loop polling with a single deadline-based
-retry on AssertionError. Used by LineageAssert.eventually(), ProfileAssert.eventually(),
-and similar fluent namespaces added in Task 14.
+Two pieces:
+
+  retry_until(check, timeout, poll_interval, name) -> T
+      Low-level polling. Calls `check()` until it returns without raising
+      AssertionError, or the timeout elapses.
+
+  EventuallyRunner
+      Small collaborator held by each fluent assert class. Arming it via
+      `.arm(timeout)` from the public `.eventually()` method makes the next
+      terminal check poll via `retry_until`. One-shot: first `.run()` after
+      arming consumes the timeout. Encapsulates the arm/consume/fallback
+      state in a single object so each assert class carries only one line
+      of state and one line of dispatch.
 
 Logging contract:
   - first attempt failure → DEBUG (low noise when tests flakily need one retry)
   - final failure         → ERROR with attempt count + elapsed time
   - middle attempts       → silent
-
-Usage:
-    retry_until(lambda: assert_something(), timeout=60, name="has_upstream")
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from typing import Callable, TypeVar
+from dataclasses import dataclass
+from typing import Any, Callable, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +45,7 @@ def retry_until(
     poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
     name: str = "check",
 ) -> T:
-    """Retry `check` until it returns without raising AssertionError, or timeout elapses.
+    """Retry `check` until it returns without raising AssertionError.
 
     Args:
         check: zero-argument callable. Should raise AssertionError to signal
@@ -74,3 +82,39 @@ def retry_until(
                 )
                 raise
             time.sleep(poll_interval)
+
+
+@dataclass
+class EventuallyRunner:
+    """Per-fluent-chain dispatcher that runs terminal checks sync or polled.
+
+    Each assert class (TableAssert, LineageAssert, ProfileAssert, ...) holds
+    one of these. Calling `.arm(timeout)` from the class's `.eventually()`
+    method makes the NEXT `.run(check, name=...)` go through `retry_until`;
+    any further calls revert to synchronous until re-armed. The one-shot
+    reset keeps the existing eventually semantics intact while eliminating
+    the five copies of `_apply_maybe_eventually` across fluent modules.
+
+    Replacement for the old per-class `_apply_maybe_eventually` pattern.
+    When sticky-`eventually` semantics are wanted (Bucket D), add a `sticky`
+    flag to `arm()`/`run()` in one place rather than patching five classes.
+    """
+
+    _timeout: int | None = None
+
+    def arm(self, timeout: int) -> None:
+        """Queue polling for the next terminal check."""
+        self._timeout = timeout
+
+    def run(self, check: Callable[[], Any], *, name: str) -> None:
+        """Dispatch a terminal check.
+
+        If armed, polls via `retry_until` and disarms. Otherwise calls `check`
+        directly and lets AssertionError propagate on the first attempt.
+        """
+        if self._timeout is not None:
+            timeout = self._timeout
+            self._timeout = None
+            retry_until(check, timeout=timeout, name=name)
+        else:
+            check()

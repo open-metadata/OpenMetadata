@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from .types import BaselineSpec
 
 
-@dataclass
+@dataclass(frozen=True)
 class BaselineColumn:
     """A single column's declared shape in the source database.
 
@@ -46,7 +46,7 @@ class BaselineColumn:
     description: str | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Seed:
     """Deterministic seed rows for a baseline table.
 
@@ -62,7 +62,7 @@ class Seed:
     expected_row_count: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class BaselineTable:
     """A single expected table in the source database.
 
@@ -77,7 +77,7 @@ class BaselineTable:
     description: str | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class BaselineView:
     """A single expected view in the source database.
 
@@ -89,7 +89,7 @@ class BaselineView:
     definition_sql: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class BaselineStoredProcedure:
     """A single expected stored procedure in the source database.
 
@@ -106,7 +106,7 @@ class BaselineStoredProcedure:
     definition_sql: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class SqlSourceBaseline(BaselineSpec):
     """Top-level declarative spec for a SQL-based source.
 

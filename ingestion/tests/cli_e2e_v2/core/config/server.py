@@ -20,8 +20,15 @@ from typing import Any
 
 from .env import Env
 
-# Default dev JWT for the local Docker stack. Matches the token baked into
-# docker-compose.yml so local runs work without env var plumbing.
+# PUBLIC dev JWT for the local Docker stack — not a secret.
+#
+# This token is the well-known admin bootstrap token baked into
+# `docker/development/docker-compose.yml` and published in the OpenMetadata
+# repo. It only authenticates against the local-docker admin user; it has
+# no validity outside the dev stack. Do NOT use this token in any shared
+# environment. Do NOT treat it as a credential — it exists as a source-file
+# default purely so `pytest` works against a fresh `run_local_docker.sh`
+# without exporting OM_JWT_TOKEN manually.
 _DEFAULT_DEV_JWT = (
     "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9."
     "eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbi1tZXRhZGF0YS5vcmcifQ."
