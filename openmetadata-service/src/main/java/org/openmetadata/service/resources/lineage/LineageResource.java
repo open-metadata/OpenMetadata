@@ -401,7 +401,7 @@ public class LineageResource {
 
   @GET
   @Path("/export")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces({"text/csv; charset=UTF-8"})
   @Operation(
       operationId = "exportLineage",
       summary = "Export lineage",
@@ -411,8 +411,8 @@ public class LineageResource {
             description = "search response",
             content =
                 @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SearchResponse.class)))
+                    mediaType = "text/csv; charset=UTF-8",
+                    schema = @Schema(implementation = String.class)))
       })
   public String exportLineage(
       @Context UriInfo uriInfo,

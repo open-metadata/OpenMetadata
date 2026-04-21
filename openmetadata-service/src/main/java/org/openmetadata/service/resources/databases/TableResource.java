@@ -606,7 +606,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{name}/export")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces({"text/csv; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTable",
@@ -617,7 +617,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "Exported csv with columns from the table",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/csv; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(

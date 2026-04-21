@@ -1217,7 +1217,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @GET
   @Path("/name/{fqn}/export")
-  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces({"text/csv; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportGlossaryTerm",
@@ -1227,7 +1227,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "Exported csv with glossary terms",
-            content = @Content(mediaType = "text/plain"))
+            content = @Content(mediaType = "text/csv; charset=UTF-8"))
       })
   public String exportCsv(
       @Context SecurityContext securityContext,
