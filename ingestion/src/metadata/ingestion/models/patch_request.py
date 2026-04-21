@@ -145,6 +145,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "numberOfObjects": True,
     "size": True,
     "fileFormats": True,
+    "extension": True,
 }
 
 RESTRICT_UPDATE_LIST = [
@@ -153,6 +154,7 @@ RESTRICT_UPDATE_LIST = [
     "owners",
     "displayName",
     "tableConstraints",
+    "extension",
 ]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
@@ -621,7 +623,7 @@ def _sort_array_entity_fields(
             source_attributes = getattr(source, field)
 
             source_dict = {
-                _get_attribute_name(attr): attr for attr in source_attributes
+                _get_attribute_name(attr): attr for attr in (source_attributes or [])
             }
 
             updated_attributes = []

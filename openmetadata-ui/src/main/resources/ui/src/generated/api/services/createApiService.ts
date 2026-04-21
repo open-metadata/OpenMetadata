@@ -78,6 +78,7 @@ export interface RESTConnection {
      * OpenAPI Schema source config. Either a URL or a file path must be provided.
      */
     openAPISchemaConnection: OpenAPISchemaConnection;
+    sslConfig?:              Config;
     /**
      * Supports Metadata Extraction.
      */
@@ -90,6 +91,10 @@ export interface RESTConnection {
      * REST API Type
      */
     type?: RESTType;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     */
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -194,12 +199,41 @@ export interface AWSCredentials {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * REST API Type
  *
  * REST API type
  */
 export enum RESTType {
     REST = "Rest",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
 
 /**

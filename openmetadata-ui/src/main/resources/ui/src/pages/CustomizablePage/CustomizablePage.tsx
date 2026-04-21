@@ -43,10 +43,11 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import CustomizableDataMarketplacePage from '../CustomizableDataMarketplacePage/CustomizableDataMarketplacePage';
 import CustomizableDataProductPage from '../CustomizableDataProductPage/CustomizableDataProductPage';
 import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
@@ -328,6 +329,14 @@ export const CustomizablePage = () => {
           initialPageData={currentPage}
           personaDetails={personaDetails}
           onBackgroundColorUpdate={handleBackgroundColorUpdate}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.DataMarketplace:
+      return (
+        <CustomizableDataMarketplacePage
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
           onSaveLayout={handlePageCustomizeSave}
         />
       );

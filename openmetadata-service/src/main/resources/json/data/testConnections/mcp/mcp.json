@@ -1,0 +1,21 @@
+{
+    "name": "Mcp",
+    "displayName": "MCP Test Connection",
+    "description": "This Test Connection validates MCP server discovery and connectivity.",
+    "steps": [
+        {
+            "name": "DiscoverServers",
+            "description": "Discover MCP servers from configuration files or direct configuration.",
+            "errorMessage": "Failed to discover MCP servers. Please check the configuration file paths or server settings.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "ConnectToServers",
+            "description": "Connect to at least one discovered MCP server and validate the connection.",
+            "errorMessage": "Failed to connect to any MCP servers. Please verify the server is running and accessible.",
+            "shortCircuit": false,
+            "mandatory": true
+        }
+    ]
+}

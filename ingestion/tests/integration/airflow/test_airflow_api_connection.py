@@ -23,6 +23,7 @@ Tests covered:
 - Error handling and edge cases
 - OpenLineage integration scenarios
 """
+
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch

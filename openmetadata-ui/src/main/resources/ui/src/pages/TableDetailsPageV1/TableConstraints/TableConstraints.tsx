@@ -93,33 +93,19 @@ const TableConstraints = ({
     <Space className="w-full new-header-border-card" direction="vertical">
       {data?.tableConstraints?.map(
         ({ constraintType, columns, referredColumns }) => {
-          if (constraintType === ConstraintType.PrimaryKey) {
-            return tableConstraintRendererBasedOnType(
+          if (
+            constraintType &&
+            [
               ConstraintType.PrimaryKey,
-              columns
-            );
-          }
-
-          if (constraintType === ConstraintType.SortKey) {
-            return tableConstraintRendererBasedOnType(
               ConstraintType.SortKey,
-              columns
-            );
-          }
-
-          if (constraintType === ConstraintType.DistKey) {
-            return tableConstraintRendererBasedOnType(
               ConstraintType.DistKey,
-              columns
-            );
+              ConstraintType.ClusterKey,
+              ConstraintType.Unique,
+            ].includes(constraintType)
+          ) {
+            return tableConstraintRendererBasedOnType(constraintType, columns);
           }
 
-          if (constraintType === ConstraintType.Unique) {
-            return tableConstraintRendererBasedOnType(
-              ConstraintType.Unique,
-              columns
-            );
-          }
           if (constraintType === ConstraintType.ForeignKey) {
             return (
               <div

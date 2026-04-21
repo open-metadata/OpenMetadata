@@ -49,6 +49,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================

@@ -12,17 +12,21 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
-    SamplingMethodType,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    ProfileSampleConfigType,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.snowflake.sampler import SnowflakeSampler
 
@@ -82,7 +86,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -109,9 +119,14 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=self.table_entity,
                 sample_config=SampleConfig(
-                    profileSampleType=ProfileSampleType.PERCENTAGE,
-                    profileSample=50.0,
-                    samplingMethodType=sampling_method_type,
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=ProfileSampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                            samplingMethodType=sampling_method_type,
+                        ),
+                    )
                 ),
             )
             query: CTE = sampler.get_sample_query()
@@ -134,7 +149,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.ROWS, profileSample=50
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50,
+                        profileSampleType=ProfileSampleType.ROWS,
+                    ),
+                )
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -157,8 +178,13 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE,
-                profileSample=50.0,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=ProfileSampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=50.0,
+                        profileSampleType=ProfileSampleType.PERCENTAGE,
+                    ),
+                )
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,

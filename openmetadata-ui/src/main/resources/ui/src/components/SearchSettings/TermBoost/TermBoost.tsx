@@ -162,6 +162,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             <Slider
               max={100}
               min={0}
+              step={0.1}
               tooltip={{ open: false }}
               value={termBoostData.boost}
               onChange={handleBoostChange}

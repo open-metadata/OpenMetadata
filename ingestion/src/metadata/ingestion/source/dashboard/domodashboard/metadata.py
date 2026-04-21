@@ -237,20 +237,18 @@ class DomodashboardSource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 if chart.name:
-                    yield Either(
-                        right=CreateChartRequest(
-                            name=EntityName(str(chart_id)),
-                            description=(
-                                Markdown(chart.description)
-                                if chart.description
-                                else None
-                            ),
-                            displayName=chart.name,
-                            sourceUrl=SourceUrl(chart_url),
-                            service=self.context.get().dashboard_service,
-                            chartType=get_standard_chart_type(chart.metadata.chartType),
-                        )
+                    chart_request = CreateChartRequest(
+                        name=EntityName(str(chart_id)),
+                        description=(
+                            Markdown(chart.description) if chart.description else None
+                        ),
+                        displayName=chart.name,
+                        sourceUrl=SourceUrl(chart_url),
+                        service=self.context.get().dashboard_service,
+                        chartType=get_standard_chart_type(chart.metadata.chartType),
                     )
+                    yield Either(right=chart_request)
+                    self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 name = chart.name if chart else ""
                 yield Either(

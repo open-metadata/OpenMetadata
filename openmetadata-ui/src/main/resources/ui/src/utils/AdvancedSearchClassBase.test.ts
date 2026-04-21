@@ -63,6 +63,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.DATA_PRODUCT,
       'serviceType',
       EntityFields.TAG,
+      EntityFields.GLOSSARY_TERMS,
       EntityFields.CERTIFICATION,
       EntityFields.TIER,
       'extension',
@@ -361,6 +362,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'statusField.keyword',
       dataObject: {
+        __omPropertyType: 'enum',
         type: 'multiselect',
         label: mockLabel,
         operators: MULTISELECT_FIELD_OPERATORS,
@@ -390,6 +392,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'ownerField.displayName.keyword',
       dataObject: {
+        __omPropertyType: 'entityReference',
         type: 'select',
         label: mockLabel,
         fieldSettings: {
@@ -417,6 +420,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'ownersField.displayName.keyword',
       dataObject: {
+        __omPropertyType: 'array<entityReference>',
         type: 'select',
         label: mockLabel,
         fieldSettings: {
@@ -444,6 +448,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'dateField.keyword',
       dataObject: {
+        __omPropertyType: 'date-cp',
         type: 'date',
         label: mockLabel,
         operators: expect.any(Array),
@@ -475,6 +480,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'dateField.keyword',
       dataObject: {
+        __omPropertyType: 'date-cp',
         type: 'date',
         label: mockLabel,
         operators: expect.any(Array),
@@ -502,6 +508,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'numberField',
       dataObject: {
+        __omPropertyType: 'number',
         type: 'number',
         label: mockLabel,
         operators: expect.any(Array),
@@ -525,6 +532,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'integerField',
       dataObject: {
+        __omPropertyType: 'integer',
         type: 'number',
         label: mockLabel,
         operators: expect.any(Array),
@@ -548,6 +556,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'timestampField',
       dataObject: {
+        __omPropertyType: 'timestamp',
         type: 'number',
         label: mockLabel,
         operators: expect.any(Array),
@@ -572,6 +581,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'textField.keyword',
       dataObject: {
+        __omPropertyType: 'string',
         type: 'text',
         label: mockLabel,
         valueSources: ['value'],
@@ -706,6 +716,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownerField.displayName.keyword',
           dataObject: {
+            __omPropertyType: 'entityReference',
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -732,6 +743,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownerField.displayName',
           dataObject: {
+            __omPropertyType: 'entityReference',
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -758,6 +770,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownersField.displayName.keyword',
           dataObject: {
+            __omPropertyType: 'array<entityReference>',
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -784,6 +797,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownersField.displayName',
           dataObject: {
+            __omPropertyType: 'array<entityReference>',
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -812,6 +826,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'textField.keyword',
           dataObject: {
+            __omPropertyType: 'string',
             type: 'text',
             label: mockLabel,
             valueSources: ['value'],
@@ -836,6 +851,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'textField',
           dataObject: {
+            __omPropertyType: 'string',
             type: 'text',
             label: mockLabel,
             valueSources: ['value'],
@@ -869,6 +885,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'statusField.keyword',
           dataObject: {
+            __omPropertyType: 'enum',
             type: 'multiselect',
             label: mockLabel,
             operators: MULTISELECT_FIELD_OPERATORS,
@@ -906,6 +923,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'statusField',
           dataObject: {
+            __omPropertyType: 'enum',
             type: 'multiselect',
             label: mockLabel,
             operators: MULTISELECT_FIELD_OPERATORS,
@@ -936,6 +954,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'numberField',
           dataObject: {
+            __omPropertyType: 'number',
             type: 'number',
             label: mockLabel,
             operators: NUMBER_FIELD_OPERATORS,
@@ -959,6 +978,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'numberField',
           dataObject: {
+            __omPropertyType: 'number',
             type: 'number',
             label: mockLabel,
             operators: NUMBER_FIELD_OPERATORS,
@@ -982,6 +1002,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'integerField',
           dataObject: {
+            __omPropertyType: 'integer',
             type: 'number',
             label: mockLabel,
             operators: NUMBER_FIELD_OPERATORS,
@@ -1005,6 +1026,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'integerField',
           dataObject: {
+            __omPropertyType: 'integer',
             type: 'number',
             label: mockLabel,
             operators: NUMBER_FIELD_OPERATORS,
@@ -1028,6 +1050,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'timestampField',
           dataObject: {
+            __omPropertyType: 'timestamp',
             type: 'number',
             label: mockLabel,
             operators: NUMBER_FIELD_OPERATORS,
@@ -1051,6 +1074,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'timestampField',
           dataObject: {
+            __omPropertyType: 'timestamp',
             type: 'number',
             label: mockLabel,
             operators: NUMBER_FIELD_OPERATORS,
@@ -1076,6 +1100,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'dateField.keyword',
           dataObject: {
+            __omPropertyType: 'date-cp',
             type: 'date',
             label: mockLabel,
             operators: expect.any(Array),
@@ -1103,6 +1128,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'dateField',
           dataObject: {
+            __omPropertyType: 'date-cp',
             type: 'date',
             label: mockLabel,
             operators: expect.any(Array),
@@ -1131,6 +1157,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownerField.displayName.keyword',
           dataObject: {
+            __omPropertyType: 'entityReference',
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -1156,6 +1183,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'textField.keyword',
           dataObject: {
+            __omPropertyType: 'string',
             type: 'text',
             label: mockLabel,
             valueSources: ['value'],

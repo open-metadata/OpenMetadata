@@ -11,18 +11,20 @@
  *  limitations under the License.
  */
 
-import { Box, Button, MenuItem, Typography, useTheme } from '@mui/material';
-import React, { ReactNode, useMemo, useState } from 'react';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import React, { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
-import { StyledMenu } from '../../LineageTable/LineageTable.styled';
+import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
+import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 
 export interface OwnerTeamListProps {
   owners: EntityReference[];
-  avatarSize: number;
+  avatarSize: AvatarSize;
   ownerDisplayName?: Map<string, ReactNode>;
   placement?: 'vertical' | 'horizontal';
 }
@@ -33,18 +35,6 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
   ownerDisplayName,
   placement,
 }) => {
-  const theme = useTheme();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
-
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
   const { visibleTeam, remainingTeam } = useMemo(() => {
     return {
       visibleTeam: owners[0],
@@ -53,110 +43,67 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
   }, [owners]);
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        position: 'relative',
-      }}>
+    <div className="tw:flex tw:items-center tw:relative">
       <Link
-        className="no-underline"
+        className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:no-underline"
         data-testid="owner-link"
         to={getOwnerPath(visibleTeam)}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            maxWidth: '100%',
-          }}>
-          <IconTeamsGrey
-            data-testid={getEntityName(visibleTeam)}
-            style={{
-              width: avatarSize,
-              height: avatarSize,
-              color: theme.palette.allShades.gray[700],
-            }}
-          />
+        <IconTeamsGrey
+          className={classNames(
+            'tw:text-gray-700',
+            AVATAR_SIZE_CLASS_MAP[avatarSize]
+          )}
+        />
+
+        <div
+          className={classNames({
+            'tw:max-w-30': placement === 'vertical' || owners.length < 2,
+            'tw:max-w-16': placement !== 'vertical' && owners.length >= 2,
+          })}>
           <Typography
-            noWrap
-            sx={{
-              color: theme.palette.allShades.gray[900],
-              maxWidth:
-                placement === 'vertical' || owners.length < 2
-                  ? '120px'
-                  : '50px',
-              fontSize: '12px',
-              fontWeight: 500,
-              lineHeight: 'initial',
-            }}>
+            ellipsis
+            as="p"
+            data-testid={getEntityName(visibleTeam)}
+            size="text-xs"
+            weight="medium">
             {ownerDisplayName?.get(visibleTeam.name ?? '') ??
               getEntityName(visibleTeam)}
           </Typography>
-        </Box>
+        </div>
       </Link>
 
       {owners.length > 1 && (
-        <>
+        <Dropdown.Root>
           <Button
-            size="small"
-            sx={{
-              marginLeft: '8px',
-              fontWeight: 400,
-              fontSize: '12px',
-              padding: 0,
-              minWidth: 'fit-content',
-              color: theme.palette.allShades.brand[700],
-            }}
-            variant="text"
-            onClick={handleClick}>
+            className="tw:ml-2 tw:text-xs tw:min-w-0 tw:p-0"
+            color="link-color"
+            size="sm">
             {`+${owners.length - 1}`}
           </Button>
+          <Dropdown.Popover placement="bottom start">
+            <Dropdown.Menu aria-label="remaining team owners">
+              {remainingTeam.map((owner) => {
+                const entityName = getEntityName(owner);
+                const name =
+                  ownerDisplayName?.get(owner.name ?? '') ?? entityName;
 
-          <StyledMenu
-            anchorEl={anchorEl}
-            id="owner-user-options-menu"
-            open={open}
-            slotProps={{
-              paper: {
-                sx: {
-                  marginTop: '0',
-                },
-              },
-            }}
-            sx={{
-              zIndex: 9999,
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'left',
-            }}
-            onClose={handleClose}>
-            {remainingTeam.map((owner) => (
-              <MenuItem
-                key={owner.id}
-                sx={{
-                  padding: '8px 16px',
-                  textDecoration: 'none',
-                }}
-                onClick={handleClose}>
-                <Link data-testid="owner-link" to={getOwnerPath(owner)}>
-                  <Typography
-                    noWrap
-                    sx={{
-                      width: '12rem',
-                      color: theme.palette.allShades.gray[900],
-                    }}
-                    variant="body2">
-                    {ownerDisplayName?.get(owner.name ?? '') ??
-                      getEntityName(owner)}
-                  </Typography>
-                </Link>
-              </MenuItem>
-            ))}
-          </StyledMenu>
-        </>
+                return (
+                  <Dropdown.Item key={owner.id} textValue={entityName}>
+                    <Link
+                      className="tw:max-w-46"
+                      data-testid="owner-link"
+                      to={getOwnerPath(owner)}>
+                      <Typography ellipsis as="p" data-test={entityName}>
+                        {name}
+                      </Typography>
+                    </Link>
+                  </Dropdown.Item>
+                );
+              })}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
-    </Box>
+    </div>
   );
 };
