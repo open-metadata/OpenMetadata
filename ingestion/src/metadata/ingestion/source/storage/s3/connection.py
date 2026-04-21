@@ -53,10 +53,10 @@ def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
         if connection.awsConfig.endPointURL
         else None
     )
-    s3_kwargs = {"endpoint_url": endpoint_url} if endpoint_url else {}
+    kwargs = {"endpoint_url": endpoint_url} if endpoint_url else {}
     return S3ObjectStoreClient(
-        s3_client=session.client(service_name="s3", **s3_kwargs),
-        cloudwatch_client=session.client(service_name="cloudwatch"),
+        s3_client=session.client(service_name="s3", **kwargs),
+        cloudwatch_client=session.client(service_name="cloudwatch", **kwargs),
         session=session,
     )
 
