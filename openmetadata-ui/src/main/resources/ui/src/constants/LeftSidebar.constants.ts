@@ -26,6 +26,7 @@ import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
+import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
@@ -128,7 +129,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       {
         key: ROUTES.DATA_MARKETPLACE,
         title: 'label.overview',
-        icon: MarketplaceIcon,
+        icon: OverviewIcon,
         redirect_url: ROUTES.DATA_MARKETPLACE,
         dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
       },
