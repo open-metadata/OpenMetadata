@@ -159,6 +159,7 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -598,7 +599,8 @@ export const DataAssetsHeader = ({
     return (
       <Button
         className="source-url-button font-semibold"
-        data-testid="request-data-access-button">
+        data-testid="request-data-access-button"
+        onClick={() => setIsRequestDataAccessOpen(true)}>
         {t('label.request-data-access')}
       </Button>
     );
@@ -913,6 +915,16 @@ export const DataAssetsHeader = ({
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
         />
+      )}
+
+      {tableClassBase.getRequestDataAccessDrawer(
+        isRequestDataAccessOpen,
+        () => setIsRequestDataAccessOpen(false),
+        dataAsset.fullyQualifiedName ?? '',
+        getEntityName(dataAsset),
+        (dataAsset as Table).columns
+          ?.map((col) => col.name ?? '')
+          .filter(Boolean)
       )}
     </>
   );

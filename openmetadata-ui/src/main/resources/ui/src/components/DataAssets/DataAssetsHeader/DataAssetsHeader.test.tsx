@@ -186,6 +186,7 @@ jest.mock('../../../utils/TableClassBase', () => ({
     .fn()
     .mockImplementation(() => mockIsAlertSupported),
   getShowRequestDataAccess: jest.fn().mockImplementation(() => false),
+  getRequestDataAccessDrawer: jest.fn().mockImplementation(() => null),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({

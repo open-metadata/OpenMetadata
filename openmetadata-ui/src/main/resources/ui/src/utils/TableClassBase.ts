@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -218,6 +219,16 @@ class TableClassBase {
 
   public getShowRequestDataAccess() {
     return false;
+  }
+
+  public getRequestDataAccessDrawer(
+    _isOpen: boolean,
+    _onClose: () => void,
+    _entityFqn: string,
+    _entityName: string,
+    _columns?: string[]
+  ): ReactNode {
+    return null;
   }
 
   public getDummyData(): Table {
