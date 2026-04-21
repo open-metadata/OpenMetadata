@@ -57,11 +57,11 @@ class IntakeFormValidatorTest {
   }
 
   // ---------------------------------------------------------------------------
-  // Layer 1 — schema-required
+  // No-op when no intake form is configured
   // ---------------------------------------------------------------------------
 
   @Test
-  void validate_passesWhenAllSchemaRequiredFieldsSetAndNoIntakeForm() {
+  void validate_passesWhenNoIntakeFormConfigured() {
     when(mockRepo.findEnabledForEntityType(anyString())).thenReturn(null);
 
     DataProduct dp = validDataProduct();
@@ -70,44 +70,16 @@ class IntakeFormValidatorTest {
   }
 
   @Test
-  void validate_rejectsWhenSchemaRequiredNameMissing() {
-    when(mockRepo.findEnabledForEntityType(anyString())).thenReturn(null);
-
-    DataProduct dp = validDataProduct().withName(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
-    assertTrue(ex.getMessage().contains("Missing required field"));
-    assertTrue(ex.getMessage().contains("name"));
-  }
-
-  @Test
-  void validate_rejectsWhenSchemaRequiredDescriptionMissing() {
-    when(mockRepo.findEnabledForEntityType(anyString())).thenReturn(null);
-
-    DataProduct dp = validDataProduct().withDescription(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
-    assertTrue(ex.getMessage().contains("description"));
-  }
-
-  @Test
-  void validate_rejectsWhenBothNameAndDescriptionMissing() {
+  void validate_doesNotEnforceSchemaRequiredFieldsItself() {
+    // Schema-required fields (name, description) are enforced by Jackson + Bean Validation
+    // at the request boundary. The intake-form validator must NOT re-enforce them, otherwise
+    // legitimate patch/update paths that clear optional values on existing entities would
+    // break. Regression guard for GlossaryTermResourceIT#get_entityWithEmptyDescription*.
     when(mockRepo.findEnabledForEntityType(anyString())).thenReturn(null);
 
     DataProduct dp = validDataProduct().withName(null).withDescription(null);
 
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
-    assertTrue(ex.getMessage().contains("name"));
-    assertTrue(ex.getMessage().contains("description"));
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
   }
 
   @Test
@@ -120,7 +92,7 @@ class IntakeFormValidatorTest {
   }
 
   // ---------------------------------------------------------------------------
-  // Layer 2 — IntakeForm-required
+  // Intake-form-required enforcement
   // ---------------------------------------------------------------------------
 
   @Test
@@ -247,39 +219,6 @@ class IntakeFormValidatorTest {
     DataProduct dp = validDataProduct();
 
     assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
-  }
-
-  @Test
-  void validate_passesWhenNoIntakeFormIsConfiguredForEntityType() {
-    when(mockRepo.findEnabledForEntityType(anyString())).thenReturn(null);
-
-    DataProduct dp = validDataProduct();
-
-    assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
-  }
-
-  // ---------------------------------------------------------------------------
-  // Ordering — schema-required runs before intake-form-required
-  // ---------------------------------------------------------------------------
-
-  @Test
-  void validate_surfacesSchemaFailureBeforeIntakeFormFailure() {
-    IntakeForm form = intakeFormRequiring("dataProductType", FieldKind.NATIVE);
-    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
-
-    DataProduct dp =
-        validDataProduct()
-            .withName(null); // schema-required missing AND intake-form-required missing
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
-    // Should report schema failure first, not intake form failure
-    assertTrue(
-        ex.getMessage().startsWith("Missing required field(s):"),
-        "Expected schema-layer error first, got: " + ex.getMessage());
-    assertTrue(ex.getMessage().contains("name"));
   }
 
   // ---------------------------------------------------------------------------

@@ -12,10 +12,10 @@
  */
 import { APIRequestContext, expect } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
-import { test } from '../fixtures/pages';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { test } from '../fixtures/pages';
 
 const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
 const DP_INTAKE_NAME = 'dataProduct';
@@ -320,20 +320,28 @@ test.describe(
           .fill('Playwright product without a Type — client-side should block');
 
         // Save should not fire a POST because Antd form validation fails on
-        // the required `dataProductType` field; verify by listening for a
-        // POST and asserting none fired within a short window.
+        // the required `dataProductType` field. We verify by racing a POST
+        // listener against a short grace window via page.waitForResponse
+        // with a timeout — no POST within the window = client blocked.
         let postFired = false;
-        page.on('response', (r) => {
+        const postListener = (r: import('@playwright/test').Response) => {
           if (
             r.url().endsWith('/api/v1/dataProducts') &&
             r.request().method() === 'POST'
           ) {
             postFired = true;
           }
-        });
+        };
+        page.on('response', postListener);
         await page.getByTestId('save-btn').click();
-        await page.waitForTimeout(3000);
-        expect(postFired).toBe(false);
+
+        // Poll for up to 3s and confirm no POST ever fires. We intentionally
+        // avoid `page.waitForTimeout` (linted as flaky) and instead use
+        // toPass, which re-runs until it succeeds or times out.
+        await expect(async () => {
+          expect(postFired).toBe(false);
+        }).toPass({ timeout: 3000, intervals: [300] });
+        page.off('response', postListener);
       });
 
       await test.step('Backend also rejects with 400 when called directly', async () => {
@@ -439,7 +447,9 @@ test.describe(
       // The field is rendered; its required marker is widget-specific. The
       // enforcement is covered end-to-end by the entity-reference test below
       // (backend returns 400 when the field is missing).
-      await expect(page.getByTestId(`extension-${stewardPropName}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${stewardPropName}`)
+      ).toBeVisible();
     });
 
     test('deleting an intake form removes it from the list', async ({
@@ -531,14 +541,10 @@ test.describe(
         .locator('.ant-dropdown-menu:visible')
         .getByRole('menuitem')
         .filter({ hasText: /Data Product/ });
-      await expect(disabledItem).toHaveClass(
-        /ant-dropdown-menu-item-disabled/
-      );
+      await expect(disabledItem).toHaveClass(/ant-dropdown-menu-item-disabled/);
     });
 
-    test('designer does not list schema-required fields', async ({
-      page,
-    }) => {
+    test('designer does not list schema-required fields', async ({ page }) => {
       await redirectToHomePage(page);
       await page.goto(INTAKE_FORMS_URL);
       await waitForAllLoadersToDisappear(page);
@@ -564,7 +570,6 @@ test.describe(
       await expect(page.getByTestId('require-displayName')).toBeVisible();
       await expect(page.getByTestId('require-visibility')).toBeVisible();
     });
-
   }
 );
 

@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
@@ -29,22 +28,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Layered validator for governance entities (DataProduct, Domain, later GlossaryTerm).
+ * Org-configurable intake-form validator for governance entities (DataProduct, Domain,
+ * GlossaryTerm). Fires only when an {@link IntakeForm} exists for the entity type and is enabled
+ * — no-ops otherwise, so existing behavior is unchanged.
  *
- * <p>Two validation layers, applied in order:
+ * <p>Schema-required fields (name, description, etc.) are intrinsic to the entity's JSON schema
+ * and are enforced at the request boundary by Jackson + Bean Validation. This class intentionally
+ * does NOT re-check schema-required fields: doing so during {@code repo.prepare()} would also run
+ * for patch/update paths and reject legitimate operations that clear optional values on already-
+ * created entities.
  *
- * <ol>
- *   <li><b>Schema-required</b> — intrinsic to the entity's JSON schema (e.g. {@code name},
- *       {@code description}). Normally enforced at the request boundary by Jackson + Bean
- *       Validation before this method runs; this class re-checks as a sanity guard with a clear
- *       error message.
- *   <li><b>IntakeForm-required</b> — org-configurable policy. Only fires when an {@link
- *       IntakeForm} exists for the entity type and is enabled.
- * </ol>
- *
- * <p>Both layers fail fast with {@link IllegalArgumentException} so the resource layer can map
- * them to HTTP 400 responses. If no IntakeForm exists for the entity type, Layer 2 is a no-op —
- * existing behavior is unchanged.
+ * <p>Fails fast with {@link IllegalArgumentException} so the resource layer can map it to HTTP
+ * 400 responses.
  */
 public final class IntakeFormValidator {
 
@@ -52,32 +47,14 @@ public final class IntakeFormValidator {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String EXTENSION_PREFIX = "extension.";
 
-  /**
-   * Minimum schema-required fields per entity type. Kept narrow intentionally — this is a sanity
-   * guard; the authoritative list lives in each entity's JSON schema and is enforced earlier by
-   * the framework. Additions here should reflect the schema's own {@code "required"} array.
-   */
-  private static final Map<String, List<String>> SCHEMA_REQUIRED_FIELDS =
-      Map.of(
-          Entity.DATA_PRODUCT, List.of("name", "description"),
-          Entity.DOMAIN, List.of("name", "description"),
-          Entity.GLOSSARY_TERM, List.of("name", "description"));
-
   private IntakeFormValidator() {}
 
   /**
-   * Validate the entity against schema-required fields first, then IntakeForm-required fields.
+   * Validate the entity against org-configured intake-form required fields, if any.
    *
-   * @throws IllegalArgumentException if any required field is unset. The message indicates which
-   *     layer fired.
+   * @throws IllegalArgumentException if any intake-form required field is unset.
    */
   public static void validate(EntityInterface entity, String entityType) {
-    List<String> schemaMissing = checkSchemaRequiredFields(entity, entityType);
-    if (!schemaMissing.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Missing required field(s): " + String.join(", ", schemaMissing));
-    }
-
     IntakeForm form = loadIntakeForm(entityType);
     if (form == null) return;
 
@@ -89,17 +66,6 @@ public final class IntakeFormValidator {
               + "': "
               + String.join(", ", intakeMissing));
     }
-  }
-
-  private static List<String> checkSchemaRequiredFields(EntityInterface entity, String entityType) {
-    List<String> required = SCHEMA_REQUIRED_FIELDS.getOrDefault(entityType, List.of());
-    List<String> missing = new ArrayList<>();
-    for (String path : required) {
-      if (!isNativeFieldSet(entity, path)) {
-        missing.add(path);
-      }
-    }
-    return missing;
   }
 
   private static List<String> checkIntakeFormRequiredFields(

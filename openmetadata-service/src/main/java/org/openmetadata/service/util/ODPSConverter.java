@@ -19,6 +19,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.SlaDefinition;
@@ -157,7 +158,11 @@ public final class ODPSConverter {
     }
 
     DataProduct dp = new DataProduct();
-    dp.setName(details.getName());
+    // OpenMetadata entity names are URL/FQN-safe slugs: alphanumerics plus
+    // `_`, `-`, `.`, max 64 chars. ODPS product names are free-form and may
+    // contain spaces, punctuation, non-ASCII. Sanitize into a slug for the
+    // identifier, and keep the original as displayName so nothing is lost.
+    dp.setName(sanitizeEntityName(details.getName()));
     dp.setDisplayName(details.getName());
     dp.setDescription(buildDescription(details));
     dp.setDataProductType(fromODPSType(details.getType()));
@@ -236,6 +241,34 @@ public final class ODPSConverter {
     return extension;
   }
 
+  private static final int MAX_ENTITY_NAME_LENGTH = 64;
+  private static final Pattern INVALID_NAME_CHARS = Pattern.compile("[^a-zA-Z0-9_\\-.]+");
+  private static final Pattern CONSECUTIVE_UNDERSCORES = Pattern.compile("_+");
+
+  /**
+   * Sanitize an ODPS product name into a valid OpenMetadata entity name.
+   * Replaces disallowed characters with `_`, collapses runs of underscores,
+   * trims leading/trailing underscores, and truncates to 64 characters.
+   */
+  static String sanitizeEntityName(String raw) {
+    if (raw == null) return null;
+    String replaced = INVALID_NAME_CHARS.matcher(raw).replaceAll("_");
+    replaced = CONSECUTIVE_UNDERSCORES.matcher(replaced).replaceAll("_");
+    replaced = trimUnderscores(replaced);
+    if (replaced.length() > MAX_ENTITY_NAME_LENGTH) {
+      replaced = trimUnderscores(replaced.substring(0, MAX_ENTITY_NAME_LENGTH));
+    }
+    return replaced;
+  }
+
+  private static String trimUnderscores(String value) {
+    int start = 0;
+    int end = value.length();
+    while (start < end && value.charAt(start) == '_') start++;
+    while (end > start && value.charAt(end - 1) == '_') end--;
+    return value.substring(start, end);
+  }
+
   // -------------------------------------------------------------------------
   // Merge strategies
   // -------------------------------------------------------------------------
@@ -291,6 +324,11 @@ public final class ODPSConverter {
     replaced.setLifecycleStage(existing.getLifecycleStage());
     replaced.setEntityStatus(existing.getEntityStatus());
     replaced.setCertification(existing.getCertification());
+    // Governance fields have no ODPS representation; a declarative replace
+    // must never silently wipe them.
+    replaced.setOwners(existing.getOwners());
+    replaced.setExperts(existing.getExperts());
+    replaced.setReviewers(existing.getReviewers());
 
     replaced.setDisplayName(imported.getDisplayName());
     replaced.setDescription(imported.getDescription());

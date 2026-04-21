@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -92,6 +93,38 @@ public class IntakeFormResourceIT {
         "dataProduct", DP_PRIORITY_ENUM_PROPERTY, List.of("critical", "high", "medium", "low"));
     ensureIntegerCustomProperty("dataProduct", DP_COST_INTEGER_PROPERTY);
     sharedGlossary = ensureGlossary("intake-form-it-glossary");
+  }
+
+  /**
+   * Defensive cleanup: tests in this suite wrap intake-form creation in try/finally, but if a
+   * test fails before the finally runs (timeout, assertion in setup) the form would leak and
+   * poison unrelated tests that create DataProduct/Domain/GlossaryTerm entities. Paginate the
+   * full intake-form list and hard-delete anything the test class could have produced for the
+   * three governance entity types.
+   */
+  @AfterEach
+  void purgeAllIntakeFormsForGovernanceEntities() {
+    for (String entityType : List.of("dataProduct", "domain", "glossaryTerm")) {
+      hardDeleteAllIntakeFormsForEntityType(entityType);
+    }
+  }
+
+  private static void hardDeleteAllIntakeFormsForEntityType(String entityType) {
+    try {
+      IntakeForm form =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  INTAKE_FORMS_PATH + "/entityType/" + entityType,
+                  null,
+                  IntakeForm.class);
+      if (form != null && form.getId() != null) {
+        deleteIntakeForm(form.getId());
+      }
+    } catch (Exception ignored) {
+      // 404 (no form for this entity type) is the expected steady state.
+    }
   }
 
   // ---------------------------------------------------------------------------

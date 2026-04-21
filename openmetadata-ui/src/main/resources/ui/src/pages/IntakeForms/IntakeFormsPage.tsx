@@ -87,8 +87,7 @@ const IntakeFormsPage = () => {
   );
 
   const allEntityTypesCovered =
-    existingEntityTypes.size ===
-    Object.values(TargetEntityType).length;
+    existingEntityTypes.size === Object.values(TargetEntityType).length;
 
   const handleCreate = (entityType: TargetEntityType) => {
     setModalState({ open: true, entityType, initialValue: null });
@@ -172,7 +171,9 @@ const IntakeFormsPage = () => {
       dataIndex: 'entityType',
       key: 'entityType',
       render: (entityType: TargetEntityType) => (
-        <Typography.Text strong>{ENTITY_TYPE_LABELS[entityType]}</Typography.Text>
+        <Typography.Text strong>
+          {ENTITY_TYPE_LABELS[entityType]}
+        </Typography.Text>
       ),
     },
     {

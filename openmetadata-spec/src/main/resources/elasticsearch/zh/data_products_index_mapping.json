@@ -217,44 +217,20 @@
         "normalizer": "lowercase_normalizer"
       },
       "dataProductType": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "ignore_above": 256
-          }
-        }
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "visibility": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "ignore_above": 256
-          }
-        }
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "portfolioPriority": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "ignore_above": 256
-          }
-        }
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "lifecycleStage": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "ignore_above": 256
-          }
-        }
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "owners": {
         "type": "nested",

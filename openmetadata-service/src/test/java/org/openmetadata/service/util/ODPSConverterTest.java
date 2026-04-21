@@ -14,8 +14,10 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,6 +31,7 @@ import org.openmetadata.schema.entity.domains.odps.Details;
 import org.openmetadata.schema.entity.domains.odps.ODPSDataProduct;
 import org.openmetadata.schema.entity.domains.odps.ODPSProduct;
 import org.openmetadata.schema.entity.domains.odps.ODPSProductDetails;
+import org.openmetadata.schema.type.EntityReference;
 
 class ODPSConverterTest {
 
@@ -304,6 +307,174 @@ class ODPSConverterTest {
         DataProduct.LifecycleStage.PRODUCTION,
         dp.getLifecycleStage(),
         "lifecycleStage must not be set to imported ODPS status — it is workflow-driven");
+  }
+
+  // ---------------------------------------------------------------------------
+  // fullReplace: governance fields must be preserved
+  // ODPS has no representation for owners/experts/reviewers, so a replace
+  // import must never silently wipe them.
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void fullReplace_preservesOwnersExpertsAndReviewers() {
+    DataProduct existing = basicDataProduct();
+    EntityReference owner =
+        new EntityReference().withId(UUID.randomUUID()).withType("user").withName("alice");
+    EntityReference expert =
+        new EntityReference().withId(UUID.randomUUID()).withType("user").withName("bob");
+    EntityReference reviewer =
+        new EntityReference().withId(UUID.randomUUID()).withType("user").withName("carol");
+    existing.setOwners(List.of(owner));
+    existing.setExperts(List.of(expert));
+    existing.setReviewers(List.of(reviewer));
+
+    DataProduct imported = new DataProduct();
+    imported.setDisplayName("Replaced");
+
+    DataProduct replaced = ODPSConverter.fullReplace(existing, imported);
+
+    assertEquals(List.of(owner), replaced.getOwners(), "owners must be preserved across replace");
+    assertEquals(
+        List.of(expert), replaced.getExperts(), "experts must be preserved across replace");
+    assertEquals(
+        List.of(reviewer), replaced.getReviewers(), "reviewers must be preserved across replace");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Name sanitization
+  // OM entity names must be URL/FQN-safe. ODPS product names can contain
+  // spaces, slashes, ampersands, and exceed 64 chars — fromODPS must
+  // sanitize the name while preserving the original as displayName.
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void fromODPS_sanitizesNameWithSpacesAndSpecialChars() {
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct()
+        .getDetails()
+        .getAdditionalProperties()
+        .get("en")
+        .setName("Sales & Analytics / Q1 (2026)");
+
+    DataProduct dp = ODPSConverter.fromODPS(odps);
+
+    assertFalse(dp.getName().contains(" "), "name must not contain spaces: " + dp.getName());
+    assertFalse(dp.getName().contains("&"), "name must not contain &: " + dp.getName());
+    assertFalse(dp.getName().contains("/"), "name must not contain /: " + dp.getName());
+    assertFalse(dp.getName().contains("("), "name must not contain (: " + dp.getName());
+    assertEquals(
+        "Sales & Analytics / Q1 (2026)",
+        dp.getDisplayName(),
+        "displayName must preserve the raw ODPS product name");
+  }
+
+  @Test
+  void fromODPS_truncatesNameExceeding64Chars() {
+    String longName = "a".repeat(100);
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName(longName);
+
+    DataProduct dp = ODPSConverter.fromODPS(odps);
+
+    assertTrue(
+        dp.getName().length() <= 64,
+        "name must be truncated to 64 chars, got " + dp.getName().length());
+    assertEquals(longName, dp.getDisplayName(), "displayName must preserve the full original name");
+  }
+
+  @Test
+  void fromODPS_collapsesConsecutiveUnderscores() {
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("Sales   Analytics");
+
+    DataProduct dp = ODPSConverter.fromODPS(odps);
+
+    assertFalse(
+        dp.getName().contains("__"), "consecutive underscores must be collapsed: " + dp.getName());
+  }
+
+  @Test
+  void fromODPS_trimsLeadingAndTrailingUnderscores() {
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("  Sales  ");
+
+    DataProduct dp = ODPSConverter.fromODPS(odps);
+
+    assertFalse(
+        dp.getName().startsWith("_"), "leading underscore must be trimmed: " + dp.getName());
+    assertFalse(dp.getName().endsWith("_"), "trailing underscore must be trimmed: " + dp.getName());
+  }
+
+  @Test
+  void fromODPS_leavesAlreadyValidNameUnchanged() {
+    ODPSDataProduct odps = basicODPS();
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("sales-analytics");
+
+    DataProduct dp = ODPSConverter.fromODPS(odps);
+
+    assertEquals("sales-analytics", dp.getName());
+    assertEquals("sales-analytics", dp.getDisplayName());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Enum round-trip — guards against silent misses if entity/create enums
+  // diverge or new values are added without updating the converter.
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void roundTrip_everyDataProductTypeValue() {
+    for (CreateDataProduct.DataProductType value : CreateDataProduct.DataProductType.values()) {
+      DataProduct original = basicDataProduct();
+      original.setDataProductType(value);
+
+      DataProduct reimported = ODPSConverter.fromODPS(ODPSConverter.toODPS(original));
+
+      assertEquals(
+          value,
+          reimported.getDataProductType(),
+          "DataProductType." + value + " must round-trip cleanly");
+    }
+  }
+
+  @Test
+  void roundTrip_everyVisibilityValue() {
+    for (CreateDataProduct.Visibility value : CreateDataProduct.Visibility.values()) {
+      DataProduct original = basicDataProduct();
+      original.setVisibility(value);
+
+      DataProduct reimported = ODPSConverter.fromODPS(ODPSConverter.toODPS(original));
+
+      assertEquals(
+          value, reimported.getVisibility(), "Visibility." + value + " must round-trip cleanly");
+    }
+  }
+
+  @Test
+  void roundTrip_everyPortfolioPriorityValue() {
+    for (CreateDataProduct.PortfolioPriority value : CreateDataProduct.PortfolioPriority.values()) {
+      DataProduct original = basicDataProduct();
+      original.setPortfolioPriority(value);
+
+      DataProduct reimported = ODPSConverter.fromODPS(ODPSConverter.toODPS(original));
+
+      assertEquals(
+          value,
+          reimported.getPortfolioPriority(),
+          "PortfolioPriority." + value + " must round-trip cleanly");
+    }
+  }
+
+  @Test
+  void dataProductGetterReturnsSameEnumClassTheConverterAccepts() {
+    // Guards against future schema refactors that accidentally split the
+    // entity-side and create-side enums. If DataProduct.getDataProductType()
+    // ever returns a different class than the one toODPSType accepts, this
+    // test breaks at compile time (assignability) and signals that the
+    // converter must be updated to use the entity-level enum.
+    DataProduct dp = new DataProduct();
+    dp.setDataProductType(CreateDataProduct.DataProductType.DATASET);
+    CreateDataProduct.DataProductType fromEntity = dp.getDataProductType();
+    assertSame(CreateDataProduct.DataProductType.DATASET, fromEntity);
   }
 
   // ---------------------------------------------------------------------------

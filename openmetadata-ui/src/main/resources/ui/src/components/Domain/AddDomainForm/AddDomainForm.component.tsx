@@ -29,14 +29,16 @@ import {
   DomainType,
 } from '../../../generated/api/domains/createDomain';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
+import {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
 import {
   FieldKind,
   IntakeForm,
   RequiredField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
-import { CustomProperty } from '../../../generated/entity/type';
 import {
   FieldProp,
   FieldTypes,
@@ -121,8 +123,8 @@ const AddDomainForm = ({
       targetEntityType === TargetEntityType.DataProduct
         ? 'dataProduct'
         : targetEntityType === TargetEntityType.Domain
-          ? 'domain'
-          : 'glossaryTerm';
+        ? 'domain'
+        : 'glossaryTerm';
     getCustomPropertiesByEntityType(entityTypeApiName)
       .then((props) => {
         if (!cancelled) {
@@ -475,7 +477,9 @@ const AddDomainForm = ({
       switch (propertyTypeName) {
         case 'entityReference':
         case 'entityReferenceList': {
-          const allowedTypes = Array.isArray(config) ? (config as string[]) : [];
+          const allowedTypes = Array.isArray(config)
+            ? (config as string[])
+            : [];
           const isUserOnly =
             allowedTypes.length === 1 && allowedTypes[0] === 'user';
           const isTeamOnly =
