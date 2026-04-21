@@ -21,15 +21,11 @@ import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
 
-import {
-  PAGE_SIZE_LARGE,
-  TERM_ADMIN,
-} from '../../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { getRoles } from '../../../../../rest/rolesAPIV1';
-import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
+import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
@@ -71,14 +67,8 @@ const UserProfileRoles = ({
 
   const fetchRoles = async () => {
     try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data);
+      const response = await searchRoles('');
+      setRoles(response);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -238,7 +228,7 @@ const UserProfileRoles = ({
                     className="w-full"
                     data-testid="profile-edit-roles-select"
                     dropdownMatchSelectWidth={false}
-                    filterOption={handleSearchFilterOption}
+                    filterOption={false}
                     loading={isLoading}
                     maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
@@ -257,6 +247,10 @@ const UserProfileRoles = ({
                     value={selectedRoles}
                     onChange={setSelectedRoles}
                     onDropdownVisibleChange={handleDropdownChange}
+                    onSearch={async (val) => {
+                      const results = await searchRoles(val);
+                      setRoles(results);
+                    }}
                   />
                 </div>
 

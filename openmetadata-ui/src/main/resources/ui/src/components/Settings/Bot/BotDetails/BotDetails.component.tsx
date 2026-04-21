@@ -18,12 +18,12 @@ import { toLower } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
-import { getAllRoles } from '../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -76,7 +76,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchRoles = async () => {
     try {
-      const data = await getAllRoles('', false, PAGE_SIZE_LARGE);
+      const data = await searchRoles('');
       setRoles(data);
     } catch (err) {
       setRoles([]);

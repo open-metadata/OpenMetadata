@@ -184,3 +184,24 @@ export const validateRuleCondition = async (condition: string) => {
    */
   return response;
 };
+
+export const searchRoles = async (
+  query: string,
+  limit = 25
+): Promise<Role[]> => {
+  const response = await APIClient.get<{
+    hits: { hits: { _source: Role }[] };
+  }>('/search/query', {
+    params: {
+      q: query ? `*${query}*` : '*',
+      index: 'role_search_index',
+      from: 0,
+      size: limit,
+      query_filter: JSON.stringify({
+        query: { bool: { must: [{ term: { deleted: false } }] } },
+      }),
+    },
+  });
+
+  return response.data.hits.hits.map((hit) => hit._source);
+};

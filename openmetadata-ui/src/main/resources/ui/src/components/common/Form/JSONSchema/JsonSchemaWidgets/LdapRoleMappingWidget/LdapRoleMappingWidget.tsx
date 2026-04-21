@@ -26,7 +26,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
-import { getRoles } from '../../../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
 
@@ -101,8 +101,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     const fetchRoles = async () => {
       setIsLoadingRoles(true);
       try {
-        const response = await getRoles('*', undefined, undefined, true, 1000);
-        const roleOptions: RoleOption[] = (response.data || []).map((role) => ({
+        const results = await searchRoles('');
+        const roleOptions: RoleOption[] = results.map((role) => ({
           label: role.displayName || role.name,
           value: role.name,
         }));
@@ -266,6 +266,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   className="w-full"
                   data-testid={`roles-select-${mapping.id}`}
                   disabled={disabled || readonly}
+                  filterOption={false}
                   loading={isLoadingRoles}
                   mode="multiple"
                   options={availableRoles}
@@ -274,6 +275,15 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   })}
                   value={mapping.roles}
                   onChange={(roles) => handleRolesChange(mapping.id, roles)}
+                  onSearch={async (val) => {
+                    const results = await searchRoles(val);
+                    setAvailableRoles(
+                      results.map((r) => ({
+                        label: r.displayName || r.name,
+                        value: r.name,
+                      }))
+                    );
+                  }}
                 />
               </Grid.Item>
 
