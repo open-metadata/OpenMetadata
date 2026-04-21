@@ -181,6 +181,13 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 describe('GlossaryHeader component', () => {
+  beforeEach(() => {
+    mockGlossaryTermPermission.All = true;
+    mockGlossaryTermPermission.EditAll = true;
+    mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+    mockContext.type = EntityType.GLOSSARY;
+  });
+
   it('should render name of Glossary', () => {
     render(
       <GlossaryHeader
