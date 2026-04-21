@@ -51,7 +51,9 @@ public class AssetRepository {
   public List<Asset> getByFQN(String fqn, AssetType assetType) {
     try {
       List<String> json = dao.getByFqnExact(assetType.value(), fqn);
-      if (json == null) {
+      // Treat null and empty identically (matches getByFqnPrefix) so callers cannot
+      // silently receive an empty list when they expect "not found".
+      if (json == null || json.isEmpty()) {
         throw EntityNotFoundException.byMessage(
             CatalogExceptionMessage.entityNotFound(ENTITY_TYPE, fqn));
       }

@@ -10,11 +10,11 @@
   ],
   "properties": {
     "name": {
-      "description": "Name of Page belongs to",
+      "description": "Name of the Knowledge Page.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this query.",
+      "description": "Display name of the Knowledge Page.",
       "type": "string"
     },
     "description": {
@@ -22,16 +22,16 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owners": {
-      "description": "Owner of this entity",
+      "description": "Owners of this Knowledge Page.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "reviewers": {
-      "description": "User references of the reviewers for this tag.",
+      "description": "Reviewers of this Knowledge Page.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "entityStatus": {
-      "description": "Status of the tag.",
+      "description": "Status of this Knowledge Page (Draft, In Review, Approved, Rejected).",
       "$ref": "../../type/status.json",
       "default": "Approved"
     },

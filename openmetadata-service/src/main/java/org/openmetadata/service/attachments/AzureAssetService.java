@@ -29,7 +29,7 @@ public class AzureAssetService implements AssetService {
 
   public AzureAssetService(AzureConfiguration config) {
     this.config = config;
-    this.basePathPrefix = String.format("%s/", config.getPrefixPath());
+    this.basePathPrefix = formatPrefix(config.getPrefixPath());
 
     if (config.getBlobEndpoint() == null || config.getBlobEndpoint().isEmpty()) {
       throw new IllegalArgumentException("blobEndpoint must be provided in Azure configuration");
@@ -43,6 +43,20 @@ public class AzureAssetService implements AssetService {
 
     this.containerClient = blobServiceClient.getBlobContainerClient(config.getContainerName());
     initializeContainer();
+  }
+
+  /**
+   * Normalize a configured prefix so that a null/blank prefix becomes an empty string
+   * (not the literal "null/") and any non-empty prefix ends with exactly one "/".
+   * Matches {@link S3AssetService#formatPrefix(String)} so both providers lay out
+   * blobs the same way.
+   */
+  private static String formatPrefix(String rawPrefix) {
+    if (rawPrefix == null || rawPrefix.isBlank()) {
+      return "";
+    }
+    String trimmed = rawPrefix.trim();
+    return trimmed.endsWith("/") ? trimmed : trimmed + "/";
   }
 
   private void initializeContainer() {
