@@ -273,6 +273,7 @@ public class RedisCacheProvider implements CacheProvider {
     RedisFuture<?>[] array = futures.toArray(new RedisFuture[0]);
     boolean completed = LettuceFutures.awaitAll(timeoutMs, TimeUnit.MILLISECONDS, array);
     int failed = 0;
+    Throwable firstFailure = null;
     for (RedisFuture<?> f : array) {
       if (!f.isDone() || f.isCancelled()) {
         failed++;
@@ -284,14 +285,26 @@ public class RedisCacheProvider implements CacheProvider {
         Thread.currentThread().interrupt();
         throw new IllegalStateException("Interrupted awaiting Redis pipeline", e);
       } catch (Exception e) {
+        if (firstFailure == null) {
+          firstFailure = e.getCause() != null ? e.getCause() : e;
+          // Log the first underlying failure so operators can tell NOSCRIPT / OOM / connection-
+          // reset apart without instrumenting every future. Subsequent failures are summarized
+          // by the throw below.
+          LOG.warn("Redis pipeline command failed", firstFailure);
+        }
         failed++;
       }
     }
     if (!completed || failed > 0) {
-      throw new IllegalStateException(
-          String.format(
-              "Redis pipeline batch did not complete cleanly (completed=%s, failed=%d, total=%d, timeoutMs=%d)",
-              completed, failed, array.length, timeoutMs));
+      IllegalStateException ise =
+          new IllegalStateException(
+              String.format(
+                  "Redis pipeline batch did not complete cleanly (completed=%s, failed=%d, total=%d, timeoutMs=%d)",
+                  completed, failed, array.length, timeoutMs));
+      if (firstFailure != null) {
+        ise.initCause(firstFailure);
+      }
+      throw ise;
     }
   }
 
