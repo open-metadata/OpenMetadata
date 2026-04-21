@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { buildDomainFilter, buildTermQuery } from './elasticsearchQueryBuilder';
+import {
+  buildDomainFilter,
+  buildTermQuery,
+  withEntityTypeFilter,
+} from './elasticsearchQueryBuilder';
 
 describe('elasticsearchQueryBuilder', () => {
   describe('buildDomainFilter', () => {
@@ -81,6 +85,91 @@ describe('elasticsearchQueryBuilder', () => {
                   },
                 },
               },
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  describe('withEntityTypeFilter', () => {
+    it('should wrap an empty filter with an entityType must clause', () => {
+      expect(withEntityTypeFilter('domain')).toEqual({
+        query: {
+          bool: {
+            must: [{ term: { entityType: 'domain' } }],
+          },
+        },
+      });
+    });
+
+    it('should preserve an existing bool.should alongside entityType', () => {
+      const existing = {
+        query: {
+          bool: {
+            should: [
+              {
+                term: {
+                  'domains.fullyQualifiedName': { value: 'domain1' },
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      expect(withEntityTypeFilter('dataProduct', existing)).toEqual({
+        query: {
+          bool: {
+            should: [
+              {
+                term: {
+                  'domains.fullyQualifiedName': { value: 'domain1' },
+                },
+              },
+            ],
+            must: [{ term: { entityType: 'dataProduct' } }],
+          },
+        },
+      });
+    });
+
+    it('should merge with an existing array must clause', () => {
+      const existing = {
+        query: {
+          bool: {
+            must: [{ term: { status: 'active' } }],
+          },
+        },
+      };
+
+      expect(withEntityTypeFilter('domain', existing)).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { entityType: 'domain' } },
+              { term: { status: 'active' } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should merge with an existing single-object must clause', () => {
+      const existing = {
+        query: {
+          bool: {
+            must: { term: { status: 'active' } },
+          },
+        },
+      };
+
+      expect(withEntityTypeFilter('domain', existing)).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { entityType: 'domain' } },
+              { term: { status: 'active' } },
             ],
           },
         },

@@ -19,6 +19,7 @@ import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE,
 } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
 import {
@@ -33,7 +34,10 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
-import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
+import {
+  buildDomainFilter,
+  withEntityTypeFilter,
+} from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
@@ -104,8 +108,10 @@ export const fetchDataProductsElasticSearch = async (
   }[];
   paging: Paging;
 }> => {
-  // Use the utility function to build the domain filter
-  const queryFilter = buildDomainFilter(domainFQNs);
+  const queryFilter = withEntityTypeFilter(
+    EntityType.DATA_PRODUCT,
+    buildDomainFilter(domainFQNs)
+  );
 
   const res = await searchQuery({
     query: searchText,

@@ -65,6 +65,38 @@ export const buildDomainFilter = (
 };
 
 /**
+ * Wraps an existing query_filter with a required `entityType` term clause so
+ * searches against canonical aliases that fan out to multiple physical indices
+ * (e.g. `domain` → domain_search_index + data_product_search_index) only return
+ * documents of the intended entity.
+ */
+export const withEntityTypeFilter = (
+  entityType: string,
+  existing?: Record<string, unknown>
+): Record<string, unknown> => {
+  const entityTypeClause = { term: { entityType } };
+
+  const existingBool =
+    (existing?.query as { bool?: Record<string, unknown> } | undefined)?.bool ??
+    {};
+
+  const existingMust = Array.isArray(existingBool.must)
+    ? (existingBool.must as unknown[])
+    : existingBool.must
+    ? [existingBool.must]
+    : [];
+
+  return {
+    query: {
+      bool: {
+        ...existingBool,
+        must: [entityTypeClause, ...existingMust],
+      },
+    },
+  };
+};
+
+/**
  * Interface for term filter configuration
  */
 interface TermFilter {

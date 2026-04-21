@@ -19,12 +19,13 @@ import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
 } from '../constants/constants';
-import { TabSpecificField } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { withEntityTypeFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -174,9 +175,9 @@ export const searchDomains = async (
     getHierarchy: true,
   };
 
-  if (queryFilter) {
-    params.query_filter = JSON.stringify(queryFilter);
-  }
+  params.query_filter = JSON.stringify(
+    withEntityTypeFilter(EntityType.DOMAIN, queryFilter)
+  );
 
   const { data } = await APIClient.get(apiUrl, {
     params,
