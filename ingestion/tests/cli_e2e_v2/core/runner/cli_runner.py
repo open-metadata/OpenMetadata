@@ -1,22 +1,12 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Runs the metadata CLI in a subprocess and returns a parsed Status.
+"""Runs `metadata <subcommand>` via subprocess and returns a typed Status.
 
-Function-scoped — one CliRunner per pytest test, bound to that test's
-tmp_path. Each `.run()` invocation writes its own numbered config YAML,
-status JSON, and stdout log so multiple runs within a single test (e.g.,
-ingest -> profile) keep distinct artifacts. Artifacts survive test
-teardown when pytest preserves tmp_path (default: last 3 sessions under
---basetemp).
-
-Subprocess invariants:
-  - bounded timeout (default 10 min, override per call)
-  - stdout and stderr both captured; stdout also persisted alongside the
-    rendered cfg_* / status_* artifacts for post-mortem
-  - CliExecutionError carries exit_code, stderr, stdout, config_path, and
-    the full argv so pytest's default failure rendering surfaces
-    everything a dev needs
+One CliRunner per test, bound to tmp_path. Each `.run()` writes numbered
+cfg / status / stdout artifacts. Subprocess has a bounded timeout
+(default 600s, kwarg override). CliExecutionError carries exit_code,
+stderr, stdout, config_path, and argv for post-mortem.
 """
 
 from __future__ import annotations

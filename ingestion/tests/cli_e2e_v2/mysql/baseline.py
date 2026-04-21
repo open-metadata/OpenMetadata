@@ -1,54 +1,20 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""MySQL source baseline — exhaustive coverage of the connector's feature surface.
+"""MySQL source baseline — three tables + one view + one stored procedure.
 
-Three tables + one view + one stored procedure, sized small but breadth-first
-across everything the MySQL connector can deterministically ingest:
+Breadth-first coverage of the MySQL connector's deterministic surface.
+Per-entity rationale (PII recognizers, type mappings, FK constraint, view
+lineage, SP ingest) lives in each entity's inline construction below.
 
-  e2e.customers (10 rows)
-      Exercises: PII auto-classification (email, phone, ssn, address, city,
-      country, zipcode, first_name, last_name, full_name, date_of_birth),
-      DQ enum (status), profiler numeric (age, credit_score), profiler string
-      (email, full_name lengths), profiler date (joined_date, date_of_birth),
-      nullable columns (bio, phone).
-
-  e2e.transactions (10 rows)
-      Exercises: foreign-key TableConstraint via customer_id → customers.id
-      (MySQL FKs don't produce lineage edges — they land on Table's
-      tableConstraints list; see project-mysql-fk-no-lineage.md), profiler
-      numeric stats (amount mean/stddev), profiler datetime (txn_at),
-      CHAR vs VARCHAR distinction (currency CHAR(3), reference_number
-      CHAR(12)), mediumtext (notes), nullable columns. ip_address VARCHAR
-      exercises additional PII recognizers. Table-level + select column
-      comments exercise description ingestion into OM entities.
-
-  e2e.all_types (3 rows)
-      Exercises: every MySQL type → OM DataType mapping the connector
-      supports. Covers all integer widths, float/double/decimal, char/
-      varchar/all-text-variants, binary/varbinary/all-blob-variants,
-      date/time/datetime/timestamp/year, bit, json, enum, set.
-      3 rows chosen so .row_count().equals(3) assertion works alongside
-      the 10-row tables.
-
-  e2e.customer_txn_summary (view)
-      Exercises: view-to-table lineage (derived from two tables).
-
-  e2e.sp_active_customer_count (stored procedure)
-      Exercises: StoredProcedure entity ingestion when
-      includeStoredProcedures=True is passed to .as_metadata().
-
-Determinism guarantees:
-  - All seed SQL uses explicit literal values (no NOW(), RAND(), UUID()).
-  - ON DUPLICATE KEY UPDATE for idempotent re-apply.
-  - Fixed row counts: customers=10, transactions=10, all_types=3.
-  - The procedure body is a static SELECT COUNT(*) WHERE status = 'active'.
+Determinism:
+  - Seed SQL uses explicit literals; ON DUPLICATE KEY UPDATE for idempotency.
+  - Fixed row counts (customers=10, transactions=10, all_types=3).
 
 Schema evolution caveat:
-  The enforcer uses CREATE TABLE IF NOT EXISTS — no ALTER migration path.
-  When schema-shape fields change (columns added/dropped, FK added/removed,
-  comments edited), drop the schema first so apply() re-creates it fresh:
-      DROP SCHEMA IF EXISTS e2e;  # then re-run pytest
+  Enforcer uses CREATE TABLE IF NOT EXISTS — no ALTER migration path.
+  When baseline shape changes (column add/drop, FK, comments), drop first:
+      DROP SCHEMA IF EXISTS e2e;
 """
 
 from __future__ import annotations

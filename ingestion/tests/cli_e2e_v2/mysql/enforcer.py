@@ -1,28 +1,13 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""MySQL enforcer for SQL-family source baselines.
+"""SQLAlchemy-backed SourceBaselineEnforcer for MySQL.
 
-Implements SourceBaselineEnforcer (Task 17 Protocol) for MySQL via
-SQLAlchemy. introspect() queries INFORMATION_SCHEMA to snapshot schemas,
-tables, columns, views, and stored procedures. compare() diffs that
-snapshot against a declared SqlSourceBaseline plus a COUNT(*) check per
-seeded table. apply() runs CREATE SCHEMA / CREATE TABLE IF NOT EXISTS /
-CREATE OR REPLACE VIEW / DROP+CREATE PROCEDURE and executes idempotent
-seed SQL when row counts don't match.
-
-Connection reuse:
-  - introspect(): one connection, all snapshot queries on it.
-  - compare():    one connection, snapshot + per-table row counts on it.
-                  One connection for N tables, not N+1.
-  - apply():      one transaction via engine.begin() for all DDL + seeds.
-
-Idempotency assumptions (per Decision #18):
-  - Seed.sql uses ON DUPLICATE KEY UPDATE so it's safe to re-run.
-  - CREATE TABLE uses IF NOT EXISTS so it's a no-op when already present.
-  - Views use CREATE OR REPLACE (supplied verbatim by the baseline).
-  - Stored procedures DROP + CREATE per apply() pass (MySQL has no CREATE
-    OR REPLACE PROCEDURE).
+introspect / compare / apply over INFORMATION_SCHEMA and DDL. One
+connection per phase (compare threads a single connection through
+snapshot + per-table row counts). apply() wraps all DDL + seeds in one
+transaction. CREATE TABLE / VIEW / PROCEDURE are all idempotent (IF NOT
+EXISTS / CREATE OR REPLACE / DROP + CREATE respectively).
 """
 
 from __future__ import annotations

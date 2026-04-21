@@ -84,6 +84,9 @@ def assert_service_matches(
         raise StructuralMismatch(diffs)
 
 
+_STRICT_LIST_LIMIT = 1000
+
+
 def _diff_service(
     exp: ExpectedService,
     om: OpenMetadata,
@@ -101,7 +104,14 @@ def _diff_service(
         _diff_database(exp_db, exp.name, om, mode, diffs)
 
     if mode == MatchMode.STRICT:
-        _check_strict_service_extras(exp, om, diffs)
+        _check_strict_extras(
+            entity_cls=Database,
+            expected_names={d.name for d in exp.databases},
+            list_params={"service": exp.name},
+            path_fmt=f"service[{exp.name}].database[{{name}}](strict)",
+            om=om,
+            diffs=diffs,
+        )
 
 
 def _diff_database(
@@ -121,61 +131,50 @@ def _diff_database(
         _diff_schema(exp_schema, db_fqn, om, mode, diffs)
 
     if mode == MatchMode.STRICT:
-        _check_strict_database_extras(exp_db, db_fqn, om, diffs)
+        _check_strict_extras(
+            entity_cls=DatabaseSchema,
+            expected_names={s.name for s in exp_db.schemas},
+            list_params={"database": db_fqn},
+            path_fmt=f"{db_fqn}.schema[{{name}}](strict)",
+            om=om,
+            diffs=diffs,
+        )
 
 
-def _check_strict_service_extras(
-    exp_service: ExpectedService,
+def _check_strict_extras(
+    *,
+    entity_cls: type,
+    expected_names: set[str],
+    list_params: dict[str, str],
+    path_fmt: str,
     om: OpenMetadata,
     diffs: list[Diff],
 ) -> None:
-    """STRICT: flag actual databases under the service that weren't declared.
+    """Flag actual entities under a parent that weren't declared as expected.
 
-    Listing params cap at limit=1000 — sufficient for every e2e scenario
-    (services under test rarely have >1 database). Larger production-like
-    catalogs would need pagination.
+    Used for STRICT-mode extras detection at every nesting level
+    (databases under a service, schemas under a database, tables + stored
+    procedures under a schema). `path_fmt` must contain a `{name}` slot
+    filled with each extra entity's name at emit time.
+
+    Pagination: capped at _STRICT_LIST_LIMIT; fine for e2e-sized services.
     """
-    expected_names = {d.name for d in exp_service.databases}
-    actual_dbs = om.list_all_entities(
-        entity=Database,
-        params={"service": exp_service.name},
-        limit=1000,
+    actuals = om.list_all_entities(
+        entity=entity_cls,
+        params=list_params,
+        limit=_STRICT_LIST_LIMIT,
     )
-    for actual in actual_dbs:
-        actual_name = model_str(actual.name)
-        if actual_name not in expected_names:
-            diffs.append(
-                Diff(
-                    path=f"service[{exp_service.name}].database[{actual_name}](strict)",
-                    expected="not present",
-                    actual="present",
-                )
+    for actual in actuals:
+        name = model_str(actual.name)
+        if name in expected_names:
+            continue
+        diffs.append(
+            Diff(
+                path=path_fmt.format(name=name),
+                expected="not present",
+                actual="present",
             )
-
-
-def _check_strict_database_extras(
-    exp_db: ExpectedDatabase,
-    db_fqn: str,
-    om: OpenMetadata,
-    diffs: list[Diff],
-) -> None:
-    """STRICT: flag actual schemas under the database that weren't declared."""
-    expected_names = {s.name for s in exp_db.schemas}
-    actual_schemas = om.list_all_entities(
-        entity=DatabaseSchema,
-        params={"database": db_fqn},
-        limit=1000,
-    )
-    for actual in actual_schemas:
-        actual_name = model_str(actual.name)
-        if actual_name not in expected_names:
-            diffs.append(
-                Diff(
-                    path=f"{db_fqn}.schema[{actual_name}](strict)",
-                    expected="not present",
-                    actual="present",
-                )
-            )
+        )
 
 
 def _diff_schema(
@@ -198,59 +197,22 @@ def _diff_schema(
         _diff_stored_procedure(exp_sp, schema_fqn, om, diffs)
 
     if mode == MatchMode.STRICT:
-        _check_strict_schema_extras(
-            exp_schema=exp_schema,
-            schema_fqn=schema_fqn,
+        _check_strict_extras(
+            entity_cls=Table,
+            expected_names={t.name for t in exp_schema.tables},
+            list_params={"databaseSchema": schema_fqn},
+            path_fmt=f"{schema_fqn}.schema[{exp_schema.name}].table[{{name}}](strict)",
             om=om,
             diffs=diffs,
         )
-
-
-def _check_strict_schema_extras(
-    *,
-    exp_schema: ExpectedSchema,
-    schema_fqn: str,
-    om: OpenMetadata,
-    diffs: list[Diff],
-) -> None:
-    """In STRICT mode, flag actual tables and stored procedures in the schema
-    that weren't declared in the expected spec. Required by filter tests that
-    need to verify "exclude" semantics — merely walking declared items isn't
-    enough, because missing the walk of actuals leaves extras invisible.
-    """
-    expected_table_names = {t.name for t in exp_schema.tables}
-    actual_tables = om.list_all_entities(
-        entity=Table,
-        params={"databaseSchema": schema_fqn},
-        limit=1000,
-    )
-    for actual in actual_tables:
-        actual_name = model_str(actual.name)
-        if actual_name not in expected_table_names:
-            diffs.append(
-                Diff(
-                    path=f"{schema_fqn}.schema[{exp_schema.name}].table[{actual_name}](strict)",
-                    expected="not present",
-                    actual="present",
-                )
-            )
-
-    expected_sp_names = {sp.name for sp in exp_schema.stored_procedures}
-    actual_sps = om.list_all_entities(
-        entity=StoredProcedure,
-        params={"databaseSchema": schema_fqn},
-        limit=1000,
-    )
-    for actual in actual_sps:
-        actual_name = model_str(actual.name)
-        if actual_name not in expected_sp_names:
-            diffs.append(
-                Diff(
-                    path=f"{schema_fqn}.schema[{exp_schema.name}].procedure[{actual_name}](strict)",
-                    expected="not present",
-                    actual="present",
-                )
-            )
+        _check_strict_extras(
+            entity_cls=StoredProcedure,
+            expected_names={sp.name for sp in exp_schema.stored_procedures},
+            list_params={"databaseSchema": schema_fqn},
+            path_fmt=f"{schema_fqn}.schema[{exp_schema.name}].procedure[{{name}}](strict)",
+            om=om,
+            diffs=diffs,
+        )
 
 
 def _diff_table(

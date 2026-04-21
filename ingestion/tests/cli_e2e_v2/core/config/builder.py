@@ -1,24 +1,13 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Immutable builder for the YAML config consumed by the metadata CLI.
+"""Immutable WorkflowConfig builder rendered to YAML for the metadata CLI.
 
-Construction is a two-step builder: the connector factory returns a base
-`WorkflowConfig` carrying connection + service + sink + server config, then
-the test chooses a pipeline and passes its options in via `.pipeline(...)`:
-
-    base = build_mysql_config(service_name, server)
-    cfg  = base.pipeline(
-               MetadataPipeline(includeStoredProcedures=True),
-           ).with_filter(tables_include=["customers"])
-
-Rules:
-  - All overlays are non-mutating; each returns a new frozen WorkflowConfig.
-  - Filter patterns applied via `.with_filter(...)` persist across a later
-    `.pipeline(...)` transition. Filters set inline on the pipeline options
-    take precedence — preserved filters only fill gaps.
-  - Rendering (`write_tmp`, `cli_subcommand`, `pipeline_identifier`) fails
-    loudly when no pipeline is set — no silent render of half-built configs.
+Two-step: factory returns a base (connection + service + server);
+`.pipeline(options)` picks the pipeline (options is an OM Pydantic model);
+`.with_filter(...)` layers filter patterns. Filters persist across later
+`.pipeline()` transitions; inline filters on the options take precedence.
+Render fails loudly when no pipeline is set.
 """
 
 from __future__ import annotations
@@ -180,6 +169,3 @@ class WorkflowConfig:
         path.write_text(yaml.safe_dump(self._doc, sort_keys=False))
         return path
 
-    def to_dict(self) -> dict[str, Any]:
-        """Deep copy of the rendered document. For tests or debugging only."""
-        return copy.deepcopy(self._doc)

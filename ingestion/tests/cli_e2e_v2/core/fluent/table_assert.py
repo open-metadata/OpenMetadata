@@ -3,16 +3,10 @@
 #  you may not use this file except in compliance with the License.
 """TableAssert + ColumnAssert — fluent assertions on Table entities.
 
-TableAssert dispatches terminal checks through a single `EventuallyRunner`
-collaborator so `.eventually(timeout)` is a one-shot toggle implemented in
-exactly one place (see `core/fluent/eventually.py`).
-
-ColumnAssert is synchronous — column-level assertions against a freshly
-ingested table have been consistent without polling in practice. Callers
-who need polling at the column level should chain off TableAssert:
-
-    om.table(fqn).eventually().column("x").has_tag("PII.Sensitive")
-    # ^^^ currently still synchronous — Bucket D (sticky eventually).
+TableAssert terminals dispatch through an `EventuallyRunner` so
+`.eventually(timeout)` is one-shot arming implemented in one place.
+ColumnAssert is synchronous (column checks on fresh ingests are reliable
+in practice; polling chains off TableAssert).
 """
 
 from __future__ import annotations
@@ -29,7 +23,6 @@ from metadata.ingestion.ometa.utils import model_str
 from .eventually import EventuallyRunner
 from .lineage_assert import LineageAssert
 from .profile_assert import ProfileAssert
-from .tests_assert import TestsAssert
 
 
 class TableAssert:
@@ -160,10 +153,6 @@ class TableAssert:
     @property
     def profile(self) -> ProfileAssert:
         return ProfileAssert(self._om, self._fqn)
-
-    @property
-    def tests(self) -> TestsAssert:
-        return TestsAssert(self._om, self._fqn)
 
 
 class ColumnAssert:

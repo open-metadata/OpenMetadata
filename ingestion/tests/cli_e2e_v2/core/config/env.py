@@ -1,32 +1,15 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Env var accessor — class-based, with typing that narrows by `required`.
+"""Env var accessor — class with `Generic[_Req]` + `typing.overload` narrowing.
 
-Single abstraction for every env-var read in the v2 framework. Construction
-captures (key, default, required); terminals are `.ref()` for YAML
-embedding and `.get()` for the raw value. Construction validates once —
-fail-fast at the nearest call site when a required var is unset.
+Construction captures (key, default, required); terminals:
+    .ref() -> "${KEY}"          for YAML embedding
+    .get() -> str               when required=True  (default)
+    .get() -> str | None        when required=False
 
-The class is Generic over the `required` flag:
-
-    Env("X").get()                      -> str           (required=True default)
-    Env("X", required=False).get()      -> str | None
-
-`typing.overload` on both `__new__` and `.get()` makes the type narrow
-automatically — call sites see the right return type without casts,
-and mypy / basedpyright enforces the distinction statically.
-
-Runtime is identical to a plain class; the Generic machinery is type-only.
-
-Usage:
-
-    Env("E2E_MYSQL_USER").ref()                             # "${E2E_MYSQL_USER}"
-    Env("OM_SERVER_URL", default=DEFAULT).get()             # str
-
-    db = Env("E2E_MYSQL_DATABASE", required=False)
-    if db.get() is not None:
-        cfg["databaseSchema"] = db.ref()
+Runtime is a plain class; the Generic machinery is type-only. See
+`memory/project-v2-env-class-design.md` for the shape's rationale.
 """
 
 from __future__ import annotations
