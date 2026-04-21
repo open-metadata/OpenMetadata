@@ -99,6 +99,7 @@ export interface PartitionColumn {
      * Partition column name.
      */
     name: string;
+    [property: string]: any;
 }
 
 /**
