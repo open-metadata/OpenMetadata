@@ -251,11 +251,15 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       createdCPData: [],
     };
     const propertyNames: Record<string, string> = {};
-    const dashboardSearchPropertyName = `pwSearchCPDashboard${uuid()}`;
+    const dashboardSearchPropertyName = `pw._CP-${uuid()} . ${
+      entity.name
+    }:/&^%$#@!`;
     const dashboardPropertyValue = `EXECUTIVE_DASHBOARD_${uuid()}`;
 
     // Pipeline-specific state
-    const pipelineSearchPropertyName = `pwSearchCPPipeline${uuid()}`;
+    const pipelineSearchPropertyName = `pw._CP-${uuid()} . ${
+      entity.name
+    }:/&^%$#@!`;
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
@@ -336,7 +340,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
-        const propertyName = `pwcp${uuid()}test${entity.name}`;
+        const propertyName = `pw._CP-${uuid()} . ${entity.name}:/&^%$#@!`;
 
         await settingClick(
           page,
@@ -371,7 +375,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     CONFIG_PROPERTIES.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
-        const propertyName = `pwcp${uuid()}test${entity.name}`;
+        const propertyName = `pw._CP-${uuid()} . ${entity.name}:/&^%$#@!`;
 
         await settingClick(
           page,
@@ -924,6 +928,137 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           ).toBeVisible();
         });
       });
+      test('no duplicate card after update', async ({ page }) => {
+        test.slow();
+
+        const propertyName = `\\ pw.edge.update.${uuid()} \\`;
+
+        await test.step('Create property', async () => {
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
+          await addCustomPropertiesForEntity({
+            page,
+            propertyName,
+            customPropertyData: entity,
+            customType: 'String',
+          });
+        });
+
+        await test.step('Set initial value', async () => {
+          await mainEntity.visitEntityPage(page);
+          await waitForAllLoadersToDisappear(page);
+
+          await setValueForProperty({
+            page,
+            propertyName,
+            value: 'initial value',
+            propertyType: 'string',
+            endpoint: EntityTypeEndpoint.Table,
+          });
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'initial value',
+            propertyType: 'string',
+          });
+        });
+
+        await test.step('Update value and verify only one card exists', async () => {
+          await setValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+            endpoint: EntityTypeEndpoint.Table,
+          });
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+          });
+
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toHaveCount(1);
+          await expect(
+            page.getByTestId(`custom-property-"${propertyName}"-card`)
+          ).toHaveCount(0);
+        });
+
+        await test.step('Value persists after reload', async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          await validateValueForProperty({
+            page,
+            propertyName,
+            value: 'updated value',
+            propertyType: 'string',
+          });
+
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toHaveCount(1);
+          await expect(
+            page.getByTestId(`custom-property-"${propertyName}"-card`)
+          ).toHaveCount(0);
+        });
+
+        await test.step('Updated value is searchable via Advanced Search', async () => {
+          await sidebarClick(page, SidebarItem.EXPLORE);
+
+          await showAdvancedSearchDialog(page);
+
+          const ruleLocator = page.locator('.rule').nth(0);
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            'Custom Properties',
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            'Table',
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--field .ant-select'),
+            propertyName,
+            true
+          );
+
+          await selectOption(
+            page,
+            ruleLocator.locator('.rule--operator .ant-select'),
+            CONDITIONS_MUST.equalTo.name
+          );
+
+          await ruleLocator
+            .locator('.rule--widget--TEXT input[type="text"]')
+            .fill('updated value');
+
+          await advanceSearchSaveFilter(page, 'updated value');
+
+          await expect(
+            page.getByTestId(
+              `table-data-card_${
+                (mainEntity as TableClass).entityResponseData.fullyQualifiedName
+              }`
+            )
+          ).toBeVisible();
+        });
+      });
     }
 
     // ── Container-specific extra tests ─────────────────────────────────────
@@ -1136,6 +1271,122 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             true
           );
           await clearAdvancedSearchFilters(page);
+        });
+
+        test('String CP with numeric-like string value', async ({
+          browser,
+          page,
+        }) => {
+          test.slow();
+          const numericStringDashboard = new DashboardClass();
+
+          await test.step('Setup dashboard with numeric-like string value', async () => {
+            const { apiContext, afterAction } = await createNewPage(browser);
+
+            await numericStringDashboard.create(apiContext);
+
+            await apiContext.patch(
+              `/api/v1/dashboards/${numericStringDashboard.entityResponseData.id}`,
+              {
+                data: [
+                  {
+                    op: 'add',
+                    path: '/extension',
+                    value: { [propertyNames['string']]: '100' },
+                  },
+                ],
+                headers: {
+                  'Content-Type': 'application/json-patch+json',
+                },
+              }
+            );
+
+            await afterAction();
+          });
+
+          await test.step('Equal operator finds dashboard with string value "100"', async () => {
+            await showAdvancedSearchDialog(page);
+            await applyCustomPropertyFilter(
+              page,
+              propertyNames['string'],
+              'equal',
+              '100'
+            );
+            await verifySearchResults(
+              page,
+              numericStringDashboard.entityResponseData.fullyQualifiedName,
+              true,
+              '100'
+            );
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('Not_equal operator excludes dashboard with string value "100"', async () => {
+            await showAdvancedSearchDialog(page);
+            await applyCustomPropertyFilter(
+              page,
+              propertyNames['string'],
+              'not_equal',
+              '100'
+            );
+            await verifySearchResults(
+              page,
+              numericStringDashboard.entityResponseData.fullyQualifiedName,
+              false,
+              '100'
+            );
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('Contains operator finds dashboard with partial numeric-like string "10"', async () => {
+            await showAdvancedSearchDialog(page);
+            await applyCustomPropertyFilter(
+              page,
+              propertyNames['string'],
+              'like',
+              '10'
+            );
+            await verifySearchResults(
+              page,
+              numericStringDashboard.entityResponseData.fullyQualifiedName,
+              true,
+              '10'
+            );
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('Not contains operator excludes dashboard with partial numeric-like string "10"', async () => {
+            await showAdvancedSearchDialog(page);
+            await applyCustomPropertyFilter(
+              page,
+              propertyNames['string'],
+              'not_like',
+              '10'
+            );
+            await verifySearchResults(
+              page,
+              numericStringDashboard.entityResponseData.fullyQualifiedName,
+              false,
+              '10'
+            );
+            await clearAdvancedSearchFilters(page);
+          });
+
+          await test.step('Is not null operator finds dashboard with numeric-like string value', async () => {
+            await showAdvancedSearchDialog(page);
+            await applyCustomPropertyFilter(
+              page,
+              propertyNames['string'],
+              'is_not_null',
+              ''
+            );
+            await verifySearchResults(
+              page,
+              numericStringDashboard.entityResponseData.fullyQualifiedName,
+              true
+            );
+            await clearAdvancedSearchFilters(page);
+          });
         });
 
         test('Email CP with all operators', async ({ page }) => {

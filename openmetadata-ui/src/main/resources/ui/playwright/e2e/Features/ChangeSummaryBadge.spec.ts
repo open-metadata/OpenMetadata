@@ -20,13 +20,14 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
-const table = new TableClass();
-
 test.describe(
   'ChangeSummary DescriptionSourceBadge',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
+    let table: TableClass;
+
     test.beforeAll('Setup test entities', async ({ browser }) => {
+      table = new TableClass();
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);

@@ -193,7 +193,7 @@ export class EntityDataClass {
     const createdMetadataType = await cpMetadataType.json();
 
     // Map and prepare the data required for creating custom properties of different types
-    const cpCreationData = getCustomPropertyCreationData(typesData, 'setup');
+    const cpCreationData = getCustomPropertyCreationData(typesData);
 
     this.customProperties[entityType] = cpCreationData;
 

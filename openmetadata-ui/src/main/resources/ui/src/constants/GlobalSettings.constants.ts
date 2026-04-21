@@ -101,6 +101,7 @@ export enum GlobalSettingOptions {
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
   AUDIT_LOGS = 'audit-logs',
   GLOSSARY_TERM_RELATIONS = 'glossary-term-relations',
+  WORKFLOW_DEFINITIONS = 'workflow-definitions',
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
 }

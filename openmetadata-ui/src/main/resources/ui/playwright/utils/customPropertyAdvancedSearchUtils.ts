@@ -45,11 +45,8 @@ export interface CPASTestData {
   createdCPData: CustomPropertyDetails[];
 }
 
-export const getCustomPropertyCreationData = (
-  types: CPASTestData['types'],
-  prefix = 'new'
-) => {
-  const namePrefix = `${prefix}${uuid()}cpas${uuid()}`;
+export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
+  const namePrefix = String.raw`\ pw.cp ${uuid()} \ `;
   const typeIdMapping = types.reduce((acc, type) => {
     acc[type.name] = type.id;
 
