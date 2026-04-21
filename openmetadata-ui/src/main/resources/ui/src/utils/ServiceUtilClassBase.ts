@@ -99,7 +99,6 @@ class ServiceUtilClassBase {
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
     PipelineServiceType.Snowplow,
-    DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.Informix,
     DatabaseServiceType.ServiceNow,
