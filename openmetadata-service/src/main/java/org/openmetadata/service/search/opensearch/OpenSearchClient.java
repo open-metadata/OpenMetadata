@@ -1114,6 +1114,23 @@ public class OpenSearchClient implements SearchClient {
                                 org.openmetadata.service.jdbi3.KnowledgePageRepository
                                     .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
+                    // Stable sort so from/size pagination cannot miss/duplicate hits.
+                    .sort(
+                        sort ->
+                            sort.field(
+                                f ->
+                                    f.field("fullyQualifiedName")
+                                        .order(
+                                            os.org.opensearch.client.opensearch._types.SortOrder
+                                                .Asc)))
+                    .sort(
+                        sort ->
+                            sort.field(
+                                f ->
+                                    f.field("_id")
+                                        .order(
+                                            os.org.opensearch.client.opensearch._types.SortOrder
+                                                .Asc)))
                     .from(offset)
                     .size(limit));
 
@@ -1148,6 +1165,23 @@ public class OpenSearchClient implements SearchClient {
                                 org.openmetadata.service.jdbi3.KnowledgePageRepository
                                     .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
+                    // Stable sort so from/size pagination cannot miss/duplicate hits.
+                    .sort(
+                        sort ->
+                            sort.field(
+                                f ->
+                                    f.field("fullyQualifiedName")
+                                        .order(
+                                            os.org.opensearch.client.opensearch._types.SortOrder
+                                                .Asc)))
+                    .sort(
+                        sort ->
+                            sort.field(
+                                f ->
+                                    f.field("_id")
+                                        .order(
+                                            os.org.opensearch.client.opensearch._types.SortOrder
+                                                .Asc)))
                     .from(offset)
                     .size(limit));
 
