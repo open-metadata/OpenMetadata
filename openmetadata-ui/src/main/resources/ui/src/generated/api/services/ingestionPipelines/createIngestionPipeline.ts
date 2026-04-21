@@ -1,15 +1,3 @@
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
  * Ingestion Pipeline Config is used to set up an Airflow DAG.
  */
@@ -3089,6 +3077,8 @@ export interface ServiceConnection {
  *
  * IOMETE Connection Config
  *
+ * QuestDB Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -3444,6 +3434,8 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -3692,6 +3684,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4046,6 +4040,10 @@ export interface ConfigObject {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
+     *
+     * Optional display name for the QuestDB database in OpenMetadata. QuestDB exposes a single
+     * physical database (qdb); this value is used only for display and FQN building. Defaults
+     * to qdb.
      */
     databaseName?: string;
     /**
@@ -7473,6 +7471,7 @@ export enum PurpleType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",

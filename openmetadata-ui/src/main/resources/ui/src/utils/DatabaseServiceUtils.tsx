@@ -199,7 +199,7 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
-    case DatabaseServiceType.Questdb: {
+    case DatabaseServiceType.QuestDB: {
       schema = questdbConnection;
 
       break;

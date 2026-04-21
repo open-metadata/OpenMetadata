@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.questdbConnection import (
-    QuestdbConnection as QuestdbConnectionConfig,
+    QuestDBConnection as QuestDBConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -42,7 +42,7 @@ from metadata.utils.constants import THREE_MIN
 QUESTDB_DEFAULT_DATABASE = "qdb"
 
 
-def get_connection_url(connection: QuestdbConnectionConfig) -> str:
+def get_connection_url(connection: QuestDBConnectionConfig) -> str:
     """
     QuestDB exposes a single database named ``qdb`` over the PostgreSQL wire
     protocol. psycopg2 requires a dbname on the URL, so we always target
@@ -67,7 +67,7 @@ def get_connection_url(connection: QuestdbConnectionConfig) -> str:
     return url
 
 
-class QuestdbConnection(BaseConnection[QuestdbConnectionConfig, Engine]):
+class QuestDBConnection(BaseConnection[QuestDBConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         engine = create_generic_db_connection(
             connection=self.service_connection,
@@ -77,7 +77,7 @@ class QuestdbConnection(BaseConnection[QuestdbConnectionConfig, Engine]):
         return patch_questdb_dialect(engine)
 
     def get_connection_dict(self) -> dict:
-        raise NotImplementedError("get_connection_dict is not implemented for Questdb")
+        raise NotImplementedError("get_connection_dict is not implemented for QuestDB")
 
     def test_connection(
         self,

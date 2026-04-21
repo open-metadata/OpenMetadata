@@ -1,20 +1,20 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/questdbConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "QuestdbConnection",
-  "description": "Questdb Connection Config",
+  "title": "QuestDBConnection",
+  "description": "QuestDB Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.database.QuestdbConnection",
+  "javaType": "org.openmetadata.schema.services.connections.database.QuestDBConnection",
   "definitions": {
-    "questdbType": {
+    "questDBType": {
       "description": "Service type.",
       "type": "string",
       "enum": [
-        "Questdb"
+        "QuestDB"
       ],
-      "default": "Questdb"
+      "default": "QuestDB"
     },
-    "questdbScheme": {
+    "questDBScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": [
@@ -27,18 +27,18 @@
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/questdbType",
-      "default": "Questdb"
+      "$ref": "#/definitions/questDBType",
+      "default": "QuestDB"
     },
     "scheme": {
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
-      "$ref": "#/definitions/questdbScheme",
+      "$ref": "#/definitions/questDBScheme",
       "default": "postgresql+psycopg2"
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to Questdb.",
+      "description": "Username to connect to QuestDB.",
       "type": "string"
     },
     "authType": {
@@ -53,23 +53,13 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Questdb service.",
+      "description": "Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).",
       "type": "string"
     },
     "databaseName": {
       "title": "Database Name",
-      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "description": "Optional display name for the QuestDB database in OpenMetadata. QuestDB exposes a single physical database (qdb); this value is used only for display and FQN building. Defaults to qdb.",
       "type": "string"
-    },
-    "databaseSchema": {
-      "title": "Database Schema",
-      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema.",
-      "type": "string"
-    },
-    "sslConfig": {
-      "title": "SSL",
-      "description": "SSL Configuration details.",
-      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -105,6 +95,7 @@
   "additionalProperties": false,
   "required": [
     "username",
+    "authType",
     "hostPort"
   ]
 }

@@ -9,12 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Questdb source module
+QuestDB source module
 """
-from typing import Iterable, Optional, cast
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.questdbConnection import (
-    QuestdbConnection,
+    QuestDBConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -27,7 +27,7 @@ from metadata.ingestion.source.database.questdb.connection import (
 )
 
 
-class QuestdbSource(CommonDbSourceService):
+class QuestDBSource(CommonDbSourceService):
     """
     QuestDB is a single-database (``qdb``), single-schema (``public``) system
     exposing ``pg_catalog`` and ``information_schema`` over the PostgreSQL wire
@@ -41,10 +41,10 @@ class QuestdbSource(CommonDbSourceService):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = cast(QuestdbConnection, config.serviceConnection.root.config)
-        if not isinstance(connection, QuestdbConnection):
+        connection = config.serviceConnection.root.config
+        if not isinstance(connection, QuestDBConnection):
             raise InvalidSourceException(
-                f"Expected QuestdbConnection, but got {connection}"
+                f"Expected QuestDBConnection, but got {connection}"
             )
         return cls(config, metadata)
 

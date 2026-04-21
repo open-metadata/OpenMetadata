@@ -71,7 +71,7 @@
         "BurstIQ",
         "Informix",
         "Iomete",
-        "Questdb"
+        "QuestDB"
       ],
       "javaEnums": [
         {
@@ -243,7 +243,7 @@
           "name": "Iomete"
         },
         {
-          "name": "Questdb"
+          "name": "QuestDB"
         }
       ]
     },

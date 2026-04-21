@@ -8,11 +8,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from metadata.ingestion.source.database.questdb.connection import QuestdbConnection
-from metadata.ingestion.source.database.questdb.metadata import QuestdbSource
+from metadata.ingestion.source.database.questdb.connection import QuestDBConnection
+from metadata.ingestion.source.database.questdb.metadata import QuestDBSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=QuestdbSource,
-    connection_class=QuestdbConnection,
+    metadata_source_class=QuestDBSource,
+    connection_class=QuestDBConnection,
 )

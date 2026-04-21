@@ -20,12 +20,17 @@ methods used by ``CommonDbSourceService`` there. Constraints and indexes always
 return empty results: QuestDB has no primary keys, foreign keys, unique
 constraints or secondary indexes (the designated timestamp is handled as
 table partitioning, not an index).
+
+The dialect is patched on the per-engine ``Dialect`` instance returned by
+``sqlalchemy.create_engine``. Each ``create_engine`` call instantiates a fresh
+dialect object, so the patch is isolated to the QuestDB engine and never
+leaks to a concurrent real-PostgreSQL engine.
 """
 import types
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Type
 
 from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.types import (
     BIGINT,
     BOOLEAN,
@@ -39,14 +44,21 @@ from sqlalchemy.types import (
     SMALLINT,
     TIMESTAMP,
     VARCHAR,
+    LargeBinary,
     NullType,
+    TypeEngine,
 )
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 QUESTDB_DEFAULT_SCHEMA = "public"
 
-_INFORMATION_SCHEMA_TYPE_MAP = {
+_INFORMATION_SCHEMA_TYPE_MAP: Dict[str, Type[TypeEngine]] = {
     "bigint": BIGINT,
     "boolean": BOOLEAN,
+    "bytea": LargeBinary,
     "character": CHAR,
     "character varying": VARCHAR,
     "date": DATE,
@@ -61,11 +73,15 @@ _INFORMATION_SCHEMA_TYPE_MAP = {
 }
 
 
-def _information_schema_type(data_type: str):
+def _information_schema_type(data_type: str) -> Type[TypeEngine]:
     return _INFORMATION_SCHEMA_TYPE_MAP.get(data_type.lower(), NullType)
 
 
-def _get_table_names(connection, schema=None, table_type="BASE TABLE") -> List[str]:
+def _get_table_names(
+    connection: Connection,
+    schema: Optional[str] = None,
+    table_type: str = "BASE TABLE",
+) -> List[str]:
     result = connection.execute(
         text(
             "SELECT table_name FROM information_schema.tables "
@@ -77,7 +93,11 @@ def _get_table_names(connection, schema=None, table_type="BASE TABLE") -> List[s
     return [row[0] for row in result]
 
 
-def _get_columns(connection, table_name: str, schema=None) -> List[Dict[str, Any]]:
+def _get_columns(
+    connection: Connection,
+    table_name: str,
+    schema: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     result = connection.execute(
         text(
             "SELECT column_name, data_type, is_nullable, column_default "
@@ -87,7 +107,7 @@ def _get_columns(connection, table_name: str, schema=None) -> List[Dict[str, Any
         ),
         {"schema": schema or QUESTDB_DEFAULT_SCHEMA, "table_name": table_name},
     )
-    columns = []
+    columns: List[Dict[str, Any]] = []
     for column_name, data_type, is_nullable, column_default in result:
         columns.append(
             {
@@ -102,20 +122,20 @@ def _get_columns(connection, table_name: str, schema=None) -> List[Dict[str, Any
     return columns
 
 
-def _empty_pk_constraint(*_args, **_kwargs) -> Dict[str, Any]:
+def _empty_pk_constraint(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
     return {"constrained_columns": [], "name": None}
 
 
-def _empty_list(*_args, **_kwargs) -> List[Any]:
+def _empty_list(*_args: Any, **_kwargs: Any) -> List[Any]:
     return []
 
 
-def _empty_table_comment(*_args, **_kwargs) -> Dict[str, Any]:
+def _empty_table_comment(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
     return {"text": None}
 
 
-def _empty_view_definition(*_args, **_kwargs) -> str:
-    return ""
+def _none_view_definition(*_args: Any, **_kwargs: Any) -> Optional[str]:
+    return None
 
 
 def patch_questdb_dialect(engine: Engine) -> Engine:
@@ -124,6 +144,7 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
     with QuestDB-safe equivalents backed by ``information_schema``.
     """
     dialect = engine.dialect
+    logger.debug("Patching PostgreSQL dialect for QuestDB engine %s", engine.url)
 
     dialect.get_table_names = types.MethodType(
         lambda self, connection, schema=None, **_kw: _get_table_names(
@@ -162,6 +183,6 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
         lambda self, *a, **kw: _empty_table_comment(), dialect
     )
     dialect.get_view_definition = types.MethodType(
-        lambda self, *a, **kw: _empty_view_definition(), dialect
+        lambda self, *a, **kw: _none_view_definition(), dialect
     )
     return engine
