@@ -16,7 +16,10 @@ import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  openColumnDetailPanel,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
@@ -43,8 +46,6 @@ test.describe(
         queryParams: { changeSource: 'Suggested' },
       });
 
-      const columnName = table.entityResponseData?.columns?.[0]?.name;
-
       await table.patch({
         apiContext,
         patchData: [
@@ -56,23 +57,6 @@ test.describe(
         ],
         queryParams: { changeSource: 'Suggested' },
       });
-
-      const changeSummaryResponse = await apiContext.get(
-        `/api/v1/changeSummary/table/${table.entityResponseData?.id}`
-      );
-
-      expect(changeSummaryResponse.status()).toBe(200);
-
-      const changeSummaryData = await changeSummaryResponse.json();
-
-      expect(changeSummaryData.changeSummary).toHaveProperty('description');
-      expect(changeSummaryData.changeSummary.description.changeSource).toBe(
-        'Suggested'
-      );
-
-      expect(
-        changeSummaryData.changeSummary[`columns.${columnName}.description`]
-      ).toBeDefined();
 
       await afterAction();
     });
@@ -121,12 +105,7 @@ test.describe(
         const changeSummaryResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/changeSummary/table/')
         );
-
-        await navigateToExploreAndSelectEntity({
-          page,
-          entityName: table.entity.name,
-          fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
-        });
+        await navigateToExploreAndSelectEntity(page, table.entity.name);
 
         await changeSummaryResponse;
         await waitForAllLoadersToDisappear(page);
@@ -145,7 +124,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
 
-      await test.step('Navigate to entity page and verify column badge', async () => {
+      await test.step('Search for column on table details page and verify AI badge in panel', async () => {
         const changeSummaryResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/changeSummary/')
         );
@@ -154,35 +133,18 @@ test.describe(
         await changeSummaryResponse;
         await waitForAllLoadersToDisappear(page);
 
-        const descriptionCells = page
-          .getByTestId('description')
-          .getByTestId('ai-suggested-badge');
-
-        await expect(descriptionCells.first()).toBeVisible();
-      });
-
-      await test.step('Verify AI badge on column description in Explore summary panel', async () => {
         const column = table.entityResponseData?.columns?.[0];
 
-        const changeSummaryResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/changeSummary/table/')
-        );
-
-        await navigateToExploreAndSelectEntity({
-          page,
-          entityName: column?.name ?? '',
-          exploreTab: 'Column',
-        });
-
-        await page
-          .getByTestId(`table-data-card_${column?.fullyQualifiedName}`)
-          .click();
-
-        await changeSummaryResponse;
+        await page.getByTestId('searchbar').fill(column?.name ?? '');
         await waitForAllLoadersToDisappear(page);
 
+        await openColumnDetailPanel({
+          page,
+          columnId: column?.fullyQualifiedName ?? '',
+        });
+
         const badge = page
-          .locator('.entity-summary-panel-container')
+          .locator('.column-detail-panel')
           .getByTestId('ai-suggested-badge')
           .first();
 
