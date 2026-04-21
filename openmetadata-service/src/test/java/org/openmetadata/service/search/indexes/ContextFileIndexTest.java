@@ -1,12 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +14,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.Entity;

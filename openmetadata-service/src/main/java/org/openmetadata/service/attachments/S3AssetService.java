@@ -1,6 +1,5 @@
 package org.openmetadata.service.attachments;
 
-import org.openmetadata.schema.attachments.Asset;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
@@ -11,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.service.config.S3Configuration;
 import org.openmetadata.service.util.AsyncService;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;

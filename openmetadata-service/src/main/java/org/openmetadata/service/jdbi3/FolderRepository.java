@@ -1,21 +1,18 @@
 package org.openmetadata.service.jdbi3;
 
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.drive.ContextFileResource;
-import org.openmetadata.service.resources.drive.FolderResource;
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.Folder;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.resources.drive.ContextFileResource;
+import org.openmetadata.service.resources.drive.FolderResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;

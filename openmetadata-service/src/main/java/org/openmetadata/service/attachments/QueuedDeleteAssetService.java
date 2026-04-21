@@ -1,12 +1,12 @@
 package org.openmetadata.service.attachments;
 
-import org.openmetadata.schema.attachments.Asset;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.openmetadata.schema.attachments.Asset;
 
 public class QueuedDeleteAssetService implements AssetService {
   static final long DEFAULT_DELETE_WAIT_MILLIS =

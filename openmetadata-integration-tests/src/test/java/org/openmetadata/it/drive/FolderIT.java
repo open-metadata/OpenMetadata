@@ -35,13 +35,11 @@ class FolderIT {
 
   private static final String PATH = "v1/drive/folders";
 
-  private Folder createFolder(RestClient rest, CreateFolder request)
-      throws HttpResponseException {
+  private Folder createFolder(RestClient rest, CreateFolder request) throws HttpResponseException {
     return rest.create(PATH, request, Folder.class);
   }
 
-  private Folder getFolder(RestClient rest, UUID id, String fields)
-      throws HttpResponseException {
+  private Folder getFolder(RestClient rest, UUID id, String fields) throws HttpResponseException {
     return rest.getById(PATH, id, fields, Folder.class);
   }
 
@@ -245,8 +243,7 @@ class FolderIT {
                 .withName(ns.prefix("perm-delete"))
                 .withOwners(List.of(owner.getEntityReference())));
 
-    RestClient consumerRest =
-        RestClient.forUser("test@open-metadata.org", new String[] {});
+    RestClient consumerRest = RestClient.forUser("test@open-metadata.org", new String[] {});
 
     HttpResponseException ex =
         assertThrows(
@@ -270,8 +267,7 @@ class FolderIT {
                 .withDisplayName("Original")
                 .withOwners(List.of(owner.getEntityReference())));
 
-    RestClient consumerRest =
-        RestClient.forUser("test@open-metadata.org", new String[] {});
+    RestClient consumerRest = RestClient.forUser("test@open-metadata.org", new String[] {});
 
     String original = JsonUtils.pojoToJson(folder);
     folder.setDisplayName("Hacked Name");

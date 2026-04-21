@@ -1,11 +1,5 @@
 package org.openmetadata.service.resources.drive;
 
-import org.openmetadata.schema.attachments.Asset;
-import org.openmetadata.schema.attachments.AssetType;
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileContent;
-import org.openmetadata.schema.entity.data.ContextFileType;
-import org.openmetadata.schema.entity.data.ProcessingStatus;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,6 +9,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.UUID;
+import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.attachments.AssetType;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileContent;
+import org.openmetadata.schema.entity.data.ContextFileType;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 final class ContextFileUploadSupport {

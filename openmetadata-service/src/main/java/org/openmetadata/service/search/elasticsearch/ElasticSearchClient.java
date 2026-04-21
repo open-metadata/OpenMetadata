@@ -1053,18 +1053,15 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   @lombok.SneakyThrows
-  public org.openmetadata.schema.utils.ResultList<
-          org.openmetadata.schema.entity.data.PageHierarchy>
+  public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
       listPageHierarchy(String parentFqn, String pageType, int offset, int limit) {
     return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
-  public org.openmetadata.schema.utils.ResultList<
-          org.openmetadata.schema.entity.data.PageHierarchy>
-      listPageHierarchyForActivePage(
-          String activeFqn, String pageType, int offset, int limit) {
+  public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchyForActivePage(String activeFqn, String pageType, int offset, int limit) {
     return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
   }
 
@@ -1087,10 +1084,8 @@ public class ElasticSearchClient implements SearchClient {
                     .from(offset)
                     .size(limit));
 
-    es.co.elastic.clients.elasticsearch.core.SearchResponse<
-            es.co.elastic.clients.json.JsonData>
-        searchResponse =
-            newClient.search(searchRequest, es.co.elastic.clients.json.JsonData.class);
+    es.co.elastic.clients.elasticsearch.core.SearchResponse<es.co.elastic.clients.json.JsonData>
+        searchResponse = newClient.search(searchRequest, es.co.elastic.clients.json.JsonData.class);
     java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
         processPageHierarchyHits(searchResponse);
     int total = 0;
@@ -1122,10 +1117,8 @@ public class ElasticSearchClient implements SearchClient {
                     .from(offset)
                     .size(limit));
 
-    es.co.elastic.clients.elasticsearch.core.SearchResponse<
-            es.co.elastic.clients.json.JsonData>
-        searchResponse =
-            newClient.search(searchRequest, es.co.elastic.clients.json.JsonData.class);
+    es.co.elastic.clients.elasticsearch.core.SearchResponse<es.co.elastic.clients.json.JsonData>
+        searchResponse = newClient.search(searchRequest, es.co.elastic.clients.json.JsonData.class);
     java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
         processPageHierarchyHits(searchResponse);
     pageHierarchies = buildPageNestedSearchHierarchy(pageHierarchies);
@@ -1154,8 +1147,7 @@ public class ElasticSearchClient implements SearchClient {
                               .value(
                                   es.co.elastic.clients.elasticsearch._types.FieldValue.of(1)))));
     } else {
-      int parentDepth =
-          org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
+      int parentDepth = org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
       boolQueryBuilder.must(
           es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
               q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
@@ -1191,8 +1183,7 @@ public class ElasticSearchClient implements SearchClient {
     es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
         new es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery.Builder();
 
-    String rootParentFqn =
-        org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
+    String rootParentFqn = org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
     boolQueryBuilder.should(
         es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
             q ->
@@ -1231,8 +1222,7 @@ public class ElasticSearchClient implements SearchClient {
         new java.util.ArrayList<>();
 
     if (searchResponse != null && searchResponse.hits() != null) {
-      for (es.co.elastic.clients.elasticsearch.core.search.Hit<
-              es.co.elastic.clients.json.JsonData>
+      for (es.co.elastic.clients.elasticsearch.core.search.Hit<es.co.elastic.clients.json.JsonData>
           hit : searchResponse.hits().hits()) {
         if (hit.source() != null) {
           java.util.Map<String, Object> sourceMap = EsUtils.jsonDataToMap(hit.source());
@@ -1268,10 +1258,32 @@ public class ElasticSearchClient implements SearchClient {
         continue;
       }
       String fqnPrefix = page.getFullyQualifiedName() + ".";
+      int childDepth =
+          org.openmetadata.service.util.FullyQualifiedName.split(page.getFullyQualifiedName())
+                  .length
+              + 1;
+      // Match only direct children: FQN starts with "<parentFqn>." AND fqnDepth is
+      // exactly one deeper than the parent. Descendants deeper than that are excluded.
       filters.put(
           page.getId().toString(),
           es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
-              q -> q.prefix(p -> p.field("fullyQualifiedName").value(fqnPrefix))));
+              q ->
+                  q.bool(
+                      b ->
+                          b.must(
+                                  es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                                      m ->
+                                          m.prefix(
+                                              p -> p.field("fullyQualifiedName").value(fqnPrefix))))
+                              .must(
+                                  es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                                      m ->
+                                          m.term(
+                                              t ->
+                                                  t.field("fqnDepth")
+                                                      .value(
+                                                          es.co.elastic.clients.elasticsearch._types
+                                                              .FieldValue.of(childDepth))))))));
       page.setChildrenCount(0);
     }
 
@@ -1294,8 +1306,7 @@ public class ElasticSearchClient implements SearchClient {
 
     es.co.elastic.clients.elasticsearch.core.SearchResponse<es.co.elastic.clients.json.JsonData>
         aggregationResponse =
-            newClient.search(
-                aggregationRequest, es.co.elastic.clients.json.JsonData.class);
+            newClient.search(aggregationRequest, es.co.elastic.clients.json.JsonData.class);
 
     if (aggregationResponse == null
         || aggregationResponse.aggregations() == null
@@ -1356,5 +1367,4 @@ public class ElasticSearchClient implements SearchClient {
 
     return rootPages;
   }
-
 }

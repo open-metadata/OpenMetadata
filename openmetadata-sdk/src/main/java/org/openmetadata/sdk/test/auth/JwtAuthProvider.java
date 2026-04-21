@@ -42,12 +42,7 @@ public final class JwtAuthProvider {
   }
 
   public static String tokenFor(
-      String subject,
-      String email,
-      String[] roles,
-      long ttlSeconds,
-      String issuer,
-      String keyId) {
+      String subject, String email, String[] roles, long ttlSeconds, String issuer, String keyId) {
     Algorithm alg = Algorithm.RSA256(null, (RSAPrivateKey) loadPrivateKey());
     Instant now = Instant.now();
     var builder =

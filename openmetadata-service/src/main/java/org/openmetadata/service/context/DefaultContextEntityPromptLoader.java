@@ -1,26 +1,26 @@
 package org.openmetadata.service.context;
 
-import static org.openmetadata.service.jdbi3.KnowledgePageRepository.KNOWLEDGE_PAGE_ENTITY;
-import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
+import static org.openmetadata.service.jdbi3.KnowledgePageRepository.KNOWLEDGE_PAGE_ENTITY;
 
-import org.openmetadata.service.jdbi3.KnowledgePageRepository;
-import org.openmetadata.service.jdbi3.ContextFileContentRepository;
-import org.openmetadata.service.jdbi3.ContextFileRepository;
-import org.openmetadata.schema.entity.data.Page;
-import org.openmetadata.schema.entity.data.PageType;
-import org.openmetadata.schema.entity.data.QuickLink;
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileContent;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileContent;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextFileContentRepository;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;

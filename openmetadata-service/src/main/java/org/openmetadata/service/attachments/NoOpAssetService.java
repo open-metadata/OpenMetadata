@@ -1,9 +1,9 @@
 package org.openmetadata.service.attachments;
 
-import org.openmetadata.schema.attachments.Asset;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import org.openmetadata.schema.attachments.Asset;
 
 public class NoOpAssetService implements AssetService {
   @Override

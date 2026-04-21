@@ -1086,18 +1086,15 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   @lombok.SneakyThrows
-  public org.openmetadata.schema.utils.ResultList<
-          org.openmetadata.schema.entity.data.PageHierarchy>
+  public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
       listPageHierarchy(String parentFqn, String pageType, int offset, int limit) {
     return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
-  public org.openmetadata.schema.utils.ResultList<
-          org.openmetadata.schema.entity.data.PageHierarchy>
-      listPageHierarchyForActivePage(
-          String activeFqn, String pageType, int offset, int limit) {
+  public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchyForActivePage(String activeFqn, String pageType, int offset, int limit) {
     return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
   }
 
@@ -1120,8 +1117,7 @@ public class OpenSearchClient implements SearchClient {
                     .from(offset)
                     .size(limit));
 
-    os.org.opensearch.client.opensearch.core.SearchResponse<
-            os.org.opensearch.client.json.JsonData>
+    os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
         searchResponse =
             newClient.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
     java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
@@ -1155,8 +1151,7 @@ public class OpenSearchClient implements SearchClient {
                     .from(offset)
                     .size(limit));
 
-    os.org.opensearch.client.opensearch.core.SearchResponse<
-            os.org.opensearch.client.json.JsonData>
+    os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
         searchResponse =
             newClient.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
     java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
@@ -1187,8 +1182,7 @@ public class OpenSearchClient implements SearchClient {
                               .value(
                                   os.org.opensearch.client.opensearch._types.FieldValue.of(1)))));
     } else {
-      int parentDepth =
-          org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
+      int parentDepth = org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
       boolQueryBuilder.must(
           os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
               q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
@@ -1224,8 +1218,7 @@ public class OpenSearchClient implements SearchClient {
     os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
         new os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder();
 
-    String rootParentFqn =
-        org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
+    String rootParentFqn = org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
     boolQueryBuilder.should(
         os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
             q ->
@@ -1301,10 +1294,32 @@ public class OpenSearchClient implements SearchClient {
         continue;
       }
       String fqnPrefix = page.getFullyQualifiedName() + ".";
+      int childDepth =
+          org.openmetadata.service.util.FullyQualifiedName.split(page.getFullyQualifiedName())
+                  .length
+              + 1;
+      // Match only direct children: FQN starts with "<parentFqn>." AND fqnDepth is
+      // exactly one deeper than the parent. Descendants deeper than that are excluded.
       filters.put(
           page.getId().toString(),
           os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
-              q -> q.prefix(p -> p.field("fullyQualifiedName").value(fqnPrefix))));
+              q ->
+                  q.bool(
+                      b ->
+                          b.must(
+                                  os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+                                      m ->
+                                          m.prefix(
+                                              p -> p.field("fullyQualifiedName").value(fqnPrefix))))
+                              .must(
+                                  os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+                                      m ->
+                                          m.term(
+                                              t ->
+                                                  t.field("fqnDepth")
+                                                      .value(
+                                                          os.org.opensearch.client.opensearch._types
+                                                              .FieldValue.of(childDepth))))))));
       page.setChildrenCount(0);
     }
 
@@ -1327,8 +1342,7 @@ public class OpenSearchClient implements SearchClient {
 
     os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
         aggregationResponse =
-            newClient.search(
-                aggregationRequest, os.org.opensearch.client.json.JsonData.class);
+            newClient.search(aggregationRequest, os.org.opensearch.client.json.JsonData.class);
 
     if (aggregationResponse == null
         || aggregationResponse.aggregations() == null
@@ -1389,5 +1403,4 @@ public class OpenSearchClient implements SearchClient {
 
     return rootPages;
   }
-
 }

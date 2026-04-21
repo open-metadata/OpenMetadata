@@ -36,8 +36,7 @@ public class KnowledgeCenterIT {
     return rest.create(KC_PATH, request, Page.class);
   }
 
-  private Page getPage(RestClient rest, UUID id, String fields)
-      throws HttpResponseException {
+  private Page getPage(RestClient rest, UUID id, String fields) throws HttpResponseException {
     return rest.getById(KC_PATH, id, fields, Page.class);
   }
 

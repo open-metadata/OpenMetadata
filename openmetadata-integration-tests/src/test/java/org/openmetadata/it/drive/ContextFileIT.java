@@ -42,8 +42,7 @@ class ContextFileIT {
     return rest.getById(FILE_PATH, id, fields, ContextFile.class);
   }
 
-  private Folder createFolder(RestClient rest, CreateFolder request)
-      throws HttpResponseException {
+  private Folder createFolder(RestClient rest, CreateFolder request) throws HttpResponseException {
     return rest.create(FOLDER_PATH, request, Folder.class);
   }
 
@@ -292,8 +291,7 @@ class ContextFileIT {
                 .withProcessingStatus(ProcessingStatus.Uploaded)
                 .withOwners(List.of(owner.getEntityReference())));
 
-    RestClient consumerRest =
-        RestClient.forUser("test@open-metadata.org", new String[] {});
+    RestClient consumerRest = RestClient.forUser("test@open-metadata.org", new String[] {});
 
     HttpResponseException ex =
         assertThrows(
@@ -319,8 +317,7 @@ class ContextFileIT {
                 .withProcessingStatus(ProcessingStatus.Uploaded)
                 .withOwners(List.of(owner.getEntityReference())));
 
-    RestClient consumerRest =
-        RestClient.forUser("test@open-metadata.org", new String[] {});
+    RestClient consumerRest = RestClient.forUser("test@open-metadata.org", new String[] {});
 
     String original = JsonUtils.pojoToJson(file);
     file.setDisplayName("Hacked");

@@ -3,10 +3,10 @@ package org.openmetadata.service.resources.knowledge;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 
-import org.openmetadata.schema.api.data.CreatePage;
-import org.openmetadata.schema.entity.data.Page;
 import java.util.ArrayList;
 import java.util.List;
+import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Votes;

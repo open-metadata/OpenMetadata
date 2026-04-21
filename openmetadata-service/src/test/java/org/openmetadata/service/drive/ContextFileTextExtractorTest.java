@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileType;
-import org.openmetadata.schema.entity.data.ProcessingStatus;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,6 +19,9 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileType;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 
 class ContextFileTextExtractorTest {
 
@@ -30,7 +30,10 @@ class ContextFileTextExtractorTest {
   @Test
   void extractPlainTextMarksFileProcessed() throws Exception {
     ContextFile file =
-        new ContextFile().withId(UUID.randomUUID()).withName("notes").withFileType(ContextFileType.Text);
+        new ContextFile()
+            .withId(UUID.randomUUID())
+            .withName("notes")
+            .withFileType(ContextFileType.Text);
     byte[] content = "Context Center remembers this note".getBytes(StandardCharsets.UTF_8);
 
     ContextFileTextExtractor.ExtractionResult result =

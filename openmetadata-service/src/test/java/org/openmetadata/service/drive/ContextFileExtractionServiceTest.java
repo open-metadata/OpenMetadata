@@ -14,15 +14,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.openmetadata.service.jdbi3.AssetRepository;
-import org.openmetadata.service.jdbi3.ContextFileContentRepository;
-import org.openmetadata.service.jdbi3.ContextFileRepository;
-import org.openmetadata.schema.attachments.Asset;
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileContent;
-import org.openmetadata.schema.entity.data.ContextFileType;
-import org.openmetadata.schema.entity.data.ProcessingStatus;
-import org.openmetadata.service.attachments.AssetService;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
@@ -38,7 +29,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileContent;
+import org.openmetadata.schema.entity.data.ContextFileType;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.jdbi3.AssetRepository;
+import org.openmetadata.service.jdbi3.ContextFileContentRepository;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ContextFileExtractionServiceTest {

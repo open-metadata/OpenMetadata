@@ -12495,9 +12495,7 @@ public interface CollectionDAO {
             "UPDATE knowledge_center SET json = :json::jsonb, fqnHash = :fqnHash WHERE id = :id",
         connectionType = POSTGRES)
     void updateFullyQualifiedName(
-        @Bind("id") String pageId,
-        @Bind("json") String json,
-        @BindFQN("fqnHash") String fqnHash);
+        @Bind("id") String pageId, @Bind("json") String json, @BindFQN("fqnHash") String fqnHash);
   }
 
   interface AssetDAO {

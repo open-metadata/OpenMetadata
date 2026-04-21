@@ -1,8 +1,5 @@
 package org.openmetadata.service.drive;
 
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileType;
-import org.openmetadata.schema.entity.data.ProcessingStatus;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +28,9 @@ import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.ocr.TesseractOCRConfig;
 import org.apache.tika.parser.ocr.TesseractOCRParser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileType;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.xml.sax.SAXException;
 
 public class ContextFileTextExtractor {
@@ -59,7 +59,8 @@ public class ContextFileTextExtractor {
       throw new IOException("No file stream available for extraction");
     }
 
-    ContextFileType fileType = file.getFileType() == null ? ContextFileType.Other : file.getFileType();
+    ContextFileType fileType =
+        file.getFileType() == null ? ContextFileType.Other : file.getFileType();
     return switch (fileType) {
       case PDF -> extractPdf(inputStream, file.getFileExtension());
       case Spreadsheet -> extractSpreadsheet(inputStream, file.getFileExtension());

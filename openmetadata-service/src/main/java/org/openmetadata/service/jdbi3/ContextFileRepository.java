@@ -1,30 +1,26 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 
-import org.openmetadata.service.jdbi3.AssetRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.drive.ContextFileResource;
-import org.openmetadata.schema.attachments.Asset;
-import org.openmetadata.schema.entity.data.ContextFile;
-import org.openmetadata.schema.entity.data.ContextFileContent;
-import org.openmetadata.schema.entity.data.Folder;
-import org.openmetadata.service.attachments.AssetService;
-import org.openmetadata.service.attachments.AssetServiceFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ContextFileContent;
+import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;

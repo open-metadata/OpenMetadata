@@ -1,11 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.jdbi3.KnowledgePageRepository.KNOWLEDGE_PAGE_ENTITY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
+import static org.openmetadata.service.jdbi3.KnowledgePageRepository.KNOWLEDGE_PAGE_ENTITY;
 
-import org.openmetadata.schema.entity.data.Page;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
