@@ -14,7 +14,7 @@
 export interface LeftSidebarItem {
   key: string;
   isBeta?: boolean;
-  betaTag?: boolean;
+  showBetaOnCollapse?: boolean;
   title: string;
   redirect_url?: string;
   icon: SvgComponent;
@@ -30,6 +30,6 @@ export interface LeftSidebarItemProps {
     redirect_url?: string;
     icon: SvgComponent;
     isBeta?: boolean;
-    betaTag?: boolean;
+    showBetaOnCollapse?: boolean;
   };
 }

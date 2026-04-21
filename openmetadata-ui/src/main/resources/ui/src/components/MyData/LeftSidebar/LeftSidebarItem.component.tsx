@@ -17,7 +17,7 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta, betaTag },
+  data: { title, redirect_url, dataTestId, isBeta, showBetaOnCollapse },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
   const {
@@ -33,7 +33,7 @@ const LeftSidebarItem = ({
       }}>
       {t(title)}
 
-      {(isBeta || (betaTag && isSidebarCollapsed)) && (
+      {(isBeta || (showBetaOnCollapse && isSidebarCollapsed)) && (
         <Badge
           className="service-beta-tag"
           count={t('label.beta')}

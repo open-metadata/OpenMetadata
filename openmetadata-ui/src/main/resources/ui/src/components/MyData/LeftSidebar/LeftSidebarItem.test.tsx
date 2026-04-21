@@ -24,7 +24,41 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   })),
 }));
 
+const mockUseCurrentUserPreferences = jest.fn();
+
+jest.mock(
+  '../../../hooks/currentUserStore/useCurrentUserStore',
+  () => ({
+    useCurrentUserPreferences: () => mockUseCurrentUserPreferences(),
+  })
+);
+
+const BETA_ITEM = {
+  key: '/ontology-explorer',
+  title: 'label.ontology-explorer',
+  redirect_url: '/ontology-explorer',
+  icon: jest.fn(),
+  dataTestId: 'app-bar-item-ontology-explorer',
+  showBetaOnCollapse: true,
+};
+
+const IBETA_ITEM = {
+  key: '/some-feature',
+  title: 'label.some-feature',
+  redirect_url: '/some-feature',
+  icon: jest.fn(),
+  dataTestId: 'app-bar-item-some-feature',
+  isBeta: true,
+};
+
 describe('LeftSidebar Items', () => {
+  beforeEach(() => {
+    mockUseCurrentUserPreferences.mockReturnValue({
+      preferences: { isSidebarCollapsed: false },
+      setPreference: jest.fn(),
+    });
+  });
+
   it('should renders sidebar items data', () => {
     render(
       <BrowserRouter>
@@ -63,5 +97,67 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByText('label.logout')).toBeInTheDocument();
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  describe('beta tag visibility', () => {
+    it('should always show beta badge for isBeta items regardless of sidebar state', () => {
+      mockUseCurrentUserPreferences.mockReturnValue({
+        preferences: { isSidebarCollapsed: false },
+        setPreference: jest.fn(),
+      });
+
+      render(
+        <BrowserRouter>
+          <LeftSidebarItem data={IBETA_ITEM} />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText('label.beta')).toBeInTheDocument();
+    });
+
+    it('should show beta badge for isBeta items even when sidebar is collapsed', () => {
+      mockUseCurrentUserPreferences.mockReturnValue({
+        preferences: { isSidebarCollapsed: true },
+        setPreference: jest.fn(),
+      });
+
+      render(
+        <BrowserRouter>
+          <LeftSidebarItem data={IBETA_ITEM} />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText('label.beta')).toBeInTheDocument();
+    });
+
+    it('should not show beta badge for showBetaOnCollapse items when sidebar is expanded', () => {
+      mockUseCurrentUserPreferences.mockReturnValue({
+        preferences: { isSidebarCollapsed: false },
+        setPreference: jest.fn(),
+      });
+
+      render(
+        <BrowserRouter>
+          <LeftSidebarItem data={BETA_ITEM} />
+        </BrowserRouter>
+      );
+
+      expect(screen.queryByText('label.beta')).not.toBeInTheDocument();
+    });
+
+    it('should show beta badge for showBetaOnCollapse items when sidebar is collapsed', () => {
+      mockUseCurrentUserPreferences.mockReturnValue({
+        preferences: { isSidebarCollapsed: true },
+        setPreference: jest.fn(),
+      });
+
+      render(
+        <BrowserRouter>
+          <LeftSidebarItem data={BETA_ITEM} />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText('label.beta')).toBeInTheDocument();
+    });
   });
 });
