@@ -3055,6 +3055,7 @@
     "passed-x-checks": "עבר {{count}} בדיקות",
     "password-error-message": "יש להזין סיסמה באורך של 8 עד 15 תווים ולכלול לפחות אות גדולה אחת (A-Z), אות קטנה אחת (a-z), מספר אחד ותו מיוחד (כמו !, %, @, או #)",
     "password-pattern-error": "יש להזין סיסמה באורך של 8 עד 56 תווים, עם תו מיוחד אחד, אות גדולה אחת ואות קטנה אחת",
+    "password-saved": "Password is saved. Enter a new value to update or remove it.",
     "path-of-the-dbt-files-stored": "נתיב לתיקייה בה נשמרים קבצי ה-dbt",
     "permanently-delete-ingestion-pipeline": "מחיקה קבועה של <0>{{entityName}}</0> תגרום לאובדן תצורת הצינור, ולא ניתן יהיה לשחזר אותה.",
     "permanently-delete-metadata": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו מ-{{brandName}} לצמיתות.",

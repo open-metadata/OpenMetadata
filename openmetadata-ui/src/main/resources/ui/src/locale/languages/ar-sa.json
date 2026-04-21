@@ -3055,6 +3055,7 @@
     "passed-x-checks": "اجتاز {{count}} من عمليات التحقق",
     "password-error-message": "يجب أن تتراوح كلمة المرور بين 8 و 56 حرفًا كحد أدنى وأقصى وأن تحتوي على حرف كبير واحد على الأقل (A-Z)، وحرف صغير واحد (a-z)، ورقم واحد، وحرف خاص واحد (مثل !, %، @، أو #)",
     "password-pattern-error": "يجب أن تكون كلمة المرور بحد أدنى 8 وأقصى 56 حرفًا، مع حرف خاص واحد، وحرف كبير واحد، وحرف صغير واحد",
+    "password-saved": "Password is saved. Enter a new value to update or remove it.",
     "path-of-the-dbt-files-stored": "مسار المجلد الذي يتم فيه تخزين ملفات dbt",
     "permanently-delete-ingestion-pipeline": "سيؤدي الحذف الدائم لـ <0>{{entityName}}</0> إلى فقدان تكوين المسار (pipeline)، ولا يمكن استعادته.",
     "permanently-delete-metadata": "سيؤدي الحذف الدائم لـ <0>{{entityName}}</0> إلى إزالة بياناته الوصفية من OpenMetadata، ولا يمكن استعادته.",

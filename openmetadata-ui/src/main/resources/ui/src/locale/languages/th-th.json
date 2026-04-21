@@ -3055,6 +3055,7 @@
     "passed-x-checks": "Passed {{count}} checks",
     "password-error-message": "รหัสผ่านต้องมีความยาวขั้นต่ำ 8 ตัวและสูงสุด 56 ตัว และต้องมีอย่างน้อยหนึ่งตัวอักษรพิมพ์ใหญ่ (A-Z), หนึ่งตัวอักษรพิมพ์เล็ก (a-z), หนึ่งตัวเลข, และหนึ่งอักขระพิเศษ (เช่น !, %, @, หรือ #)",
     "password-pattern-error": "รหัสผ่านต้องมีความยาวขั้นต่ำ 8 ตัวและสูงสุด 56 ตัว มีอักขระพิเศษหนึ่งตัว, ตัวอักษรพิมพ์ใหญ่หนึ่งตัว, ตัวอักษรพิมพ์เล็กหนึ่งตัว",
+    "password-saved": "Password is saved. Enter a new value to update or remove it.",
     "path-of-the-dbt-files-stored": "เส้นทางของโฟลเดอร์ที่จัดเก็บไฟล์ dbt",
     "permanently-delete-ingestion-pipeline": "การลบ <0>{{entityName}}</0> นี้อย่างถาวรจะทำให้การตั้งค่าท่อสูญหายและไม่สามารถกู้คืนได้",
     "permanently-delete-metadata": "การลบ <0>{{entityName}}</0> นี้อย่างถาวรจะทำให้ข้อมูลเมตาของมันถูกลบออกจาก {{brandName}} และไม่สามารถกู้คืนได้",

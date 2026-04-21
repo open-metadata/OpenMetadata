@@ -3055,6 +3055,7 @@
     "passed-x-checks": "{{count}} kontrol geçildi",
     "password-error-message": "Şifre en az 8 ve en fazla 56 karakter uzunluğunda olmalı ve en az bir büyük harf (A-Z), bir küçük harf (a-z), bir rakam ve bir özel karakter ( !, %, @ veya # gibi) içermelidir.",
     "password-pattern-error": "Şifre en az 8 ve en fazla 56 karakterden oluşmalı, bir özel karakter, bir büyük harf, bir küçük harf içermelidir",
+    "password-saved": "Password is saved. Enter a new value to update or remove it.",
     "path-of-the-dbt-files-stored": "dbt dosyalarının saklandığı klasörün yolu",
     "permanently-delete-ingestion-pipeline": "Bu <0>{{entityName}}</0> kalıcı olarak silinmesi, iş akışı yapılandırmasının kaybolmasına neden olacak ve kurtarılamayacaktır.",
     "permanently-delete-metadata": "Bu <0>{{entityName}}</0> kalıcı olarak silinmesi, metadatasının {{brandName}}'dan kaldırılmasına neden olacak ve kurtarılamayacaktır.",

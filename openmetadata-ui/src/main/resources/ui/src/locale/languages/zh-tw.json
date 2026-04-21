@@ -3055,6 +3055,7 @@
     "passed-x-checks": "通過 {{count}} 個檢查",
     "password-error-message": "密碼長度必須介於 8 到 56 個字元之間，並包含至少一個大寫字母 (A-Z)、一個小寫字母 (a-z)、一個數字和一個特殊字元（如 !、%、@ 或 #）",
     "password-pattern-error": "密碼長度必須介於 8 到 56 個字元之間，並包含一個特殊字元、一個大寫字母和一個小寫字母",
+    "password-saved": "Password is saved. Enter a new value to update or remove it.",
     "path-of-the-dbt-files-stored": "儲存 dbt 檔案的資料夾路徑",
     "permanently-delete-ingestion-pipeline": "永久刪除 <0>{{entityName}}</0> 將導致管線組態遺失，且無法復原。",
     "permanently-delete-metadata": "永久刪除 <0>{{entityName}}</0> 將導致其元資料從 {{brandName}} 中移除，且無法復原。",

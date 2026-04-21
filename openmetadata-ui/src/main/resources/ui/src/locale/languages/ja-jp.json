@@ -3055,6 +3055,7 @@
     "passed-x-checks": "{{count}} チェックに合格しました",
     "password-error-message": "パスワードは8文字以上66文字以下で、大文字 (A-Z)、小文字 (a-z)、数字、特殊文字 (!、%、@、# など) をそれぞれ少なくとも1文字含める必要があります。",
     "password-pattern-error": "パスワードは8～56文字で、1つの特殊文字、大文字1つ、小文字1つが含まれている必要があります。",
+    "password-saved": "Password is saved. Enter a new value to update or remove it.",
     "path-of-the-dbt-files-stored": "dbtファイルが保存されているフォルダのパス",
     "permanently-delete-ingestion-pipeline": "この <0>{{entityName}}</0> を完全に削除すると、パイプライン設定が失われ、元に戻すことはできません。",
     "permanently-delete-metadata": "この <0>{{entityName}}</0> を完全に削除すると、{{brandName}} からメタデータが完全に削除されます。",
