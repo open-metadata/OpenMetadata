@@ -799,6 +799,28 @@ class OpenLineageUnitTest(unittest.TestCase):
                 create_request.columns[i].dataTypeDisplay, expected_type_display
             )
 
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om"
+    )
+    def test_get_create_table_request_schema_not_found_returns_none(
+        self, mock_get_schema_fqn, mock_get_table_fqn
+    ):
+        """Schema not found in any configured service — returns None without raising."""
+        mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
+        mock_get_schema_fqn.side_effect = FQNNotFoundException("Schema not found")
+        table_data = {
+            "name": "unknown_schema.employees",
+            "namespace": "bigquery",
+            "facets": {},
+        }
+
+        result = self.open_lineage_source.get_create_table_request(table_data)
+
+        assert result is None
+
     @patch("confluent_kafka.Consumer")
     def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns COMPLETE events"""
@@ -1689,16 +1711,18 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_pipeline = Mock()
         mock_pipeline.id.root = pipeline_id
 
-        with patch.object(
-            self.open_lineage_source, "metadata"
-        ) as mock_metadata, patch.object(
-            self.open_lineage_source,
-            "_get_table_fqn",
-            return_value="db-service.public.some_table",
-        ), patch.object(
-            self.open_lineage_source,
-            "get_create_table_request",
-            return_value=None,
+        with (
+            patch.object(self.open_lineage_source, "metadata") as mock_metadata,
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.some_table",
+            ),
+            patch.object(
+                self.open_lineage_source,
+                "get_create_table_request",
+                return_value=None,
+            ),
         ):
             # Empty messaging services list — no broker match for unknown-broker
             mock_metadata.list_all_entities.return_value = iter([])
@@ -2092,6 +2116,134 @@ class OpenLineageUnitTest(unittest.TestCase):
             self.assertEqual(str(deleted_edge.fromEntity.id.root), pipeline_id)
             self.assertEqual(str(deleted_edge.toEntity.id.root), table_b_id)
             self.assertEqual(deleted_edge.toEntity.type, "table")
+
+    def test_parse_glue_table_name_trino_glue_catalog_schema(self):
+        """Trino backed by AWS Glue Data Catalog uses the public schema and underscore-separated table names.
+        Verifies the parser handles the common Glue catalog table naming pattern correctly.
+        """
+        result = OpenlineageSource._parse_glue_table_name(
+            "table/public/order_line_items"
+        )
+        self.assertEqual(result.name, "order_line_items")
+        self.assertEqual(result.schema, "public")
+
+    def test_parse_glue_table_name_happy_path(self):
+        """Glue OL naming: table/{database}/{table} — source: Naming.java GlueNaming."""
+        result = OpenlineageSource._parse_glue_table_name("table/sales/users")
+        self.assertEqual(result.name, "users")
+        self.assertEqual(result.schema, "sales")
+
+    def test_parse_glue_table_name_normalizes_to_lowercase(self):
+        """Glue table and database names are normalized to lowercase for FQN matching."""
+        result = OpenlineageSource._parse_glue_table_name("table/Sales/Users")
+        self.assertEqual(result.name, "users")
+        self.assertEqual(result.schema, "sales")
+
+    def test_parse_glue_table_name_not_glue_format_returns_none(self):
+        """Names without the table/ prefix are not Glue format and return None."""
+        self.assertIsNone(OpenlineageSource._parse_glue_table_name("sales.users"))
+
+    def test_parse_glue_table_name_missing_table_part_returns_none(self):
+        """table/ prefix with only one path segment is malformed and returns None."""
+        self.assertIsNone(OpenlineageSource._parse_glue_table_name("table/only_db"))
+
+    def test_parse_slash_table_name_happy_path(self):
+        """Kusto OL naming: {database}/{table} — source: Naming.java KustoNaming."""
+        result = OpenlineageSource._parse_slash_table_name("mydb/mytable")
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "mydb")
+
+    def test_parse_slash_table_name_normalizes_to_lowercase(self):
+        """Kusto table and database names are normalized to lowercase for FQN matching."""
+        result = OpenlineageSource._parse_slash_table_name("MyDB/MyTable")
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "mydb")
+
+    def test_parse_slash_table_name_single_part_returns_none(self):
+        """A single path segment without a slash cannot be split into db/table and returns None."""
+        self.assertIsNone(OpenlineageSource._parse_slash_table_name("only_table"))
+
+    def test_parse_cosmos_table_name_happy_path(self):
+        """Cosmos OL naming: db from namespace /dbs/{db}, name colls/{coll} — source: Naming.java CosmosNaming."""
+        result = OpenlineageSource._parse_cosmos_table_name(
+            "azurecosmos://myaccount.documents.azure.com/dbs/mydb",
+            "colls/mycollection",
+        )
+        self.assertEqual(result.name, "mycollection")
+        self.assertEqual(result.schema, "mydb")
+
+    def test_parse_cosmos_table_name_normalizes_to_lowercase(self):
+        """Cosmos database and collection names are normalized to lowercase for FQN matching."""
+        result = OpenlineageSource._parse_cosmos_table_name(
+            "azurecosmos://host/dbs/MyDB", "colls/MyCollection"
+        )
+        self.assertEqual(result.name, "mycollection")
+        self.assertEqual(result.schema, "mydb")
+
+    def test_parse_cosmos_table_name_no_dbs_segment_returns_none(self):
+        """A Cosmos namespace without /dbs/{db} cannot provide the database name and returns None."""
+        self.assertIsNone(
+            OpenlineageSource._parse_cosmos_table_name(
+                "azurecosmos://host", "colls/mycoll"
+            )
+        )
+
+    def test_parse_cosmos_table_name_non_colls_name_returns_none(self):
+        """A Cosmos name not matching colls/{collection} is non-conformant and returns None."""
+        self.assertIsNone(
+            OpenlineageSource._parse_cosmos_table_name(
+                "azurecosmos://host/dbs/mydb", "mycollection"
+            )
+        )
+
+    def test_get_table_details_glue_namespace_parses_slash_name(self):
+        """AWS Glue EMR events use arn:aws:glue namespace + table/{db}/{table} name."""
+        data = {
+            "namespace": "arn:aws:glue:us-east-1:123456789012",
+            "name": "table/sales/users",
+        }
+        result = OpenlineageSource._get_table_details(data)
+        self.assertEqual(result.name, "users")
+        self.assertEqual(result.schema, "sales")
+
+    def test_get_table_details_kusto_namespace_parses_slash_name(self):
+        """Azure Kusto events use azurekusto namespace + {db}/{table} name."""
+        data = {
+            "namespace": "azurekusto://mycluster.kusto.windows.net",
+            "name": "mydb/mytable",
+        }
+        result = OpenlineageSource._get_table_details(data)
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "mydb")
+
+    def test_get_table_details_cosmos_namespace_parses_colls_name(self):
+        """Azure Cosmos DB events carry the database in the namespace path."""
+        data = {
+            "namespace": "azurecosmos://host.documents.azure.com/dbs/mydb",
+            "name": "colls/orders",
+        }
+        result = OpenlineageSource._get_table_details(data)
+        self.assertEqual(result.name, "orders")
+        self.assertEqual(result.schema, "mydb")
+
+    def test_get_entity_details_glue_namespace_resolves_to_table(self):
+        """Glue ARN namespace + table/{db}/{table} name resolves to a table entity."""
+        data = {
+            "namespace": "arn:aws:glue:us-east-1:123456789012",
+            "name": "table/sales/users",
+            "facets": {},
+        }
+        result = OpenlineageSource._get_entity_details(data)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.entity_type, "table")
+        self.assertEqual(result.table_details.name, "users")
+        self.assertEqual(result.table_details.schema, "sales")
+
+    def test_get_entity_details_unparseable_name_raises_value_error(self):
+        """Unrecognised name formats raise ValueError so callers can surface the error."""
+        data = {"namespace": "trino://host:8080", "name": "invalidname"}
+        with self.assertRaises(ValueError):
+            OpenlineageSource._get_entity_details(data)
 
 
 if __name__ == "__main__":
