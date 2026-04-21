@@ -39,6 +39,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.BulkOperationConfiguration;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.config.QoSConfiguration;
@@ -196,11 +197,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
+  @JsonProperty("cacheMemory")
+  @Valid
+  private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {
       qosConfiguration = new QoSConfiguration();
     }
     return qosConfiguration;
+  }
+
+  public CacheConfiguration getCacheMemoryConfiguration() {
+    if (cacheMemoryConfiguration == null) {
+      cacheMemoryConfiguration = new CacheConfiguration();
+    }
+    return cacheMemoryConfiguration;
   }
 
   public String getApiRootPath() {

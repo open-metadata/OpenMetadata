@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { Transi18next } from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { FilterPlaceholderProps } from './placeholder.interface';
 
 const FilterErrorPlaceHolder = ({

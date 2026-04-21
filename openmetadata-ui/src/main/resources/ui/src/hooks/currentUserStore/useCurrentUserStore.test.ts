@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { useApplicationStore } from '../useApplicationStore';
 import {
   useCurrentUserPreferences,
@@ -21,11 +20,6 @@ import {
 // Mock the useApplicationStore
 jest.mock('../useApplicationStore', () => ({
   useApplicationStore: jest.fn(),
-}));
-
-// Mock the detectBrowserLanguage function
-jest.mock('../../utils/i18next/LocalUtil', () => ({
-  detectBrowserLanguage: jest.fn(() => 'en-US'),
 }));
 
 jest.mock('../../constants/constants', () => ({
@@ -57,7 +51,6 @@ describe('useCurrentUserStore', () => {
 
   const defaultPreferences = {
     isSidebarCollapsed: false,
-    language: SupportedLocales.English,
     selectedEntityTableColumns: {},
     globalPageSize: 15,
     recentlySearched: [],
@@ -78,14 +71,12 @@ describe('useCurrentUserStore', () => {
 
       result.current.setPreference({
         isSidebarCollapsed: true,
-        language: SupportedLocales.简体中文,
       });
 
       // Preferences should remain default since no user
       expect(result.current.preferences).toEqual({
         ...defaultPreferences,
         isSidebarCollapsed: false,
-        language: SupportedLocales.English,
       });
     });
 
@@ -104,14 +95,14 @@ describe('useCurrentUserStore', () => {
       // Set preferences directly through the setPreference method
       await waitFor(async () => {
         result.current.setPreference({
-          language: SupportedLocales.简体中文,
+          isSidebarCollapsed: true,
         });
       });
 
       // Direct check without waitFor
       expect(result.current.preferences).toEqual({
         ...defaultPreferences,
-        language: SupportedLocales.简体中文,
+        isSidebarCollapsed: true,
       });
     });
 
@@ -142,7 +133,6 @@ describe('useCurrentUserStore', () => {
       // Should spread language from defaultPreferences since it's missing
       expect(result.current.preferences).toEqual({
         isSidebarCollapsed: true,
-        language: SupportedLocales.English, // From defaultPreferences
         selectedEntityTableColumns: { table1: ['col1', 'col2'] },
         globalPageSize: 15,
         recentlySearched: [],
@@ -167,7 +157,6 @@ describe('useCurrentUserStore', () => {
         preferences: {
           userWithLanguage: {
             isSidebarCollapsed: false,
-            language: SupportedLocales.简体中文,
             selectedEntityTableColumns: {},
             globalPageSize: 15,
             recentlySearched: [],
@@ -183,7 +172,6 @@ describe('useCurrentUserStore', () => {
       // Should preserve the existing language preference
       expect(result.current.preferences).toEqual({
         isSidebarCollapsed: false,
-        language: SupportedLocales.简体中文, // User's existing preference preserved
         selectedEntityTableColumns: {},
         globalPageSize: 15,
         recentlySearched: [],
