@@ -1757,6 +1757,7 @@
     "reposition": "Yeniden konumlandır",
     "repository-url": "Repository URL",
     "request": "İstek",
+    "request-data-access": "Veri Erişimi İste",
     "request-method": "İstek Metodu",
     "request-schema-field": "İstek Şema Alanı",
     "request-tag-plural": "Etiket İste",
