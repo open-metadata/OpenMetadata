@@ -477,11 +477,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   /**
    * Check if user should be admin based on adminPrincipals configuration
    */
-  private boolean checkAdminPrincipals(String userName) {
+  private boolean checkAdminPrincipals(String userName, String email) {
     try {
-      return SecurityConfigurationManager.getCurrentAuthzConfig()
-          .getAdminPrincipals()
-          .contains(userName);
+      return SecurityUtil.isAdminPrincipal(
+          SecurityConfigurationManager.getCurrentAuthzConfig().getAdminPrincipals(),
+          userName,
+          email);
     } catch (Exception e) {
       LOG.warn("Failed to check adminPrincipals for user {}: {}", userName, e.getMessage());
       return false;
@@ -493,7 +494,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    */
   private void checkAndApplyAdminPrincipals(User user) {
     try {
-      boolean shouldBeAdminFromPrincipals = checkAdminPrincipals(user.getName());
+      boolean shouldBeAdminFromPrincipals =
+          checkAdminPrincipals(user.getName(), user.getEmail());
 
       if (shouldBeAdminFromPrincipals) {
         user.setIsAdmin(true);

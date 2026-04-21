@@ -341,7 +341,7 @@ public class TestLoginHandler {
     }
   }
 
-  private static ClientAuthentication buildClientAuthentication(
+  static ClientAuthentication buildClientAuthentication(
       String clientId, String clientSecret, String method) {
     if ("client_secret_post".equals(method)) {
       return new ClientSecretPost(new ClientID(clientId), new Secret(clientSecret));
@@ -350,7 +350,7 @@ public class TestLoginHandler {
     return new ClientSecretBasic(new ClientID(clientId), new Secret(clientSecret));
   }
 
-  private static Map<String, Object> buildTestLoginResult(
+  static Map<String, Object> buildTestLoginResult(
       Map<String, Object> claims, boolean hasRefreshToken) {
     Map<String, Object> result = new LinkedHashMap<>();
 
