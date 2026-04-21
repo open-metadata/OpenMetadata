@@ -241,8 +241,7 @@ class SearchIndexRetryQueueTest {
   @Test
   void failureReasonWithBlankOperationReturnsMessageOnly() {
     assertEquals(
-        "disk full",
-        SearchIndexRetryQueue.failureReason("", new RuntimeException("disk full")));
+        "disk full", SearchIndexRetryQueue.failureReason("", new RuntimeException("disk full")));
   }
 
   @Test

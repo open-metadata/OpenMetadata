@@ -174,8 +174,7 @@ class SearchIndexRetryWorkerTest {
   // ---- helpers ---------------------------------------------------------------
 
   private void invokeResetSearchUnavailableEntries() throws Exception {
-    Method method =
-        SearchIndexRetryWorker.class.getDeclaredMethod("resetSearchUnavailableEntries");
+    Method method = SearchIndexRetryWorker.class.getDeclaredMethod("resetSearchUnavailableEntries");
     method.setAccessible(true);
     method.invoke(worker);
   }

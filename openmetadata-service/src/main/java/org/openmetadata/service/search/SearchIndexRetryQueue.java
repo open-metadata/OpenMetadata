@@ -118,7 +118,7 @@ public final class SearchIndexRetryQueue {
     LOG.info("Stopped search retry queue flusher");
   }
 
-  static void flushBuffer(CollectionDAO dao) {
+  public static void flushBuffer(CollectionDAO dao) {
     List<BatchUpsertEntry> batch = drainBatch();
     while (!batch.isEmpty()) {
       writeBatch(dao, batch);

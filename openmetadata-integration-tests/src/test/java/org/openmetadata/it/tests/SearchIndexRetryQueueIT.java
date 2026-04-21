@@ -50,6 +50,7 @@ class SearchIndexRetryQueueIT {
 
   @BeforeEach
   void cleanQueue() {
+    SearchIndexRetryQueue.setSearchClientDown(false);
     retryQueueDAO.deleteByStatuses(
         List.of(
             SearchIndexRetryQueue.STATUS_PENDING,
@@ -57,7 +58,9 @@ class SearchIndexRetryQueueIT {
             SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
             SearchIndexRetryQueue.STATUS_IN_PROGRESS,
             SearchIndexRetryQueue.STATUS_COMPLETED,
-            SearchIndexRetryQueue.STATUS_FAILED));
+            SearchIndexRetryQueue.STATUS_FAILED,
+            SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE));
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
   }
 
   // ---------------------------------------------------------------------------
@@ -413,6 +416,7 @@ class SearchIndexRetryQueueIT {
     String entityFqn = ns.prefix("rq") + ".entity";
 
     SearchIndexRetryQueue.enqueue(entityId, entityFqn, "enqueue test failure");
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
 
     List<SearchIndexRetryRecord> records =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
@@ -431,6 +435,7 @@ class SearchIndexRetryQueueIT {
     String entityFqn = ns.prefix("rq") + ".entity";
 
     SearchIndexRetryQueue.enqueue(entityId, entityFqn, "pipeline", "pipeline failure");
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
 
     List<SearchIndexRetryRecord> records =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
@@ -443,13 +448,13 @@ class SearchIndexRetryQueueIT {
 
   @Test
   void testEnqueueSkipsWhenBothKeysEmpty(TestNamespace ns) {
-    int beforeCount = retryQueueDAO.countByStatus(SearchIndexRetryQueue.STATUS_PENDING);
-
     SearchIndexRetryQueue.enqueue("", "", "should not be inserted");
     SearchIndexRetryQueue.enqueue(null, null, "also should not be inserted");
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
 
-    int afterCount = retryQueueDAO.countByStatus(SearchIndexRetryQueue.STATUS_PENDING);
-    assertEquals(beforeCount, afterCount);
+    List<SearchIndexRetryRecord> records =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    assertFalse(records.stream().anyMatch(r -> "".equals(r.getEntityId())));
   }
 
   @Test
@@ -457,6 +462,7 @@ class SearchIndexRetryQueueIT {
     String entityId = UUID.randomUUID().toString();
 
     SearchIndexRetryQueue.enqueue("  " + entityId + "  ", "  some.fqn  ", "failure");
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
 
     List<SearchIndexRetryRecord> records =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
@@ -781,6 +787,7 @@ class SearchIndexRetryQueueIT {
                 "mapper_parsing_exception: failed to parse field [data] of type [keyword]"));
 
     SearchIndexRetryQueue.enqueue(entityId, entityFqn, Entity.TABLE, reason);
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
 
     List<SearchIndexRetryRecord> records =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
@@ -807,6 +814,7 @@ class SearchIndexRetryQueueIT {
 
       // Enqueue should still insert (suspension affects worker processing, not enqueueing)
       SearchIndexRetryQueue.enqueue(entityId, entityFqn, "during suspension");
+      SearchIndexRetryQueue.flushBuffer(collectionDAO);
       List<SearchIndexRetryRecord> records =
           retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
       assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
@@ -849,6 +857,233 @@ class SearchIndexRetryQueueIT {
     } finally {
       SearchIndexRetryQueue.clearSuspension();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // SEARCH_UNAVAILABLE status tests
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testEnqueueUsesSearchUnavailableStatusWhenClientIsDown(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".unavailable.entity";
+
+    try {
+      SearchIndexRetryQueue.setSearchClientDown(true);
+
+      SearchIndexRetryQueue.enqueue(entityId, entityFqn, "table", "connection refused");
+      SearchIndexRetryQueue.flushBuffer(collectionDAO);
+
+      List<SearchIndexRetryRecord> records =
+          retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE, 1000);
+      assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
+    } finally {
+      SearchIndexRetryQueue.setSearchClientDown(false);
+      retryQueueDAO.deleteByEntity(entityId, entityFqn);
+    }
+  }
+
+  @Test
+  void testResetSearchUnavailableToPending(TestNamespace ns) {
+    String id1 = UUID.randomUUID().toString();
+    String id2 = UUID.randomUUID().toString();
+    String fqn1 = ns.prefix("rq") + ".unavail.a";
+    String fqn2 = ns.prefix("rq") + ".unavail.b";
+
+    retryQueueDAO.upsert(
+        id1, fqn1, "client down", SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE, "table");
+    retryQueueDAO.upsert(
+        id2, fqn2, "client down", SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE, "table");
+
+    int reset = retryQueueDAO.resetSearchUnavailableToPending();
+    assertTrue(reset >= 2);
+
+    List<SearchIndexRetryRecord> pending =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    assertTrue(pending.stream().anyMatch(r -> r.getEntityId().equals(id1)));
+    assertTrue(pending.stream().anyMatch(r -> r.getEntityId().equals(id2)));
+
+    List<SearchIndexRetryRecord> unavailable =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE, 1000);
+    assertFalse(unavailable.stream().anyMatch(r -> r.getEntityId().equals(id1)));
+    assertFalse(unavailable.stream().anyMatch(r -> r.getEntityId().equals(id2)));
+  }
+
+  @Test
+  void testResetSearchUnavailableDoesNotAffectOtherStatuses(TestNamespace ns) {
+    String pendingId = UUID.randomUUID().toString();
+    String failedId = UUID.randomUUID().toString();
+    String fqn1 = ns.prefix("rq") + ".other.a";
+    String fqn2 = ns.prefix("rq") + ".other.b";
+
+    retryQueueDAO.upsert(pendingId, fqn1, "f", SearchIndexRetryQueue.STATUS_PENDING, "");
+    retryQueueDAO.upsert(failedId, fqn2, "f", SearchIndexRetryQueue.STATUS_FAILED, "");
+
+    retryQueueDAO.resetSearchUnavailableToPending();
+
+    List<SearchIndexRetryRecord> pending =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    assertTrue(pending.stream().anyMatch(r -> r.getEntityId().equals(pendingId)));
+
+    List<SearchIndexRetryRecord> failed =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_FAILED, 1000);
+    assertTrue(failed.stream().anyMatch(r -> r.getEntityId().equals(failedId)));
+  }
+
+  // ---------------------------------------------------------------------------
+  // deleteByEntityTypesAndStatuses tests
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testDeleteByEntityTypesAndStatusesRemovesMatchingRows(TestNamespace ns) {
+    String tableId = UUID.randomUUID().toString();
+    String dashboardId = UUID.randomUUID().toString();
+    String pipelineId = UUID.randomUUID().toString();
+    String tableFqn = ns.prefix("rq") + ".del.table";
+    String dashboardFqn = ns.prefix("rq") + ".del.dashboard";
+    String pipelineFqn = ns.prefix("rq") + ".del.pipeline";
+
+    retryQueueDAO.upsert(tableId, tableFqn, "f", SearchIndexRetryQueue.STATUS_PENDING, "table");
+    retryQueueDAO.upsert(
+        dashboardId, dashboardFqn, "f", SearchIndexRetryQueue.STATUS_PENDING, "dashboard");
+    retryQueueDAO.upsert(
+        pipelineId, pipelineFqn, "f", SearchIndexRetryQueue.STATUS_PENDING, "pipeline");
+
+    int deleted =
+        retryQueueDAO.deleteByEntityTypesAndStatuses(
+            List.of("table", "dashboard"), List.of(SearchIndexRetryQueue.STATUS_PENDING));
+    assertTrue(deleted >= 2);
+
+    List<SearchIndexRetryRecord> remaining =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    assertFalse(remaining.stream().anyMatch(r -> r.getEntityId().equals(tableId)));
+    assertFalse(remaining.stream().anyMatch(r -> r.getEntityId().equals(dashboardId)));
+    assertTrue(remaining.stream().anyMatch(r -> r.getEntityId().equals(pipelineId)));
+
+    retryQueueDAO.deleteByEntity(pipelineId, pipelineFqn);
+  }
+
+  @Test
+  void testDeleteByEntityTypesAndStatusesPreservesNonMatchingStatuses(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".preserve.entity";
+
+    retryQueueDAO.upsert(entityId, entityFqn, "f", SearchIndexRetryQueue.STATUS_FAILED, "table");
+
+    int deleted =
+        retryQueueDAO.deleteByEntityTypesAndStatuses(
+            List.of("table"), List.of(SearchIndexRetryQueue.STATUS_PENDING));
+    assertEquals(0, deleted);
+
+    List<SearchIndexRetryRecord> failed =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_FAILED, 1000);
+    assertTrue(failed.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
+
+    retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
+  void testDeleteByEntityTypesAndStatusesIncludesSearchUnavailable(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".unavail.delete";
+
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "f", SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE, "table");
+
+    int deleted =
+        retryQueueDAO.deleteByEntityTypesAndStatuses(
+            List.of("table"),
+            List.of(
+                SearchIndexRetryQueue.STATUS_PENDING,
+                SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE));
+    assertTrue(deleted >= 1);
+
+    List<SearchIndexRetryRecord> unavailable =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE, 1000);
+    assertFalse(unavailable.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
+  }
+
+  // ---------------------------------------------------------------------------
+  // batchUpsert tests
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testBatchUpsertInsertsMultipleEntries(TestNamespace ns) {
+    String id1 = UUID.randomUUID().toString();
+    String id2 = UUID.randomUUID().toString();
+    String id3 = UUID.randomUUID().toString();
+
+    List<CollectionDAO.SearchIndexRetryQueueDAO.BatchUpsertEntry> entries =
+        List.of(
+            new CollectionDAO.SearchIndexRetryQueueDAO.BatchUpsertEntry(
+                id1,
+                ns.prefix("rq") + ".batch.a",
+                "f1",
+                SearchIndexRetryQueue.STATUS_PENDING,
+                "table"),
+            new CollectionDAO.SearchIndexRetryQueueDAO.BatchUpsertEntry(
+                id2,
+                ns.prefix("rq") + ".batch.b",
+                "f2",
+                SearchIndexRetryQueue.STATUS_PENDING,
+                "dashboard"),
+            new CollectionDAO.SearchIndexRetryQueueDAO.BatchUpsertEntry(
+                id3,
+                ns.prefix("rq") + ".batch.c",
+                "f3",
+                SearchIndexRetryQueue.STATUS_PENDING,
+                "pipeline"));
+
+    retryQueueDAO.batchUpsert(entries);
+
+    List<SearchIndexRetryRecord> records =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(id1)));
+    assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(id2)));
+    assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(id3)));
+  }
+
+  @Test
+  void testBatchUpsertOverwritesOnConflict(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".batch.conflict";
+
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "original", SearchIndexRetryQueue.STATUS_PENDING, "table");
+
+    List<CollectionDAO.SearchIndexRetryQueueDAO.BatchUpsertEntry> update =
+        List.of(
+            new CollectionDAO.SearchIndexRetryQueueDAO.BatchUpsertEntry(
+                entityId, entityFqn, "updated", SearchIndexRetryQueue.STATUS_PENDING, "table"));
+    retryQueueDAO.batchUpsert(update);
+
+    List<SearchIndexRetryRecord> records =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    long count = records.stream().filter(r -> r.getEntityId().equals(entityId)).count();
+    assertEquals(1, count);
+
+    SearchIndexRetryRecord record =
+        records.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
+    assertEquals("updated", record.getFailureReason());
+
+    retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
+  void testFlushBufferWritesEnqueuedEntriesToDb(TestNamespace ns) {
+    String id1 = UUID.randomUUID().toString();
+    String id2 = UUID.randomUUID().toString();
+    String fqn1 = ns.prefix("rq") + ".flush.a";
+    String fqn2 = ns.prefix("rq") + ".flush.b";
+
+    SearchIndexRetryQueue.enqueue(id1, fqn1, "table", "failure 1");
+    SearchIndexRetryQueue.enqueue(id2, fqn2, "table", "failure 2");
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
+
+    List<SearchIndexRetryRecord> records =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+    assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(id1)));
+    assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(id2)));
   }
 
   // ---------------------------------------------------------------------------

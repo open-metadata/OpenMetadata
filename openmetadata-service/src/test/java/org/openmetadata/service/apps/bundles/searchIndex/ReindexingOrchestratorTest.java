@@ -557,8 +557,7 @@ class ReindexingOrchestratorTest {
   }
 
   @Test
-  void cleanupRetryQueuePreflightAllPurgeableStatusesIncludesSearchUnavailable()
-      throws Exception {
+  void cleanupRetryQueuePreflightAllPurgeableStatusesIncludesSearchUnavailable() throws Exception {
     EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of("all"));
     final List<String>[] capturedStatuses = new List[1];
     when(retryQueueDAO.deleteByStatuses(anyList()))
