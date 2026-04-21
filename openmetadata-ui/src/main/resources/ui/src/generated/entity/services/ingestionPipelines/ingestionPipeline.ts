@@ -892,6 +892,7 @@ export enum PipelineType {
     ElasticSearchReindex = "elasticSearchReindex",
     Lineage = "lineage",
     Metadata = "metadata",
+    PolicyAgent = "policyAgent",
     Profiler = "profiler",
     TestSuite = "TestSuite",
     Usage = "usage",
@@ -954,6 +955,9 @@ export interface SourceConfig {
  * Apply a set of operations on a service
  *
  * McpService Metadata Pipeline Configuration.
+ *
+ * Policy Agent Pipeline Configuration. Applies access grants against the source system for
+ * database services.
  */
 export interface Pipeline {
     /**
@@ -1548,6 +1552,10 @@ export interface Pipeline {
      * Regex to only fetch MCP servers with names matching the pattern.
      */
     serverFilterPattern?: FilterPattern;
+    /**
+     * List of access grants to apply on the source.
+     */
+    policies?: Policy[];
 }
 
 /**
@@ -3257,6 +3265,54 @@ export interface OwnerConfiguration {
      * owner(s).
      */
     table?: { [key: string]: string[] | string } | string;
+}
+
+/**
+ * A single access grant to apply on the source.
+ */
+export interface Policy {
+    /**
+     * Database on which the grant is applied.
+     */
+    databaseName: string;
+    /**
+     * Unique id of the policy entry.
+     */
+    id: string;
+    /**
+     * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
+     */
+    principal:      string;
+    principalType?: PrincipalType;
+    privilege:      Privilege;
+    /**
+     * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
+     */
+    schemaName?: string;
+    /**
+     * Table on which the grant is applied. Requires schemaName.
+     */
+    tableName?: string;
+}
+
+/**
+ * Type of principal the grant is issued to.
+ */
+export enum PrincipalType {
+    Role = "ROLE",
+    User = "USER",
+}
+
+/**
+ * Privilege to grant.
+ */
+export enum Privilege {
+    All = "ALL",
+    Delete = "DELETE",
+    Insert = "INSERT",
+    Select = "SELECT",
+    Update = "UPDATE",
+    Usage = "USAGE",
 }
 
 /**
@@ -8032,6 +8088,8 @@ export interface StorageMetadataBucketDetails {
  * Reverse Ingestion Config Pipeline type
  *
  * MCP Source Config Metadata Pipeline type
+ *
+ * Policy Agent Pipeline type
  */
 export enum FluffyType {
     APIMetadata = "ApiMetadata",
@@ -8049,6 +8107,7 @@ export enum FluffyType {
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
+    PolicyAgent = "PolicyAgent",
     Profiler = "Profiler",
     ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",
