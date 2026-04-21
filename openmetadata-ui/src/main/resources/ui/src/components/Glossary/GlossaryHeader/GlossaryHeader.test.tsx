@@ -240,6 +240,8 @@ describe('GlossaryHeader component', () => {
   it('should not render import and export dropdown menu items if no permission', async () => {
     mockGlossaryTermPermission.All = false;
     mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryPermission.All = false;
+    mockGlossaryPermission.EditAll = false;
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
