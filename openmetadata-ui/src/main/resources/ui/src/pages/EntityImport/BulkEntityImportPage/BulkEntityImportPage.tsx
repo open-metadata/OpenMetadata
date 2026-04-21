@@ -57,8 +57,8 @@ import {
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
-  getDataQualityPagePath,
   getEntityDetailsPath,
   getTestSuitePath,
 } from '../../../utils/RouterUtils';
@@ -211,7 +211,9 @@ const BulkEntityImportPage = () => {
       return [
         {
           name: t('label.data-quality'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_CASES
+          ),
         },
       ];
     }
@@ -253,7 +255,9 @@ const BulkEntityImportPage = () => {
       return [
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES
+          ),
         },
         {
           name: entity.displayName ?? entity.name ?? '',

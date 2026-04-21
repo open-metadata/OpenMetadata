@@ -30,8 +30,8 @@ import TaskFormSettingsPage from './TaskFormSettingsPage';
 const mockListTaskFormSchemas = jest.fn();
 const mockCreateTaskFormSchema = jest.fn();
 const mockUpdateTaskFormSchema = jest.fn();
-const mockCreateOrUpdateWorkflowDefinition = jest.fn();
-const mockGetWorkflowDefinitionByName = jest.fn();
+const mockUpdateWorkflowDefinition = jest.fn();
+const mockGetWorkflowDefinitionByFQN = jest.fn();
 const mockShowSuccessToast = jest.fn();
 const mockShowErrorToast = jest.fn();
 
@@ -65,10 +65,10 @@ jest.mock('../../rest/taskFormSchemasAPI', () => ({
 }));
 
 jest.mock('../../rest/workflowDefinitionsAPI', () => ({
-  createOrUpdateWorkflowDefinition: (...args: unknown[]) =>
-    mockCreateOrUpdateWorkflowDefinition(...args),
-  getWorkflowDefinitionByName: (...args: unknown[]) =>
-    mockGetWorkflowDefinitionByName(...args),
+  updateWorkflowDefinition: (...args: unknown[]) =>
+    mockUpdateWorkflowDefinition(...args),
+  getWorkflowDefinitionByFQN: (...args: unknown[]) =>
+    mockGetWorkflowDefinitionByFQN(...args),
 }));
 
 jest.mock('../../utils/GlobalSettingsUtils', () => ({
@@ -113,11 +113,11 @@ describe('TaskFormSettingsPage', () => {
       id: 'new-schema-id',
       name: 'CustomReview',
     });
-    mockCreateOrUpdateWorkflowDefinition.mockResolvedValue({
+    mockUpdateWorkflowDefinition.mockResolvedValue({
       name: 'DescriptionUpdateTaskWorkflow',
       version: 1,
     });
-    mockGetWorkflowDefinitionByName.mockResolvedValue({
+    mockGetWorkflowDefinitionByFQN.mockResolvedValue({
       name: 'DescriptionUpdateTaskWorkflow',
     });
   });
