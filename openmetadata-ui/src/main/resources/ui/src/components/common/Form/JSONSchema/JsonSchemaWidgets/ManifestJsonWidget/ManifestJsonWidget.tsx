@@ -13,6 +13,7 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Alert, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
 import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
 import './manifest-json-widget.less';
@@ -324,6 +325,8 @@ const ManifestJsonWidget = ({
   onFocus,
   ...props
 }: WidgetProps) => {
+  const { t } = useTranslation();
+
   const onFocusHandler = useCallback(() => {
     onFocus?.(props.id, props.value);
   }, [onFocus, props.id, props.value]);
@@ -368,7 +371,7 @@ const ManifestJsonWidget = ({
         />
       </div>
       <span className="manifest-json-widget-resize-hint">
-        Drag the bottom-right corner to resize.
+        {t('message.drag-bottom-right-corner-to-resize')}
       </span>
       {validation.status === 'ok' && (
         <Alert
@@ -376,9 +379,9 @@ const ManifestJsonWidget = ({
           className="m-t-xs"
           message={
             <Text>
-              {`Valid manifest — ${validation.entryCount} entr${
-                validation.entryCount === 1 ? 'y' : 'ies'
-              }.`}
+              {t('label.valid-manifest-entry-count', {
+                count: validation.entryCount,
+              })}
             </Text>
           }
           type="success"

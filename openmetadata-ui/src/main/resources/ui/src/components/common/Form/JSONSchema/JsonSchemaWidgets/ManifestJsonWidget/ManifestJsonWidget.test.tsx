@@ -407,10 +407,13 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    expect(screen.getByText(/Valid manifest — 2 entries/)).toBeInTheDocument();
+    // In test, t(key, params) returns just the key.
+    expect(
+      screen.getByText(/label.valid-manifest-entry-count/)
+    ).toBeInTheDocument();
   });
 
-  it('uses singular "entry" in the success label for one entry', () => {
+  it('shows the success i18n key for one entry too', () => {
     render(
       <ManifestJsonWidget
         {...makeProps({
@@ -421,7 +424,9 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    expect(screen.getByText(/Valid manifest — 1 entry/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/label.valid-manifest-entry-count/)
+    ).toBeInTheDocument();
   });
 
   it('shows an error alert when the JSON is malformed', () => {
@@ -481,7 +486,7 @@ describe('ManifestJsonWidget', () => {
     );
 
     expect(
-      screen.getByText(/Drag the bottom-right corner to resize/i)
+      screen.getByText(/message.drag-bottom-right-corner-to-resize/)
     ).toBeInTheDocument();
   });
 });
