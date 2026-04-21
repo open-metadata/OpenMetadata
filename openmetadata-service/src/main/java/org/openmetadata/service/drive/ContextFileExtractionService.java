@@ -5,7 +5,10 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import java.io.InputStream;
 import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.attachments.Asset;
@@ -17,7 +20,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
-import org.openmetadata.service.util.AsyncService;
 
 @Slf4j
 public class ContextFileExtractionService {
@@ -30,8 +32,31 @@ public class ContextFileExtractionService {
     this(
         repository,
         AssetServiceFactory::getService,
-        AsyncService.getInstance().getExecutorService(),
+        defaultExtractionExecutor(),
         new ContextFileTextExtractor());
+  }
+
+  /**
+   * Dedicated thread pool for text extraction. Must stay separate from
+   * {@code AsyncService.getExecutorService()} because {@link #process(UUID, UUID)}
+   * blocks on {@code AssetService.read(...).join()} for S3/Azure reads, which are
+   * themselves scheduled on AsyncService. Sharing the pool would starve the read
+   * tasks (and potentially deadlock) once all threads are busy running extractions.
+   */
+  private static Executor defaultExtractionExecutor() {
+    int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
+    ThreadFactory threadFactory =
+        new ThreadFactory() {
+          private final AtomicInteger counter = new AtomicInteger();
+
+          @Override
+          public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, "context-file-extraction-" + counter.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+          }
+        };
+    return Executors.newFixedThreadPool(threads, threadFactory);
   }
 
   ContextFileExtractionService(

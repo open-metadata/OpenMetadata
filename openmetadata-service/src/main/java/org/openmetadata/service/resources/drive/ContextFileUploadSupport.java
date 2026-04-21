@@ -76,8 +76,15 @@ final class ContextFileUploadSupport {
   }
 
   static String sanitizeEntityName(String originalFileName) {
+    // Multipart uploads can arrive with missing or blank filename metadata. Fall back
+    // to a stable base so the upload does not fail with NullPointerException.
+    String source =
+        (originalFileName == null || originalFileName.isBlank()) ? "file" : originalFileName;
     String sanitized =
-        originalFileName.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_").toLowerCase();
+        source.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_").toLowerCase();
+    if (sanitized.isEmpty()) {
+      sanitized = "file";
+    }
     if (sanitized.length() > 180) {
       sanitized = sanitized.substring(0, 180);
     }

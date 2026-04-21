@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS knowledge_center (
   json JSONB NOT NULL,
   updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
   updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  deleted BOOLEAN GENERATED ALWAYS AS (COALESCE((json ->> 'deleted')::boolean, false)) STORED,
   pageType VARCHAR(16) GENERATED ALWAYS AS (json ->> 'pageType') STORED NOT NULL,
   PRIMARY KEY (id),
   UNIQUE (fqnHash)
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS drive_folder (
   json JSONB NOT NULL,
   updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
   updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  deleted BOOLEAN GENERATED ALWAYS AS (COALESCE((json ->> 'deleted')::boolean, false)) STORED,
   PRIMARY KEY (id),
   UNIQUE (nameHash)
 );
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS context_file (
   json JSONB NOT NULL,
   updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
   updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  deleted BOOLEAN GENERATED ALWAYS AS (COALESCE((json ->> 'deleted')::boolean, false)) STORED,
   PRIMARY KEY (id),
   UNIQUE (nameHash)
 );
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS asset_entity (
   updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
   updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
   fqnHash VARCHAR(768) NOT NULL,
-  deleted BOOLEAN GENERATED ALWAYS AS (CAST(json ->> 'deleted' AS BOOLEAN)) STORED,
+  deleted BOOLEAN GENERATED ALWAYS AS (COALESCE(CAST(json ->> 'deleted' AS BOOLEAN), false)) STORED,
   PRIMARY KEY (id)
 );
 CREATE INDEX IF NOT EXISTS fqnhash_index ON asset_entity (fqnHash);
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS context_file_content (
   json JSONB NOT NULL,
   updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
   updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  deleted BOOLEAN GENERATED ALWAYS AS (COALESCE((json ->> 'deleted')::boolean, false)) STORED,
   PRIMARY KEY (id),
   UNIQUE (nameHash)
 );

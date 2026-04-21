@@ -95,7 +95,10 @@ public class AssetRepository {
   public Asset update(Asset asset) {
     String json = JsonUtils.pojoToJson(asset);
     try {
-      dao.update(json, asset.getFullyQualifiedName());
+      // Update by id — multiple assets can share a fullyQualifiedName (e.g. revisions
+      // of the same context file), so an fqnHash-based update would silently touch
+      // sibling rows.
+      dao.update(json, asset.getId());
       LOG.info("Updated asset with id {}", asset.getId());
     } catch (Exception e) {
       LOG.error("Failed to update asset with id {}: {}", asset.getId(), e.getMessage(), e);

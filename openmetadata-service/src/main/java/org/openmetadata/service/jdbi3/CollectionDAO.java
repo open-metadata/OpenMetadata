@@ -12508,12 +12508,12 @@ public interface CollectionDAO {
     void insert(@BindFQN("fqnHash") String fqnHash, @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE asset_entity SET json = :json WHERE fqnHash = :fqnHash",
+        value = "UPDATE asset_entity SET json = :json WHERE id = :id",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE asset_entity SET json = :json::jsonb WHERE fqnHash = :fqnHash",
+        value = "UPDATE asset_entity SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@Bind("json") String json, @BindFQN("fqnHash") String fqnHash);
+    void update(@Bind("json") String json, @Bind("id") String id);
 
     @SqlQuery("SELECT json FROM asset_entity WHERE id = :id")
     String getById(@Bind("id") String id);
