@@ -1716,8 +1716,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
-      operationId = "importTeams",
-      summary = "Import from CSV to create, and update teams.",
+      operationId = "importUsers",
+      summary = "Import from CSV to create, and update users.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1753,8 +1753,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
-      operationId = "importTeamsAsync",
-      summary = "Import from CSV to create, and update teams asynchronously.",
+      operationId = "importUsersAsync",
+      summary = "Import from CSV to create, and update users asynchronously.",
       responses = {
         @ApiResponse(
             responseCode = "200",
