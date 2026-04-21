@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -42,8 +42,6 @@ import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewer
 import './description-v1.less';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
-
-const { Text } = Typography;
 
 const DescriptionV1 = ({
   hasEditAccess,
@@ -149,7 +147,7 @@ const DescriptionV1 = ({
 
   const actionButtons = useMemo(
     () => (
-      <Space size={12}>
+      <Box align="center" direction="row" gap={3}>
         {!isVersionView && !isReadOnly && hasEditAccess && (
           <EditIconButton
             newLook
@@ -175,7 +173,7 @@ const DescriptionV1 = ({
             }}
           />
         )}
-      </Space>
+      </Box>
     ),
     [
       isReadOnly,
@@ -227,41 +225,47 @@ const DescriptionV1 = ({
 
   const header = useMemo(() => {
     return (
-      <div
-        className={classNames(
-          'description-v1-header d-flex justify-between flex-wrap',
-          {
-            'm-t-sm': suggestions?.length > 0,
-          }
-        )}>
-        <div className="description-v1-title-row d-flex items-center gap-2">
-          <Text
-            className={classNames('description-v1-title text-sm font-medium')}>
+      <Box
+        className={classNames('description-v1-header', {
+          'm-t-sm': suggestions?.length > 0,
+        })}
+        direction="row"
+        justify="between"
+        wrap="wrap">
+        <Box
+          align="center"
+          className="description-v1-title-row"
+          direction="row"
+          gap={2}>
+          <Typography
+            className="description-v1-title tw:text-primary"
+            size="text-sm"
+            weight="medium">
             {t('label.description')}
-          </Text>
+          </Typography>
           <DescriptionSourceBadge
             changeSummaryEntry={changeSummary?.['description']}
             showAcceptedBy={false}
             showTimestamp={false}
           />
           {showActions && actionButtons}
-        </div>
+        </Box>
         {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
-      </div>
+      </Box>
     );
   }, [showActions, actionButtons, suggestions, showSuggestions, changeSummary]);
 
   const content = (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
-      <Space
+      <Box
+        className={classNames('schema-description', className)}
+        direction="col"
+        gap={4}
         {...(wrapInCard
           ? {}
           : {
               'data-testid': 'asset-description-container',
-            })}
-        className={classNames('schema-description d-flex', className)}
-        direction="vertical"
-        size={16}>
+            })}>
         {wrapInCard ? null : header}
         <div>
           {descriptionContent}
@@ -284,7 +288,7 @@ const DescriptionV1 = ({
             onSave={handleDescriptionChange}
           />
         </div>
-      </Space>
+      </Box>
     </EntityAttachmentProvider>
   );
 

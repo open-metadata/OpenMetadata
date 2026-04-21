@@ -207,6 +207,91 @@ jest.mock('@mui/material', () => {
   };
 });
 
+/**
+ * Mock @openmetadata/ui-core-components so tests that transitively import
+ * from the package (via ExpandableCard, DescriptionV1, widget shells, etc.)
+ * do not need to spin up the full react-aria-components / MUI styled engine
+ * inside jsdom. Lightweight DOM shims preserve data-testid, className, and
+ * event handlers — matching the pattern used elsewhere in the suite.
+ */
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = require('react');
+
+  const Box = React.forwardRef(({ children, className, ...rest }, ref) =>
+    React.createElement('div', { ...rest, ref, className }, children)
+  );
+
+  const Typography = ({
+    children,
+    className,
+    as: Component = 'span',
+    ...rest
+  }) => React.createElement(Component, { ...rest, className }, children);
+
+  const Card = React.forwardRef(({ children, className, ...rest }, ref) =>
+    React.createElement('div', { ...rest, ref, className }, children)
+  );
+  Card.Header = ({ title, extra, className, ...rest }) =>
+    React.createElement('div', { ...rest, className }, [
+      title && React.createElement('div', { key: 'title' }, title),
+      extra && React.createElement('div', { key: 'extra' }, extra),
+    ]);
+  Card.Content = ({ children, className, ...rest }) =>
+    React.createElement('div', { ...rest, className }, children);
+  Card.Footer = ({ children, className, ...rest }) =>
+    React.createElement('div', { ...rest, className }, children);
+
+  const ButtonUtility = ({
+    onClick,
+    isDisabled,
+    tabIndex,
+    className,
+    tooltip,
+    'data-testid': testId,
+  }) =>
+    React.createElement('button', {
+      'aria-label': tooltip,
+      className,
+      'data-testid': testId,
+      disabled: isDisabled,
+      onClick,
+      tabIndex,
+      type: 'button',
+    });
+
+  const Avatar = ({ children, ...rest }) =>
+    React.createElement('div', { ...rest }, children);
+
+  return {
+    Box,
+    Card,
+    Typography,
+    ButtonUtility,
+    Avatar,
+    Tooltip: ({ children, title }) =>
+      React.createElement(React.Fragment, null, [
+        children,
+        title ? React.createElement('span', { key: 'title' }, title) : null,
+      ]),
+    TooltipTrigger: ({ children }) => children,
+    Button: ({ children, onClick, ...rest }) =>
+      React.createElement(
+        'button',
+        { ...rest, onClick, type: 'button' },
+        children
+      ),
+    Drawer: ({ children }) => children,
+    Elevation: ({ children }) => children,
+    NavList: ({ children }) => children,
+    NavItemBase: ({ children }) => children,
+    NavItemButton: ({ children }) => children,
+    Tabs: ({ children }) => children,
+    Table: ({ children }) => children,
+    Modal: ({ children }) => children,
+    Dialog: ({ children }) => children,
+  };
+});
+
 jest.mock('./utils/i18next/LocalUtil', () => {
   const React = require('react');
 

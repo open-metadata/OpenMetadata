@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,12 +57,14 @@ const CertificationWidget = () => {
   };
 
   const header = (
-    <div className={classNames('d-flex items-center gap-2')}>
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="certification-heading-name">
+    <Box align="center" direction="row" gap={2}>
+      <Typography
+        className="tw:text-primary"
+        data-testid="certification-heading-name"
+        size="text-sm"
+        weight="medium">
         {t('label.certification')}
-      </Typography.Text>
+      </Typography>
       {canEdit && (
         <EditIconButton
           newLook
@@ -75,7 +76,7 @@ const CertificationWidget = () => {
           onClick={() => setIsEditing(true)}
         />
       )}
-    </div>
+    </Box>
   );
 
   const content = (

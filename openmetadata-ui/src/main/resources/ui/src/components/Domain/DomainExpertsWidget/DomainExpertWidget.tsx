@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
-import classNames from 'classnames';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,12 +68,14 @@ export const DomainExpertWidget = () => {
   };
 
   const header = (
-    <div className={`d-flex items-center gap-2 `}>
-      <Typography.Text
-        className={classNames('text-sm font-medium')}
-        data-testid="domain-expert-heading-name">
+    <Box align="center" direction="row" gap={2}>
+      <Typography
+        className="tw:text-primary"
+        data-testid="domain-expert-heading-name"
+        size="text-sm"
+        weight="medium">
         {t('label.expert-plural')}
-      </Typography.Text>
+      </Typography>
       {!isVersionView && editOwnerPermission && (
         <UserSelectableList
           hasPermission
@@ -101,7 +102,7 @@ export const DomainExpertWidget = () => {
           )}
         </UserSelectableList>
       )}
-    </div>
+    </Box>
   );
 
   const content = isEmpty(domain.experts) ? null : (

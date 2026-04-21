@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -126,21 +132,26 @@ export const DomainLabelV2 = <
             title={t('label.inherited-entity', {
               entity: t('label.domain-plural'),
             })}>
-            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+            <TooltipTrigger>
+              <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+            </TooltipTrigger>
           </Tooltip>
         ) : null;
 
         return (
-          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
-              <DomainIcon
-                className="d-flex"
-                color={DE_ACTIVE_COLOR}
-                height={16}
-                name="folder"
-                width={16}
-              />
-            </Typography.Text>
+          <Box
+            align="center"
+            className="w-max-full"
+            direction="row"
+            gap={1}
+            key={domain.id}>
+            <DomainIcon
+              className="d-flex"
+              color={DE_ACTIVE_COLOR}
+              height={16}
+              name="folder"
+              width={16}
+            />
             {renderDomainLink(
               domain,
               getEntityName(domain),
@@ -149,19 +160,21 @@ export const DomainLabelV2 = <
               true
             )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
-          </div>
+          </Box>
         );
       });
     } else {
       return (
-        <Typography.Text
+        <Typography
           className={classNames(
-            { 'font-medium text-xs': !props.showDomainHeading },
+            { 'tw:text-primary': !props.showDomainHeading },
             props.textClassName
           )}
-          data-testid="no-domain-text">
+          data-testid="no-domain-text"
+          size="text-xs"
+          weight={props.showDomainHeading ? 'regular' : 'medium'}>
           {t('label.no-entity', { entity: t('label.domain-plural') })}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [activeDomain]);
@@ -190,28 +203,34 @@ export const DomainLabelV2 = <
         <ExpandableCard
           cardProps={{
             title: (
-              <div className="d-flex items-center gap-1">
-                <Typography.Text className="text-sm font-medium">
+              <Box align="center" direction="row" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="medium">
                   {t('label.domain-plural')}
-                </Typography.Text>
+                </Typography>
                 {selectableList}
-              </div>
+              </Box>
             ),
           }}
           isExpandDisabled={!Array.isArray(domainLink)}>
-          <div className="d-flex items-center gap-1 flex-wrap">
+          <Box align="center" direction="row" gap={1} wrap="wrap">
             {domainLink}
-          </div>
+          </Box>
         </ExpandableCard>
       );
     }
 
     return (
       <Card
-        className="d-flex items-center gap-1 flex-wrap"
-        data-testid="header-domain-container">
-        {domainLink}
-        {selectableList}
+        className="tw:flex tw:items-center tw:gap-1 tw:flex-wrap"
+        data-testid="header-domain-container"
+        variant="default">
+        <Card.Content className="tw:flex tw:items-center tw:gap-1 tw:flex-wrap">
+          {domainLink}
+          {selectableList}
+        </Card.Content>
       </Card>
     );
   }, [activeDomain, hasPermission, selectableList]);

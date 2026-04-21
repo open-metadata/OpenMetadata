@@ -15,6 +15,50 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import ExpandableCard from './ExpandableCard';
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const CardMock = ({ children, className, ...props }: any) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  );
+  CardMock.Header = ({ title, extra, className, ...props }: any) => (
+    <div className={className} {...props}>
+      {title}
+      {extra}
+    </div>
+  );
+  CardMock.Content = ({ children, className, ...props }: any) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  );
+
+  return {
+    Card: CardMock,
+    ButtonUtility: jest
+      .fn()
+      .mockImplementation(
+        ({
+          onClick,
+          isDisabled,
+          'data-testid': testId,
+          tabIndex,
+          className,
+          tooltip,
+        }: any) => (
+          <button
+            aria-label={tooltip}
+            className={className}
+            data-testid={testId}
+            disabled={isDisabled}
+            tabIndex={tabIndex}
+            onClick={onClick}
+          />
+        )
+      ),
+  };
+});
+
 describe('ExpandableCard', () => {
   const mockT = jest.fn((key) => key);
   const mockOnExpandStateChange = jest.fn();
@@ -22,6 +66,11 @@ describe('ExpandableCard', () => {
     title: 'Test Card',
     className: 'test-class',
   };
+
+  const getCardRoot = () =>
+    screen
+      .getByTestId('expand-collapse-icon')
+      .closest('.new-header-border-card');
 
   beforeEach(() => {
     (useTranslation as jest.Mock).mockReturnValue({ t: mockT });
@@ -48,25 +97,6 @@ describe('ExpandableCard', () => {
       );
 
       expect(screen.getByTestId('custom-test-id')).toBeInTheDocument();
-    });
-
-    it('renders with additional card props', () => {
-      const extraProps = {
-        ...mockCardProps,
-        bordered: true,
-        hoverable: true,
-      };
-
-      render(
-        <ExpandableCard cardProps={extraProps}>
-          <div>Test Content</div>
-        </ExpandableCard>
-      );
-
-      const card = screen.getByRole('button').closest('.ant-card');
-
-      expect(card).toHaveClass('ant-card-bordered');
-      expect(card).toHaveClass('ant-card-hoverable');
     });
 
     it('renders with complex nested children', () => {
@@ -96,24 +126,22 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const expandButton = screen.getByRole('button');
+      const expandButton = screen.getByTestId('expand-collapse-icon');
 
-      // Initial state (collapsed)
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(getCardRoot()).toHaveClass('expanded');
 
-      // Click to collapse
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton.closest('.ant-card')).not.toHaveClass('collapsed');
+      expect(getCardRoot()).toHaveClass('collapsed');
+      expect(getCardRoot()).not.toHaveClass('expanded');
 
-      // Click to expand again
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(getCardRoot()).toHaveClass('expanded');
     });
 
     it('calls onExpandStateChange when expansion state changes', async () => {
@@ -125,9 +153,8 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const expandButton = screen.getByRole('button');
+      const expandButton = screen.getByTestId('expand-collapse-icon');
 
-      // Initial state is expanded (true)
       await act(async () => {
         fireEvent.click(expandButton);
       });
@@ -148,7 +175,7 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const expandButton = screen.getByRole('button');
+      const expandButton = screen.getByTestId('expand-collapse-icon');
 
       expect(expandButton).toBeDisabled();
     });
@@ -160,17 +187,15 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const expandButton = screen.getByRole('button');
+      const expandButton = screen.getByTestId('expand-collapse-icon');
 
-      // Initial state
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(getCardRoot()).toHaveClass('expanded');
 
-      // Click should not change state
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
+      expect(getCardRoot()).toHaveClass('expanded');
     });
   });
 
@@ -186,9 +211,7 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
-
-      expect(card).toHaveClass('custom-class');
+      expect(getCardRoot()).toHaveClass('custom-class');
     });
 
     it('applies default classes correctly', () => {
@@ -198,10 +221,8 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
-
-      expect(card).toHaveClass('new-header-border-card');
-      expect(card).toHaveClass('w-full');
+      expect(getCardRoot()).toHaveClass('new-header-border-card');
+      expect(getCardRoot()).toHaveClass('expandable-card');
     });
 
     it('applies expanded class when expanded', () => {
@@ -211,9 +232,7 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const card = screen.getByRole('button').closest('.ant-card');
-
-      expect(card).toHaveClass('expanded');
+      expect(getCardRoot()).toHaveClass('expanded');
     });
   });
 
@@ -225,15 +244,14 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      const expandButton = screen.getByRole('button');
+      const expandButton = screen.getByTestId('expand-collapse-icon');
 
       await act(async () => {
         fireEvent.click(expandButton);
       });
 
-      const card = screen.getByRole('button').closest('.ant-card');
-
-      expect(card).not.toHaveClass('expanded');
+      expect(getCardRoot()).not.toHaveClass('expanded');
+      expect(getCardRoot()).toHaveClass('collapsed');
     });
 
     it('works with minimal cardProps', () => {
@@ -243,13 +261,13 @@ describe('ExpandableCard', () => {
         </ExpandableCard>
       );
 
-      expect(screen.getByRole('button')).toBeInTheDocument();
+      expect(screen.getByTestId('expand-collapse-icon')).toBeInTheDocument();
     });
 
     it('handles empty children', () => {
       render(<ExpandableCard cardProps={mockCardProps}>{null}</ExpandableCard>);
 
-      expect(screen.getByRole('button')).toBeInTheDocument();
+      expect(screen.getByTestId('expand-collapse-icon')).toBeInTheDocument();
     });
   });
 });

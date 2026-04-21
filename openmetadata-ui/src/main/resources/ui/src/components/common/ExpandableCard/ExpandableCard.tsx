@@ -10,24 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, CardProps } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
+
+interface ExpandableCardRootProps {
+  title?: React.ReactNode;
+  className?: string;
+  id?: string;
+  style?: React.CSSProperties;
+}
 
 interface ExpandableCardProps {
   children: React.ReactNode;
   defaultExpanded?: boolean;
   onExpandStateChange?: (isExpanded: boolean) => void;
   isExpandDisabled?: boolean;
-  cardProps: CardProps;
+  cardProps: ExpandableCardRootProps;
   dataTestId?: string;
 }
 
 const ExpandableCard = ({
   children,
-  cardProps: { className, ...restCardProps },
+  cardProps: { className, title, id, style },
   onExpandStateChange,
   isExpandDisabled,
   dataTestId,
@@ -50,30 +57,46 @@ const ExpandableCard = ({
 
   return (
     <Card
-      bodyStyle={{
-        // This will prevent the card body from having padding when there is no content
-        padding: children ? undefined : '0px',
-      }}
       className={classNames(
-        'new-header-border-card w-full',
+        'new-header-border-card expandable-card tw:w-full',
         {
           expanded: isExpanded,
+          collapsed: !isExpanded,
         },
         className
       )}
       data-testid={dataTestId}
-      extra={
-        <CardExpandCollapseIconButton
-          className="expand-collapse-icon bordered"
-          data-testid="expand-collapse-icon"
-          disabled={isExpandDisabled}
-          size="small"
-          title={isExpanded ? t('label.collapse') : t('label.expand')}
-          onClick={handleExpandClick}
-        />
-      }
-      {...restCardProps}>
-      {children}
+      id={id}
+      style={style}
+      variant="default">
+      <Card.Header
+        className={classNames('tw:bg-secondary', {
+          'tw:border-b-0': !children || !isExpanded,
+        })}
+        extra={
+          <CardExpandCollapseIconButton
+            className={classNames('expand-collapse-icon bordered', {
+              'tw:rotate-0': isExpanded,
+              'tw:rotate-180': !isExpanded,
+            })}
+            data-testid="expand-collapse-icon"
+            disabled={isExpandDisabled}
+            size="small"
+            title={isExpanded ? t('label.collapse') : t('label.expand')}
+            onClick={handleExpandClick}
+          />
+        }
+        title={title}
+      />
+      {children && (
+        <Card.Content
+          aria-hidden={!isExpanded}
+          className={classNames({
+            'tw:h-0 tw:overflow-hidden tw:p-0': !isExpanded,
+          })}>
+          {children}
+        </Card.Content>
+      )}
     </Card>
   );
 };

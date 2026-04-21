@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
@@ -92,9 +92,9 @@ export const LeftPanelContainer = ({
 
     return layout?.map((widget: WidgetConfig) => {
       return (
-        <Col id={widget.i} key={widget.i} span={Math.round(widget.w * 24)}>
+        <div id={widget.i} key={widget.i}>
           {getWidgetsFromKey(type, widget)}
-        </Col>
+        </div>
       );
     });
   }, [layout, type, isEditView]);
@@ -122,5 +122,9 @@ export const LeftPanelContainer = ({
     );
   }
 
-  return <Row gutter={[16, 16]}>{widgets}</Row>;
+  return (
+    <Box direction="col" gap={4}>
+      {widgets}
+    </Box>
+  );
 };
