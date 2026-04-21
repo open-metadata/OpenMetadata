@@ -31,7 +31,13 @@ import APIClient from './index';
 const BASE_URL = '/taskFormSchemas';
 
 export interface JsonSchemaObject {
-  [key: string]: unknown;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | JsonSchemaObject
+    | JsonSchemaObject[]
+    | string[];
 }
 
 export interface TaskFormSchema {

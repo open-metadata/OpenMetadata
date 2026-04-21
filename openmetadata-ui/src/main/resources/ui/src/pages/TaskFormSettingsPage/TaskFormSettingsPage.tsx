@@ -47,6 +47,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { WorkflowDefinition } from '../../generated/governance/workflows/workflowDefinition';
 import {
   createTaskFormSchema,
   listTaskFormSchemas,
@@ -143,18 +144,13 @@ const getDefaultWorkflowDefinitionRef = (taskType?: string) => {
 };
 
 const sanitizeWorkflowDefinitionPayload = (
-  workflowDefinition: Record<string, unknown>
+  workflowDefinition: WorkflowDefinition
 ) => {
   const {
     name,
     displayName,
     description,
     owners,
-    reviewers,
-    domains,
-    dataProducts,
-    tags,
-    type,
     config,
     trigger,
     nodes,
@@ -166,11 +162,6 @@ const sanitizeWorkflowDefinitionPayload = (
     displayName,
     description,
     owners,
-    reviewers,
-    domains,
-    dataProducts,
-    tags,
-    type,
     config,
     trigger,
     nodes,
@@ -264,7 +255,9 @@ const TaskFormSettingsPage = () => {
     setCreateFields(
       parseSchemaToDesignerFields(nextCreateSchema, nextCreateUiSchema)
     );
-    setTransitionBuilders(parseTransitionForms(nextTransitionForms));
+    setTransitionBuilders(
+      parseTransitionForms(nextTransitionForms) as TaskFormDesignerTransition[]
+    );
     setStageMappings(parseStageMappings(nextStageMappings));
     setWorkflowDefinitionValue('{}');
     if (workflowDefinitionRef) {
@@ -386,16 +379,10 @@ const TaskFormSettingsPage = () => {
     transitions = transitionBuilders,
     nextTransitionFormsValue = transitionFormsValue
   ) => {
-    const existingConfigs = parseJsonObject(nextTransitionFormsValue) as
-      | Record<string, unknown>
-      | undefined;
+    const existingConfigs = parseJsonObject(nextTransitionFormsValue);
     const mergedTransitions = transitions.map((transition) => ({
       ...transition,
-      config:
-        (existingConfigs?.[transition.transitionId] as Record<
-          string,
-          unknown
-        >) ?? transition.config,
+      config: existingConfigs?.[transition.transitionId] ?? transition.config,
     }));
     const nextTransitionForms = buildTransitionForms(mergedTransitions);
 

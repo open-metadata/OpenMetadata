@@ -217,12 +217,11 @@ const buildFieldProperty = (field: TaskFormDesignerField) => {
 
 const buildFieldUiSchema = (field: TaskFormDesignerField) => {
   const nextUiConfig = cloneDeep(field.uiConfig ?? {});
-  const widget = field.hidden
-    ? 'hidden'
-    : (field.widget && field.widget !== 'hidden' ? field.widget : undefined) ??
-      (field.type === 'longText' || field.type === 'json'
-        ? 'textarea'
-        : undefined);
+  const textAreaWidget =
+    field.type === 'longText' || field.type === 'json' ? 'textarea' : undefined;
+  const mainWidget =
+    field.widget && field.widget !== 'hidden' ? field.widget : undefined;
+  const widget = field.hidden ? 'hidden' : mainWidget ?? textAreaWidget;
 
   if (widget) {
     nextUiConfig['ui:widget'] = widget;
@@ -306,7 +305,7 @@ export const createEmptyStageMapping = (): TaskFormDesignerStageMapping => ({
 export const parseSchemaToDesignerFields = (
   formSchema?: JsonSchemaObject,
   uiSchema?: JsonSchemaObject
-) => {
+): TaskFormDesignerField[] => {
   const properties = getObjectRecord(formSchema);
   const requiredFields = getRequiredFields(formSchema);
   const orderedFields = Array.isArray(uiSchema?.['ui:order'])
@@ -346,7 +345,7 @@ export const parseSchemaToDesignerFields = (
         widget,
         uiConfig,
         property,
-      } satisfies TaskFormDesignerField;
+      };
     });
 };
 
@@ -475,8 +474,8 @@ export const getDesignerPreviewPayload = (
 
     if (field.widget === 'tagSelector') {
       const tagName = (field.label || field.name || 'Sample Tag')
-        .replace(/\s+/g, '')
-        .replace(/[^A-Za-z0-9_.-]/g, '');
+        .replaceAll(/\s+/g, '')
+        .replaceAll(/[^A-Za-z0-9_.-]/g, '');
 
       acc[fieldName] = [
         {
