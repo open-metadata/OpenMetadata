@@ -21,6 +21,10 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import {
+  MARKDOWN_MATCH_ID,
+  SECTION_BLOCK_REGEX,
+} from '../constants/regex.constants';
+import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
@@ -59,6 +63,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { MarkdownToHTMLConverter } from './FeedUtils';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
@@ -671,4 +676,43 @@ export const validateServiceName = async (
   }
 
   return null;
+};
+
+/**
+ * Converts markdown that uses $$section blocks into sanitizable HTML with
+ * <section data-id="..."> wrappers. Used by both ServiceDocPanel and SSODocPanel.
+ */
+export const processDocMarkdown = (markdown: string): string => {
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  SECTION_BLOCK_REGEX.lastIndex = 0;
+
+  while ((match = SECTION_BLOCK_REGEX.exec(markdown)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(
+        MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex, match.index))
+      );
+    }
+
+    const sectionContent = match[1];
+    const idMatch = MARKDOWN_MATCH_ID.exec(sectionContent);
+    const id = idMatch ? idMatch[1] : '';
+    const cleanContent = sectionContent.replace(MARKDOWN_MATCH_ID, '').trim();
+
+    parts.push(
+      `<section data-id="${id}" data-highlighted="false">${MarkdownToHTMLConverter.makeHtml(
+        cleanContent
+      )}</section>`
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < markdown.length) {
+    parts.push(MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex)));
+  }
+
+  return parts.join('\n');
 };
