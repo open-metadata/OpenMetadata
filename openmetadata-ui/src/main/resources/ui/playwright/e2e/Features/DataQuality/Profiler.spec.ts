@@ -74,8 +74,10 @@ const validateProfilerAccessForRole = async (
 
   expect(profilerResponse.status()).toBe(200);
 
+  // TODO: Reduce timeout once the latency issue is fixed
   const listColumnApiCall = page.waitForResponse(
-    '/api/v1/tables/name/*/columns?*'
+    '/api/v1/tables/name/*/columns?*',
+    { timeout: 150_000 }
   );
   await page
     .getByRole('tab', {

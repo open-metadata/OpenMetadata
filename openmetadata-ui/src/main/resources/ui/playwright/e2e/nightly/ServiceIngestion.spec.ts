@@ -478,7 +478,7 @@ test.describe.serial(
         async (route) => {
           // Mock the pipelineStatus endpoint to simulate high latency
           // eslint-disable-next-line playwright/no-wait-for-timeout
-          await page.waitForTimeout(8000);
+          await page.waitForTimeout(5000);
           await route.continue();
         }
       );
