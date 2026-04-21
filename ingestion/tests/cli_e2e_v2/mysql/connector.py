@@ -6,6 +6,12 @@
 Split out from conftest.py because pytest discourages importing from
 conftest modules; filter tests need build_mysql_config to construct
 variant-named services for isolation.
+
+Secrets handling: every env-backed field in the rendered YAML is a
+${E2E_MYSQL_*} reference built via Env.ref(), which validates presence
+and emits the shell-style reference string in one step. The metadata
+CLI's load_config_file expands references at subprocess invocation.
+Rendered cfg_*.yaml artifacts never embed raw credentials.
 """
 
 from __future__ import annotations
@@ -32,23 +38,24 @@ def mysql_service_name(session_uuid: str, variant: str = "") -> str:
 def build_mysql_config(service_name: str, server: ServerConfig) -> WorkflowConfig:
     """Build a base MySQL WorkflowConfig with the given service name.
 
-    Reads E2E_MYSQL_USER / E2E_MYSQL_PASSWORD / E2E_MYSQL_HOST_PORT at call
-    time via Env.required — EnvLoadError surfaces with a clear message if
-    any is missing. Tests call this once per test-scope service they need
-    (e.g., filter tests build a variant-named config per test).
+    Each env-backed field emits a ${E2E_MYSQL_*} reference via Env.ref().
+    Presence validation happens inside ref() — missing vars raise EnvLoadError
+    with a clear message at build time. The real values never enter the dict.
 
-    The returned config is in the "metadata" pipeline mode by default; tests
-    chain .as_*() / .with_filter() overlays as needed.
+    E2E_MYSQL_DATABASE is optional: included only when set.
     """
+    service_connection: dict = {
+        "type": "Mysql",
+        "username": Env.ref("E2E_MYSQL_USER"),
+        "authType": {"password": Env.ref("E2E_MYSQL_PASSWORD")},
+        "hostPort": Env.ref("E2E_MYSQL_HOST_PORT"),
+    }
+    if Env.optional("E2E_MYSQL_DATABASE"):
+        service_connection["databaseSchema"] = Env.ref("E2E_MYSQL_DATABASE")
+
     return WorkflowConfig.build(
         source_type="mysql",
         service_name=service_name,
-        service_connection={
-            "type": "Mysql",
-            "username": Env.required("E2E_MYSQL_USER"),
-            "authType": {"password": Env.required("E2E_MYSQL_PASSWORD")},
-            "hostPort": Env.required("E2E_MYSQL_HOST_PORT"),
-            "databaseSchema": Env.optional("E2E_MYSQL_DATABASE", default=None),
-        },
+        service_connection=service_connection,
         server=server,
     )
