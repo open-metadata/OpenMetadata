@@ -70,7 +70,8 @@
         "MicrosoftFabric",
         "BurstIQ",
         "Informix",
-        "Iomete"
+        "Iomete",
+        "Questdb"
       ],
       "javaEnums": [
         {
@@ -240,6 +241,9 @@
         },
         {
           "name": "Iomete"
+        },
+        {
+          "name": "Questdb"
         }
       ]
     },
@@ -414,6 +418,9 @@
             },
             {
               "$ref": "./connections/database/iometeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/questdbConnection.json"
             }
           ]
         }
