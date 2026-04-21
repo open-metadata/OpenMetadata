@@ -199,6 +199,24 @@ const OntologyExplorerPage = withSuspenseFallback(
   )
 );
 
+const WorkflowsListPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowsPage" */ '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage'
+      )
+  )
+);
+
+const WorkflowBuilderPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowBuilderPage" */ '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder'
+      )
+  )
+);
+
 const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -359,6 +377,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<OntologyExplorerPage />}
         path={ROUTES.ONTOLOGY_EXPLORER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS_WITH_FQN_TAB}
       />
       <Route
         element={

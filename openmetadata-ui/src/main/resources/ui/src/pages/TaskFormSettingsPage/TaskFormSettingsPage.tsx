@@ -59,8 +59,8 @@ import {
   TaskEntityType,
 } from '../../rest/tasksAPI';
 import {
-  createOrUpdateWorkflowDefinition,
-  getWorkflowDefinitionByName,
+  getWorkflowDefinitionByFQN,
+  updateWorkflowDefinition,
 } from '../../rest/workflowDefinitionsAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import {
@@ -268,7 +268,7 @@ const TaskFormSettingsPage = () => {
     setStageMappings(parseStageMappings(nextStageMappings));
     setWorkflowDefinitionValue('{}');
     if (workflowDefinitionRef) {
-      void getWorkflowDefinitionByName(workflowDefinitionRef)
+      void getWorkflowDefinitionByFQN(workflowDefinitionRef)
         .then((workflow) => setWorkflowDefinitionValue(stringifyJson(workflow)))
         .catch(() => setWorkflowDefinitionValue('{}'));
     }
@@ -457,7 +457,7 @@ const TaskFormSettingsPage = () => {
           return;
         }
 
-        const savedWorkflow = await createOrUpdateWorkflowDefinition({
+        const savedWorkflow = await updateWorkflowDefinition({
           ...sanitizeWorkflowDefinitionPayload(parsedWorkflowDefinition),
           name: workflowName,
         });

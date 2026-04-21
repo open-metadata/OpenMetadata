@@ -145,6 +145,7 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
   WORKFLOWS: '/workflows',
+  WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
   KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
