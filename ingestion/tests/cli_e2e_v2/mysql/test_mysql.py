@@ -4,27 +4,27 @@
 """MySQL pilot — CLI E2E v2 tests.
 
 Exercises the v2 framework end-to-end against a MySQL source. Covers all
-five pipelines (metadata, profiler, auto-classification, and view lineage
-via SQL parsing; DQ deferred to post-MVP) plus four filter scenarios.
+the pipelines the MVP ships (metadata, profiler, auto-classification, and
+view lineage via SQL parsing; DQ deferred to post-MVP) plus four filter
+scenarios and FK/description coverage.
 
 Lineage note: MySQL FK constraints produce TableConstraint entries on the
-table entity, not lineage edges. The only real lineage MySQL surfaces is
-view-to-table lineage derived from parsing the view definition SQL. There
-is no FK-based lineage test here.
+table entity, not lineage edges (see `project-mysql-fk-no-lineage.md`).
+The only real lineage MySQL surfaces is view-to-table lineage derived from
+parsing the view definition SQL. The FK assertion in this module targets
+`tableConstraints`, not upstream edges.
 
-Session-shared tests use the module-scoped mysql_cfg (same service across
-tests — ingestion is idempotent; later tests can assume prior ingest ran,
-but for safety each test re-runs the metadata pipeline before its
-specialized assertion).
+Module-scoped `mysql_metadata_ingested` runs the metadata CLI once for all
+tests that consume the shared service — profiler, lineage, classification,
+structural, description, FK. That fixture also registers the service name
+for session-end cleanup.
 
 Filter tests build isolated variant-named services so per-test "exclude"
 assertions can rely on STRICT-mode extras detection without cross-test
-state leakage.
+state leakage. They register their own services.
 """
 
 from __future__ import annotations
-
-import pytest
 
 from metadata.generated.schema.entity.data.table import DataType
 
@@ -43,30 +43,24 @@ from .expected import mysql_expected
 
 
 def test_vanilla_ingest_structural(
-    cli_runner: CliRunner,
     om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
-    """Vanilla metadata ingest produces the declared OM catalog (SUPERSET)."""
+    """Metadata ingest produces the declared OM catalog (SUPERSET).
+
+    Walks the full Expected* tree — table structure, columns, constraints,
+    table + column descriptions, stored procedures. Success of the CLI
+    subprocess is asserted inside the fixture.
+    """
     service = mysql_service_name(session_uuid)
-    registered_services.append(service)
-
-    status = cli_runner.run(
-        mysql_cfg.as_metadata(include_stored_procedures=True)
-    )
-    assert status.success, f"ingest failures: {status.all_failures}"
-
     assert_service_matches(mysql_expected(service), om_client)
 
 
 def test_all_types_column_mappings(
-    cli_runner: CliRunner,
     om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
     """Spot-check representative type mappings in the all_types table.
 
@@ -75,10 +69,6 @@ def test_all_types_column_mappings(
     seeing the connector's actual output.
     """
     service = mysql_service_name(session_uuid)
-    registered_services.append(service)
-
-    cli_runner.run(mysql_cfg.as_metadata())
-
     fqn = f"{service}.default.e2e.all_types"
     om_client.table(fqn).exists()
     om_client.table(fqn).column("big_int_col").has_type(DataType.BIGINT)
@@ -98,14 +88,14 @@ def test_profiler_row_counts(
     om_client: OmClient,
     mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
-    """Profiler reports exact row counts matching the deterministic seed."""
-    service = mysql_service_name(session_uuid)
-    registered_services.append(service)
+    """Profiler reports exact row counts matching the deterministic seed.
 
-    # Metadata ingest establishes tables so the profiler has targets.
-    cli_runner.run(mysql_cfg.as_metadata())
+    Depends on mysql_metadata_ingested to establish tables so the profiler
+    has targets; the test itself only runs the profiler pipeline.
+    """
+    service = mysql_service_name(session_uuid)
     status = cli_runner.run(mysql_cfg.as_profiler())
     assert status.success, f"profiler failures: {status.all_failures}"
 
@@ -126,18 +116,12 @@ def test_profiler_row_counts(
 
 
 def test_stored_procedure_ingested(
-    cli_runner: CliRunner,
     om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
     """Stored procedure appears in OM with includeStoredProcedures=True."""
     service = mysql_service_name(session_uuid)
-    registered_services.append(service)
-
-    cli_runner.run(mysql_cfg.as_metadata(include_stored_procedures=True))
-
     sp_fqn = f"{service}.default.e2e.sp_active_customer_count"
     om_client.stored_procedure(sp_fqn).exists()
     om_client.stored_procedure(sp_fqn).has_code_containing("SELECT COUNT(*)")
@@ -149,18 +133,12 @@ def test_stored_procedure_ingested(
 
 
 def test_lineage_view_references_tables(
-    cli_runner: CliRunner,
     om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
     """View definition produces lineage from view → referenced tables."""
     service = mysql_service_name(session_uuid)
-    registered_services.append(service)
-
-    cli_runner.run(mysql_cfg.as_metadata())
-
     view_fqn = f"{service}.default.e2e.customer_txn_summary"
     customers_fqn = f"{service}.default.e2e.customers"
     transactions_fqn = f"{service}.default.e2e.transactions"
@@ -170,23 +148,43 @@ def test_lineage_view_references_tables(
 
 
 # ---------------------------------------------------------------------------
+# Foreign key TableConstraint (no lineage edge for MySQL)
+# ---------------------------------------------------------------------------
+
+
+def test_transactions_foreign_key_constraint(
+    om_client: OmClient,
+    session_uuid: str,
+    mysql_metadata_ingested: None,
+) -> None:
+    """FK on transactions.customer_id -> customers.id lands as TableConstraint.
+
+    MySQL doesn't emit lineage edges from FK declarations (see
+    `project-mysql-fk-no-lineage.md`). The connector populates the Table
+    entity's tableConstraints list with constraintType=FOREIGN_KEY.
+    """
+    service = mysql_service_name(session_uuid)
+    transactions_fqn = f"{service}.default.e2e.transactions"
+
+    om_client.table(transactions_fqn).has_foreign_key_constraint(
+        column="customer_id",
+        referenced_table="customers",
+        referenced_column="id",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Service level
 # ---------------------------------------------------------------------------
 
 
 def test_service_entity_counts(
-    cli_runner: CliRunner,
     om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
-    """Service-level smoke: ≥4 tables (3 base + 1 view), ≥1 schema."""
+    """Service-level smoke: >=4 tables (3 base + 1 view), >=1 schema."""
     service = mysql_service_name(session_uuid)
-    registered_services.append(service)
-
-    cli_runner.run(mysql_cfg.as_metadata())
-
     om_client.service(service).exists()
     om_client.service(service).eventually().has_entity_count("tables", at_least=4)
     om_client.service(service).has_entity_count("schemas", at_least=1)
@@ -202,29 +200,23 @@ def test_auto_classification_tags_pii_columns(
     om_client: OmClient,
     mysql_cfg: WorkflowConfig,
     session_uuid: str,
-    registered_services: list[str],
+    mysql_metadata_ingested: None,
 ) -> None:
     """Auto-classification tags PII columns by column name.
 
     Exercises the column-name pattern recognizers (no Presidio NER here, which
-    is value-based and non-deterministic). The exact tag FQNs (PII.Sensitive vs
-    PII.NonSensitive) may need adjustment after Task 25 live run confirms what
-    the pipeline emits for each column-name recognizer.
+    is value-based and non-deterministic). The exact tag FQNs (PII.Sensitive
+    vs PII.NonSensitive) may need adjustment after Task 25 live run confirms
+    what the pipeline emits for each column-name recognizer.
     """
     service = mysql_service_name(session_uuid)
-    registered_services.append(service)
-
-    # Metadata first so columns exist; auto-classification annotates them.
-    cli_runner.run(mysql_cfg.as_metadata())
     status = cli_runner.run(mysql_cfg.as_auto_classification())
     assert status.success, f"auto-classification failures: {status.all_failures}"
 
     customers_fqn = f"{service}.default.e2e.customers"
-    # Sensitive recognizers (per pii/algorithms/tags.py SENSITIVE set)
     om_client.table(customers_fqn).column("email").has_tag("PII.Sensitive")
     om_client.table(customers_fqn).column("ssn").has_tag("PII.Sensitive")
     om_client.table(customers_fqn).column("first_name").has_tag("PII.Sensitive")
-    # Non-sensitive recognizers
     om_client.table(customers_fqn).column("phone").has_tag("PII.NonSensitive")
     om_client.table(customers_fqn).column("address").has_tag("PII.NonSensitive")
     om_client.table(customers_fqn).column("date_of_birth").has_tag("PII.NonSensitive")
@@ -241,7 +233,7 @@ def test_filter_tables_include_exact(
     om_server_config: ServerConfig,
     session_uuid: str,
     registered_services: list[str],
-    mysql_source_ready: None,  # ensure source is ready
+    mysql_source_ready: None,
 ) -> None:
     """tables_include with exact name: only the named table lands in OM."""
     service = mysql_service_name(session_uuid, variant="filter_inc_exact")

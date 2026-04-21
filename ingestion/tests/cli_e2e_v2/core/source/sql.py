@@ -28,12 +28,22 @@ class BaselineColumn:
     sql_type is the native type string (e.g., "BIGINT", "VARCHAR(255)") — we
     don't translate to OM's DataType here; the enforcer compares native types
     verbatim against INFORMATION_SCHEMA output.
+
+    foreign_key: (referenced_table, referenced_column) — same schema assumed.
+    Connector-specific emission path: MySQL lands this on the Table entity's
+    tableConstraints list, not as a lineage edge (see
+    `project-mysql-fk-no-lineage.md`).
+
+    description: column-level comment. MySQL emits `COMMENT 'value'` inline
+    in CREATE TABLE; the connector ingests it into Column.description.
     """
 
     name: str
     sql_type: str
     nullable: bool = True
     primary_key: bool = False
+    foreign_key: tuple[str, str] | None = None
+    description: str | None = None
 
 
 @dataclass
@@ -54,12 +64,17 @@ class Seed:
 
 @dataclass
 class BaselineTable:
-    """A single expected table in the source database."""
+    """A single expected table in the source database.
+
+    description: table-level comment. MySQL emits `COMMENT='value'` as a
+    table option; the connector ingests it into Table.description.
+    """
 
     schema: str
     name: str
     columns: list[BaselineColumn]
     seed: Seed | None = None
+    description: str | None = None
 
 
 @dataclass

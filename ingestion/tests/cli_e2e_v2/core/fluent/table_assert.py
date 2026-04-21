@@ -63,6 +63,63 @@ class TableAssert:
         self._apply_maybe_eventually(_check, name=f"has_owner({name})")
         return self
 
+    def has_description_containing(self, text: str) -> "TableAssert":
+        def _check() -> None:
+            table = self._fetch()
+            desc = table.description.root if table.description else ""
+            if text not in desc:
+                raise AssertionError(
+                    f"Table {self._fqn} description does not contain {text!r}. "
+                    f"Actual: {desc!r}"
+                )
+        self._apply_maybe_eventually(_check, name=f"has_description_containing({text!r})")
+        return self
+
+    def has_foreign_key_constraint(
+        self,
+        column: str,
+        referenced_table: str,
+        referenced_column: str,
+    ) -> "TableAssert":
+        """Assert the table carries a FOREIGN_KEY TableConstraint on `column`
+        pointing at `referenced_table.referenced_column`.
+
+        MySQL connector lands FK data here — not as a lineage edge. Reads
+        Table.tableConstraints; matches constraint_type=FOREIGN_KEY + the
+        column on either side of the reference.
+        """
+        def _check() -> None:
+            table = self._om.get_by_name(
+                entity=Table,
+                fqn=self._fqn,
+                fields=["tableConstraints"],
+            )
+            if table is None:
+                raise AssertionError(f"Table not found: {self._fqn}")
+            constraints = list(table.tableConstraints or [])
+            for c in constraints:
+                if str(c.constraintType) != "FOREIGN_KEY":
+                    continue
+                own_cols = {str(x) for x in (c.columns or [])}
+                if column not in own_cols:
+                    continue
+                for ref in c.referredColumns or []:
+                    ref_str = str(ref.root) if hasattr(ref, "root") else str(ref)
+                    if ref_str.endswith(f".{referenced_table}.{referenced_column}"):
+                        return
+                    if ref_str.endswith(f"{referenced_table}.{referenced_column}"):
+                        return
+            raise AssertionError(
+                f"Table {self._fqn} missing FOREIGN_KEY({column}) -> "
+                f"{referenced_table}({referenced_column}). "
+                f"Constraints present: {constraints!r}"
+            )
+        self._apply_maybe_eventually(
+            _check,
+            name=f"has_foreign_key_constraint({column}->{referenced_table}.{referenced_column})",
+        )
+        return self
+
     def column(self, name: str) -> "ColumnAssert":
         return ColumnAssert(self._om, self._fqn, name)
 

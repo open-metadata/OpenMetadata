@@ -97,12 +97,23 @@ def mysql_expected(
 def _expected_customers() -> ExpectedTable:
     return ExpectedTable(
         name="customers",
+        description="Customer master table",
         columns=[
-            ExpectedColumn("id", DataType.INT, primary_key=True, constraint=Constraint.PRIMARY_KEY),
-            ExpectedColumn("first_name", DataType.VARCHAR, constraint=Constraint.NOT_NULL),
+            ExpectedColumn(
+                "id", DataType.INT, primary_key=True,
+                constraint=Constraint.PRIMARY_KEY,
+                description="Primary key",
+            ),
+            ExpectedColumn(
+                "first_name", DataType.VARCHAR, constraint=Constraint.NOT_NULL,
+                description="first name",
+            ),
             ExpectedColumn("last_name", DataType.VARCHAR, constraint=Constraint.NOT_NULL),
             ExpectedColumn("full_name", DataType.VARCHAR, constraint=Constraint.NOT_NULL),
-            ExpectedColumn("email", DataType.VARCHAR, constraint=Constraint.NOT_NULL),
+            ExpectedColumn(
+                "email", DataType.VARCHAR, constraint=Constraint.NOT_NULL,
+                description="email address",
+            ),
             ExpectedColumn("phone", DataType.VARCHAR),
             ExpectedColumn("ssn", DataType.VARCHAR),
             ExpectedColumn("address", DataType.VARCHAR),
@@ -123,10 +134,17 @@ def _expected_customers() -> ExpectedTable:
 def _expected_transactions() -> ExpectedTable:
     return ExpectedTable(
         name="transactions",
+        description="Customer transaction events",
         columns=[
             ExpectedColumn("id", DataType.BIGINT, primary_key=True, constraint=Constraint.PRIMARY_KEY),
-            ExpectedColumn("customer_id", DataType.INT, constraint=Constraint.NOT_NULL),
-            ExpectedColumn("amount", DataType.DECIMAL, constraint=Constraint.NOT_NULL),
+            ExpectedColumn(
+                "customer_id", DataType.INT, constraint=Constraint.NOT_NULL,
+                description="FK referencing",
+            ),
+            ExpectedColumn(
+                "amount", DataType.DECIMAL, constraint=Constraint.NOT_NULL,
+                description="Transaction amount",
+            ),
             ExpectedColumn("currency", DataType.CHAR, constraint=Constraint.NOT_NULL),
             ExpectedColumn("exchange_rate", DataType.DOUBLE),
             ExpectedColumn("status", DataType.VARCHAR, constraint=Constraint.NOT_NULL),

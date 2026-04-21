@@ -292,16 +292,24 @@ class MySqlEnforcer:
     def _apply_table(self, conn, tbl: BaselineTable) -> None:
         column_defs: list[str] = []
         primary_keys: list[str] = []
+        foreign_keys: list[str] = []
         for col in tbl.columns:
-            null_sql = "NULL" if col.nullable else "NOT NULL"
-            column_defs.append(f"`{col.name}` {col.sql_type} {null_sql}")
+            column_defs.append(self._column_definition(col))
             if col.primary_key:
                 primary_keys.append(f"`{col.name}`")
+            if col.foreign_key is not None:
+                foreign_keys.append(self._foreign_key_clause(tbl.schema, col))
         pk_clause = f", PRIMARY KEY ({', '.join(primary_keys)})" if primary_keys else ""
+        fk_clause = ", " + ", ".join(foreign_keys) if foreign_keys else ""
+        table_comment = (
+            f" COMMENT='{self._escape_comment(tbl.description)}'"
+            if tbl.description
+            else ""
+        )
         conn.execute(
             text(
                 f"CREATE TABLE IF NOT EXISTS {tbl.schema}.{tbl.name} "
-                f"({', '.join(column_defs)}{pk_clause})"
+                f"({', '.join(column_defs)}{pk_clause}{fk_clause}){table_comment}"
             )
         )
         if tbl.seed is not None:
@@ -326,6 +334,28 @@ class MySqlEnforcer:
     def _apply_stored_procedure(conn, sp: BaselineStoredProcedure) -> None:
         conn.execute(text(f"DROP PROCEDURE IF EXISTS {sp.schema}.{sp.name}"))
         conn.execute(text(sp.definition_sql))
+
+    # --- DDL fragment helpers -------------------------------------------
+
+    @staticmethod
+    def _column_definition(col) -> str:
+        null_sql = "NULL" if col.nullable else "NOT NULL"
+        fragment = f"`{col.name}` {col.sql_type} {null_sql}"
+        if col.description:
+            fragment += f" COMMENT '{MySqlEnforcer._escape_comment(col.description)}'"
+        return fragment
+
+    @staticmethod
+    def _foreign_key_clause(schema: str, col) -> str:
+        ref_table, ref_column = col.foreign_key
+        return (
+            f"FOREIGN KEY (`{col.name}`) "
+            f"REFERENCES {schema}.{ref_table}(`{ref_column}`)"
+        )
+
+    @staticmethod
+    def _escape_comment(text_value: str) -> str:
+        return text_value.replace("'", "''")
 
     # --- type normalization ---------------------------------------------
 

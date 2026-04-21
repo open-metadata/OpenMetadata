@@ -14,11 +14,14 @@ across everything the MySQL connector can deterministically ingest:
       nullable columns (bio, phone).
 
   e2e.transactions (10 rows)
-      Exercises: foreign-key table lineage (customer_id → customers.id),
-      profiler numeric stats (amount mean/stddev), profiler datetime
-      (txn_at), CHAR vs VARCHAR distinction (currency CHAR(3),
-      reference_number CHAR(12)), mediumtext (notes), nullable columns.
-      ip_address VARCHAR exercises additional PII recognizers.
+      Exercises: foreign-key TableConstraint via customer_id → customers.id
+      (MySQL FKs don't produce lineage edges — they land on Table's
+      tableConstraints list; see project-mysql-fk-no-lineage.md), profiler
+      numeric stats (amount mean/stddev), profiler datetime (txn_at),
+      CHAR vs VARCHAR distinction (currency CHAR(3), reference_number
+      CHAR(12)), mediumtext (notes), nullable columns. ip_address VARCHAR
+      exercises additional PII recognizers. Table-level + select column
+      comments exercise description ingestion into OM entities.
 
   e2e.all_types (3 rows)
       Exercises: every MySQL type → OM DataType mapping the connector
@@ -40,6 +43,12 @@ Determinism guarantees:
   - ON DUPLICATE KEY UPDATE for idempotent re-apply.
   - Fixed row counts: customers=10, transactions=10, all_types=3.
   - The procedure body is a static SELECT COUNT(*) WHERE status = 'active'.
+
+Schema evolution caveat:
+  The enforcer uses CREATE TABLE IF NOT EXISTS — no ALTER migration path.
+  When schema-shape fields change (columns added/dropped, FK added/removed,
+  comments edited), drop the schema first so apply() re-creates it fresh:
+      DROP SCHEMA IF EXISTS e2e;  # then re-run pytest
 """
 
 from __future__ import annotations
@@ -66,12 +75,22 @@ from .enforcer import MySqlEnforcer
 _CUSTOMERS = BaselineTable(
     schema="e2e",
     name="customers",
+    description="Customer master table used by CLI E2E v2 MySQL pilot.",
     columns=[
-        BaselineColumn("id", "INT", nullable=False, primary_key=True),
-        BaselineColumn("first_name", "VARCHAR(50)", nullable=False),
+        BaselineColumn(
+            "id", "INT", nullable=False, primary_key=True,
+            description="Primary key identifying the customer.",
+        ),
+        BaselineColumn(
+            "first_name", "VARCHAR(50)", nullable=False,
+            description="Customer first name.",
+        ),
         BaselineColumn("last_name", "VARCHAR(50)", nullable=False),
         BaselineColumn("full_name", "VARCHAR(100)", nullable=False),
-        BaselineColumn("email", "VARCHAR(255)", nullable=False),
+        BaselineColumn(
+            "email", "VARCHAR(255)", nullable=False,
+            description="Customer email address.",
+        ),
         BaselineColumn("phone", "VARCHAR(20)", nullable=True),
         BaselineColumn("ssn", "VARCHAR(11)", nullable=True),
         BaselineColumn("address", "VARCHAR(255)", nullable=True),
@@ -146,10 +165,18 @@ _CUSTOMERS = BaselineTable(
 _TRANSACTIONS = BaselineTable(
     schema="e2e",
     name="transactions",
+    description="Customer transaction events with FK to customers.id.",
     columns=[
         BaselineColumn("id", "BIGINT", nullable=False, primary_key=True),
-        BaselineColumn("customer_id", "INT", nullable=False),
-        BaselineColumn("amount", "DECIMAL(10,2)", nullable=False),
+        BaselineColumn(
+            "customer_id", "INT", nullable=False,
+            foreign_key=("customers", "id"),
+            description="FK referencing e2e.customers.id.",
+        ),
+        BaselineColumn(
+            "amount", "DECIMAL(10,2)", nullable=False,
+            description="Transaction amount in the ticker currency.",
+        ),
         BaselineColumn("currency", "CHAR(3)", nullable=False),
         BaselineColumn("exchange_rate", "DOUBLE", nullable=True),
         BaselineColumn("status", "VARCHAR(20)", nullable=False),
