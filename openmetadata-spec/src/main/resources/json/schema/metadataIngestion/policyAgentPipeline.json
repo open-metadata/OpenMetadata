@@ -40,25 +40,40 @@
         },
         "principal": {
           "description": "Grantee identifier. For USER this is typically the email/username; for ROLE the role name.",
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^;'\" ]+$"
         },
         "databaseName": {
           "description": "Database on which the grant is applied.",
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^;'\" ]+$"
         },
         "schemaName": {
           "description": "Schema on which the grant is applied. If omitted, the grant is scoped to the database.",
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^;'\" ]+$"
         },
         "tableName": {
           "description": "Table on which the grant is applied. Requires schemaName.",
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^;'\" ]+$"
         },
         "privilege": {
           "$ref": "#/definitions/privilege"
         }
       },
       "required": ["id", "principal", "databaseName", "privilege"],
+      "dependencies": {
+        "tableName": ["schemaName"]
+      },
       "additionalProperties": false
     }
   },
