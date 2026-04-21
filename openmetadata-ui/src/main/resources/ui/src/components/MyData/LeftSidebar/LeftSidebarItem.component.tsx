@@ -13,12 +13,16 @@
 import { Badge } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta },
+  data: { title, redirect_url, dataTestId, isBeta, betaTag },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
+  const {
+    preferences: { isSidebarCollapsed },
+  } = useCurrentUserPreferences();
 
   return redirect_url ? (
     <NavLink
@@ -29,7 +33,7 @@ const LeftSidebarItem = ({
       }}>
       {t(title)}
 
-      {isBeta && (
+      {(isBeta || (betaTag && isSidebarCollapsed)) && (
         <Badge
           className="service-beta-tag"
           count={t('label.beta')}
