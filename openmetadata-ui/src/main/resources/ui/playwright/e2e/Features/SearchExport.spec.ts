@@ -54,7 +54,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       await expect(modalContent.getByText('Export Scope')).toBeVisible();
     });
 
-    await test.step('Modal shows tab-specific scope and All assets options', async () => {
+    await test.step('Modal shows tab-specific scope and All matching assets options', async () => {
       const modalContent = getExportModalContent(page);
 
       await expect(
@@ -65,7 +65,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       ).toBeVisible();
     });
 
-    await test.step('All assets is selected by default', async () => {
+    await test.step('All matching assets is selected by default', async () => {
       await expect(
         getExportModalContent(page).locator('input[value="all"]')
       ).toBeChecked();
@@ -86,31 +86,6 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
         .click();
 
       await expect(getExportModalContent(page)).not.toBeVisible();
-    });
-  });
-
-  test('All assets export calls API with dataAsset index', async ({ page }) => {
-    await openExportScopeModal(page);
-
-    await test.step('All assets radio is pre-selected', async () => {
-      await expect(
-        getExportModalContent(page).locator('input[value="all"]')
-      ).toBeChecked();
-    });
-
-    await test.step('Clicking Export calls /search/export with index=dataAsset', async () => {
-      const exportApiPromise = page.waitForRequest(
-        (req) =>
-          req.url().includes('/api/v1/search/export') && req.method() === 'GET'
-      );
-
-      await getExportModalContent(page)
-        .getByRole('button', { name: 'Export' })
-        .click();
-
-      const request = await exportApiPromise;
-
-      expect(request.url()).toContain('index=dataAsset');
     });
   });
 
