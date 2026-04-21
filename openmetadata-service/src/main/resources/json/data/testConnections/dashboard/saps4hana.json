@@ -14,7 +14,7 @@
       "name": "GetDashboards",
       "description": "List Fiori apps available in the SAP S/4HANA Fiori app index.",
       "errorMessage": "Failed to fetch Fiori apps. Please validate that the user has access to the Fiori app index.",
-      "mandatory": true
+      "mandatory": false
     },
     {
       "name": "GetDataModels",

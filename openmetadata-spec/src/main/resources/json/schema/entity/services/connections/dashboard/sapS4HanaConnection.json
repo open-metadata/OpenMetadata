@@ -109,9 +109,14 @@
     },
     "verifySSL": {
       "title": "Verify SSL",
-      "description": "Whether to verify the SSL certificate of the SAP S/4HANA instance.",
-      "type": "boolean",
-      "default": true
+      "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "ignore"
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "CA certificate, client certificate, and private key for SSL validation. Required when verifySSL is 'validate'.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "dashboardFilterPattern": {
       "description": "Regex to exclude or include dashboards that matches the pattern.",
