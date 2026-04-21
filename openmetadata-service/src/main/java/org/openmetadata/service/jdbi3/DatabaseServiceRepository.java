@@ -302,6 +302,7 @@ public class DatabaseServiceRepository
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE;
       String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
+      rowEntityType = entityType;
 
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
