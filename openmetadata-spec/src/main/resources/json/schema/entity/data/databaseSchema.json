@@ -147,22 +147,11 @@
       "javaType": "org.openmetadata.schema.type.DatabaseSchemaProfilerConfig",
       "description": "This schema defines the type for Schema profile config.",
       "properties": {
-        "profileSample": {
-          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-          "type": "number",
-          "default": null
-        },
-        "profileSampleType": {
-          "$ref": "./table.json#/definitions/profileSampleType"
-        },
         "sampleDataCount": {
           "description": "Number of row of sample data to be generated",
           "type": "integer",
           "default": 50,
           "title": "Sample Data Rows Count"
-        },
-        "samplingMethodType": {
-          "$ref": "./table.json#/definitions/samplingMethodType"
         },
         "sampleDataStorageConfig": {
           "title": "Storage Config for Sample Data",
@@ -171,7 +160,10 @@
         "randomizedSample": {
           "description": "Whether to randomize the sample data or not.",
           "type": "boolean",
-          "default": false
+          "default": true
+        },
+        "profileSampleConfig": {
+          "$ref": "../../type/samplingConfig.json#/definitions/profileSampleConfig"
         }
       }
     },

@@ -18,7 +18,7 @@ import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';

@@ -62,7 +62,6 @@ export const createAnnouncementViaApi = async (
     data: {
       message,
       about: entityLink,
-      from: 'admin',
       type: 'Announcement',
       announcementDetails: { description, startTime, endTime },
     },
