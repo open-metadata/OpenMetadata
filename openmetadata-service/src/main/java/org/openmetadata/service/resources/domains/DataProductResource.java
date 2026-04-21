@@ -15,6 +15,10 @@ package org.openmetadata.service.resources.domains;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,6 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSDataProduct;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -68,6 +73,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.ODPSConverter;
 
 @Slf4j
 @Path("/v1/dataProducts")
@@ -86,6 +92,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       "domains,owners,reviewers,experts,extension,tags,followers,votes,certification";
   static final String PORT_FIELDS =
       "owners,tags,followers,domains,votes,extension"; // Common fields across all entity types
+  static final String EXPORT_FIELDS =
+      "domains,owners,reviewers,experts,extension,tags,followers,votes,certification,sla";
+
+  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+  private static final ObjectMapper YAML_MAPPER =
+      new ObjectMapper(new YAMLFactory())
+          .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -1464,5 +1477,398 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
             repository.getPortsViewByName(
                 fqn, fieldsParam, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
+  }
+
+  // ---------------------------------------------------------------------------
+  // ODPS (Open Data Product Standard) v4.1 Import/Export APIs
+  // ---------------------------------------------------------------------------
+
+  @GET
+  @Path("/{id}/odps")
+  @Operation(
+      operationId = "exportDataProductToODPS",
+      summary = "Export data product to ODPS v4.1 format",
+      description = "Export a data product to Open Data Product Standard (ODPS) v4.1 JSON format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODPS data product",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ODPSDataProduct.class))),
+        @ApiResponse(responseCode = "404", description = "Data product not found")
+      })
+  public ODPSDataProduct exportToODPS(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    DataProduct dataProduct =
+        getInternal(uriInfo, securityContext, id, EXPORT_FIELDS, Include.NON_DELETED);
+    return ODPSConverter.toODPS(dataProduct);
+  }
+
+  @GET
+  @Path("/{id}/odps/yaml")
+  @Produces({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "exportDataProductToODPSYaml",
+      summary = "Export data product to ODPS v4.1 YAML format",
+      description = "Export a data product to Open Data Product Standard (ODPS) v4.1 YAML format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODPS data product in YAML format",
+            content = @Content(mediaType = "application/yaml")),
+        @ApiResponse(responseCode = "404", description = "Data product not found")
+      })
+  public Response exportToODPSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    DataProduct dataProduct =
+        getInternal(uriInfo, securityContext, id, EXPORT_FIELDS, Include.NON_DELETED);
+    ODPSDataProduct odps = ODPSConverter.toODPS(dataProduct);
+    try {
+      return Response.ok(YAML_MAPPER.writeValueAsString(odps), "application/yaml").build();
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
+    }
+  }
+
+  @GET
+  @Path("/name/{fqn}/odps")
+  @Operation(
+      operationId = "exportDataProductToODPSByFQN",
+      summary = "Export data product to ODPS v4.1 format by FQN",
+      description =
+          "Export a data product to Open Data Product Standard (ODPS) v4.1 JSON format by fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODPS data product",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ODPSDataProduct.class))),
+        @ApiResponse(responseCode = "404", description = "Data product not found")
+      })
+  public ODPSDataProduct exportToODPSByFqn(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the data product",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    DataProduct dataProduct =
+        getByNameInternal(uriInfo, securityContext, fqn, EXPORT_FIELDS, Include.NON_DELETED);
+    return ODPSConverter.toODPS(dataProduct);
+  }
+
+  @GET
+  @Path("/name/{fqn}/odps/yaml")
+  @Produces("application/yaml")
+  @Operation(
+      operationId = "exportDataProductToODPSYamlByFQN",
+      summary = "Export data product to ODPS v4.1 YAML format by FQN",
+      description =
+          "Export a data product to Open Data Product Standard (ODPS) v4.1 YAML format by fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODPS data product in YAML format",
+            content = @Content(mediaType = "application/yaml", schema = @Schema(type = "string"))),
+        @ApiResponse(responseCode = "404", description = "Data product not found")
+      })
+  public Response exportToODPSYamlByFqn(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the data product",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    DataProduct dataProduct =
+        getByNameInternal(uriInfo, securityContext, fqn, EXPORT_FIELDS, Include.NON_DELETED);
+    ODPSDataProduct odps = ODPSConverter.toODPS(dataProduct);
+    try {
+      return Response.ok(YAML_MAPPER.writeValueAsString(odps), "application/yaml").build();
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odps")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "importDataProductFromODPS",
+      summary = "Import data product from ODPS v4.1 JSON",
+      description =
+          "Import a data product from Open Data Product Standard (ODPS) v4.1 JSON format. Creates a new data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The imported data product",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response importFromODPS(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "FQN of a Domain this product belongs to",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domainFqn,
+      @Parameter(
+              description = "ISO 639-1 language code to import (default 'en')",
+              schema = @Schema(type = "string", defaultValue = "en"))
+          @QueryParam("languageCode")
+          String languageCode,
+      String jsonContent) {
+    try {
+      ODPSDataProduct odps = JSON_MAPPER.readValue(jsonContent, ODPSDataProduct.class);
+      DataProduct dataProduct = buildDataProductFromODPS(odps, languageCode, domainFqn);
+      dataProduct.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataProduct.setUpdatedAt(System.currentTimeMillis());
+      return create(uriInfo, securityContext, dataProduct);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODPS JSON content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odps/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "importDataProductFromODPSYaml",
+      summary = "Import data product from ODPS v4.1 YAML",
+      description =
+          "Import a data product from Open Data Product Standard (ODPS) v4.1 YAML format. Creates a new data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The imported data product",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response importFromODPSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "FQN of a Domain this product belongs to",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domainFqn,
+      @Parameter(
+              description = "ISO 639-1 language code to import (default 'en')",
+              schema = @Schema(type = "string", defaultValue = "en"))
+          @QueryParam("languageCode")
+          String languageCode,
+      String yamlContent) {
+    try {
+      ODPSDataProduct odps = YAML_MAPPER.readValue(yamlContent, ODPSDataProduct.class);
+      DataProduct dataProduct = buildDataProductFromODPS(odps, languageCode, domainFqn);
+      dataProduct.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataProduct.setUpdatedAt(System.currentTimeMillis());
+      return create(uriInfo, securityContext, dataProduct);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODPS YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @PUT
+  @Path("/odps")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "createOrUpdateDataProductFromODPS",
+      summary = "Create or smart-merge a data product from ODPS v4.1 JSON",
+      description =
+          "Create a data product if it doesn't exist, or smart-merge an ODPS v4.1 document into an existing data product. Governance-workflow-driven fields (lifecycleStage, entityStatus) are preserved from the existing product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The created or merged data product",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdateFromODPS(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "FQN of a Domain this product belongs to",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domainFqn,
+      @Parameter(
+              description = "Merge strategy (merge|replace)",
+              schema = @Schema(type = "string", defaultValue = "merge"))
+          @QueryParam("strategy")
+          @DefaultValue("merge")
+          String strategy,
+      @Parameter(
+              description = "ISO 639-1 language code to import (default 'en')",
+              schema = @Schema(type = "string", defaultValue = "en"))
+          @QueryParam("languageCode")
+          String languageCode,
+      String jsonContent) {
+    try {
+      ODPSDataProduct odps = JSON_MAPPER.readValue(jsonContent, ODPSDataProduct.class);
+      return mergeOrCreateDataProductFromODPS(
+          uriInfo, securityContext, odps, languageCode, domainFqn, strategy);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODPS JSON content: " + e.getMessage(), e);
+    }
+  }
+
+  @PUT
+  @Path("/odps/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "createOrUpdateDataProductFromODPSYaml",
+      summary = "Create or smart-merge a data product from ODPS v4.1 YAML",
+      description =
+          "Create a data product if it doesn't exist, or smart-merge an ODPS v4.1 YAML document into an existing data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The created or merged data product",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdateFromODPSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "FQN of a Domain this product belongs to",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domainFqn,
+      @Parameter(
+              description = "Merge strategy (merge|replace)",
+              schema = @Schema(type = "string", defaultValue = "merge"))
+          @QueryParam("strategy")
+          @DefaultValue("merge")
+          String strategy,
+      @Parameter(
+              description = "ISO 639-1 language code to import (default 'en')",
+              schema = @Schema(type = "string", defaultValue = "en"))
+          @QueryParam("languageCode")
+          String languageCode,
+      String yamlContent) {
+    try {
+      ODPSDataProduct odps = YAML_MAPPER.readValue(yamlContent, ODPSDataProduct.class);
+      return mergeOrCreateDataProductFromODPS(
+          uriInfo, securityContext, odps, languageCode, domainFqn, strategy);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODPS YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odps/validate/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "validateDataProductODPSYaml",
+      summary = "Validate an ODPS v4.1 YAML document without importing",
+      description =
+          "Parse an ODPS v4.1 YAML document and validate its required fields without creating or modifying any data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "400", description = "Validation failed")
+      })
+  public Response validateODPSYaml(String yamlContent) {
+    try {
+      ODPSDataProduct odps = YAML_MAPPER.readValue(yamlContent, ODPSDataProduct.class);
+      ODPSConverter.validateRequiredODPSFields(odps);
+      JsonNode summary = summarizeODPS(odps);
+      return Response.ok(summary).build();
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODPS YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ODPS helper methods
+  // ---------------------------------------------------------------------------
+
+  private DataProduct buildDataProductFromODPS(
+      ODPSDataProduct odps, String languageCode, String domainFqn) {
+    DataProduct dp = ODPSConverter.fromODPS(odps, languageCode);
+    if (domainFqn != null && !domainFqn.isBlank()) {
+      dp.setDomains(
+          java.util.List.of(
+              new EntityReference().withFullyQualifiedName(domainFqn).withType(Entity.DOMAIN)));
+    }
+    return dp;
+  }
+
+  private Response mergeOrCreateDataProductFromODPS(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      ODPSDataProduct odps,
+      String languageCode,
+      String domainFqn,
+      String strategy) {
+    DataProduct imported = buildDataProductFromODPS(odps, languageCode, domainFqn);
+    DataProduct existing = findExistingByName(imported.getName());
+    DataProduct finalProduct;
+    if (existing == null) {
+      finalProduct = imported;
+    } else if ("replace".equalsIgnoreCase(strategy)) {
+      finalProduct = ODPSConverter.fullReplace(existing, imported);
+    } else {
+      finalProduct = ODPSConverter.smartMerge(existing, imported);
+    }
+    finalProduct.setUpdatedBy(securityContext.getUserPrincipal().getName());
+    finalProduct.setUpdatedAt(System.currentTimeMillis());
+    if (existing == null) {
+      return create(uriInfo, securityContext, finalProduct);
+    }
+    return createOrUpdate(uriInfo, securityContext, finalProduct);
+  }
+
+  private DataProduct findExistingByName(String name) {
+    if (nullOrEmpty(name)) return null;
+    try {
+      return repository.getByName(null, name, repository.getFields("id,name,version"));
+    } catch (EntityNotFoundException ignored) {
+      return null;
+    }
+  }
+
+  private JsonNode summarizeODPS(ODPSDataProduct odps) {
+    com.fasterxml.jackson.databind.node.ObjectNode summary = JSON_MAPPER.createObjectNode();
+    summary.put("valid", true);
+    summary.put("version", odps.getVersion() != null ? odps.getVersion().value() : null);
+    if (odps.getProduct() != null
+        && odps.getProduct().getDetails() != null
+        && odps.getProduct().getDetails().getAdditionalProperties() != null) {
+      summary.put(
+          "languages",
+          odps.getProduct().getDetails().getAdditionalProperties().keySet().toString());
+    }
+    return summary;
   }
 }

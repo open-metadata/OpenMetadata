@@ -62,6 +62,7 @@ import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
+import IntakeFormsPage from '../../pages/IntakeForms/IntakeFormsPage';
 import WorkflowBuilderPage from '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder';
 import WorkflowsListPage from '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -706,6 +707,17 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.WORKFLOW_DEFINITIONS,
           true
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <IntakeFormsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.INTAKE_FORMS
         )}
       />
     </Routes>

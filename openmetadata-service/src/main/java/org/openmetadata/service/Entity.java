@@ -262,6 +262,7 @@ public final class Entity {
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
   public static final String DATA_CONTRACT_RESULT = "dataContractResult";
+  public static final String INTAKE_FORM = "intakeForm";
 
   //
   // Other entities

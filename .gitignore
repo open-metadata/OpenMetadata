@@ -161,6 +161,7 @@ ingestion/.nox/
 _bmad/
 
 # Claude Flow generated files
+.claude/*
 .claude/settings.local.json
 .mcp.json
 claude-flow.config.json

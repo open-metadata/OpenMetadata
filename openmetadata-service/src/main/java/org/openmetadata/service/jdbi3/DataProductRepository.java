@@ -86,6 +86,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -151,6 +152,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void prepare(DataProduct entity, boolean update) {
     // Parent, Experts, Owner, Assets are already validated
+    IntakeFormValidator.validate(entity, Entity.DATA_PRODUCT);
   }
 
   @Override

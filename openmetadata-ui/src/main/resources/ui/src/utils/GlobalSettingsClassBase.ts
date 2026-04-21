@@ -949,6 +949,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
             icon: WorkflowsSettingsIcon,
           },
+          {
+            label: t('label.intake-form-plural'),
+            description: t('message.intake-form-plural-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.INTAKE_FORMS}`,
+            icon: GovernanceIcon,
+          },
         ],
       },
     ];

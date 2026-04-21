@@ -4202,11 +4202,74 @@ public abstract class EntityRepository<T extends EntityInterface> {
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
         case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
+        case "entityReference" -> validateEntityReference(fieldValue, fieldName);
+        case "entityReferenceList" -> validateEntityReferenceList(fieldValue, fieldName);
         default -> {}
       }
     }
 
     return JsonUtils.treeToValue(jsonNode, Object.class);
+  }
+
+  private static void validateEntityReference(JsonNode fieldValue, String fieldName) {
+    if (fieldValue == null || fieldValue.isNull()) {
+      return;
+    }
+    if (!fieldValue.isObject()) {
+      throw new IllegalArgumentException(
+          "Custom property '" + fieldName + "' must be an object with 'id' and 'type'");
+    }
+    resolveCustomPropertyReference(fieldValue, fieldName);
+  }
+
+  private static void validateEntityReferenceList(JsonNode fieldValue, String fieldName) {
+    if (fieldValue == null || fieldValue.isNull()) {
+      return;
+    }
+    if (!fieldValue.isArray()) {
+      throw new IllegalArgumentException(
+          "Custom property '" + fieldName + "' must be an array of entity references");
+    }
+    for (JsonNode ref : fieldValue) {
+      resolveCustomPropertyReference(ref, fieldName);
+    }
+  }
+
+  /**
+   * Resolve a single entity reference on a custom property field and confirm the referenced
+   * entity exists. Throws IllegalArgumentException with a clear message if the reference is
+   * malformed or the target entity cannot be found.
+   */
+  private static void resolveCustomPropertyReference(JsonNode ref, String fieldName) {
+    if (ref == null || ref.isNull()) {
+      return;
+    }
+    JsonNode idNode = ref.get("id");
+    JsonNode typeNode = ref.get("type");
+    if (idNode == null || typeNode == null) {
+      throw new IllegalArgumentException(
+          "Custom property '" + fieldName + "' reference requires both 'id' and 'type'");
+    }
+    String type = typeNode.asText();
+    UUID id;
+    try {
+      id = UUID.fromString(idNode.asText());
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Custom property '" + fieldName + "' reference has an invalid id: " + idNode.asText());
+    }
+    try {
+      Entity.getEntityReferenceById(type, id, Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException(
+          "Custom property '"
+              + fieldName
+              + "' references "
+              + type
+              + " with id "
+              + id
+              + " that does not exist");
+    }
   }
 
   private void validateExtension(T entity, boolean update) {
