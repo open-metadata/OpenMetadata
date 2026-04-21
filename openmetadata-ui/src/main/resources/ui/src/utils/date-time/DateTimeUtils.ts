@@ -14,11 +14,11 @@ import cronstrue from 'cronstrue';
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import {
-  DAY_SECONDS,
-  HOUR_SECONDS,
-  MINUTE_SECONDS,
-  MONTH_SECONDS,
-  YEAR_SECONDS,
+    DAY_SECONDS,
+    HOUR_SECONDS,
+    MINUTE_SECONDS,
+    MONTH_SECONDS,
+    YEAR_SECONDS
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
