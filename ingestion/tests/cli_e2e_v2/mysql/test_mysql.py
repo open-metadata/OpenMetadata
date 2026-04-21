@@ -106,10 +106,10 @@ def test_profiler_row_counts(
 
     om_client.table(
         f"{service}.default.e2e.customers"
-    ).profile.eventually().row_count().equals(10)
+    ).profile.eventually().row_count().equals(5)
     om_client.table(
         f"{service}.default.e2e.transactions"
-    ).profile.eventually().row_count().equals(10)
+    ).profile.eventually().row_count().equals(5)
     om_client.table(
         f"{service}.default.e2e.all_types"
     ).profile.eventually().row_count().equals(3)

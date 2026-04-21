@@ -1,87 +1,56 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""SQL-family baseline spec dataclasses.
+"""SQL-family baseline types.
 
-Declarative description of the expected source state for any SQL-based connector
-(MySQL, Postgres, Snowflake, etc.). Each per-connector baseline module (e.g.
-`tests/cli_e2e_v2/mysql/baseline.py`) constructs a SqlSourceBaseline instance
-and hands it to the enforcer.
-
-Seed rows are deterministic: `expected_row_count` is the gate (cheap SELECT
-COUNT), `sql` is the idempotent INSERT used only when drift is detected and
-policy.mode="apply". Cloud sources stay check-only, so `sql` never runs there
-— the operator CLI is the escape path.
+`SqlSourceBaseline` carries a SQLAlchemy `MetaData` (tables + columns + FKs +
+comments) plus companion data for things Core doesn't model: seed rows,
+view definitions, stored procedures. DDL is emitted by
+`metadata.create_all(conn)` in the enforcer; seed INSERTs are dialect-specific
+(the `TableSeed.insert_sql` template is supplied by each connector's
+baseline).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
+
+from sqlalchemy import MetaData
 
 from .types import BaselineSpec
 
 
 @dataclass(frozen=True)
-class BaselineColumn:
-    """A single column's declared shape in the source database.
-
-    sql_type is the native type string (e.g., "BIGINT", "VARCHAR(255)") — we
-    don't translate to OM's DataType here; the enforcer compares native types
-    verbatim against INFORMATION_SCHEMA output.
-
-    foreign_key: (referenced_table, referenced_column) — same schema assumed.
-    Connector-specific emission path: MySQL lands this on the Table entity's
-    tableConstraints list, not as a lineage edge (see
-    `project-mysql-fk-no-lineage.md`).
-
-    description: column-level comment. MySQL emits `COMMENT 'value'` inline
-    in CREATE TABLE; the connector ingests it into Column.description.
-    """
-
-    name: str
-    sql_type: str
-    nullable: bool = True
-    primary_key: bool = False
-    foreign_key: tuple[str, str] | None = None
-    description: str | None = None
-
-
-@dataclass(frozen=True)
-class Seed:
+class TableSeed:
     """Deterministic seed rows for a baseline table.
 
-    `sql` must be idempotent — ON DUPLICATE KEY UPDATE (MySQL) or ON CONFLICT
-    DO UPDATE (Postgres) so apply() can run it repeatedly without failing.
+    `rows` is portable data (list of dicts). `insert_sql` is a
+    dialect-specific template with `:key` placeholders that SQLAlchemy binds
+    against each row via executemany — this is where idempotent upsert
+    clauses live (MySQL `ON DUPLICATE KEY UPDATE`, Postgres `ON CONFLICT DO
+    UPDATE`, etc.). The base enforcer runs `insert_sql` against `rows`
+    without knowing the dialect.
 
-    `expected_row_count` is the read-only gate: drift is detected when
-    SELECT COUNT(*) != expected_row_count. Keep seeds small (5-50 rows)
-    for snappy COUNT checks.
+    `expected_row_count` is derived — `len(rows)` — so the seed spec has
+    one source of truth.
     """
 
-    sql: str
-    expected_row_count: int
+    table_name: str
+    rows: list[dict[str, Any]]
+    insert_sql: str
+
+    @property
+    def expected_row_count(self) -> int:
+        return len(self.rows)
 
 
 @dataclass(frozen=True)
-class BaselineTable:
-    """A single expected table in the source database.
+class ViewDefinition:
+    """A single expected view.
 
-    description: table-level comment. MySQL emits `COMMENT='value'` as a
-    table option; the connector ingests it into Table.description.
-    """
-
-    schema: str
-    name: str
-    columns: list[BaselineColumn]
-    seed: Seed | None = None
-    description: str | None = None
-
-
-@dataclass(frozen=True)
-class BaselineView:
-    """A single expected view in the source database.
-
-    definition_sql must be idempotent (CREATE OR REPLACE VIEW ...).
+    `definition_sql` is executed verbatim at apply time — baselines supply a
+    CREATE OR REPLACE VIEW (or dialect equivalent) statement.
     """
 
     schema: str
@@ -90,15 +59,13 @@ class BaselineView:
 
 
 @dataclass(frozen=True)
-class BaselineStoredProcedure:
-    """A single expected stored procedure in the source database.
+class StoredProcedureDefinition:
+    """A single expected stored procedure.
 
-    MySQL has no CREATE OR REPLACE PROCEDURE; the enforcer handles this by
-    issuing DROP PROCEDURE IF EXISTS before each CREATE in apply().
-
-    definition_sql is sent verbatim to the server. MySQL's DELIMITER is a
-    CLI-only convenience — via PyMySQL the whole CREATE PROCEDURE statement
-    is one string and MySQL's server-side parser handles the procedure body.
+    Dialect-specific: MySQL drops + creates (no CREATE OR REPLACE PROCEDURE);
+    Postgres uses CREATE OR REPLACE PROCEDURE. The enforcer subclass owns
+    the dialect DDL; `definition_sql` carries the body as supplied by the
+    baseline.
     """
 
     schema: str
@@ -110,12 +77,13 @@ class BaselineStoredProcedure:
 class SqlSourceBaseline(BaselineSpec):
     """Top-level declarative spec for a SQL-based source.
 
-    Lists the schemas, tables (with optional seed data), and views that must
-    exist before ingestion tests run. The enforcer's introspect() and apply()
-    methods use this to drive diffs and DDL statements respectively.
+    `metadata` holds the table DDL via SQLAlchemy Core — one source of truth
+    for column types, nullability, primary keys, foreign keys, and comments.
+    Seeds / views / stored procedures live alongside as companion data.
     """
 
     schemas: list[str]
-    tables: list[BaselineTable]
-    views: list[BaselineView] = field(default_factory=list)
-    stored_procedures: list[BaselineStoredProcedure] = field(default_factory=list)
+    metadata: MetaData
+    seeds: list[TableSeed] = field(default_factory=list)
+    views: list[ViewDefinition] = field(default_factory=list)
+    stored_procedures: list[StoredProcedureDefinition] = field(default_factory=list)

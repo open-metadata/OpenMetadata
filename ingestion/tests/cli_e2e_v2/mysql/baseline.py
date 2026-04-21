@@ -1,18 +1,21 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""MySQL source baseline — three tables + one view + one stored procedure.
+"""MySQL source baseline — common portable tables + MySQL-specific all_types.
 
-Breadth-first coverage of the MySQL connector's deterministic surface.
-Per-entity rationale (PII recognizers, type mappings, FK constraint, view
-lineage, SP ingest) lives in each entity's inline construction below.
-
-Determinism:
-  - Seed SQL uses explicit literals; ON DUPLICATE KEY UPDATE for idempotency.
-  - Fixed row counts (customers=10, transactions=10, all_types=3).
+Structure:
+  - Portable tables (customers, transactions) + their seed rows come from
+    `core/source/common_baseline.py`.
+  - MySQL adds a dialect-specific `all_types` table exercising every native
+    type the connector maps (TINYINT / MEDIUMINT / TEXT variants / blobs /
+    BIT / ENUM / SET etc.). Seed is trivial — id=1..3 with everything else
+    NULL; tests only assert on row count + type mappings.
+  - INSERT templates carry MySQL's `ON DUPLICATE KEY UPDATE` idempotency;
+    the base enforcer binds them against common row data via executemany.
+  - One view + one stored procedure for lineage and SP-ingestion coverage.
 
 Schema evolution caveat:
-  Enforcer uses CREATE TABLE IF NOT EXISTS — no ALTER migration path.
+  metadata.create_all uses CREATE TABLE IF NOT EXISTS — no ALTER migration.
   When baseline shape changes (column add/drop, FK, comments), drop first:
       DROP SCHEMA IF EXISTS e2e;
 """
@@ -20,273 +23,140 @@ Schema evolution caveat:
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    MetaData,
+    Numeric,
+    SmallInteger,
+    Table,
+    Time,
+)
+from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import URL
 
 from ..core.config.env import Env
+from ..core.source.common_baseline import (
+    COMMON_CUSTOMER_ROWS,
+    COMMON_TRANSACTION_ROWS,
+    build_common_metadata,
+)
 from ..core.source.orchestrator import EnforcementPolicy
 from ..core.source.sql import (
-    BaselineColumn,
-    BaselineStoredProcedure,
-    BaselineTable,
-    BaselineView,
-    Seed,
     SqlSourceBaseline,
+    StoredProcedureDefinition,
+    TableSeed,
+    ViewDefinition,
 )
 from .enforcer import MySqlEnforcer
 
 
 # -----------------------------------------------------------------------------
-# customers — PII + DQ + profiler coverage (10 rows)
+# all_types — MySQL-specific native types (exercises connector type mapping)
 # -----------------------------------------------------------------------------
 
-_CUSTOMERS = BaselineTable(
-    schema="e2e",
-    name="customers",
-    description="Customer master table used by CLI E2E v2 MySQL pilot.",
-    columns=[
-        BaselineColumn(
-            "id", "INT", nullable=False, primary_key=True,
-            description="Primary key identifying the customer.",
-        ),
-        BaselineColumn(
-            "first_name", "VARCHAR(50)", nullable=False,
-            description="Customer first name.",
-        ),
-        BaselineColumn("last_name", "VARCHAR(50)", nullable=False),
-        BaselineColumn("full_name", "VARCHAR(100)", nullable=False),
-        BaselineColumn(
-            "email", "VARCHAR(255)", nullable=False,
-            description="Customer email address.",
-        ),
-        BaselineColumn("phone", "VARCHAR(20)", nullable=True),
-        BaselineColumn("ssn", "VARCHAR(11)", nullable=True),
-        BaselineColumn("address", "VARCHAR(255)", nullable=True),
-        BaselineColumn("city", "VARCHAR(100)", nullable=True),
-        BaselineColumn("country", "VARCHAR(100)", nullable=True),
-        BaselineColumn("zipcode", "VARCHAR(20)", nullable=True),
-        BaselineColumn("date_of_birth", "DATE", nullable=True),
-        BaselineColumn("age", "INT", nullable=True),
-        BaselineColumn("credit_score", "INT", nullable=True),
-        BaselineColumn("status", "VARCHAR(20)", nullable=False),
-        BaselineColumn("is_active", "TINYINT", nullable=False),
-        BaselineColumn("bio", "TEXT", nullable=True),
-        BaselineColumn("joined_date", "DATE", nullable=False),
-    ],
-    seed=Seed(
-        sql="""
-            INSERT INTO e2e.customers (
-                id, first_name, last_name, full_name, email, phone, ssn,
-                address, city, country, zipcode, date_of_birth, age,
-                credit_score, status, is_active, bio, joined_date
-            ) VALUES
-                (1,  'Alice',   'Anderson',  'Alice Anderson',   'alice@test.com',   '555-0101', '111-11-1111',
-                     '100 Main St',  'Springfield',  'USA',  '11111', '1990-01-15', 36, 720, 'active',   1,
-                     'Loyal customer since 2026.',       '2026-01-01'),
-                (2,  'Bob',     'Brown',     'Bob Brown',        'bob@test.com',     '555-0102', '222-22-2222',
-                     '200 Oak Ave',  'Portland',     'USA',  '22222', '1985-03-20', 41, 680, 'active',   1,
-                     NULL,                               '2026-01-02'),
-                (3,  'Charlie', 'Chen',      'Charlie Chen',     'charlie@test.com', NULL,       '333-33-3333',
-                     '300 Pine Rd',  'Seattle',      'USA',  '33333', '1992-06-10', 34, 650, 'inactive', 0,
-                     'Churned in Q2 2026.',              '2026-01-03'),
-                (4,  'Diana',   'Davis',     'Diana Davis',      'diana@test.com',   '555-0104', '444-44-4444',
-                     '400 Elm St',   'Austin',       'USA',  '44444', '1988-11-02', 38, 750, 'active',   1,
-                     'High-value account.',              '2026-01-04'),
-                (5,  'Eve',     'Evans',     'Eve Evans',        'eve@test.com',     '555-0105', NULL,
-                     '500 Birch Ln', 'Denver',       'USA',  '55555', '2000-05-25', 26, 600, 'pending',  1,
-                     NULL,                               '2026-01-05'),
-                (6,  'Frank',   'Foster',    'Frank Foster',     'frank@test.com',   '555-0106', '666-66-6666',
-                     '600 Cedar Ct', 'Chicago',      'USA',  '66666', '1975-09-14', 51, 800, 'active',   1,
-                     'Long-term account holder.',        '2026-01-06'),
-                (7,  'Grace',   'Garcia',    'Grace Garcia',     'grace@test.com',   NULL,       '777-77-7777',
-                     NULL,            'Miami',        'USA',  '77777', '1995-04-30', 31, 700, 'active',   1,
-                     NULL,                               '2026-01-07'),
-                (8,  'Henry',   'Harris',    'Henry Harris',     'henry@test.com',   '555-0108', NULL,
-                     '800 Spruce Dr','Boston',       'USA',  '88888', '1982-07-08', 44, 720, 'inactive', 0,
-                     'Requested deactivation.',          '2026-01-08'),
-                (9,  'Iris',    'Ibrahim',   'Iris Ibrahim',     'iris@test.com',    '555-0109', '999-99-9999',
-                     '900 Maple Way','Phoenix',      'USA',  '99999', '1998-12-22', 28, 690, 'pending',  1,
-                     NULL,                               '2026-01-09'),
-                (10, 'Jack',    'Johnson',   'Jack Johnson',     'jack@test.com',    '555-0110', '101-01-0101',
-                     '1000 Ash Rd',  'Dallas',       'USA',  '10101', '1970-02-28', 56, 780, 'active',   1,
-                     'Founding customer.',               '2026-01-10')
-            ON DUPLICATE KEY UPDATE
-                first_name = VALUES(first_name), last_name = VALUES(last_name),
-                full_name = VALUES(full_name), email = VALUES(email),
-                phone = VALUES(phone), ssn = VALUES(ssn),
-                address = VALUES(address), city = VALUES(city),
-                country = VALUES(country), zipcode = VALUES(zipcode),
-                date_of_birth = VALUES(date_of_birth), age = VALUES(age),
-                credit_score = VALUES(credit_score), status = VALUES(status),
-                is_active = VALUES(is_active), bio = VALUES(bio),
-                joined_date = VALUES(joined_date);
-        """,
-        expected_row_count=10,
-    ),
-)
+
+def _declare_all_types(md: MetaData) -> Table:
+    return Table(
+        "all_types",
+        md,
+        Column("id", Integer, primary_key=True, nullable=False),
+        Column("tiny_int_col", mysql.TINYINT, nullable=True),
+        Column("small_int_col", SmallInteger, nullable=True),
+        Column("medium_int_col", mysql.MEDIUMINT, nullable=True),
+        Column("int_col", Integer, nullable=True),
+        Column("big_int_col", BigInteger, nullable=True),
+        Column("float_col", Float, nullable=True),
+        Column("double_col", mysql.DOUBLE, nullable=True),
+        Column("decimal_col", Numeric(10, 2), nullable=True),
+        Column("char_col", mysql.CHAR(10), nullable=True),
+        Column("varchar_col", mysql.VARCHAR(255), nullable=True),
+        Column("tinytext_col", mysql.TINYTEXT, nullable=True),
+        Column("text_col", mysql.TEXT, nullable=True),
+        Column("mediumtext_col", mysql.MEDIUMTEXT, nullable=True),
+        Column("longtext_col", mysql.LONGTEXT, nullable=True),
+        Column("binary_col", mysql.BINARY(16), nullable=True),
+        Column("varbinary_col", mysql.VARBINARY(255), nullable=True),
+        Column("tinyblob_col", mysql.TINYBLOB, nullable=True),
+        Column("blob_col", mysql.BLOB, nullable=True),
+        Column("mediumblob_col", mysql.MEDIUMBLOB, nullable=True),
+        Column("longblob_col", mysql.LONGBLOB, nullable=True),
+        Column("date_col", Date, nullable=True),
+        Column("time_col", Time, nullable=True),
+        Column("datetime_col", DateTime, nullable=True),
+        Column("timestamp_col", mysql.TIMESTAMP, nullable=True),
+        Column("year_col", mysql.YEAR, nullable=True),
+        Column("bit_col", mysql.BIT(8), nullable=True),
+        Column("json_col", mysql.JSON, nullable=True),
+        Column("enum_col", mysql.ENUM("alpha", "beta", "gamma"), nullable=True),
+        Column("set_col", mysql.SET("x", "y", "z"), nullable=True),
+    )
+
+
+# all_types seed — one row per id, NULL elsewhere. Tests assert row count
+# and column type mappings, not cell content, so this is sufficient.
+_ALL_TYPES_ROWS: list[dict[str, Any]] = [{"id": 1}, {"id": 2}, {"id": 3}]
 
 
 # -----------------------------------------------------------------------------
-# transactions — FK lineage + numeric profiler + CHAR/DATETIME coverage (10 rows)
+# Dialect-specific INSERT templates (MySQL `ON DUPLICATE KEY UPDATE` idempotency)
 # -----------------------------------------------------------------------------
 
-_TRANSACTIONS = BaselineTable(
-    schema="e2e",
-    name="transactions",
-    description="Customer transaction events with FK to customers.id.",
-    columns=[
-        BaselineColumn("id", "BIGINT", nullable=False, primary_key=True),
-        BaselineColumn(
-            "customer_id", "INT", nullable=False,
-            foreign_key=("customers", "id"),
-            description="FK referencing e2e.customers.id.",
-        ),
-        BaselineColumn(
-            "amount", "DECIMAL(10,2)", nullable=False,
-            description="Transaction amount in the ticker currency.",
-        ),
-        BaselineColumn("currency", "CHAR(3)", nullable=False),
-        BaselineColumn("exchange_rate", "DOUBLE", nullable=True),
-        BaselineColumn("status", "VARCHAR(20)", nullable=False),
-        BaselineColumn("txn_at", "DATETIME", nullable=False),
-        BaselineColumn("reference_number", "CHAR(12)", nullable=False),
-        BaselineColumn("ip_address", "VARCHAR(45)", nullable=True),
-        BaselineColumn("notes", "MEDIUMTEXT", nullable=True),
-    ],
-    seed=Seed(
-        sql="""
-            INSERT INTO e2e.transactions (
-                id, customer_id, amount, currency, exchange_rate, status,
-                txn_at, reference_number, ip_address, notes
-            ) VALUES
-                (1,  1,  125.50,  'USD', 1.0000,  'completed', '2026-02-01 09:15:00', 'TXN000000001', '10.0.0.1',   'Monthly subscription renewal.'),
-                (2,  1,   49.99,  'USD', 1.0000,  'completed', '2026-02-05 14:30:00', 'TXN000000002', '10.0.0.1',   NULL),
-                (3,  2,  250.00,  'USD', 1.0000,  'completed', '2026-02-10 11:20:00', 'TXN000000003', '10.0.0.2',   'Premium upgrade.'),
-                (4,  3,   19.99,  'USD', 1.0000,  'refunded',  '2026-02-12 16:45:00', 'TXN000000004', '10.0.0.3',   'Customer requested refund.'),
-                (5,  4,  999.00,  'USD', 1.0000,  'completed', '2026-02-15 08:00:00', 'TXN000000005', '10.0.0.4',   'Enterprise tier annual.'),
-                (6,  4,  125.50,  'EUR', 1.0850,  'completed', '2026-02-18 13:10:00', 'TXN000000006', '10.0.0.4',   NULL),
-                (7,  6,   75.25,  'USD', 1.0000,  'completed', '2026-02-20 10:05:00', 'TXN000000007', '10.0.0.6',   NULL),
-                (8,  7,  300.00,  'USD', 1.0000,  'pending',   '2026-02-22 15:30:00', 'TXN000000008', '10.0.0.7',   'Awaiting confirmation.'),
-                (9,  10, 180.00,  'GBP', 0.7900,  'completed', '2026-02-25 12:00:00', 'TXN000000009', '10.0.0.10',  'GB wire transfer.'),
-                (10, 10,  45.00,  'USD', 1.0000,  'failed',    '2026-02-28 17:25:00', 'TXN000000010', '10.0.0.10',  'Insufficient funds.')
-            ON DUPLICATE KEY UPDATE
-                customer_id = VALUES(customer_id), amount = VALUES(amount),
-                currency = VALUES(currency), exchange_rate = VALUES(exchange_rate),
-                status = VALUES(status), txn_at = VALUES(txn_at),
-                reference_number = VALUES(reference_number),
-                ip_address = VALUES(ip_address), notes = VALUES(notes);
-        """,
-        expected_row_count=10,
-    ),
-)
+
+_MYSQL_CUSTOMERS_INSERT = """
+INSERT INTO e2e.customers
+    (id, first_name, last_name, full_name, email, phone, ssn,
+     address, city, country, zipcode, date_of_birth, age,
+     credit_score, status, is_active, bio, joined_date)
+VALUES
+    (:id, :first_name, :last_name, :full_name, :email, :phone, :ssn,
+     :address, :city, :country, :zipcode, :date_of_birth, :age,
+     :credit_score, :status, :is_active, :bio, :joined_date)
+ON DUPLICATE KEY UPDATE
+    first_name = VALUES(first_name), last_name = VALUES(last_name),
+    full_name = VALUES(full_name), email = VALUES(email),
+    phone = VALUES(phone), ssn = VALUES(ssn),
+    address = VALUES(address), city = VALUES(city),
+    country = VALUES(country), zipcode = VALUES(zipcode),
+    date_of_birth = VALUES(date_of_birth), age = VALUES(age),
+    credit_score = VALUES(credit_score), status = VALUES(status),
+    is_active = VALUES(is_active), bio = VALUES(bio),
+    joined_date = VALUES(joined_date)
+"""
+
+_MYSQL_TRANSACTIONS_INSERT = """
+INSERT INTO e2e.transactions
+    (id, customer_id, amount, currency, exchange_rate, status,
+     txn_at, reference_number, ip_address, notes)
+VALUES
+    (:id, :customer_id, :amount, :currency, :exchange_rate, :status,
+     :txn_at, :reference_number, :ip_address, :notes)
+ON DUPLICATE KEY UPDATE
+    customer_id = VALUES(customer_id), amount = VALUES(amount),
+    currency = VALUES(currency), exchange_rate = VALUES(exchange_rate),
+    status = VALUES(status), txn_at = VALUES(txn_at),
+    reference_number = VALUES(reference_number),
+    ip_address = VALUES(ip_address), notes = VALUES(notes)
+"""
+
+_MYSQL_ALL_TYPES_INSERT = """
+INSERT INTO e2e.all_types (id) VALUES (:id)
+ON DUPLICATE KEY UPDATE id = VALUES(id)
+"""
 
 
 # -----------------------------------------------------------------------------
-# all_types — every MySQL native type the connector maps (3 rows)
+# View + stored procedure (dialect-specific DDL)
 # -----------------------------------------------------------------------------
 
-_ALL_TYPES = BaselineTable(
-    schema="e2e",
-    name="all_types",
-    columns=[
-        BaselineColumn("id", "INT", nullable=False, primary_key=True),
-        # integer variants
-        BaselineColumn("tiny_int_col", "TINYINT", nullable=True),
-        BaselineColumn("small_int_col", "SMALLINT", nullable=True),
-        BaselineColumn("medium_int_col", "MEDIUMINT", nullable=True),
-        BaselineColumn("int_col", "INT", nullable=True),
-        BaselineColumn("big_int_col", "BIGINT", nullable=True),
-        # floating
-        BaselineColumn("float_col", "FLOAT", nullable=True),
-        BaselineColumn("double_col", "DOUBLE", nullable=True),
-        BaselineColumn("decimal_col", "DECIMAL(10,2)", nullable=True),
-        # string
-        BaselineColumn("char_col", "CHAR(10)", nullable=True),
-        BaselineColumn("varchar_col", "VARCHAR(255)", nullable=True),
-        BaselineColumn("tinytext_col", "TINYTEXT", nullable=True),
-        BaselineColumn("text_col", "TEXT", nullable=True),
-        BaselineColumn("mediumtext_col", "MEDIUMTEXT", nullable=True),
-        BaselineColumn("longtext_col", "LONGTEXT", nullable=True),
-        # binary
-        BaselineColumn("binary_col", "BINARY(16)", nullable=True),
-        BaselineColumn("varbinary_col", "VARBINARY(255)", nullable=True),
-        BaselineColumn("tinyblob_col", "TINYBLOB", nullable=True),
-        BaselineColumn("blob_col", "BLOB", nullable=True),
-        BaselineColumn("mediumblob_col", "MEDIUMBLOB", nullable=True),
-        BaselineColumn("longblob_col", "LONGBLOB", nullable=True),
-        # date/time
-        BaselineColumn("date_col", "DATE", nullable=True),
-        BaselineColumn("time_col", "TIME", nullable=True),
-        BaselineColumn("datetime_col", "DATETIME", nullable=True),
-        BaselineColumn("timestamp_col", "TIMESTAMP", nullable=True),
-        BaselineColumn("year_col", "YEAR", nullable=True),
-        # bit / json / enum / set
-        BaselineColumn("bit_col", "BIT(8)", nullable=True),
-        BaselineColumn("json_col", "JSON", nullable=True),
-        BaselineColumn("enum_col", "ENUM('alpha','beta','gamma')", nullable=True),
-        BaselineColumn("set_col", "SET('x','y','z')", nullable=True),
-    ],
-    seed=Seed(
-        sql=r"""
-            INSERT INTO e2e.all_types (
-                id, tiny_int_col, small_int_col, medium_int_col, int_col, big_int_col,
-                float_col, double_col, decimal_col,
-                char_col, varchar_col, tinytext_col, text_col, mediumtext_col, longtext_col,
-                binary_col, varbinary_col, tinyblob_col, blob_col, mediumblob_col, longblob_col,
-                date_col, time_col, datetime_col, timestamp_col, year_col,
-                bit_col, json_col, enum_col, set_col
-            ) VALUES
-                (1,
-                 1, 100, 10000, 1000000, 10000000000,
-                 1.5, 3.141592653589793, 99.99,
-                 'abc',  'varchar row 1',  'tiny text 1',  'text row 1',  'medium text 1',  'long text 1',
-                 X'00112233445566778899AABBCCDDEEFF', X'DEADBEEF',
-                 X'0102', X'0304', X'0506', X'0708',
-                 '2026-01-01', '00:00:01', '2026-01-01 00:00:01', '2026-01-01 00:00:01', 2020,
-                 b'00000001', JSON_OBJECT('k', 'v', 'n', 1), 'alpha', 'x,y'),
-                (2,
-                 0, 0, 0, 0, 0,
-                 0.0, 0.0, 0.00,
-                 'def',  'varchar row 2',  'tiny text 2',  'text row 2',  'medium text 2',  'long text 2',
-                 X'FFEEDDCCBBAA99887766554433221100', X'CAFEBABE',
-                 X'0A0B', X'0C0D', X'0E0F', X'1011',
-                 '2026-06-15', '12:30:45', '2026-06-15 12:30:45', '2026-06-15 12:30:45', 2026,
-                 b'00010000', JSON_OBJECT('k', 'v2'),         'beta',  'y,z'),
-                (3,
-                 -1, -100, -10000, -1000000, -10000000000,
-                 -1.5, -3.141592653589793, -99.99,
-                 'ghi',  'varchar row 3',  'tiny text 3',  'text row 3',  'medium text 3',  'long text 3',
-                 X'01020304050607080910111213141516', X'BAADF00D',
-                 X'AABB', X'CCDD', X'EEFF', X'1234',
-                 '2026-12-31', '23:59:59', '2026-12-31 23:59:59', '2026-12-31 23:59:59', 2030,
-                 b'11111111', JSON_ARRAY(1, 2, 3),            'gamma', 'x,z')
-            ON DUPLICATE KEY UPDATE
-                tiny_int_col = VALUES(tiny_int_col), small_int_col = VALUES(small_int_col),
-                medium_int_col = VALUES(medium_int_col), int_col = VALUES(int_col),
-                big_int_col = VALUES(big_int_col), float_col = VALUES(float_col),
-                double_col = VALUES(double_col), decimal_col = VALUES(decimal_col),
-                char_col = VALUES(char_col), varchar_col = VALUES(varchar_col),
-                tinytext_col = VALUES(tinytext_col), text_col = VALUES(text_col),
-                mediumtext_col = VALUES(mediumtext_col), longtext_col = VALUES(longtext_col),
-                binary_col = VALUES(binary_col), varbinary_col = VALUES(varbinary_col),
-                tinyblob_col = VALUES(tinyblob_col), blob_col = VALUES(blob_col),
-                mediumblob_col = VALUES(mediumblob_col), longblob_col = VALUES(longblob_col),
-                date_col = VALUES(date_col), time_col = VALUES(time_col),
-                datetime_col = VALUES(datetime_col), timestamp_col = VALUES(timestamp_col),
-                year_col = VALUES(year_col), bit_col = VALUES(bit_col),
-                json_col = VALUES(json_col), enum_col = VALUES(enum_col),
-                set_col = VALUES(set_col);
-        """,
-        expected_row_count=3,
-    ),
-)
 
-
-# -----------------------------------------------------------------------------
-# customer_txn_summary — view-to-table lineage
-# -----------------------------------------------------------------------------
-
-_CUSTOMER_TXN_SUMMARY = BaselineView(
+_CUSTOMER_TXN_SUMMARY_VIEW = ViewDefinition(
     schema="e2e",
     name="customer_txn_summary",
     definition_sql="""
@@ -304,11 +174,7 @@ _CUSTOMER_TXN_SUMMARY = BaselineView(
 )
 
 
-# -----------------------------------------------------------------------------
-# sp_active_customer_count — stored procedure
-# -----------------------------------------------------------------------------
-
-_SP_ACTIVE_CUSTOMER_COUNT = BaselineStoredProcedure(
+_SP_ACTIVE_CUSTOMER_COUNT = StoredProcedureDefinition(
     schema="e2e",
     name="sp_active_customer_count",
     definition_sql="""
@@ -326,10 +192,35 @@ _SP_ACTIVE_CUSTOMER_COUNT = BaselineStoredProcedure(
 # Top-level baseline
 # -----------------------------------------------------------------------------
 
+
+def _build_metadata() -> MetaData:
+    """Common portable tables + MySQL-specific all_types."""
+    md = build_common_metadata("e2e")
+    _declare_all_types(md)
+    return md
+
+
 MYSQL_BASELINE = SqlSourceBaseline(
     schemas=["e2e"],
-    tables=[_CUSTOMERS, _TRANSACTIONS, _ALL_TYPES],
-    views=[_CUSTOMER_TXN_SUMMARY],
+    metadata=_build_metadata(),
+    seeds=[
+        TableSeed(
+            table_name="customers",
+            rows=COMMON_CUSTOMER_ROWS,
+            insert_sql=_MYSQL_CUSTOMERS_INSERT,
+        ),
+        TableSeed(
+            table_name="transactions",
+            rows=COMMON_TRANSACTION_ROWS,
+            insert_sql=_MYSQL_TRANSACTIONS_INSERT,
+        ),
+        TableSeed(
+            table_name="all_types",
+            rows=_ALL_TYPES_ROWS,
+            insert_sql=_MYSQL_ALL_TYPES_INSERT,
+        ),
+    ],
+    views=[_CUSTOMER_TXN_SUMMARY_VIEW],
     stored_procedures=[_SP_ACTIVE_CUSTOMER_COUNT],
 )
 
@@ -338,17 +229,16 @@ MYSQL_BASELINE = SqlSourceBaseline(
 # Policy factory
 # -----------------------------------------------------------------------------
 
+
 @lru_cache(maxsize=1)
 def get_policy() -> EnforcementPolicy:
     """Lazy-build and cache the MySQL EnforcementPolicy.
 
     Reads E2E_MYSQL_* env vars on first call. EnvLoadError surfaces at
-    fixture time with a clear message when a required var is missing —
-    better than opaque failures deeper in the pipeline.
+    fixture time with a clear message when a required var is missing.
 
-    Builds the SQLAlchemy URL via `URL.create` so usernames / passwords
-    containing URL-reserved characters (`@`, `:`, `/`, `#`, `%`, `?`)
-    encode correctly rather than breaking the URL parser.
+    URL.create handles user/password URL-encoding so credentials
+    containing @ : / # % ? don't break the connection string.
     """
     user = Env("E2E_MYSQL_USER").get()
     password = Env("E2E_MYSQL_PASSWORD").get()

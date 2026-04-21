@@ -1,19 +1,14 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""Dialect-agnostic SQL baseline enforcer via SQLAlchemy Inspector.
+"""Dialect-agnostic SQL baseline enforcer via SQLAlchemy Inspector + Core.
 
-Introspection goes through `sqlalchemy.inspect(conn)`, so the same code
-works across every SQLAlchemy-supported dialect (MySQL, Postgres,
-Snowflake, …). Stored procedures are not part of Inspector's API —
-dialects that track SPs set `_stored_procedure_query_sql` with a raw
-INFORMATION_SCHEMA / system-catalog query.
-
-Compare is fully dialect-agnostic. Apply is orchestrated here but the
-DDL-emitting methods (`_apply_table`, `_apply_stored_procedure`) are
-subclass responsibilities since SQL dialects differ on CREATE TABLE
-options, FK syntax, and CREATE-OR-REPLACE support for procedures.
-`_apply_view` has a usable default (runs `view.definition_sql` verbatim).
+Introspection goes through `sqlalchemy.inspect(conn)` — dialect-agnostic.
+DDL emission goes through `metadata.create_all(conn)` — also dialect-aware
+via SQLAlchemy Core. Seeds apply via a dialect-specific INSERT template
+carried on each `TableSeed`, so the base enforcer runs them without
+knowing the dialect. Stored procedures and their listing query stay
+subclass responsibility (SQLAlchemy doesn't model SPs uniformly).
 """
 
 from __future__ import annotations
@@ -23,21 +18,18 @@ from typing import Any
 
 from sqlalchemy import bindparam, inspect, text
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.schema import Table
 
 from .sql import (
-    BaselineColumn,
-    BaselineStoredProcedure,
-    BaselineTable,
-    BaselineView,
     SqlSourceBaseline,
+    StoredProcedureDefinition,
+    TableSeed,
+    ViewDefinition,
 )
 from .types import BaselineSpec, Drift, SourceState
 
 logger = logging.getLogger(__name__)
 
-# Type-string aliases used when comparing Inspector output to baseline
-# declarations. SQLAlchemy's MySQL dialect reports INTEGER/NUMERIC; humans
-# writing baselines reach for INT/DECIMAL. Normalize one way.
 _TYPE_ALIASES: dict[str, str] = {
     "INTEGER": "INT",
     "NUMERIC": "DECIMAL",
@@ -49,20 +41,19 @@ _INTEGER_TYPES: frozenset[str] = frozenset(
 
 
 class SqlBaselineEnforcer:
-    """SQL-family SourceBaselineEnforcer built on SQLAlchemy Inspector.
+    """SQL-family SourceBaselineEnforcer via SQLAlchemy Inspector + Core.
 
-    Subclasses customize:
+    Subclasses customize only:
       - `_stored_procedure_query_sql`: raw SQL returning `(schema, name)`
-        rows for procedures; must bind a `:schemas` IN-list with
-        `bindparam("schemas", expanding=True)`. Set to None / "" when
-        the dialect / use case doesn't track procedures.
-      - `_apply_table(conn, tbl)`: emit the dialect's CREATE TABLE +
-        constraint DDL for one baseline table.
-      - `_apply_stored_procedure(conn, sp)`: emit the dialect's
-        procedure-definition DDL (MySQL drops + creates; Postgres can
-        use CREATE OR REPLACE PROCEDURE).
-      - `_apply_view(conn, view)`: default runs `view.definition_sql`
-        verbatim — override only if a dialect needs extra plumbing.
+        rows for procedures; binds a `:schemas` IN-list (expanding).
+      - `_apply_stored_procedure(conn, sp)`: dialect-specific procedure DDL.
+      - `_apply_view` default runs `view.definition_sql` verbatim — override
+        only if the dialect needs special plumbing.
+
+    Tables, columns, FKs, comments, and PK come from the baseline's
+    SQLAlchemy `MetaData` — `metadata.create_all(conn)` emits the right
+    DDL per dialect. Seed INSERTs are dialect-specific templates on each
+    `TableSeed`, bound against the (portable) row data at apply time.
     """
 
     _stored_procedure_query_sql: str | None = None
@@ -153,7 +144,8 @@ class SqlBaselineEnforcer:
         with self._engine.connect() as conn:
             state = self._snapshot(conn)
             drifts.extend(self._diff_schemas(expected, state))
-            drifts.extend(self._diff_tables(expected, state, conn))
+            drifts.extend(self._diff_tables(expected, state))
+            drifts.extend(self._diff_seeds(expected, conn))
             drifts.extend(self._diff_views(expected, state))
             drifts.extend(self._diff_stored_procedures(expected, state))
 
@@ -170,27 +162,25 @@ class SqlBaselineEnforcer:
         ]
 
     def _diff_tables(
-        self, expected: SqlSourceBaseline, state: dict, conn: Connection
+        self, expected: SqlSourceBaseline, state: dict
     ) -> list[Drift]:
         drifts: list[Drift] = []
         actual_tables: dict[tuple[str, str], dict[str, Any]] = state["tables"]
-        for tbl in expected.tables:
+        for tbl in expected.metadata.sorted_tables:
             key = (tbl.schema, tbl.name)
             actual_tbl = actual_tables.get(key)
-            fqn = f"{tbl.schema}.{tbl.name}"
+            fqn = tbl.fullname
             if actual_tbl is None:
                 drifts.append(
                     Drift(path=f"table[{fqn}]", expected="present", actual="missing")
                 )
                 continue
             drifts.extend(self._diff_columns(tbl, actual_tbl["columns"], fqn))
-            if tbl.seed is not None:
-                drifts.extend(self._diff_seed_row_count(tbl, fqn, conn))
         return drifts
 
     @staticmethod
     def _diff_columns(
-        tbl: BaselineTable, actual_cols: dict[str, dict[str, Any]], fqn: str
+        tbl: Table, actual_cols: dict[str, dict[str, Any]], fqn: str
     ) -> list[Drift]:
         drifts: list[Drift] = []
         for col in tbl.columns:
@@ -201,11 +191,12 @@ class SqlBaselineEnforcer:
                     Drift(path=col_path, expected="present", actual="missing")
                 )
                 continue
-            if _normalize_type(actual_col["sql_type"]) != _normalize_type(col.sql_type):
+            expected_type_str = str(col.type).upper()
+            if _normalize_type(actual_col["sql_type"]) != _normalize_type(expected_type_str):
                 drifts.append(
                     Drift(
                         path=f"{col_path}.type",
-                        expected=col.sql_type,
+                        expected=expected_type_str,
                         actual=actual_col["sql_type"],
                     )
                 )
@@ -219,23 +210,22 @@ class SqlBaselineEnforcer:
                 )
         return drifts
 
-    @staticmethod
-    def _diff_seed_row_count(
-        tbl: BaselineTable, fqn: str, conn: Connection
+    def _diff_seeds(
+        self, expected: SqlSourceBaseline, conn: Connection
     ) -> list[Drift]:
-        count = conn.execute(
-            text(f"SELECT COUNT(*) FROM {tbl.schema}.{tbl.name}")
-        ).scalar_one()
-        assert tbl.seed is not None  # caller checks
-        if count != tbl.seed.expected_row_count:
-            return [
-                Drift(
-                    path=f"table[{fqn}].seed.row_count",
-                    expected=tbl.seed.expected_row_count,
-                    actual=count,
+        drifts: list[Drift] = []
+        for seed in expected.seeds:
+            fqn = self._seed_fqn(seed)
+            count = conn.execute(text(f"SELECT COUNT(*) FROM {fqn}")).scalar_one()
+            if count != seed.expected_row_count:
+                drifts.append(
+                    Drift(
+                        path=f"table[{fqn}].seed.row_count",
+                        expected=seed.expected_row_count,
+                        actual=count,
+                    )
                 )
-            ]
-        return []
+        return drifts
 
     @staticmethod
     def _diff_views(expected: SqlSourceBaseline, state: dict) -> list[Drift]:
@@ -272,29 +262,38 @@ class SqlBaselineEnforcer:
         with self._engine.begin() as conn:
             for schema_name in self._baseline.schemas:
                 conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
-            for table in self._baseline.tables:
-                self._apply_table(conn, table)
+            # metadata.create_all emits CREATE TABLE IF NOT EXISTS + FKs +
+            # column comments + table comments in the engine's dialect.
+            self._baseline.metadata.create_all(conn)
+            for seed in self._baseline.seeds:
+                self._apply_seed(conn, seed)
             for view in self._baseline.views:
                 self._apply_view(conn, view)
             for sp in self._baseline.stored_procedures:
                 self._apply_stored_procedure(conn, sp)
 
-    def _apply_table(self, conn: Connection, tbl: BaselineTable) -> None:
-        raise NotImplementedError(
-            "subclasses must provide dialect-specific CREATE TABLE DDL"
+    def _apply_seed(self, conn: Connection, seed: TableSeed) -> None:
+        fqn = self._seed_fqn(seed)
+        count = conn.execute(text(f"SELECT COUNT(*) FROM {fqn}")).scalar_one()
+        if count == seed.expected_row_count:
+            return
+        logger.info(
+            "[seed] %s: inserting (current=%d, expected=%d)",
+            fqn, count, seed.expected_row_count,
         )
+        conn.execute(text(seed.insert_sql), seed.rows)
+
+    def _seed_fqn(self, seed: TableSeed) -> str:
+        schema = self._baseline.metadata.schema
+        return f"{schema}.{seed.table_name}" if schema else seed.table_name
 
     @staticmethod
-    def _apply_view(conn: Connection, view: BaselineView) -> None:
-        """Default: run `view.definition_sql` verbatim.
-
-        Baselines supply a CREATE OR REPLACE VIEW statement (or a dialect
-        equivalent), so no further processing is needed here.
-        """
+    def _apply_view(conn: Connection, view: ViewDefinition) -> None:
+        """Default: run `view.definition_sql` verbatim."""
         conn.execute(text(view.definition_sql))
 
     def _apply_stored_procedure(
-        self, conn: Connection, sp: BaselineStoredProcedure
+        self, conn: Connection, sp: StoredProcedureDefinition
     ) -> None:
         raise NotImplementedError(
             "subclasses must provide dialect-specific procedure DDL"

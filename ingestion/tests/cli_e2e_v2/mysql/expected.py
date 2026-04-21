@@ -151,7 +151,7 @@ def _expected_transactions() -> ExpectedTable:
             ExpectedColumn("txn_at", DataType.DATETIME, constraint=Constraint.NOT_NULL),
             ExpectedColumn("reference_number", DataType.CHAR, constraint=Constraint.NOT_NULL),
             ExpectedColumn("ip_address", DataType.VARCHAR),
-            ExpectedColumn("notes", DataType.MEDIUMTEXT),
+            ExpectedColumn("notes", DataType.TEXT),
         ],
     )
 
