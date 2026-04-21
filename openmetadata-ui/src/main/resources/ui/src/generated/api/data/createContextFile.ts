@@ -15,7 +15,8 @@
  */
 export interface CreateContextFile {
     /**
-     * Reference to Asset entity in S3.
+     * Legacy reference to Asset entity in object storage (S3, Azure Blob, in-memory, or no-op
+     * provider). Prefer headContentId / ContextFileContent for new flows.
      */
     assetId?: string;
     /**
