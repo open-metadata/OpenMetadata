@@ -185,6 +185,7 @@ jest.mock('../../../utils/TableClassBase', () => ({
   getAlertEnableStatus: jest
     .fn()
     .mockImplementation(() => mockIsAlertSupported),
+  getShowRequestDataAccess: jest.fn().mockImplementation(() => false),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({
