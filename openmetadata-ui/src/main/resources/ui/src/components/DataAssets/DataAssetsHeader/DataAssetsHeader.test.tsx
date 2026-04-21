@@ -608,6 +608,14 @@ describe('DataAssetsHeader component', () => {
     expect(button).toBeEnabled();
   });
 
+  it('should not render the request data access button on OSS', () => {
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      screen.queryByTestId('request-data-access-button')
+    ).not.toBeInTheDocument();
+  });
+
   describe('dataContractLatestResultButton', () => {
     const mockGetDataContractStatusIcon =
       getDataContractStatusIcon as jest.Mock;
