@@ -15,7 +15,6 @@
 import Icon from '@ant-design/icons';
 import { Divider, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
@@ -70,9 +69,12 @@ import {
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
 } from './EntityUtils';
+import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
+
+const { t } = i18n;
 
 export const ExtraInfoLabel = ({
   label,

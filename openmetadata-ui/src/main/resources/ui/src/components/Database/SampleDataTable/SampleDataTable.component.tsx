@@ -33,11 +33,9 @@ import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
-import {
-  getEntityDeleteMessage,
-  Transi18next,
-} from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';

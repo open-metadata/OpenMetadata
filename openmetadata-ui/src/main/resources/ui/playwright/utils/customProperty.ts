@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { INVALID_NAMES } from '../constant/common';
 import {
-  CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
@@ -106,19 +106,13 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"]`
+  const container = page.getByTestId(`custom-property-${propertyName}-card`);
+
+  await expect(container.getByTestId('property-name')).toContainText(
+    propertyName
   );
 
-  await expect(
-    page.locator(
-      `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
-    )
-  ).toContainText(propertyName);
-
-  const editButton = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
-  );
+  const editButton = container.getByTestId('edit-icon');
   await editButton.scrollIntoViewIfNeeded();
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
@@ -284,16 +278,14 @@ export const validateValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"]`
-  );
+  const container = page.getByTestId(`custom-property-${propertyName}-card`);
 
   const toggleBtnVisibility = await container
-    .locator(`[data-testid="toggle-${propertyName}"]`)
+    .getByTestId(`toggle-${propertyName}`)
     .isVisible();
 
   if (toggleBtnVisibility && propertyType !== 'table-cp') {
-    await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
+    await container.getByTestId(`toggle-${propertyName}`).click();
   }
 
   if (propertyType === 'enum') {
@@ -520,7 +512,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `pw${uuid()}cp${Date.now()}`;
+    const customPropertyName = `pw.${uuid()}_CP- ${Date.now()} # $ .`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -647,47 +639,15 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation checks
+  // Validation check — only '::' is blocked
   await page.fill(
     '[data-testid="name"] input',
-    CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE
+    INVALID_NAMES.WITH_SPECIAL_CHARS
   );
 
   await expect(page.locator('#name_help')).toContainText(
     CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
   );
-
-  await page.fill(
-    '[data-testid="name"] input',
-    CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE
-  );
-
-  await expect(page.locator('#name_help')).toContainText(
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  await page.fill(
-    '[data-testid="name"] input',
-    CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE
-  );
-
-  await expect(page.locator('#name_help')).toContainText(
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  await page.fill(
-    '[data-testid="name"] input',
-    CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS
-  );
-
-  await expect(page.locator('#name_help')).toContainText(
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  // Name in another language
-  await page.fill('[data-testid="name"] input', '汝らヴェディア');
-
-  await expect(page.locator('#name_help')).not.toBeVisible();
 
   // Correct name
   await page.fill('[data-testid="name"] input', propertyName);
@@ -704,7 +664,7 @@ export const addCustomPropertiesForEntity = async ({
     for (const val of enumConfig.values) {
       const enumInput = page.locator(String.raw`#root\/enumConfig`);
       await enumInput.clear();
-      await enumInput.type(val, { delay: 50 });
+      await enumInput.pressSequentially(val, { delay: 50 });
       await enumInput.press('Enter');
       await expect(enumInput).toHaveValue('');
     }
@@ -720,7 +680,7 @@ export const addCustomPropertiesForEntity = async ({
       await expect(columnInput).toBeVisible();
       await columnInput.click();
       await columnInput.clear();
-      await columnInput.type(val, { delay: 100 }); // Slow typing to prevent merge
+      await columnInput.pressSequentially(val, { delay: 100 });
       await columnInput.press('Enter');
       await expect(columnInput).toHaveValue(''); // Verify input is consumed
     }
@@ -794,7 +754,12 @@ export const addCustomPropertiesForEntity = async ({
 
   expect(response.status()).toBe(200);
   await expect(
-    page.getByRole('row', { name: new RegExp(propertyName, 'i') })
+    page.getByRole('row', {
+      name: new RegExp(
+        propertyName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        'i'
+      ),
+    })
   ).toBeVisible();
 };
 
