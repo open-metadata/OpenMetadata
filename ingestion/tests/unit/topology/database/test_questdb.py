@@ -253,6 +253,31 @@ def test_patch_questdb_dialect_binds_on_real_pg_dialect():
         "text": None
     }
     assert engine.dialect.get_view_definition(connection, "v", schema="public") is None
+    assert (
+        engine.dialect.get_table_owner(connection, "t", schema="public", query="irrelevant")
+        is None
+    )
+
+
+def test_patch_questdb_dialect_short_circuits_owner_lookup():
+    """The Postgres source patches ``PGDialect.get_table_owner`` at class
+    level to run ``pg_catalog.pg_tables`` (which QuestDB lacks). Our per-
+    engine patch must override that and never execute a query."""
+    engine = MagicMock(spec=["dialect", "url"])
+    engine.dialect = PGDialect_psycopg2()
+    engine.url = "postgresql+psycopg2://admin:quest@localhost:8812/qdb"
+    connection = MagicMock()
+
+    patch_questdb_dialect(engine)
+    result = engine.dialect.get_table_owner(
+        connection=connection,
+        query="select schemaname, tablename, tableowner from pg_catalog.pg_tables",
+        table_name="sensor_readings",
+        schema="public",
+    )
+
+    assert result is None
+    connection.execute.assert_not_called()
 
 
 def test_patch_questdb_dialect_routes_table_lookup_to_information_schema():

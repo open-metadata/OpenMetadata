@@ -138,10 +138,20 @@ def _none_view_definition(*_args: Any, **_kwargs: Any) -> Optional[str]:
     return None
 
 
+def _none_table_owner(*_args: Any, **_kwargs: Any) -> Optional[str]:
+    return None
+
+
 def patch_questdb_dialect(engine: Engine) -> Engine:
     """
     Replace the PostgreSQL dialect introspection methods on a given engine
     with QuestDB-safe equivalents backed by ``information_schema``.
+
+    The OpenMetadata Postgres source monkey-patches ``PGDialect.get_table_owner``
+    at class level (see ``postgres/metadata.py``) so it runs a
+    ``pg_catalog.pg_tables`` query — which QuestDB does not implement. We
+    shadow the method on the per-engine dialect instance to short-circuit the
+    query: QuestDB has no owner concept, so returning ``None`` is accurate.
     """
     dialect = engine.dialect
     logger.debug("Patching PostgreSQL dialect for QuestDB engine %s", engine.url)
@@ -184,5 +194,8 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
     )
     dialect.get_view_definition = types.MethodType(
         lambda self, *a, **kw: _none_view_definition(), dialect
+    )
+    dialect.get_table_owner = types.MethodType(
+        lambda self, *a, **kw: _none_table_owner(), dialect
     )
     return engine
