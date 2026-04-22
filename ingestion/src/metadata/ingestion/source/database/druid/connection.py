@@ -29,6 +29,7 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -44,6 +45,11 @@ def get_connection(connection: DruidConnection) -> Engine:
     """
     Create connection
     """
+    if connection.scheme.value == "druid+https":
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.root["use_https"] = True
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
