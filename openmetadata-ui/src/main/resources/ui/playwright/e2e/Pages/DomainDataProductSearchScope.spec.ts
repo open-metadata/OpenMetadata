@@ -167,7 +167,9 @@ test.describe('Domain and Data Product search are scoped by entityType', () => {
 
     await test.step('Data product id is not rendered as a marketplace domain card', async () => {
       await expect(
-        page.getByTestId(`marketplace-domain-card-${dataProduct.responseData.id}`)
+        page.getByTestId(
+          `marketplace-domain-card-${dataProduct.responseData.id}`
+        )
       ).toHaveCount(0);
     });
   });

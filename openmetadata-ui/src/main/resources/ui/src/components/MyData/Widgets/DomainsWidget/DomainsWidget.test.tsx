@@ -18,6 +18,7 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   Domain,
   DomainType,
@@ -214,6 +215,13 @@ describe('DomainsWidget', () => {
         sortField: 'updatedAt',
         sortOrder: 'desc',
         searchIndex: 'domain',
+        queryFilter: {
+          query: {
+            bool: {
+              must: [{ term: { entityType: EntityType.DOMAIN } }],
+            },
+          },
+        },
       });
     });
   });
