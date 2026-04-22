@@ -898,9 +898,7 @@ class TestSnowflakeDeletedTablesPerDatabaseReset:
             "set_schema_tags_map",
             "set_database_tags_map",
         ):
-            stack.enter_context(
-                patch.object(source, method_name, MagicMock())
-            )
+            stack.enter_context(patch.object(source, method_name, MagicMock()))
         return stack
 
     def test_configured_database_starts_with_empty_deleted_tables(self, source):
@@ -949,9 +947,7 @@ class TestSnowflakeDeletedTablesPerDatabaseReset:
             # First DB yielded — list must be empty regardless of prior state.
             source.context.get_global().deleted_tables = ["leftover_from_setup"]
             db1 = next(gen)
-            snapshot_at_db1_yield = list(
-                source.context.get_global().deleted_tables
-            )
+            snapshot_at_db1_yield = list(source.context.get_global().deleted_tables)
 
             # Simulate processing DB1's schemas: schema walks extend the list
             # with FQNs for soft-deleted tables found in DB1.
@@ -965,9 +961,7 @@ class TestSnowflakeDeletedTablesPerDatabaseReset:
 
             # Next DB yielded — the DB1 entries must not carry over to DB2.
             db2 = next(gen)
-            snapshot_at_db2_yield = list(
-                source.context.get_global().deleted_tables
-            )
+            snapshot_at_db2_yield = list(source.context.get_global().deleted_tables)
 
         assert db1 == "DB_ONE"
         assert db2 == "DB_TWO"

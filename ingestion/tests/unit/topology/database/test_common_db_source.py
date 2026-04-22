@@ -375,9 +375,9 @@ class TestSetInspectorDisposesOldEngine:
             mock_source.set_inspector("next_database")
 
         old_engine.dispose.assert_called_once()
-        assert mock_source.engine is new_engine, (
-            "The new engine must replace the old one after dispose."
-        )
+        assert (
+            mock_source.engine is new_engine
+        ), "The new engine must replace the old one after dispose."
 
     def test_no_dispose_called_when_no_previous_engine(self):
         """First call to set_inspector (before any engine exists) must not

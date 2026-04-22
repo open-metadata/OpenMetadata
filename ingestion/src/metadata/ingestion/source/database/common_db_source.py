@@ -162,9 +162,7 @@ class CommonDbSourceService(
             try:
                 self.engine.dispose()
             except Exception as exc:
-                logger.warning(
-                    f"Failed to dispose previous engine on DB switch: {exc}"
-                )
+                logger.warning(f"Failed to dispose previous engine on DB switch: {exc}")
         logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
