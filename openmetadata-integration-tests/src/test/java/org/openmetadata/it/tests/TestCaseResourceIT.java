@@ -783,7 +783,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             });
 
     // Hard delete test case
-    hardDeleteEntity(id);
+    java.util.Map<String, String> params = new java.util.HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.testCases().delete(id, params);
 
     // Verify testcase deleted
     assertThrows(Exception.class, () -> getEntity(id));
