@@ -414,13 +414,18 @@ class TestReleaseEngine:
 
         assert surrogate._inspector_map == {}
 
-    def test_disposes_pool(self, surrogate):
-        original_pool = surrogate.engine.pool
+    def test_disposes_pool_and_clears_engine_ref(self, surrogate):
+        captured_engine = surrogate.engine
+        original_pool = captured_engine.pool
         assert isinstance(original_pool, QueuePool)
+        connection = surrogate.engine.connect()
+        surrogate._connection_map[1] = connection
 
         surrogate._release_engine()
 
-        assert surrogate.engine.pool is not original_pool
+        assert surrogate.engine is None
+        assert connection.closed is True
+        assert original_pool.checkedout() == 0
 
     def test_removes_session(self, surrogate):
         surrogate.session = create_and_bind_thread_safe_session(surrogate.engine)
@@ -501,17 +506,24 @@ class _FakeSource(MultiDBSource):
     def connection(self):
         return self._conn
 
+    def close(self):
+        try:
+            self._conn.close()
+        except Exception:
+            pass
+
     def get_configured_database(self):
         return None
 
     def get_database_names_raw(self):
-        return self._execute_database_query("SELECT id FROM dbs ORDER BY id")
+        return self._execute_database_query("SELECT name FROM dbs ORDER BY id")
 
 
 class TestExecuteDatabaseQueryEagerFetch:
     """Option B Part 2: _execute_database_query must eagerly .fetchall()
-    so that engine.dispose() firing mid-iteration (the original regression
-    pattern from set_inspector) does not invalidate the cursor."""
+    so that _release_engine closing the connection in _connection_map
+    (the original regression pattern from set_inspector) does not
+    invalidate the cursor the generator is iterating."""
 
     @pytest.fixture
     def seeded_engine(self):
@@ -530,21 +542,28 @@ class TestExecuteDatabaseQueryEagerFetch:
         except Exception:
             pass
 
-    def test_generator_survives_engine_dispose_mid_iteration(self, seeded_engine):
+    @pytest.fixture
+    def fake_source(self, seeded_engine):
         source = _FakeSource(seeded_engine)
-        generator = source.get_database_names_raw()
+        yield source
+        source.close()
+
+    def test_generator_survives_connection_close_mid_iteration(self, fake_source):
+        # Simulates what _release_engine actually does: it close()s every
+        # connection in _connection_map BEFORE disposing the engine. Without
+        # .fetchall() the cursor would die at that close() and the next
+        # yield would raise; with .fetchall() the rows are already buffered.
+        generator = fake_source.get_database_names_raw()
 
         first = next(generator)
-        assert first == 1
+        assert first == "alpha"
 
-        seeded_engine.dispose()
+        fake_source._conn.close()
 
         remaining = list(generator)
-        assert remaining == [2, 3]
+        assert remaining == ["beta", "gamma"]
 
-    def test_returns_all_rows_in_order(self, seeded_engine):
-        source = _FakeSource(seeded_engine)
+    def test_returns_all_rows_in_order(self, fake_source):
+        results = list(fake_source.get_database_names_raw())
 
-        results = list(source.get_database_names_raw())
-
-        assert results == [1, 2, 3]
+        assert results == ["alpha", "beta", "gamma"]

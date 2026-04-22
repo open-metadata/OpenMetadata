@@ -184,6 +184,7 @@ class CommonDbSourceService(
             self.engine.dispose()
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to dispose engine: {exc}")
+        self.engine = None
 
     def get_database_names(self) -> Iterable[str]:
         """
