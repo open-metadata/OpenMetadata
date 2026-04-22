@@ -534,6 +534,7 @@ class SearchIndexRetryQueueIT {
     String tableFqn = table.getFullyQualifiedName();
 
     SearchIndexRetryQueue.enqueue(tableId, tableFqn, Entity.TABLE, "simulated failure");
+    SearchIndexRetryQueue.flushBuffer(collectionDAO);
 
     List<SearchIndexRetryRecord> before =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);

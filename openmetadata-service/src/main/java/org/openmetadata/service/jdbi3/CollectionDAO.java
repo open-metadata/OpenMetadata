@@ -11012,20 +11012,16 @@ public interface CollectionDAO {
         @Bind("status") String status,
         @Bind("entityType") String entityType);
 
-    @ConnectionAwareSqlBatch(
-        value =
-            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
-                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
-                + "ON DUPLICATE KEY UPDATE failureReason = VALUES(failureReason), status = VALUES(status), entityType = VALUES(entityType)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlBatch(
-        value =
-            "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
-                + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
-                + "ON CONFLICT (entityId, entityFqn) DO UPDATE SET "
-                + "failureReason = EXCLUDED.failureReason, status = EXCLUDED.status, entityType = EXCLUDED.entityType",
-        connectionType = POSTGRES)
-    void batchUpsert(@BindBean List<BatchUpsertEntry> entries);
+    default void batchUpsert(List<BatchUpsertEntry> entries) {
+      for (BatchUpsertEntry entry : entries) {
+        upsert(
+            entry.getEntityId(),
+            entry.getEntityFqn(),
+            entry.getFailureReason(),
+            entry.getStatus(),
+            entry.getEntityType());
+      }
+    }
 
     @SqlQuery(
         "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
