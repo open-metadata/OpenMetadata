@@ -287,7 +287,7 @@
     "cookie": "0.7.0",
     "cross-spawn": "7.0.5",
     "serialize-javascript": "7.0.5",
-    "dompurify": "3.3.2",
+    "dompurify": "3.4.1",
     "immutable": "4.3.8",
     "@tootallnate/once": "3.0.1",
     "on-headers": "1.1.0",
