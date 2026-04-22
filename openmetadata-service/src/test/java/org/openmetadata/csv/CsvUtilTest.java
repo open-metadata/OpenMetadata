@@ -223,6 +223,7 @@ public class CsvUtilTest {
             Map.of("type", "team", "fullyQualifiedName", "engineering")));
     extension.put("options", List.of("one", "two"));
     extension.put("empty", List.of());
+    extension.put("blank", " ");
     extension.put("count", 5);
     extension.put("metadata", Map.of("key", "value"));
 
@@ -235,6 +236,7 @@ public class CsvUtilTest {
     assertTrue(extensionField.contains("reviewers:user:alice|team:engineering"));
     assertTrue(extensionField.contains("options:one|two"));
     assertFalse(extensionField.contains("empty"));
+    assertFalse(extensionField.contains("blank"));
     assertTrue(extensionField.contains("count:5"));
     assertTrue(extensionField.contains("metadata:{key=value}"));
     assertTrue(extensionField.contains("matrix:alpha,beta|gamma"));

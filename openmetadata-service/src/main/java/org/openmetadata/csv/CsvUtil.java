@@ -382,7 +382,7 @@ public final class CsvUtil {
     String extensionString =
         extensionMap.entrySet().stream()
             .map(entry -> Map.entry(entry.getKey(), formatValue(entry.getValue())))
-            .filter(entry -> !entry.getValue().isEmpty())
+            .filter(entry -> !entry.getValue().isBlank())
             .map(
                 entry ->
                     CsvUtil.quoteCsvField(
