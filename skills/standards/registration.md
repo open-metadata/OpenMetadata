@@ -40,9 +40,45 @@ Add the connector's pip extras so `pip install "openmetadata-ingestion[mydb]"` (
 
 Keep the block alphabetically ordered. Without this, the connector runs locally in the dev venv but fails in the shipped ingestion container.
 
+### 3. CLI Workflow YAML Example
+
+**File**: `ingestion/src/metadata/examples/workflows/{name}.yaml`
+
+A runnable workflow config showing how to ingest metadata from the source via `metadata ingest -c`. This is what users copy into their own deployments and what QA uses for ad-hoc smoke tests.
+
+Use this template (replace `{Name}`, `{name}`, credentials, and `hostPort`):
+
+```yaml
+source:
+  type: {name}
+  serviceName: local_{name}
+  serviceConnection:
+    config:
+      type: {Name}
+      username: username
+      authType:
+        password: password
+      hostPort: localhost:5432
+      # Add any other required fields from the connection schema
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "<ingestion-bot-jwt>"
+```
+
+Keep the structure identical across connectors — users recognize the pattern. Only the `source.*` block changes per connector. Use the canned dev JWT token from `cockroach.yaml` as the placeholder so the example runs against a local OpenMetadata server out of the box.
+
 ## UI
 
-### 3. Service Utils — Connection Form Schema
+### 4. Service Utils — Connection Form Schema
 
 **File**: `openmetadata-ui/src/main/resources/ui/src/utils/{ServiceType}ServiceUtils.tsx`
 
@@ -59,13 +95,13 @@ case {ServiceType}Type.MyDb: {
 }
 ```
 
-### 4. Service Icon Asset
+### 5. Service Icon Asset
 
 **File**: `openmetadata-ui/src/main/resources/ui/src/assets/img/service-icon-{name}.png` (`.svg` is also fine)
 
 Drop the logo in place. Prefer SVG when available; otherwise a square PNG ≥ 128×128.
 
-### 5. Icon Loader Registration
+### 6. Icon Loader Registration
 
 **File**: `openmetadata-ui/src/main/resources/ui/src/utils/ServiceIconUtils.ts`
 
@@ -87,7 +123,7 @@ Without this step the connector renders with the generic `databasedefault` icon 
 
 > **Note**: `openmetadata-ui/.../constants/Services.constant.ts` is **deprecated** as of PR #26906 (April 2026) — it is now a re-export shim. Register icons in `ServiceIconUtils.ts`, not there.
 
-### 6. Service Docs Markdown
+### 7. Service Docs Markdown
 
 **File**: `openmetadata-ui/src/main/resources/ui/public/locales/en-US/{ServiceType}/{Name}.md`
 
@@ -118,7 +154,7 @@ $$
 
 Without this, form fields have no contextual help.
 
-### 7. Beta Flag
+### 8. Beta Flag
 
 **File**: `openmetadata-ui/src/main/resources/ui/src/constants/ServiceType.constant.ts`
 
@@ -161,6 +197,7 @@ mvn spotless:apply     # Java
 
 - [ ] Service schema enum and `oneOf` updated
 - [ ] `ingestion/setup.py` has connector extras
+- [ ] CLI workflow YAML example added under `ingestion/src/metadata/examples/workflows/`
 - [ ] `{ServiceType}ServiceUtils.tsx` imports and switches on the schema
 - [ ] Service icon asset added under `assets/img/`
 - [ ] `ServiceIconUtils.ts` imports asset and registers it in `SERVICE_ICON_LOADERS`
