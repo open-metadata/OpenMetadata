@@ -656,7 +656,7 @@ class FivetranSource(PipelineServiceSource):
         if minutes < 60:
             return f"*/{minutes} * * * *"
         if minutes % 60 != 0:
-            return f"*/{minutes} * * * *"
+            return None
         hours = minutes // 60
         if hours >= 24:
             return "0 0 * * *"

@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
     FIVETRAN_TASK_EXTRACT,
     FIVETRAN_TASK_LOAD,
@@ -101,18 +102,21 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             displayName="Extract",
             taskType="Extract",
             downstreamTasks=[FIVETRAN_TASK_PROCESS],
+            sourceUrl=SOURCE_URL,
         ),
         Task(
             name=FIVETRAN_TASK_PROCESS,
             displayName="Process",
             taskType="Process",
             downstreamTasks=[FIVETRAN_TASK_LOAD],
+            sourceUrl=SOURCE_URL,
         ),
         Task(
             name=FIVETRAN_TASK_LOAD,
             displayName="Load",
             taskType="Load",
             downstreamTasks=[],
+            sourceUrl=SOURCE_URL,
         ),
     ],
     service=FullyQualifiedEntityName("fivetran_source"),
@@ -323,6 +327,92 @@ class TestFivetranSource:
             connector_id="t",
         )
         assert FivetranSource._get_pipeline_state(details) == PipelineState.Inactive
+
+
+class TestGetScheduleInterval:
+    @pytest.mark.parametrize(
+        "sync_freq,expected",
+        [
+            (None, None),
+            ("", None),
+            ("abc", None),
+            ("5", "*/5 * * * *"),
+            ("15", "*/15 * * * *"),
+            ("30", "*/30 * * * *"),
+            ("59", "*/59 * * * *"),
+            ("60", "0 */1 * * *"),
+            ("90", None),
+            ("120", "0 */2 * * *"),
+            ("150", None),
+            ("360", "0 */6 * * *"),
+            ("1440", "0 0 * * *"),
+            ("2880", "0 0 * * *"),
+        ],
+        ids=[
+            "none",
+            "empty",
+            "non-numeric",
+            "5min",
+            "15min",
+            "30min",
+            "59min",
+            "1hour",
+            "90min-not-divisible",
+            "2hours",
+            "150min-not-divisible",
+            "6hours",
+            "24hours-daily",
+            "48hours-capped-daily",
+        ],
+    )
+    def test_schedule_interval(self, sync_freq, expected):
+        details = FivetranPipelineDetails(
+            source={"sync_frequency": sync_freq, "schema": "t", "service": "pg"},
+            destination={},
+            group={},
+            connector_id="t",
+        )
+        assert FivetranSource._get_schedule_interval(details) == expected
+
+
+class TestGetDataErrorHandling:
+    def test_raises_on_none_response(self, fivetran_source):
+        source, client = fivetran_source
+        ft_client = FivetranClient.__new__(FivetranClient)
+        ft_client.config = Mock(limit=100)
+        ft_client.client = Mock()
+        ft_client.client.get.return_value = None
+        with pytest.raises(RuntimeError, match="received None response"):
+            ft_client._get_data("/test/path")
+
+    def test_returns_empty_on_non_dict_response(self, fivetran_source):
+        ft_client = FivetranClient.__new__(FivetranClient)
+        ft_client.config = Mock(limit=100)
+        ft_client.client = Mock()
+        ft_client.client.get.return_value = "not a dict"
+        assert ft_client._get_data("/test/path") == {}
+
+    def test_returns_empty_on_missing_data_field(self, fivetran_source):
+        ft_client = FivetranClient.__new__(FivetranClient)
+        ft_client.config = Mock(limit=100)
+        ft_client.client = Mock()
+        ft_client.client.get.return_value = {"status": "ok"}
+        assert ft_client._get_data("/test/path") == {}
+
+    def test_returns_empty_on_non_dict_data_field(self, fivetran_source):
+        ft_client = FivetranClient.__new__(FivetranClient)
+        ft_client.config = Mock(limit=100)
+        ft_client.client = Mock()
+        ft_client.client.get.return_value = {"data": ["list", "not", "dict"]}
+        assert ft_client._get_data("/test/path") == {}
+
+    def test_returns_data_on_valid_response(self, fivetran_source):
+        ft_client = FivetranClient.__new__(FivetranClient)
+        ft_client.config = Mock(limit=100)
+        ft_client.client = Mock()
+        ft_client.client.get.return_value = {"data": {"id": "123", "name": "test"}}
+        result = ft_client._get_data("/test/path")
+        assert result == {"id": "123", "name": "test"}
 
 
 class TestFivetranStatus:
