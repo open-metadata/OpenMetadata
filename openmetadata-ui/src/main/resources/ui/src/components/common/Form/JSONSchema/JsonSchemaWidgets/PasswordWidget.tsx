@@ -96,7 +96,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
     () => (
       <Space className="password-saved-indicator" direction="vertical" size={4}>
         <Space size={8}>
-          <LockOutlined className="password-saved-icon" />
+          {/* <LockOutlined className="password-saved-icon" /> */}
           <Typography.Text className="password-saved-text" type="secondary">
             {t('message.password-saved')}
           </Typography.Text>

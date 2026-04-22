@@ -51,7 +51,9 @@ public class DBSecretsManagerTest {
                 "openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
-    lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
+    lenient()
+        .when(fernet.decryptIfApplies(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);
   }
@@ -86,6 +88,21 @@ public class DBSecretsManagerTest {
     SklearnConnection connection = new SklearnConnection();
     Object actualConfig =
         secretsManager.decryptServiceConnectionConfig(connection, Sklearn.value(), ML_MODEL);
+    assertNotSame(connection, actualConfig);
+  }
+
+  @Test
+  void testEncryptDatabaseConnectionWithEmptyPasswordRemovesValue() {
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(""));
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, Mysql.value(), "test-empty-password", ServiceType.DATABASE);
+
+    assertEquals(
+        null,
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
+            .getPassword());
     assertNotSame(connection, actualConfig);
   }
 

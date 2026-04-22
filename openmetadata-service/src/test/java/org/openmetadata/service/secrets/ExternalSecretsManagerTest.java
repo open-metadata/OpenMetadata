@@ -1,7 +1,6 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
@@ -236,10 +235,9 @@ public abstract class ExternalSecretsManagerTest {
                 mysqlConnection, Mysql.value(), "test-empty-password", ServiceType.DATABASE);
 
     assertNotNull(actualConnection, "Encryption should succeed even with empty password");
-    assertFalse(
-        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class)
-            .getPassword()
-            .isEmpty(),
-        "Empty password should be converted to non-empty encrypted value");
+    assertEquals(
+        null,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword(),
+        "Empty password should be treated as explicit secret removal");
   }
 }

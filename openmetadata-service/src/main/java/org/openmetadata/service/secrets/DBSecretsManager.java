@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.secrets;
 
+import java.util.Objects;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class DBSecretsManager extends SecretsManager {
@@ -33,6 +34,9 @@ public class DBSecretsManager extends SecretsManager {
 
   @Override
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
+    if (Objects.isNull(value) || value.isEmpty()) {
+      return null;
+    }
     return value;
   }
 
