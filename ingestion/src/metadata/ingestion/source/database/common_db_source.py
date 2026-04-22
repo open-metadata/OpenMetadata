@@ -62,7 +62,6 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -152,15 +151,42 @@ class CommonDbSourceService(
         :param database_name: new database to set
         """
 
-        kill_active_connections(self.engine)
+        self._release_engine()
         logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
+        self.session = create_and_bind_thread_safe_session(self.engine)
+        self.connection_obj = self.engine
 
-        self._connection_map = {}  # Lazy init as well
+    def _release_engine(self) -> None:
+        # Close fairies first so _ConnectionRecord drops its pool reference;
+        # dispose alone leaves them orphaned and causes _finalize_fairy
+        # RecursionErrors at GC time. Clearing _inspector_map is what
+        # actually frees Inspector.info_cache — dispose() does not.
+        if getattr(self, "engine", None) is None:
+            return
+        for conn in self._connection_map.values():
+            try:
+                conn.close()
+            except Exception:  # pylint: disable=broad-except
+                logger.debug("Connection already closed", exc_info=True)
+        self._connection_map = {}
         self._inspector_map = {}
+        session = getattr(self, "session", None)
+        if session is not None:
+            try:
+                session.remove()
+            except Exception:  # pylint: disable=broad-except
+                logger.debug("Session cleanup failed", exc_info=True)
+            self.session = None
+        try:
+            self.engine.dispose()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(f"Failed to dispose engine: {exc}")
+        self.engine = None
+        self.connection_obj = None
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -780,14 +806,10 @@ class CommonDbSourceService(
         return self._inspector_map[thread_id]
 
     def close(self):
-        if self.connection is not None:
-            self.connection.close()
-        for connection in self._connection_map.values():
-            connection.close()
+        self._release_engine()
         if hasattr(self, "ssl_manager") and self.ssl_manager:
             self.ssl_manager = cast(SSLManager, self.ssl_manager)
             self.ssl_manager.cleanup_temp_files()
-        self.engine.dispose()
 
     def fetch_table_tags(
         self,
