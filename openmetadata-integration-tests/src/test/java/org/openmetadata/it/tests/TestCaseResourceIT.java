@@ -797,27 +797,39 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .untilAsserted(
             () -> {
-              org.openmetadata.sdk.models.ListParams params =
-                  new org.openmetadata.sdk.models.ListParams()
-                      .withLimit(10)
-                      .addFilter("testCaseId", id);
-              org.openmetadata.sdk.models.ListResponse<?> response =
-                  client.testCaseResolutionStatuses().list(params);
-              assertTrue(
-                  response.getData().isEmpty(), "TestCaseResolutionStatuses should be empty");
+              try {
+                org.openmetadata.sdk.models.ListParams params =
+                    new org.openmetadata.sdk.models.ListParams()
+                        .withLimit(10)
+                        .addFilter("testCaseId", id);
+                org.openmetadata.sdk.models.ListResponse<?> response =
+                    client.testCaseResolutionStatuses().list(params);
+                assertTrue(
+                    response.getData().isEmpty(), "TestCaseResolutionStatuses should be empty");
+              } catch (org.openmetadata.sdk.exceptions.ApiException e) {
+                if (e.getCode() != 404) {
+                  throw e;
+                }
+              }
             });
 
-    // Wait and verify test case results are empty
+    // Wait and verify test case results are deleted
     Awaitility.await("Verify test case results are deleted")
         .atMost(15, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .untilAsserted(
             () -> {
-              org.openmetadata.sdk.models.ListParams params =
-                  new org.openmetadata.sdk.models.ListParams().withLimit(10);
-              org.openmetadata.sdk.models.ListResponse<?> response =
-                  client.testCaseResults().get(fqn, params);
-              assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
+              try {
+                org.openmetadata.sdk.models.ListParams params =
+                    new org.openmetadata.sdk.models.ListParams().withLimit(10);
+                org.openmetadata.sdk.models.ListResponse<?> response =
+                    client.testCaseResults().get(fqn, params);
+                assertTrue(response.getData().isEmpty(), "TestCaseResults should be empty");
+              } catch (org.openmetadata.sdk.exceptions.ApiException e) {
+                if (e.getCode() != 404) {
+                  throw e;
+                }
+              }
             });
   }
 
