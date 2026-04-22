@@ -231,16 +231,13 @@ export interface FieldChange {
 /**
  * Data Contract that this test case is associated with.
  *
- * List of data products this test case is part of. When not set, the test case inherits the
- * data products from the table it belongs to.
- *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domains the test case belongs to. When not set, the test case inherits the domain from
- * the table it belongs to.
+ * List of data products this test case is part of. When not set, the test case inherits the
+ * data products from the table it belongs to.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
