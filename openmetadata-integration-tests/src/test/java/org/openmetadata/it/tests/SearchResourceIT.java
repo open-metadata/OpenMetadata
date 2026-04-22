@@ -445,9 +445,10 @@ public class SearchResourceIT {
               return false;
             });
 
-    // Derive substrings from the namespaced name so the scenarios track whatever prefix
-    // ns.prefix() adds. The shouldFind column reflects realistic user expectations given that
-    // `name` has fuzziness via FUZZY_FIELDS and `name.ngram` handles substrings.
+    // Derive substrings from the namespaced name so the scenarios track whatever namespace
+    // decoration `ns.prefix()` applies, including the suffix it appends. The shouldFind
+    // column reflects realistic user expectations given that `name` has fuzziness via
+    // FUZZY_FIELDS and `name.ngram` handles substrings.
     String firstSegment = indexedName.split("_+")[0]; // e.g. "svc<hash>lhr" or "lhr"
     int midLen = Math.min(15, indexedName.length());
     String shortPrefix = indexedName.substring(0, Math.min(5, indexedName.length()));
