@@ -31,13 +31,17 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       '/api/v1/services/databaseServices/name/sample_data'
     );
     const service = await serviceRes.json();
+    if (service.displayName) {
+      await apiContext.patch(
+        `/api/v1/services/databaseServices/${service.id}`,
+        {
+          data: [{ op: 'replace', path: '/displayName', value: 'sample_data' }],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
 
-    await apiContext.patch(`/api/v1/services/databaseServices/${service.id}`, {
-      data: [{ op: 'replace', path: '/displayName', value: 'sample_data' }],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-
-    await afterAction();
+      await afterAction();
+    }
   });
 
   test.beforeEach(async ({ page }) => {
