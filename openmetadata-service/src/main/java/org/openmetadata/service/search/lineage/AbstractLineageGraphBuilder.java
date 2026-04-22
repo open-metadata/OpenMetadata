@@ -183,15 +183,26 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
    * Should be called when entity is updated or lineage edges change.
    */
   protected void invalidateCache(String fqn) {
+    invalidateLineageCacheForFqn(fqn);
+  }
+
+  /**
+   * Drops every cached lineage graph whose root, nodes, or edges reference the given FQN.
+   * Called when a lineage edge touching this FQN is added or deleted.
+   */
+  public void invalidateLineageCacheForFqn(String fqn) {
+    if (!config.isEnableCaching() || nullOrEmpty(fqn)) {
+      return;
+    }
+    cache.invalidateIfGraphContains(fqn);
+  }
+
+  /** Drops the entire lineage graph cache. */
+  public void invalidateAllLineageCache() {
     if (!config.isEnableCaching()) {
       return;
     }
-
-    // Note: This is a simplified invalidation.
-    // Full implementation would need to invalidate all cache entries
-    // that involve this FQN (as source or in the graph).
-    // For now, we rely on TTL-based expiration.
-    LOG.debug("Cache invalidation requested for fqn={} (TTL-based expiration active)", fqn);
+    cache.invalidateAll();
   }
 
   /**
