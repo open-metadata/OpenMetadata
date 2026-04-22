@@ -19,8 +19,9 @@ import { ProviderConfigOverride } from './ssoAuth';
 export const SHORT_ACCESS_TTL_SECONDS = 10;
 
 // Server-side SAML HttpSession cookie. SamlAuthServletHandler.handleRefresh
-// reads the refresh token from the session attribute keyed by this cookie;
-// clearing it forces the refresh call to return 401 "No active session".
+// uses this cookie to resolve the existing server-side session; clearing it
+// prevents the session from being found and forces refresh to return 401
+// "No active session".
 export const SESSION_COOKIE_NAME = 'JSESSIONID';
 
 // The /auth/refresh endpoint is auth-provider-agnostic on the server —
