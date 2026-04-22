@@ -200,6 +200,14 @@ public class S3AssetService implements AssetService {
   }
 
   @Override
+  public String generateDownloadURL(Asset asset) {
+    // The stored asset.url points at the S3 object key, not a signed URL. Return a
+    // short-lived presigned URL instead so the caller can actually fetch the object.
+    // Matches AzureAssetService.generateDownloadURL which does the same thing.
+    return generateDownloadUrlWithExpiry(asset, Duration.ofMinutes(15));
+  }
+
+  @Override
   public String generateDownloadUrlWithExpiry(Asset asset, Duration expiry) {
     String cloudFrontUrl = config.getCloudFrontUrl();
     String key = resolveKey(asset.getId());

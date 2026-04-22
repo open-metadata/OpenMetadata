@@ -57,7 +57,7 @@ class ContextFileIT {
             .withName(ns.prefix("report-pdf"))
             .withDisplayName("Annual Report 2023")
             .withFileType(ContextFileType.PDF)
-            .withFileSize(4200000.0)
+            .withFileSize(4200000)
             .withContentType("application/pdf")
             .withFileExtension("pdf")
             .withProcessingStatus(ProcessingStatus.Uploaded);
@@ -66,7 +66,7 @@ class ContextFileIT {
     assertNotNull(file.getId());
     assertEquals("Annual Report 2023", file.getDisplayName());
     assertEquals(ContextFileType.PDF, file.getFileType());
-    assertEquals(4200000.0, file.getFileSize());
+    assertEquals(4200000, file.getFileSize().intValue());
   }
 
   @Test
@@ -78,7 +78,7 @@ class ContextFileIT {
             .withName(ns.prefix("pricing-xlsx"))
             .withDisplayName("Product Pricing")
             .withFileType(ContextFileType.Spreadsheet)
-            .withFileSize(128000.0)
+            .withFileSize(128000)
             .withContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             .withFileExtension("xlsx")
             .withProcessingStatus(ProcessingStatus.Uploaded);

@@ -339,7 +339,7 @@ class DriveFileUploadIT {
       assertNotNull(file.getAssetId(), "File should have assetId from S3 upload");
       assertNotNull(file.getHeadContentId(), "File should point at a current content snapshot");
       assertEquals("Annual Report", file.getDisplayName());
-      assertEquals((double) content.length, file.getFileSize());
+      assertEquals(content.length, file.getFileSize().intValue());
       assertStoredInMinIO(file.getAssetId(), content);
     }
 
@@ -366,7 +366,7 @@ class DriveFileUploadIT {
     assertNotNull(file.getAssetId());
     assertNotNull(file.getHeadContentId());
     assertEquals("Pricing Sheet", file.getDisplayName());
-    assertEquals((double) content.length, file.getFileSize());
+    assertEquals(content.length, file.getFileSize().intValue());
   }
 
   @Test
@@ -381,7 +381,7 @@ class DriveFileUploadIT {
     assertNotNull(file.getAssetId());
     assertNotNull(file.getHeadContentId());
     assertEquals("sample-data.csv", file.getDisplayName());
-    assertEquals((double) content.length, file.getFileSize());
+    assertEquals(content.length, file.getFileSize().intValue());
   }
 
   @Test
@@ -393,8 +393,8 @@ class DriveFileUploadIT {
 
       ContextFile file = JsonUtils.readValue(body, ContextFile.class);
       assertEquals(
-          (double) contentBytes.length,
-          file.getFileSize(),
+          contentBytes.length,
+          file.getFileSize().intValue(),
           "File size should match uploaded bytes");
       assertEquals("txt", file.getFileExtension());
       assertEquals(ProcessingStatus.Uploaded, file.getProcessingStatus());
