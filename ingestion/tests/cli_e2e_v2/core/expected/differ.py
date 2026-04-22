@@ -15,6 +15,7 @@ for readability in pytest failure output.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from metadata.generated.schema.entity.data.database import Database
@@ -56,14 +57,82 @@ class Diff:
 class StructuralMismatch(AssertionError):
     """Aggregate assertion error carrying all collected diffs.
 
-    Rendered as a multi-line message so pytest's default failure output surfaces
-    every diff at once instead of short-circuiting on the first one.
+    Renders with a summary header (counts by category) and path-sorted body
+    grouped by owning entity — so a failure with 20 column diffs is
+    scannable rather than a wall of text.
     """
 
     def __init__(self, diffs: list[Diff]) -> None:
-        self.diffs = diffs
-        message = "StructuralMismatch:\n" + "\n".join(str(d) for d in diffs)
-        super().__init__(message)
+        self.diffs = list(diffs)
+        super().__init__(self._format(self.diffs))
+
+    @staticmethod
+    def _format(diffs: list[Diff]) -> str:
+        if not diffs:
+            return "StructuralMismatch: (no diffs)"
+
+        sorted_diffs = sorted(diffs, key=lambda d: d.path)
+        summary = _category_summary(sorted_diffs)
+        header = (
+            f"StructuralMismatch: {len(sorted_diffs)} diff"
+            f"{'' if len(sorted_diffs) == 1 else 's'} ({summary})"
+        )
+
+        body_lines: list[str] = []
+        last_scope: str | None = None
+        for d in sorted_diffs:
+            scope = _scope_of(d.path)
+            if last_scope is not None and scope != last_scope:
+                body_lines.append("")  # blank line between entity scopes
+            last_scope = scope
+            body_lines.append(str(d))
+
+        return header + "\n" + "\n".join(body_lines)
+
+
+# Scope extraction — returns the "owning entity" segment so diffs for the
+# same table/procedure/view cluster together in the rendered message.
+_SCOPE_LEVELS = ("procedure", "view", "table", "schema", "database", "service")
+
+
+def _scope_of(path: str) -> str:
+    for level in _SCOPE_LEVELS:
+        m = re.search(rf"{level}\[[^\]]+\]", path)
+        if m:
+            return m.group(0)
+    return path
+
+
+def _category_summary(diffs: list[Diff]) -> str:
+    """Build 'N column, M table, K procedure diffs' line for the header."""
+    counts: dict[str, int] = {}
+    for d in diffs:
+        cat = _category_of(d.path)
+        counts[cat] = counts.get(cat, 0) + 1
+    parts = [
+        f"{n} {cat}{'' if n == 1 else 's'}"
+        for cat, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+    return ", ".join(parts)
+
+
+def _category_of(path: str) -> str:
+    """Coarse category for the summary line — ordered from most specific."""
+    if ".column[" in path:
+        return "column"
+    if ".seed" in path:
+        return "seed"
+    if "procedure[" in path:
+        return "procedure"
+    if "view[" in path:
+        return "view"
+    if "table[" in path:
+        return "table"
+    if "schema[" in path:
+        return "schema"
+    if "database[" in path:
+        return "database"
+    return "service"
 
 
 def assert_service_matches(

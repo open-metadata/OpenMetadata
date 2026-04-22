@@ -57,7 +57,12 @@ def retry_until(
                     "[eventually:%s] gave up after %d attempts in %.1fs: %s",
                     name, attempts, elapsed, exc,
                 )
-                raise
+                raise AssertionError(
+                    f"eventually[{name}] timed out after {attempts} attempts "
+                    f"over {elapsed:.1f}s (timeout={timeout}s, "
+                    f"poll_interval={poll_interval}s).\n"
+                    f"Last failure:\n{exc}"
+                ) from exc
             time.sleep(poll_interval)
 
 
