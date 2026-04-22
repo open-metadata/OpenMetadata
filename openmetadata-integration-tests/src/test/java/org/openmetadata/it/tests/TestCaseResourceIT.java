@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -49,6 +50,8 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -4469,5 +4472,74 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Verify the displayName was actually set
     TestCase updated = getEntity(created.getId().toString());
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_testCaseDeleteCleanup(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // 1. Create a test case
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("delete_cleanup"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // 2. Create multiple resolution statuses (incidents)
+    for (int i = 0; i < 3; i++) {
+      org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus status =
+          new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus();
+      status.setTestCaseResolutionStatusType(
+          org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack);
+      status.setTestCaseReference(testCase.getFullyQualifiedName());
+      client.testCaseResolutionStatuses().create(status);
+    }
+
+    // 3. Verify relationships exist in DB using JDBI
+    // We expect 3 relationships from TestCase TO TestCaseResolutionStatus
+    List<CollectionDAO.EntityRelationshipRecord> relationships =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findTo(testCase.getId(), Entity.TEST_CASE, Relationship.RELATED_TO.ordinal());
+
+    assertNotNull(relationships);
+    long statusCount =
+        relationships.stream()
+            .filter(r -> r.getType().equals(Entity.TEST_CASE_RESOLUTION_STATUS))
+            .count();
+    assertTrue(
+        statusCount >= 3,
+        "There should be at least 3 relationships to resolution statuses before delete");
+
+    // 4. Hard delete the test case
+    java.util.Map<String, String> params = new java.util.HashMap<>();
+    params.put("hardDelete", "true");
+    client.testCases().delete(testCase.getId().toString(), params);
+
+    // 5. Verify relationships are cleaned up
+    List<CollectionDAO.EntityRelationshipRecord> relationshipsAfter =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findTo(testCase.getId(), Entity.TEST_CASE, Relationship.RELATED_TO.ordinal());
+
+    long statusCountAfter =
+        relationshipsAfter.stream()
+            .filter(r -> r.getType().equals(Entity.TEST_CASE_RESOLUTION_STATUS))
+            .count();
+    assertEquals(
+        0,
+        statusCountAfter,
+        "All relationships to resolution statuses should be cleaned up after hard delete");
+
+    // 6. Verify time series records still exist (only relationships are deleted)
+    List<String> statusesAfter =
+        Entity.getCollectionDAO()
+            .testCaseResolutionStatusTimeSeriesDao()
+            .listTestCaseResolutionForEntityFQNHash(testCase.getFullyQualifiedName());
+    assertNotNull(statusesAfter);
+    assertEquals(3, statusesAfter.size(), "Time series records should still exist in the database");
   }
 }

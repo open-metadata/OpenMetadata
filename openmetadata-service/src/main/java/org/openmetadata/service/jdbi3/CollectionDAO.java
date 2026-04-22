@@ -2647,6 +2647,14 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM entity_relationship WHERE toId = :id AND toEntity = :entity")
     void deleteAllTo(@BindUUID("id") UUID id, @Bind("entity") String entity);
 
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
+            + "AND fromId NOT IN (SELECT id FROM <table>)")
+    int deleteOrphanedRelationships(
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Define("table") String table);
+
     // Batch deletion methods for improved performance
     @Transaction
     default void batchDeleteRelationships(List<UUID> entityIds, String entityType) {

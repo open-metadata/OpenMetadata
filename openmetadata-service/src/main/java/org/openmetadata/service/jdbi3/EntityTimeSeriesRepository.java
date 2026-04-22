@@ -400,6 +400,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       return;
     }
     timeSeriesDao.deleteById(id);
+    daoCollection.relationshipDAO().deleteAll(id, entityType);
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {

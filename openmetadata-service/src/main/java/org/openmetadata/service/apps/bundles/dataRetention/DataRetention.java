@@ -239,6 +239,9 @@ public class DataRetention extends AbstractNativeApplication {
           result.getRelationshipResult().getRelationshipsDeleted(),
           result.getHierarchyResult().getTotalBrokenDeleted());
 
+      // Clean up orphaned TestCaseResolutionStatus relationships specifically
+      cleanOrphanedTestCaseResolutionStatusRelationships();
+
     } catch (Exception ex) {
       LOG.error("Failed to clean orphaned relationships and hierarchies", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
@@ -249,6 +252,19 @@ public class DataRetention extends AbstractNativeApplication {
         failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
       }
     }
+  }
+
+  @Transaction
+  private void cleanOrphanedTestCaseResolutionStatusRelationships() {
+    LOG.info("Initiating cleanup for orphaned testCaseResolutionStatus relationships.");
+    executeWithStatsTracking(
+        "orphaned_test_case_resolution_status_relationships",
+        () ->
+            collectionDAO
+                .relationshipDAO()
+                .deleteOrphanedRelationships(
+                    Entity.TEST_CASE, Entity.TEST_CASE_RESOLUTION_STATUS, "test_case"));
+    LOG.info("TestCaseResolutionStatus orphaned relationships cleanup complete.");
   }
 
   private void cleanOrphanedTagUsages() {

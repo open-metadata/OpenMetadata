@@ -887,30 +887,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testSuiteRepository.postUpdate(original, testSuite);
   }
 
-  @Transaction
-  @Override
-  protected void deleteChildren(
-      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
-    if (hardDelete) {
-      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
-      }
-    }
-  }
-
   @Override
   protected void entitySpecificCleanup(TestCase entityInterface) {
     deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
+    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    testCaseResolutionStatusRepository.deleteAllRelationshipsByTestCase(
+        entityInterface.getFullyQualifiedName());
   }
 
   private void deleteAllTestCaseResults(String fqn) {

@@ -742,6 +742,15 @@ public final class Entity {
 
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
+    if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
+        || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
+      // TimeSeries entities don't have a standard repository delete flow.
+      // We only want to delete their relationships if they are orphaned.
+      EntityTimeSeriesRepository<?> repository = getEntityTimeSeriesRepository(entityType);
+      // We don't call repository.delete(entityId) here because we want to preserve history.
+      // The relationships will be cleaned up by the caller's relationshipDAO().deleteAll().
+      return;
+    }
     EntityRepository<?> dao = getEntityRepository(entityType);
     try {
       dao.find(entityId, Include.ALL);
