@@ -79,7 +79,7 @@ def _safe_create_or_update(metadata, data, retries=3):
                 raise
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def mysql_container():
     with get_mysql_container(
         MySqlContainerConfigs(container_name=str(uuid.uuid4()))

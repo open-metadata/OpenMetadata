@@ -163,7 +163,7 @@ def minio_container():
         yield container
 
 
-@pytest.fixture(scope="class", autouse=True)
+@pytest.fixture(scope="package")
 def setup_s3(minio_container) -> None:
     # Mock our S3 bucket and ingest a file
     client = minio_container.get_client()
@@ -184,7 +184,7 @@ def setup_s3(minio_container) -> None:
     return
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="package")
 def ingestion_config(minio_container, datalake_service_name):
     ingestion_config = deepcopy(INGESTION_CONFIG)
     # Use dynamic service name for test isolation in parallel execution
@@ -202,8 +202,8 @@ def ingestion_config(minio_container, datalake_service_name):
     return ingestion_config
 
 
-@pytest.fixture(scope="class")
-def run_ingestion(metadata, ingestion_config, datalake_service_name):
+@pytest.fixture(scope="package")
+def run_ingestion(metadata, ingestion_config, datalake_service_name, setup_s3):
     ingestion_workflow = MetadataWorkflow.create(ingestion_config)
     ingestion_workflow.execute()
     ingestion_workflow.raise_from_status()

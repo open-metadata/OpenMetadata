@@ -57,8 +57,59 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
 
+  py-static-checks:
+    name: Static Checks (Python 3.10)
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          install-server: 'false'
+          install-mode: 'dev-only'
+
+      - name: Run Static Checks
+        env:
+          # PYTHON_VERSIONS constrains nox to a single interpreter because the
+          # static-checks session is declared with python=get_python_versions().
+          # Without this, nox enumerates all 3 supported versions and tries to
+          # run or skip sessions for interpreters not installed on this runner.
+          PYTHON_VERSIONS: ${{ env.MAIN_PYTHON_VERSION }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s static-checks
+        shell: bash
+
   py-unit-tests:
-    name: Unit Tests & Static Checks
+    name: "Unit Tests (${{ matrix.shard.name }}, Python ${{ matrix.py-version }})"
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
@@ -67,6 +118,15 @@ jobs:
       fail-fast: false
       matrix:
         py-version: ["3.10", "3.11", "3.12"]
+        shard:
+          - name: "shard-1"
+            nox-args: >-
+              tests/unit
+              --ignore=tests/unit/topology/database/test_databricks.py
+          - name: "shard-2"
+            nox-args: >-
+              tests/unit/topology/database/test_databricks.py
+              --dist=load
     steps:
 
       - name: Wait for the labeler
@@ -98,25 +158,23 @@ jobs:
           python-version: ${{ matrix.py-version }}
           install-server: 'false'
 
-      - name: Run Static Checks
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s static-checks
-        shell: bash
-
       - name: Run Unit Tests
+        env:
+          # PYTHON_VERSIONS pins nox to the matrix version because unit-tests is
+          # declared with python=get_python_versions(). Without this, nox would
+          # enumerate all supported versions and try to run or skip extra sessions.
+          PYTHON_VERSIONS: ${{ matrix.py-version }}
         run: |
           source env/bin/activate
           cd ingestion
-          nox --no-venv -s unit-tests
+          nox --no-venv -s unit-tests -- ${{ matrix.py-version != env.MAIN_PYTHON_VERSION && '--no-cov' || '' }} ${{ matrix.shard.nox-args }}
         shell: bash
 
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-unit
+          name: coverage-unit-${{ matrix.shard.name }}
           path: ingestion/.coverage
           include-hidden-files: true
 
@@ -132,19 +190,87 @@ jobs:
         py-version: ["3.10", "3.11", "3.12"]
         shard:
           - name: "shard-1"
+            workers: "2"
             nox-args: >-
-              tests/integration/ometa
+              tests/integration/trino
+              tests/integration/datalake
+              tests/integration/orm_profiler
+              tests/integration/ometa/test_ometa_tags_mixin.py
+              tests/integration/ometa/test_ometa_database_api.py
+              tests/integration/ometa/test_ometa_glossary.py
+              tests/integration/ometa/test_ometa_database_service_api.py
+              tests/integration/cockroach
+              tests/integration/ometa/test_ometa_user_api.py
+              tests/integration/kafka
+              tests/integration/automations
+              tests/integration/ometa/test_ometa_bot_rbac.py
+              tests/integration/atlas
+              tests/integration/mongodb
+              tests/integration/ssrs
+          - name: "shard-2"
+            workers: "2"
+            nox-args: >-
               tests/integration/postgres
               tests/integration/mysql
-              tests/integration/profiler
               tests/integration/data_quality
-          - name: "shard-2"
+              tests/integration/ometa/test_ometa_domains_api.py
+              tests/integration/ometa/test_ometa_patch.py
+              tests/integration/ometa/test_ometa_topology_patch.py
+          - name: "shard-3"
+            workers: "2"
             nox-args: >-
-              --ignore=tests/integration/ometa
-              --ignore=tests/integration/postgres
-              --ignore=tests/integration/mysql
-              --ignore=tests/integration/profiler
-              --ignore=tests/integration/data_quality
+              tests/integration/sdk
+              tests/integration/ometa/test_ometa_rest_api.py
+              tests/integration/ometa/test_ometa_pipeline_api.py
+              tests/integration/superset
+              tests/integration/lineage
+              tests/integration/test_suite
+              tests/integration/ometa/test_ometa_chart_api.py
+              tests/integration/ometa/test_ometa_storage_api.py
+              tests/integration/ometa/test_ometa_suggestion_api.py
+              tests/integration/workflow
+              tests/integration/ometa/test_ometa_workflow_api.py
+              tests/integration/ometa/test_ometa_from_env.py
+              tests/integration/ometa/test_ometa_ingestion_pipeline.py
+              tests/integration/sources
+              tests/integration/auto_classification
+              tests/integration/powerbi
+              tests/integration/usage
+          - name: "shard-4"
+            workers: "2"
+            nox-args: >-
+              tests/integration/profiler
+              tests/integration/ometa/test_ometa_table_api.py
+              tests/integration/airflow
+              tests/integration/ometa/test_ometa_mlmodel_api.py
+              tests/integration/ometa/test_ometa_dashboard_api.py
+              tests/integration/ometa/test_ometa_topic_api.py
+              tests/integration/ometa/test_ometa_test_suite.py
+              tests/integration/ometa/test_ometa_lineage_api.py
+              tests/integration/alationsink
+              tests/integration/great_expectations
+              tests/integration/ometa/test_ometa_server_api.py
+              tests/integration/cassandra
+              tests/integration/s3
+          - name: "shard-5"
+            workers: "2"
+            nox-args: >-
+              tests/integration/sftp
+              tests/integration/ometa/test_ometa_role_policy_api.py
+              tests/integration/ometa/test_ometa_subscription_api.py
+              tests/integration/ometa/test_ometa_custom_properties_api.py
+              tests/integration/ometa/test_ometa_es_api.py
+              tests/integration/sql_server
+              tests/integration/ometa/test_ometa_data_contract_api.py
+              tests/integration/ometa/test_ometa_service_api.py
+              tests/integration/ometa/test_ometa_life_cycle_api.py
+              tests/integration/ometa/test_ometa_topology_restore.py
+              tests/integration/ometa/test_ometa_connection_definition_api.py
+              tests/integration/ometa/test_ometa_secrets_manager.py
+              tests/integration/ometa/test_ometa_app_api.py
+              tests/integration/amundsen
+              tests/integration/connections
+              tests/integration/sas
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -188,12 +314,17 @@ jobs:
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
       - name: Run Integration Tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+          PYTEST_INTEGRATION_WORKERS: ${{ matrix.shard.workers }}
+          # PYTHON_VERSIONS pins nox to the matrix version because integration-tests
+          # is declared with python=get_python_versions(). Without this, nox would
+          # enumerate all supported versions and try to run or skip extra sessions.
+          PYTHON_VERSIONS: ${{ matrix.py-version }}
         run: |
           source env/bin/activate
           cd ingestion
-          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.shard.nox-args }}
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
+          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.py-version != env.MAIN_PYTHON_VERSION && '--no-cov' || '' }} ${{ matrix.shard.nox-args }}
         shell: bash
 
       - name: Upload coverage artifact
@@ -214,16 +345,25 @@ jobs:
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
   # Runs and exits 1 only when a test job fails or is cancelled.
   # Set "py-tests / py-tests-status" as the sole required check for this workflow.
+  #
+  # Uses if: always() instead of if: failure() || cancelled() because the latter
+  # can cause this job to be skipped when a needed job is cancelled before GitHub
+  # evaluates the condition — making the required check silently pass on failure.
+  # With always(), the job always runs and explicitly checks each dependency result.
   py-tests-status:
     name: py-tests-status
-    needs: [changes, py-unit-tests, py-integration-tests]
-    if: ${{ failure() || cancelled() }}
+    needs: [changes, py-static-checks, py-unit-tests, py-integration-tests]
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: exit 1
+      - name: Fail if any test job failed or was cancelled
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: exit 1
 
   py-combine-coverage:
-    needs: [changes, py-unit-tests, py-integration-tests]
+    needs: [changes, py-static-checks, py-unit-tests, py-integration-tests]
     if: ${{ needs.changes.outputs.python == 'true' && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -260,7 +400,10 @@ jobs:
       - name: Prepare coverage files
         run: |
           cd ingestion
-          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          for dir in coverage-data/coverage-unit-*/; do
+            shard=$(basename "$dir" | sed 's/coverage-unit-//')
+            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.unit-$shard"
+          done
           for dir in coverage-data/coverage-integration-*/; do
             shard=$(basename "$dir" | sed 's/coverage-integration-//')
             [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"

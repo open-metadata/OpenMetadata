@@ -119,7 +119,7 @@ def test_log_lineage(
     assert edge is not None
 
 
-def reindex_search(metadata: OpenMetadata, entities=None, timeout=180):
+def reindex_search(metadata: OpenMetadata, entities=None, timeout=180, max_retries=3):
     if entities is None:
         entities = ["table", "query"]
 
@@ -149,45 +149,58 @@ def reindex_search(metadata: OpenMetadata, entities=None, timeout=180):
             continue
         time.sleep(2)
 
-    time.sleep(1)
+    for attempt in range(max_retries):
+        time.sleep(1)
 
-    try:
-        metadata.client.post(
-            "/apps/trigger/SearchIndexingApplication", json={"entities": entities}
-        )
-    except Exception as e:
-        raise RuntimeError(f"Failed to trigger reindexing: {e}")
-
-    time.sleep(1)
-
-    start_complete = time.time()
-    status = None
-    while status not in ("success", "completed"):
         try:
-            response = metadata.client.get(
-                "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
+            metadata.client.post(
+                "/apps/trigger/SearchIndexingApplication", json={"entities": entities}
             )
-            if len(response["data"]) == 0:
-                raise RuntimeError("No reindexing status found after triggering")
-
-            status = response["data"][0]["status"]
-
-            if status in ("failed", "error"):
-                raise RuntimeError(f"Reindexing failed with status: {status}")
-
-            if time.time() - start_complete > complete_timeout:
-                raise TimeoutError(
-                    f"Timed out waiting for reindexing to complete. "
-                    f"Current status: {status}, elapsed: {int(time.time() - start_complete)}s"
-                )
         except Exception as e:
-            if "TimeoutError" in str(type(e).__name__) or "RuntimeError" in str(
-                type(e).__name__
-            ):
-                raise
-            time.sleep(1)
-            continue
-        time.sleep(2)
+            raise RuntimeError(f"Failed to trigger reindexing: {e}")
+
+        time.sleep(1)
+
+        start_complete = time.time()
+        status = None
+        reindex_failed = False
+        while status not in ("success", "completed"):
+            try:
+                response = metadata.client.get(
+                    "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
+                )
+                if len(response["data"]) == 0:
+                    raise RuntimeError("No reindexing status found after triggering")
+
+                status = response["data"][0]["status"]
+
+                if status in ("failed", "error"):
+                    reindex_failed = True
+                    break
+
+                if time.time() - start_complete > complete_timeout:
+                    raise TimeoutError(
+                        f"Timed out waiting for reindexing to complete. "
+                        f"Current status: {status}, elapsed: {int(time.time() - start_complete)}s"
+                    )
+            except Exception as e:
+                if "TimeoutError" in str(type(e).__name__) or "RuntimeError" in str(
+                    type(e).__name__
+                ):
+                    raise
+                time.sleep(1)
+                continue
+            time.sleep(2)
+
+        if not reindex_failed:
+            return
+
+        if attempt < max_retries - 1:
+            time.sleep(5 * (attempt + 1))
+        else:
+            raise RuntimeError(
+                f"Reindexing failed with status: {status} after {max_retries} attempts"
+            )
 
 
 @pytest.fixture()

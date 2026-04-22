@@ -18,7 +18,7 @@ def config_logging():
     logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def postgres_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     data_dir = tmp_path_factory.mktemp("data")

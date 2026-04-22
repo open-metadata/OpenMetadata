@@ -11,8 +11,11 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
     DatabaseServiceType,
 )
+
+from ..conftest import _safe_delete
 
 
 @pytest.fixture(scope="package")
@@ -81,7 +84,7 @@ def assert_dangling_connections(container, max_connections):
     ), f"Found {active_connections} open connections to MySQL"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def create_service_request(mysql_container):
     return CreateDatabaseServiceRequest.model_validate(
         {
@@ -97,3 +100,30 @@ def create_service_request(mysql_container):
             },
         }
     )
+
+
+@pytest.fixture(scope="package")
+def unmask_password(create_service_request):
+    def patch_password(service: DatabaseService):
+        service.connection.config.authType.password = (
+            create_service_request.connection.config.authType.password
+        )
+        return service
+
+    return patch_password
+
+
+@pytest.fixture(scope="package")
+def db_service(metadata, create_service_request, unmask_password):
+    service_entity = metadata.create_or_update(data=create_service_request)
+    fqn = service_entity.fullyQualifiedName.root
+    yield unmask_password(service_entity)
+    service_entity = metadata.get_by_name(DatabaseService, fqn)
+    if service_entity:
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
+        )

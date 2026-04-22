@@ -675,6 +675,11 @@ def prepare_data(postgres_container, mysql_container):
     copy_table(dvdrental, mysql_container, "changed_customer")
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _ensure_mysql_data(prepare_data):
+    """Guarantee MySQL tables are populated before ingest_mysql_service runs."""
+
+
 def copy_table(source_engine, destination_engine, table_name):
     source_metadata = MetaData()
     source_table = SQATable(table_name, source_metadata, autoload_with=source_engine)

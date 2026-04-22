@@ -29,6 +29,7 @@ from functools import partial
 from pathlib import Path
 from random import choice, randint
 from unittest import TestCase
+from uuid import uuid4
 
 from pymongo import MongoClient, database
 from testcontainers.mongodb import MongoDbContainer
@@ -50,7 +51,7 @@ from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
 from ..conftest import _safe_delete
 
-SERVICE_NAME = Path(__file__).stem
+SERVICE_NAME = f"{Path(__file__).stem}_{uuid4().hex[:8]}"
 
 
 def add_query_config(config, table_config: TableConfig) -> dict:

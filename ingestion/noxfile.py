@@ -149,26 +149,51 @@ def unit_tests(session):
     install(session, ".[all]")
     install(session, ".[test]")
 
-    # Separate test paths from pytest flags in posargs
+    # We only strip our custom flags (--no-cov, --dist) from posargs and pass
+    # everything else through to pytest in original order. We deliberately avoid
+    # splitting args into "paths" vs "flags" by startswith("-") because that
+    # breaks paired options like "-k expr" or "--maxfail 1" — the value token
+    # would be misclassified as a test path, silently dropping the flag argument.
     args = list(session.posargs)
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
+
+    # --no-cov is a CI-only flag that skips coverage for non-main Python
+    # versions to avoid redundant coverage data. It is NOT a pytest option.
+    skip_cov = "--no-cov" in args
+    if skip_cov:
+        args.remove("--no-cov")
+
+    # Allow callers to override --dist via posargs (e.g. --dist=load).
+    # Detect before building pytest_args so we don't emit a conflicting default.
+    has_dist_override = any(a == "--dist" or a.startswith("--dist=") for a in args)
+
+    # If the caller provided no explicit test paths, inject the default.
+    has_explicit_paths = any(not a.startswith("-") for a in args)
 
     pytest_args = [
         "-c",
         "pyproject.toml",
-        "--cov=metadata",
-        "--cov-branch",
-        "--cov-config=pyproject.toml",
         "--junitxml=junit/test-results-unit.xml",
         "-n",
         "auto",
-        "--dist",
-        "loadfile",
+        "--durations=20",
     ]
 
-    pytest_args.extend(test_paths or ["tests/unit/"])
-    pytest_args.extend(extra_flags)
+    if not has_dist_override:
+        pytest_args += ["--dist", "loadfile"]
+
+    if not skip_cov:
+        pytest_args += [
+            "--cov=metadata",
+            "--cov-branch",
+            "--cov-config=pyproject.toml",
+        ]
+
+    if not has_explicit_paths:
+        pytest_args.append("tests/unit/")
+
+    # Pass all remaining posargs through in original order so flag+value
+    # pairs (e.g. -k expr, --maxfail 1) are preserved intact.
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 
@@ -195,10 +220,19 @@ def integration_tests(session):
     install(session, ".[all]")
     install(session, ".[test]")
 
+    # We only strip our custom flags (--standalone, --no-cov, --workers) from posargs
+    # and pass everything else through to pytest in original order. We avoid splitting
+    # by startswith("-") because that breaks paired options like "-k expr" or
+    # "--maxfail 1" — the value token would be misclassified as a test path.
     args = list(session.posargs)
     standalone = "--standalone" in args
     if standalone:
         args.remove("--standalone")
+
+    # --no-cov is a CI-only flag to skip coverage on non-main Python versions.
+    skip_cov = "--no-cov" in args
+    if skip_cov:
+        args.remove("--no-cov")
 
     workers = os.environ.get("PYTEST_INTEGRATION_WORKERS", "0")
     if "--workers" in args:
@@ -206,27 +240,35 @@ def integration_tests(session):
         workers = args[idx + 1]
         args = args[:idx] + args[idx + 2 :]
 
-    # Separate test paths from pytest flags in posargs
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
+    # If no explicit test paths, inject the default directory.
+    has_explicit_paths = any(not a.startswith("-") for a in args)
 
     pytest_args = [
         "-c",
         "pyproject.toml",
-        "--cov=metadata",
-        "--cov-branch",
-        "--cov-config=pyproject.toml",
         "--junitxml=junit/test-results-integration.xml",
     ]
 
-    if not standalone:
+    if not skip_cov:
+        pytest_args += [
+            "--cov=metadata",
+            "--cov-branch",
+            "--cov-config=pyproject.toml",
+        ]
+
+    if not standalone and not skip_cov:
         pytest_args.append("--cov-append")
+
     use_xdist = int(workers) > 0
     if use_xdist:
         pytest_args.extend([f"-n{workers}", "--dist=loadgroup"])
 
-    pytest_args.extend(test_paths or ["tests/integration/"])
-    pytest_args.extend(extra_flags)
+    if not has_explicit_paths:
+        pytest_args.append("tests/integration/")
+
+    # Pass all remaining posargs through in original order so flag+value
+    # pairs (e.g. -k expr, --maxfail 1) are preserved intact.
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 

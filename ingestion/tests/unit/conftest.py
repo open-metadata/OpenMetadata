@@ -26,6 +26,19 @@ _mock_validate.start()
 _mock_health = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.health_check")
 _mock_health.start()
 
+# Prevent Databricks SQL connector from making telemetry HTTP calls.
+# The connector checks feature flags via a blocking HTTP request to the server
+# (DatabricksRetryPolicy with 5 retries + exponential backoff). In CI with no
+# real Databricks endpoint, each retry set burns ~32 seconds of wall-clock time.
+try:
+    _mock_databricks_telemetry = patch(
+        "databricks.sql.telemetry.telemetry_client.TelemetryHelper.is_telemetry_enabled",
+        return_value=False,
+    )
+    _mock_databricks_telemetry.start()
+except (ImportError, ModuleNotFoundError):
+    pass  # databricks-sql-connector not installed
+
 
 @fixture(scope="session")
 def worker_id(request):

@@ -18,7 +18,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def cockroach_container():
     """
     Start a Cockroach container.

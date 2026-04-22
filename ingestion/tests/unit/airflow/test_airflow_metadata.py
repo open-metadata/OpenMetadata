@@ -338,7 +338,10 @@ class TestYieldPipelineStatus:
         return AirflowSource.__new__(AirflowSource)
 
     def _make_dag_run(self, logical_date, start_date):
-        dag_run = MagicMock(spec=DagRun)
+        # Avoid spec=DagRun — MagicMock spec introspection triggers SQLAlchemy
+        # mapper configuration on DagRun's association proxies, which fails
+        # without a real database ('NullType' has no attribute 'length').
+        dag_run = MagicMock()
         dag_run.run_id = "manual__2024-01-01"
         dag_run.dag_id = "test_dag"
         dag_run.state = "success"

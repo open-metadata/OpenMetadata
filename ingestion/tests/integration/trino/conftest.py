@@ -1,3 +1,4 @@
+import logging
 import os.path
 import random
 import uuid
@@ -209,6 +210,7 @@ def create_test_data(trino_container):
         "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
     )
     data_dir = os.path.dirname(__file__) + "/data"
+    table_names = []
     for file in os.listdir(data_dir):
         file_path = Path(os.path.join(data_dir, file))
 
@@ -217,12 +219,47 @@ def create_test_data(trino_container):
         else:
             create_test_data_from_parquet(engine, file_path)
 
-        sleep(1)
+        table_names.append(file_path.stem)
+        sleep(3)
         _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
+
+    _verify_tables_readable(engine, table_names)
     _execute_with_connect(
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
     return
+
+
+logger = logging.getLogger(__name__)
+
+
+def _verify_tables_readable(engine: Engine, table_names: list):
+    """Verify all tables are readable after data loading.
+
+    Trino caches Hive split locations and MinIO has eventual consistency.
+    Under parallel CI load, S3 files may not be visible immediately after INSERT.
+    This forces Trino to refresh its split cache per table with retry/backoff.
+    """
+    for table_name in table_names:
+        last_exc: Exception | None = None
+        for _ in range(15):
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text(f'SELECT count(*) FROM minio."my_schema"."{table_name}"')
+                    ).scalar()
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                sleep(2)
+        # Raise instead of silently logging a warning because swallowing the error
+        # here causes tests to proceed with a broken fixture, leading to confusing
+        # downstream failures rather than a clear error at setup time.
+        if last_exc is not None:
+            raise RuntimeError(
+                f"Table {table_name!r} not readable after 15 retries"
+            ) from last_exc
 
 
 def create_test_data_from_parquet(engine: Engine, file_path: Path):

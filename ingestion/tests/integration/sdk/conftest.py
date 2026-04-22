@@ -10,7 +10,6 @@ from sqlalchemy import Integer, MetaData, String
 from sqlalchemy import Table as SQATable
 from sqlalchemy import create_engine, text
 
-from _openmetadata_testutils.ometa import int_admin_ometa
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -32,11 +31,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
-
-
-@pytest.fixture(scope="module")
-def metadata():
-    return int_admin_ometa()
 
 
 @pytest.fixture(scope="module")

@@ -27,15 +27,32 @@ inputs:
     description: Whether to install Java, Node, and the OpenMetadata server
     required: false
     default: "true"
+  install-mode:
+    description: "'full' installs [all]+[test] extras; 'dev-only' installs only [dev] (sufficient for static checks)"
+    required: false
+    default: "full"
 
 runs:
   using: composite
   steps:
     # ---- Install Ubuntu Dependencies ---------------------------------------------
-    - name: Install Ubuntu dependencies
+    - name: Cache and install Ubuntu dependencies
+      # Pinned to a specific release tag because @latest is a supply-chain risk.
+      # v1.6.0+ is required: v1.4.2 and earlier internally use upload-artifact@v3
+      # which GitHub has deprecated and now blocks at job setup time.
+      uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      with:
+        packages: unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev libevent-dev python3-dev libkrb5-dev tdsodbc
+        version: 1.0
+
+    - name: Install msodbcsql18
+      if: ${{ inputs.install-mode == 'full' }}
       run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
+        # Added apt-get update before install because cache-apt-pkgs-action restores
+        # the .deb cache but does not refresh the APT index, which can cause
+        # "Unable to locate package msodbcsql18" on stale or post-update runner images.
+        sudo apt-get update -q
+        ACCEPT_EULA=Y sudo apt-get install -y msodbcsql18
       shell: bash
     # ------------------------------------------------------------------------------
 
@@ -70,16 +87,66 @@ runs:
     - name: Install uv
       uses: astral-sh/setup-uv@v4
 
-    - name: Generate Models
+    - name: Restore uv package cache
+      id: cache-uv
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.UV_CACHE_DIR }}
+        key: uv-${{ runner.os }}-py${{ inputs.python-version }}-${{ inputs.install-mode }}-${{ hashFiles('ingestion/setup.py') }}
+        restore-keys: |
+          uv-${{ runner.os }}-py${{ inputs.python-version }}-${{ inputs.install-mode }}-
+          uv-${{ runner.os }}-py${{ inputs.python-version }}-
+
+    - name: Create venv and install dev dependencies
       run: |
         python3 -m venv env
         source env/bin/activate
-        sudo make install_antlr_cli
         uv pip install "${{ github.workspace }}/ingestion[dev]"
+      shell: bash
+
+    - name: Restore Generated Models Cache
+      id: cache-generated
+      uses: actions/cache/restore@v4
+      with:
+        path: ingestion/src/metadata/generated
+        # ingestion/Makefile is included in the cache key because the root Makefile
+        # includes it (line: "include ingestion/Makefile"), so changes there directly
+        # affect make generate output. Without it, stale models could be served from
+        # cache after Makefile edits.
+        key: ${{ runner.os }}-generated-${{ hashFiles(
+               'openmetadata-spec/src/main/resources/json/schema/**',
+               'openmetadata-spec/src/main/antlr4/**/*.g4',
+               'scripts/datamodel_generation.py',
+               'ingestion/setup.py',
+               'Makefile',
+               'ingestion/Makefile'
+             ) }}
+
+    - name: Generate Models
+      if: steps.cache-generated.outputs.cache-hit != 'true'
+      run: |
+        source env/bin/activate
+        sudo make install_antlr_cli
         make generate
       shell: bash
 
+    - name: Save Generated Models Cache
+      if: ${{ steps.cache-generated.outputs.cache-hit != 'true' && github.event_name != 'pull_request_target' }}
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: ingestion/src/metadata/generated
+        key: ${{ runner.os }}-generated-${{ hashFiles(
+               'openmetadata-spec/src/main/resources/json/schema/**',
+               'openmetadata-spec/src/main/antlr4/**/*.g4',
+               'scripts/datamodel_generation.py',
+               'ingestion/setup.py',
+               'Makefile',
+               'ingestion/Makefile'
+             ) }}
+
     - name: Install Python Dependencies
+      if: ${{ inputs.install-mode == 'full' }}
       run: |
         source env/bin/activate
         uv pip install "setuptools<81"
@@ -89,6 +156,21 @@ runs:
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
       shell: bash
+
+    - name: Install nox (dev-only mode)
+      if: ${{ inputs.install-mode != 'full' }}
+      run: |
+        source env/bin/activate
+        uv pip install nox pandas
+      shell: bash
+
+    - name: Save uv package cache
+      if: ${{ github.event_name != 'pull_request_target' }}
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.UV_CACHE_DIR }}
+        key: uv-${{ runner.os }}-py${{ inputs.python-version }}-${{ inputs.install-mode }}-${{ hashFiles('ingestion/setup.py') }}
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
