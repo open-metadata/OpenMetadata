@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
@@ -48,7 +49,7 @@ class FolderIndexTest {
   }
 
   @Test
-  void testBuildSearchIndexDocInternal_setsCommonFieldsAndParent() {
+  void testBuildSearchIndexDocInternal_setsEntitySpecificFieldsOnly() {
     EntityReference owner =
         new EntityReference().withId(UUID.randomUUID()).withType("user").withName("admin");
     EntityReference parent =
@@ -70,10 +71,15 @@ class FolderIndexTest {
     Map<String, Object> result =
         new FolderIndex(folder).buildSearchIndexDocInternal(new HashMap<>());
 
-    assertEquals(FOLDER_ENTITY, result.get("entityType"));
-    assertEquals(Boolean.FALSE, result.get("deleted"));
+    // Common fields (entityType, deleted, owners) are handled by populateCommonFields in the
+    // SearchIndex template method, not in buildSearchIndexDocInternal. See PageIndexTest for
+    // the same convention.
+    assertFalse(result.containsKey("entityType"));
+    assertFalse(result.containsKey("deleted"));
+    assertFalse(result.containsKey("owners"));
+
+    // Entity-specific fields
     assertEquals(2, result.get("childrenCount"));
-    assertNotNull(result.get("owners"));
     assertNotNull(result.get("parent"));
   }
 }

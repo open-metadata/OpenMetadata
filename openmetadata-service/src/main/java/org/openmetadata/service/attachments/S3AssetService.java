@@ -75,6 +75,22 @@ public class S3AssetService implements AssetService {
     this.cloudFrontUtilities = CloudFrontUtilities.create();
   }
 
+  @Override
+  public void close() {
+    // S3Client and S3Presigner both hold HTTP connection pools backed by the AWS SDK —
+    // release them on shutdown so the JVM doesn't leak pool threads / sockets.
+    try {
+      s3Client.close();
+    } catch (Exception e) {
+      LOG.warn("Failed to close S3 client cleanly", e);
+    }
+    try {
+      presigner.close();
+    } catch (Exception e) {
+      LOG.warn("Failed to close S3 presigner cleanly", e);
+    }
+  }
+
   private AwsCredentialsProvider resolveCredentials(S3Configuration config) {
     if (config.getEndpoint() != null && !config.getEndpoint().isEmpty()) {
       LOG.info("Custom endpoint detected, using StaticCredentialsProvider");

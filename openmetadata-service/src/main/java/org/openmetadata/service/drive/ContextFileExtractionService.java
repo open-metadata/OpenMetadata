@@ -4,10 +4,12 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import java.io.InputStream;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +65,19 @@ public class ContextFileExtractionService {
             return t;
           }
         };
-    return Executors.newFixedThreadPool(threads, threadFactory);
+    // Bounded queue + AbortPolicy so an overloaded server rejects new extractions
+    // rather than accumulating an unbounded backlog on the heap. The RejectedExecutionException
+    // handling in submit(...) below turns the rejection into a Failed processing status
+    // on the content, so callers see a clear "retry later" signal instead of silent buildup.
+    int queueCapacity = Math.max(64, threads * 8);
+    return new ThreadPoolExecutor(
+        threads,
+        threads,
+        0L,
+        TimeUnit.MILLISECONDS,
+        new ArrayBlockingQueue<>(queueCapacity),
+        threadFactory,
+        new ThreadPoolExecutor.AbortPolicy());
   }
 
   ContextFileExtractionService(

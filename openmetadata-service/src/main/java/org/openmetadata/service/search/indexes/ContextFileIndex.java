@@ -25,16 +25,6 @@ public class ContextFileIndex implements TaggableIndex {
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    doc.put("entityType", Entity.CONTEXT_FILE);
-    doc.put("deleted", file.getDeleted() != null ? file.getDeleted() : Boolean.FALSE);
-    if (file.getOwners() != null) {
-      doc.put("owners", file.getOwners());
-    }
-    if (file.getVotes() != null) {
-      int up = file.getVotes().getUpVotes() != null ? file.getVotes().getUpVotes() : 0;
-      int down = file.getVotes().getDownVotes() != null ? file.getVotes().getDownVotes() : 0;
-      doc.put("totalVotes", up - down);
-    }
     doc.put("fileType", file.getFileType());
     doc.put("fileSize", file.getFileSize());
     doc.put("fileExtension", file.getFileExtension());

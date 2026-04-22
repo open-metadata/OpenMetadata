@@ -8,8 +8,10 @@ import org.openmetadata.service.config.ObjectStorageConfiguration;
 @Slf4j
 public class AssetServiceFactory {
   private static AssetService instance;
+  private static boolean shutdownHookRegistered;
 
   public static synchronized void init(OpenMetadataApplicationConfig config) {
+    registerShutdownHook();
     ObjectStorageConfiguration objectStorageConfiguration = config.getObjectStorage();
     if (objectStorageConfiguration == null || !objectStorageConfiguration.isEnabled()) {
       // Storage disabled — always swap to a fresh NoOp provider. If a previous init
@@ -17,6 +19,7 @@ public class AssetServiceFactory {
       // disabled state would keep serving real uploads/downloads against the old
       // backend, which hides the misconfiguration and leaks connections in tests.
       if (!(instance instanceof NoOpAssetService)) {
+        closeCurrent();
         instance = new NoOpAssetService();
       }
       return;
@@ -26,6 +29,7 @@ public class AssetServiceFactory {
     if (isInitializedForProvider(provider)) {
       return;
     }
+    closeCurrent();
 
     AssetService delegate;
     String normalizedProvider = provider.toLowerCase(Locale.ROOT);
@@ -86,5 +90,43 @@ public class AssetServiceFactory {
           "AssetService not initialized. Please make sure ObjectStorage is configured.");
     }
     return instance;
+  }
+
+  /**
+   * Close the current instance if it owns lifecycle resources (e.g. S3Client / S3Presigner
+   * connection pools). Safe to call with no instance or an already-closed instance.
+   */
+  public static synchronized void shutdown() {
+    AssetService current = instance;
+    if (current == null) {
+      return;
+    }
+    try {
+      current.close();
+    } catch (Exception e) {
+      LOG.warn("Failed to close AssetService cleanly", e);
+    }
+    instance = null;
+  }
+
+  private static void closeCurrent() {
+    AssetService current = instance;
+    if (current == null) {
+      return;
+    }
+    try {
+      current.close();
+    } catch (Exception e) {
+      LOG.warn("Failed to close previous AssetService cleanly", e);
+    }
+  }
+
+  private static void registerShutdownHook() {
+    if (shutdownHookRegistered) {
+      return;
+    }
+    Runtime.getRuntime()
+        .addShutdownHook(new Thread(AssetServiceFactory::shutdown, "asset-service-shutdown"));
+    shutdownHookRegistered = true;
   }
 }

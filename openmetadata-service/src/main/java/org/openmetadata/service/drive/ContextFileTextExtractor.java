@@ -251,7 +251,9 @@ public class ContextFileTextExtractor {
         TesseractOCRConfig config = createConfig();
         ParseContext parseContext = new ParseContext();
         parseContext.set(TesseractOCRConfig.class, config);
-        BodyContentHandler handler = new BodyContentHandler(-1);
+        // Bound the handler at MAX_CANONICAL_TEXT_LENGTH so a very large or malicious image
+        // cannot drive Tika to accumulate unbounded OCR output on the heap (OOM risk).
+        BodyContentHandler handler = new BodyContentHandler(MAX_CANONICAL_TEXT_LENGTH);
         Metadata metadata = new Metadata();
 
         try (InputStream stream = Files.newInputStream(imagePath)) {

@@ -23,11 +23,6 @@ public class FolderIndex implements TaggableIndex {
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    doc.put("entityType", Entity.FOLDER);
-    doc.put("deleted", folder.getDeleted() != null ? folder.getDeleted() : Boolean.FALSE);
-    if (folder.getOwners() != null) {
-      doc.put("owners", folder.getOwners());
-    }
     if (folder.getParent() != null) {
       doc.put("parent", getEntityWithDisplayName(folder.getParent()));
     }

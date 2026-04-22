@@ -83,4 +83,9 @@ public class QueuedDeleteAssetService implements AssetService {
   public String generateDownloadUrlWithExpiry(Asset asset, Duration expiry) {
     return delegate.generateDownloadUrlWithExpiry(asset, expiry);
   }
+
+  @Override
+  public void close() {
+    delegate.close();
+  }
 }

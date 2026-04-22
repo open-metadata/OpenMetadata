@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
@@ -50,7 +51,7 @@ class ContextFileIndexTest {
   }
 
   @Test
-  void testBuildSearchIndexDocInternal_setsCommonFieldsAndNormalizesDeleted() {
+  void testBuildSearchIndexDocInternal_setsEntitySpecificFieldsOnly() {
     EntityReference owner =
         new EntityReference().withId(UUID.randomUUID()).withType("user").withName("admin");
     EntityReference folder =
@@ -73,11 +74,16 @@ class ContextFileIndexTest {
     Map<String, Object> result =
         new ContextFileIndex(file).buildSearchIndexDocInternal(new HashMap<>());
 
-    assertEquals(CONTEXT_FILE_ENTITY, result.get("entityType"));
-    assertEquals(Boolean.FALSE, result.get("deleted"));
-    assertEquals(2, result.get("totalVotes"));
+    // Common fields (entityType, deleted, owners, totalVotes) are handled by
+    // populateCommonFields in the SearchIndex template method, not in
+    // buildSearchIndexDocInternal. See PageIndexTest for the same convention.
+    assertFalse(result.containsKey("entityType"));
+    assertFalse(result.containsKey("deleted"));
+    assertFalse(result.containsKey("owners"));
+    assertFalse(result.containsKey("totalVotes"));
+
+    // Entity-specific fields
     assertEquals(ContextFileType.PDF, result.get("fileType"));
-    assertNotNull(result.get("owners"));
     assertNotNull(result.get("folder"));
   }
 }
