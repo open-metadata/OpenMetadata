@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -483,7 +483,7 @@ test.describe('Mention notifications in Notification Box', () => {
   const conversationSeedText = 'Initial conversation thread for mention test';
 
   const openEntityActivityFeed = async (page: Page) => {
-    const entityFqn = entity.entityResponseData.fullyQualifiedName;
+    const entityFqn = entity.entityResponseData.fullyQualifiedName ?? '';
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
 
@@ -718,7 +718,9 @@ test.describe('Mention notifications in Notification Box', () => {
       await expect(addReactionButton).toBeVisible();
       await addReactionButton.click();
       await user1Page
-        .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
+        .locator(
+          '.ant-popover-feed-reactions .ant-popover-inner-content [data-testid="reaction-button"][title="rocket"]'
+        )
         .waitFor({ state: 'visible' });
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
@@ -798,21 +800,10 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
-      if (apiEndpoint.entityResponseData?.id) {
-        await apiEndpoint.delete(apiContext);
-      }
-
-      if (database.responseData?.id) {
-        await database.delete(apiContext);
-      }
-
-      if (chineseMentionUser.responseData?.id) {
-        await chineseMentionUser.delete(apiContext);
-      }
-
-      if (adminUser.responseData?.id) {
-        await adminUser.delete(apiContext);
-      }
+      await apiEndpoint.delete(apiContext);
+      await database.delete(apiContext);
+      await chineseMentionUser.delete(apiContext);
+      await adminUser.delete(apiContext);
     } finally {
       await afterAction();
     }
@@ -870,7 +861,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     editorLocator: ReturnType<Page['locator']>,
     label: string
   ) => {
-    await page.waitForTimeout(500);
+    await expect(editorLocator).toBeVisible();
 
     const editorText = await editorLocator.textContent();
     if (editorText?.includes(`#${label}`)) {

@@ -91,12 +91,10 @@ export const FIELDS: EntityFields[] = [
     id: 'Project',
     name: 'project.keyword',
   },
-  // Some common field value search criteria are causing problems in not equal filter tests
-  // TODO: Refactor the advanced search tests so that these fields can be added back
-  // {
-  //   id: 'Table Type',
-  //   name: 'tableType',
-  // },
+  {
+    id: 'Status',
+    name: 'entityStatus',
+  },
   {
     id: 'Chart',
     name: 'charts.displayName.keyword',
@@ -219,7 +217,7 @@ export const selectOption = async (
     .locator('.ant-select-item-option')
     .filter({
       hasText: new RegExp(
-        `^${optionTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+        `^${optionTitle.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
       ),
     })
     .first();

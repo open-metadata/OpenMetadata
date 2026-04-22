@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -165,7 +165,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
   await tableEntity2.create(apiContext);
-  tableEntityFqn = tableEntity.entityResponseData.fullyQualifiedName;
+  tableEntityFqn = tableEntity.entityResponseData.fullyQualifiedName ?? '';
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext, [adminUser.responseData.id]);
@@ -637,53 +637,48 @@ test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performUserLogin(
-      browser,
-      user3
+    const { page, afterAction } = await performUserLogin(browser, user3);
+
+    await redirectToHomePage(page);
+    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
+
+    await visitOwnProfilePage(page);
+    await feedResponse;
+
+    await page.getByTestId('message-container').first().waitFor();
+
+    const avatar = page
+      .locator('#feedData [data-testid="message-container"]')
+      .first()
+      .locator('[data-testid="profile-avatar"]')
+      .first();
+
+    await avatar.hover();
+    const popover = page.locator('.ant-popover-card');
+    await popover.waitFor({ state: 'visible' });
+
+    // Get the expected username from the popover BEFORE clicking
+    const userNameElement = popover.getByTestId('user-name');
+    const expectedUserName = await userNameElement.textContent();
+
+    // Set up response listener AFTER getting expected name and BEFORE clicking
+    const userDetailsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/name/') &&
+        response.request().method() === 'GET'
     );
-    const entityFqn = tableEntityFqn;
-    const seededMessage = `Profile feed seed ${uuid()}`;
-    let threadId: string | undefined;
 
-    try {
-      const conversationResponse = await apiContext.post('/api/v1/feed', {
-        data: {
-          about: `<#E::table::${entityFqn}>`,
-          message: seededMessage,
-          type: 'Conversation',
-        },
-      });
-      expect(conversationResponse.ok()).toBeTruthy();
-      const conversation = await conversationResponse.json();
-      threadId = conversation.id as string;
+    await userNameElement.click();
+    const userData = await userDetailsResponse;
+    expect(userData.status()).toBe(200);
+    // redirecting on new page
 
-      await redirectToHomePage(page);
-      await page.goto(
-        `/table/${encodeURIComponent(entityFqn)}/activity_feed/all`
-      );
-      await waitForAllLoadersToDisappear(page);
+    // Verify we navigated to the correct user's profile
+    await expect(page.locator('[data-testid="user-display-name"]')).toHaveText(
+      expectedUserName ?? ''
+    );
 
-      const messageContainer = page
-        .locator('[data-testid="message-container"]')
-        .filter({ hasText: seededMessage })
-        .first();
-      await expect(messageContainer).toBeVisible({ timeout: 30000 });
-
-      await messageContainer.locator('a[href*="/users/"]').first().click();
-      await page.waitForURL(new RegExp(`/users/${user3.responseData.name}`));
-      await page.getByTestId('user-profile').waitFor();
-
-      await expect(
-        page.locator('[data-testid="user-display-name"]')
-      ).toHaveText(user3.responseData.displayName ?? user3.responseData.name);
-    } finally {
-      if (threadId) {
-        await apiContext
-          .delete(`/api/v1/feed/${threadId}`)
-          .catch(() => undefined);
-      }
-      await afterAction();
-    }
+    await afterAction();
   });
 
   test('Close the profile dropdown after redirecting to user profile page', async ({

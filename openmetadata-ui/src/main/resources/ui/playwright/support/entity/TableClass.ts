@@ -380,7 +380,9 @@ export class TableClass extends EntityClass {
       const tableResponse = page.waitForResponse(
         `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
       );
-      await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+      await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await tableResponse;
       await waitForAllLoadersToDisappear(page);
 

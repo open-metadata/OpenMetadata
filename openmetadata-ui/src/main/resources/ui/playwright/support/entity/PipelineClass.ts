@@ -17,12 +17,16 @@ import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
+  EntityReference,
   EntityTypeEndpoint,
   ResponseDataType,
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface PipelineType extends ResponseDataWithServiceType {
+  tasks?: Array<EntityReference>;
+}
 export class PipelineClass extends EntityClass {
   private pipelineName: string;
   service: {
@@ -48,8 +52,7 @@ export class PipelineClass extends EntityClass {
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: PipelineType = {} as PipelineType;
   ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(
