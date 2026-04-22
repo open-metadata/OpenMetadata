@@ -118,11 +118,11 @@ $$
 
 Without this, form fields have no contextual help.
 
-### 7. (Optional) Beta Flag
+### 7. Beta Flag
 
 **File**: `openmetadata-ui/src/main/resources/ui/src/constants/ServiceType.constant.ts`
 
-If the connector should be flagged Beta in the UI, add it to `BETA_SERVICES`:
+**New connectors always ship as Beta.** Add the service type to `BETA_SERVICES` so the UI renders the "Beta" tag next to it in the service picker and detail pages:
 
 ```typescript
 export const BETA_SERVICES = [
@@ -131,7 +131,7 @@ export const BETA_SERVICES = [
 ];
 ```
 
-Skip this if the connector is GA.
+Only remove an entry from this list in a later PR, once the connector has been battle-tested in production. Do not skip this step for a new connector — shipping without the Beta tag sets wrong user expectations about stability.
 
 ## What you do NOT need to edit
 
@@ -165,6 +165,6 @@ mvn spotless:apply     # Java
 - [ ] Service icon asset added under `assets/img/`
 - [ ] `ServiceIconUtils.ts` imports asset and registers it in `SERVICE_ICON_LOADERS`
 - [ ] Docs markdown added under `public/locales/en-US/{ServiceType}/`
-- [ ] (If beta) `BETA_SERVICES` updated
+- [ ] `BETA_SERVICES` updated (new connectors always ship as Beta)
 - [ ] `make generate`, `mvn clean install -pl openmetadata-spec`, `yarn parse-schema` all succeed
 - [ ] Connector appears with its own logo in the Add Service flow and shows inline field help
