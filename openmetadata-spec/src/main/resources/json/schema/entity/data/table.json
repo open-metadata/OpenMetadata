@@ -208,7 +208,8 @@
           "description": "List of column names corresponding to the constraint.",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
           }
         },
         "referredColumns": {
@@ -273,7 +274,8 @@
       "properties": {
         "columnName": {
           "description": "List of column names corresponding to the partition.",
-          "type": "string"
+          "type": "string",
+          "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
         },
         "intervalType": {
           "$ref": "#/definitions/partitionIntervalTypes"
