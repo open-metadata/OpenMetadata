@@ -479,9 +479,9 @@ class TestSchemaBoundaryReflectionCacheClear:
 
         mock_source._clear_thread_reflection_cache()
 
-        assert current_inspector.info_cache == {}, (
-            "Current thread's inspector info_cache must be cleared."
-        )
+        assert (
+            current_inspector.info_cache == {}
+        ), "Current thread's inspector info_cache must be cleared."
         assert other_inspector.info_cache == {"schema_B_key": "also_heavy"}, (
             "Other threads' inspectors must NOT be touched — clearing "
             "them would race with in-flight reflection reads."
