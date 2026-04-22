@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { performAdminLogin } from '../../utils/admin';
 import { redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -23,6 +24,22 @@ import {
 import { test } from '../fixtures/pages';
 
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    const serviceRes = await apiContext.get(
+      '/api/v1/services/databaseServices/name/sample_data'
+    );
+    const service = await serviceRes.json();
+
+    await apiContext.patch(`/api/v1/services/databaseServices/${service.id}`, {
+      data: [{ op: 'replace', path: '/displayName', value: 'sample_data' }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    });
+
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToExplorePage(page);
   });
