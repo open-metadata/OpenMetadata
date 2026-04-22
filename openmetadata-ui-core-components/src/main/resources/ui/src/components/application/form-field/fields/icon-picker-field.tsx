@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import type { CSSProperties, FC, ReactNode } from 'react';
+import type {
+  CSSProperties,
+  FC,
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+} from 'react';
 import {
   createElement,
   isValidElement,
@@ -22,7 +27,10 @@ import {
 import type { Key } from 'react-aria-components';
 import { normalizeHexColor } from '@/colors/colorValidation';
 import { Tabs } from '@/components/application/tabs/tabs';
+import { Box } from '@/components/base/box/box';
+import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
+import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import type {
@@ -215,7 +223,12 @@ export const IconPickerField = ({
 
     return (
       getDefaultIconPreview(items, defaultIcon) ?? (
-        <span className="tw:text-sm tw:font-semibold tw:text-white">?</span>
+        <Typography
+          className="tw:text-white"
+          size="text-sm"
+          weight="semibold">
+          ?
+        </Typography>
       )
     );
   })();
@@ -248,43 +261,55 @@ export const IconPickerField = ({
               }
             );
 
-            return (
-              <button
-                aria-label={item.label ?? item.id}
-                aria-pressed={isSelected}
-                className={cx(
-                  'tw:flex tw:h-9 tw:w-9 tw:items-center tw:justify-center tw:rounded-lg tw:outline-hidden tw:transition tw:duration-150',
-                  'tw:ring-1 tw:ring-secondary_alt',
-                  isSelected
-                    ? 'tw:bg-primary_hover tw:ring-brand'
-                    : 'tw:bg-primary tw:hover:bg-primary_hover',
-                  'tw:focus-visible:ring-2 tw:focus-visible:ring-brand'
-                )}
+            const commonButtonProps = {
+              'aria-label': item.label ?? item.id,
+              'aria-pressed': isSelected,
+              className: cx(
+                'tw:size-9 tw:rounded-lg tw:p-0! tw:ring-1 tw:ring-secondary_alt tw:transition tw:duration-150',
+                isSelected
+                  ? 'tw:bg-primary_hover tw:ring-brand'
+                  : 'tw:bg-primary tw:hover:bg-primary_hover',
+                'tw:focus-visible:ring-2 tw:focus-visible:ring-brand'
+              ),
+              color: 'tertiary' as const,
+              size: 'sm' as const,
+              onClick: () => handleIconSelection(item),
+            };
+
+            return previewIcon ? (
+              <Button
+                {...commonButtonProps}
+                iconLeading={previewIcon}
                 key={item.id}
-                type="button"
-                onClick={() => handleIconSelection(item)}>
-                {previewIcon ?? (
-                  <span className="tw:text-sm tw:font-semibold tw:text-primary">
-                    {(item.label ?? item.id).slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-              </button>
+              />
+            ) : (
+              <Button {...commonButtonProps} key={item.id}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {(item.label ?? item.id).slice(0, 1).toUpperCase()}
+                </Typography>
+              </Button>
             );
           })}
         </div>
       ) : (
-        <span className="tw:text-sm tw:text-tertiary">
+        <Typography className="tw:text-tertiary" size="text-sm">
           {labels?.emptyState ?? 'No icons available'}
-        </span>
+        </Typography>
       )}
     </div>
   );
 
   const urlPanel = (
-    <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
-      <span className="tw:text-xs tw:font-medium tw:text-tertiary">
+    <Box className="tw:p-4" direction="col" gap={2}>
+      <Typography
+        className="tw:text-tertiary"
+        size="text-xs"
+        weight="medium">
         {labels?.customIconUrl ?? 'Custom icon URL'}
-      </span>
+      </Typography>
       <Input
         autoFocus
         aria-label={placeholder ?? labels?.enterIconUrl ?? 'Enter icon URL'}
@@ -294,37 +319,38 @@ export const IconPickerField = ({
         onBlur={() => onBlur?.()}
         onChange={(v) => onChange?.(v)}
       />
-    </div>
+    </Box>
   );
 
   return (
     <div className="tw:relative tw:w-fit" ref={wrapperRef}>
-      <button
+      <Button
         aria-label={
           ariaLabel ?? placeholder ?? labels?.emptyState ?? 'Select icon'
         }
         className={cx(
-          'tw:flex tw:h-[34px] tw:w-[34px] tw:items-center tw:justify-center tw:rounded-[10px] tw:shadow-xs tw:outline-hidden tw:transition tw:duration-150',
-          !disabled && 'tw:cursor-pointer tw:hover:scale-[1.02]',
-          disabled && 'tw:cursor-not-allowed tw:opacity-50',
-          'tw:ring-1 tw:ring-black/5 tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2',
+          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:ring-1 tw:ring-black/5 tw:transition tw:duration-150',
+          !disabled && 'tw:hover:scale-[1.02]',
+          disabled && 'tw:opacity-50',
+          'tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2',
           isOpen && 'tw:ring-2 tw:ring-brand tw:ring-offset-2'
         )}
+        color="tertiary"
         data-testid={dataTestId}
-        disabled={disabled}
+        iconLeading={triggerPreview ?? undefined}
         id={id}
+        isDisabled={disabled}
+        size="sm"
         style={{ backgroundColor }}
-        type="button"
         onBlur={() => onBlur?.()}
         onClick={togglePicker}
-        onKeyDown={(event) => {
+        onKeyDown={(event: ReactKeyboardEvent<HTMLButtonElement>) => {
           if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
             event.preventDefault();
             togglePicker();
           }
-        }}>
-        {triggerPreview}
-      </button>
+        }}
+      />
 
       {isOpen && (
         <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[18rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt">

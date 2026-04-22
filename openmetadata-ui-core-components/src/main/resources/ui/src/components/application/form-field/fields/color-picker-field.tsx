@@ -13,6 +13,9 @@
 
 import { Check } from '@untitledui/icons';
 import { normalizeHexColor } from '@/colors/colorValidation';
+import { Box } from '@/components/base/box/box';
+import { Button } from '@/components/base/buttons/button';
+import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 
 export const DEFAULT_COLOR_OPTIONS = [
@@ -71,54 +74,59 @@ export const ColorPickerField = ({
   }
 
   return (
-    <div
-      className="tw:flex tw:flex-wrap tw:gap-1.5"
+    <Box
+      className="tw:gap-1.5"
       data-testid={dataTestId}
-      role="group">
+      role="group"
+      wrap="wrap">
       {palette.map((color, index) => {
         const isSelected =
           normalizedValue?.toLowerCase() === color.toLowerCase();
 
         return (
-          <button
+          <Button
             aria-label={`Select color ${color}`}
             aria-pressed={isSelected}
             className={cx(
-              'tw:flex tw:h-[34px] tw:w-[34px] tw:items-center tw:justify-center tw:rounded-[10px] tw:shadow-xs tw:outline-hidden tw:transition tw:duration-150',
-              !disabled && 'tw:cursor-pointer tw:hover:scale-[1.02]',
-              disabled && 'tw:cursor-not-allowed tw:opacity-50',
+              'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:transition tw:duration-150',
+              !disabled && 'tw:hover:scale-[1.02]',
+              disabled && 'tw:opacity-50',
               isSelected && 'tw:ring-2 tw:ring-white tw:ring-offset-2',
               !isSelected && 'tw:ring-1 tw:ring-black/5',
               'tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2'
             )}
+            color="tertiary"
             data-testid={dataTestId ? `${dataTestId}-${index}` : undefined}
-            disabled={disabled}
+            iconLeading={
+              isSelected ? (
+                <Check aria-hidden="true" className="tw:size-5 tw:text-white" />
+              ) : undefined
+            }
             id={index === 0 ? id : undefined}
+            isDisabled={disabled}
             key={color}
+            size="sm"
             style={{
               backgroundColor: color,
               boxShadow: isSelected
                 ? '0 0 0 1px rgba(16, 24, 40, 0.08)'
                 : undefined,
             }}
-            type="button"
             onBlur={() => onBlur?.()}
-            onClick={() => onChange?.(color)}>
-            {isSelected && (
-              <Check aria-hidden="true" className="tw:size-5 tw:text-white" />
-            )}
-          </button>
+            onClick={() => onChange?.(color)}
+          />
         );
       })}
 
       {!palette.length && (
-        <span
+        <Typography
           aria-label={ariaLabel}
-          className="tw:text-sm tw:text-tertiary"
-          id={id}>
+          className="tw:text-tertiary"
+          id={id}
+          size="text-sm">
           {emptyStateLabel ?? 'No colors available'}
-        </span>
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 };

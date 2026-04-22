@@ -13,6 +13,7 @@
 import {
   Autocomplete,
   Avatar,
+  Box,
   Button,
   Dot,
   FieldProp,
@@ -704,23 +705,23 @@ const AddDomainForm = ({
       onSubmit={form.handleSubmit(onSubmit)}>
       {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
 
-      <div className="tw:flex tw:items-start tw:gap-4">
+      <Box align="start" gap={4}>
         <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
           {getField(iconField)}
         </div>
         <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
           {getField(colorField)}
         </div>
-      </div>
+      </Box>
 
-      <div className="tw:flex tw:gap-4">
+      <Box gap={4}>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
           {getField(nameField)}
         </div>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
           {getField(displayNameField)}
         </div>
-      </div>
+      </Box>
 
       <FormField
         control={form.control}
@@ -731,9 +732,10 @@ const AddDomainForm = ({
           }),
         }}>
         {({ field, fieldState }) => (
-          <div
+          <Box
             aria-invalid={fieldState.invalid || undefined}
-            className="tw:flex tw:flex-col tw:gap-[6px]">
+            className="tw:gap-[6px]"
+            direction="col">
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor
               className="add-domain-form-description new-form-style"
@@ -744,7 +746,7 @@ const AddDomainForm = ({
             {fieldState.error?.message && (
               <HintText isInvalid>{fieldState.error.message}</HintText>
             )}
-          </div>
+          </Box>
         )}
       </FormField>
       <div>{getField(tagsField)}</div>
@@ -775,9 +777,7 @@ const AddDomainForm = ({
       <div>{getField(expertsField)}</div>
 
       {!isFormInDialog && (
-        <div
-          className="tw:flex tw:justify-end tw:gap-4"
-          data-testid="cta-buttons">
+        <Box data-testid="cta-buttons" gap={4} justify="end">
           <Button
             color="tertiary"
             data-testid="cancel-domain"
@@ -792,7 +792,7 @@ const AddDomainForm = ({
             type="submit">
             {t('label.save')}
           </Button>
-        </div>
+        </Box>
       )}
     </HookForm>
   );

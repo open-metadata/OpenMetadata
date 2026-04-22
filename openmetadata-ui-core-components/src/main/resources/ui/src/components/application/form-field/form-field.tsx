@@ -16,6 +16,7 @@ import { Fragment } from 'react';
 import type { RegisterOptions } from 'react-hook-form';
 import { useFormContext } from 'react-hook-form';
 import { Alert } from '@/components/base/alert/alert';
+import { Box } from '@/components/base/box/box';
 import { Divider } from '@/components/base/divider/divider';
 import { FormField } from '@/components/base/form/hook-form';
 import { HintText } from '@/components/base/input/hint-text';
@@ -49,7 +50,7 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
 
         return (
           <Fragment key={id}>
-            <div className="tw:flex tw:flex-col tw:gap-[6px]">
+            <Box className="tw:gap-[6px]" direction="col">
               <FormItemLabel
                 isBeta={isBeta}
                 label={label}
@@ -62,7 +63,7 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
               />
 
               {renderFieldElement(controller, field)}
-            </div>
+            </Box>
 
             {fieldState.error && (
               <HintText isInvalid>{fieldState.error.message}</HintText>

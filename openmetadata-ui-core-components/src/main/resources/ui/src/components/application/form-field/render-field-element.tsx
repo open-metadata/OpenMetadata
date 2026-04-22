@@ -16,6 +16,7 @@ import { isValidElement } from 'react';
 import type { Key } from 'react-aria-components';
 import type { UseControllerReturn } from 'react-hook-form';
 import { Autocomplete } from '@/components/base/autocomplete/autocomplete';
+import { Box } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { FileTrigger } from '@/components/base/file-upload-trigger/file-upload-trigger';
@@ -484,7 +485,7 @@ export const renderFieldElement = (
       const fileHint = getFileFieldHint(field.value);
 
       return (
-        <div className="tw:flex tw:flex-col tw:gap-2">
+        <Box direction="col" gap={2}>
           <FileTrigger
             acceptDirectory={Boolean(props.acceptDirectory)}
             acceptedFileTypes={props.acceptedFileTypes}
@@ -510,7 +511,7 @@ export const renderFieldElement = (
           </FileTrigger>
 
           {fileHint && <HintText>{fileHint}</HintText>}
-        </div>
+        </Box>
       );
     }
 
