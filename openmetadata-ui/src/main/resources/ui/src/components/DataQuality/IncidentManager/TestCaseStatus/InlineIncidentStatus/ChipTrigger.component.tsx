@@ -32,7 +32,7 @@ export type ChipTriggerProps = {
   hasEditPermission: boolean;
   overlayOpen: boolean;
   attachPressHandler: boolean;
-  onStatusClick: () => void;
+  onStatusClick?: () => void;
 };
 
 const CHIP_TRIGGER_BTN_CLASS =
@@ -49,7 +49,7 @@ export const ChipTrigger = ({
   hasEditPermission,
   overlayOpen,
   attachPressHandler,
-  onStatusClick,
+  onStatusClick = () => {},
 }: ChipTriggerProps) => {
   const ChevronIcon = overlayOpen ? ArrowUpIcon : ArrowDownIcon;
 

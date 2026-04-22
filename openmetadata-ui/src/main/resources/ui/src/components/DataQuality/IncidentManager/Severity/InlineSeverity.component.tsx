@@ -68,7 +68,6 @@ const InlineSeverity = ({
       hasEditPermission={hasEditPermission && !isLoading}
       overlayOpen={showMenu}
       palette={palette}
-      onStatusClick={() => {}}
     />
   );
 

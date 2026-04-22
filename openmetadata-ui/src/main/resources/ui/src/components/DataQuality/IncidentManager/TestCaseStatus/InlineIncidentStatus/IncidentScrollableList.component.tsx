@@ -12,7 +12,7 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import React, { type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 type IncidentScrollableListProps = {
   children: ReactNode;

@@ -46,11 +46,11 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
+import { ChipTrigger } from './InlineIncidentStatus/ChipTrigger.component';
 import { FailureReasonChipGroup } from './InlineIncidentStatus/FailureReasonChipGroup.component';
 import { IncidentScrollableList } from './InlineIncidentStatus/IncidentScrollableList.component';
 import { IncidentStatusPopoverHeader } from './InlineIncidentStatus/IncidentStatusPopoverHeader.component';
 import { IncidentStatusPopoverShell } from './InlineIncidentStatus/IncidentStatusPopoverShell.component';
-import { ChipTrigger } from './InlineIncidentStatus/ChipTrigger.component';
 import { InlineTestCaseIncidentStatusProps } from './TestCaseIncidentManagerStatus.interface';
 
 const SELECTED_ITEM_CLASS =
@@ -206,26 +206,35 @@ const InlineTestCaseIncidentStatus = ({
     [currentUser, data.testCaseReference?.fullyQualifiedName, onSubmit]
   );
 
-  const handleStatusClick = () => {
-    if (!hasEditPermission) {
-      return;
-    }
+  const handleStatusMenuOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setShowStatusMenu(false);
 
-    if (statusType === TestCaseResolutionStatusTypes.Assigned) {
-      searchUsers('');
-      setShowAssigneePopover(true);
-    } else if (statusType === TestCaseResolutionStatusTypes.Resolved) {
-      setSelectedReason(
-        data?.testCaseResolutionStatusDetails?.testCaseFailureReason ?? null
-      );
-      setComment(
-        data?.testCaseResolutionStatusDetails?.testCaseFailureComment ?? ''
-      );
-      setShowResolvedPopover(true);
-    } else {
-      setShowStatusMenu(true);
-    }
-  };
+        return;
+      }
+      if (statusType === TestCaseResolutionStatusTypes.Assigned) {
+        searchUsers('');
+        setShowAssigneePopover(true);
+      } else if (statusType === TestCaseResolutionStatusTypes.Resolved) {
+        setSelectedReason(
+          data?.testCaseResolutionStatusDetails?.testCaseFailureReason ?? null
+        );
+        setComment(
+          data?.testCaseResolutionStatusDetails?.testCaseFailureComment ?? ''
+        );
+        setShowResolvedPopover(true);
+      } else {
+        setShowStatusMenu(true);
+      }
+    },
+    [
+      statusType,
+      searchUsers,
+      data?.testCaseResolutionStatusDetails?.testCaseFailureReason,
+      data?.testCaseResolutionStatusDetails?.testCaseFailureComment,
+    ]
+  );
 
   const handleStatusChange = useCallback(
     async (newStatus: TestCaseResolutionStatusTypes) => {
@@ -345,19 +354,18 @@ const InlineTestCaseIncidentStatus = ({
 
   const chipLabel = TEST_CASE_RESOLUTION_STATUS_LABELS[statusType];
 
-  const renderStatusChipButton = (attachPressHandler: boolean) => {
+  const renderStatusChipButton = () => {
     const palette = STATUS_COLORS[statusType] ?? STATUS_COLORS.New;
 
     return (
       <ChipTrigger
-        attachPressHandler={attachPressHandler}
+        attachPressHandler={false}
         chipLabel={chipLabel}
         chipRef={chipRef}
         dataTestId={`${data.testCaseReference?.name}-status`}
         hasEditPermission={hasEditPermission}
         overlayOpen={overlayOpen}
         palette={palette}
-        onStatusClick={handleStatusClick}
       />
     );
   };
@@ -372,6 +380,7 @@ const InlineTestCaseIncidentStatus = ({
       {Object.values(TestCaseResolutionStatusTypes).map((status) => (
         <Dropdown.Item
           className={SELECTED_ITEM_CLASS}
+          data-testid={`status-item-${status}`}
           id={status}
           key={status}
           textValue={TEST_CASE_RESOLUTION_STATUS_LABELS[status]}>
@@ -447,26 +456,13 @@ const InlineTestCaseIncidentStatus = ({
   );
 
   const renderInteractiveChip = () => {
-    if (showStatusMenu) {
-      return (
-        <Dropdown.Root isOpen={showStatusMenu} onOpenChange={setShowStatusMenu}>
-          {renderStatusChipButton(false)}
-          <Dropdown.Popover
-            className="tw:min-w-[100px] tw:w-max tw:overflow-auto"
-            placement="top">
-            {statusMenuItems}
-          </Dropdown.Popover>
-        </Dropdown.Root>
-      );
-    }
-
     if (showAssigneePopover) {
       return (
         <IncidentStatusPopoverShell
           containerClassName="tw:max-h-[500px] tw:min-w-0 tw:w-[320px] tw:border tw:border-border-secondary"
           dataTestid={`${data.testCaseReference?.name}-assignee-popover`}
           isOpen={showAssigneePopover}
-          trigger={renderStatusChipButton(false)}
+          trigger={renderStatusChipButton()}
           onOpenChange={(open) => {
             if (open) {
               searchUsers('');
@@ -486,7 +482,7 @@ const InlineTestCaseIncidentStatus = ({
           containerClassName="tw:min-w-0 tw:w-[320px] tw:border tw:border-border-secondary"
           dataTestid={`${data.testCaseReference?.name}-resolved-popover`}
           isOpen={showResolvedPopover}
-          trigger={renderStatusChipButton(false)}
+          trigger={renderStatusChipButton()}
           onOpenChange={(open) => {
             if (!open) {
               handleCloseAllPopovers();
@@ -499,13 +495,27 @@ const InlineTestCaseIncidentStatus = ({
       );
     }
 
-    return renderStatusChipButton(true);
+    // Keep the chip always inside Dropdown.Root so the MenuTrigger's internal
+    // triggerRef is already set on the DOM button before the user clicks.
+    // onOpenChange routes to the appropriate sub-popover based on status type.
+    return (
+      <Dropdown.Root
+        isOpen={showStatusMenu}
+        onOpenChange={handleStatusMenuOpenChange}>
+        {renderStatusChipButton()}
+        <Dropdown.Popover
+          className="tw:min-w-[100px] tw:w-max tw:overflow-auto"
+          placement="top">
+          {statusMenuItems}
+        </Dropdown.Popover>
+      </Dropdown.Root>
+    );
   };
 
   if (!hasEditPermission) {
     return (
       <Box inline align="center">
-        {renderStatusChipButton(false)}
+        {renderStatusChipButton()}
       </Box>
     );
   }

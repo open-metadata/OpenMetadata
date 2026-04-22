@@ -12,7 +12,7 @@
  */
 
 import { Popover, PopoverTrigger } from '@openmetadata/ui-core-components';
-import React, { type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 export type IncidentStatusPopoverShellProps = {
   isOpen: boolean;
@@ -33,10 +33,7 @@ export const IncidentStatusPopoverShell = ({
 }: IncidentStatusPopoverShellProps) => (
   <PopoverTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
     {trigger}
-    <Popover
-      containerClassName={containerClassName}
-      data-testid={dataTestid}
->
+    <Popover containerClassName={containerClassName} data-testid={dataTestid}>
       {children}
     </Popover>
   </PopoverTrigger>

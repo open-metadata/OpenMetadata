@@ -26,26 +26,29 @@ jest.mock('@untitledui/icons', () => ({
   ChevronUp: () => <svg data-testid="icon-chevron-up" />,
 }));
 
-jest.mock('../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component', () => ({
-  ChipTrigger: ({
-    chipLabel,
-    hasEditPermission,
-    overlayOpen,
-  }: {
-    chipLabel: string;
-    hasEditPermission: boolean;
-    overlayOpen: boolean;
-    [key: string]: unknown;
-  }) => (
-    <button
-      data-overlay-open={overlayOpen}
-      data-testid="chip-trigger"
-      disabled={!hasEditPermission}
-      type="button">
-      {chipLabel}
-    </button>
-  ),
-}));
+jest.mock(
+  '../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component',
+  () => ({
+    ChipTrigger: ({
+      chipLabel,
+      hasEditPermission,
+      overlayOpen,
+    }: {
+      chipLabel: string;
+      hasEditPermission: boolean;
+      overlayOpen: boolean;
+      [key: string]: unknown;
+    }) => (
+      <button
+        data-overlay-open={overlayOpen}
+        data-testid="chip-trigger"
+        disabled={!hasEditPermission}
+        type="button">
+        {chipLabel}
+      </button>
+    ),
+  })
+);
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const DropdownMenu = ({
@@ -113,11 +116,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           </div>
         );
       },
-      Popover: ({
-        children,
-      }: {
-        children: React.ReactNode;
-      }) => (
+      Popover: ({ children }: { children: React.ReactNode }) => (
         <div data-testid="dropdown-popover">{children}</div>
       ),
       Menu: DropdownMenu,
@@ -159,31 +158,41 @@ describe('InlineSeverity', () => {
     it('renders Severity1 chip label', () => {
       renderComponent(Severities.Severity1);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 1');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 1'
+      );
     });
 
     it('renders Severity2 chip label', () => {
       renderComponent(Severities.Severity2);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 2');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 2'
+      );
     });
 
     it('renders Severity3 chip label', () => {
       renderComponent(Severities.Severity3);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 3');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 3'
+      );
     });
 
     it('renders Severity4 chip label', () => {
       renderComponent(Severities.Severity4);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 4');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 4'
+      );
     });
 
     it('renders Severity5 chip label', () => {
       renderComponent(Severities.Severity5);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 5');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 5'
+      );
     });
 
     it('renders "No Severity" label when severity is undefined', () => {
@@ -219,7 +228,9 @@ describe('InlineSeverity', () => {
     it('chip label updates when severity prop changes', () => {
       const { rerender } = renderComponent(Severities.Severity1);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 1');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 1'
+      );
 
       rerender(
         <InlineSeverity
@@ -229,7 +240,9 @@ describe('InlineSeverity', () => {
         />
       );
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 3');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 3'
+      );
     });
 
     it('chip label updates from no-severity to a severity', () => {
@@ -243,7 +256,9 @@ describe('InlineSeverity', () => {
         />
       );
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent('Severity 2');
+      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
+        'Severity 2'
+      );
     });
   });
 
@@ -298,7 +313,9 @@ describe('InlineSeverity', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId(`dropdown-item-${Severities.Severity3}`));
+        fireEvent.click(
+          screen.getByTestId(`dropdown-item-${Severities.Severity3}`)
+        );
       });
 
       await waitFor(() => {
@@ -349,7 +366,10 @@ describe('InlineSeverity', () => {
     it('chip is disabled during submission', async () => {
       let resolveSubmit!: () => void;
       const slowSubmit = jest.fn(
-        () => new Promise<void>((res) => { resolveSubmit = res; })
+        () =>
+          new Promise<void>((res) => {
+            resolveSubmit = res;
+          })
       );
 
       render(

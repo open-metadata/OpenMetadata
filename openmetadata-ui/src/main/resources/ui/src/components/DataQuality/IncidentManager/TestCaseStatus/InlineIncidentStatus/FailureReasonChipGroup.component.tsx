@@ -13,7 +13,6 @@
 
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
-import React from 'react';
 import { TestCaseFailureReasonType } from '../../../../../generated/tests/testCaseResolutionStatus';
 import { WhiteCheckIcon } from './IncidentStatusIcons';
 

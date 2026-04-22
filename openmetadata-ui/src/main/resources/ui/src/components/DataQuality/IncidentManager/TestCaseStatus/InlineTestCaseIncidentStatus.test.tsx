@@ -37,26 +37,19 @@ jest.mock('@untitledui/icons', () => ({
 
 jest.mock('./InlineIncidentStatus/ChipTrigger.component', () => ({
   ChipTrigger: ({
-    attachPressHandler,
     chipLabel,
     dataTestId,
     hasEditPermission,
-    onStatusClick,
   }: {
-    attachPressHandler: boolean;
     chipLabel: string;
     dataTestId: string;
     hasEditPermission: boolean;
-    onStatusClick: () => void;
     [key: string]: unknown;
   }) => (
     <button
       data-testid={dataTestId}
       disabled={!hasEditPermission}
-      type="button"
-      onClick={
-        attachPressHandler && hasEditPermission ? onStatusClick : undefined
-      }>
+      type="button">
       {chipLabel}
     </button>
   ),
@@ -278,12 +271,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
       value,
       placeholder,
       rows,
+      textAreaClassName: _textAreaClassName,
       ...props
     }: {
       onChange?: (value: string) => void;
       value?: string;
       placeholder?: string;
       rows?: number;
+      textAreaClassName?: string;
       [key: string]: unknown;
     }) => (
       <textarea

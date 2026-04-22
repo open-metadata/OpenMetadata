@@ -12,7 +12,6 @@
  */
 
 import { Check as CheckIcon, XClose as CloseIcon } from '@untitledui/icons';
-import React from 'react';
 
 /** Close (X) — dark icon for secondary/utility surfaces. */
 export const BlackCloseIcon = ({ className }: { className?: string }) => (

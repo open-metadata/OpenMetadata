@@ -18,7 +18,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowLeft as ArrowBackIcon } from '@untitledui/icons';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { BlackCloseIcon, WhiteCheckIcon } from './IncidentStatusIcons';
 
