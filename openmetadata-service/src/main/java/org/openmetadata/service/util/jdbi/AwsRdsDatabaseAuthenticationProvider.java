@@ -3,7 +3,8 @@ package org.openmetadata.service.util.jdbi;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Map;
-import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.common.utils.CommonUtil;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -25,48 +26,38 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
   public static final String ASSUME_ROLE_ARN = "assumeRoleArn";
   public static final String PROTOCOL = "https://";
 
-  @Override
-  public String authenticate(String jdbcUrl, String username, String password) {
-    try {
+  private final Map<String, AwsCredentialsProvider> credentialsProviderCache =
+      new ConcurrentHashMap<>();
+  private final Map<String, StsClient> stsClientCache = new ConcurrentHashMap<>();
+  private static final AwsCredentialsProvider DEFAULT_CREDENTIALS_PROVIDER =
+      DefaultCredentialsProvider.create();
 
-      URI uri = URI.create(PROTOCOL + removeProtocolFrom(jdbcUrl));
-      Map<String, String> queryParams = parseQueryParams(uri.toURL());
+  @Override
+  public String authenticate(final String jdbcUrl, final String username, final String password) {
+    try {
+      final URI uri = URI.create(PROTOCOL + removeProtocolFrom(jdbcUrl));
+      final Map<String, String> queryParams = parseQueryParams(uri.toURL());
 
       // Set
-      String awsRegion = queryParams.get(AWS_REGION);
-      String allowPublicKeyRetrieval = queryParams.get(ALLOW_PUBLIC_KEY_RETRIEVAL);
-      String assumeRoleArn = queryParams.get(ASSUME_ROLE_ARN);
+      final String awsRegion = queryParams.get(AWS_REGION);
+      final String allowPublicKeyRetrieval = queryParams.get(ALLOW_PUBLIC_KEY_RETRIEVAL);
+      final String assumeRoleArn = queryParams.get(ASSUME_ROLE_ARN);
 
       // Validate
-      Objects.requireNonNull(awsRegion, "Parameter `awsRegion` shall be provided in the jdbc url.");
-      Objects.requireNonNull(
-          allowPublicKeyRetrieval,
-          "Parameter `allowPublicKeyRetrieval` shall be provided in the jdbc url.");
-
-      AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
-
-      if (assumeRoleArn != null) {
-        StsClient stsClient =
-            StsClient.builder()
-                .region(Region.of(awsRegion))
-                .credentialsProvider(credentialsProvider)
-                .build();
-
-        AssumeRoleRequest assumeRoleRequest =
-            AssumeRoleRequest.builder()
-                .roleArn(assumeRoleArn)
-                .roleSessionName("OpenMetadata-RDS-IAM-Auth")
-                .build();
-
-        credentialsProvider =
-            StsAssumeRoleCredentialsProvider.builder()
-                .stsClient(stsClient)
-                .refreshRequest(assumeRoleRequest)
-                .build();
+      if (CommonUtil.nullOrEmpty(awsRegion)) {
+        throw new DatabaseAuthenticationProviderException(
+            "Parameter `awsRegion` shall be provided in the jdbc url.");
+      }
+      if (CommonUtil.nullOrEmpty(allowPublicKeyRetrieval)) {
+        throw new DatabaseAuthenticationProviderException(
+            "Parameter `allowPublicKeyRetrieval` shall be provided in the jdbc url.");
       }
 
+      final AwsCredentialsProvider credentialsProvider =
+          getCredentialsProvider(awsRegion, assumeRoleArn);
+
       // Prepare request
-      GenerateAuthenticationTokenRequest request =
+      final GenerateAuthenticationTokenRequest request =
           GenerateAuthenticationTokenRequest.builder()
               .credentialsProvider(credentialsProvider)
               .hostname(uri.getHost())
@@ -83,6 +74,40 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
     } catch (MalformedURLException e) {
       // Throw
       throw new DatabaseAuthenticationProviderException(e);
+    } catch (Exception e) {
+      throw new DatabaseAuthenticationProviderException("Failed to generate AWS RDS IAM token", e);
     }
+  }
+
+  private AwsCredentialsProvider getCredentialsProvider(
+      final String awsRegion, final String assumeRoleArn) {
+    if (CommonUtil.nullOrEmpty(assumeRoleArn)) {
+      return DEFAULT_CREDENTIALS_PROVIDER;
+    }
+
+    final String cacheKey = awsRegion + ":" + assumeRoleArn;
+    return credentialsProviderCache.computeIfAbsent(
+        cacheKey,
+        k -> {
+          final StsClient stsClient =
+              stsClientCache.computeIfAbsent(
+                  awsRegion,
+                  region ->
+                      StsClient.builder()
+                          .region(Region.of(region))
+                          .credentialsProvider(DEFAULT_CREDENTIALS_PROVIDER)
+                          .build());
+
+          final AssumeRoleRequest assumeRoleRequest =
+              AssumeRoleRequest.builder()
+                  .roleArn(assumeRoleArn)
+                  .roleSessionName("OpenMetadata-RDS-IAM-Auth")
+                  .build();
+
+          return StsAssumeRoleCredentialsProvider.builder()
+              .stsClient(stsClient)
+              .refreshRequest(assumeRoleRequest)
+              .build();
+        });
   }
 }
