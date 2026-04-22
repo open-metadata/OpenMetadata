@@ -87,9 +87,7 @@ public class InMemoryAssetService implements AssetService {
       return CompletableFuture.completedFuture(null);
     }
     LOG.debug(
-        "Retrieved asset {} ({} bytes) from in-memory storage",
-        asset.getId(),
-        assetBytes.length);
+        "Retrieved asset {} ({} bytes) from in-memory storage", asset.getId(), assetBytes.length);
     return CompletableFuture.completedFuture(new ByteArrayInputStream(assetBytes));
   }
 

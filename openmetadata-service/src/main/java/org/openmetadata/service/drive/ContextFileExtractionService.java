@@ -126,8 +126,7 @@ public class ContextFileExtractionService {
           // by a status update on the now-stale content, leaving it stuck once
           // the later head-check early-returns.
           ContextFile currentHead = getFile(fileId);
-          if (currentHead == null
-              || !contentId.toString().equals(currentHead.getHeadContentId())) {
+          if (currentHead == null || !contentId.toString().equals(currentHead.getHeadContentId())) {
             return null;
           }
           ContextFileContent updated = JsonUtils.deepCopy(current, ContextFileContent.class);
