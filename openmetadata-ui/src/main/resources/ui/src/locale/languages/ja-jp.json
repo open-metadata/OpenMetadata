@@ -1721,6 +1721,7 @@
     "reposition": "位置変更",
     "repository-url": "リポジトリURL",
     "request": "リクエスト",
+    "request-data-access": "データアクセスを要求",
     "request-method": "リクエストメソッド",
     "request-schema-field": "リクエストスキーマフィールド",
     "request-tag-plural": "タグをリクエスト",

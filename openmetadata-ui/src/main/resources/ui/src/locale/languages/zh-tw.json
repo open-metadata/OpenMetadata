@@ -1721,6 +1721,7 @@
     "reposition": "重新定位",
     "repository-url": "仓库URL",
     "request": "請求",
+    "request-data-access": "請求資料存取",
     "request-method": "請求方法",
     "request-schema-field": "請求結構欄位",
     "request-tag-plural": "請求標籤",
