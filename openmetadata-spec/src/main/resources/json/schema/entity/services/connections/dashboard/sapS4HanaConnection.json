@@ -111,7 +111,7 @@
       "title": "Verify SSL",
       "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
-      "default": "ignore"
+      "default": "no-ssl"
     },
     "sslConfig": {
       "title": "SSL Config",
