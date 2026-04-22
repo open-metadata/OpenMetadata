@@ -171,6 +171,12 @@ describe('Test Regex', () => {
 
     // double colon is reserved FQN separator - should fail
     expect(ENTITY_NAME_REGEX.test('Hello::World')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name>bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name<bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name"bad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name\nbad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name\rbad')).toEqual(false);
+    expect(ENTITY_NAME_REGEX.test('name\x00bad')).toEqual(false);
   });
 
   it('EntityName regex should pass for names with single colons', () => {
