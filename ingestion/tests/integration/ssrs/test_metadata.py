@@ -36,7 +36,7 @@ class TestSsrsMetadata:
             hostPort=ssrs_service, username="test_user", password="test_pass"
         )
         client = SsrsClient(connection)
-        folders = client.get_folders()
+        folders = list(client.get_folders())
         assert len(folders) == 1
         assert folders[0].name == "TestFolder"
 
