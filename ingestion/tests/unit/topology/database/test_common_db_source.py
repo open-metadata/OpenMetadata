@@ -432,3 +432,96 @@ class TestSetInspectorDisposesOldEngine:
 
         old_engine.dispose.assert_called_once()
         assert mock_source.engine is new_engine
+
+
+class TestSchemaBoundaryReflectionCacheClear:
+    """TDD: clear per-thread Inspector.info_cache at each schema boundary.
+
+    Why: SQLAlchemy's Inspector.info_cache is an unbounded dict populated
+    by @reflection.cache methods (get_schema_columns, get_pk_constraint,
+    get_foreign_keys, get_unique_constraints, get_columns, get_view_definition,
+    get_table_ddl, ...). In Snowflake's heavy reflection path a single wide
+    schema can push one inspector's cache past 1 GB (e.g. 52k tables x 50
+    cols on a single database). Inspectors are retained per-thread in
+    _inspector_map until close(), so without eviction the pod OOMs partway
+    through a large database before any DB-boundary cleanup can fire.
+
+    Clearing at the start of get_tables_name_and_type() is the natural
+    hook — it runs once per schema per thread, so the prior schema's
+    entries are reclaimed before the next schema's entries are written.
+    """
+
+    def test_clear_clears_only_current_thread_inspector(self):
+        """Thread safety: other threads' inspectors must be untouched —
+        they may be actively mid-reflection on their own schemas, and
+        clearing their cache would race with live reads.
+        """
+        import threading
+
+        mock_source = MagicMock()
+        mock_source._clear_thread_reflection_cache = (
+            CommonDbSourceService._clear_thread_reflection_cache.__get__(mock_source)
+        )
+
+        current_thread_id = threading.get_ident()
+        other_thread_id = current_thread_id + 1
+
+        current_inspector = MagicMock()
+        current_inspector.info_cache = {"schema_A_key": "heavy_data"}
+        other_inspector = MagicMock()
+        other_inspector.info_cache = {"schema_B_key": "also_heavy"}
+
+        mock_source._inspector_map = {
+            current_thread_id: current_inspector,
+            other_thread_id: other_inspector,
+        }
+        mock_source.context.get_current_thread_id.return_value = current_thread_id
+
+        mock_source._clear_thread_reflection_cache()
+
+        assert current_inspector.info_cache == {}, (
+            "Current thread's inspector info_cache must be cleared."
+        )
+        assert other_inspector.info_cache == {"schema_B_key": "also_heavy"}, (
+            "Other threads' inspectors must NOT be touched — clearing "
+            "them would race with in-flight reflection reads."
+        )
+
+    def test_clear_is_noop_when_thread_has_no_inspector_yet(self):
+        """First schema after startup (or first schema for a worker thread
+        that has not yet been assigned one) has no inspector — the clear
+        must silently succeed rather than raise.
+        """
+        import threading
+
+        mock_source = MagicMock()
+        mock_source._clear_thread_reflection_cache = (
+            CommonDbSourceService._clear_thread_reflection_cache.__get__(mock_source)
+        )
+
+        mock_source._inspector_map = {}
+        mock_source.context.get_current_thread_id.return_value = threading.get_ident()
+
+        # Must not raise.
+        mock_source._clear_thread_reflection_cache()
+
+    def test_get_tables_name_and_type_clears_cache_at_schema_boundary(self):
+        """Integration: get_tables_name_and_type() is the per-schema hook
+        for the topology — it must call _clear_thread_reflection_cache so
+        the prior schema's cache entries are reclaimed before this schema
+        starts populating its own.
+        """
+        mock_source = MagicMock()
+        mock_source.get_tables_name_and_type = (
+            CommonDbSourceService.get_tables_name_and_type.__get__(mock_source)
+        )
+        # Disable both table and view iteration so we exit the method
+        # immediately after the cache-clear hook — we're not testing
+        # iteration semantics here.
+        mock_source.source_config.includeTables = False
+        mock_source.source_config.includeViews = False
+        mock_source.context.get.return_value = MagicMock(database_schema="schema_X")
+
+        list(mock_source.get_tables_name_and_type() or [])
+
+        mock_source._clear_thread_reflection_cache.assert_called_once()

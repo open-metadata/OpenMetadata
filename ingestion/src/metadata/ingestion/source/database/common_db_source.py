@@ -381,6 +381,30 @@ class CommonDbSourceService(
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
+    def _clear_thread_reflection_cache(self) -> None:
+        """
+        Clear SQLAlchemy reflection cache for the current thread's Inspector.
+
+        Called at schema boundaries so per-(schema, table) cache entries
+        from the prior schema can be reclaimed. SQLAlchemy's info_cache is
+        an unbounded dict populated by @reflection.cache methods
+        (get_schema_columns, get_pk_constraint, get_foreign_keys,
+        get_unique_constraints, get_columns, get_view_definition, ...).
+        On heavy-reflection connectors like Snowflake, one inspector's
+        cache can grow past a gigabyte on a single large database.
+
+        Thread safety: only the current thread's inspector is cleared;
+        other threads may be mid-reflection and touching their cache
+        would race with live reads.
+        """
+        thread_id = self.context.get_current_thread_id()
+        inspector = self._inspector_map.get(thread_id)
+        if inspector is None:
+            return
+        info_cache = getattr(inspector, "info_cache", None)
+        if info_cache is not None:
+            info_cache.clear()
+
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Handle table and views.
@@ -390,6 +414,11 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
+        # Reclaim prior-schema reflection cache entries before walking
+        # this schema's tables — bounds Inspector.info_cache growth on
+        # databases with many/wide schemas (see Snowflake's heavy
+        # reflection path via @reflection.cache in snowflake/utils.py).
+        self._clear_thread_reflection_cache()
         schema_name = self.context.get().database_schema
         try:
             if self.source_config.includeTables:
