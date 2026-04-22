@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
 import { StepperStepType } from 'Models';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import i18n from '../utils/i18next/LocalUtil';
 
-const TEST_SUITE_LABEL = i18next.t('label.test-suite');
-const ADD_TEST_SUITE_LABEL = i18next.t('label.add-entity', {
-  entity: i18next.t('label.test-suite'),
+const TEST_SUITE_LABEL = i18n.t('label.test-suite');
+const ADD_TEST_SUITE_LABEL = i18n.t('label.add-entity', {
+  entity: i18n.t('label.test-suite'),
 });
 
 export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
@@ -28,13 +27,13 @@ export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: i18next.t('label.add-entity', {
-      entity: i18next.t('label.test-case'),
+    name: i18n.t('label.add-entity', {
+      entity: i18n.t('label.test-case'),
     }),
     step: 2,
   },
   {
-    name: i18next.t('label.test-suite-status'),
+    name: i18n.t('label.test-suite-status'),
     step: 3,
   },
 ];

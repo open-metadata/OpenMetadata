@@ -697,13 +697,13 @@ const SSOConfigurationFormRJSF = ({
     // Add event listeners when form is shown
     if (showForm) {
       document.addEventListener('focusin', handleDOMFocus);
-      document.addEventListener('click', handleDOMClick);
+      document.addEventListener('click', handleDOMClick, true);
       document.addEventListener('keydown', handleKeyDown, true);
     }
 
     return () => {
       document.removeEventListener('focusin', handleDOMFocus);
-      document.removeEventListener('click', handleDOMClick);
+      document.removeEventListener('click', handleDOMClick, true);
       document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [showForm]);
@@ -1146,7 +1146,8 @@ const SSOConfigurationFormRJSF = ({
             ),
             minWidth: 400,
             flex: 0.5,
-            className: 'm-t-xs',
+            className:
+              'service-doc-panel content-resizable-panel-container m-t-xs',
           }}
         />
       </>
@@ -1244,6 +1245,7 @@ const SSOConfigurationFormRJSF = ({
             />
           ),
           minWidth: 400,
+          className: 'service-doc-panel content-resizable-panel-container',
         }}
       />
     </>

@@ -3225,6 +3225,9 @@ export enum KafkaSecurityProtocol {
  *
  * SSL Configuration for OpenMetadata Server
  *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface ConsumerConfigSSLClass {
@@ -3967,6 +3970,9 @@ export enum ConnectionScheme {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4023,6 +4029,8 @@ export enum ConnectionType {
  * Client SSL verification.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
+ *
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -4778,6 +4786,9 @@ export enum SpaceType {
  *
  * SSL Configuration for OpenMetadata Server
  *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Config
@@ -5527,11 +5538,23 @@ export interface Pipeline {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Fallback manifest applied to any bucket that does not have its own openmetadata.json
+     * file. If a bucket has a manifest file, that file takes precedence and this value is
+     * ignored for that bucket. Paste the same JSON you would place in a bucket's
+     * openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.
+     */
+    defaultManifest?: string;
+    /**
      * Optional configuration to soft delete containers in OpenMetadata if the source containers
      * are deleted. Also, if the topic is deleted, all the associated entities with that
      * containers will be deleted
      */
-    markDeletedContainers?:       boolean;
+    markDeletedContainers?: boolean;
+    /**
+     * Global manifest source. When configured, entries here take precedence over any
+     * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+     * matches.
+     */
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
     /**
      * Regex to only include/exclude directories that matches the pattern.
@@ -7031,6 +7054,11 @@ export interface DBTConfigurationSource {
      */
     dbtCatalogHttpPath?: string;
     /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
      * DBT manifest http file path to extract dbt models and associate with tables.
      */
     dbtManifestHttpPath?: string;
@@ -7042,6 +7070,15 @@ export interface DBTConfigurationSource {
      * DBT sources http file path to extract freshness test results information.
      */
     dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: ConsumerConfigSSLClass;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -7428,6 +7465,10 @@ export interface ServiceConnections {
 }
 
 /**
+ * Global manifest source. When configured, entries here take precedence over any
+ * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+ * matches.
+ *
  * No manifest file available. Ingestion would look for bucket-level metadata file instead
  *
  * Storage Metadata Manifest file path config.

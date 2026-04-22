@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { useParams } from 'react-router-dom';
 import { Page, PageType } from '../../generated/system/ui/page';
 import {

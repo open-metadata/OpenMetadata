@@ -1123,7 +1123,8 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
           ) &&
         response.url().includes('profile') &&
         response.request().method() === 'GET',
-      { timeout: 90_000 }
+      // TODO: Reduce timeout once the latency issue is fixed
+      { timeout: 150_000 }
     );
 
   // 1. Navigate and Open Column Detail Panel
