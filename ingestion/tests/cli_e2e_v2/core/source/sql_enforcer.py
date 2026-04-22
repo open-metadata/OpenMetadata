@@ -145,7 +145,7 @@ class SqlBaselineEnforcer:
             state = self._snapshot(conn)
             drifts.extend(self._diff_schemas(expected, state))
             drifts.extend(self._diff_tables(expected, state))
-            drifts.extend(self._diff_seeds(expected, conn))
+            drifts.extend(self._diff_seeds(expected, state, conn))
             drifts.extend(self._diff_views(expected, state))
             drifts.extend(self._diff_stored_procedures(expected, state))
 
@@ -211,10 +211,22 @@ class SqlBaselineEnforcer:
         return drifts
 
     def _diff_seeds(
-        self, expected: SqlSourceBaseline, conn: Connection
+        self, expected: SqlSourceBaseline, state: dict, conn: Connection
     ) -> list[Drift]:
+        """Compare seed row counts for tables that already exist.
+
+        Skips seeds whose target table isn't in the snapshot — the missing
+        table is already flagged by `_diff_tables`, and issuing COUNT(*)
+        against a nonexistent table (or schema) would raise. The apply()
+        pass creates the tables + seeds them; next compare() can then
+        verify row counts.
+        """
         drifts: list[Drift] = []
+        actual_tables: dict[tuple[str, str], dict] = state["tables"]
+        schema = expected.metadata.schema
         for seed in expected.seeds:
+            if (schema, seed.table_name) not in actual_tables:
+                continue
             fqn = self._seed_fqn(seed)
             count = conn.execute(text(f"SELECT COUNT(*) FROM {fqn}")).scalar_one()
             if count != seed.expected_row_count:
