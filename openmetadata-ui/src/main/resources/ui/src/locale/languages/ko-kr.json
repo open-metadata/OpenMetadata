@@ -1721,6 +1721,7 @@
     "reposition": "위치 변경",
     "repository-url": "Repository URL",
     "request": "요청",
+    "request-data-access": "데이터 접근 요청",
     "request-method": "요청 메서드",
     "request-schema-field": "요청 스키마 필드",
     "request-tag-plural": "태그 요청",
