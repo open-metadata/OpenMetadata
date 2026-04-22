@@ -74,8 +74,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       this.connection =
           RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
     } else {
-      this.connection =
-          RDFConnectionFuseki.create().destination(endpoint).build();
+      this.connection = RDFConnectionFuseki.create().destination(endpoint).build();
     }
     LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
     loadOntology();
