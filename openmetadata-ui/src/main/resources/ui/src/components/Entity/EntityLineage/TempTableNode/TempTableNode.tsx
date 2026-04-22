@@ -16,7 +16,10 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { getServiceIcon } from '../../../../utils/TableUtils';
 import './temp-table-node.less';
 
-const getHandle = (isConnectable: HandleProps['isConnectable'], id?: string) => {
+const getHandle = (
+  isConnectable: HandleProps['isConnectable'],
+  id?: string
+) => {
   return (
     <>
       <Handle

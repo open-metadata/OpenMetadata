@@ -60,11 +60,11 @@ import {
   EdgeData,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
-import TempTableNode from '../components/Entity/EntityLineage/TempTableNode/TempTableNode';
 import {
   EntityChildren,
   Flatten,
 } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
+import TempTableNode from '../components/Entity/EntityLineage/TempTableNode/TempTableNode';
 import {
   EdgeDetails,
   LineageData,
@@ -761,6 +761,7 @@ export const createNodes = (
         hasOutgoers: outgoingMap.has(node.id),
         isUpstreamNode: upstreamNodeIds.has(node.id),
         isDownstreamNode: downstreamNodeIds.has(node.id),
+        isTempTable: node.type === EntityLineageNodeType.TEMP_TABLE,
       },
       width: NODE_WIDTH,
       height: nodeHeight,
@@ -1380,7 +1381,7 @@ const createTempTableNode = (name: string): LineageNodeType => {
     name,
     displayName: name,
     fullyQualifiedName: nodeId,
-    entityType: EntityLineageNodeType.TEMP_TABLE,
+    entityType: EntityType.TABLE,
   };
 };
 
@@ -1403,6 +1404,7 @@ const extractTempLineageNodes = (
 
   const tempNodes = new Map<string, LineageNodeType>();
   const tempEdges: EdgeDetails[] = [];
+  const tempEdgeKeys = new Set<string>();
   const allEdges = [
     ...Object.values(upstreamEdges),
     ...Object.values(downstreamEdges),
@@ -1448,18 +1450,23 @@ const extractTempLineageNodes = (
         tempNodes.set(to.id, createTempTableNode(hop.toEntity));
       }
 
-      tempEdges.push({
-        fromEntity: {
-          id: from.id,
-          type: from.type,
-          fullyQualifiedName: from.fullyQualifiedName,
-        },
-        toEntity: {
-          id: to.id,
-          type: to.type,
-          fullyQualifiedName: to.fullyQualifiedName,
-        },
-      });
+      const edgeKey = `${from.id}-${to.id}`;
+
+      if (!tempEdgeKeys.has(edgeKey)) {
+        tempEdgeKeys.add(edgeKey);
+        tempEdges.push({
+          fromEntity: {
+            id: from.id,
+            type: from.type,
+            fullyQualifiedName: from.fullyQualifiedName,
+          },
+          toEntity: {
+            id: to.id,
+            type: to.type,
+            fullyQualifiedName: to.fullyQualifiedName,
+          },
+        });
+      }
     }
   }
 
