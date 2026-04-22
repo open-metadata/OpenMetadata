@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, type Page } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
