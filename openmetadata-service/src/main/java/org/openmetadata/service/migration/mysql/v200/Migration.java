@@ -5,6 +5,7 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTab
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v200.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -16,5 +17,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     addTableColumnSearchSettings();
+    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
   }
 }

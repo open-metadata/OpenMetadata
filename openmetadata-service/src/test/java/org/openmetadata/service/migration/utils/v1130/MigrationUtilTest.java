@@ -1,241 +1,225 @@
 package org.openmetadata.service.migration.utils.v1130;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 class MigrationUtilTest {
-  private CollectionDAO collectionDAO;
-  private CollectionDAO.DataContractDAO dataContractDAO;
-  private CollectionDAO.TestCaseDAO testCaseDAO;
 
-  @BeforeEach
-  void setUp() {
-    collectionDAO = mock(CollectionDAO.class);
-    dataContractDAO = mock(CollectionDAO.DataContractDAO.class);
-    testCaseDAO = mock(CollectionDAO.TestCaseDAO.class);
-    when(collectionDAO.dataContractDAO()).thenReturn(dataContractDAO);
-    when(collectionDAO.testCaseDAO()).thenReturn(testCaseDAO);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final String WEBHOOK_WITH_SECRET_KEY =
+      """
+      {
+        "destinations": [
+          {
+            "type": "Webhook",
+            "config": {
+              "endpoint": "https://example.com/hook",
+              "secretKey": "mysecret"
+            }
+          }
+        ]
+      }
+      """;
+
+  private static final String WEBHOOK_WITHOUT_SECRET_KEY =
+      """
+      {
+        "destinations": [
+          {
+            "type": "Webhook",
+            "config": {
+              "endpoint": "https://example.com/hook"
+            }
+          }
+        ]
+      }
+      """;
+
+  private static final String WEBHOOK_WITH_EMPTY_SECRET_KEY =
+      """
+      {
+        "destinations": [
+          {
+            "type": "Webhook",
+            "config": {
+              "endpoint": "https://example.com/hook",
+              "secretKey": ""
+            }
+          }
+        ]
+      }
+      """;
+
+  private static final String WEBHOOK_ALREADY_MIGRATED =
+      """
+      {
+        "destinations": [
+          {
+            "type": "Webhook",
+            "config": {
+              "endpoint": "https://example.com/hook",
+              "authType": { "type": "bearer", "secretKey": "mysecret" }
+            }
+          }
+        ]
+      }
+      """;
+
+  private static final String NON_WEBHOOK_DESTINATION =
+      """
+      {
+        "destinations": [
+          {
+            "type": "Slack",
+            "config": {
+              "secretKey": "mysecret"
+            }
+          }
+        ]
+      }
+      """;
+
+  private Map<String, Object> row(String json) {
+    return Map.of("id", UUID.randomUUID().toString(), "json", json);
+  }
+
+  private Handle handleReturningRows(List<Map<String, Object>> rows) {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery(any(String.class)).mapToMap().list()).thenReturn(rows);
+    return handle;
+  }
+
+  private Handle handleWithUpdateCapture(List<Map<String, Object>> rows, Update mockUpdate) {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery(any(String.class)).mapToMap().list()).thenReturn(rows);
+    when(handle.createUpdate(any(String.class))).thenReturn(mockUpdate);
+    return handle;
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_noDataContracts() {
-    when(dataContractDAO.listAfterWithOffset(anyInt(), anyInt()))
-        .thenReturn(Collections.emptyList());
+  void migrateWebhookSecretKeyToAuthTypeIsNoOpWhenNoRows() {
+    Handle handle = handleReturningRows(List.of());
 
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
+    assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    verify(testCaseDAO, never()).findEntityById(any());
-    verify(testCaseDAO, never()).update(any(TestCase.class));
+    verify(handle, never()).createUpdate(any());
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_contractWithNoQualityExpectations() {
-    DataContract contract = new DataContract();
-    contract.setId(UUID.randomUUID());
-    contract.setFullyQualifiedName("test.contract");
+  void migrateWebhookSecretKeyToAuthTypeIsNoOpWhenNoSecretKey() {
+    Handle handle = handleReturningRows(List.of(row(WEBHOOK_WITHOUT_SECRET_KEY)));
 
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(0)))
-        .thenReturn(List.of(JsonUtils.pojoToJson(contract)));
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(1000)))
-        .thenReturn(Collections.emptyList());
+    assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
-
-    verify(testCaseDAO, never()).findEntityById(any());
+    verify(handle, never()).createUpdate(any());
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_updatesTestCase() {
-    UUID contractId = UUID.randomUUID();
-    UUID testCaseId = UUID.randomUUID();
+  void migrateWebhookSecretKeyToAuthTypeIsNoOpWhenEmptySecretKey() {
+    Handle handle = handleReturningRows(List.of(row(WEBHOOK_WITH_EMPTY_SECRET_KEY)));
 
-    DataContract contract = new DataContract();
-    contract.setId(contractId);
-    contract.setName("my-contract");
-    contract.setFullyQualifiedName("test.contract");
-    contract.setQualityExpectations(
-        List.of(new EntityReference().withId(testCaseId).withType(Entity.TEST_CASE)));
+    assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    TestCase testCase = new TestCase();
-    testCase.setId(testCaseId);
-    testCase.setFullyQualifiedName("test.case.fqn");
-
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(0)))
-        .thenReturn(List.of(JsonUtils.pojoToJson(contract)));
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(1000)))
-        .thenReturn(Collections.emptyList());
-    when(testCaseDAO.findEntityById(testCaseId)).thenReturn(testCase);
-
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
-
-    verify(testCaseDAO).update(any(TestCase.class));
-    assertEquals(contractId, testCase.getDataContract().getId());
-    assertEquals(Entity.DATA_CONTRACT, testCase.getDataContract().getType());
+    verify(handle, never()).createUpdate(any());
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_skipsAlreadySet() {
-    UUID contractId = UUID.randomUUID();
-    UUID testCaseId = UUID.randomUUID();
+  void migrateWebhookSecretKeyToAuthTypeIsNoOpWhenAlreadyMigrated() {
+    Handle handle = handleReturningRows(List.of(row(WEBHOOK_ALREADY_MIGRATED)));
 
-    DataContract contract = new DataContract();
-    contract.setId(contractId);
-    contract.setName("my-contract");
-    contract.setFullyQualifiedName("test.contract");
-    contract.setQualityExpectations(
-        List.of(new EntityReference().withId(testCaseId).withType(Entity.TEST_CASE)));
+    assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    TestCase testCase = new TestCase();
-    testCase.setId(testCaseId);
-    testCase.setFullyQualifiedName("test.case.fqn");
-    testCase.setDataContract(
-        new EntityReference().withId(contractId).withType(Entity.DATA_CONTRACT));
-
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(0)))
-        .thenReturn(List.of(JsonUtils.pojoToJson(contract)));
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(1000)))
-        .thenReturn(Collections.emptyList());
-    when(testCaseDAO.findEntityById(testCaseId)).thenReturn(testCase);
-
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
-
-    verify(testCaseDAO, never()).update(any(TestCase.class));
+    verify(handle, never()).createUpdate(any());
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_handlesTestCaseNotFound() {
-    UUID testCaseId = UUID.randomUUID();
+  void migrateWebhookSecretKeyToAuthTypeIsNoOpForNonWebhookDestinations() {
+    Handle handle = handleReturningRows(List.of(row(NON_WEBHOOK_DESTINATION)));
 
-    DataContract contract = new DataContract();
-    contract.setId(UUID.randomUUID());
-    contract.setName("my-contract");
-    contract.setFullyQualifiedName("test.contract");
-    contract.setQualityExpectations(
-        List.of(new EntityReference().withId(testCaseId).withType(Entity.TEST_CASE)));
+    assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(0)))
-        .thenReturn(List.of(JsonUtils.pojoToJson(contract)));
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(1000)))
-        .thenReturn(Collections.emptyList());
-    when(testCaseDAO.findEntityById(testCaseId))
-        .thenThrow(new EntityNotFoundException("not found"));
-
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
-
-    verify(testCaseDAO, never()).update(any(TestCase.class));
+    verify(handle, never()).createUpdate(any());
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_batchProcessing() {
-    UUID contractId1 = UUID.randomUUID();
-    UUID contractId2 = UUID.randomUUID();
-    UUID testCaseId1 = UUID.randomUUID();
-    UUID testCaseId2 = UUID.randomUUID();
+  void migrateWebhookSecretKeyToAuthTypeMigratesMysql() throws Exception {
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    Handle handle = handleWithUpdateCapture(List.of(row(WEBHOOK_WITH_SECRET_KEY)), mockUpdate);
 
-    DataContract contract1 = new DataContract();
-    contract1.setId(contractId1);
-    contract1.setName("contract1");
-    contract1.setFullyQualifiedName("test.contract1");
-    contract1.setQualityExpectations(
-        List.of(new EntityReference().withId(testCaseId1).withType(Entity.TEST_CASE)));
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mockConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mockConfig);
+      when(mockConfig.isMySQL()).thenReturn(true);
 
-    DataContract contract2 = new DataContract();
-    contract2.setId(contractId2);
-    contract2.setName("contract2");
-    contract2.setFullyQualifiedName("test.contract2");
-    contract2.setQualityExpectations(
-        List.of(new EntityReference().withId(testCaseId2).withType(Entity.TEST_CASE)));
+      assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(0)))
-        .thenReturn(List.of(JsonUtils.pojoToJson(contract1), JsonUtils.pojoToJson(contract2)));
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(1000)))
-        .thenReturn(Collections.emptyList());
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+      verify(handle).createUpdate(sqlCaptor.capture());
+      assertEquals(
+          "UPDATE event_subscription_entity SET json = :json WHERE id = :id", sqlCaptor.getValue());
 
-    TestCase testCase1 = new TestCase();
-    testCase1.setId(testCaseId1);
-    testCase1.setFullyQualifiedName("test.case1");
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(mockUpdate).bind(eq("json"), jsonCaptor.capture());
 
-    TestCase testCase2 = new TestCase();
-    testCase2.setId(testCaseId2);
-    testCase2.setFullyQualifiedName("test.case2");
-
-    when(testCaseDAO.findEntityById(testCaseId1)).thenReturn(testCase1);
-    when(testCaseDAO.findEntityById(testCaseId2)).thenReturn(testCase2);
-
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
-
-    verify(testCaseDAO, times(2)).update(any(TestCase.class));
+      JsonNode config =
+          MAPPER.readTree(jsonCaptor.getValue()).get("destinations").get(0).get("config");
+      assertNull(config.get("secretKey"));
+      assertNotNull(config.get("authType"));
+      assertEquals("bearer", config.get("authType").get("type").asText());
+      assertEquals("mysecret", config.get("authType").get("secretKey").asText());
+    }
   }
 
   @Test
-  void testMigrateTestCaseDataContractReferences_criticalFailure() {
-    when(dataContractDAO.listAfterWithOffset(anyInt(), anyInt()))
-        .thenThrow(new RuntimeException("DB connection failed"));
+  void migrateWebhookSecretKeyToAuthTypeMigratesPostgres() throws Exception {
+    Update mockUpdate = mock(Update.class, RETURNS_DEEP_STUBS);
+    Handle handle = handleWithUpdateCapture(List.of(row(WEBHOOK_WITH_SECRET_KEY)), mockUpdate);
 
-    assertThrows(
-        RuntimeException.class,
-        () -> MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO));
-  }
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mockConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mockConfig);
+      when(mockConfig.isMySQL()).thenReturn(false);
 
-  @Test
-  void testMigrateTestCaseDataContractReferences_multipleTestCasesPerContract() {
-    UUID contractId = UUID.randomUUID();
-    UUID testCaseId1 = UUID.randomUUID();
-    UUID testCaseId2 = UUID.randomUUID();
-    UUID testCaseId3 = UUID.randomUUID();
+      assertDoesNotThrow(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle));
 
-    DataContract contract = new DataContract();
-    contract.setId(contractId);
-    contract.setName("contract");
-    contract.setFullyQualifiedName("test.contract");
-    contract.setQualityExpectations(
-        List.of(
-            new EntityReference().withId(testCaseId1).withType(Entity.TEST_CASE),
-            new EntityReference().withId(testCaseId2).withType(Entity.TEST_CASE),
-            new EntityReference().withId(testCaseId3).withType(Entity.TEST_CASE)));
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+      verify(handle).createUpdate(sqlCaptor.capture());
+      assertEquals(
+          "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id",
+          sqlCaptor.getValue());
 
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(0)))
-        .thenReturn(List.of(JsonUtils.pojoToJson(contract)));
-    when(dataContractDAO.listAfterWithOffset(anyInt(), eq(1000)))
-        .thenReturn(Collections.emptyList());
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(mockUpdate).bind(eq("json"), jsonCaptor.capture());
 
-    TestCase tc1 = new TestCase();
-    tc1.setId(testCaseId1);
-    tc1.setFullyQualifiedName("tc1");
-
-    TestCase tc2 = new TestCase();
-    tc2.setId(testCaseId2);
-    tc2.setFullyQualifiedName("tc2");
-    tc2.setDataContract(new EntityReference().withId(contractId));
-
-    when(testCaseDAO.findEntityById(testCaseId1)).thenReturn(tc1);
-    when(testCaseDAO.findEntityById(testCaseId2)).thenReturn(tc2);
-    when(testCaseDAO.findEntityById(testCaseId3))
-        .thenThrow(new EntityNotFoundException("not found"));
-
-    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
-
-    verify(testCaseDAO, times(1)).update(any(TestCase.class));
+      JsonNode config =
+          MAPPER.readTree(jsonCaptor.getValue()).get("destinations").get(0).get("config");
+      assertNull(config.get("secretKey"));
+      assertNotNull(config.get("authType"));
+      assertEquals("bearer", config.get("authType").get("type").asText());
+      assertEquals("mysecret", config.get("authType").get("secretKey").asText());
+    }
   }
 }

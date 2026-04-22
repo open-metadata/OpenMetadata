@@ -43,6 +43,7 @@ import org.openmetadata.operator.model.CronOMJobSpec;
 import org.openmetadata.operator.model.CronOMJobStatus;
 import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
+import org.openmetadata.operator.util.KubernetesNameBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,7 @@ public class CronOMJobReconciler
     implements Reconciler<CronOMJobResource>, ErrorStatusHandler<CronOMJobResource> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CronOMJobReconciler.class);
+  private static final int MAX_OMJOB_NAME_LENGTH = 63;
   private final Duration defaultRequeue;
   private final OperatorConfig config;
 
@@ -166,28 +168,27 @@ public class CronOMJobReconciler
 
   private OMJobResource buildOMJob(CronOMJobResource cronOMJob, Instant scheduledTime) {
     String baseName = cronOMJob.getMetadata().getName();
-    String name = baseName + "-" + scheduledTime.getEpochSecond();
-    if (name.length() > 253) {
-      name = name.substring(0, 253);
-    }
+    String name = buildScheduledOMJobName(baseName, scheduledTime);
 
     final String finalName = name; // Make final for use in lambda
 
     // Generate unique run ID for this execution
     String runId = UUID.randomUUID().toString();
+    HashMap<String, String> labels =
+        cronOMJob.getMetadata().getLabels() != null
+            ? new HashMap<>(cronOMJob.getMetadata().getLabels())
+            : new HashMap<>();
 
     ObjectMeta metadata =
         new ObjectMetaBuilder()
             .withName(name)
             .withNamespace(cronOMJob.getMetadata().getNamespace())
-            .withLabels(cronOMJob.getMetadata().getLabels())
+            .withLabels(labels)
             .withAnnotations(cronOMJob.getMetadata().getAnnotations())
             .build();
 
     // Add run ID to labels for tracking
-    if (metadata.getLabels() != null) {
-      metadata.getLabels().put("app.kubernetes.io/run-id", runId);
-    }
+    metadata.getLabels().put("app.kubernetes.io/run-id", runId);
 
     OMJobResource omJob = new OMJobResource();
     omJob.setMetadata(metadata);
@@ -237,6 +238,17 @@ public class CronOMJobReconciler
 
     omJob.setSpec(spec);
     return omJob;
+  }
+
+  private String buildScheduledOMJobName(String baseName, Instant scheduledTime) {
+    String suffix = "-" + scheduledTime.getEpochSecond();
+    int maxBaseLength = MAX_OMJOB_NAME_LENGTH - suffix.length();
+
+    if (maxBaseLength < 1) {
+      throw new IllegalArgumentException("Scheduled OMJob suffix leaves no room for base name");
+    }
+
+    return KubernetesNameBuilder.fitNameWithHash(baseName, maxBaseLength, "omjob") + suffix;
   }
 
   private OMJobSpec deepCopyOMJobSpec(OMJobSpec source, String runId, String jobName) {

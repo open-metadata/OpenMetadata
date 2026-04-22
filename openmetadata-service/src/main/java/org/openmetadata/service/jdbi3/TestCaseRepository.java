@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -217,7 +218,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         tableRepo.getDao().findEntityByNames(new ArrayList<>(fqnToEntityLink.keySet()), ALL);
     tableRepo.setFieldsInBulk(
         new Fields(
-            Set.of("tags", "columns", FIELD_OWNERS, "domains", FIELD_FOLLOWERS),
+            Set.of("tags", "columns", FIELD_OWNERS, "domains", "dataProducts", FIELD_FOLLOWERS),
             String.join(",", tableFields)),
         tables);
 
@@ -232,6 +233,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     if (fields.contains("domains")) {
       tableFields.add("domains");
+    }
+    if (fields.contains(FIELD_DATA_PRODUCTS)) {
+      tableFields.add(FIELD_DATA_PRODUCTS);
     }
     if (fields.contains(FIELD_FOLLOWERS)) {
       tableFields.add(FIELD_FOLLOWERS);
@@ -453,6 +457,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (table != null) {
       inheritOwners(testCase, fields, table);
       inheritDomains(testCase, fields, table);
+      inheritDataProducts(testCase, fields, table);
       inheritTags(testCase, fields, table);
       inheritFollowers(testCase, fields, table);
     }
@@ -523,6 +528,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (table != null) {
         inheritOwners(testCase, fields, table);
         inheritDomains(testCase, fields, table);
+        inheritDataProducts(testCase, fields, table);
         inheritTags(testCase, fields, table);
         inheritFollowers(testCase, fields, table);
       }
@@ -1706,7 +1712,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     if ("*".equals(name)) {
       // Platform-wide export
-      return listAll(new Fields(allowedFields, "testDefinition,testSuite"), new ListFilter());
+      return listAll(
+          new Fields(allowedFields, "testDefinition,testSuite, dataProducts"), new ListFilter());
     }
 
     // Try to determine if name is a table or test suite

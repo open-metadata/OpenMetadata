@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.BulkOperationConfiguration;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.config.QoSConfiguration;
@@ -154,6 +156,17 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("aiPlatformConfiguration")
   private AiPlatformConfiguration aiPlatformConfiguration;
 
+  @JsonProperty("adminOpsConfiguration")
+  private AdminOpsConfiguration adminOpsConfiguration;
+
+  public AdminOpsConfiguration getAdminOpsConfiguration() {
+    if (adminOpsConfiguration == null) {
+      adminOpsConfiguration = new AdminOpsConfiguration();
+      adminOpsConfiguration.setEnabled(false);
+    }
+    return adminOpsConfiguration;
+  }
+
   @JsonProperty("mcpConfiguration")
   private org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfiguration;
 
@@ -184,11 +197,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
+  @JsonProperty("cacheMemory")
+  @Valid
+  private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {
       qosConfiguration = new QoSConfiguration();
     }
     return qosConfiguration;
+  }
+
+  public CacheConfiguration getCacheMemoryConfiguration() {
+    if (cacheMemoryConfiguration == null) {
+      cacheMemoryConfiguration = new CacheConfiguration();
+    }
+    return cacheMemoryConfiguration;
   }
 
   public String getApiRootPath() {

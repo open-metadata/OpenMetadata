@@ -178,7 +178,7 @@ public class SearchListFilterTest {
     assertTrue(actual.contains("{\"range\": {\"testCaseResult.timestamp\": {\"gte\": 10}}}"));
     assertTrue(actual.contains("{\"range\": {\"testCaseResult.timestamp\": {\"lte\": 20}}}"));
     assertTrue(actual.contains("{\"terms\":{\"tags.tagFQN\":[\"PII\", \"Sensitive\"]}}"));
-    assertTrue(actual.contains("{\"terms\":{\"tags.tagFQN\":[\"Tier.Tier1\"]}}"));
+    assertTrue(actual.contains("{\"term\":{\"tier.tagFQN\":\"tier.tier1\"}}"));
     assertTrue(actual.contains("{\"term\": {\"service.name\": \"sample-service\"}}"));
     assertTrue(actual.contains("{\"term\": {\"dataQualityDimension\": \"Accuracy\"}}"));
     assertTrue(actual.contains("{\"term\": {\"followers.keyword\": \"follower-id\"}}"));

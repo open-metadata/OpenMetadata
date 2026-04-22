@@ -17,7 +17,8 @@
     "Search",
     "Api",
     "Security",
-    "LLM"
+    "LLM",
+    "Mcp"
   ],
   "additionalProperties": false
 }

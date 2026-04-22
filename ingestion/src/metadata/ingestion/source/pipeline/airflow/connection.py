@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import os
 from functools import partial, singledispatch
 from typing import Any, Optional

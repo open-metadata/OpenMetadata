@@ -57,7 +57,7 @@ import {
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDataQualityPagePath } from '../../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -78,7 +78,9 @@ const DataQualityDashboard = ({
 }: {
   initialFilters?: DqDashboardChartFilters;
   hideFilterBar?: boolean;
-  hiddenFilters?: Array<'owner' | 'tier' | 'tags' | 'glossaryTerms'>;
+  hiddenFilters?: Array<
+    'owner' | 'tier' | 'tags' | 'glossaryTerms' | 'dataProducts'
+  >;
   isGovernanceView?: boolean;
   className?: string;
 }) => {
@@ -136,7 +138,18 @@ const DataQualityDashboard = ({
     options: [],
   });
   const [isTagLoading, setIsTagLoading] = useState(false);
+  const [dataProductOptions, setDataProductOptions] = useState<{
+    defaultOptions: SearchDropdownOption[];
+    options: SearchDropdownOption[];
+  }>({
+    defaultOptions: [],
+    options: [],
+  });
+  const [isDataProductLoading, setIsDataProductLoading] = useState(false);
   const [selectedTagFilter, setSelectedTagFilter] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [selectedDataProductFilter, setSelectedDataProductFilter] = useState<
     SearchDropdownOption[]
   >([]);
   const [selectedGlossaryTermFilter, setSelectedGlossaryTermFilter] = useState<
@@ -182,6 +195,7 @@ const DataQualityDashboard = ({
       ownerFqn: defaultFilters.ownerFqn,
       tags: defaultFilters.tags,
       tier: defaultFilters.tier,
+      dataProductFqns: defaultFilters.dataProductFqns,
       startTs: defaultFilters.startTs,
       endTs: defaultFilters.endTs,
       domainFqn: defaultFilters.domainFqn,
@@ -190,6 +204,7 @@ const DataQualityDashboard = ({
     defaultFilters.ownerFqn,
     defaultFilters.tier,
     defaultFilters.tags,
+    defaultFilters.dataProductFqns,
     defaultFilters.startTs,
     defaultFilters.endTs,
     defaultFilters.domainFqn,
@@ -242,6 +257,16 @@ const DataQualityDashboard = ({
     }));
   };
 
+  const handleDataProductChange = (
+    dataProducts: SearchDropdownOption[] = []
+  ) => {
+    setSelectedDataProductFilter(dataProducts);
+    setChartFilter((prev) => ({
+      ...prev,
+      dataProductFqns: dataProducts.map((dp) => dp.key),
+    }));
+  };
+
   const fetchTagOptions = async (query = WILD_CARD_CHAR) => {
     const response = await searchQuery({
       searchIndex: SearchIndex.TAG,
@@ -260,6 +285,25 @@ const DataQualityDashboard = ({
     });
 
     return tagFilterOptions;
+  };
+
+  const fetchDataProductOptions = async (query = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      searchIndex: SearchIndex.DATA_PRODUCT,
+      query: query === WILD_CARD_CHAR ? query : `*${query}*`,
+      pageSize: PAGE_SIZE_BASE,
+    });
+    const hits = response.hits.hits;
+    const dataProductFilterOptions = hits.map((hit) => {
+      const source = hit._source;
+
+      return {
+        key: source.fullyQualifiedName ?? source.name,
+        label: source.displayName ?? source.fullyQualifiedName ?? source.name,
+      };
+    });
+
+    return dataProductFilterOptions;
   };
 
   const handleTagSearch = async (query: string) => {
@@ -380,6 +424,28 @@ const DataQualityDashboard = ({
     }
   };
 
+  const handleDataProductSearch = async (query: string) => {
+    if (isEmpty(query)) {
+      setDataProductOptions((prev) => ({
+        ...prev,
+        options: prev.defaultOptions,
+      }));
+    } else {
+      setIsDataProductLoading(true);
+      try {
+        const response = await fetchDataProductOptions(query);
+        setDataProductOptions((prev) => ({
+          ...prev,
+          options: response,
+        }));
+      } catch {
+        // we will not show the toast error message for suggestion API
+      } finally {
+        setIsDataProductLoading(false);
+      }
+    }
+  };
+
   const fetchDefaultGlossaryTermOptions = async () => {
     if (glossaryTermOptions.defaultOptions.length) {
       setGlossaryTermOptions((prev) => ({
@@ -402,6 +468,31 @@ const DataQualityDashboard = ({
       // we will not show the toast error message for search API
     } finally {
       setIsGlossaryTermLoading(false);
+    }
+  };
+
+  const fetchDefaultDataProductOptions = async () => {
+    if (dataProductOptions.defaultOptions.length) {
+      setDataProductOptions((prev) => ({
+        ...prev,
+        options: [...selectedDataProductFilter, ...prev.defaultOptions],
+      }));
+
+      return;
+    }
+
+    try {
+      setIsDataProductLoading(true);
+      const response = await fetchDataProductOptions();
+      setDataProductOptions((prev) => ({
+        ...prev,
+        defaultOptions: response,
+        options: response,
+      }));
+    } catch {
+      // we will not show the toast error message for search API
+    } finally {
+      setIsDataProductLoading(false);
     }
   };
 
@@ -454,6 +545,9 @@ const DataQualityDashboard = ({
   const showGlossaryTermsFilter = !hiddenFilters.includes(
     DQ_FILTER_KEYS.GLOSSARY_TERMS
   );
+  const showDataProductsFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.DATA_PRODUCTS
+  );
 
   useEffect(() => {
     if (hideFilterBar) {
@@ -467,6 +561,9 @@ const DataQualityDashboard = ({
     }
     if (showGlossaryTermsFilter) {
       fetchDefaultGlossaryTermOptions();
+    }
+    if (showDataProductsFilter) {
+      fetchDefaultDataProductOptions();
     }
   }, [hideFilterBar, hiddenFiltersKey]);
 
@@ -511,12 +608,25 @@ const DataQualityDashboard = ({
     [selectedTierFilter, tier]
   );
 
+  const dataProducts = useMemo(
+    () => ({
+      options: uniqBy(dataProductOptions.options, 'key'),
+      selectedKeys: selectedDataProductFilter,
+      onChange: handleDataProductChange,
+      onGetInitialOptions: fetchDefaultDataProductOptions,
+      onSearch: handleDataProductSearch,
+      isSuggestionsLoading: isDataProductLoading,
+    }),
+    [isDataProductLoading, dataProductOptions, selectedDataProductFilter]
+  );
+
   const showFilterBar = !hideFilterBar;
   const hasVisibleFilters =
     showOwnerFilter ||
     showTierFilter ||
     showTagsFilter ||
-    showGlossaryTermsFilter;
+    showGlossaryTermsFilter ||
+    showDataProductsFilter;
 
   const cardClassName = classNames('data-quality-dashboard-card-section', {
     'tw:ring-0': isGovernanceView,
@@ -605,6 +715,16 @@ const DataQualityDashboard = ({
               {...glossaryTerms}
             />
           )}
+
+          {showDataProductsFilter && (
+            <SearchDropdown
+              hideCounts
+              label={t('label.data-product')}
+              searchKey="dataProduct"
+              triggerButtonSize="middle"
+              {...dataProducts}
+            />
+          )}
         </div>
       )}
       <div
@@ -677,9 +797,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="success"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Success,
                     }),
@@ -694,9 +815,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="aborted"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Aborted,
                     }),
@@ -711,9 +833,10 @@ const DataQualityDashboard = ({
                   chartFilter={defaultFilters}
                   name="failed"
                   redirectPath={{
-                    pathname: getDataQualityPagePath(
-                      DataQualityPageTabs.TEST_CASES
-                    ),
+                    pathname:
+                      observabilityRouterClassBase.getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
                     search: QueryString.stringify({
                       testCaseStatus: TestCaseStatus.Failed,
                     }),

@@ -38,6 +38,10 @@ export interface Tag {
      */
     classification?: EntityReference;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -219,6 +223,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Reference to the classification that this tag is part of.
+ *
+ * Reference to the data contract for this entity.
  *
  * Reference to the parent tag. When null, the term is at the root of the Classification.
  *

@@ -32,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -39,6 +40,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
+
   private Expression inputNamespaceMapExpr;
   private Expression approvalThresholdExpr;
   private Expression rejectionThresholdExpr;
@@ -57,31 +59,14 @@ public class CreateApprovalTaskImpl implements TaskListener {
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-      // Get approval threshold, default to 1 if not set
-      int approvalThreshold = 1;
-      if (approvalThresholdExpr != null) {
-        String thresholdStr = (String) approvalThresholdExpr.getValue(delegateTask);
-        if (thresholdStr != null && !thresholdStr.isEmpty()) {
-          approvalThreshold = Integer.parseInt(thresholdStr);
-        }
-      }
-
-      // Get rejection threshold, default to 1 if not set
-      int rejectionThreshold = 1;
-      if (rejectionThresholdExpr != null) {
-        String thresholdStr = (String) rejectionThresholdExpr.getValue(delegateTask);
-        if (thresholdStr != null && !thresholdStr.isEmpty()) {
-          rejectionThreshold = Integer.parseInt(thresholdStr);
-        }
-      }
+      int approvalThreshold = resolveThreshold(approvalThresholdExpr, delegateTask, 1);
+      int rejectionThreshold = resolveThreshold(rejectionThresholdExpr, delegateTask, 1);
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
 
-      // Set the thresholds as task variables for use in WorkflowHandler
       delegateTask.setVariable("approvalThreshold", approvalThreshold);
       delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
-      // Use separate lists for approvers and rejecters - simpler and cleaner
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
     } catch (Exception exc) {
@@ -94,9 +79,24 @@ public class CreateApprovalTaskImpl implements TaskListener {
     }
   }
 
+  private static int resolveThreshold(
+      Expression expr, DelegateTask delegateTask, int defaultValue) {
+    if (expr == null) return defaultValue;
+    String raw = (String) expr.getValue(delegateTask);
+    if (raw == null || raw.trim().isEmpty()) return defaultValue;
+    try {
+      return Integer.parseInt(raw.trim());
+    } catch (NumberFormatException exc) {
+      LOG.warn(
+          "Invalid threshold value '{}' resolved from workflow expression. Falling back to default value {}.",
+          raw,
+          defaultValue);
+      return defaultValue;
+    }
+  }
+
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
     List<EntityReference> assignees = new ArrayList<>();
-
     Set<IdentityLink> candidates = delegateTask.getCandidates();
     if (!candidates.isEmpty()) {
       for (IdentityLink candidate : candidates) {
@@ -121,22 +121,17 @@ public class CreateApprovalTaskImpl implements TaskListener {
             Entity.getEntityTypeFromObject(entity), entity.getFullyQualifiedName());
 
     Thread thread;
-
     ChangeEvent changeEvent;
     try {
       thread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      // Update the existing thread with new assignees before terminating the workflow
       thread.getTask().setAssignees(FeedMapper.formatAssignees(assignees));
-
+      ChangePreviewUtils.applyChangePreview(thread, entity, thread.getMessage());
       thread.withUpdatedBy(entity.getUpdatedBy()).withUpdatedAt(System.currentTimeMillis());
 
-      // Save the updated thread to database
       Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
 
-      // Now terminate the old workflow instance
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
-      // Create and publish ChangeEvent for notification system
       changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
@@ -157,16 +152,15 @@ public class CreateApprovalTaskImpl implements TaskListener {
           new Thread()
               .withId(UUID.randomUUID())
               .withThreadTs(System.currentTimeMillis())
-              .withMessage("Approval required for ")
               .withCreatedBy(entity.getUpdatedBy())
               .withAbout(about.getLinkString())
               .withType(ThreadType.Task)
               .withTask(taskDetails)
               .withUpdatedBy(entity.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis());
+      ChangePreviewUtils.applyChangePreview(thread, entity, null);
       feedRepository.create(thread);
 
-      // Create and publish ChangeEvent for notification system
       changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
@@ -178,7 +172,6 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withEntity(thread);
     }
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
-    // Send WebSocket Notification
     WebsocketNotificationHandler.handleTaskNotification(thread);
     return thread;
   }

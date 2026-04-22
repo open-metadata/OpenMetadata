@@ -14,6 +14,10 @@
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import {
+  LayoutType,
+  type LayoutEngineType,
+} from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 
@@ -22,8 +26,9 @@ export interface OntologyExplorerProps {
   entityId?: string;
   glossaryId?: string;
   className?: string;
-  showHeader?: boolean;
   height?: string | number;
+  onStatsChange?: (stats: string[]) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export interface OntologyNode {
@@ -31,6 +36,8 @@ export interface OntologyNode {
   label: string;
   originalLabel?: string;
   assetCount?: number;
+  loadedAssetCount?: number;
+  isLoadingAssets?: boolean;
   type: string;
   fullyQualifiedName?: string;
   description?: string;
@@ -56,13 +63,8 @@ export interface OntologyGraphData {
   edges: OntologyEdge[];
 }
 
-import {
-  LayoutType,
-  type LayoutEngineType,
-} from './OntologyExplorer.constants';
 import type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 
-export type LayoutAlgorithm = LayoutType;
 export type { LayoutEngineType } from './OntologyExplorer.constants';
 export type { GraphSearchHighlightInput } from './utils/graphSearchHighlight';
 export type GraphViewMode = 'overview' | 'hierarchy' | 'crossGlossary';
@@ -82,12 +84,14 @@ export interface GraphFilters {
 }
 
 export interface OntologyGraphHandle {
-  fitView: () => void;
+  fitView: () => Promise<void>;
   zoomIn: () => void;
   zoomOut: () => void;
   runLayout: () => void;
   focusNode: (nodeId: string) => void;
   getNodePositions: () => Record<string, { x: number; y: number }>;
+  exportAsPng: () => Promise<void>;
+  exportAsSvg: () => Promise<void>;
 }
 
 export interface HierarchyComboInfo {
@@ -114,7 +118,10 @@ export interface OntologyGraphProps {
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
-    meta?: { dataModeAssetBadgeClick?: boolean }
+    meta?: {
+      dataModeAssetBadgeClick?: boolean;
+      dataModeLoadMoreBadgeClick?: boolean;
+    }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onNodeContextMenu: (
@@ -122,6 +129,7 @@ export interface OntologyGraphProps {
     position: { x: number; y: number }
   ) => void;
   onPaneClick: () => void;
+  onScrollNearEdge?: () => void;
 }
 
 export interface FilterToolbarProps {
@@ -165,7 +173,7 @@ export interface MergedEdge {
 }
 
 export interface LayoutConfig {
-  type: 'dagre' | 'radial' | 'circular';
+  type: 'antv-dagre' | 'dagre' | 'radial' | 'circular' | 'preset';
   [key: string]: unknown;
 }
 

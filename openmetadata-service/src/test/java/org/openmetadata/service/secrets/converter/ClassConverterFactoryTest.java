@@ -17,7 +17,6 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.IcebergConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
@@ -52,7 +51,6 @@ public class ClassConverterFactoryTest {
         TrinoConnection.class,
         Workflow.class,
         SalesforceConnection.class,
-        IcebergConnection.class,
         MatillionConnection.class,
       })
   void testClassConverterIsSet(Class<?> clazz) {
