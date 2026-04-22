@@ -59,6 +59,9 @@ from metadata.generated.schema.entity.services.connections.database.mongoDBConne
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceType,
 )
+from metadata.generated.schema.entity.services.connections.database.odooConnection import (
+    OdooType,
+)
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
     SapErpType,
 )
@@ -174,6 +177,7 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     MongoDBType.MongoDB.value,
+    OdooType.Odoo.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,
     SasType.SAS.value,
