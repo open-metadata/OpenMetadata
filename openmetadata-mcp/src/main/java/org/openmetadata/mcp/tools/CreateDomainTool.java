@@ -60,12 +60,13 @@ public class CreateDomainTool implements McpTool {
     createDomain.setDescription(description);
 
     try {
-      createDomain.setDomainType(org.openmetadata.schema.type.DomainType.fromValue(domainType));
+      createDomain.setDomainType(CreateDomain.DomainType.fromValue(domainType));
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Parameter 'domainType' has invalid value '"
               + domainType
-              + "'. Valid values are: Aggregate, Source-aligned, Consumer-aligned");
+              + "'. Valid values are: "
+              + java.util.Arrays.toString(CreateDomain.DomainType.values()));
     }
 
     if (params.containsKey("displayName")) {

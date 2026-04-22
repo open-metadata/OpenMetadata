@@ -675,18 +675,21 @@
           },
           "experts": {
             "type": "array",
+            "description": "List of OpenMetadata usernames to set as domain experts.",
             "items": {
               "type": "string"
             }
           },
           "owners": {
             "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this domain.",
             "items": {
               "type": "string"
             }
           },
           "tags": {
             "type": "array",
+            "description": "Tag FQNs to apply to this domain (e.g. 'Tier.Tier1', 'PII.Sensitive').",
             "items": {
               "type": "string"
             }
