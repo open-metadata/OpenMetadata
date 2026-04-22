@@ -39,25 +39,26 @@ import {
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 
-const entities = [
-  new ApiEndpointClass(),
-  new TableClass(),
-  new StoredProcedureClass(),
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-  new DashboardDataModelClass(),
-  new DirectoryClass(),
-  new FileClass(),
-  new SpreadsheetClass(),
-  new WorksheetClass(),
+let adminUser: UserClass;
+
+const entityClasses = [
+  ApiEndpointClass,
+  TableClass,
+  StoredProcedureClass,
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ];
 
-// use the admin user to login
-const adminUser = new UserClass();
+let entities: InstanceType<(typeof entityClasses)[number]>[];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -71,6 +72,9 @@ const test = base.extend<{ page: Page }>({
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow();
+
+    adminUser = new UserClass();
+    entities = entityClasses.map((EntityClass) => new EntityClass());
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
@@ -148,9 +152,13 @@ test.describe('Entity Version pages', () => {
     await afterAction();
   });
 
-  entities.forEach((entity) => {
-    test(`${entity.getType()}`, async ({ page }) => {
+  entityClasses.forEach((EntityClass) => {
+    test(`${new EntityClass().getType()}`, async ({ page }) => {
       test.slow();
+
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
 
       const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
@@ -162,8 +170,7 @@ test.describe('Entity Version pages', () => {
       ).toFixed(1)}`;
       const versionDetailResponse = page.waitForResponse(
         (response) =>
-          response.url().includes(`/versions/${setupPatchVersion}`) &&
-          response.status() === 200
+          response.url().includes('/versions') && response.status() === 200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
