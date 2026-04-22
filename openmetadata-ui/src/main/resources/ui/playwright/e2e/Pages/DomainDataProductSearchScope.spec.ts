@@ -25,9 +25,9 @@ const dataProduct = new DataProduct([domain]);
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser);
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
 });
 
