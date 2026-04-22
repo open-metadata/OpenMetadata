@@ -229,8 +229,7 @@ class FivetranSource(PipelineServiceSource):
         pipeline_fqn: str,
     ) -> Optional[List[OMetaPipelineStatus]]:
         # Fivetran's "destination" config holds the warehouse where logs live
-        log_config = pipeline_details.destination.get("config") or {}
-        log_database = log_config.get("database")
+        log_database = self._get_database_name(pipeline_details.destination)
         if not log_database:
             return None
 
@@ -655,6 +654,8 @@ class FivetranSource(PipelineServiceSource):
         except (ValueError, TypeError):
             return None
         if minutes < 60:
+            return f"*/{minutes} * * * *"
+        if minutes % 60 != 0:
             return f"*/{minutes} * * * *"
         hours = minutes // 60
         if hours >= 24:

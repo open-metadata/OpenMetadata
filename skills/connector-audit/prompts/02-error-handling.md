@@ -87,6 +87,7 @@ These missing handlers are often higher severity than poorly-written existing on
 1. **Log levels**: Are operational failures logged at WARNING or ERROR? (not DEBUG). Is routine progress logged at INFO? Are verbose details at DEBUG?
 
 2. **Silent fallbacks**: Any pattern where the code catches an exception and returns a default value WITHOUT logging?
+   - **Masked API failures**: Check client helper methods (e.g., `_get_data`, `_get_response`) that return empty defaults (`{}`, `[]`, `None`) when the underlying HTTP call returns `None` or a non-dict response. This silently converts real API failures (auth errors, network issues, 500s) into empty results, making debugging nearly impossible. The correct pattern: raise an exception when the response is `None` (actual failure), and only return defaults with a WARNING log for unexpected response shapes.
 
 3. **Progress logging**: Can an operator tell from the logs which entity is being processed, how many were processed/skipped/failed, and why an entity was skipped?
 

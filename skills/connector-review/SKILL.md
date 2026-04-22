@@ -140,6 +140,11 @@ Verify:
 - Secrets use SecretStr/format: "password", never logged
 - Test connection steps are meaningful (not just CheckAccess)
 - Rate limiting handled for REST APIs
+- MASKED API FAILURES: Check client helper methods (e.g., _get_data, _get_response) that return
+  empty defaults ({}, [], None) when the HTTP call returns None or a non-dict. This silently
+  converts real API failures (auth errors, network issues, 500s) into empty results, making
+  debugging impossible. Correct pattern: raise on None response, return defaults with WARNING
+  log only for unexpected response shapes. This is a WARNING.
 - PYDANTIC MODELS: Any model using Field(alias=...) must have
   model_config = ConfigDict(populate_by_name=True). Missing this is a WARNING
   (Python attribute names won't work, tests will break).
