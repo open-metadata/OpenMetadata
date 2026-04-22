@@ -1721,6 +1721,7 @@
     "reposition": "Reposicionar",
     "repository-url": "URL del Repositorio",
     "request": "Petición",
+    "request-data-access": "Solicitar acceso a datos",
     "request-method": "Petición Método",
     "request-schema-field": "Petición Campo del Esquema",
     "request-tag-plural": "Etiquetas de solicitud",

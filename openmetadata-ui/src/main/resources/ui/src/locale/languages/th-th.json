@@ -1721,6 +1721,7 @@
     "reposition": "ปรับตำแหน่งใหม่",
     "repository-url": "URL ที่เก็บข้อมูล",
     "request": "คำขอ",
+    "request-data-access": "ขอการเข้าถึงข้อมูล",
     "request-method": "วิธีการของคำขอ",
     "request-schema-field": "ฟิลด์สคีมาของคำขอ",
     "request-tag-plural": "แท็กคำขอ",

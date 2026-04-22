@@ -159,6 +159,7 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
+  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -586,6 +587,25 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
+  const requestDataAccessButton = useMemo(() => {
+    if (
+      !tableClassBase.getShowRequestDataAccess() ||
+      SERVICE_TYPES.includes(entityType) ||
+      deleted
+    ) {
+      return null;
+    }
+
+    return (
+      <Button
+        className="source-url-button font-semibold"
+        data-testid="request-data-access-button"
+        onClick={() => setIsRequestDataAccessOpen(true)}>
+        {t('label.request-data-access')}
+      </Button>
+    );
+  }, [entityType, deleted]);
+
   useEffect(() => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
@@ -687,6 +707,7 @@ export const DataAssetsHeader = ({
                       </Typography.Link>
                     </Tooltip>
                   )}
+                  {requestDataAccessButton}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
@@ -894,6 +915,14 @@ export const DataAssetsHeader = ({
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
         />
+      )}
+
+      {tableClassBase.getRequestDataAccessDrawer(
+        isRequestDataAccessOpen,
+        () => setIsRequestDataAccessOpen(false),
+        dataAsset.fullyQualifiedName ?? '',
+        getEntityName(dataAsset),
+        entityType
       )}
     </>
   );
