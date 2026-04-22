@@ -35,7 +35,10 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     if (Objects.isNull(value) || value.isEmpty()) {
       if (store) {
-        deleteSecretInternal(fieldSecretId);
+        try {
+          deleteSecretInternal(fieldSecretId);
+        } catch (Exception e) {
+        }
       }
       return null;
     }

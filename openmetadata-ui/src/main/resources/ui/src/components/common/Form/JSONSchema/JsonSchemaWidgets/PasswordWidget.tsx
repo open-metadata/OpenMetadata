@@ -66,10 +66,12 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
     setIsEditing(true);
   }, []);
 
+  const originalValue = useRef(props.value);
+
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
-    props.onChange(props.value);
-  }, [props]);
+    props.onChange(originalValue.current);
+  }, [props.onChange]);
 
   const getPasswordInput = useCallback(
     (disabled?: boolean) => (
@@ -95,8 +97,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const getSavedPasswordIndicator = useCallback(
     () => (
       <Space className="password-saved-indicator" direction="vertical" size={4}>
-        <Space size={8}>
-          {/* <LockOutlined className="password-saved-icon" /> */}
+        <Space size={8}>          
           <Typography.Text className="password-saved-text" type="secondary">
             {t('message.password-saved')}
           </Typography.Text>
