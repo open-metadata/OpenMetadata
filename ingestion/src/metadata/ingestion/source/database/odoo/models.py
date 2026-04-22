@@ -12,7 +12,7 @@
 Odoo API models
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel
 
@@ -22,9 +22,9 @@ class OdooField(BaseModel):
     Odoo Field model from ir.model.fields
     """
     name: str
-    field_description: Optional[str] = None
+    field_description: Optional[Union[str, bool]] = None
     ttype: Optional[str] = None
-    relation: Optional[str] = None
+    relation: Optional[Union[str, bool]] = None
     required: Optional[bool] = False
 
 
@@ -33,5 +33,5 @@ class OdooModel(BaseModel):
     Odoo Model from ir.model
     """
     model: str
-    name: Optional[str] = None
-    info: Optional[str] = None
+    name: Optional[Union[str, bool]] = None
+    info: Optional[Union[str, bool]] = None

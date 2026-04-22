@@ -140,7 +140,8 @@ class OdooSource(CommonDbSourceService):
             try:
                 model = OdooModel(**model_dict)
                 # Store the model description in the context for yield_table
-                self.context.get().upsert("odoo_model_description", model.name)
+                model_name = model.name if isinstance(model.name, str) else ""
+                self.context.get().upsert("odoo_model_description", model_name)
                 yield model.model, TableType.Regular
             except Exception as err:
                 logger.debug(traceback.format_exc())
@@ -168,16 +169,16 @@ class OdooSource(CommonDbSourceService):
                 
                 # Format relations in datatype display
                 data_type_display = field.ttype
-                if field.relation:
+                if field.relation and isinstance(field.relation, str):
                     data_type_display = f"{field.ttype} ({field.relation})"
 
                 # In case field_description is empty but we need a description
-                description = field.field_description
+                description = field.field_description if isinstance(field.field_description, str) else None
 
                 om_columns.append(
                     Column(
                         name=ColumnName(field.name),
-                        displayName=field.field_description or field.name,
+                        displayName=description or field.name,
                         description=Markdown(description) if description else None,
                         dataType=col_type,
                         dataTypeDisplay=data_type_display,
