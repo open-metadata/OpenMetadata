@@ -12,10 +12,12 @@
 SSRS REST client
 """
 import traceback
-from typing import List, Optional, Union
+from typing import Iterator, List, Optional, Union
 
 import requests
+from requests.adapters import HTTPAdapter
 from requests_ntlm import HttpNtlmAuth
+from urllib3.util.retry import Retry
 
 from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnection import (
     SsrsConnection,
@@ -35,6 +37,9 @@ logger = ingestion_logger()
 API_VERSION = "api/v2.0"
 DEFAULT_TIMEOUT = 30
 PAGE_SIZE = 100
+MAX_RETRIES = 2
+BACKOFF_FACTOR = 1
+RETRY_STATUS_CODES = (500, 502, 503, 504)
 
 
 class SsrsClient:
@@ -53,6 +58,19 @@ class SsrsClient:
         self.session.headers.update({"Accept": "application/json"})
         if verify_ssl is not None:
             self.session.verify = verify_ssl
+        retry = Retry(
+            total=MAX_RETRIES,
+            connect=MAX_RETRIES,
+            read=MAX_RETRIES,
+            status=MAX_RETRIES,
+            backoff_factor=BACKOFF_FACTOR,
+            status_forcelist=RETRY_STATUS_CODES,
+            allowed_methods=frozenset(["GET"]),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
     def close(self) -> None:
         if self.session:
@@ -70,6 +88,14 @@ class SsrsClient:
         except Exception as exc:
             raise SourceConnectionException(
                 f"Failed to connect to SSRS: {exc}"
+            ) from exc
+
+    def test_get_reports(self) -> None:
+        try:
+            self._get("/Reports", params={"$top": "1"})
+        except Exception as exc:
+            raise SourceConnectionException(
+                f"Failed to fetch SSRS reports: {exc}"
             ) from exc
 
     def get_folders(self) -> List[SsrsFolder]:
@@ -91,21 +117,18 @@ class SsrsClient:
             logger.warning("Failed to fetch SSRS folders: %s", exc)
         return []
 
-    def get_reports(self) -> List[SsrsReport]:
+    def get_reports(self) -> Iterator[SsrsReport]:
         try:
-            results: List[SsrsReport] = []
             skip = 0
             while True:
                 data = self._get(
                     "/Reports", params={"$top": str(PAGE_SIZE), "$skip": str(skip)}
                 )
                 response = SsrsReportListResponse(**data)
-                results.extend(response.value)
+                yield from response.value
                 if len(response.value) < PAGE_SIZE:
                     break
                 skip += PAGE_SIZE
-            return results
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch SSRS reports: %s", exc)
-        return []
