@@ -27,7 +27,7 @@ export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
  * strings that contain a combination of letters, alphanumeric characters, hyphens,
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
-export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+export const ENTITY_NAME_REGEX = /^((?!::)[^><"|\u0000-\u001f])*$/;
 
 /**
  * Custom property name validation:
