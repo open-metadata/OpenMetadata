@@ -653,6 +653,8 @@ class FivetranSource(PipelineServiceSource):
             minutes = int(sync_freq)
         except (ValueError, TypeError):
             return None
+        if minutes <= 0:
+            return None
         if minutes < 60:
             return f"*/{minutes} * * * *"
         if minutes % 60 != 0:
