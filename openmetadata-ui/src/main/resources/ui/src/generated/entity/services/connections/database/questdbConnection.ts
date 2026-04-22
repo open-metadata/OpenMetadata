@@ -19,6 +19,11 @@ export interface QuestdbConnection {
      */
     databaseName?: string;
     /**
+     * Database schema of the data source (defaults to public). Optional; if set, restricts the
+     * test-connection step and metadata reading to a single schema.
+     */
+    databaseSchema?: string;
+    /**
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      */
     hostPort: string;

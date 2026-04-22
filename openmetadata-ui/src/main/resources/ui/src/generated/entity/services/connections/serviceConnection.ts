@@ -1258,6 +1258,9 @@ export interface ConfigObject {
      * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
      * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
      * catalog.
+     *
+     * Database schema of the data source (defaults to public). Optional; if set, restricts the
+     * test-connection step and metadata reading to a single schema.
      */
     databaseSchema?: string;
     /**
