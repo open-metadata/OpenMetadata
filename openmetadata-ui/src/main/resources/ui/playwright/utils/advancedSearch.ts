@@ -92,10 +92,6 @@ export const FIELDS: EntityFields[] = [
     name: 'project.keyword',
   },
   {
-    id: 'Status',
-    name: 'entityStatus',
-  },
-  {
     id: 'Chart',
     name: 'charts.displayName.keyword',
   },
