@@ -164,12 +164,6 @@ ischema_names["MAP"] = MAP
 
 logger = ingestion_logger()
 
-# Preview length for a cluster-key expression in the fallback warning log.
-# Used only when a genuinely malformed expression trips the outer exception
-# handler; normal deep-but-well-formed expressions are walked iteratively
-# and never hit that path.
-_CLUSTER_KEY_LOG_PREVIEW = 200
-
 # pylint: disable=protected-access
 SnowflakeDialect._json_deserializer = json.loads
 SnowflakeDialect.get_table_names = get_table_names
@@ -514,15 +508,10 @@ class SnowflakeSource(
             # trip the limit. Never let RecursionError escape this path —
             # leaving it would poison SQLAlchemy pool / urllib3 finalizers
             # and abort the process.
-            truncated = (
-                cluster_key_expr[:_CLUSTER_KEY_LOG_PREVIEW] + "..."
-                if len(cluster_key_expr) > _CLUSTER_KEY_LOG_PREVIEW
-                else cluster_key_expr
-            )
             logger.warning(
                 "RecursionError parsing cluster key; skipping partition "
                 "columns for expression: %r",
-                truncated,
+                cluster_key_expr,
             )
             return []
         except Exception as err:
