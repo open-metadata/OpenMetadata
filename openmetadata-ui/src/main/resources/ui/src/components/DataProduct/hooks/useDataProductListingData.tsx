@@ -18,6 +18,7 @@ import {
   DATAPRODUCT_DEFAULT_QUICK_FILTERS,
   DATAPRODUCT_FILTERS,
 } from '../../../constants/DataProduct.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
@@ -109,7 +110,13 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
 
   const listingData = useListingData<DataProduct>({
     searchIndex: SearchIndex.DATA_PRODUCT,
-    baseFilter: '', // No parent filter for data products
+    baseFilter: JSON.stringify({
+      query: {
+        bool: {
+          must: [{ term: { entityType: EntityType.DATA_PRODUCT } }],
+        },
+      },
+    }),
     pageSize: TABLE_CARD_PAGE_SIZE,
     filterKeys,
     filterConfigs,

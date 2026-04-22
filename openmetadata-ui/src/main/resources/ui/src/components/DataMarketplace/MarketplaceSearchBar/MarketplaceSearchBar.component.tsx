@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -63,12 +64,26 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
           pageNumber: INITIAL_PAGING_VALUE,
           pageSize: PAGE_SIZE,
           searchIndex: SearchIndex.DATA_PRODUCT,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [{ term: { entityType: EntityType.DATA_PRODUCT } }],
+              },
+            },
+          },
         }),
         searchQuery({
           query,
           pageNumber: INITIAL_PAGING_VALUE,
           pageSize: PAGE_SIZE,
           searchIndex: SearchIndex.DOMAIN,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [{ term: { entityType: EntityType.DOMAIN } }],
+              },
+            },
+          },
         }),
       ]);
 

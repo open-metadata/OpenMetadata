@@ -289,6 +289,7 @@ const DomainDetails = ({
           pageNumber: 1,
           pageSize: 0,
           queryFilter: getTermQuery({
+            entityType: EntityType.DOMAIN,
             'parent.fullyQualifiedName.keyword':
               domain.fullyQualifiedName ?? '',
           }),

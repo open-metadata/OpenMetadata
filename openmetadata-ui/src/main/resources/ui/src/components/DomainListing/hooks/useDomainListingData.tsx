@@ -13,6 +13,7 @@
 
 import { useDomainListing } from '../../../components/common/atoms/domain/compositions/useDomainListing';
 import { ListingData } from '../../../components/common/atoms/shared/types';
+import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 
@@ -22,7 +23,7 @@ export const useDomainListingData = (): ListingData<Domain> => {
   const baseFilter = {
     query: {
       bool: {
-        must: [],
+        must: [{ term: { entityType: EntityType.DOMAIN } }],
         must_not: [
           {
             exists: {

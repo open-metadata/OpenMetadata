@@ -72,6 +72,13 @@ const MarketplaceDomainsWidget = ({
         sortField: 'updatedAt',
         sortOrder: 'desc',
         searchIndex: SearchIndex.DOMAIN,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [{ term: { entityType: EntityType.DOMAIN } }],
+            },
+          },
+        },
       });
       const domainList = res.hits.hits.map((hit) => hit._source) as Domain[];
       setDomains(domainList ?? []);
