@@ -6,53 +6,30 @@
 from __future__ import annotations
 
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
+
+from .entity_assert import EntityAssert
 
 
-class StoredProcedureAssert:
-    """Synchronous fluent assertions on a single stored procedure by FQN."""
+class StoredProcedureAssert(EntityAssert[StoredProcedure]):
+    """Fluent assertions on a single stored procedure by FQN.
 
-    def __init__(self, om: OpenMetadata, fqn: str) -> None:
-        self._om = om
-        self._fqn = fqn
+    Inherits exists / get / eventually / has_description_containing from
+    EntityAssert; adds `has_code_containing` which reads the SP body.
+    """
 
-    def _fetch(self) -> StoredProcedure:
-        sp = self._om.get_by_name(entity=StoredProcedure, fqn=self._fqn)
-        if sp is None:
-            raise AssertionError(f"StoredProcedure not found: {self._fqn}")
-        return sp
-
-    def exists(self) -> None:
-        """Synchronous — primary API is consistent immediately post-ingest."""
-        self._fetch()
-
-    def get(self) -> StoredProcedure:
-        """Escape hatch — returns the raw Pydantic StoredProcedure entity."""
-        return self._fetch()
-
-    def has_description_containing(self, text: str) -> "StoredProcedureAssert":
-        sp = self._fetch()
-        desc = model_str(sp.description) if sp.description else ""
-        if text not in desc:
-            raise AssertionError(
-                f"StoredProcedure {self._fqn} description does not contain {text!r}. "
-                f"Actual: {desc!r}"
-            )
-        return self
+    _entity_cls = StoredProcedure
 
     def has_code_containing(self, text: str) -> "StoredProcedureAssert":
-        """Assert the stored procedure's SQL body contains the given substring.
-
-        The OM StoredProcedureCode model wraps the code in .code (plain str).
-        """
-        sp = self._fetch()
-        code = ""
-        if sp.storedProcedureCode is not None and sp.storedProcedureCode.code is not None:
-            code = sp.storedProcedureCode.code
-        if text not in code:
-            raise AssertionError(
-                f"StoredProcedure {self._fqn} code does not contain {text!r}. "
-                f"Actual code: {code!r}"
-            )
+        """Assert the stored procedure's SQL body contains the given substring."""
+        def _check() -> None:
+            sp = self._fetch()
+            code = ""
+            if sp.storedProcedureCode is not None and sp.storedProcedureCode.code is not None:
+                code = sp.storedProcedureCode.code
+            if text not in code:
+                raise AssertionError(
+                    f"StoredProcedure {self._fqn} code does not contain {text!r}. "
+                    f"Actual code: {code!r}"
+                )
+        self._eventually.run(_check, name=f"has_code_containing({text!r})")
         return self

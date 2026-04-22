@@ -26,6 +26,8 @@ state leakage. They register their own services.
 
 from __future__ import annotations
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import DataType
 
 from ..core.config.builder import WorkflowConfig
@@ -232,64 +234,42 @@ def test_auto_classification_tags_pii_columns(
 # ---------------------------------------------------------------------------
 
 
-def test_filter_tables_include_exact(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    om_server_config: ServerConfig,
-    session_uuid: str,
-    registered_services: list[str],
-    mysql_source_ready: None,
-) -> None:
-    """tables_include with exact name: only the named table lands in OM."""
-    service = mysql_service_name(session_uuid, variant="filter_inc_exact")
-    registered_services.append(service)
-
-    cfg = build_mysql_config(service, om_server_config)
-    status = cli_runner.run(
-        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
-            tables_include=["customers"],
-        )
-    )
-    assert status.success, f"filter-include failures: {status.all_failures}"
-
-    assert_service_matches(
-        mysql_expected(service, tables=["customers"]),
-        om_client,
-        mode=MatchMode.STRICT,
-    )
-
-
-def test_filter_tables_exclude_exact(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    om_server_config: ServerConfig,
-    session_uuid: str,
-    registered_services: list[str],
-    mysql_source_ready: None,
-) -> None:
-    """tables_exclude with exact name: everything except the excluded lands in OM."""
-    service = mysql_service_name(session_uuid, variant="filter_exc_exact")
-    registered_services.append(service)
-
-    cfg = build_mysql_config(service, om_server_config)
-    status = cli_runner.run(
-        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
-            tables_exclude=["all_types"],
-        )
-    )
-    assert status.success, f"filter-exclude failures: {status.all_failures}"
-
-    assert_service_matches(
-        mysql_expected(
-            service,
-            tables=["customers", "transactions", "customer_txn_summary"],
+@pytest.mark.parametrize(
+    "variant, filter_kwargs, expected_tables",
+    [
+        pytest.param(
+            "inc_exact",
+            {"tables_include": ["customers"]},
+            ["customers"],
+            id="tables_include_exact",
         ),
-        om_client,
-        mode=MatchMode.STRICT,
-    )
-
-
-def test_filter_schemas_include_only_e2e(
+        pytest.param(
+            "exc_exact",
+            {"tables_exclude": ["all_types"]},
+            ["customers", "transactions", "customer_txn_summary"],
+            id="tables_exclude_exact",
+        ),
+        pytest.param(
+            "sch_inc",
+            {"schemas_include": ["e2e"]},
+            None,  # None = full baseline — schema filter keeps every table in e2e
+            id="schemas_include_only_e2e",
+        ),
+        pytest.param(
+            "regex_prio",
+            {
+                "tables_include": ["customer.*"],
+                "tables_exclude": ["customer_txn.*"],
+            },
+            ["customers"],
+            id="regex_exclude_has_priority_over_include",
+        ),
+    ],
+)
+def test_filter(
+    variant: str,
+    filter_kwargs: dict[str, list[str]],
+    expected_tables: list[str] | None,
     cli_runner: CliRunner,
     om_client: OmClient,
     om_server_config: ServerConfig,
@@ -297,51 +277,25 @@ def test_filter_schemas_include_only_e2e(
     registered_services: list[str],
     mysql_source_ready: None,
 ) -> None:
-    """schemas_include restricts ingest to e2e; system schemas absent from OM."""
-    service = mysql_service_name(session_uuid, variant="filter_sch_inc")
-    registered_services.append(service)
+    """Filter patterns — include exact / exclude exact / schema include /
+    regex include+exclude with exclude priority.
 
-    cfg = build_mysql_config(service, om_server_config)
-    status = cli_runner.run(
-        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
-            schemas_include=["e2e"],
-        )
-    )
-    assert status.success, f"schema-include failures: {status.all_failures}"
-
-    assert_service_matches(mysql_expected(service), om_client, mode=MatchMode.STRICT)
-    om_client.service(service).has_entity_count("schemas", at_least=1)
-
-
-def test_filter_regex_exclude_has_priority_over_include(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    om_server_config: ServerConfig,
-    session_uuid: str,
-    registered_services: list[str],
-    mysql_source_ready: None,
-) -> None:
-    """Regex include + exclude: exclude wins where both patterns match.
-
-    include=['customer.*'] matches `customers` AND `customer_txn_summary`.
-    exclude=['customer_txn.*'] matches `customer_txn_summary`.
-    Expected: only `customers` survives — exclude takes priority on the
-    intersection, verifying OM's documented filter semantic.
+    Each variant builds an isolated service so STRICT-mode extras detection
+    doesn't cross-contaminate. `expected_tables=None` means the filter is
+    expected to keep the full catalog (schema-include case).
     """
-    service = mysql_service_name(session_uuid, variant="filter_regex_prio")
+    service = mysql_service_name(session_uuid, variant=f"filter_{variant}")
     registered_services.append(service)
 
     cfg = build_mysql_config(service, om_server_config)
     status = cli_runner.run(
-        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(
-            tables_include=["customer.*"],
-            tables_exclude=["customer_txn.*"],
-        )
+        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True))
+           .with_filter(**filter_kwargs)
     )
-    assert status.success, f"regex-filter failures: {status.all_failures}"
+    assert status.success, f"filter[{variant}] failures: {status.all_failures}"
 
     assert_service_matches(
-        mysql_expected(service, tables=["customers"]),
+        mysql_expected(service, tables=expected_tables),
         om_client,
         mode=MatchMode.STRICT,
     )

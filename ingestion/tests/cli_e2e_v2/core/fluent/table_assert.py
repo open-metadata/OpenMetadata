@@ -3,10 +3,13 @@
 #  you may not use this file except in compliance with the License.
 """TableAssert + ColumnAssert — fluent assertions on Table entities.
 
-TableAssert terminals dispatch through an `EventuallyRunner` so
-`.eventually(timeout)` is one-shot arming implemented in one place.
-ColumnAssert is synchronous (column checks on fresh ingests are reliable
-in practice; polling chains off TableAssert).
+TableAssert inherits shared fluent surface (exists / get / eventually /
+has_description_containing) from `EntityAssert[Table]`. Entity-specific
+terminals (tags, owners, FK constraint, column descent, lineage/profile
+namespaces) live here.
+
+ColumnAssert is synchronous — column checks on fresh ingests are reliable
+in practice; polling chains off TableAssert.
 """
 
 from __future__ import annotations
@@ -20,45 +23,16 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 
-from .eventually import EventuallyRunner
+from .entity_assert import EntityAssert
 from .lineage_assert import LineageAssert
 from .profile_assert import ProfileAssert
 
 
-class TableAssert:
+class TableAssert(EntityAssert[Table]):
     """Fluent assertions on a single Table identified by FQN."""
 
-    def __init__(self, om: OpenMetadata, fqn: str) -> None:
-        self._om = om
-        self._fqn = fqn
-        self._eventually = EventuallyRunner()
-
-    # --- fetch --------------------------------------------------------
-
-    def _fetch(self, *, fields: list[str] | None = None) -> Table:
-        table = self._om.get_by_name(
-            entity=Table,
-            fqn=self._fqn,
-            fields=fields or ["tags", "owners", "columns"],
-        )
-        if table is None:
-            raise AssertionError(f"Table not found: {self._fqn}")
-        return table
-
-    def exists(self) -> None:
-        """Synchronous — primary API is consistent immediately post-ingest."""
-        self._fetch()
-
-    def get(self) -> Table:
-        """Escape hatch — returns the raw Pydantic Table."""
-        return self._fetch()
-
-    # --- eventually ---------------------------------------------------
-
-    def eventually(self, timeout: int = 60) -> "TableAssert":
-        """One-shot: the next terminal check polls until success/timeout."""
-        self._eventually.arm(timeout)
-        return self
+    _entity_cls = Table
+    _default_fields = ["tags", "owners", "columns"]
 
     # --- terminals ----------------------------------------------------
 
@@ -85,18 +59,6 @@ class TableAssert:
         self._eventually.run(_check, name=f"has_owner({name})")
         return self
 
-    def has_description_containing(self, text: str) -> "TableAssert":
-        def _check() -> None:
-            table = self._fetch()
-            desc = model_str(table.description) if table.description else ""
-            if text not in desc:
-                raise AssertionError(
-                    f"Table {self._fqn} description does not contain {text!r}. "
-                    f"Actual: {desc!r}"
-                )
-        self._eventually.run(_check, name=f"has_description_containing({text!r})")
-        return self
-
     def has_foreign_key_constraint(
         self,
         column: str,
@@ -106,10 +68,9 @@ class TableAssert:
         """Assert the table carries a FOREIGN_KEY TableConstraint on `column`
         pointing at `referenced_table.referenced_column`.
 
-        MySQL connector lands FK data here — not as a lineage edge (see
-        `project-mysql-fk-no-lineage.md`). Reads Table.tableConstraints;
-        matches on constraintType=FOREIGN_KEY + the owning column + a suffix
-        match on the referredColumn FQN.
+        MySQL lands FK data here — not as a lineage edge. Reads
+        `tableConstraints`; matches by `ConstraintType.FOREIGN_KEY` + the
+        owning column + suffix match on the referredColumn FQN.
         """
         def _check() -> None:
             table = self._fetch(fields=["tableConstraints"])
@@ -122,10 +83,6 @@ class TableAssert:
                     continue
                 for ref in c.referredColumns or []:
                     ref_str = model_str(ref)
-                    # Referenced column FQN looks like
-                    # "<service>.<database>.<schema>.<table>.<column>", so
-                    # we suffix-match against "<referenced_table>.<referenced_column>"
-                    # to stay schema/service-agnostic.
                     if ref_str.endswith(f".{referenced_table}.{referenced_column}"):
                         return
                     if ref_str == f"{referenced_table}.{referenced_column}":
