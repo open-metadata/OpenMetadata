@@ -13,25 +13,7 @@
 
 import i18next, { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
-import arSA from '../../locale/languages/ar-sa.json';
-import deDe from '../../locale/languages/de-de.json';
 import enUS from '../../locale/languages/en-us.json';
-import esES from '../../locale/languages/es-es.json';
-import frFR from '../../locale/languages/fr-fr.json';
-import glES from '../../locale/languages/gl-es.json';
-import heHE from '../../locale/languages/he-he.json';
-import jaJP from '../../locale/languages/ja-jp.json';
-import koKR from '../../locale/languages/ko-kr.json';
-import mrIN from '../../locale/languages/mr-in.json';
-import nlNL from '../../locale/languages/nl-nl.json';
-import prPR from '../../locale/languages/pr-pr.json';
-import ptBR from '../../locale/languages/pt-br.json';
-import ptPT from '../../locale/languages/pt-pt.json';
-import ruRU from '../../locale/languages/ru-ru.json';
-import thTH from '../../locale/languages/th-th.json';
-import trTR from '../../locale/languages/tr-tr.json';
-import zhCN from '../../locale/languages/zh-cn.json';
-import zhTW from '../../locale/languages/zh-tw.json';
 import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -45,24 +27,6 @@ export const getInitOptions = (): InitOptions => {
     supportedLngs: Object.values(SupportedLocales),
     resources: {
       'en-US': { translation: enUS },
-      'ko-KR': { translation: koKR },
-      'fr-FR': { translation: frFR },
-      'zh-CN': { translation: zhCN },
-      'zh-TW': { translation: zhTW },
-      'ja-JP': { translation: jaJP },
-      'pt-BR': { translation: ptBR },
-      'pt-PT': { translation: ptPT },
-      'es-ES': { translation: esES },
-      'gl-ES': { translation: glES },
-      'ru-RU': { translation: ruRU },
-      'de-DE': { translation: deDe },
-      'he-HE': { translation: heHE },
-      'nl-NL': { translation: nlNL },
-      'pr-PR': { translation: prPR },
-      'th-TH': { translation: thTH },
-      'mr-IN': { translation: mrIN },
-      'tr-TR': { translation: trTR },
-      'ar-SA': { translation: arSA },
     },
     fallbackLng: ['en-US'],
     detection: {
@@ -70,12 +34,12 @@ export const getInitOptions = (): InitOptions => {
       caches: ['cookie'], // cache user language on
     },
     interpolation: {
-      escapeValue: false, // XSS safety provided by React
+      escapeValue: false,
     },
     missingKeyHandler: (_lngs, _ns, key) =>
       // eslint-disable-next-line no-console
       console.error(`i18next: key not found "${key}"`),
-    saveMissing: true, // Required for missing key handler
+    saveMissing: true,
   };
 };
 

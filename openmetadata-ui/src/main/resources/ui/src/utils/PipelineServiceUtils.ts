@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
@@ -25,6 +25,7 @@ import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/
 import flinkConnection from '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json';
+import microsoftFabricPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
 import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
@@ -101,6 +102,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Flink: {
       schema = flinkConnection;
+
+      break;
+    }
+    case PipelineServiceType.MicrosoftFabricPipeline: {
+      schema = microsoftFabricPipelineConnection;
 
       break;
     }
