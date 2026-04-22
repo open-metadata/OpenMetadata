@@ -11,6 +11,19 @@
 """
 Clickhouse lineage module
 """
+import re
+import traceback
+from typing import Iterable, Optional
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityLineage import (
+    EntitiesEdge,
+    LineageDetails,
+    Source,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT,
 )
@@ -18,23 +31,36 @@ from metadata.ingestion.source.database.clickhouse.query_parser import (
     ClickhouseQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.models import TableView
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+# Regex to extract the TO <schema>.<table> clause from a ClickHouse
+# MATERIALIZED VIEW DDL. Handles both simple and REFRESH EVERY / DEFINER variants.
+_CLICKHOUSE_MV_TO_RE = re.compile(
+        r"""
+            \\bTO\\s+                         # literal TO keyword
+                (?:`?(?P<schema>[^`.\\s]+)`?\\.)?  # optional schema (backtick-quoted or plain)
+                    `?(?P<table>[^`\\s(,]+)`?         # table name
+                        """,
+        re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _extract_mv_to_table(ddl: str) -> Optional[tuple]:
+        """
+            Given the DDL of a ClickHouse MATERIALIZED VIEW, return (schema, table)
+                for the TO clause target, or None if the DDL does not use the TO syntax.
+                    """
+        if not re.search(r"\\bMATERIALIZED\\s+VIEW\\b", ddl, re.IGNORECASE):
+                    return None
+                match = _CLICKHOUSE_MV_TO_RE.search(ddl)
+    if match:
+                return match.group("schema"), match.group("table")
+            return None
 
 
 class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
-    """
-    Implements the necessary methods to extract
-    Database lineage from Clickhouse Source
-    """
-
-    sql_stmt = CLICKHOUSE_SQL_STATEMENT
-
-    filters = """
-        and (
-            query_kind='Create' 
-            or (query_kind='Insert' and query ilike '%%insert%%into%%select%%')
-        )
-    """
-
-    database_field = ""
-
-    schema_field = "databases"
+        """
+            I
