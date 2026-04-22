@@ -180,14 +180,14 @@ class OdooClient:
         Fetch field metadata for a given Odoo model.
 
         Calls ir.model.fields to retrieve name, field_description, ttype,
-        and required flag for every field on the model.
+        relation, and required flag for every field on the model.
 
         Args:
             model_name: Technical model name, e.g. 'res.partner'.
 
         Returns:
             A list of field dicts, each with keys: name, field_description,
-            ttype, required.  Returns an empty list on error so callers can
+            ttype, relation, required.  Returns an empty list on error so callers can
             continue processing other models.
         """
         try:
@@ -201,6 +201,7 @@ class OdooClient:
                         "name",
                         "field_description",
                         "ttype",
+                        "relation",
                         "required",
                     ]
                 },

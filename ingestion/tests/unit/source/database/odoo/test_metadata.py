@@ -47,19 +47,22 @@ def test_odoo_source_topology(mock_get_connection, mock_test_connection, odoo_co
     db_names = list(source.get_database_names())
     assert db_names == ["odoo"]
     
-    # Test get_database_schema_names
-    schema_names = list(source.get_database_schema_names())
+    # Test get_raw_database_schema_names
+    schema_names = list(source.get_raw_database_schema_names())
     assert schema_names == ["default"]
     
     # Test get_tables_name_and_type
     mock_client.get_all_models.return_value = [
-        {"model": "res.partner", "name": "Partner", "info": "Contact"}
+        {"model": "res.partner", "name": "Partner", "info": "Contact"},
+        {"model": "sale.order", "name": "Sales Order", "info": "Sales"}
     ]
     
     tables = list(source.get_tables_name_and_type())
-    assert len(tables) == 1
+    assert len(tables) == 2
     assert tables[0] == ("res.partner", TableType.Regular)
-    assert source.context.get().odoo_model_description == "Partner"
+    assert tables[1] == ("sale.order", TableType.Regular)
+    assert source._model_descriptions["res.partner"] == "Partner"
+    assert source._model_descriptions["sale.order"] == "Sales Order"
     
     # Test yield_table
     source.context.get().database = "odoo"

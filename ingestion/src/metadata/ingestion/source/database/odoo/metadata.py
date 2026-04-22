@@ -12,7 +12,7 @@
 Odoo source module
 """
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -52,6 +52,7 @@ from metadata.ingestion.source.database.odoo.constants import (
 from metadata.ingestion.source.database.odoo.models import OdooField, OdooModel
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time_generator
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -74,6 +75,10 @@ class OdooSource(CommonDbSourceService):
                 f"Expected OdooConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self._model_descriptions: Dict[str, str] = {}
 
     def get_database_names(self) -> Iterable[str]:
         yield self.service_connection.databaseName
@@ -100,8 +105,9 @@ class OdooSource(CommonDbSourceService):
                 )
             )
 
-    def get_database_schema_names(self) -> Iterable[str]:
-        yield "default"
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        configured_schema = getattr(self.service_connection, "databaseSchema", None)
+        yield configured_schema or "default"
 
     @calculate_execution_time_generator()
     def yield_database_schema(
@@ -139,10 +145,14 @@ class OdooSource(CommonDbSourceService):
         for model_dict in self.connection_obj.get_all_models() or []:
             try:
                 model = OdooModel(**model_dict)
-                # Store the model description in the context for yield_table
-                model_name = model.name if isinstance(model.name, str) else ""
-                self.context.get().upsert("odoo_model_description", model_name)
-                yield model.model, TableType.Regular
+                table_name = model.model
+                
+                if filter_by_table(self.source_config.tableFilterPattern, table_name):
+                    self.status.filter(table_name, "Table Filtered Out")
+                    continue
+                    
+                self._model_descriptions[table_name] = model.name if isinstance(model.name, str) else ""
+                yield table_name, TableType.Regular
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unable to process model information: {err}")
@@ -187,8 +197,8 @@ class OdooSource(CommonDbSourceService):
                     )
                 )
 
-            # Retrieve the description that we stored in get_tables_name_and_type
-            table_description = self.context.get().odoo_model_description
+            # Retrieve the description safely
+            table_description = self._model_descriptions.get(table_name)
 
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
@@ -216,4 +226,4 @@ class OdooSource(CommonDbSourceService):
             )
 
     def close(self):
-        self.metadata.close()
+        super().close()

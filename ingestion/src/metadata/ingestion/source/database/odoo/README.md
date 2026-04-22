@@ -6,7 +6,7 @@ This PR introduces the **Odoo Database Ingestion Connector** (Issue #26102), all
 ## Architecture
 Odoo operates differently from standard SQL databases by restricting direct PostgreSQL access and requiring metadata extraction through its native **XML-RPC** APIs.
 
-This connector implements a custom **`OdooClient`** that inherits from the `CommonDbSourceService` but bypasses SQLAlchemy, interacting with the `/xmlrpc/2/common` and `/xmlrpc/2/object` endpoints:
+This connector features two core components: `OdooSource` which inherits from `CommonDbSourceService` to integrate with OpenMetadata's ingestion framework, and `OdooClient`, a custom XML-RPC API wrapper that bypasses SQLAlchemy to interact with the `/xmlrpc/2/common` and `/xmlrpc/2/object` endpoints:
 1. **Authentication:** Authenticates to `/common` retrieving the session `uid`.
 2. **Topology Mapping:** Calls `ir.model` to fetch all business models (e.g., `res.partner`, `sale.order`) and yields them as OpenMetadata `Tables`.
 3. **Column Extraction:** Calls `ir.model.fields` to fetch field metadata (e.g., `char`, `many2one`), converting them to OpenMetadata `Columns` mapped to standard `DataType` enums.
@@ -43,18 +43,4 @@ The implementation of this connector was strategically broken down into 5 distin
 ## Test Coverage
 We have fully covered the `OdooClient`, connection testing mechanisms, and the extraction topology mapping using strictly mocked tests that hit no live endpoints.
 
-[INSERT SCREENSHOT OF PYTEST RESULTS HERE]
-```text
-============================= test session starts =============================
-platform win32 -- Python 3.12.10, pytest-9.0.3, pluggy-1.6.0
-rootdir: D:\OpenMetadata\ingestion
-configfile: pyproject.toml
-plugins: anyio-4.12.1, openmetadata-ingestion-1.12.0.0.dev0
-collected 8 items
-
-ingestion\tests\unit\source\database\odoo\test_client.py .....           [ 62%]
-ingestion\tests\unit\source\database\odoo\test_connection.py ..          [ 87%]
-ingestion\tests\unit\source\database\odoo\test_metadata.py .             [100%]
-
-============================== 8 passed in 0.08s ==============================
-```
+Offline unit tests executed via pytest with 100% coverage, mocking XML-RPC API responses.
