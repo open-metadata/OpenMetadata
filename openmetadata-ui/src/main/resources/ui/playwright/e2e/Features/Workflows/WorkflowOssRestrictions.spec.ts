@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test as base, type Page } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
@@ -638,15 +638,15 @@ test.describe('OSS Workflow Capabilities', () => {
       const historyResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/governance/workflowInstances') &&
-          response.ok()
+          response.request().method() === 'GET'
       );
 
       await page.getByTestId('workflow-execution-history').click();
-      await historyResponse;
       await waitForAllLoadersToDisappear(page);
+      await historyResponse;
 
       await expect(
-        page.getByTestId('workflow-execution-history')
+        page.getByTestId('workflow-execution-history-table')
       ).toBeVisible();
     });
   });
