@@ -353,6 +353,7 @@ class _ReleaseOnlySurrogate(CommonDbSourceService):
 
     def __init__(self, engine=None):  # pylint: disable=super-init-not-called
         self.engine = engine
+        self.connection_obj = engine
         self._connection_map = {}
         self._inspector_map = {}
         self.session = None
@@ -453,6 +454,16 @@ class TestReleaseEngine:
 
         assert healthy.closed is True
         assert surrogate._connection_map == {}
+
+    def test_clears_connection_obj_alongside_engine(self, surrogate):
+        # connection_obj is set in __init__ to the initial engine and used by
+        # test_connection(); without clearing it on release, it pins the
+        # original Engine alive for the source's lifetime even after dispose.
+        assert surrogate.connection_obj is surrogate.engine
+
+        surrogate._release_engine()
+
+        assert surrogate.connection_obj is None
 
     def test_closes_connections_from_arbitrary_thread_ids(self, surrogate):
         """Key property of Option B: close-all, not detach-current-thread.

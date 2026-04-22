@@ -158,6 +158,7 @@ class CommonDbSourceService(
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
+        self.connection_obj = self.engine
 
     def _release_engine(self) -> None:
         # Close fairies first so _ConnectionRecord drops its pool reference;
@@ -185,6 +186,7 @@ class CommonDbSourceService(
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to dispose engine: {exc}")
         self.engine = None
+        self.connection_obj = None
 
     def get_database_names(self) -> Iterable[str]:
         """
