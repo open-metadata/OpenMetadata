@@ -223,10 +223,7 @@ export const IconPickerField = ({
 
     return (
       getDefaultIconPreview(items, defaultIcon) ?? (
-        <Typography
-          className="tw:text-white"
-          size="text-sm"
-          weight="semibold">
+        <Typography className="tw:text-white" size="text-sm" weight="semibold">
           ?
         </Typography>
       )
@@ -245,7 +242,7 @@ export const IconPickerField = ({
   const iconGrid = (
     <div className="tw:p-4">
       {items.length > 0 ? (
-        <div className="tw:grid tw:grid-cols-6 tw:gap-3">
+        <div className="tw:grid tw:grid-cols-6 tw:gap-4">
           {items.map((item) => {
             const isSelected = selectedItem?.id === item.id;
             const previewIcon = renderSelectItemIcon(
@@ -304,10 +301,7 @@ export const IconPickerField = ({
 
   const urlPanel = (
     <Box className="tw:p-4" direction="col" gap={2}>
-      <Typography
-        className="tw:text-tertiary"
-        size="text-xs"
-        weight="medium">
+      <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
         {labels?.customIconUrl ?? 'Custom icon URL'}
       </Typography>
       <Input
@@ -353,7 +347,7 @@ export const IconPickerField = ({
       />
 
       {isOpen && (
-        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[18rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt">
+        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt">
           {allowUrl ? (
             <Tabs
               selectedKey={activeTab}
