@@ -341,10 +341,20 @@ public class SamlValidator {
       // Warning case - treat as success since URL format might be valid
       LOG.warn("SSO URL validation warning: {}", e.getMessage());
       return null;
-      } finally {
-        if (conn != null) {
-          conn.disconnect();
-        }
+    } finally {
+      if (conn != null) {
+        conn.disconnect();
+      }
+    }
+  }
+
+  private String createTestSamlRequest(SamlSSOClientConfig samlConfig) {
+    try {
+      // Create a minimal SAML AuthnRequest XML
+      String timestamp =
+          java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString();
+      String requestId = "_" + java.util.UUID.randomUUID();
+
       String samlRequestXml =
           "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
               + "<samlp:AuthnRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" "

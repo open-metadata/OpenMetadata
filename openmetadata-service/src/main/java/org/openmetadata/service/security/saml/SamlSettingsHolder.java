@@ -118,9 +118,9 @@ public class SamlSettingsHolder {
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {
         KeyStore keyStore = KeyStore.getInstance("JKS");
-          try (FileInputStream fis = new FileInputStream(securityConfig.getKeyStoreFilePath())) {
-            keyStore.load(fis, securityConfig.getKeyStorePassword().toCharArray());
-          }
+        try (FileInputStream fis = new FileInputStream(securityConfig.getKeyStoreFilePath())) {
+          keyStore.load(fis, securityConfig.getKeyStorePassword().toCharArray());
+        }
         samlData.put(SettingsBuilder.KEYSTORE_KEY, keyStore);
         samlData.put(SettingsBuilder.KEYSTORE_ALIAS, securityConfig.getKeyStoreAlias());
         samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
