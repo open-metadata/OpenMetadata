@@ -11,5 +11,17 @@
  *  limitations under the License.
  */
 
-export { default as ODPSImportModal } from './ODPSImportModal.component';
-export type { ODPSImportModalProps } from './ODPSImportModal.interface';
+import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
+import {
+  IntakeForm,
+  TargetEntityType,
+} from '../../generated/governance/intakeForm';
+
+export interface IntakeFormDesignerModalProps {
+  open: boolean;
+  /** Pre-selected entity type. Required for create; derived from initialValue for edit. */
+  entityType: TargetEntityType;
+  initialValue: IntakeForm | null;
+  onCancel: () => void;
+  onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
+}

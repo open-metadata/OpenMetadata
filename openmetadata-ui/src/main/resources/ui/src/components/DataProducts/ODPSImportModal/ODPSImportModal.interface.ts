@@ -11,5 +11,12 @@
  *  limitations under the License.
  */
 
-export { default as ODPSImportModal } from './ODPSImportModal.component';
-export type { ODPSImportModalProps } from './ODPSImportModal.interface';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+
+export interface ODPSImportModalProps {
+  open: boolean;
+  existingDataProduct?: DataProduct | null;
+  domainFqn?: string;
+  onClose: () => void;
+  onSuccess: (dataProduct: DataProduct) => void;
+}

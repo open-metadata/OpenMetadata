@@ -12,4 +12,4 @@
  */
 
 export { default as DataProductMetadataModal } from './DataProductMetadataModal.component';
-export type { DataProductMetadataModalProps } from './DataProductMetadataModal.component';
+export type { DataProductMetadataModalProps } from './DataProductMetadataModal.interface';

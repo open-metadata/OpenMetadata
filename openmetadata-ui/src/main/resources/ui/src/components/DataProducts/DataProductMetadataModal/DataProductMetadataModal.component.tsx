@@ -33,19 +33,8 @@ import {
   DataProductType,
   PortfolioPriority,
   Visibility,
-} from '../../../generated/api/domains/createDataProduct';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-
-export interface DataProductMetadataModalProps {
-  open: boolean;
-  dataProduct: DataProduct;
-  onCancel: () => void;
-  onSubmit: (values: {
-    dataProductType?: DataProductType;
-    visibility?: Visibility;
-    portfolioPriority?: PortfolioPriority;
-  }) => Promise<void> | void;
-}
+} from '../../../generated/entity/domains/dataProduct';
+import { DataProductMetadataModalProps } from './DataProductMetadataModal.interface';
 
 // MUI Select treats an empty string "" as "no selection" (matches the
 // undefined-means-unset semantics of our DataProduct fields).

@@ -11,5 +11,20 @@
  *  limitations under the License.
  */
 
-export { default as ODPSImportModal } from './ODPSImportModal.component';
-export type { ODPSImportModalProps } from './ODPSImportModal.interface';
+import {
+  DataProduct,
+  DataProductType,
+  PortfolioPriority,
+  Visibility,
+} from '../../../generated/entity/domains/dataProduct';
+
+export interface DataProductMetadataModalProps {
+  open: boolean;
+  dataProduct: DataProduct;
+  onCancel: () => void;
+  onSubmit: (values: {
+    dataProductType?: DataProductType;
+    visibility?: Visibility;
+    portfolioPriority?: PortfolioPriority;
+  }) => Promise<void> | void;
+}

@@ -16,7 +16,7 @@ import {
   DataProductType,
   PortfolioPriority,
   Visibility,
-} from '../generated/api/domains/createDataProduct';
+} from '../generated/entity/domains/dataProduct';
 
 export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
   EntityFields.OWNERS,

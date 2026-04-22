@@ -30,7 +30,6 @@ import { AxiosError } from 'axios';
 import { isNil } from 'lodash';
 import { ChangeEvent, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   createOrUpdateDataProductFromODPSYaml,
   importDataProductFromODPSYaml,
@@ -39,14 +38,7 @@ import {
   validateODPSYaml,
 } from '../../../rest/dataProductAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-export interface ODPSImportModalProps {
-  open: boolean;
-  existingDataProduct?: DataProduct | null;
-  domainFqn?: string;
-  onClose: () => void;
-  onSuccess: (dataProduct: DataProduct) => void;
-}
+import { ODPSImportModalProps } from './ODPSImportModal.interface';
 
 const DEFAULT_STRATEGY: ODPSImportStrategy = 'merge';
 

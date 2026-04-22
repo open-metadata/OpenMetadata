@@ -345,7 +345,15 @@ const IntakeFormsPage = () => {
         data-testid="intake-form-delete-confirm"
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}>
-        <DialogTitle>{t('label.delete-entity', { entity: '' })}</DialogTitle>
+        <DialogTitle>
+          {t('label.delete-entity', {
+            entity: t('label.entity-intake-form', {
+              entity: deleteTarget
+                ? entityTypeLabel(deleteTarget.entityType)
+                : '',
+            }),
+          })}
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
             {t('message.delete-intake-form-confirmation')}

@@ -13,18 +13,25 @@
 
 import {
   Alert,
-  Button,
+  Box,
   Checkbox,
+  Chip,
+  CircularProgress,
   Divider,
   Drawer,
-  Empty,
-  Input,
-  Space,
+  FormControlLabel,
+  Stack,
   Switch,
   Table,
-  Tag,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
   Typography,
-} from 'antd';
+} from '@mui/material';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,26 +39,17 @@ import { CreateIntakeForm } from '../../generated/api/governance/createIntakeFor
 import { CustomProperty } from '../../generated/entity/type';
 import {
   FieldKind,
-  IntakeForm,
   RequiredField,
   TargetEntityType,
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
 import {
   ENTITY_TYPE_API_NAME,
   IntakeFormNativeField,
   NATIVE_FIELDS_BY_ENTITY_TYPE,
 } from './intakeFormFields';
-
-export interface IntakeFormDesignerModalProps {
-  open: boolean;
-  /** Pre-selected entity type. Required for create; derived from initialValue for edit. */
-  entityType: TargetEntityType;
-  initialValue: IntakeForm | null;
-  onCancel: () => void;
-  onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
-}
 
 interface FieldRow {
   path: string;
@@ -210,165 +208,238 @@ const IntakeFormDesignerModal = ({
     [rows]
   );
 
-  const fieldColumns = [
-    {
-      title: t('label.required'),
-      dataIndex: 'selected',
-      key: 'selected',
-      width: 90,
-      render: (_: boolean, record: FieldRow) => (
+  const renderFieldRow = (record: FieldRow) => (
+    <TableRow key={record.path}>
+      <TableCell sx={{ width: 90 }}>
         <Checkbox
           checked={record.selected}
-          data-testid={`require-${record.path}`}
+          inputProps={
+            {
+              'aria-label': record.label,
+              'data-testid': `require-${record.path}`,
+            } as Record<string, unknown>
+          }
           onChange={(e) =>
             updateRow(record.path, { selected: e.target.checked })
           }
         />
-      ),
-    },
-    {
-      title: t('label.field'),
-      dataIndex: 'label',
-      key: 'label',
-      render: (label: string, record: FieldRow) => (
-        <div>
-          <Typography.Text strong>{label}</Typography.Text>
-          <div>
-            <Typography.Text className="tw:text-xs" type="secondary">
-              {record.path}
-            </Typography.Text>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: t('label.custom-error-message'),
-      dataIndex: 'errorMessage',
-      key: 'errorMessage',
-      render: (_: string, record: FieldRow) => (
-        <Input
-          data-testid={`error-${record.path}`}
+      </TableCell>
+      <TableCell>
+        <Typography sx={{ fontWeight: 600 }}>{record.label}</Typography>
+        <Typography color="text.secondary" variant="caption">
+          {record.path}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <TextField
+          fullWidth
+          InputProps={{
+            // MUI's InputBaseComponentProps type is narrow; cast to allow the
+            // data-testid attribute that Playwright selectors rely on.
+            inputProps: {
+              'data-testid': `error-${record.path}`,
+            } as Record<string, unknown>,
+          }}
           disabled={!record.selected}
           placeholder={t('message.optional-custom-error')}
+          size="small"
           value={record.errorMessage ?? ''}
           onChange={(e) =>
             updateRow(record.path, { errorMessage: e.target.value })
           }
         />
-      ),
-    },
-  ];
+      </TableCell>
+    </TableRow>
+  );
+
+  const title = initialValue
+    ? t('label.edit-entity', {
+        entity: t('label.entity-intake-form', {
+          entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+        }),
+      })
+    : t('label.add-entity', {
+        entity: t('label.entity-intake-form', {
+          entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+        }),
+      });
 
   return (
     <Drawer
-      destroyOnClose
+      PaperProps={{ sx: { width: '75%' } }}
+      anchor="right"
       data-testid="intake-form-designer-modal"
-      extra={
-        <Space>
-          <Button data-testid="intake-form-cancel" onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            data-testid="intake-form-submit"
-            type="primary"
-            onClick={handleOk}>
-            {initialValue ? t('label.save') : t('label.create')}
-          </Button>
-        </Space>
-      }
       open={open}
-      placement="right"
-      title={
-        initialValue
-          ? t('label.edit-entity', {
-              entity: t('label.entity-intake-form', {
-                entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-              }),
-            })
-          : t('label.add-entity', {
-              entity: t('label.entity-intake-form', {
-                entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-              }),
-            })
-      }
-      width="75%"
       onClose={onCancel}>
-      <Alert
-        showIcon
-        className="tw:mb-4"
-        description={t('message.intake-form-one-per-type-help', {
-          entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-        })}
-        type="info"
-      />
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+        }}>
+        {/* Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 2,
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}>
+          <Typography variant="h6">{title}</Typography>
+          <Stack direction="row" spacing={1}>
+            <Button
+              color="tertiary"
+              data-testid="intake-form-cancel"
+              size="sm"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="intake-form-submit"
+              size="sm"
+              onClick={handleOk}>
+              {initialValue ? t('label.save') : t('label.create')}
+            </Button>
+          </Stack>
+        </Box>
 
-      <div className="tw:mb-4">
-        <Typography.Text strong>{t('label.description')}</Typography.Text>
-        <Input.TextArea
-          autoSize={{ minRows: 2, maxRows: 4 }}
-          className="tw:mt-1"
-          data-testid="intake-form-description"
-          placeholder={t('message.intake-form-description-placeholder')}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
+        {/* Body */}
+        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t('message.intake-form-one-per-type-help', {
+              entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+            })}
+          </Alert>
 
-      <div className="tw:flex tw:items-center tw:gap-3 tw:mb-4">
-        <Typography.Text strong>{t('label.enabled')}</Typography.Text>
-        <Switch
-          checked={enabled}
-          data-testid="intake-form-enabled"
-          onChange={setEnabled}
-        />
-        <Typography.Text type="secondary">
-          {t('message.intake-form-enabled-help')}
-        </Typography.Text>
-      </div>
+          <Box sx={{ mb: 2 }}>
+            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
+              {t('label.description')}
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              InputProps={{
+                inputProps: {
+                  'data-testid': 'intake-form-description',
+                } as Record<string, unknown>,
+              }}
+              maxRows={4}
+              minRows={2}
+              placeholder={t('message.intake-form-description-placeholder')}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </Box>
 
-      <Divider />
+          <Stack
+            alignItems="center"
+            direction="row"
+            spacing={1.5}
+            sx={{ mb: 2 }}>
+            <Typography sx={{ fontWeight: 600 }}>
+              {t('label.enabled')}
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={enabled}
+                  inputProps={
+                    {
+                      'data-testid': 'intake-form-enabled',
+                    } as Record<string, unknown>
+                  }
+                  onChange={(e) => setEnabled(e.target.checked)}
+                />
+              }
+              label=""
+            />
+            <Typography color="text.secondary" variant="body2">
+              {t('message.intake-form-enabled-help')}
+            </Typography>
+          </Stack>
 
-      <Typography.Title level={5}>
-        {t('label.native-field-plural')}
-      </Typography.Title>
-      <Typography.Paragraph type="secondary">
-        {t('message.intake-form-native-fields-help')}
-      </Typography.Paragraph>
-      <Table
-        columns={fieldColumns}
-        dataSource={nativeRows}
-        locale={{
-          emptyText: <Empty description={t('message.no-native-fields')} />,
-        }}
-        pagination={false}
-        rowKey="path"
-        size="small"
-      />
+          <Divider sx={{ my: 2 }} />
 
-      <Divider />
+          <Typography sx={{ fontWeight: 600 }} variant="h6">
+            {t('label.native-field-plural')}
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 1 }} variant="body2">
+            {t('message.intake-form-native-fields-help')}
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ width: 90 }}>
+                    {t('label.required')}
+                  </TableCell>
+                  <TableCell>{t('label.field')}</TableCell>
+                  <TableCell>{t('label.custom-error-message')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {nativeRows.length === 0 && (
+                  <TableRow>
+                    <TableCell align="center" colSpan={3}>
+                      <Typography color="text.secondary" variant="body2">
+                        {t('message.no-native-fields')}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {nativeRows.map(renderFieldRow)}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      <div className="tw:flex tw:items-center tw:gap-2">
-        <Typography.Title className="tw:m-0" level={5}>
-          {t('label.custom-property-plural')}
-        </Typography.Title>
-        <Tag>{customRows.length}</Tag>
-      </div>
-      <Typography.Paragraph type="secondary">
-        {t('message.intake-form-custom-properties-help')}
-      </Typography.Paragraph>
-      <Table
-        columns={fieldColumns}
-        dataSource={customRows}
-        loading={loadingProps}
-        locale={{
-          emptyText: (
-            <Empty description={t('message.no-custom-properties-defined')} />
-          ),
-        }}
-        pagination={false}
-        rowKey="path"
-        size="small"
-      />
+          <Divider sx={{ my: 2 }} />
+
+          <Stack alignItems="center" direction="row" spacing={1}>
+            <Typography sx={{ fontWeight: 600 }} variant="h6">
+              {t('label.custom-property-plural')}
+            </Typography>
+            <Chip label={customRows.length} size="small" />
+          </Stack>
+          <Typography color="text.secondary" sx={{ mb: 1 }} variant="body2">
+            {t('message.intake-form-custom-properties-help')}
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ width: 90 }}>
+                    {t('label.required')}
+                  </TableCell>
+                  <TableCell>{t('label.field')}</TableCell>
+                  <TableCell>{t('label.custom-error-message')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loadingProps && (
+                  <TableRow>
+                    <TableCell align="center" colSpan={3}>
+                      <CircularProgress size={20} />
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!loadingProps && customRows.length === 0 && (
+                  <TableRow>
+                    <TableCell align="center" colSpan={3}>
+                      <Typography color="text.secondary" variant="body2">
+                        {t('message.no-custom-properties-defined')}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!loadingProps && customRows.map(renderFieldRow)}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      </Box>
     </Drawer>
   );
 };
