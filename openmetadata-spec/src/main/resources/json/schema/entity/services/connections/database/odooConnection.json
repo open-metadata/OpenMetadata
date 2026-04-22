@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/odooConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OdooConnection",
+  "description": "Odoo Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.OdooConnection",
+  "definitions": {
+    "odooType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Odoo"],
+      "default": "Odoo"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/odooType",
+      "default": "Odoo"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Odoo XML-RPC Host URL (e.g., https://my-odoo-instance.com).",
+      "type": "string",
+      "format": "uri"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Odoo. This user should have privileges to read all the metadata in Odoo.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Odoo.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Odoo database name. This is the PostgreSQL database name used internally by Odoo.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "required": ["hostPort", "username", "password", "databaseName"],
+  "additionalProperties": false
+}
