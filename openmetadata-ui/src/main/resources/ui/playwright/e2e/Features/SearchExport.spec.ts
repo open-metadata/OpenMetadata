@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
-import { redirectToHomePage } from '../../utils/common';
+import { expect } from '@playwright/test';
+import { redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   countCsvResponseRows,
@@ -22,15 +22,9 @@ import {
 } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
-const navigateToExplorePage = async (page: Page) => {
-  await redirectToHomePage(page);
-  await page.getByTestId('app-bar-item-explore').click();
-  await expect(page.getByTestId('explore-page')).toBeVisible();
-};
-
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test.beforeEach(async ({ page }) => {
-    await navigateToExplorePage(page);
+    await redirectToExplorePage(page);
   });
 
   test('Export button opens scope modal with correct options', async ({
