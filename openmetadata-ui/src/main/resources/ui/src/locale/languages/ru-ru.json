@@ -1721,6 +1721,7 @@
     "reposition": "Изменить положение",
     "repository-url": "URL Репозитория",
     "request": "Запрос",
+    "request-data-access": "Запросить доступ к данным",
     "request-method": "Метод запроса",
     "request-schema-field": "Поле схемы запроса",
     "request-tag-plural": "Предложить тег",

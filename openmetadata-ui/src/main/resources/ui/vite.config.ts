@@ -31,6 +31,9 @@ export default defineConfig(({ mode }) => {
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
   return {
     base: '',
+    html: {
+      cspNonce: '${cspNonce}', // Placeholder replaced by Java backend at runtime
+    },
     plugins: [
       {
         name: 'html-transform',
