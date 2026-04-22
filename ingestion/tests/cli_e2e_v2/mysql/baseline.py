@@ -234,14 +234,22 @@ MYSQL_BASELINE = SqlSourceBaseline(
 def get_policy() -> EnforcementPolicy:
     """Lazy-build and cache the MySQL EnforcementPolicy.
 
-    Reads E2E_MYSQL_* env vars on first call. EnvLoadError surfaces at
-    fixture time with a clear message when a required var is missing.
+    Uses ADMIN credentials (CREATE SCHEMA / CREATE TABLE / INSERT /
+    SELECT) — distinct from the ingest credentials `build_mysql_config`
+    uses for the CLI subprocess. The ingest user (`openmetadata_user`)
+    is a scoped service account and typically lacks DDL + broad SELECT
+    on user-created schemas like `e2e`.
 
-    URL.create handles user/password URL-encoding so credentials
-    containing @ : / # % ? don't break the connection string.
+    E2E_MYSQL_ADMIN_USER / E2E_MYSQL_ADMIN_PASSWORD default to
+    `root` / `password` — matching the local Docker dev stack — so no
+    env plumbing is needed for local runs. Override via env var for
+    other environments.
+
+    URL.create handles URL-encoding so credentials containing
+    @ : / # % ? don't break the connection string.
     """
-    user = Env("E2E_MYSQL_USER").get()
-    password = Env("E2E_MYSQL_PASSWORD").get()
+    user = Env("E2E_MYSQL_ADMIN_USER", default="root").get()
+    password = Env("E2E_MYSQL_ADMIN_PASSWORD", default="password").get()
     host_port = Env("E2E_MYSQL_HOST_PORT").get()
     host, _, port_str = host_port.partition(":")
     port = int(port_str) if port_str else None
