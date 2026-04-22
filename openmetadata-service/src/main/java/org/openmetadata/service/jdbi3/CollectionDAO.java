@@ -2649,7 +2649,7 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "DELETE FROM entity_relationship WHERE toEntity = :toEntity AND fromEntity = :fromEntity "
-            + "AND fromId NOT IN (SELECT id FROM <table>)")
+            + "AND NOT EXISTS (SELECT 1 FROM <table> t WHERE t.id = entity_relationship.fromId)")
     int deleteOrphanedRelationships(
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,

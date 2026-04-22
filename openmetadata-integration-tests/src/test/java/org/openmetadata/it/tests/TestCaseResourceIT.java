@@ -4503,7 +4503,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     List<CollectionDAO.EntityRelationshipRecord> relationships =
         Entity.getCollectionDAO()
             .relationshipDAO()
-            .findTo(testCase.getId(), Entity.TEST_CASE, Relationship.RELATED_TO.ordinal());
+            .findTo(testCase.getId(), Entity.TEST_CASE, Relationship.PARENT_OF.ordinal());
 
     assertNotNull(relationships);
     long statusCount =
@@ -4517,13 +4517,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // 4. Hard delete the test case
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
+    params.put("recursive", "true");
     client.testCases().delete(testCase.getId().toString(), params);
 
     // 5. Verify relationships are cleaned up
     List<CollectionDAO.EntityRelationshipRecord> relationshipsAfter =
         Entity.getCollectionDAO()
             .relationshipDAO()
-            .findTo(testCase.getId(), Entity.TEST_CASE, Relationship.RELATED_TO.ordinal());
+            .findTo(testCase.getId(), Entity.TEST_CASE, Relationship.PARENT_OF.ordinal());
 
     long statusCountAfter =
         relationshipsAfter.stream()

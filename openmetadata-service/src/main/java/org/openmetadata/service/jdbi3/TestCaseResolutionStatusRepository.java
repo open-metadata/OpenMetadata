@@ -228,18 +228,14 @@ public class TestCaseResolutionStatusRepository
     recordEntity.withTestCaseReference(testCaseReference);
   }
 
-  public void deleteAllRelationshipsByTestCase(String testCaseFQN) {
-    List<String> jsons =
-        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-            .listTestCaseResolutionForEntityFQNHash(testCaseFQN);
-    if (jsons.isEmpty()) {
-      return;
-    }
-    List<UUID> statusIds =
-        jsons.stream()
-            .map(json -> JsonUtils.readValue(json, TestCaseResolutionStatus.class).getId())
-            .toList();
-    daoCollection.relationshipDAO().batchDeleteRelationships(statusIds, entityType);
+  public void deleteAllRelationshipsByTestCase(UUID testCaseId) {
+    daoCollection
+        .relationshipDAO()
+        .deleteFrom(
+            testCaseId,
+            Entity.TEST_CASE,
+            Relationship.PARENT_OF.ordinal(),
+            Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
   @Override
@@ -249,7 +245,7 @@ public class TestCaseResolutionStatusRepository
         recordEntity.getId(),
         Entity.TEST_CASE,
         Entity.TEST_CASE_RESOLUTION_STATUS,
-        Relationship.RELATED_TO,
+        Relationship.PARENT_OF,
         null,
         false);
   }
@@ -257,7 +253,7 @@ public class TestCaseResolutionStatusRepository
   @Override
   protected void setInheritedFields(TestCaseResolutionStatus recordEntity) {
     recordEntity.setTestCaseReference(
-        getFromEntityRef(recordEntity.getId(), Relationship.RELATED_TO, Entity.TEST_CASE, true));
+        getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
   }
 
   @Override
