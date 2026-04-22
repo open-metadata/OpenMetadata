@@ -238,10 +238,10 @@ test.describe('Glossary Bulk Import Export', () => {
 
       await page.getByTestId('processed-row').waitFor();
       await expect(page.locator('[data-testid="processed-row"]')).toHaveText(
-        '3'
+        '2'
       );
 
-      await expect(page.locator('[data-testid="passed-row"]')).toHaveText('3');
+      await expect(page.locator('[data-testid="passed-row"]')).toHaveText('2');
 
       await expect(page.locator('[data-testid="failed-row"]')).toHaveText('0');
 

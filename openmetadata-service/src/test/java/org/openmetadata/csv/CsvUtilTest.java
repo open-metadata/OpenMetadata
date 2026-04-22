@@ -14,6 +14,7 @@
 package org.openmetadata.csv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -233,7 +234,7 @@ public class CsvUtilTest {
     assertTrue(extensionField.contains("window:100:200"));
     assertTrue(extensionField.contains("reviewers:user:alice|team:engineering"));
     assertTrue(extensionField.contains("options:one|two"));
-    assertTrue(extensionField.contains("empty:"));
+    assertFalse(extensionField.contains("empty"));
     assertTrue(extensionField.contains("count:5"));
     assertTrue(extensionField.contains("metadata:{key=value}"));
     assertTrue(extensionField.contains("matrix:alpha,beta|gamma"));
