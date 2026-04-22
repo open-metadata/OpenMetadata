@@ -121,8 +121,8 @@ server:
   #    jceProvider: (none)
   #    validateCerts: true
   #    validatePeers: true
-  #    supportedProtocols: SSLv3
-  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    supportedProtocols: [TLSv1.2, TLSv1.3]
+  #    supportedCipherSuites: [TLS_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256]
   #    allowRenegotiation: true
   #    endpointIdentificationAlgorithm: (none)
 
@@ -149,8 +149,8 @@ server:
   #    jceProvider: (none)
   #    validateCerts: true
   #    validatePeers: true
-  #    supportedProtocols: SSLv3
-  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    supportedProtocols: [TLSv1.2, TLSv1.3]
+  #    supportedCipherSuites: [TLS_AES_256_GCM_SHA384, TLS_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256]
   #    allowRenegotiation: true
   #    endpointIdentificationAlgorithm: (none)
 
@@ -161,6 +161,16 @@ qos:
   maxRequestCount: ${QOS_MAX_REQUEST_COUNT:-64}
   maxSuspendedRequestCount: ${QOS_MAX_SUSPENDED_REQUEST_COUNT:-1000}
   maxSuspendSeconds: ${QOS_MAX_SUSPEND_SECONDS:-30}
+
+cacheMemory:
+  # Entity JSON caches (CACHE_WITH_ID, CACHE_WITH_NAME) — weight-based eviction.
+  # Entity JSON can range from 1KB to 2MB+. Increase on high-memory deployments for better hit rates.
+  entityCacheMaxSizeBytes: ${ENTITY_CACHE_MAX_SIZE_BYTES:-104857600}  # 100 MB
+  entityCacheTTLSeconds: ${ENTITY_CACHE_TTL_SECONDS:-30}
+  # Auth caches (user context + policies) — TTLs hardcoded (2min policies, 15min user context)
+  authCacheMaxEntries: ${AUTH_CACHE_MAX_ENTRIES:-5000}
+  # RBAC query cache (OpenSearch role-based access control query DSL)
+  rbacCacheMaxEntries: ${RBAC_CACHE_MAX_ENTRIES:-5000}
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
@@ -698,6 +708,15 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+  cross-origin-embedder-policy:
+    enabled: ${WEB_CONF_CROSS_ORIGIN_EMBEDDER_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_CROSS_ORIGIN_EMBEDDER_POLICY_OPTION:-"REQUIRE_CORP"}
+  cross-origin-resource-policy:
+    enabled: ${WEB_CONF_CROSS_ORIGIN_RESOURCE_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_CROSS_ORIGIN_RESOURCE_POLICY_OPTION:-"SAME_ORIGIN"}
+  cross-origin-opener-policy:
+    enabled: ${WEB_CONF_CROSS_ORIGIN_OPENER_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_CROSS_ORIGIN_OPENER_POLICY_OPTION:-"SAME_ORIGIN"}
   cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
   pragma: ${WEB_CONF_PRAGMA:-""}
 

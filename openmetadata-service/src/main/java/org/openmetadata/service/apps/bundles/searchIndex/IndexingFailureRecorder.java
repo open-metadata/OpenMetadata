@@ -19,6 +19,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
   }
 
   private static final int DEFAULT_BATCH_SIZE = 100;
+  private static final int ENTITY_ID_MAX_LENGTH = 36;
 
   private final CollectionDAO.SearchIndexFailureDAO failureDAO;
   private final String jobId;
@@ -112,6 +113,16 @@ public class IndexingFailureRecorder implements AutoCloseable {
       String stackTrace) {
     if (closed) {
       LOG.warn("Attempting to record failure after recorder is closed");
+      return;
+    }
+
+    if (entityId != null && entityId.length() > ENTITY_ID_MAX_LENGTH) {
+      LOG.warn(
+          "Skipping failure record for entityType={}: entityId length {} exceeds column limit {} (value starts with '{}')",
+          entityType,
+          entityId.length(),
+          ENTITY_ID_MAX_LENGTH,
+          entityId.substring(0, Math.min(50, entityId.length())));
       return;
     }
 

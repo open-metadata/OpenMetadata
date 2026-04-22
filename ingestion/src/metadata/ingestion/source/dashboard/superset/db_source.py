@@ -193,7 +193,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
 
                     continue
-                chart = CreateChartRequest(
+                chart_request = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
                     description=(
@@ -207,7 +207,8 @@ class SupersetDBSource(SupersetSourceMixin):
                     ),
                     service=self.context.get().dashboard_service,
                 )
-                yield Either(right=chart)
+                yield Either(right=chart_request)
+                self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

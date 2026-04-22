@@ -78,6 +78,12 @@
       "default": true,
       "title": "Mark Deleted Data Models"
     },
+    "markDeletedCharts": {
+      "description": "Optional configuration to soft delete charts in OpenMetadata if the source charts are deleted.",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Charts"
+    },
     "includeTags": {
       "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",

@@ -925,13 +925,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
-
     JSONObject sourceConfigJson =
         new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    String profileSampleType = sourceConfigJson.optString("profileSampleType");
-    double profileSample = sourceConfigJson.optDouble("profileSample");
-
-    EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    JSONObject profileSampleConfig = sourceConfigJson.optJSONObject("profileSampleConfig");
+    if (profileSampleConfig == null) {
+      return;
+    }
+    JSONObject config = profileSampleConfig.optJSONObject("config");
+    if (config == null) {
+      return;
+    }
+    String profileSampleType = config.optString("profileSampleType", "");
+    double profileSample = config.optDouble("profileSample", Double.NaN);
+    if (!profileSampleType.isEmpty() && !Double.isNaN(profileSample)) {
+      EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    }
   }
 
   /**
