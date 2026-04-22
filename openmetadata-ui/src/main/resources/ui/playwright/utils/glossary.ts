@@ -45,7 +45,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addMultiOwner,
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
 import {
   TaskDetails,
@@ -337,7 +341,11 @@ export const verifyGlossaryDetails = async (
   page: Page,
   glossaryDetails: GlossaryData
 ) => {
-  await selectActiveGlossary(page, glossaryDetails.name, false);
+  await selectActiveGlossary(
+    page,
+    getEntityDisplayName(glossaryDetails),
+    false
+  );
 
   await checkName(page, glossaryDetails.name);
 
@@ -377,7 +385,7 @@ export const verifyGlossaryDetails = async (
 };
 
 export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
-  await selectActiveGlossary(page, glossary.displayName, false);
+  await selectActiveGlossary(page, getEntityDisplayName(glossary), false);
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -750,7 +758,7 @@ export const createGlossaryTerms = async (
   page: Page,
   glossary: GlossaryData
 ) => {
-  await selectActiveGlossary(page, glossary.displayName ?? glossary.name);
+  await selectActiveGlossary(page, getEntityDisplayName(glossary));
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
 
@@ -1378,7 +1386,7 @@ export const approveTagsTask = async (
   const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
-  await selectActiveGlossary(page, entity.data.displayName);
+  await selectActiveGlossary(page, getEntityDisplayName(entity.data));
 
   await page.click('[data-testid="activity_feed"]');
 
@@ -1398,7 +1406,7 @@ export const approveTagsTask = async (
   const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryTermsResponse;
-  await selectActiveGlossary(page, entity.data.displayName);
+  await selectActiveGlossary(page, getEntityDisplayName(entity.data));
 
   const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
   await tagVisibility.scrollIntoViewIfNeeded();

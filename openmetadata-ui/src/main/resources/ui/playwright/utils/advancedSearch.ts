@@ -91,10 +91,6 @@ export const FIELDS: EntityFields[] = [
     id: 'Project',
     name: 'project.keyword',
   },
-  {
-    id: 'Status',
-    name: 'entityStatus',
-  },
   // Some common field value search criteria are causing problems in not equal filter tests
   // TODO: Refactor the advanced search tests so that these fields can be added back
   // {
