@@ -519,7 +519,9 @@ class TestExecuteDatabaseQueryEagerFetch:
         with engine.connect() as conn:
             conn.execute(text("CREATE TABLE dbs (id INTEGER PRIMARY KEY, name TEXT)"))
             conn.execute(
-                text("INSERT INTO dbs(id, name) VALUES (1, 'alpha'), (2, 'beta'), (3, 'gamma')")
+                text(
+                    "INSERT INTO dbs(id, name) VALUES (1, 'alpha'), (2, 'beta'), (3, 'gamma')"
+                )
             )
             conn.commit()
         yield engine
