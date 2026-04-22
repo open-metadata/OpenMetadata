@@ -47,6 +47,7 @@ import hiveConnection from '../jsons/connectionSchemas/connections/database/hive
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import iometeConnection from '../jsons/connectionSchemas/connections/database/iometeConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
+import odooConnection from '../jsons/connectionSchemas/connections/database/odooConnection.json';
 import microsoftFabricConnection from '../jsons/connectionSchemas/connections/database/microsoftFabricConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
@@ -318,6 +319,12 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
     case DatabaseServiceType.Iomete: {
       schema = iometeConnection;
+
+      break;
+    }
+
+    case DatabaseServiceType.Odoo: {
+      schema = odooConnection;
 
       break;
     }
