@@ -19,13 +19,16 @@ public class UserIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.USER;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeFields;
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(user, Entity.USER);
-    doc.putAll(commonAttributes);
     if (user.getIsBot() == null) {
       doc.put("isBot", false);
     }

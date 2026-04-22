@@ -1456,9 +1456,9 @@ export const replyAnnouncement = async (page: Page) => {
 
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
 
-  await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('add-reply')).toBeVisible();
 
-  await page.getByTestId('add-reply').locator('svg').click();
+  await page.getByTestId('add-reply').click();
 
   await expect(page.locator('.ql-editor')).toBeVisible();
 
@@ -1965,9 +1965,18 @@ export const restoreEntity = async (page: Page) => {
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
+
+  const restoreResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/restore') &&
+      response.request().method() === 'PUT'
+  );
+
   await page.click('button:has-text("Restore")');
 
-  await toastNotification(page, /restored successfully/);
+  const response = await restoreResponse;
+
+  expect(response.status()).toBe(200);
 
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeHidden();
 };

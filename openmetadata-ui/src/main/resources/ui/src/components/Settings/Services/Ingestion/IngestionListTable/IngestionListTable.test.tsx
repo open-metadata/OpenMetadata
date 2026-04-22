@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';

@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
@@ -538,16 +538,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .locator('[data-testid="selectable-list"]')
             .waitFor({ state: 'visible' });
 
-          const searchTagCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
-          );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PersonalData.SpecialCategory');
-          await searchTagCleanup;
-          await waitForAllLoadersToDisappear(page);
-
-          await page.getByTitle('SpecialCategory', { exact: true }).click();
+          await page.getByTestId('clear-all-button').click();
           const removeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
@@ -2055,7 +2046,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         // Since the test iterates through all 17 types of custom property and
         // performs multiple actions for each, we need to increase the timeout
         // to avoid premature test failure
-        test.setTimeout(600000);
+        // TODO: Reduce timeout once the latency issue is fixed
+        test.setTimeout(960000);
         const { apiContext, afterAction } = await getApiContext(page);
 
         await prepareCustomProperty(apiContext);

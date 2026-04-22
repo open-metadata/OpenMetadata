@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
 
       - name: Install Yarn
-        run: npm install -g yarn
+        run: corepack enable
 
       - name: Install Dependencies
         working-directory: openmetadata-ui/src/main/resources/ui

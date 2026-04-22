@@ -14,14 +14,13 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useGraphDataBuilder } from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
-  getOntologyFitViewZoomRatio,
+  fitViewWithMinZoom,
   toLayoutEngineType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
@@ -29,6 +28,15 @@ import {
   OntologyGraphHandle,
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
+
+function writeNodePositions(
+  container: HTMLDivElement | null,
+  positions: Record<string, { x: number; y: number }>
+) {
+  if (container) {
+    container.dataset.nodePositions = JSON.stringify(positions);
+  }
+}
 
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
@@ -48,6 +56,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
       nodePositions,
     },
     ref
@@ -61,16 +70,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     }, [settings.layout]);
 
     const layoutType = getLayoutType();
-
-    const termCountForFit = useMemo(() => {
-      if (explorationMode === 'data') {
-        return inputNodes.filter(
-          (n) => n.type !== 'dataAsset' && n.type !== 'metric'
-        ).length;
-      }
-
-      return inputNodes.length;
-    }, [explorationMode, inputNodes]);
 
     const {
       graphData,
@@ -93,7 +92,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       nodePositions,
     });
 
-    const { graphRef, extractNodePositions } = useOntologyGraph({
+    const {
+      graphRef,
+      extractNodePositions,
+      suppressEdgeCheck,
+      emitPagePositions,
+    } = useOntologyGraph({
       containerRef,
       graphData,
       inputNodes,
@@ -109,11 +113,14 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeDoubleClick,
       onNodeContextMenu,
       onPaneClick,
+      onScrollNearEdge,
       setClickedEdgeId,
       neighborSet,
       glossaryColorMap,
       computeNodeColor,
       assetToTermMap,
+      onPositionsReady: (positions) =>
+        writeNodePositions(containerRef.current, positions),
     });
 
     useImperativeHandle(
@@ -124,25 +131,18 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
-          const duration = 300;
-          const isDataMode = explorationMode === 'data';
-          await graph.fitView(
-            { when: 'always', direction: 'both' },
-            { duration }
-          );
-          const zoomAfterFit = getOntologyFitViewZoomRatio(
-            termCountForFit,
-            isDataMode
-          );
-          if (zoomAfterFit !== 1) {
-            await graph.zoomBy(zoomAfterFit, { duration });
-          }
+          writeNodePositions(containerRef.current, {});
+          suppressEdgeCheck(800);
+          await fitViewWithMinZoom(graph, 300);
+          emitPagePositions(graph);
         },
         zoomIn: () => {
-          graphRef.current?.zoomBy(1.2);
+          suppressEdgeCheck();
+          graphRef.current?.zoomBy(1.2, { duration: 100 });
         },
         zoomOut: () => {
-          graphRef.current?.zoomBy(0.8);
+          suppressEdgeCheck();
+          graphRef.current?.zoomBy(0.8, { duration: 100 });
         },
         runLayout: () => {
           const graph = graphRef.current;
@@ -174,6 +174,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          // G6 only supports raster image export here; keep the SVG wrapper explicit.
           const dataUrl = await graph.toDataURL({
             mode: 'overall',
             type: 'image/png',
@@ -186,12 +187,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'ontology-graph.svg';
+          a.download = 'ontology-graph-raster.svg';
           a.click();
           URL.revokeObjectURL(url);
         },
       }),
-      [explorationMode, extractNodePositions, graphRef, termCountForFit]
+      [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
 
     return (
