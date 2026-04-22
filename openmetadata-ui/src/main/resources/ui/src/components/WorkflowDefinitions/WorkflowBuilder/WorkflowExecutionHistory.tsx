@@ -23,8 +23,8 @@ import StatusBadgeV2 from '../../../components/common/StatusBadge/StatusBadgeV2.
 import TableV2 from '../../../components/common/Table/TableV2';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
-import { CursorType } from '../../../enums/pagination.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { CursorType } from '../../../enums/pagination.enum';
 import {
   WorkflowInstance,
   WorkflowStatus,
@@ -156,7 +156,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
     fetchExecutionHistory();
-  }, [workflowFqn, pageSize]);
+  }, [workflowFqn, pageSize, fetchExecutionHistory]);
 
   if (!workflowFqn) {
     return (
@@ -186,7 +186,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
           size="small"
         />
       </div>
-      {paging.total > 0 && (
+      {paging.total > pageSize && (
         <div className="tw:shrink-0">
           <NextPrevious
             currentPage={currentPage}
