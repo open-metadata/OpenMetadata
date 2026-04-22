@@ -334,3 +334,101 @@ class TestNormalizeTableConstraints:
         result = DatabaseServiceSource.normalize_table_constraints(constraints, columns)
         assert result[0].columns is None
         assert result[1].columns == ["id"]
+
+
+class TestSetInspectorDisposesOldEngine:
+    """TDD: set_inspector must dispose the previous engine on each DB switch.
+
+    Why this matters: MultiDBSource connectors (Snowflake, BigQuery, ...) call
+    set_inspector() once per database to point the Inspector at the next DB.
+    Before the fix, the previous engine was simply replaced without calling
+    .dispose(), leaking its QueuePool, dialect metadata, reflection info_cache,
+    and any `event.listens_for(engine, "connect")` closures that capture self
+    (see SnowflakeSource.set_session_query_tag). Across N databases this
+    accumulates linearly — a significant contributor to long-running-pipeline
+    memory growth in production.
+    """
+
+    def test_previous_engine_is_disposed_on_database_switch(self):
+        """When set_inspector is called with a fresh DB, the existing
+        engine (from the previous DB) must have .dispose() invoked before
+        being replaced. Without dispose() the pool's threads, sockets,
+        and cached metadata remain live for the rest of the pipeline.
+        """
+        mock_source = MagicMock()
+        mock_source.set_inspector = CommonDbSourceService.set_inspector.__get__(
+            mock_source
+        )
+
+        old_engine = MagicMock(name="old_engine")
+        mock_source.engine = old_engine
+        mock_source.service_connection = MagicMock()
+
+        new_engine = MagicMock(name="new_engine")
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.kill_active_connections"
+        ), patch(
+            "metadata.ingestion.source.database.common_db_source.get_connection",
+            return_value=new_engine,
+        ):
+            mock_source.set_inspector("next_database")
+
+        old_engine.dispose.assert_called_once()
+        assert mock_source.engine is new_engine, (
+            "The new engine must replace the old one after dispose."
+        )
+
+    def test_no_dispose_called_when_no_previous_engine(self):
+        """First call to set_inspector (before any engine exists) must not
+        raise — the dispose guard should only fire when there is a previous
+        engine. Covers fresh-pipeline startup.
+        """
+        mock_source = MagicMock()
+        mock_source.set_inspector = CommonDbSourceService.set_inspector.__get__(
+            mock_source
+        )
+        mock_source.engine = None
+        mock_source.service_connection = MagicMock()
+
+        new_engine = MagicMock(name="new_engine")
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.kill_active_connections"
+        ), patch(
+            "metadata.ingestion.source.database.common_db_source.get_connection",
+            return_value=new_engine,
+        ):
+            # Must not raise (e.g. calling .dispose() on None).
+            mock_source.set_inspector("first_database")
+
+        assert mock_source.engine is new_engine
+
+    def test_dispose_failure_does_not_block_new_engine_assignment(self):
+        """If dispose() on the old engine throws (e.g. network glitch during
+        pool teardown), the new engine must still be assigned so ingestion
+        can proceed. Losing a connection on cleanup is acceptable; halting
+        a multi-hour pipeline over it is not.
+        """
+        mock_source = MagicMock()
+        mock_source.set_inspector = CommonDbSourceService.set_inspector.__get__(
+            mock_source
+        )
+
+        old_engine = MagicMock(name="old_engine")
+        old_engine.dispose.side_effect = Exception("simulated teardown error")
+        mock_source.engine = old_engine
+        mock_source.service_connection = MagicMock()
+
+        new_engine = MagicMock(name="new_engine")
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.kill_active_connections"
+        ), patch(
+            "metadata.ingestion.source.database.common_db_source.get_connection",
+            return_value=new_engine,
+        ):
+            mock_source.set_inspector("next_database")
+
+        old_engine.dispose.assert_called_once()
+        assert mock_source.engine is new_engine

@@ -153,6 +153,18 @@ class CommonDbSourceService(
         """
 
         kill_active_connections(self.engine)
+        # Release the previous engine's pool, dialect state, Inspector
+        # info_cache, and any per-engine event listeners that capture `self`
+        # (e.g. SnowflakeSource.set_session_query_tag). Without this, each
+        # database switch leaks ~tens of MB → linear growth on multi-DB
+        # pipelines.
+        if self.engine is not None:
+            try:
+                self.engine.dispose()
+            except Exception as exc:
+                logger.warning(
+                    f"Failed to dispose previous engine on DB switch: {exc}"
+                )
         logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
