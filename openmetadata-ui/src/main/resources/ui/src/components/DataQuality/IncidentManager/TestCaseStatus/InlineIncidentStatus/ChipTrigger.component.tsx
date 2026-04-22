@@ -66,7 +66,7 @@ export const ChipTrigger = ({
         ? { onPress: onStatusClick }
         : {})}>
       <span
-        className={CHIP_PILL_CLASS}
+        className={`${CHIP_PILL_CLASS} tw:bg-[var(--chip-bg)] tw:text-[var(--chip-color)] tw:border-[var(--chip-border)]`}
         style={{
           backgroundColor: palette.bg,
           borderColor: palette.border,
@@ -76,8 +76,7 @@ export const ChipTrigger = ({
         {hasEditPermission && (
           <ChevronIcon
             aria-hidden
-            className="tw:size-4 tw:shrink-0"
-            style={{ color: palette.color }}
+            className="tw:size-4 tw:shrink-0 tw:text-[var(--chip-color)]"
           />
         )}
       </span>

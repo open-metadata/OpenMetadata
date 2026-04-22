@@ -405,10 +405,9 @@ const InlineTestCaseIncidentStatus = ({
       />
       <Divider />
       <Box
-        className="tw:p-4"
+        className="tw:p-4 tw:box-border tw:min-w-0 tw:w-full"
         direction="col"
-        gap={2}
-        style={{ boxSizing: 'border-box', minWidth: 0, width: '100%' }}>
+        gap={2}>
         <Input
           data-testid="assignee-search-input"
           placeholder={t('label.search')}
@@ -434,7 +433,7 @@ const InlineTestCaseIncidentStatus = ({
         onSubmit={handleResolvedSubmit}
       />
       <Divider />
-      <Box className="tw:p-4" direction="col" gap={5}>
+      <Box className="tw:p-4" direction="col" gap={3}>
         <Label isRequired>{t('label.reason')}</Label>
         <FailureReasonChipGroup
           selectedReason={selectedReason}
