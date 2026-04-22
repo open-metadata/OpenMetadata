@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -365,20 +367,37 @@ class ContextFileIT {
     RestClient rest = RestClient.admin();
 
     String uniqueName = ns.prefix("searchable-file");
-    createFile(
-        rest,
-        new CreateContextFile()
-            .withName(uniqueName)
-            .withDisplayName("Searchable PDF")
-            .withFileType(ContextFileType.PDF)
-            .withProcessingStatus(ProcessingStatus.Processed));
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(uniqueName)
+                .withDisplayName("Searchable PDF")
+                .withFileType(ContextFileType.PDF)
+                .withProcessingStatus(ProcessingStatus.Processed));
 
-    // Give ES time to index
-    Thread.sleep(2000);
-
-    jakarta.ws.rs.core.Response searchResp =
-        rest.rawGet(
-            "v1/search/query?q=" + uniqueName + "&index=context_file_search_index&from=0&size=10");
-    assertEquals(200, searchResp.getStatus());
+    // ES indexing is async. Poll instead of a fixed sleep — on a fresh cluster the
+    // context_file_search_index may also take a moment to be created on first write,
+    // which returns 500 until the index exists. We assert both the success status
+    // AND that the newly-created file ID appears in the response so a passing assert
+    // actually proves the file is searchable.
+    String encodedQuery = URLEncoder.encode(uniqueName, StandardCharsets.UTF_8);
+    await()
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              try (Response searchResp =
+                  rest.rawGet(
+                      "v1/search/query?q="
+                          + encodedQuery
+                          + "&index=context_file_search_index&from=0&size=10")) {
+                assertEquals(200, searchResp.getStatus());
+                assertTrue(
+                    searchResp.readEntity(String.class).contains(file.getId().toString()),
+                    "Expected newly-created file " + file.getId() + " in search results");
+              }
+            });
   }
 }
