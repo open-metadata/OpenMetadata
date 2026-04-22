@@ -12,7 +12,6 @@
  */
 
 import { Modal } from 'antd';
-import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +20,6 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
@@ -82,8 +80,6 @@ export const DataProductDomainWidget = () => {
         }));
 
         await onUpdate({ ...dataProduct, domains });
-      } catch (err) {
-        showErrorToast(err as AxiosError);
       } finally {
         setIsLoading(false);
         setIsConfirmModalOpen(false);

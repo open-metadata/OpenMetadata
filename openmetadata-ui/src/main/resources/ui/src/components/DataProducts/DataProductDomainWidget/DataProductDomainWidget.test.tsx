@@ -18,7 +18,6 @@ import { DataProductDomainWidget } from './DataProductDomainWidget';
 
 const mockOnUpdate = jest.fn().mockResolvedValue(undefined);
 const mockPatchDataProduct = jest.fn();
-const mockShowErrorToast = jest.fn();
 
 let capturedOnUpdate:
   | ((d: EntityReference | EntityReference[]) => Promise<void> | void)
@@ -47,10 +46,6 @@ jest.mock('../../../rest/dataProductAPI', () => ({
   patchDataProduct: (...args: unknown[]) => mockPatchDataProduct(...args),
 }));
 
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
-}));
-
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({ hits: { total: { value: 0 } } }),
 }));
@@ -74,7 +69,6 @@ describe('DataProductDomainWidget', () => {
   beforeEach(() => {
     mockOnUpdate.mockClear();
     mockPatchDataProduct.mockClear();
-    mockShowErrorToast.mockClear();
     capturedOnUpdate = undefined;
   });
 
@@ -130,5 +124,27 @@ describe('DataProductDomainWidget', () => {
     const payload = mockOnUpdate.mock.calls[0][0] as DataProduct;
 
     expect(payload.domains).toEqual([]);
+  });
+
+  it('rethrows errors from onUpdate so callers can prevent optimistic UI updates', async () => {
+    const updateError = new Error('PATCH failed');
+    mockOnUpdate.mockRejectedValueOnce(updateError);
+
+    render(<DataProductDomainWidget />);
+
+    await waitFor(() => expect(capturedOnUpdate).toBeDefined());
+
+    const newDomain: EntityReference = {
+      id: 'dom-target',
+      type: 'domain',
+      name: 'target',
+      fullyQualifiedName: 'target',
+    };
+
+    await expect(
+      act(async () => {
+        await capturedOnUpdate?.(newDomain);
+      })
+    ).rejects.toThrow('PATCH failed');
   });
 });
