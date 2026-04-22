@@ -11,8 +11,7 @@
 """
 SSRS REST client
 """
-import traceback
-from typing import Iterator, List, Optional, Union
+from typing import Iterable, Iterator, Optional, Union
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -35,11 +34,14 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "api/v2.0"
-DEFAULT_TIMEOUT = 30
+CONNECT_TIMEOUT = 10
+READ_TIMEOUT = 120
 PAGE_SIZE = 100
 MAX_RETRIES = 2
 BACKOFF_FACTOR = 1
 RETRY_STATUS_CODES = (500, 502, 503, 504)
+REPORT_SELECT_FIELDS = "Id,Name,Path,Description,Type,Hidden,HasDataSources"
+FOLDER_SELECT_FIELDS = "Id,Name,Path"
 
 
 class SsrsClient:
@@ -78,9 +80,30 @@ class SsrsClient:
 
     def _get(self, path: str, params: Optional[dict] = None) -> dict:
         url = f"{self.base_url}{path}"
-        resp = self.session.get(url, timeout=DEFAULT_TIMEOUT, params=params)
+        resp = self.session.get(
+            url, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT), params=params
+        )
         resp.raise_for_status()
         return resp.json()
+
+    def _paginate(self, path: str, params: dict, resource_label: str) -> Iterable[dict]:
+        """Yield pages from an OData endpoint. Any per-page failure raises
+        ``SourceConnectionException`` so callers can surface it instead of
+        producing a silently truncated result set."""
+        skip = 0
+        while True:
+            page_params = {**params, "$top": str(PAGE_SIZE), "$skip": str(skip)}
+            try:
+                data = self._get(path, params=page_params)
+            except Exception as exc:
+                raise SourceConnectionException(
+                    f"Failed to fetch SSRS {resource_label} at skip={skip}: {exc}"
+                ) from exc
+            yield data
+            value = data.get("value") or []
+            if len(value) < PAGE_SIZE:
+                return
+            skip += PAGE_SIZE
 
     def test_access(self) -> None:
         try:
@@ -98,37 +121,18 @@ class SsrsClient:
                 f"Failed to fetch SSRS reports: {exc}"
             ) from exc
 
-    def get_folders(self) -> List[SsrsFolder]:
-        try:
-            results: List[SsrsFolder] = []
-            skip = 0
-            while True:
-                data = self._get(
-                    "/Folders", params={"$top": str(PAGE_SIZE), "$skip": str(skip)}
-                )
-                response = SsrsFolderListResponse(**data)
-                results.extend(response.value)
-                if len(response.value) < PAGE_SIZE:
-                    break
-                skip += PAGE_SIZE
-            return results
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch SSRS folders: %s", exc)
-        return []
+    def get_folders(self) -> Iterator[SsrsFolder]:
+        params = {
+            "$orderby": "Id",
+            "$select": FOLDER_SELECT_FIELDS,
+        }
+        for data in self._paginate("/Folders", params, "folders"):
+            yield from SsrsFolderListResponse(**data).value
 
     def get_reports(self) -> Iterator[SsrsReport]:
-        try:
-            skip = 0
-            while True:
-                data = self._get(
-                    "/Reports", params={"$top": str(PAGE_SIZE), "$skip": str(skip)}
-                )
-                response = SsrsReportListResponse(**data)
-                yield from response.value
-                if len(response.value) < PAGE_SIZE:
-                    break
-                skip += PAGE_SIZE
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch SSRS reports: %s", exc)
+        params = {
+            "$orderby": "Id",
+            "$select": REPORT_SELECT_FIELDS,
+        }
+        for data in self._paginate("/Reports", params, "reports"):
+            yield from SsrsReportListResponse(**data).value

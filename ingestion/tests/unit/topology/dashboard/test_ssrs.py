@@ -15,6 +15,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -297,10 +298,20 @@ class TestSsrsModels:
         assert report.hidden is True
 
 
+def _build_mock_client():
+    """Return a MagicMock with the real ``get_reports``/``get_folders``/``_paginate``
+    bound so tests exercise the pagination + error-propagation logic while only
+    stubbing out the HTTP call (``_get``)."""
+    client = MagicMock(spec=SsrsClient)
+    client._paginate = SsrsClient._paginate.__get__(client)
+    client.get_reports = SsrsClient.get_reports.__get__(client)
+    client.get_folders = SsrsClient.get_folders.__get__(client)
+    return client
+
+
 class TestSsrsClientPagination:
     def test_get_reports_single_page(self):
-        client = MagicMock(spec=SsrsClient)
-        client.get_reports = SsrsClient.get_reports.__get__(client)
+        client = _build_mock_client()
         client._get = MagicMock(
             return_value={
                 "value": [
@@ -318,8 +329,7 @@ class TestSsrsClientPagination:
         client._get.assert_called_once()
 
     def test_get_reports_multi_page(self):
-        client = MagicMock(spec=SsrsClient)
-        client.get_reports = SsrsClient.get_reports.__get__(client)
+        client = _build_mock_client()
 
         page1 = {
             "value": [
@@ -352,8 +362,7 @@ class TestSsrsClientPagination:
         assert kwargs2["params"]["$skip"] == "100"
 
     def test_get_reports_streams_lazily(self):
-        client = MagicMock(spec=SsrsClient)
-        client.get_reports = SsrsClient.get_reports.__get__(client)
+        client = _build_mock_client()
 
         page1 = {
             "value": [
@@ -383,8 +392,7 @@ class TestSsrsClientPagination:
         assert client._get.call_count == 1
 
     def test_get_folders_multi_page(self):
-        client = MagicMock(spec=SsrsClient)
-        client.get_folders = SsrsClient.get_folders.__get__(client)
+        client = _build_mock_client()
 
         page1 = {
             "value": [
@@ -400,14 +408,85 @@ class TestSsrsClientPagination:
         }
         client._get = MagicMock(side_effect=[page1, page2])
 
-        folders = client.get_folders()
+        folders = list(client.get_folders())
         assert len(folders) == 120
         assert client._get.call_count == 2
 
     def test_get_reports_empty(self):
-        client = MagicMock(spec=SsrsClient)
-        client.get_reports = SsrsClient.get_reports.__get__(client)
+        client = _build_mock_client()
         client._get = MagicMock(return_value={"value": []})
         reports = list(client.get_reports())
         assert len(reports) == 0
         client._get.assert_called_once()
+
+    def test_get_reports_sends_optimized_odata_params(self):
+        client = _build_mock_client()
+        client._get = MagicMock(return_value={"value": []})
+
+        list(client.get_reports())
+
+        _, kwargs = client._get.call_args
+        params = kwargs["params"]
+        assert params["$orderby"] == "Id"
+        assert "Id" in params["$select"]
+        assert "Hidden" in params["$select"]
+        assert params["$top"] == "100"
+        assert params["$skip"] == "0"
+
+    def test_get_folders_sends_optimized_odata_params(self):
+        client = _build_mock_client()
+        client._get = MagicMock(return_value={"value": []})
+
+        list(client.get_folders())
+
+        _, kwargs = client._get.call_args
+        params = kwargs["params"]
+        assert params["$orderby"] == "Id"
+        assert params["$select"] == "Id,Name,Path"
+
+    def test_get_reports_raises_on_persistent_failure(self):
+        """Ensure a failed page surfaces as SourceConnectionException rather
+        than a silently truncated stream — otherwise mark-deleted would wipe
+        dashboards whenever SSRS is slow or briefly down."""
+        from metadata.ingestion.connections.test_connections import (
+            SourceConnectionException,
+        )
+
+        client = _build_mock_client()
+        client._get = MagicMock(side_effect=requests.ReadTimeout("boom"))
+
+        with pytest.raises(SourceConnectionException):
+            list(client.get_reports())
+
+    def test_get_reports_raises_mid_stream(self):
+        """If page N succeeds but page N+1 fails, the generator must raise —
+        yielding a partial set silently would cause mark_deleted to drop the
+        rest of the catalog."""
+        from metadata.ingestion.connections.test_connections import (
+            SourceConnectionException,
+        )
+
+        client = _build_mock_client()
+        page1 = {
+            "value": [
+                {"Id": f"r-{i}", "Name": f"R{i}", "Path": f"/R{i}"} for i in range(100)
+            ]
+        }
+        client._get = MagicMock(side_effect=[page1, requests.ReadTimeout("mid-stream")])
+
+        reports_iter = client.get_reports()
+        first_page = [next(reports_iter) for _ in range(100)]
+        assert len(first_page) == 100
+        with pytest.raises(SourceConnectionException):
+            next(reports_iter)
+
+    def test_get_folders_raises_on_failure(self):
+        from metadata.ingestion.connections.test_connections import (
+            SourceConnectionException,
+        )
+
+        client = _build_mock_client()
+        client._get = MagicMock(side_effect=requests.ConnectionError("no route"))
+
+        with pytest.raises(SourceConnectionException):
+            list(client.get_folders())

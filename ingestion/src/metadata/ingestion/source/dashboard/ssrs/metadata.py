@@ -77,8 +77,9 @@ class SsrsSource(DashboardServiceSource):
         self.folder_path_map: Dict[str, str] = {}
 
     def prepare(self):
-        folders = self.client.get_folders()
-        self.folder_path_map = {folder.path: folder.name for folder in folders}
+        self.folder_path_map = {
+            folder.path: folder.name for folder in self.client.get_folders()
+        }
         return super().prepare()
 
     def get_dashboards_list(self) -> Iterable[SsrsReport]:
