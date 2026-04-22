@@ -124,13 +124,13 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
+      "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
     },
     "testCaseEntityName": {
       "description": "Name that identifies a test definition and test case.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
+      "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",
