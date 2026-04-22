@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
@@ -94,78 +94,75 @@ public class ColumnRepository {
     }
   }
 
-public ColumnGridResponse getColumnGridPaginated(
-    SecurityContext securityContext,
-    ColumnAggregator.ColumnAggregationRequest request) throws IOException {
+  public ColumnGridResponse getColumnGridPaginated(
+      SecurityContext securityContext, ColumnAggregator.ColumnAggregationRequest request)
+      throws IOException {
 
-  ColumnGridResponse response = columnAggregator.aggregateColumns(request);
+    ColumnGridResponse response = columnAggregator.aggregateColumns(request);
 
-  List<ColumnGridItem> filtered =
-      response.getColumns() == null
-          ? Collections.emptyList()
-          : response.getColumns().stream()
-              .filter(item -> {
+    List<ColumnGridItem> filtered =
+        response.getColumns() == null
+            ? Collections.emptyList()
+            : response.getColumns().stream()
+                .filter(
+                    item -> {
+                      if (Boolean.TRUE.equals(request.getHasConflicts())
+                          && !Boolean.TRUE.equals(item.getHasVariations())) {
+                        return false;
+                      }
 
-                if (Boolean.TRUE.equals(request.getHasConflicts())
-                    && !Boolean.TRUE.equals(item.getHasVariations())) {
-                  return false;
-                }
+                      if (Boolean.TRUE.equals(request.getHasMissingMetadata())
+                          && !hasMissingMetadata(item)) {
+                        return false;
+                      }
 
-                if (Boolean.TRUE.equals(request.getHasMissingMetadata())
-                    && !hasMissingMetadata(item)) {
-                  return false;
-                }
+                      if (!matchesMetadataStatus(item, request.getMetadataStatus())) {
+                        return false;
+                      }
 
-                if (!matchesMetadataStatus(item, request.getMetadataStatus())) {
-                  return false;
-                }
+                      return true;
+                    })
+                .collect(Collectors.toList());
 
-                return true;
-              })
-              .collect(Collectors.toList());
+    // NOTE: Counts reflect only filtered results for the current page.
+    // Full dataset filtering requires pushing predicates into aggregation layer.
+    // Filtering is applied post-aggregation.
+    // This may result in fewer items than requested page size
+    // and cursor may not perfectly reflect filtered dataset.
+    // Proper fix would require pushing filters into aggregation layer.
+    response.setColumns(filtered);
+    response.setTotalUniqueColumns(filtered.size());
+    response.setTotalOccurrences(
+        filtered.stream()
+            .mapToInt(item -> item.getTotalOccurrences() != null ? item.getTotalOccurrences() : 0)
+            .sum());
 
-  // NOTE: Counts reflect only filtered results for the current page.
-  // Full dataset filtering requires pushing predicates into aggregation layer.
-  // Filtering is applied post-aggregation.
-  // This may result in fewer items than requested page size
-  // and cursor may not perfectly reflect filtered dataset.
-  // Proper fix would require pushing filters into aggregation layer.
-  response.setColumns(filtered);
-  response.setTotalUniqueColumns(filtered.size());
-  response.setTotalOccurrences(
-      filtered.stream()
-          .mapToInt(item -> item.getTotalOccurrences() != null ? item.getTotalOccurrences() : 0)
-          .sum());
-
-  return response;
-}
-
-public static boolean matchesMetadataStatus(
-    ColumnGridItem item, String metadataStatus) {
-
-  if (metadataStatus == null || metadataStatus.isBlank()) {
-    return true;
+    return response;
   }
 
-  String itemStatus =
-      item.getMetadataStatus() != null
-          ? item.getMetadataStatus().value()
-          : "";
+  public static boolean matchesMetadataStatus(ColumnGridItem item, String metadataStatus) {
 
-  return metadataStatus.trim().equalsIgnoreCase(itemStatus);
-}
+    if (metadataStatus == null || metadataStatus.isBlank()) {
+      return true;
+    }
 
-private boolean hasMissingMetadata(ColumnGridItem item) {
-  if (item.getGroups() == null) {
-    return true;
+    String itemStatus = item.getMetadataStatus() != null ? item.getMetadataStatus().value() : "";
+
+    return metadataStatus.trim().equalsIgnoreCase(itemStatus);
   }
 
-  return item.getGroups().stream()
-      .anyMatch(
-          group ->
-              (group.getDescription() == null || group.getDescription().isEmpty())
-                  || (group.getTags() == null || group.getTags().isEmpty()));
-}
+  private boolean hasMissingMetadata(ColumnGridItem item) {
+    if (item.getGroups() == null) {
+      return true;
+    }
+
+    return item.getGroups().stream()
+        .anyMatch(
+            group ->
+                (group.getDescription() == null || group.getDescription().isEmpty())
+                    || (group.getTags() == null || group.getTags().isEmpty()));
+  }
+
   public Column updateColumnByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
