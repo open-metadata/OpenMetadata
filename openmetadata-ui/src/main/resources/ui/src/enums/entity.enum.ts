@@ -100,6 +100,7 @@ export enum EntityLineageNodeType {
   DEFAULT = 'default',
   NOT_CONNECTED = 'not-connected',
   LOAD_MORE = 'load-more',
+  TEMP_TABLE = 'temp-table',
 }
 
 export enum TabSpecificField {

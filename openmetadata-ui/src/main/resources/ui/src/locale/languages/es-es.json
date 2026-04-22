@@ -2107,6 +2107,7 @@
     "template": "Plantilla",
     "template-field-name": "Plantilla {{fieldName}}",
     "template-plural": "Plantillas",
+    "temporary-table": "Tabla temporal",
     "tenant-id": "Id del tenant",
     "term": "Término",
     "term-boost": "Impulso de Término",

@@ -2107,6 +2107,7 @@
     "template": "เทมเพลต",
     "template-field-name": "เทมเพลต {{fieldName}}",
     "template-plural": "เทมเพลต",
+    "temporary-table": "ตารางชั่วคราว",
     "tenant-id": "รหัสผู้เช่า",
     "term": "คำศัพท์",
     "term-boost": "การเพิ่มคำศัพท์",

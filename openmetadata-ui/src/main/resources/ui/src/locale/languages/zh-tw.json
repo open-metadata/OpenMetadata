@@ -2107,6 +2107,7 @@
     "template": "範本",
     "template-field-name": "範本{{fieldName}}",
     "template-plural": "範本",
+    "temporary-table": "臨時表",
     "tenant-id": "租用戶 ID",
     "term": "術語",
     "term-boost": "術語權重",

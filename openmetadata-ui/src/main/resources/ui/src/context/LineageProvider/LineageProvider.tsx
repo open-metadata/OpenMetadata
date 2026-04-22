@@ -1233,6 +1233,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       if (node.type === EntityLineageNodeType.LOAD_MORE) {
         selectLoadMoreNode(node);
+      } else if (
+        node.data?.node?.entityType === EntityLineageNodeType.TEMP_TABLE
+      ) {
+        return;
       } else {
         setSelectedEdge(undefined);
         setActiveNode(node);

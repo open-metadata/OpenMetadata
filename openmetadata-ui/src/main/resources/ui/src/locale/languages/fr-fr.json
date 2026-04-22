@@ -2107,6 +2107,7 @@
     "template": "Modèle",
     "template-field-name": "Modèle {{fieldName}}",
     "template-plural": "Modèles",
+    "temporary-table": "Table temporaire",
     "tenant-id": "ID du Locataire",
     "term": "Terme",
     "term-boost": "Boost de Terme",

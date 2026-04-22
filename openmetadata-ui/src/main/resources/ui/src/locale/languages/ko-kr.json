@@ -2107,6 +2107,7 @@
     "template": "템플릿",
     "template-field-name": "템플릿 {{fieldName}}",
     "template-plural": "템플릿",
+    "temporary-table": "임시 테이블",
     "tenant-id": "테넌트 ID",
     "term": "용어",
     "term-boost": "용어 부스트",

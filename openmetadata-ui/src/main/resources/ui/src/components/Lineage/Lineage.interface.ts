@@ -21,7 +21,10 @@ import { MessageSchemaObject } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
 import { APISchema } from '../../generated/type/apiSchema';
-import { ColumnLineage } from '../../generated/type/entityLineage';
+import {
+  ColumnLineage,
+  TempLineageTable,
+} from '../../generated/type/entityLineage';
 import {
   SearchSourceAlias,
   TableSearchSource,
@@ -65,6 +68,7 @@ export interface EdgeDetails {
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   docId?: string;
   extraInfo?: EdgeDetails;
+  tempLineageTables?: TempLineageTable[];
 }
 
 export interface ColumnLevelLineageNode

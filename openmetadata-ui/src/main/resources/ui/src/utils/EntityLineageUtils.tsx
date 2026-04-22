@@ -60,6 +60,7 @@ import {
   EdgeData,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
+import TempTableNode from '../components/Entity/EntityLineage/TempTableNode/TempTableNode';
 import {
   EntityChildren,
   Flatten,
@@ -100,7 +101,11 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
-import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
+import {
+  ColumnLineage,
+  LineageDetails,
+  TempLineageTable,
+} from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { useLineageStore } from '../hooks/useLineageStore';
@@ -534,6 +539,7 @@ export const nodeTypes = {
   input: CustomNodeV1,
   default: CustomNodeV1,
   'load-more': LoadMoreNode,
+  'temp-table': TempTableNode,
 };
 
 export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
@@ -1364,6 +1370,102 @@ const createLoadMoreEdge = (
   };
 };
 
+const createTempTableNode = (name: string): LineageNodeType => {
+  const nodeId = `temp_table_${name}`;
+
+  return {
+    id: nodeId,
+    columns: [],
+    type: EntityLineageNodeType.TEMP_TABLE,
+    name,
+    displayName: name,
+    fullyQualifiedName: nodeId,
+    entityType: EntityLineageNodeType.TEMP_TABLE,
+  };
+};
+
+const extractTempLineageNodes = (
+  upstreamEdges: Record<string, EdgeDetails>,
+  downstreamEdges: Record<string, EdgeDetails>,
+  existingNodes: LineageNodeType[]
+): { nodes: LineageNodeType[]; edges: EdgeDetails[] } => {
+  const existingNodeByFqn = new Map<string, LineageNodeType>(
+    existingNodes
+      .filter((n) => Boolean(n.fullyQualifiedName))
+      .map((n) => [n.fullyQualifiedName as string, n])
+  );
+
+  const existingNodeByName = new Map<string, LineageNodeType>(
+    existingNodes
+      .filter((n) => Boolean(n.name))
+      .map((n) => [n.name as string, n])
+  );
+
+  const tempNodes = new Map<string, LineageNodeType>();
+  const tempEdges: EdgeDetails[] = [];
+  const allEdges = [
+    ...Object.values(upstreamEdges),
+    ...Object.values(downstreamEdges),
+  ];
+
+  const resolveHopEntity = (name: string) => {
+    const existing =
+      existingNodeByFqn.get(name) ?? existingNodeByName.get(name);
+
+    if (existing) {
+      return {
+        id: existing.id,
+        type: existing.entityType ?? existing.type ?? 'table',
+        fullyQualifiedName: existing.fullyQualifiedName as string,
+        isNew: false,
+      };
+    }
+
+    const tempId = `temp_table_${name}`;
+
+    return {
+      id: tempId,
+      type: EntityLineageNodeType.TEMP_TABLE,
+      fullyQualifiedName: tempId,
+      isNew: true,
+    };
+  };
+
+  for (const edge of allEdges) {
+    if (!edge.tempLineageTables?.length) {
+      continue;
+    }
+
+    for (const hop of edge.tempLineageTables as TempLineageTable[]) {
+      const from = resolveHopEntity(hop.fromEntity);
+      const to = resolveHopEntity(hop.toEntity);
+
+      if (from.isNew && !tempNodes.has(from.id)) {
+        tempNodes.set(from.id, createTempTableNode(hop.fromEntity));
+      }
+
+      if (to.isNew && !tempNodes.has(to.id)) {
+        tempNodes.set(to.id, createTempTableNode(hop.toEntity));
+      }
+
+      tempEdges.push({
+        fromEntity: {
+          id: from.id,
+          type: from.type,
+          fullyQualifiedName: from.fullyQualifiedName,
+        },
+        toEntity: {
+          id: to.id,
+          type: to.type,
+          fullyQualifiedName: to.fullyQualifiedName,
+        },
+      });
+    }
+  }
+
+  return { nodes: Array.from(tempNodes.values()), edges: tempEdges };
+};
+
 const handleNodePagination = (
   node: LineageNodeType,
   edges: Record<string, EdgeDetails>,
@@ -1649,11 +1751,19 @@ export const parseLineageData = (
     upstreamEdges
   );
 
+  // Extract temporary/intermediate table nodes from edge data
+  const { nodes: tempNodes, edges: tempEdges } = extractTempLineageNodes(
+    upstreamEdges,
+    downstreamEdges,
+    nodesArray
+  );
+
   // Combine all nodes and edges
-  const finalNodes = [...processedNodes, ...newNodes];
+  const finalNodes = [...processedNodes, ...newNodes, ...tempNodes];
   const finalEdges = [
     ...(processedEdges as unknown as EdgeDetails[]),
     ...newEdges,
+    ...tempEdges,
   ];
 
   // Find the main entity

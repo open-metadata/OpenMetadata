@@ -2107,6 +2107,7 @@
     "template": "模板",
     "template-field-name": "模板{{fieldName}}",
     "template-plural": "模板",
+    "temporary-table": "临时表",
     "tenant-id": "租户ID",
     "term": "术语",
     "term-boost": "术语提升",

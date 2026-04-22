@@ -2107,6 +2107,7 @@
     "template": "قالب",
     "template-field-name": "قالب {{fieldName}}",
     "template-plural": "قوالب",
+    "temporary-table": "جدول مؤقت",
     "tenant-id": "معرف المستأجر",
     "term": "مصطلح",
     "term-boost": "تعزيز المصطلح",
