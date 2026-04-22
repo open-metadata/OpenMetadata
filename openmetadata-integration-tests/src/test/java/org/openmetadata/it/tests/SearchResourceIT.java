@@ -419,8 +419,24 @@ public class SearchResourceIT {
   void testDataAssetAliasSearchMatrix(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    String longName = "lhr__incoming_flights__arrivals_schedule_v1";
-    Table table = createTestTable(ns, longName);
+    // Use a production-realistic name length (~40 chars, 5-6 alnum sub-tokens) by bypassing
+    // ns.prefix() — that helper appends RUN_ID + classId + methodId which balloons the name
+    // to ~127 chars, and the sheer ngram cardinality of that long string exceeds
+    // OpenSearch's 1024 max_clause_count even with fuzziness=0 + max_expansions=1.
+    // Production names like kochi__expected_vessels__portcall_v1 are ~36 chars, which is
+    // the length we want to pin behavior against.
+    String uniq = ns.uniqueShortId().substring(0, 8);
+    String longName = uniq + "_lhr__incoming_flights__arrivals_schedule_v1";
+    Table table =
+        createTestTableWithColumns(
+            ns,
+            longName,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
     String indexedName = table.getName();
 
     // Wait for the table to appear in the table-only index using a real search call.
@@ -445,11 +461,9 @@ public class SearchResourceIT {
               return false;
             });
 
-    // Derive substrings from the namespaced name so the scenarios track whatever namespace
-    // decoration `ns.prefix()` applies, including the suffix it appends. The shouldFind
-    // column reflects realistic user expectations given that `name` has fuzziness via
-    // FUZZY_FIELDS and `name.ngram` handles substrings.
-    String firstSegment = indexedName.split("_+")[0]; // e.g. "svc<hash>lhr" or "lhr"
+    // Derive substrings from the seeded name. shouldFind reflects realistic user expectations
+    // given that `name` has fuzziness via FUZZY_FIELDS and `name.ngram` handles substrings.
+    String firstSegment = indexedName.split("_+")[0]; // the 8-char unique tag
     int midLen = Math.min(15, indexedName.length());
     String shortPrefix = indexedName.substring(0, Math.min(5, indexedName.length()));
     String midPrefix = indexedName.substring(0, midLen);
@@ -631,9 +645,18 @@ public class SearchResourceIT {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Seed two tables so ranking is observable: the exact-match query must prefer `target`
-    // over the near-duplicate `decoy` that shares the same first segment.
-    Table target = createTestTable(ns, "exact_rank_target_v1");
-    Table decoy = createTestTable(ns, "exact_rank_target_v1_extended_suffix");
+    // over the near-duplicate `decoy` that shares the same first segment. Use short unique
+    // tags (bypassing ns.prefix()) so the seeded names stay at production-realistic lengths
+    // and the exact-name query stays well under OpenSearch's default 1024-clause cap.
+    String uniq = ns.uniqueShortId().substring(0, 8);
+    String targetNameRaw = uniq + "_exact_rank_target_v1";
+    String decoyNameRaw = uniq + "_exact_rank_target_v1_extended_suffix";
+    List<Column> cols =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+    Table target = createTestTableWithColumns(ns, targetNameRaw, cols);
+    Table decoy = createTestTableWithColumns(ns, decoyNameRaw, cols);
     String targetName = target.getName();
     String decoyName = decoy.getName();
 
