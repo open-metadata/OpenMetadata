@@ -64,6 +64,8 @@ import {
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { SearchIndex } from '../../../../enums/search.enum';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
@@ -72,7 +74,6 @@ import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
-  roles,
   isLoading,
   onCancel,
   onSave,
@@ -135,12 +136,35 @@ const CreateUser = ({
   const selectedRoles = Form.useWatch('roles', form);
   const selectedPersonas = Form.useWatch('personas', form);
 
-  const roleOptions = useMemo(() => {
-    return map(roles, (role) => ({
-      label: getEntityName(role),
-      value: role.id,
-    }));
-  }, [roles]);
+  const fetchRoleOptions = async (searchText: string, page?: number) => {
+    try {
+      const response = await searchQuery({
+        query: searchText || '*',
+        searchIndex: SearchIndex.ROLE,
+        pageSize: AGGREGATE_PAGE_SIZE_LARGE,
+        pageNumber: page ?? 1,
+        fetchSource: true,
+      });
+
+      return {
+        data: response.hits.hits.map((hit) => ({
+          label: getEntityName(hit._source),
+          value: hit._source.id,
+          data: hit._source,
+        })),
+        paging: {
+          total: response.hits.total.value,
+        },
+      };
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.role-plural') })
+      );
+
+      return { data: [], paging: { total: 0 } };
+    }
+  };
 
   const fetchPersonaOptions = async (_searchText: string, page?: number) => {
     try {
@@ -440,13 +464,14 @@ const CreateUser = ({
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
               <Form.Item label={t('label.role-plural')} name="roles">
-                <Select
+                <AsyncSelect
+                  enableInfiniteScroll
+                  showSearch
+                  api={fetchRoleOptions}
                   data-testid="roles-dropdown"
-                  disabled={isEmpty(roles)}
                   filterOption={handleSearchFilterOption}
                   getPopupContainer={(triggerNode) => triggerNode.parentElement}
                   mode="multiple"
-                  options={roleOptions}
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.role-plural'),
                   })}

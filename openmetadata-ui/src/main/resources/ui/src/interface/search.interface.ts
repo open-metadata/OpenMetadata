@@ -53,6 +53,7 @@ import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
@@ -118,6 +119,8 @@ export interface TopicSearchSource extends SearchSourceBase, Topic {} // extends
 export interface UserSearchSource extends SearchSourceBase, User {} // extends EntityInterface
 
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
+
+export interface RoleSearchSource extends SearchSourceBase, Role {} // extends EntityInterface
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
 
@@ -244,6 +247,7 @@ export type ExploreSearchSource =
   | QuerySearchSource
   | UserSearchSource
   | TeamSearchSource
+  | RoleSearchSource
   | TagClassSearchSource
   | StoredProcedureSearchSource
   | DashboardDataModelSearchSource
@@ -278,6 +282,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.GLOSSARY]: GlossarySearchSource;
   [SearchIndex.GLOSSARY_TERM]: GlossaryTermSearchSource;
   [SearchIndex.TEAM]: TeamSearchSource;
+  [SearchIndex.ROLE]: RoleSearchSource;
   [SearchIndex.USER]: UserSearchSource;
   [SearchIndex.TOPIC]: TopicSearchSource;
   [SearchIndex.TAG]: TagClassSearchSource;
