@@ -48,32 +48,24 @@ class FivetranClient:
         )
         self.client = TrackedREST(client_config, source_name="fivetran")
 
-    def _run_paginator(self, path: str) -> Iterable[dict]:
-        response = self.client.get(f"{path}?limit={self.config.limit}")
-        if not isinstance(response, dict):
-            logger.debug(f"Unexpected response type for {path}: {type(response)}")
-            return
-        data = response.get("data")
-        if not isinstance(data, dict):
-            return
-        yield from data.get("items", [])
-        while data.get("next_cursor"):
-            response = self.client.get(
-                f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}"
-            )
-            if not isinstance(response, dict):
-                break
-            data = response.get("data", {})
-            if not isinstance(data, dict):
-                break
-            yield from data.get("items", [])
-
     def _get_data(self, path: str) -> dict:
         response = self.client.get(path)
         if not isinstance(response, dict):
             logger.debug(f"Unexpected response type for {path}: {type(response)}")
             return {}
-        return response.get("data", {})
+        data = response.get("data")
+        if not isinstance(data, dict):
+            return {}
+        return data
+
+    def _run_paginator(self, path: str) -> Iterable[dict]:
+        data = self._get_data(f"{path}?limit={self.config.limit}")
+        yield from data.get("items", [])
+        while data.get("next_cursor"):
+            data = self._get_data(
+                f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}"
+            )
+            yield from data.get("items", [])
 
     def list_groups(self) -> Iterable[dict]:
         return self._run_paginator("/groups")

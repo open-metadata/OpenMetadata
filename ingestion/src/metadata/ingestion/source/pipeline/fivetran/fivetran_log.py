@@ -109,7 +109,7 @@ def query_sync_logs(
                 .limit(MAX_LOG_ROWS)
             )
 
-            return conn.execute(query).fetchall()
+            return list(conn.execute(query).yield_per(500))
 
     except Exception as exc:
         logger.debug(traceback.format_exc())

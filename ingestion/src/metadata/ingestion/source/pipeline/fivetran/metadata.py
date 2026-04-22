@@ -118,6 +118,7 @@ class FivetranSource(PipelineServiceSource):
     def get_connections_jobs(
         self,
         pipeline_details: FivetranPipelineDetails,
+        source_url: Optional[SourceUrl] = None,
     ) -> List[Task]:
         """Returns the three ELT phase tasks for a Fivetran connector."""
         return [
@@ -125,18 +126,21 @@ class FivetranSource(PipelineServiceSource):
                 name=FIVETRAN_TASK_EXTRACT,
                 displayName="Extract",
                 taskType="Extract",
+                sourceUrl=source_url,
                 downstreamTasks=[FIVETRAN_TASK_PROCESS],
             ),  # type: ignore
             Task(
                 name=FIVETRAN_TASK_PROCESS,
                 displayName="Process",
                 taskType="Process",
+                sourceUrl=source_url,
                 downstreamTasks=[FIVETRAN_TASK_LOAD],
             ),  # type: ignore
             Task(
                 name=FIVETRAN_TASK_LOAD,
                 displayName="Load",
                 taskType="Load",
+                sourceUrl=source_url,
                 downstreamTasks=[],
             ),  # type: ignore
         ]
@@ -153,7 +157,9 @@ class FivetranSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=EntityName(pipeline_details.pipeline_name),
             displayName=pipeline_details.pipeline_display_name,
-            tasks=self.get_connections_jobs(pipeline_details=pipeline_details),
+            tasks=self.get_connections_jobs(
+                pipeline_details=pipeline_details, source_url=source_url
+            ),
             service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             sourceUrl=source_url,
             scheduleInterval=self._get_schedule_interval(pipeline_details),
@@ -285,6 +291,8 @@ class FivetranSource(PipelineServiceSource):
             try:
                 start_dt = datetime.fromisoformat(sync["start"].replace("Z", "+00:00"))
                 start_ms = datetime_to_ts(start_dt)
+                if start_ms in seen_timestamps:
+                    continue
                 seen_timestamps.add(start_ms)
 
                 end_ms = None
@@ -364,12 +372,10 @@ class FivetranSource(PipelineServiceSource):
         source_connector_type = pipeline_details.source.get("service")
         is_messaging_source = source_connector_type in MESSAGING_CONNECTOR_TYPES
 
-        source_database_name = (pipeline_details.source.get("config") or {}).get(
-            "database"
+        source_database_name = self._get_database_name(pipeline_details.source)
+        destination_database_name = self._get_database_name(
+            pipeline_details.destination
         )
-        destination_database_name = (
-            pipeline_details.destination.get("config") or {}
-        ).get("database")
 
         pipeline_entity = None
 
@@ -621,6 +627,21 @@ class FivetranSource(PipelineServiceSource):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_database_name(details: dict) -> Optional[str]:
+        """Extract database name from a Fivetran source or destination config.
+
+        Different connector types store the database/catalog/project name
+        under different config keys, so we check multiple keys in priority
+        order.
+        """
+        config = details.get("config") or {}
+        for key in ("database", "catalog", "project_id", "project"):
+            value = config.get(key)
+            if value:
+                return value
+        return None
 
     @staticmethod
     def _get_schedule_interval(
