@@ -80,7 +80,7 @@ BIGQUERY_CONSTRAINTS = textwrap.dedent(
         ccu.table_catalog AS referenced_catalog,
         ccu.table_schema AS referenced_schema,
         ccu.table_name AS referenced_table,
-        kcu.column_name AS referenced_column
+        ccu.column_name AS referenced_column
     FROM `{project_id}`.`{dataset_name}`.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS kcu
     JOIN `{project_id}`.`{dataset_name}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS ccu
         ON kcu.constraint_catalog = ccu.constraint_catalog
