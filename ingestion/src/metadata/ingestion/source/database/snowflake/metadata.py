@@ -164,6 +164,12 @@ ischema_names["MAP"] = MAP
 
 logger = ingestion_logger()
 
+# Preview length for a cluster-key expression in the fallback warning log.
+# Used only when a genuinely malformed expression trips the outer exception
+# handler; normal deep-but-well-formed expressions are walked iteratively
+# and never hit that path.
+_CLUSTER_KEY_LOG_PREVIEW = 200
+
 # pylint: disable=protected-access
 SnowflakeDialect._json_deserializer = json.loads
 SnowflakeDialect.get_table_names = get_table_names
@@ -471,11 +477,20 @@ class SnowflakeSource(
             result_list.append(name)
 
     def __get_identifier_from_function(self, function_token: Function) -> List:
+        # Iterative DFS with an explicit stack. Previously this was recursive
+        # and a deeply-nested CLUSTERING_KEY could exhaust Python's stack,
+        # cascading into SQLAlchemy / urllib3 weakref finalizers and crashing
+        # the ingestion pod. Pushing children in reverse lets us pop them in
+        # left-to-right source order, preserving identifier ordering.
         identifiers = []
-        for token in function_token.get_parameters():
+        stack = list(function_token.get_parameters())
+        stack.reverse()
+        while stack:
+            token = stack.pop()
             if isinstance(token, Function):
-                # get column names from nested functions
-                identifiers.extend(self.__get_identifier_from_function(token))
+                children = list(token.get_parameters())
+                children.reverse()
+                stack.extend(children)
             elif isinstance(token, Identifier):
                 self.__clean_append(token, identifiers)
         return identifiers
@@ -493,6 +508,23 @@ class SnowflakeSource(
                 elif isinstance(token, Identifier):
                     self.__clean_append(token, result)
             return result
+        except RecursionError:
+            # Defence-in-depth: the iterative walker above eliminates our own
+            # recursion, but sqlparse.parse() or a future refactor could still
+            # trip the limit. Never let RecursionError escape this path —
+            # leaving it would poison SQLAlchemy pool / urllib3 finalizers
+            # and abort the process.
+            truncated = (
+                cluster_key_expr[:_CLUSTER_KEY_LOG_PREVIEW] + "..."
+                if len(cluster_key_expr) > _CLUSTER_KEY_LOG_PREVIEW
+                else cluster_key_expr
+            )
+            logger.warning(
+                "RecursionError parsing cluster key; skipping partition "
+                "columns for expression: %r",
+                truncated,
+            )
+            return []
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to parse cluster key - {err}")
