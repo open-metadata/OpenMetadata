@@ -63,7 +63,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from 'rest/knowledgeCenterAPI';
-import { Transi18next } from 'utils/CommonUtils';
+import { Transi18next } from 'utils/i18next/LocalUtil';
 import { getKnowledgePagePath } from 'utils/KnowledgePageUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
