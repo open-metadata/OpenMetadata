@@ -76,11 +76,12 @@ public class SearchIndexClusterValidator {
     try {
       var clusterStats = client.clusterStats();
 
-      int totalNodes = clusterStats.nodes().count().total();
-      int totalShards =
-          clusterStats.indices().shards().total() != null
-              ? clusterStats.indices().shards().total().intValue()
-              : 0;
+      int totalNodes = clusterStats != null && clusterStats.nodes() != null && clusterStats.nodes().count() != null
+          ? clusterStats.nodes().count().total()
+          : 1;
+      int totalShards = clusterStats != null && clusterStats.indices() != null && clusterStats.indices().shards() != null && clusterStats.indices().shards().total() != null
+          ? clusterStats.indices().shards().total().intValue()
+          : 0;
 
       int maxShardsPerNode = getMaxShardsPerNode(client);
       int maxShards = totalNodes * maxShardsPerNode;

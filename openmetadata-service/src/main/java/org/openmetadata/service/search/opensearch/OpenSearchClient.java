@@ -114,6 +114,13 @@ public class OpenSearchClient implements SearchClient {
     AwsConfiguration awsConfig = config != null ? config.getAws() : null;
     boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
+    boolean isAoss = false;
+    if (config != null && config.getHost() != null && config.getHost().endsWith(".aoss.amazonaws.com")) {
+      isAoss = true;
+    } else if (awsConfig != null && "aoss".equals(awsConfig.getServiceName())) {
+      isAoss = true;
+    }
+
     if (useIamAuth) {
       this.awsHttpClient = AwsCrtHttpClient.builder().build();
       this.transport = createAwsSdk2Transport(config, awsConfig, this.awsHttpClient);
@@ -132,7 +139,7 @@ public class OpenSearchClient implements SearchClient {
     this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
-    genericManager = new OpenSearchGenericManager(newClient, transport);
+    genericManager = new OpenSearchGenericManager(newClient, transport, isAoss);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
     searchManager =
