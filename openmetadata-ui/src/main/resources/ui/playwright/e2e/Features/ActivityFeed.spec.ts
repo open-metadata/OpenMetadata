@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -479,30 +479,6 @@ test.describe('Mention notifications in Notification Box', () => {
     },
   });
 
-  let conversationThreadId: string;
-  const conversationSeedText = 'Initial conversation thread for mention test';
-
-  const openEntityActivityFeed = async (page: Page) => {
-    const entityFqn = entity.entityResponseData.fullyQualifiedName ?? '';
-    const feedPromise = page.waitForResponse((response) => {
-      const url = response.url();
-
-      return (
-        url.includes('/api/v1/feed') &&
-        url.includes('entityLink=') &&
-        url.includes('type=Conversation') &&
-        response.request().method() === 'GET'
-      );
-    });
-
-    await page.goto(
-      `/table/${encodeURIComponent(entityFqn)}/activity_feed/all`
-    );
-    await feedPromise;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.getByTestId('entity-header-name')).toBeVisible();
-  };
-
   test.beforeAll('Setup entities and users', async ({ browser }) => {
     adminUser = new UserClass();
     user1 = new UserClass();
@@ -515,24 +491,14 @@ test.describe('Mention notifications in Notification Box', () => {
     await user1.create(apiContext);
     await entity.create(apiContext);
 
-    // Create initial conversation via API since the Activity Feed UI
-    // doesn't provide an input field when the feed is empty
-    const entityFqn = entity.entityResponseData.fullyQualifiedName;
-    const conversationResponse = await apiContext.post('/api/v1/feed', {
+    await apiContext.post('/api/v1/feed', {
       data: {
-        about: `<#E::table::${entityFqn}>`,
-        message: conversationSeedText,
+        message: 'Initial conversation thread for mention test',
+        about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
         type: 'Conversation',
       },
     });
-    const conversation = await conversationResponse.json();
-    conversationThreadId = conversation.id;
-    await waitForConversationMaterialization({
-      apiContext,
-      entityLink: `<#E::table::${entityFqn}>`,
-      threadId: conversationThreadId,
-      message: conversationSeedText,
-    });
+
     await afterAction();
   });
 
@@ -540,108 +506,102 @@ test.describe('Mention notifications in Notification Box', () => {
     adminPage,
     user1Page,
   }) => {
-    test.slow();
-
-    await test.step('Admin user creates a conversation on an entity', async () => {
-      await openEntityActivityFeed(adminPage);
-      const commentsInput = adminPage.getByTestId('comments-input-field');
-
-      if (!(await commentsInput.isVisible().catch(() => false))) {
-        const seededThread = adminPage
-          .locator(
-            '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-          )
-          .filter({ hasText: conversationSeedText })
-          .first();
-
-        await expect(seededThread).toBeVisible({ timeout: 30_000 });
-        await seededThread.click();
-        await waitForAllLoadersToDisappear(adminPage);
-      }
-
-      await commentsInput.click();
-
-      await adminPage
-        .locator(
-          '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-        )
-        .fill(conversationSeedText);
-
-      await expect(
-        adminPage.locator('[data-testid="send-button"]')
-      ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="send-button"]')
-      ).not.toBeDisabled();
-
-      const postConversation = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.request().method() === 'POST' &&
-          response.url().includes('/posts')
-      );
-      await adminPage.locator('[data-testid="send-button"]').click();
-      await postConversation;
-    });
-
     await test.step('User1 mentions admin user in a reply', async () => {
       const { apiContext, afterAction } = await getApiContext(user1Page);
+      await entity.visitEntityPage(user1Page);
 
-      try {
-        const postMentionResponse = await apiContext.post(
-          `/api/v1/feed/${conversationThreadId}/posts`,
-          {
-            data: {
-              message: `Hey <#E::user::${adminUser.responseData.name}>, can you check this?`,
-            },
-          }
+      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+        `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
+      )}&type=Conversation&limit=25`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(feedUrl);
+            const data = await response.json();
+
+            return (data.data ?? []).some((thread: { message?: string }) =>
+              thread.message?.includes(
+                'Initial conversation thread for mention test'
+              )
+            );
+          },
+          { timeout: 60_000, intervals: [2_000] }
+        )
+        .toBe(true);
+
+      await afterAction();
+
+      await user1Page.getByTestId('activity_feed').click();
+
+      await waitForAllLoadersToDisappear(user1Page);
+
+      const seededThread = user1Page
+        .locator('[data-testid="message-container"]')
+        .filter({ hasText: 'Initial conversation thread for mention test' })
+        .first();
+
+      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await seededThread.click();
+
+      await waitForAllLoadersToDisappear(user1Page);
+
+      await user1Page.getByTestId('comments-input-field').click();
+
+      const editorLocator = user1Page.locator(
+        '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+      );
+
+      await editorLocator.fill('Hey ');
+
+      await editorLocator.click();
+
+      await user1Page.keyboard.press('@');
+      const userSuggestionsResponse = user1Page.waitForResponse((response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          url.includes(adminUser.responseData.displayName)
         );
+      });
+      await editorLocator.pressSequentially(adminUser.responseData.displayName);
+      await userSuggestionsResponse;
 
-        expect(postMentionResponse.status()).toBe(201);
-      } finally {
-        await afterAction();
-      }
+      await user1Page
+        .locator(`[data-value="@${adminUser.responseData.name}"]`)
+        .first()
+        .click();
+
+      await editorLocator.pressSequentially(', can you check this?');
+
+      await expect(
+        user1Page.locator('[data-testid="send-button"]')
+      ).toBeVisible();
+      await expect(
+        user1Page.locator('[data-testid="send-button"]')
+      ).not.toBeDisabled();
+
+      const postMentionResponse = user1Page.waitForResponse(
+        '/api/v1/feed/*/posts'
+      );
+      await user1Page.locator('[data-testid="send-button"]').click();
+      await postMentionResponse;
     });
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
-      const { apiContext, afterAction } = await getApiContext(adminPage);
-
-      try {
-        const loggedInUserResponse = await apiContext.get(
-          '/api/v1/users/loggedInUser'
-        );
-        const loggedInUser = await loggedInUserResponse.json();
-
-        await expect
-          .poll(
-            async () => {
-              const mentionsResponse = await apiContext.get('/api/v1/feed', {
-                params: {
-                  userId: loggedInUser.id,
-                  filterType: 'MENTIONS',
-                },
-              });
-              const mentions = await mentionsResponse.json();
-
-              return JSON.stringify(mentions.data ?? []);
-            },
-            {
-              timeout: 60_000,
-              intervals: [5_000],
-            }
-          )
-          .toContain(user1.responseData.name);
-      } finally {
-        await afterAction();
-      }
-
       await adminPage.reload();
       await waitForAllLoadersToDisappear(adminPage);
       const notificationBell = adminPage.getByTestId('task-notifications');
 
       await expect(notificationBell).toBeVisible();
 
+      const feedResponseForNotifications = adminPage.waitForResponse(
+        `/api/v1/tasks/assigned?*status=Open*`
+      );
+
       await notificationBell.click();
+      await feedResponseForNotifications;
       const notificationBox = adminPage.locator('.notification-box');
 
       await expect(notificationBox).toBeVisible();
@@ -659,21 +619,21 @@ test.describe('Mention notifications in Notification Box', () => {
       await mentionsTab.click();
       await mentionsFeedResponse;
 
-      const firstNotificationItem = notificationBox
-        .locator('li.ant-list-item.notification-dropdown-list-btn:visible')
+      const mentionsList = adminPage
+        .getByRole('tabpanel', { name: 'Mentions' })
+        .getByRole('list');
+
+      await expect(mentionsList).toBeVisible();
+
+      const firstNotificationItem = mentionsList
+        .locator('li.ant-list-item.notification-dropdown-list-btn')
         .first();
-      await expect(firstNotificationItem).toBeVisible();
 
       const firstNotificationText = await firstNotificationItem.textContent();
 
-      expect(
-        firstNotificationText
-          ?.toLowerCase()
-          .includes(user1.responseData.displayName.toLowerCase()) ||
-          firstNotificationText
-            ?.toLowerCase()
-            .includes(user1.responseData.name.toLowerCase())
-      ).toBe(true);
+      expect(firstNotificationText?.toLowerCase()).toContain(
+        user1.responseData.name.toLowerCase()
+      );
       expect(firstNotificationText?.toLowerCase()).not.toContain(
         adminUser.responseData.name.toLowerCase()
       );
@@ -712,24 +672,13 @@ test.describe('Mention notifications in Notification Box', () => {
       await expect(message).toBeVisible();
 
       // Add reaction
-      const addReactionButton = message
-        .locator('[data-testid="feed-reaction-container"]')
-        .getByTestId('add-reactions');
-      await expect(addReactionButton).toBeVisible();
-      await addReactionButton.click();
-      await user1Page
-        .locator(
-          '.ant-popover-feed-reactions .ant-popover-inner-content [data-testid="reaction-button"][title="rocket"]'
-        )
-        .waitFor({ state: 'visible' });
       const reactionResponse = user1Page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed/') &&
-          ['PATCH', 'POST', 'PUT'].includes(response.request().method())
+          response.url().includes('/api/v1/feed') &&
+          response.request().method() === 'PATCH'
       );
-      await user1Page
-        .locator('[data-testid="reaction-button"][title="rocket"]')
-        .click();
+      await message.locator('[data-testid="add-reactions"]').click();
+      await user1Page.locator('[title="rocket"]').click();
       await reactionResponse;
 
       // Hover over the emoji button to see the popover

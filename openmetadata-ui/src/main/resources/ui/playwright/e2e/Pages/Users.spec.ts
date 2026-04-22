@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -86,7 +86,6 @@ let user2: UserClass;
 let user3: UserClass;
 let tableEntity: TableClass;
 let tableEntity2: TableClass;
-let tableEntityFqn: string;
 let policy: PolicyClass;
 let role: RolesClass;
 let persona1: PersonaClass;
@@ -165,7 +164,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
   await tableEntity2.create(apiContext);
-  tableEntityFqn = tableEntity.entityResponseData.fullyQualifiedName ?? '';
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext, [adminUser.responseData.id]);
@@ -634,6 +632,40 @@ test.describe('User with Data Steward Roles', () => {
 });
 
 test.describe('User Profile Feed Interactions', () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const testMessage = 'Initial conversation thread for mention test';
+    const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
+
+    await apiContext.post('/api/v1/feed', {
+      data: {
+        message: testMessage,
+        about: entityLink,
+        type: 'Conversation',
+      },
+    });
+
+    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+      entityLink
+    )}&type=Conversation&limit=25`;
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(feedUrl);
+          const data = await response.json();
+
+          return (data.data ?? []).some((thread: { message?: string }) =>
+            thread.message?.includes(testMessage)
+          );
+        },
+        { timeout: 60_000, intervals: [2_000] }
+      )
+      .toBe(true);
+
+    await afterAction();
+  });
+
   test('Should navigate to user profile from feed card avatar click', async ({
     browser,
   }) => {
@@ -645,7 +677,10 @@ test.describe('User Profile Feed Interactions', () => {
     await visitOwnProfilePage(page);
     await feedResponse;
 
-    await page.getByTestId('message-container').first().waitFor();
+    await page
+      .getByTestId('message-container')
+      .first()
+      .waitFor({ state: 'visible' });
 
     const avatar = page
       .locator('#feedData [data-testid="message-container"]')
