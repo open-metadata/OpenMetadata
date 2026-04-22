@@ -410,6 +410,7 @@ class SnowflakeSource(
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.root.config.database
         if configured_db:
+            self._reset_per_database_state()
             self.set_inspector(configured_db)
             self.set_session_query_tag()
             self.set_partition_details()
@@ -440,6 +441,7 @@ class SnowflakeSource(
                     continue
 
                 try:
+                    self._reset_per_database_state()
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()
                     self.set_partition_details()
@@ -454,6 +456,26 @@ class SnowflakeSource(
                     logger.warning(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def _reset_per_database_state(self) -> None:
+        # deleted_tables is a process-wide list extended per-schema via
+        # _get_table_names_and_types / _get_stream_names_and_types. Without
+        # this reset, entries from previous databases accumulate across the
+        # run — hundreds of MB of FQN strings in incremental mode with heavy
+        # soft-delete history, and delete-by-name entries get replayed
+        # against the wrong database.
+        #
+        # Safety: runs between database boundaries where all schema-level
+        # workers from the previous DB are already joined (topology_runner
+        # exits the ThreadPoolExecutor context before returning to the
+        # producer generator). .clear() mutates in place rather than
+        # reassigning, so any future code that caches a local reference to
+        # the list sees the cleared state consistently.
+        deleted_tables = self.context.get_global().deleted_tables
+        if deleted_tables is None:
+            self.context.get_global().deleted_tables = []
+        else:
+            deleted_tables.clear()
 
     def __clean_append(self, token: Token, result_list: List) -> None:
         """

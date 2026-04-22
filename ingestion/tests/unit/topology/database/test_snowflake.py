@@ -16,6 +16,7 @@ snowflake unit tests
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
+import pytest
 import sqlalchemy.types as sqltypes
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -853,3 +854,128 @@ class SnowflakeUnitTest(TestCase):
                 source.schema_tags_map["TEST_SCHEMA"][0],
                 {"tag_name": "TEST_TAG", "tag_value": "123"},
             )
+
+
+class TestSnowflakeDeletedTablesPerDatabaseReset:
+    """TDD: deleted_tables must be scoped to the current database.
+
+    Production context: in incremental mode, ACCOUNT_USAGE.TABLES returns
+    soft-deleted tables historically. Every schema walked calls
+    .extend(...) on a SINGLE process-wide list
+    (self.context.get_global().deleted_tables). Across 39 DBs with 35k
+    ghost tables (the customer footprint), that list reaches hundreds of
+    megabytes of FQN strings and is only consumed at the end of each
+    database by mark_tables_as_deleted — which means entries from
+    previously-processed databases are repeatedly re-emitted as deletes
+    for the CURRENT database, in addition to the memory growth.
+
+    Required post-fix contract:
+      1. When get_database_names yields a new database, deleted_tables is
+         empty at the moment of yield — no carry-over from a prior DB.
+      2. Holds for both single-configured-DB and multi-DB discovery paths.
+      3. Does not affect other per-DB state (partition_details,
+         schema_desc_map, etc. — each of those has its own reset).
+    """
+
+    @pytest.fixture
+    def source(self):
+        return get_snowflake_sources()["not_incremental"]
+
+    def _mock_per_db_setup_methods(self, source):
+        """Patch the setup methods that hit the database so get_database_names
+        can be driven without a real connection.
+        """
+        from contextlib import ExitStack
+
+        stack = ExitStack()
+        for method_name in (
+            "set_inspector",
+            "set_session_query_tag",
+            "set_partition_details",
+            "set_schema_description_map",
+            "set_database_description_map",
+            "set_external_location_map",
+            "set_schema_tags_map",
+            "set_database_tags_map",
+        ):
+            stack.enter_context(
+                patch.object(source, method_name, MagicMock())
+            )
+        return stack
+
+    def test_configured_database_starts_with_empty_deleted_tables(self, source):
+        """Single configured-database path: any stale entries from an
+        earlier run must be cleared before we yield the DB for processing.
+        """
+        # Simulate stale state left over (e.g. from a retry, from init).
+        source.context.get_global().deleted_tables = [
+            "service.prior_db.schema.ghost_1",
+            "service.prior_db.schema.ghost_2",
+        ]
+
+        with self._mock_per_db_setup_methods(source):
+            gen = source.get_database_names()
+            yielded_db = next(gen)
+
+        assert yielded_db == "database"  # from SNOWFLAKE_CONFIGURATION
+        assert source.context.get_global().deleted_tables == [], (
+            "deleted_tables must be empty at the moment the DB is yielded; "
+            f"got {source.context.get_global().deleted_tables!r}"
+        )
+
+    def test_multi_database_yields_reset_between_databases(self, source):
+        """Multi-DB path: fills up deleted_tables while processing DB1
+        (simulating schema walks extending the list), then asserts the
+        list is empty again when DB2 is yielded.
+        """
+        # Remove the configured database so the multi-DB branch is taken.
+        source.config.serviceConnection.root.config.database = None
+        # Bypass the DB-name filter so both DBs pass through.
+        source.source_config.databaseFilterPattern = None
+
+        with self._mock_per_db_setup_methods(source), patch.object(
+            source,
+            "get_database_names_raw",
+            return_value=iter(["DB_ONE", "DB_TWO"]),
+        ), patch(
+            "metadata.ingestion.source.database.snowflake.metadata.fqn.build",
+            side_effect=lambda *a, **kw: f"svc.{kw.get('database_name')}",
+        ), patch(
+            "metadata.ingestion.source.database.snowflake.metadata.filter_by_database",
+            return_value=False,
+        ):
+            gen = source.get_database_names()
+
+            # First DB yielded — list must be empty regardless of prior state.
+            source.context.get_global().deleted_tables = ["leftover_from_setup"]
+            db1 = next(gen)
+            snapshot_at_db1_yield = list(
+                source.context.get_global().deleted_tables
+            )
+
+            # Simulate processing DB1's schemas: schema walks extend the list
+            # with FQNs for soft-deleted tables found in DB1.
+            source.context.get_global().deleted_tables.extend(
+                [
+                    "svc.DB_ONE.schema_a.deleted_table_1",
+                    "svc.DB_ONE.schema_a.deleted_table_2",
+                    "svc.DB_ONE.schema_b.deleted_table_3",
+                ]
+            )
+
+            # Next DB yielded — the DB1 entries must not carry over to DB2.
+            db2 = next(gen)
+            snapshot_at_db2_yield = list(
+                source.context.get_global().deleted_tables
+            )
+
+        assert db1 == "DB_ONE"
+        assert db2 == "DB_TWO"
+        assert snapshot_at_db1_yield == [], (
+            f"Expected empty deleted_tables at DB_ONE yield; got "
+            f"{snapshot_at_db1_yield!r}"
+        )
+        assert snapshot_at_db2_yield == [], (
+            f"Expected empty deleted_tables at DB_TWO yield (DB_ONE's "
+            f"entries must not carry over); got {snapshot_at_db2_yield!r}"
+        )
