@@ -17,7 +17,7 @@ import {
   LineageData,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { EntityType } from '../enums/entity.enum';
+import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
@@ -25,6 +25,7 @@ import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
   createNewEdge,
+  createNodes,
   getAllTracedEdges,
   getColumnFunctionValue,
   getColumnLineageData,
@@ -1769,6 +1770,134 @@ describe('parseLineageData', () => {
       expect(mockUniqWith).toHaveBeenCalled();
     });
   });
+
+  describe('Temp/Ghost node handling', () => {
+    it('should extract ghost nodes from tempLineageTables in downstream edges', () => {
+      const dataWithTempTables: LineageData = {
+        nodes: mockNodeData,
+        downstreamEdges: {
+          edge1: {
+            ...mockDownstreamEdges.edge1,
+            tempLineageTables: [
+              {
+                fromEntity: 'tmp_order_staging',
+                toEntity: 'tmp_order_enriched',
+              },
+            ],
+          },
+        },
+        upstreamEdges: {},
+      };
+
+      const result = parseLineageData(
+        dataWithTempTables,
+        mockEntityFqn,
+        mockRootFqn
+      );
+
+      const ghostNodeNames = result.nodes
+        .filter((n) => n.type === EntityLineageNodeType.TEMP_TABLE)
+        .map((n) => n.name);
+
+      expect(ghostNodeNames).toContain('tmp_order_staging');
+      expect(ghostNodeNames).toContain('tmp_order_enriched');
+    });
+
+    it('should extract ghost nodes from tempLineageTables in upstream edges', () => {
+      const dataWithTempTables: LineageData = {
+        nodes: mockNodeData,
+        downstreamEdges: {},
+        upstreamEdges: {
+          edge2: {
+            ...mockUpstreamEdges.edge2,
+            tempLineageTables: [
+              { fromEntity: 'tmp_upstream_hop', toEntity: 'tmp_upstream_out' },
+            ],
+          },
+        },
+      };
+
+      const result = parseLineageData(
+        dataWithTempTables,
+        mockEntityFqn,
+        mockRootFqn
+      );
+
+      const ghostNodeNames = result.nodes
+        .filter((n) => n.type === EntityLineageNodeType.TEMP_TABLE)
+        .map((n) => n.name);
+
+      expect(ghostNodeNames).toContain('tmp_upstream_hop');
+      expect(ghostNodeNames).toContain('tmp_upstream_out');
+    });
+
+    it('should create edges connecting ghost nodes', () => {
+      const dataWithTempTables: LineageData = {
+        nodes: mockNodeData,
+        downstreamEdges: {
+          edge1: {
+            ...mockDownstreamEdges.edge1,
+            tempLineageTables: [
+              { fromEntity: 'tmp_staging', toEntity: 'tmp_enriched' },
+            ],
+          },
+        },
+        upstreamEdges: {},
+      };
+
+      const result = parseLineageData(
+        dataWithTempTables,
+        mockEntityFqn,
+        mockRootFqn
+      );
+
+      const tempEdge = result.edges.find(
+        (e) =>
+          e.fromEntity.id === 'temp_table_tmp_staging' &&
+          e.toEntity.id === 'temp_table_tmp_enriched'
+      );
+
+      expect(tempEdge).toBeDefined();
+    });
+
+    it('should not create duplicate ghost node when name matches an existing node', () => {
+      const dataWithTempTables: LineageData = {
+        nodes: mockNodeData,
+        downstreamEdges: {
+          edge1: {
+            ...mockDownstreamEdges.edge1,
+            tempLineageTables: [
+              { fromEntity: 'Table2', toEntity: 'tmp_new_node' },
+            ],
+          },
+        },
+        upstreamEdges: {},
+      };
+
+      const result = parseLineageData(
+        dataWithTempTables,
+        mockEntityFqn,
+        mockRootFqn
+      );
+
+      const ghostNodes = result.nodes.filter(
+        (n) => n.type === EntityLineageNodeType.TEMP_TABLE
+      );
+
+      expect(ghostNodes.map((n) => n.name)).not.toContain('Table2');
+      expect(ghostNodes.map((n) => n.name)).toContain('tmp_new_node');
+    });
+
+    it('should not produce ghost nodes when tempLineageTables is absent', () => {
+      const result = parseLineageData(mockLineageData, mockEntityFqn, mockRootFqn);
+
+      const ghostNodes = result.nodes.filter(
+        (n) => n.type === EntityLineageNodeType.TEMP_TABLE
+      );
+
+      expect(ghostNodes).toHaveLength(0);
+    });
+  });
 });
 
 describe('getLineageTableConfig', () => {
@@ -1913,5 +2042,53 @@ describe('getLineageTableConfig', () => {
       toEntityFQN: '',
       key: '1',
     });
+  });
+});
+
+describe('createNodes - isTempTable flag', () => {
+  it('should set isTempTable true for TEMP_TABLE type nodes', () => {
+    const tempNode = {
+      id: 'temp_table_staging',
+      name: 'staging',
+      fullyQualifiedName: 'temp_table_staging',
+      type: EntityLineageNodeType.TEMP_TABLE,
+      entityType: EntityType.TABLE,
+      columns: [],
+    };
+    const incomingMap = new Map([['temp_table_staging', 1]]);
+    const outgoingMap = new Map<string, number>();
+
+    const result = createNodes(
+      [tempNode],
+      [],
+      'root.fqn',
+      incomingMap,
+      outgoingMap
+    );
+
+    expect(result[0].data.isTempTable).toBe(true);
+  });
+
+  it('should set isTempTable false for regular table nodes', () => {
+    const regularNode = {
+      id: 'node1',
+      name: 'Table1',
+      fullyQualifiedName: 'test.database.table1',
+      type: EntityType.TABLE,
+      entityType: EntityType.TABLE,
+      columns: [],
+    };
+    const incomingMap = new Map([['node1', 1]]);
+    const outgoingMap = new Map<string, number>();
+
+    const result = createNodes(
+      [regularNode],
+      [],
+      'root.fqn',
+      incomingMap,
+      outgoingMap
+    );
+
+    expect(result[0].data.isTempTable).toBe(false);
   });
 });

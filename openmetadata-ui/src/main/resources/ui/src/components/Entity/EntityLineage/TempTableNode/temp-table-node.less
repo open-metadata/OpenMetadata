@@ -11,48 +11,17 @@
  *  limitations under the License.
  */
 .temp-table-node {
-  border: 1px dashed #b1b1b7;
+  border: 1px solid #b1b1b7;
   border-radius: 10px;
   padding: 8px 12px;
   background-color: #fafafa;
-  font-size: 12px;
   cursor: default;
-
-  .temp-table-node-header {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
-
-    .temp-table-node-icon {
-      display: flex;
-      align-items: center;
-    }
-
-    .temp-table-node-type {
-      color: #8c8c8c;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-  }
+  min-width: 200px;
 
   .temp-table-node-name {
     color: #595959;
+    font-size: 16px;
     font-weight: 500;
     word-break: break-all;
-  }
-}
-
-.temp-table-handle {
-  background: transparent;
-  border: none;
-
-  &.react-flow__handle-left {
-    left: -1px;
-  }
-
-  &.react-flow__handle-right {
-    right: -1px;
   }
 }

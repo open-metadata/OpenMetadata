@@ -737,7 +737,8 @@ export const createNodes = (
     node.deleted = isDeleted(node.deleted);
 
     const type =
-      node.type === EntityLineageNodeType.LOAD_MORE
+      node.type === EntityLineageNodeType.LOAD_MORE ||
+      node.type === EntityLineageNodeType.TEMP_TABLE
         ? node.type
         : incomingMap.has(node.id) && !outgoingMap.has(node.id)
         ? EntityLineageNodeType.OUTPUT

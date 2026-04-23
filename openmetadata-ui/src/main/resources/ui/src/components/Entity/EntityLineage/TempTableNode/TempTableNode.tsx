@@ -10,52 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTranslation } from 'react-i18next';
-import { Handle, HandleProps, NodeProps, Position } from 'reactflow';
-import { EntityType } from '../../../../enums/entity.enum';
-import { getServiceIcon } from '../../../../utils/TableUtils';
+import { Handle, NodeProps, Position } from 'reactflow';
+import '../custom-node.less';
 import './temp-table-node.less';
-
-const getHandle = (
-  isConnectable: HandleProps['isConnectable'],
-  id?: string
-) => {
-  return (
-    <>
-      <Handle
-        className="temp-table-handle"
-        id={id}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-      <Handle
-        className="temp-table-handle"
-        id={id}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </>
-  );
-};
 
 const TempTableNode = (props: NodeProps) => {
   const { data } = props;
   const { node } = data;
-  const { t } = useTranslation();
 
   return (
-    <div className="temp-table-node w-76" data-testid="temp-table-node-label">
-      {getHandle(false)}
-      <div className="temp-table-node-header">
-        <span className="temp-table-node-icon">
-          {getServiceIcon({ entityType: EntityType.TABLE })}
-        </span>
-        <span className="temp-table-node-type">
-          {t('label.temporary-table')}
-        </span>
-      </div>
+    <div className="temp-table-node" data-testid="temp-table-node-label">
+      <Handle
+        className="lineage-node-handle"
+        id={node.id}
+        isConnectable={false}
+        position={Position.Left}
+        type="target"
+      />
+      <Handle
+        className="lineage-node-handle"
+        id={node.id}
+        isConnectable={false}
+        position={Position.Right}
+        type="source"
+      />
       <div className="temp-table-node-name">
         {node.displayName ?? node.name}
       </div>

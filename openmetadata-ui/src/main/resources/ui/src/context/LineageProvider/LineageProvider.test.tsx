@@ -12,9 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
-import { Edge } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
 import {
   getDataQualityLineage,
@@ -35,6 +35,7 @@ const mockData = {
   },
 };
 
+const mockSetActiveNode = jest.fn();
 const mockToggleEditMode = jest.fn();
 const mockSetActiveLayer = jest.fn();
 const mockSetTracedNodes = jest.fn();
@@ -71,7 +72,7 @@ jest.mock('../../hooks/useLineageStore', () => ({
     isPlatformLineage: false,
     setIsPlatformLineage: jest.fn(),
     activeNode: undefined,
-    setActiveNode: jest.fn(),
+    setActiveNode: mockSetActiveNode,
     selectedNode: undefined,
     setSelectedNode: jest.fn(),
     selectedEdge: undefined,
@@ -524,6 +525,90 @@ describe('LineageProvider', () => {
           fqn: 'table3',
           entityType: 'table',
         })
+      );
+    });
+  });
+
+  describe('onNodeClick ghost node guard', () => {
+    it('should not call setActiveNode when clicking a ghost/temp node', async () => {
+      (getLineageDataByFQN as jest.Mock).mockResolvedValue({
+        nodes: {},
+        downstreamEdges: {},
+        upstreamEdges: {},
+      });
+
+      const TestComponent = () => {
+        const { onNodeClick } = useLineageProvider();
+
+        const ghostNode = {
+          id: 'temp_table_staging',
+          type: EntityLineageNodeType.DEFAULT,
+          position: { x: 0, y: 0 },
+          data: {
+            isTempTable: true,
+            node: { id: 'temp_table_staging', name: 'staging', type: 'table' },
+          },
+        } as Node;
+
+        return (
+          <button
+            data-testid="click-ghost"
+            onClick={() => onNodeClick(ghostNode)}>
+            Click Ghost
+          </button>
+        );
+      };
+
+      render(
+        <LineageProvider>
+          <TestComponent />
+        </LineageProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('click-ghost'));
+
+      expect(mockSetActiveNode).not.toHaveBeenCalled();
+    });
+
+    it('should call setActiveNode when clicking a regular node', async () => {
+      (getLineageDataByFQN as jest.Mock).mockResolvedValue({
+        nodes: {},
+        downstreamEdges: {},
+        upstreamEdges: {},
+      });
+
+      const TestComponent = () => {
+        const { onNodeClick } = useLineageProvider();
+
+        const regularNode = {
+          id: 'node1',
+          type: EntityLineageNodeType.DEFAULT,
+          position: { x: 0, y: 0 },
+          data: {
+            isTempTable: false,
+            node: { id: 'node1', name: 'Table1', type: 'table' },
+          },
+        } as Node;
+
+        return (
+          <button
+            data-testid="click-regular"
+            onClick={() => onNodeClick(regularNode)}>
+            Click Regular
+          </button>
+        );
+      };
+
+      render(
+        <LineageProvider>
+          <TestComponent />
+        </LineageProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('click-regular'));
+
+      expect(mockSetActiveNode).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'node1' })
       );
     });
   });
