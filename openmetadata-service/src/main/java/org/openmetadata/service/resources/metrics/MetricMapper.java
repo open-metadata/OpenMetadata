@@ -10,12 +10,18 @@ import org.openmetadata.service.mapper.EntityMapper;
 public class MetricMapper implements EntityMapper<Metric, CreateMetric> {
   @Override
   public Metric createToEntity(CreateMetric create, String user) {
-    return copy(new Metric(), create, user)
+    Metric metric = copy(new Metric(), create, user)
         .withMetricExpression(create.getMetricExpression())
         .withGranularity(create.getGranularity())
         .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
         .withMetricType(create.getMetricType())
         .withUnitOfMeasurement(create.getUnitOfMeasurement())
         .withCustomUnitOfMeasurement(create.getCustomUnitOfMeasurement());
+
+    if (create.getMetricGroup() != null && !create.getMetricGroup().isEmpty()) {
+      metric.setMetricGroup(create.getMetricGroup());
+    }
+
+    return metric;
   }
 }

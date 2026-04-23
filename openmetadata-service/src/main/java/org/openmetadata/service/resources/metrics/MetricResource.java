@@ -43,6 +43,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -54,14 +55,17 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.schema.type.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Path("/v1/metrics")
 @Tag(
@@ -76,7 +80,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
   private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS =
-      "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts";
+      "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts,metricGroup";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
     super(Entity.METRIC, authorizer, limits);
@@ -138,6 +142,140 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  @GET
+  @Path("/filter")
+  @Operation(
+      operationId = "listMetricsWithFilter",
+      summary = "List metrics with advanced filtering",
+      description =
+          "Get a list of metrics with advanced filtering by tags, glossaries, custom properties, and more.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of metrics",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetricsList.class)))
+      })
+  public ResultList<Metric> listWithFilter(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of metrics after this offset",
+              schema = @Schema(type = "string"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          int offset,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(description = "Filter by tags (comma-separated tag names)", schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(description = "Filter by glossary terms (comma-separated term names)", schema = @Schema(type = "string"))
+          @QueryParam("glossaryTerms")
+          String glossaryTerms,
+      @Parameter(description = "Filter by domains (comma-separated domain names)", schema = @Schema(type = "string"))
+          @QueryParam("domains")
+          String domains,
+      @Parameter(description = "Filter by owners (comma-separated owner names)", schema = @Schema(type = "string"))
+          @QueryParam("owners")
+          String owners,
+      @Parameter(description = "Filter by metric groups (comma-separated group names)", schema = @Schema(type = "string"))
+          @QueryParam("metricGroups")
+          String metricGroups,
+      @Parameter(description = "Filter by custom property values", schema = @Schema(type = "string"))
+          @QueryParam("customProperties")
+          String customProperties,
+      @Parameter(description = "Search query term", schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String query) {
+
+    SearchListFilter searchListFilter = buildSearchListFilter(include, tags, glossaryTerms, domains, owners, metricGroups, customProperties, query);
+
+    return executeMetricSearch(uriInfo, securityContext, fieldsParam, searchListFilter, limitParam, offset, query);
+  }
+
+  private ResultList<Metric> executeMetricSearch(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      String q)
+      throws java.io.IOException {
+    Fields fields = getFields(fieldsParam);
+
+    return super.listInternalFromSearch(
+        uriInfo,
+        securityContext,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        null,
+        q,
+        null,
+        new ArrayList<>());
+  }
+
+  private SearchListFilter buildSearchListFilter(
+      Include include,
+      String tags,
+      String glossaryTerms,
+      String domains,
+      String owners,
+      String metricGroups,
+      String customProperties,
+      String query) {
+
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+
+    if (!isEmpty(tags)) {
+      searchListFilter.addQueryParam("tags", tags);
+    }
+    if (!isEmpty(glossaryTerms)) {
+      searchListFilter.addQueryParam("glossaryTerms", glossaryTerms);
+    }
+    if (!isEmpty(domains)) {
+      searchListFilter.addQueryParam("domains", domains);
+    }
+    if (!isEmpty(metricGroups)) {
+      searchListFilter.addQueryParam("metricGroups", metricGroups);
+    }
+    if (!isEmpty(customProperties)) {
+      searchListFilter.addQueryParam("customProperties", customProperties);
+    }
+    if (!isEmpty(query)) {
+      searchListFilter.addQueryParam("q", query);
+    }
+    if (!isEmpty(owners)) {
+      searchListFilter.addQueryParam("owners", owners);
+    }
+
+    return searchListFilter;
+  }
+
+  private boolean isEmpty(String str) {
+    return str == null || str.trim().isEmpty();
   }
 
   @GET
@@ -623,5 +761,110 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public Response getCustomUnitsOfMeasurement(@Context SecurityContext securityContext) {
     List<String> customUnits = repository.getDistinctCustomUnitsOfMeasurement();
     return Response.ok(customUnits).build();
+  }
+
+  @GET
+  @Path("/export")
+  @Operation(
+      operationId = "exportMetrics",
+      summary = "Export metrics in CSV format",
+      description = "Export all metrics as CSV for bulk operations or backup.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported metrics in CSV format",
+            content =
+                @Content(
+                    mediaType = "text/csv",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public Response exportMetrics(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fields to export", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(description = "Filter by tags", schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(description = "Filter by glossary terms", schema = @Schema(type = "string"))
+          @QueryParam("glossaryTerms")
+          String glossaryTerms,
+      @Parameter(description = "Filter by domains", schema = @Schema(type = "string"))
+          @QueryParam("domains")
+          String domains,
+      @Parameter(description = "Filter by metric groups", schema = @Schema(type = "string"))
+          @QueryParam("metricGroups")
+          String metricGroups) {
+
+    SearchListFilter searchListFilter = buildSearchListFilter(include, tags, glossaryTerms, domains, null, metricGroups, null, null);
+
+    Fields fields = getFields(fieldsParam);
+    List<Metric> metrics = repository.exportMetricsList(fields, searchListFilter);
+
+    StringBuilder csv = new StringBuilder();
+    csv.append("name,displayName,description,metricType,unitOfMeasurement,granularity,metricGroup,tags,owners\n");
+
+    for (Metric metric : metrics) {
+      StringBuilder row = new StringBuilder();
+      row.append(escapeCsvField(metric.getName())).append(",");
+      row.append(escapeCsvField(metric.getDisplayName())).append(",");
+      row.append(escapeCsvField(metric.getDescription())).append(",");
+      row.append(escapeCsvField(metric.getMetricType() != null ? metric.getMetricType().value() : "")).append(",");
+      row.append(escapeCsvField(metric.getUnitOfMeasurement() != null ? metric.getUnitOfMeasurement().value() : "")).append(",");
+      row.append(escapeCsvField(metric.getGranularity() != null ? metric.getGranularity().value() : "")).append(",");
+      row.append(escapeCsvField(metric.getMetricGroup() != null ? metric.getMetricGroup().getName() : "")).append(",");
+      row.append(escapeCsvField(metric.getTags() != null ? metric.getTags().stream().map(t -> t.getTagFQN()).reduce((a, b) -> a + ";" + b).orElse("") : "")).append(",");
+      row.append(escapeCsvField(metric.getOwners() != null ? metric.getOwners().stream().map(o -> o.getName()).reduce((a, b) -> a + ";" + b).orElse("") : ""));
+      csv.append(row).append("\n");
+    }
+
+    return Response.ok(csv.toString())
+        .type("text/csv")
+        .header("Content-Disposition", "attachment; filename=\"metrics.csv\"")
+        .build();
+  }
+
+  private String escapeCsvField(String field) {
+    if (field == null) return "";
+    if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+      return "\"" + field.replace("\"", "\"\"") + "\"";
+    }
+    return field;
+  }
+
+  @PUT
+  @Path("/import")
+  @Consumes("text/csv")
+  @Operation(
+      operationId = "importMetrics",
+      summary = "Import metrics from CSV",
+      description = "Import metrics from CSV. Creates new metrics or updates existing ones based on name matching.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Metrics imported successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MetricsList.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid CSV format")
+      })
+  public Response importMetrics(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "CSV data to import", schema = @Schema(type = "string"))
+          String csvData) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.METRIC, MetadataOperation.CREATE),
+        getResourceContext());
+    return repository.importMetrics(uriInfo, securityContext, csvData);
   }
 }

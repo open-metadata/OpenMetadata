@@ -21,14 +21,18 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
 import jakarta.json.JsonPatch;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -37,7 +41,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.ResultList;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -48,12 +54,15 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.metrics.MetricMapper;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
+import org.openmetadata.service.search.SearchListFilter;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -73,6 +82,23 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("relatedMetrics", this::fetchAndSetRelatedMetrics);
+    fieldFetchers.put("metricGroup", this::fetchAndSetMetricGroup);
+  }
+
+  private void fetchAndSetMetricGroup(List<Metric> metrics, EntityUtil.Fields fields) {
+    if (!fields.contains("metricGroup") || metrics == null || metrics.isEmpty()) {
+      return;
+    }
+    for (Metric metric : metrics) {
+      if (metric.getMetricGroup() == null || metric.getMetricGroup().getId() == null) {
+        continue;
+      }
+      EntityReference groupRef = Entity.getEntityReferenceById(
+          METRIC,
+          metric.getMetricGroup().getId(),
+          Include.NON_DELETED);
+      metric.setMetricGroup(groupRef);
+    }
   }
 
   @Override
@@ -398,10 +424,130 @@ public class MetricRepository extends EntityRepository<Metric> {
       // Send WebSocket Notification
       WebsocketNotificationHandler.handleTaskNotification(thread.entity());
     } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for metric {}",
-          TaskType.RequestApproval,
-          metric.getFullyQualifiedName());
+LOG.info(
+            "{} Task not found for metric {}",
+            TaskType.RequestApproval,
+            metric.getFullyQualifiedName());
     }
   }
+
+  public List<Metric> exportMetricsList(Fields fields, SearchListFilter searchListFilter) {
+    List<Metric> allMetrics = new ArrayList<>();
+    int offset = 0;
+    int batchSize = 1000;
+    ResultList<Metric> batch;
+    try {
+      do {
+        batch = listFromSearchWithOffset(
+            null,
+            fields,
+            searchListFilter,
+            batchSize,
+            offset,
+            null,
+            null,
+            null,
+            null);
+        if (batch.getData() != null) {
+          allMetrics.addAll(batch.getData());
+        }
+        offset += batchSize;
+      } while (batch.getData() != null && batch.getData().size() == batchSize);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to export metrics", e);
+    }
+    return allMetrics;
+  }
+
+  public Response importMetrics(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String csvData) {
+    if (csvData == null || csvData.trim().isEmpty()) {
+      throw new IllegalArgumentException("CSV data cannot be empty");
+    }
+
+    String[] lines = csvData.split("\n");
+    if (lines.length < 2) {
+      throw new IllegalArgumentException("CSV must have at least a header and one data row");
+    }
+
+    List<CreateMetric> createdMetrics = new ArrayList<>();
+    String[] headers = parseCsvLine(lines[0].trim());
+
+    for (int i = 1; i < lines.length; i++) {
+      String line = lines[i].trim();
+      if (line.isEmpty()) continue;
+
+      String[] values = parseCsvLine(line);
+      if (values.length < headers.length) {
+        LOG.warn("Skipping row {} - insufficient columns", i);
+        continue;
+      }
+
+      Map<String, String> rowData = new HashMap<>();
+      for (int j = 0; j < headers.length; j++) {
+        rowData.put(headers[j], j < values.length ? values[j] : "");
+      }
+
+      CreateMetric createMetric = new CreateMetric()
+          .withName(rowData.getOrDefault("name", "").trim())
+          .withDisplayName(rowData.get("displayName"))
+          .withDescription(rowData.get("description"));
+
+      if (!createMetric.getName().isEmpty()) {
+        createdMetrics.add(createMetric);
+      }
+    }
+
+    List<Metric> imported = new ArrayList<>();
+    Map<Integer, String> failedImports = new HashMap<>();
+    MetricMapper mapper = new MetricMapper();
+    for (int i = 0; i < createdMetrics.size(); i++) {
+      CreateMetric create = createdMetrics.get(i);
+      try {
+        Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+        setFullyQualifiedName(metric);
+        prepare(metric, false);
+        storeEntity(metric, false);
+        storeRelationships(metric);
+        imported.add(metric);
+      } catch (Exception e) {
+        LOG.error("Failed to import metric: {}", create.getName(), e);
+        failedImports.put(i + 1, e.getMessage());
+      }
+    }
+
+    ResultList<Metric> list = new ResultList<>();
+    list.setData(imported);
+    list.setPaging(new Paging().withTotal(imported.size()));
+    return Response.ok(list).build();
+  }
+
+  private String[] parseCsvLine(String line) {
+    List<String> values = new ArrayList<>();
+    StringBuilder current = new StringBuilder();
+    boolean inQuotes = false;
+
+    for (int i = 0; i < line.length(); i++) {
+      char c = line.charAt(i);
+      if (c == '"') {
+        if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+          current.append('"');
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c == ',' && !inQuotes) {
+        values.add(current.toString().trim());
+        current = new StringBuilder();
+      } else {
+        current.append(c);
+      }
+    }
+    values.add(current.toString().trim());
+    return values.toArray(new String[0]);
+  }
+
+  public static class MetricsList extends ResultList<Metric> {}
 }

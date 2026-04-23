@@ -223,6 +223,10 @@
     "entityStatus": {
       "description": "Status of the Metric.",
       "$ref": "../../type/status.json"
+    },
+    "metricGroup": {
+      "description": "Metric group that this metric belongs to for organization purposes.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name"],
