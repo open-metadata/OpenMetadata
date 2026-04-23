@@ -331,17 +331,18 @@ export const selectDataProduct = async (
     .getByPlaceholder('Search');
 
   await waitForAllLoadersToDisappear(page);
+  await searchBox.waitFor({ state: 'visible' });
 
   await Promise.all([
-    searchBox.fill(dataProduct.name),
     page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
+    searchBox.fill(dataProduct.name),
   ]);
 
   await waitForSearchDebounce(page);
 
   await Promise.all([
-    page.getByTestId(dataProduct.name).click(),
     page.waitForResponse('/api/v1/dataProducts/name/*'),
+    page.getByTestId(dataProduct.name).click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
