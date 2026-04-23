@@ -48,9 +48,13 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 
   // Set up the response promise before navigation
-  const getAlerts = page.waitForResponse(
-    '/api/v1/events/subscriptions?*alertType=Observability*'
-  );
+  const getAlerts = page.waitForResponse((response) => {
+    const url = response.url();
+    return (
+      url.includes('/api/v1/events/subscriptions') &&
+      url.includes('alertType=Observability')
+    );
+  });
 
   // Set up navigation promise before clicking
   const navigationPromise = page.waitForURL('**/observability/alerts');
@@ -58,7 +62,8 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
 
   // Wait for both navigation and API response
-  await Promise.all([navigationPromise, getAlerts]);
+  await navigationPromise;
+  await getAlerts;
 };
 
 export const addExternalDestination = async ({

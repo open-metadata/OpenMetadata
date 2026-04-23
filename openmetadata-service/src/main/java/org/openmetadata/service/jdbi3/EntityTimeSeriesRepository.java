@@ -114,6 +114,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     // Nothing to do in the default implementation
   }
 
+  /**
+   * Allow specific repositories to skip malformed/orphaned search results instead of failing the
+   * entire listing.
+   */
+  protected boolean shouldSkipSearchResultOnInheritedFieldError(
+      RuntimeException exception, T entity) {
+    return false;
+  }
+
   protected T setFieldsInternal(T recordEntity, EntityUtil.Fields fields) {
     setFields(recordEntity, fields);
     return recordEntity;
@@ -455,7 +464,19 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
-        setInheritedFields(entity);
+        try {
+          setInheritedFields(entity);
+        } catch (RuntimeException e) {
+          if (shouldSkipSearchResultOnInheritedFieldError(e, entity)) {
+            LOG.warn(
+                "Skipping orphaned {} search result {} while hydrating inherited fields: {}",
+                entityType,
+                entity != null ? entity.getId() : null,
+                e.getMessage());
+            continue;
+          }
+          throw e;
+        }
         clearFieldsInternal(entity, fields);
         entityList.add(entity);
       }
@@ -507,7 +528,19 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                         setFieldsInternal(
                             JsonUtils.readOrConvertValue(source, entityClass), fields);
                     if (entity != null) {
-                      setInheritedFields(entity);
+                      try {
+                        setInheritedFields(entity);
+                      } catch (RuntimeException e) {
+                        if (shouldSkipSearchResultOnInheritedFieldError(e, entity)) {
+                          LOG.warn(
+                              "Skipping orphaned {} search result {} while hydrating inherited fields: {}",
+                              entityType,
+                              entity.getId(),
+                              e.getMessage());
+                          continue;
+                        }
+                        throw e;
+                      }
                       clearFieldsInternal(entity, fields);
                       entityList.add(entity);
                     }

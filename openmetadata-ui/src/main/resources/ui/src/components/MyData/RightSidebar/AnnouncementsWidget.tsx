@@ -17,18 +17,18 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/announcment-no-data-placeholder.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { AnnouncementEntity } from '../../../rest/announcementsAPI';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
-import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
-import FeedCardHeaderV2 from '../../ActivityFeed/ActivityFeedCardV2/FeedCardHeader/FeedCardHeaderV2';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './announcements-widget.less';
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;
-  announcements?: Thread[];
+  announcements?: AnnouncementEntity[];
 }
 
 function AnnouncementsWidget({
@@ -67,7 +67,7 @@ function AnnouncementsWidget({
       <div className="announcement-container-list">
         <Row gutter={[8, 8]}>
           {announcements.map((item) => {
-            const fqn = getEntityFQN(item.about);
+            const fqn = getEntityFQN(item.entityLink ?? '');
 
             return (
               <Col data-testid={`announcement-${fqn}`} key={item.id} span={24}>
@@ -75,23 +75,17 @@ function AnnouncementsWidget({
                   className="right-panel-announcement"
                   description={
                     <>
-                      <FeedCardHeaderV2
-                        isAnnouncement
-                        about={item.about}
-                        className="d-inline"
-                        createdBy={item.createdBy}
-                        feed={item}
-                        fieldName={item.feedInfo?.fieldName}
-                        timeStamp={item.threadTs}
-                      />
-                      <FeedCardBodyV1
-                        isOpenInDrawer
-                        announcement={item.announcement}
+                      <Typography.Text className="d-block text-sm font-medium">
+                        {item.displayName ?? item.name}
+                      </Typography.Text>
+                      <Typography.Text className="d-block text-grey-muted text-xs m-t-xs">
+                        {formatDateTime(item.updatedAt ?? item.createdAt)}
+                      </Typography.Text>
+                      <RichTextEditorPreviewerV1
                         className="p-t-xs"
-                        feed={item}
-                        isEditPost={false}
-                        message={item.message}
-                        showSchedule={false}
+                        markdown={item.description}
+                        reducePreviewLineClass="max-three-lines"
+                        showReadMoreBtn={false}
                       />
                     </>
                   }

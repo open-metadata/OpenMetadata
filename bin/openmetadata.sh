@@ -153,7 +153,7 @@ fi
 
 # JVM performance options
 if [[ -z "${CATALOG_JVM_PERF_OPTS}" ]]; then
-  CATALOG_JVM_PERF_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
+  CATALOG_JVM_PERF_OPTS="-server -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=200 -XX:G1NewSizePercent=5 -XX:G1MaxNewSizePercent=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
 fi
 
 

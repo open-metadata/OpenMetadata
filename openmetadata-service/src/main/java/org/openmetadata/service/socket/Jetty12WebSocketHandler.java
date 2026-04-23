@@ -16,6 +16,7 @@ package org.openmetadata.service.socket;
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoWebSocket;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,7 +128,16 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
   @OnWebSocketError
   public void onError(Throwable error) {
-    LOG.error("WebSocket error: {}", error.getMessage(), error);
-    emit("error", "websocket error", error.getMessage());
+    if (error instanceof ClosedChannelException) {
+      LOG.debug("WebSocket channel closed by peer (likely abnormal disconnect)");
+      return;
+    }
+    try {
+      LOG.error(
+          "WebSocket error: {} - {}", error.getClass().getSimpleName(), error.getMessage(), error);
+      emit("error", "websocket error", error.getMessage());
+    } catch (Exception e) {
+      LOG.error("Failed to handle WebSocket error gracefully: {}", e.getMessage(), e);
+    }
   }
 }

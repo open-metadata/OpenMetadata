@@ -25,11 +25,7 @@ import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase
 
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfile,
-    ProfileSampleType,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -37,6 +33,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.time_utils import (
@@ -283,7 +280,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
 
     assert not table.tableProfilerConfig
     assert profile.profileSample == 75.0
-    assert profile.profileSampleType == ProfileSampleType.PERCENTAGE
+    assert profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
     workflow_config["processor"]["config"]["tableConfig"][0][
         "profileSampleType"
@@ -307,7 +304,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
     assert not table.tableProfilerConfig
     assert profile.profileSample == 3.0
     assert profile.rowCount == 4.0
-    assert profile.profileSampleType == ProfileSampleType.ROWS
+    assert profile.profileSampleType.root == ProfileSampleType.ROWS
 
 
 def test_workflow_sample_profile(ingest, metadata, service_name):
@@ -316,7 +313,13 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "Profiler",
-            "profileSample": 50,
+            "profileSampleConfig": {
+                "sampleConfigType": "STATIC",
+                "config": {
+                    "profileSample": 50,
+                    "profileSampleType": "PERCENTAGE",
+                },
+            },
             "tableFilterPattern": {"includes": ["newUsers"]},
         }
     )

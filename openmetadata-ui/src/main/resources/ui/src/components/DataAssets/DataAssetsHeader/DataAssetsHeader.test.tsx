@@ -185,6 +185,8 @@ jest.mock('../../../utils/TableClassBase', () => ({
   getAlertEnableStatus: jest
     .fn()
     .mockImplementation(() => mockIsAlertSupported),
+  getShowRequestDataAccess: jest.fn().mockImplementation(() => false),
+  getRequestDataAccessDrawer: jest.fn().mockImplementation(() => null),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({
@@ -604,6 +606,14 @@ describe('DataAssetsHeader component', () => {
 
     expect(button).toBeInTheDocument();
     expect(button).toBeEnabled();
+  });
+
+  it('should not render the request data access button on OSS', () => {
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      screen.queryByTestId('request-data-access-button')
+    ).not.toBeInTheDocument();
   });
 
   describe('dataContractLatestResultButton', () => {

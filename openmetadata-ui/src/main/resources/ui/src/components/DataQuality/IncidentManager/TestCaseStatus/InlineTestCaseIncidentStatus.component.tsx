@@ -41,20 +41,25 @@ import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
-import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
   EntityReference,
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { Option } from '../../../../pages/TasksPage/TasksPage.interface';
-import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import {
+  getListTestCaseIncidentByStateId,
+  transitionIncident,
+} from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+  createTask,
+  ResolveTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskResolutionType,
+} from '../../../../rest/tasksAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { RequiredLabel } from '../../../common/MuiComponents/RequiredLabel/RequiredLabel.styled';
@@ -101,7 +106,6 @@ const InlineTestCaseIncidentStatus = ({
   onSubmit,
 }: InlineTestCaseIncidentStatusProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const chipRef = React.useRef<HTMLDivElement>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -195,6 +199,75 @@ const InlineTestCaseIncidentStatus = ({
     [debouncedSearch, searchUsers]
   );
 
+  const reopenIncident = useCallback(
+    async (
+      targetStatus: TestCaseResolutionStatusTypes,
+      additionalData?: { assignee?: EntityReference }
+    ) => {
+      const testCaseFqn = data.testCaseReference?.fullyQualifiedName;
+      const testCaseName = data.testCaseReference?.name;
+      if (!testCaseFqn || !testCaseName) {
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const newTask = await createTask({
+          name: `Incident: ${testCaseName}`,
+          category: TaskCategory.Incident,
+          type: TaskEntityType.TestCaseResolution,
+          about: testCaseFqn,
+          aboutType: 'testCase',
+        });
+
+        if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
+          const transitionMap: Partial<
+            Record<TestCaseResolutionStatusTypes, string>
+          > = {
+            [TestCaseResolutionStatusTypes.ACK]: 'ack',
+            [TestCaseResolutionStatusTypes.Assigned]: 'assign',
+          };
+          const transitionId = transitionMap[targetStatus];
+          if (transitionId) {
+            const assignee = additionalData?.assignee;
+            await transitionIncident(newTask.id, {
+              transitionId,
+              payload: assignee
+                ? {
+                    assignees: [
+                      {
+                        id: assignee.id,
+                        type: assignee.type ?? EntityType.USER,
+                        name: assignee.name,
+                        fullyQualifiedName:
+                          assignee.fullyQualifiedName ?? assignee.name,
+                        displayName: assignee.displayName,
+                      },
+                    ],
+                  }
+                : undefined,
+            });
+          }
+        }
+
+        const refreshed = await getListTestCaseIncidentByStateId(newTask.id);
+        const latest = refreshed?.data?.[0];
+        if (latest) {
+          onSubmit(latest);
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      data.testCaseReference?.fullyQualifiedName,
+      data.testCaseReference?.name,
+      onSubmit,
+    ]
+  );
+
   const submitStatusChange = useCallback(
     async (
       status: TestCaseResolutionStatusTypes,
@@ -204,37 +277,70 @@ const InlineTestCaseIncidentStatus = ({
         comment?: string;
       }
     ) => {
-      setIsLoading(true);
-      const updatedData: CreateTestCaseResolutionStatus = {
-        testCaseResolutionStatusType: status,
-        testCaseReference: data.testCaseReference?.fullyQualifiedName ?? '',
-      };
+      const currentStatus = data.testCaseResolutionStatusType;
 
-      if (
-        status === TestCaseResolutionStatusTypes.Assigned &&
-        additionalData?.assignee
-      ) {
-        updatedData.testCaseResolutionStatusDetails = {
-          assignee: {
-            name: additionalData.assignee.name,
-            displayName: additionalData.assignee.displayName,
-            id: additionalData.assignee.id,
-            type: EntityType.USER,
-          },
-        };
-      } else if (status === TestCaseResolutionStatusTypes.Resolved) {
-        updatedData.testCaseResolutionStatusDetails = {
-          testCaseFailureReason: additionalData?.reason,
-          testCaseFailureComment: additionalData?.comment ?? '',
-          resolvedBy: currentUser
-            ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
-            : undefined,
-        };
+      if (currentStatus === TestCaseResolutionStatusTypes.Resolved) {
+        await reopenIncident(status, additionalData);
+
+        return;
       }
 
+      const taskId = data.stateId;
+      if (!taskId) {
+        return;
+      }
+
+      let resolveRequest: ResolveTask;
+      if (status === TestCaseResolutionStatusTypes.New) {
+        resolveRequest = { transitionId: 'new' };
+      } else if (status === TestCaseResolutionStatusTypes.ACK) {
+        resolveRequest = { transitionId: 'ack' };
+      } else if (status === TestCaseResolutionStatusTypes.Assigned) {
+        const transitionId =
+          currentStatus === TestCaseResolutionStatusTypes.Assigned
+            ? 'reassign'
+            : 'assign';
+        const assignee = additionalData?.assignee;
+        resolveRequest = {
+          transitionId,
+          payload: assignee
+            ? {
+                assignees: [
+                  {
+                    id: assignee.id,
+                    type: assignee.type ?? EntityType.USER,
+                    name: assignee.name,
+                    fullyQualifiedName:
+                      assignee.fullyQualifiedName ?? assignee.name,
+                    displayName: assignee.displayName,
+                  },
+                ],
+              }
+            : undefined,
+        };
+      } else if (status === TestCaseResolutionStatusTypes.Resolved) {
+        resolveRequest = {
+          transitionId: 'resolve',
+          resolutionType: TaskResolutionType.Completed,
+          comment: additionalData?.comment,
+          payload: additionalData?.reason
+            ? { testCaseFailureReason: additionalData.reason }
+            : undefined,
+        };
+      } else {
+        return;
+      }
+
+      setIsLoading(true);
       try {
-        const responseData = await postTestCaseIncidentStatus(updatedData);
-        onSubmit(responseData);
+        await transitionIncident(taskId, resolveRequest);
+
+        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const latest = refreshed?.data?.[0];
+        if (latest) {
+          onSubmit(latest);
+        }
+
         setShowAssigneePopover(false);
         setShowResolvedPopover(false);
         setSelectedAssignee(null);
@@ -246,7 +352,7 @@ const InlineTestCaseIncidentStatus = ({
         setIsLoading(false);
       }
     },
-    [currentUser, data.testCaseReference?.fullyQualifiedName, onSubmit]
+    [data.stateId, data.testCaseResolutionStatusType, onSubmit, reopenIncident]
   );
 
   const handleStatusClick = (event: React.MouseEvent<HTMLElement>) => {

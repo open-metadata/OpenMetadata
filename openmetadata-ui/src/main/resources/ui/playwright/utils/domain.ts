@@ -331,17 +331,18 @@ export const selectDataProduct = async (
     .getByPlaceholder('Search');
 
   await waitForAllLoadersToDisappear(page);
+  await searchBox.waitFor({ state: 'visible' });
 
   await Promise.all([
-    searchBox.fill(dataProduct.name),
     page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
+    searchBox.fill(dataProduct.name),
   ]);
 
   await waitForSearchDebounce(page);
 
   await Promise.all([
-    page.getByTestId(dataProduct.name).click(),
     page.waitForResponse('/api/v1/dataProducts/name/*'),
+    page.getByTestId(dataProduct.name).click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
@@ -1618,9 +1619,17 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  const patchRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/domains/') &&
+      response.request().method() === 'PATCH' &&
+      response.ok()
+  );
   await page.getByTestId('save-button').click();
   await patchRes;
+  await page.waitForURL((url) =>
+    url.pathname.includes(encodeURIComponent(newName))
+  );
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();
@@ -1636,24 +1645,38 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   await page.getByTestId('domain-dropdown').click();
-  await page.getByTestId('domain-selectable-tree').waitFor({
+  const domainTree = page.getByTestId('domain-selectable-tree');
+  await domainTree.waitFor({
     state: 'visible',
   });
+  const searchBar = domainTree.getByTestId('searchbar');
+  const searchTerm = domain.displayName ?? domain.name;
+  const domainOption = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
 
-  const searchDomainRes = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain')
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.displayName);
-  await searchDomainRes;
+  await expect
+    .poll(
+      async () => {
+        if (!(await domainTree.isVisible().catch(() => false))) {
+          await page.getByTestId('domain-dropdown').click();
+          await domainTree.waitFor({ state: 'visible' });
+        }
 
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
+        await searchBar.fill('');
+        await searchBar.fill(searchTerm);
+
+        return await domainOption.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60000,
+        intervals: [1000, 2000, 5000],
+        message: `Timed out waiting for domain ${
+          domain.displayName ?? domain.name
+        } to appear in navbar selector`,
+      }
+    )
+    .toBe(true);
+
+  await domainOption.click();
   await waitForAllLoadersToDisappear(page);
 };
 
