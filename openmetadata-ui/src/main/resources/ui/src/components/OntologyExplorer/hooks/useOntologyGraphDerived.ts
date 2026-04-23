@@ -226,6 +226,15 @@ export function useOntologyGraphDerived({
 
         return relationTypeFilterIds.includes(e.relationType);
       });
+
+      const connectedByRelationType = new Set<string>();
+      filteredEdges.forEach((e) => {
+        connectedByRelationType.add(e.from);
+        connectedByRelationType.add(e.to);
+      });
+      filteredNodes = filteredNodes.filter((n) =>
+        connectedByRelationType.has(n.id)
+      );
     }
 
     if (filters.showCrossGlossaryOnly) {

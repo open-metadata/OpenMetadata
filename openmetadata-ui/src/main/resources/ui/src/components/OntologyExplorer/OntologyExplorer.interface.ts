@@ -124,10 +124,6 @@ export interface OntologyGraphProps {
     }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
-  onNodeContextMenu: (
-    node: OntologyNode,
-    position: { x: number; y: number }
-  ) => void;
   onPaneClick: () => void;
   onScrollNearEdge?: () => void;
 }
@@ -147,14 +143,6 @@ export interface GraphSettingsPanelProps {
   onSettingsChange: (settings: GraphSettings) => void;
 }
 
-export interface NodeContextMenuProps {
-  node: OntologyNode;
-  position: { x: number; y: number };
-  onClose: () => void;
-  onFocus: (node: OntologyNode) => void;
-  onViewDetails: (node: OntologyNode) => void;
-  onOpenInNewTab: (node: OntologyNode) => void;
-}
 
 export interface OntologyControlButtonsProps {
   onZoomIn: () => void;
