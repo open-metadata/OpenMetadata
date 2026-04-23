@@ -65,7 +65,6 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -911,11 +910,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         }
       }
 
-      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-      if (cachedRelationshipDao != null) {
-        for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-          cachedRelationshipDao.invalidateDomains(record.getType(), record.getId());
-        }
+      // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
+      // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the
+      // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
+      // too; otherwise GET-by-name would keep serving stale domain references until TTL.
+      for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+        invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -949,6 +949,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
       updateEntityLinks(oldFqn, newFqn);
       updateAssetSearchIndexes(oldFqn, newFqn);
+
+      // Every asset that had this data product in its `dataProducts` reference list now holds a
+      // stale FQN in its cache entry. Invalidate them so next read rebuilds with the new FQN.
+      // Pull the asset FQN from the record JSON so both ID and by-name cache variants are evicted.
+      List<CollectionDAO.EntityRelationshipRecord> assetRecords =
+          daoCollection
+              .relationshipDAO()
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
+      for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+        invalidateCacheForReferencedEntity(record);
+      }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
