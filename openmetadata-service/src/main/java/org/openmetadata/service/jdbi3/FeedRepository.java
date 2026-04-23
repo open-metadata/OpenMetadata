@@ -502,11 +502,15 @@ public class FeedRepository {
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     if (thread.getType() == ThreadType.Task) {
+      validateTaskDetails(thread);
       validateAssignee(thread);
       thread.getTask().withId(getNextTaskId());
     } else if (thread.getType() == ThreadType.Announcement) {
       // Validate start and end time for announcement
       validateAnnouncement(thread);
+    } else if (thread.getTask() != null) {
+      throw new IllegalArgumentException(
+          "taskDetails can only be provided for threads of type Task");
     }
     store(threadContext);
     storeRelationships(threadContext);
@@ -1187,6 +1191,45 @@ public class FeedRepository {
     return LocalDateTime.ofEpochSecond(seconds, 0, ZoneOffset.UTC)
         .toInstant(ZoneOffset.UTC)
         .toEpochMilli();
+  }
+
+  private void validateTaskDetails(Thread thread) {
+    TaskDetails task = thread.getTask();
+    if (task == null) {
+      throw new IllegalArgumentException("taskDetails is required for threads of type Task");
+    }
+    switch (task.getType()) {
+      case RequestTag, UpdateTag -> {
+        validateTagLabelArray(task.getOldValue(), "oldValue", task.getType());
+        validateTagLabelArray(task.getSuggestion(), "suggestion", task.getType());
+      }
+      case RequestTestCaseFailureResolution, RecognizerFeedbackApproval -> {
+        rejectField(task.getOldValue(), "oldValue", task.getType());
+        rejectField(task.getSuggestion(), "suggestion", task.getType());
+      }
+      case RequestDescription, UpdateDescription, RequestApproval, Generic -> {}
+    }
+  }
+
+  private void rejectField(Object value, String fieldName, TaskType taskType) {
+    if (value != null) {
+      throw new IllegalArgumentException(
+          String.format("taskDetails.%s is not applicable for task type %s", fieldName, taskType));
+    }
+  }
+
+  private void validateTagLabelArray(String value, String fieldName, TaskType taskType) {
+    if (value == null) {
+      return;
+    }
+    try {
+      JsonUtils.readObjects(value, TagLabel.class);
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          String.format(
+              "taskDetails.%s must be a valid JSON array of tags for task type %s",
+              fieldName, taskType));
+    }
   }
 
   private void validateAssignee(Thread thread) {
