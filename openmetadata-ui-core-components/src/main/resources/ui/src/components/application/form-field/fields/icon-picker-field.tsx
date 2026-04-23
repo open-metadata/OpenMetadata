@@ -39,32 +39,6 @@ import type {
 } from '../form-field.types';
 import { DEFAULT_COLOR_OPTIONS } from './color-picker-field';
 
-const looksLikeImageSource = (value: string) => {
-  if (!value) {
-    return false;
-  }
-
-  if (value.startsWith('data:image/')) {
-    return true;
-  }
-
-  if (value.startsWith('/')) {
-    return true;
-  }
-
-  if (/\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i.test(value)) {
-    return true;
-  }
-
-  try {
-    const parsedUrl = new URL(value);
-
-    return ['http:', 'https:'].includes(parsedUrl.protocol);
-  } catch {
-    return false;
-  }
-};
-
 const renderSelectItemIcon = (
   icon: FormSelectItem['icon'],
   className: string,
@@ -211,7 +185,7 @@ export const IconPickerField = ({
       );
     }
 
-    if (hasCustomImage && looksLikeImageSource(value)) {
+    if (hasCustomImage) {
       return (
         <img
           alt=""
