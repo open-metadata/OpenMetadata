@@ -47,6 +47,10 @@ export const SIDEBAR_LIST_ITEMS = {
     SidebarItem.OBSERVABILITY_ALERT,
   ],
   [SidebarItem.GLOSSARY]: [SidebarItem.GOVERNANCE, SidebarItem.GLOSSARY],
+  [SidebarItem.ONTOLOGY_EXPLORER]: [
+    SidebarItem.GOVERNANCE,
+    SidebarItem.ONTOLOGY_EXPLORER,
+  ],
   [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
   [SidebarItem.METRICS]: [SidebarItem.GOVERNANCE, SidebarItem.METRICS],
   [SidebarItem.DATA_MARKETPLACE]: [
