@@ -18,6 +18,7 @@ $$section
 ### Host and Port $(id="hostPort")
 
 The base URL of your SSRS Report Server instance.
+$$
 
 $$section
 ### Username $(id="username")

@@ -76,10 +76,10 @@ import qliksense from '../assets/img/service-icon-qlik-sense.png';
 import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
 import sigma from '../assets/img/service-icon-sigma.png';
+import ssrs from '../assets/img/service-icon-ssrs.png';
 import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import hex from '../assets/svg/service-icon-hex.svg';
-import ssrs from '../assets/img/service-icon-ssrs.png';
 
 // Pipeline services
 import airbyte from '../assets/img/Airbyte.png';
