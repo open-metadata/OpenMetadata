@@ -113,5 +113,4 @@ export interface FieldProp {
   showHelperText?: boolean;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
-  isBeta?: boolean;
 }

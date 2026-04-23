@@ -85,27 +85,6 @@ const COVER_IMAGE_ACCEPTED_TYPES = [
   'image/gif',
 ];
 
-const COVER_IMAGE_MAX_SIZE_MB = 5;
-const COVER_IMAGE_MAX_WIDTH = 800;
-const COVER_IMAGE_MAX_HEIGHT = 400;
-
-const getImageDimensions = (
-  file: File
-): Promise<{ width: number; height: number } | null> =>
-  new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: image.width, height: image.height });
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    image.src = url;
-  });
-
 export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   name: '',
   displayName: '',
@@ -519,34 +498,6 @@ const AddDomainForm = ({
     label: t('label.cover-image'),
     name: 'coverImage',
     placeholder: t('label.upload-cover-image'),
-    rules: {
-      validate: async (value) => {
-        if (!value?.file) {
-          return true;
-        }
-        const { file } = value;
-        if (file.size > COVER_IMAGE_MAX_SIZE_MB * 1024 * 1024) {
-          return t('message.file-size-exceeded', {
-            size: `${COVER_IMAGE_MAX_SIZE_MB} MB`,
-          });
-        }
-        const dimensions = await getImageDimensions(file);
-        if (!dimensions) {
-          return t('message.failed-to-load-image');
-        }
-        if (
-          dimensions.width > COVER_IMAGE_MAX_WIDTH ||
-          dimensions.height > COVER_IMAGE_MAX_HEIGHT
-        ) {
-          return t('message.image-dimensions-exceeded', {
-            maxWidth: COVER_IMAGE_MAX_WIDTH,
-            maxHeight: COVER_IMAGE_MAX_HEIGHT,
-          });
-        }
-
-        return true;
-      },
-    },
     props: {
       acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
       children: (

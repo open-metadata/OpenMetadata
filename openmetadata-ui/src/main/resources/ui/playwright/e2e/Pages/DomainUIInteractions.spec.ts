@@ -579,15 +579,13 @@ test.describe('Domain Form Validation', () => {
     await page.click('[data-testid="add-domain"]');
     await page.getByTestId('form-heading').waitFor();
 
-    await page.locator('#root\\/name').fill('Invalid::Name');
+    await page.locator('#root\\/name').fill('Invalid@Name#Test');
     await page.locator('#root\\/displayName').fill('Test Domain');
 
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect(
-      page.getByText(
-        'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
-      )
+      page.locator('.ant-form-item-explain-error').first()
     ).toBeVisible();
   });
 

@@ -35,7 +35,6 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
     helperText,
     helperTextType = HelperTextType.ALERT,
     hasSeparator = false,
-    isBeta = false,
   } = field;
 
   const effectiveRules: RegisterOptions = { ...rules };
@@ -52,7 +51,6 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
           <Fragment key={id}>
             <Box className="tw:gap-[6px]" direction="col">
               <FormItemLabel
-                isBeta={isBeta}
                 label={label}
                 required={required}
                 tooltip={

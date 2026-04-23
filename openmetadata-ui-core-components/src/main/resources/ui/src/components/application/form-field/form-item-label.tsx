@@ -13,21 +13,16 @@
 
 import type { ReactNode } from 'react';
 import { HelpCircle } from '@untitledui/icons';
-import { Badge } from '@/components/base/badges/badges';
 import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
 
 export interface FormItemLabelProps {
   label: ReactNode;
-  isBeta?: boolean;
-  betaLabel?: string;
   tooltip?: ReactNode;
   required?: boolean;
 }
 
 export const FormItemLabel = ({
   label,
-  isBeta = false,
-  betaLabel,
   tooltip,
   required = false,
 }: FormItemLabelProps) => (
@@ -42,11 +37,6 @@ export const FormItemLabel = ({
           <HelpCircle className="tw:size-4" />
         </TooltipTrigger>
       </Tooltip>
-    )}
-    {isBeta && (
-      <Badge color="brand" size="sm" type="pill-color">
-        {betaLabel}
-      </Badge>
     )}
   </span>
 );
