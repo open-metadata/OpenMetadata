@@ -89,3 +89,28 @@ PREPARE rename_thread_entity_stmt FROM @rename_thread_entity_sql;
 EXECUTE rename_thread_entity_stmt;
 DEALLOCATE PREPARE rename_thread_entity_stmt;
 
+-- =====================================================
+-- PHASE 2F: Lower workflow trigger polling intervals
+-- =====================================================
+-- Reduce WorkflowEventConsumer poll interval from 10s to 1s.
+-- The legacy 10s default added up to a 10s wait between an entity change and the
+-- workflow-triggered approval task being created. On CI under resource pressure this
+-- often drifted to >2 minutes when combined with Flowable's 60s async job poll. The
+-- new value keeps the trigger pipeline near-real-time.
+UPDATE event_subscription_entity
+SET json = JSON_SET(json, '$.pollInterval', 1)
+WHERE name = 'WorkflowEventConsumer'
+  AND CAST(JSON_EXTRACT(json, '$.pollInterval') AS UNSIGNED) > 1;
+
+-- Lower Flowable async/timer job acquisition intervals to keep workflow-driven
+-- task creation responsive. The previous 60s default was a Flowable production setting
+-- carried over verbatim; for OpenMetadata's interactive task UX we want sub-second pickup.
+UPDATE openmetadata_settings
+SET json = JSON_SET(
+             JSON_SET(json, '$.executorConfiguration.asyncJobAcquisitionInterval', 1000),
+             '$.executorConfiguration.timerJobAcquisitionInterval', 5000)
+WHERE configType = 'workflowSettings'
+  AND JSON_EXTRACT(json, '$.executorConfiguration') IS NOT NULL
+  AND (CAST(JSON_EXTRACT(json, '$.executorConfiguration.asyncJobAcquisitionInterval') AS UNSIGNED) > 1000
+    OR CAST(JSON_EXTRACT(json, '$.executorConfiguration.timerJobAcquisitionInterval') AS UNSIGNED) > 5000);
+
