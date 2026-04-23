@@ -28,7 +28,6 @@ import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
-import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,10 +43,8 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.domains.PaginatedEntities;
-import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -56,8 +53,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -65,7 +60,6 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -87,8 +81,6 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -911,11 +903,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         }
       }
 
-      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-      if (cachedRelationshipDao != null) {
-        for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-          cachedRelationshipDao.invalidateDomains(record.getType(), record.getId());
-        }
+      // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
+      // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the
+      // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
+      // too; otherwise GET-by-name would keep serving stale domain references until TTL.
+      for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+        invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -949,15 +942,25 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
       updateEntityLinks(oldFqn, newFqn);
       updateAssetSearchIndexes(oldFqn, newFqn);
+
+      // Every asset that had this data product in its `dataProducts` reference list now holds a
+      // stale FQN in its cache entry. Invalidate them so next read rebuilds with the new FQN.
+      // Pull the asset FQN from the record JSON so both ID and by-name cache variants are evicted.
+      List<CollectionDAO.EntityRelationshipRecord> assetRecords =
+          daoCollection
+              .relationshipDAO()
+              .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
+      for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+        invalidateCacheForReferencedEntity(record);
+      }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
       EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
     }
   }
 
@@ -1033,47 +1036,23 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private void closeApprovalTask(DataProduct entity, String comment) {
-    EntityLink about = new EntityLink(DATA_PRODUCT, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-
-    // Try to close ChangeReview task first (higher priority)
-    // Try to close RequestApproval task
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for data product {}", entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(DataProduct dataProduct) {
-    try {
-      EntityLink about = new EntityLink(DATA_PRODUCT, dataProduct.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      dataProduct =
-          Entity.getEntityByName(
-              Entity.DATA_PRODUCT,
-              dataProduct.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(dataProduct.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for data product {}",
-          TaskType.RequestApproval,
-          dataProduct.getFullyQualifiedName());
-    }
+    dataProduct =
+        Entity.getEntityByName(
+            Entity.DATA_PRODUCT,
+            dataProduct.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        dataProduct.getFullyQualifiedName(),
+        new ArrayList<>(dataProduct.getReviewers()),
+        dataProduct.getUpdatedBy());
   }
 
   public org.openmetadata.schema.entity.data.DataContract getDataProductContract(

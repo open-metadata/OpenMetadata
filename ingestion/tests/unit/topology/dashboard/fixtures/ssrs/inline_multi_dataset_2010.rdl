@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2010/01/reportdefinition">
+  <DataSources>
+    <DataSource Name="FinanceDS">
+      <ConnectionProperties>
+        <DataProvider>SQL</DataProvider>
+        <ConnectString>Server=finance01;Database=FinanceDB</ConnectString>
+      </ConnectionProperties>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="Revenue">
+      <Query>
+        <DataSourceName>FinanceDS</DataSourceName>
+        <CommandType>Text</CommandType>
+        <CommandText>SELECT MonthName, Amount FROM dbo.Revenue</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="MonthName"><DataField>MonthName</DataField></Field>
+        <Field Name="Amount"><DataField>Amount</DataField></Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Expenses">
+      <Query>
+        <DataSourceName>FinanceDS</DataSourceName>
+        <CommandType>Text</CommandType>
+        <CommandText>SELECT Category, Amount FROM dbo.Expenses</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Category"><DataField>Category</DataField></Field>
+        <Field Name="Amount"><DataField>Amount</DataField></Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+</Report>

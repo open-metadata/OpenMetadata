@@ -76,6 +76,7 @@ import qliksense from '../assets/img/service-icon-qlik-sense.png';
 import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
 import sigma from '../assets/img/service-icon-sigma.png';
+import ssrs from '../assets/img/service-icon-ssrs.png';
 import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import hex from '../assets/svg/service-icon-hex.svg';
@@ -178,7 +179,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   iomete: iomete,
   domodatabase: domo,
   customdatabase: databasedefault,
-  microsoftFabric: microsoftFabric,
+  microsoftfabric: microsoftFabric,
 
   // Messaging services
   kafka: kafka,
@@ -203,6 +204,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   microstrategy: microstrategy,
   grafana: grafana,
   hex: hex,
+  ssrs: ssrs,
   customdashboard: dashboarddefault,
 
   // Pipeline services
@@ -221,7 +223,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   databrickspipeline: databrick,
   gluepipeline: glue,
   custompipeline: pipelinedefault,
-  microsoftFabricPipeline: microsoftFabric,
+  microsoftfabricpipeline: microsoftFabric,
 
   // ML Model services
   mlflow: mlflow,
