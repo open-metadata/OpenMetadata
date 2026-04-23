@@ -64,7 +64,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [permissions]);
 
   const installedPluginInstances: AppPlugin[] = useMemo(() => {
     return applications

@@ -331,17 +331,18 @@ export const selectDataProduct = async (
     .getByPlaceholder('Search');
 
   await waitForAllLoadersToDisappear(page);
+  await searchBox.waitFor({ state: 'visible' });
 
   await Promise.all([
-    searchBox.fill(dataProduct.name),
     page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
+    searchBox.fill(dataProduct.name),
   ]);
 
   await waitForSearchDebounce(page);
 
   await Promise.all([
-    page.getByTestId(dataProduct.name).click(),
     page.waitForResponse('/api/v1/dataProducts/name/*'),
+    page.getByTestId(dataProduct.name).click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
@@ -1618,9 +1619,17 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  const patchRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/domains/') &&
+      response.request().method() === 'PATCH' &&
+      response.ok()
+  );
   await page.getByTestId('save-button').click();
   await patchRes;
+  await page.waitForURL((url) =>
+    url.pathname.includes(encodeURIComponent(newName))
+  );
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();

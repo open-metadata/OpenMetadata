@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition"
+        xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <DataSources>
+    <DataSource Name="SalesDS">
+      <ConnectionProperties>
+        <DataProvider>SQL</DataProvider>
+        <ConnectString>Data Source=sql01.example.com;Initial Catalog=SalesDB</ConnectString>
+      </ConnectionProperties>
+      <rd:SecurityType>Integrated</rd:SecurityType>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="SalesDataset">
+      <Query>
+        <DataSourceName>SalesDS</DataSourceName>
+        <CommandType>Text</CommandType>
+        <CommandText>SELECT OrderId, CustomerName, Total FROM dbo.Orders WHERE Total &gt; @minTotal</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="OrderId"><DataField>OrderId</DataField></Field>
+        <Field Name="CustomerName"><DataField>CustomerName</DataField></Field>
+        <Field Name="Total"><DataField>Total</DataField></Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+</Report>

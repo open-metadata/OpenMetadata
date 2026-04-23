@@ -135,8 +135,13 @@ public final class PolicyConditionUpdater {
       boolean anyChanged = false;
       for (Policy policy : policies.getData()) {
         if (rewritePolicyConditions(policy, conditionRewriter)) {
-          // Direct DAO update to avoid creating version history entries for automated rewrites
+          // Direct DAO update to avoid creating version history entries for automated rewrites.
           policyRepo.getDao().update(policy);
+          // DAO.update skips EntityUpdater.invalidateCachesAfterStore, so the cached policy
+          // still has the pre-rewrite condition embedded. Drop every cache variant for this
+          // policy so the next read rebuilds from the freshly-updated row.
+          EntityRepository.invalidateCacheForEntity(
+              Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
           anyChanged = true;
           LOG.info("Updated policy conditions for '{}'", policy.getFullyQualifiedName());
         }

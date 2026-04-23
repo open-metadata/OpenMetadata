@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ChangeDescription } from '../../../generated/entity/type';
-import { VersionButton } from './EntityVersionTimeLine';
+import { EntityHistory } from '../../../generated/type/entityHistory';
+import EntityVersionTimeLine, { VersionButton } from './EntityVersionTimeLine';
 
 jest.mock('../../common/PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
@@ -32,6 +34,20 @@ jest.mock('../../../utils/EntityVersionUtils', () => ({
   __esModule: true,
   getSummary: jest.fn().mockReturnValue('Some change description'),
   isMajorVersion: jest.fn().mockReturnValue(false),
+  renderVersionButton: jest.fn((v) => (
+    <div
+      data-testid={`version-selector-v${parseFloat(v.version).toFixed(1)}`}
+      key={v.version}>
+      {v.version}
+    </div>
+  )),
+}));
+
+jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockImplementation(() => ({
+    resourceLimit: {},
+    getResourceLimit: jest.fn(),
+  })),
 }));
 
 describe('VersionButton', () => {
@@ -103,5 +119,97 @@ describe('VersionButton', () => {
     fireEvent.click(versionButton);
 
     expect(onVersionSelect).toHaveBeenCalledWith('1.0');
+  });
+});
+
+describe('EntityVersionTimeLine infinite scroll', () => {
+  const versionList: EntityHistory = {
+    entityType: 'table',
+    versions: [
+      JSON.stringify({ version: 1.1, updatedBy: 'u', updatedAt: 1 }),
+      JSON.stringify({ version: 1.0, updatedBy: 'u', updatedAt: 0 }),
+    ],
+  };
+
+  let observerCallback: IntersectionObserverCallback | undefined;
+
+  class MockIO implements IntersectionObserver {
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds = [];
+    constructor(cb: IntersectionObserverCallback) {
+      observerCallback = cb;
+    }
+    observe() {
+      // noop
+    }
+    unobserve() {
+      // noop
+    }
+    disconnect() {
+      observerCallback = undefined;
+    }
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+
+  beforeAll(() => {
+    (
+      window as unknown as { IntersectionObserver: typeof IntersectionObserver }
+    ).IntersectionObserver = MockIO as unknown as typeof IntersectionObserver;
+  });
+
+  beforeEach(() => {
+    observerCallback = undefined;
+  });
+
+  const renderTimeline = (
+    overrides: Partial<Parameters<typeof EntityVersionTimeLine>[0]> = {}
+  ) =>
+    render(
+      <MemoryRouter>
+        <EntityVersionTimeLine
+          currentVersion="1.1"
+          versionHandler={jest.fn()}
+          versionList={versionList}
+          onBack={jest.fn()}
+          {...overrides}
+        />
+      </MemoryRouter>
+    );
+
+  it('does not render sentinel when hasMore is false', () => {
+    renderTimeline({ hasMore: false, onLoadMore: jest.fn() });
+
+    expect(
+      screen.queryByTestId('version-load-more-sentinel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not render sentinel when onLoadMore is not provided', () => {
+    renderTimeline({ hasMore: true });
+
+    expect(
+      screen.queryByTestId('version-load-more-sentinel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders sentinel when onLoadMore and hasMore are true', () => {
+    renderTimeline({ hasMore: true, onLoadMore: jest.fn() });
+
+    expect(
+      screen.getByTestId('version-load-more-sentinel')
+    ).toBeInTheDocument();
+  });
+
+  it('does not register the observer while isLoadingMore is true', () => {
+    renderTimeline({
+      hasMore: true,
+      isLoadingMore: true,
+      onLoadMore: jest.fn(),
+    });
+
+    expect(observerCallback).toBeUndefined();
   });
 });

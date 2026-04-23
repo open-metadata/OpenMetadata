@@ -106,6 +106,7 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
+  private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
 
@@ -822,12 +823,17 @@ public class SystemRepository {
     }
   }
 
-  private List<String> findMissingIndexes(SearchRepository searchRepository) {
+  @VisibleForTesting
+  List<String> findMissingIndexes(SearchRepository searchRepository) {
     List<String> missing = new ArrayList<>();
+    boolean semanticSearchEnabled = searchRepository.isVectorEmbeddingEnabled();
     try {
       Map<String, org.openmetadata.search.IndexMapping> indexMap =
           searchRepository.getEntityIndexMap();
       for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
+        if (!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey())) {
+          continue;
+        }
         if (!searchRepository.indexExists(entry.getValue())) {
           missing.add(entry.getKey());
         }

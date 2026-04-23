@@ -18,14 +18,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     try {
-      MigrationUtil.migrateWebhookSecretKeyToAuthType(handle);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to migrate webhook secretKey to authType in v1125 migration. "
-              + "Webhook authentication may not work correctly until re-saved.",
-          e);
-    }
-    try {
       MigrationUtil.migrateWorkflowDefinitions();
     } catch (Exception e) {
       LOG.error(

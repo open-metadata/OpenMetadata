@@ -96,7 +96,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.PipelineObservability;
+import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -955,11 +957,20 @@ public class TableRepository extends EntityRepository<Table> {
           validateColumn(table, columnProfilerConfig.getColumnName());
         }
       }
-      if (tableProfilerConfig.getProfileSampleType() != null
-          && tableProfilerConfig.getProfileSample() != null) {
-        EntityUtil.validateProfileSample(
-            tableProfilerConfig.getProfileSampleType().toString(),
-            tableProfilerConfig.getProfileSample());
+      ProfileSampleConfig profileSampleConfig = tableProfilerConfig.getProfileSampleConfig();
+      if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
+        ProfileSampleConfig.SampleConfigType sampleConfigType =
+            profileSampleConfig.getSampleConfigType();
+        if (!nullOrEmpty(sampleConfigType)
+            && sampleConfigType.equals(ProfileSampleConfig.SampleConfigType.STATIC)) {
+          StaticSamplingConfig staticConfig =
+              JsonUtils.convertValue(profileSampleConfig.getConfig(), StaticSamplingConfig.class);
+          if (staticConfig.getProfileSampleType() != null
+              && staticConfig.getProfileSample() != null) {
+            EntityUtil.validateProfileSample(
+                staticConfig.getProfileSampleType().toString(), staticConfig.getProfileSample());
+          }
+        }
       }
     }
 
@@ -1435,6 +1446,10 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
+    // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
+    // merged tags/dataModel instead of stale pre-merge JSON.
+    invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
