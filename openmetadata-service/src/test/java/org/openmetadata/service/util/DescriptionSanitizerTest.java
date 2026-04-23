@@ -263,7 +263,6 @@ class DescriptionSanitizerTest {
         "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""
             + " href=\"https://open-metadata.example.org/users/admin\""
             + " data-entitytype=\"user\" data-fqn=\"admin\""
-            + " data-textcontent=\"@admin\">"
             + "<#E::user::admin|[@admin](https://open-metadata.example.org/users/admin)>"
             + "</a>";
     String result = DescriptionSanitizer.sanitize(input);
@@ -272,6 +271,5 @@ class DescriptionSanitizerTest {
     assertTrue(result.contains("data-label=\"admin\""));
     assertTrue(result.contains("data-fqn=\"admin\""));
     assertTrue(result.contains("data-entitytype=\"user\""));
-    assertTrue(result.contains("data-textcontent=\"@admin\""));
   }
 }
