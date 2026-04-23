@@ -96,9 +96,24 @@ public final class DescriptionSanitizer {
           // Common safe attributes
           .allowAttributes("class", "id", "data-id", "data-highlighted", "data-testid")
           .globally()
-          // Entity mention attributes on anchor tags (hashtag/mention nodes in BlockEditor)
-          .allowAttributes("data-type", "data-label", "data-fqn", "data-entitytype")
+          // Entity mention/hashtag/link attributes on anchor tags (BlockEditor)
+          .allowAttributes(
+              "data-type", "data-label", "data-fqn", "data-entitytype", "data-textcontent")
           .onElements("a")
+          // File attachment and callout node attributes (BlockEditor div-based nodes)
+          // Note: data-temp-file is intentionally excluded — it holds transient upload state
+          .allowAttributes(
+              "data-type",
+              "data-url",
+              "data-filename",
+              "data-filesize",
+              "data-mimetype",
+              "data-uploading",
+              "data-upload-progress",
+              "data-is-image",
+              "data-alt",
+              "data-callouttype")
+          .onElements("div")
           .allowAttributes("align")
           .onElements("td", "th", "tr", "table")
           .allowAttributes("colspan", "rowspan")
