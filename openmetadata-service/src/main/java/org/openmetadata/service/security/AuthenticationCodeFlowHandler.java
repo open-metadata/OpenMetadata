@@ -396,9 +396,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         LOG.debug("Web login flow detected - using configured callback URL");
       }
 
-      checkAndStoreRedirectUriInSession(session, finalRedirectUri);
-
       session.setAttribute(SESSION_SSO_CALLBACK_URL, ssoCallbackUrl);
+
+      checkAndStoreRedirectUriInSession(session, finalRedirectUri, serverUrl, ssoCallbackUrl);
 
       LOG.debug(
           "Auth Login - Session: {}, requestedRedirectUri: {}, ssoCallbackUrl: {}, finalRedirectUri: {}",
@@ -454,12 +454,24 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   public static void checkAndStoreRedirectUriInSession(HttpSession session, String redirectUri) {
+    checkAndStoreRedirectUriInSession(session, redirectUri, new String[0]);
+  }
+
+  public static void checkAndStoreRedirectUriInSession(
+      HttpSession session, String redirectUri, String... trustedBaseUrls) {
     if (nullOrEmpty(redirectUri)) {
       throw new TechnicalException("Redirect URI is required");
     }
 
+    if (trustedBaseUrls != null
+        && trustedBaseUrls.length > 0
+        && !RedirectUriValidator.isSafe(redirectUri, trustedBaseUrls)) {
+      LOG.warn("[OIDC] Rejecting disallowed redirect URI on login request");
+      throw new TechnicalException("Redirect URI is not in the allowlist");
+    }
+
     session.setAttribute(SESSION_REDIRECT_URI, redirectUri);
-    LOG.debug("Stored redirect URI in session {}: {}", session.getId(), redirectUri);
+    LOG.debug("Stored redirect URI in session {}", session.getId());
   }
 
   // Callback
