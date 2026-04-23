@@ -536,9 +536,14 @@ const BulkEntityImportPage = () => {
         if (websocketResponse.status === 'COMPLETED') {
           const importResults = websocketResponse.result;
 
-          // If the job is complete and the status is either failure or aborted
-          // then reset the validation data and active step
-          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+          // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
+          // reset to upload step. If rows were processed but all failed, fall through to
+          // show the validation grid so the user can inspect and fix errors.
+          if (
+            ['aborted'].includes(importResults?.status ?? '') ||
+            (importResults?.status === 'failure' &&
+              (importResults?.numberOfRowsProcessed ?? 0) === 0)
+          ) {
             setValidationData(importResults);
 
             handleActiveStepChange(VALIDATION_STEP.UPLOAD);

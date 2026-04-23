@@ -3490,13 +3490,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Dry run with name="*" should succeed
     CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
     assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
-    assertEquals(3, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
 
     // Actual import with name="*" — previously failed because
     // processChangeEventForBulkImport would call getByName("*")
     CsvImportResult result = importCsvWithWildcard(client, csvData, false);
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(3, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsProcessed());
 
     // Verify test cases created on different tables
     TestCase tc1 =
@@ -3557,7 +3557,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     CsvImportResult result = importCsvWithWildcard(client, csvData, false);
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsProcessed());
 
     TestCase imported =
         client.testCases().getByName(table.getFullyQualifiedName() + "." + testName, "testSuite");
@@ -3618,7 +3618,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
     assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
-    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(1, dryRunResult.getNumberOfRowsProcessed());
 
     // Entity should NOT exist after dry run
     String expectedFqn = table.getFullyQualifiedName() + "." + testName;
