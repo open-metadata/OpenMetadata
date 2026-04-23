@@ -139,6 +139,7 @@ COMPLEX_TYPES = {
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
     DataType.GEOMETRY.value,
+    DataType.GEOGRAPHY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,

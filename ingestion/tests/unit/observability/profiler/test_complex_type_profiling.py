@@ -23,7 +23,6 @@ metadata.generated schema build.
 See: https://github.com/open-metadata/OpenMetadata/issues/15627
 """
 
-import importlib
 import os
 import sys
 from unittest import TestCase
@@ -291,6 +290,10 @@ class TestNotComputeSetContent(TestCase):
         """SQASGeography should NOT be in NOT_COMPUTE (moved to COMPLEX_TYPES)."""
         self.assertNotIn(SQASGeography.__name__, NOT_COMPUTE)
 
+    def test_geography_string_not_in_not_compute(self):
+        """GEOGRAPHY string should NOT be in NOT_COMPUTE (moved to COMPLEX_TYPES)."""
+        self.assertNotIn("GEOGRAPHY", NOT_COMPUTE)
+
 
 class TestComplexTypesSetContent(TestCase):
     """Verify COMPLEX_TYPES contains all expected complex data types."""
@@ -330,6 +333,10 @@ class TestComplexTypesSetContent(TestCase):
     def test_geometry_in_complex_types(self):
         """GEOMETRY should be in COMPLEX_TYPES."""
         self.assertIn("GEOMETRY", COMPLEX_TYPES)
+
+    def test_geography_string_in_complex_types(self):
+        """GEOGRAPHY string should be in COMPLEX_TYPES."""
+        self.assertIn("GEOGRAPHY", COMPLEX_TYPES)
 
     def test_xml_in_complex_types(self):
         """XML should be in COMPLEX_TYPES."""
