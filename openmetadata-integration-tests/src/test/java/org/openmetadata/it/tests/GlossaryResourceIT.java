@@ -1029,6 +1029,17 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().glossaries().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().glossaries().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Glossary getVersion(UUID id, Double version) {
     return SdkClients.adminClient().glossaries().getVersion(id.toString(), version);
   }

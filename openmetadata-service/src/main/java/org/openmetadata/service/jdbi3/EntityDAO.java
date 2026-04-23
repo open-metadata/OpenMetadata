@@ -152,6 +152,52 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("json") String json,
       @Bind("version") String version);
 
+  /**
+   * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
+   * oldPrefixHash}. Used by rename cascade flows to enumerate which children need cache
+   * invalidation before an {@link #updateFqn} bulk rewrite.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, json->>'fullyQualifiedName' AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityIdFqnPairMapper.class)
+  List<EntityIdFqnPair> listIdFqnByPrefixHash(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("prefix") String prefix);
+
+  default List<EntityIdFqnPair> listDescendantIdFqnByPrefix(String oldPrefix) {
+    if (!getNameHashColumn().equals("fqnHash")) {
+      return java.util.Collections.emptyList();
+    }
+    String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
+    return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
+  }
+
+  final class EntityIdFqnPair {
+    public final UUID id;
+    public final String fqn;
+
+    public EntityIdFqnPair(UUID id, String fqn) {
+      this.id = id;
+      this.fqn = fqn;
+    }
+  }
+
+  class EntityIdFqnPairMapper implements RowMapper<EntityIdFqnPair> {
+    @Override
+    public EntityIdFqnPair map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntityIdFqnPair(UUID.fromString(rs.getString("id")), rs.getString("fqn"));
+    }
+  }
+
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
     if (!getNameHashColumn().equals("fqnHash")) {
@@ -409,7 +455,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("startHash") String startHash,
       @Bind("endHash") String endHash);
 
-  @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> ORDER BY id LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(
       @Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
 

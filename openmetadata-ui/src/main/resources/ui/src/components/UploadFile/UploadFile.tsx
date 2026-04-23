@@ -35,20 +35,23 @@ const UploadFile: FC<UploadFileProps> = ({
   const handleUpload: UploadProps['customRequest'] = useCallback(
     (options: UploadRequestOption) => {
       setUploading(true);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploading(false);
+        onCSVUploaded(e);
+      };
+      reader.onerror = () => {
+        setUploading(false);
+        showErrorToast(new Error(t('server.unexpected-error')) as AxiosError);
+      };
       try {
-        const reader = new FileReader();
-        reader.onload = onCSVUploaded;
-        reader.onerror = () => {
-          throw t('server.unexpected-error');
-        };
         reader.readAsText(options.file as Blob);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
         setUploading(false);
+        showErrorToast(error as AxiosError);
       }
     },
-    [onCSVUploaded]
+    [onCSVUploaded, t]
   );
 
   return uploading ? (

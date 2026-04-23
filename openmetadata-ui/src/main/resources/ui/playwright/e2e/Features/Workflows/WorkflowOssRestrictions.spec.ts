@@ -653,15 +653,15 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         const historyResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/governance/workflowInstances') &&
-            response.ok()
+            response.request().method() === 'GET'
         );
 
         await page.getByTestId('workflow-execution-history').click();
-        await historyResponse;
         await waitForAllLoadersToDisappear(page);
+        await historyResponse;
 
         await expect(
-          page.getByTestId('workflow-execution-history')
+          page.getByTestId('workflow-execution-history-table')
         ).toBeVisible();
       });
     });

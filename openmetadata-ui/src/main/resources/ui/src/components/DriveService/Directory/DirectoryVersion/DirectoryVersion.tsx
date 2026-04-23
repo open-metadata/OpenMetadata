@@ -65,6 +65,9 @@ const DirectoryVersion = ({
   tier,
   breadCrumbList,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -328,9 +331,12 @@ const DirectoryVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.DIRECTORY}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

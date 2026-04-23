@@ -902,6 +902,7 @@ export enum DataModelType {
     QuickSightDataModel = "QuickSightDataModel",
     SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
+    SsrsDataModel = "SsrsDataModel",
     SupersetDataModel = "SupersetDataModel",
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",

@@ -56,3 +56,33 @@ class TestSsrsMetadata:
         assert any(r.hidden for r in reports)
         visible = [r for r in reports if not r.hidden]
         assert len(visible) == 3
+
+    def test_client_get_report_definition_returns_bytes(self, ssrs_service):
+        connection = SsrsConnection(
+            hostPort=ssrs_service, username="test_user", password="test_pass"
+        )
+        client = SsrsClient(connection)
+        rdl = client.get_report_definition("report-1")
+        assert rdl is not None
+        assert b"<DataSets>" in rdl
+        assert b"SELECT OrderId FROM dbo.Orders" in rdl
+
+    def test_client_get_report_definition_404_returns_none(self, ssrs_service):
+        connection = SsrsConnection(
+            hostPort=ssrs_service, username="test_user", password="test_pass"
+        )
+        client = SsrsClient(connection)
+        assert client.get_report_definition("does-not-exist") is None
+
+    def test_end_to_end_rdl_parse_via_mock_server(self, ssrs_service):
+        from metadata.ingestion.source.dashboard.ssrs.rdl_parser import parse_rdl
+
+        connection = SsrsConnection(
+            hostPort=ssrs_service, username="test_user", password="test_pass"
+        )
+        client = SsrsClient(connection)
+        rdl = client.get_report_definition("report-1")
+        parsed = parse_rdl(rdl)
+        assert len(parsed.data_sets) == 1
+        assert parsed.data_sets[0].command_text == "SELECT OrderId FROM dbo.Orders"
+        assert parsed.data_sources[0].database == "SalesDB"

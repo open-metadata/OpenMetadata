@@ -1144,6 +1144,17 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().teams().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().teams().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Team getVersion(UUID id, Double version) {
     return SdkClients.adminClient().teams().getVersion(id.toString(), version);
   }
