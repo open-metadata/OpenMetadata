@@ -2190,6 +2190,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       LOG.info("Glossary term FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every child term under this renamed term BEFORE the DB rewrite.
+      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
@@ -2254,6 +2256,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
 
+      // Drop cache entries for every child term under this moved term BEFORE the DB rewrite.
+      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
