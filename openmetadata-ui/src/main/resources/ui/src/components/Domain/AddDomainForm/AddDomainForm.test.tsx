@@ -51,7 +51,34 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
+  const Autocomplete = ({
+    children,
+    ...props
+  }: {
+    children?: ReactNode;
+    [key: string]: unknown;
+  }) => <div {...props}>{children}</div>;
+  Autocomplete.Item = ({
+    label,
+    'data-testid': testId,
+  }: {
+    label?: ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{label}</div>;
+
   return {
+    Autocomplete,
+    Avatar: (props: Record<string, unknown>) => (
+      <div data-testid="avatar" {...props} />
+    ),
+    Box: ({
+      children,
+      ...props
+    }: {
+      children?: ReactNode;
+      [key: string]: unknown;
+    }) => <div {...props}>{children}</div>,
+    Dot: (props: Record<string, unknown>) => <span {...props} />,
     Button: ({
       children,
       onPress,
