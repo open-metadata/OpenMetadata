@@ -89,6 +89,20 @@ class TestParseRdl:
         with pytest.raises(ValueError):
             parse_rdl(b"")
 
+    def test_doctype_is_rejected(self):
+        payload = (
+            b'<?xml version="1.0"?>'
+            b'<!DOCTYPE lolz [<!ENTITY lol "lol">]>'
+            b"<Report />"
+        )
+        with pytest.raises(ValueError, match="DTD or entity"):
+            parse_rdl(payload)
+
+    def test_entity_is_rejected(self):
+        payload = b'<?xml version="1.0"?><!ENTITY x "y"><Report />'
+        with pytest.raises(ValueError, match="DTD or entity"):
+            parse_rdl(payload)
+
     def test_namespace_2008_2010_2016_equivalence(self):
         template = (
             '<Report xmlns="{ns}">'

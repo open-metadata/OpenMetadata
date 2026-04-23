@@ -43,10 +43,11 @@ PAGE_SIZE = 100
 MAX_RETRIES = 2
 BACKOFF_FACTOR = 1
 RETRY_STATUS_CODES = (500, 502, 503, 504)
-REPORT_SELECT_FIELDS = "Id,Name,Path,Description,Type,Hidden,HasDataSources"
+REPORT_SELECT_FIELDS = "Id,Name,Path,Description,Type,Hidden,HasDataSources,CreatedBy"
 FOLDER_SELECT_FIELDS = "Id,Name,Path"
 RDL_CONTENT_PATHS = ("/Reports({id})/Content/$value", "/CatalogItems({id})/Content")
-RDL_NOT_FOUND_STATUS = {404, 400}
+RDL_NOT_FOUND_STATUS = {404}
+MAX_RDL_BYTES = 50 * 1024 * 1024
 
 
 class SsrsClient:
@@ -177,23 +178,57 @@ class SsrsClient:
         if not resp.ok:
             logger.warning("RDL fetch returned HTTP %s for %s", resp.status_code, path)
             return None
+        if _exceeds_size_limit(resp, path):
+            return None
         return _decode_rdl_response(resp, path)
+
+
+def _exceeds_size_limit(resp: requests.Response, path: str) -> bool:
+    length = resp.headers.get("Content-Length")
+    if length is None:
+        return False
+    try:
+        length_int = int(length)
+    except ValueError:
+        return False
+    if length_int > MAX_RDL_BYTES:
+        logger.warning(
+            "RDL at %s exceeds size limit (%s bytes > %s); skipping to avoid OOM",
+            path,
+            length_int,
+            MAX_RDL_BYTES,
+        )
+        return True
+    return False
 
 
 def _decode_rdl_response(resp: requests.Response, path: str) -> Optional[bytes]:
     content_type = (resp.headers.get("Content-Type") or "").lower()
     if "json" not in content_type:
-        return resp.content or None
+        return _truncate_to_limit(resp.content, path) if resp.content else None
     try:
         payload = resp.json()
     except ValueError:
-        return resp.content or None
+        return _truncate_to_limit(resp.content, path) if resp.content else None
     value = payload.get("Value") if isinstance(payload, dict) else None
     if not value:
         logger.warning("RDL JSON response missing 'Value' field at %s", path)
         return None
     try:
-        return base64.b64decode(value)
+        decoded = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError) as exc:
         logger.warning("Malformed base64 in RDL response at %s: %s", path, exc)
         return None
+    return _truncate_to_limit(decoded, path)
+
+
+def _truncate_to_limit(body: bytes, path: str) -> Optional[bytes]:
+    if len(body) > MAX_RDL_BYTES:
+        logger.warning(
+            "RDL at %s exceeds size limit (%s bytes > %s); skipping to avoid OOM",
+            path,
+            len(body),
+            MAX_RDL_BYTES,
+        )
+        return None
+    return body

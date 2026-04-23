@@ -196,6 +196,14 @@ class TestSsrsSource:
         assert len(result) == 3
         assert all(not r.hidden for r in result)
 
+    def test_hidden_reports_recorded_in_status(self, ssrs_source):
+        ssrs_source.client.get_reports = lambda: iter(MOCK_REPORTS_WITH_HIDDEN)
+        ssrs_source.status = MagicMock()
+        list(ssrs_source.get_dashboards_list())
+        ssrs_source.status.filter.assert_called_once_with(
+            "Hidden Report", "Hidden report"
+        )
+
     def test_project_name(self, ssrs_source):
         assert ssrs_source.get_project_name(MOCK_REPORTS[0]) == "Finance"
         assert ssrs_source.get_project_name(MOCK_REPORTS[1]) == "Operations"
@@ -257,6 +265,138 @@ class TestSsrsSource:
         assert any("mock_ssrs" in fqn for fqn in ssrs_source.chart_source_state)
 
 
+class TestSsrsOwnership:
+    def test_get_owner_ref_strips_domain_and_looks_up_user(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-1",
+            Name="Owned Report",
+            Path="/Finance/Owned",
+            CreatedBy="CONTOSO\\alice",
+        )
+        ssrs_source.source_config.includeOwners = True
+        sentinel = object()
+        ssrs_source.metadata = MagicMock()
+        ssrs_source.metadata.get_reference_by_name = MagicMock(return_value=sentinel)
+
+        result = ssrs_source.get_owner_ref(report)
+
+        assert result is sentinel
+        ssrs_source.metadata.get_reference_by_name.assert_called_once_with(
+            name="alice", is_owner=True
+        )
+
+    def test_get_owner_ref_handles_plain_username(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-2",
+            Name="Plain Owner",
+            Path="/Ops/Plain",
+            CreatedBy="bob",
+        )
+        ssrs_source.source_config.includeOwners = True
+        ssrs_source.metadata = MagicMock()
+        ssrs_source.metadata.get_reference_by_name = MagicMock(return_value=None)
+
+        ssrs_source.get_owner_ref(report)
+        ssrs_source.metadata.get_reference_by_name.assert_called_once_with(
+            name="bob", is_owner=True
+        )
+
+    def test_get_owner_ref_skipped_when_include_owners_false(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-3",
+            Name="Skip Owner",
+            Path="/Ops/Skip",
+            CreatedBy="CONTOSO\\carol",
+        )
+        ssrs_source.source_config.includeOwners = False
+        ssrs_source.metadata = MagicMock()
+
+        assert ssrs_source.get_owner_ref(report) is None
+        ssrs_source.metadata.get_reference_by_name.assert_not_called()
+
+    def test_get_owner_ref_returns_none_when_created_by_missing(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-4",
+            Name="No Owner",
+            Path="/Ops/None",
+        )
+        ssrs_source.source_config.includeOwners = True
+        ssrs_source.metadata = MagicMock()
+
+        assert ssrs_source.get_owner_ref(report) is None
+        ssrs_source.metadata.get_reference_by_name.assert_not_called()
+
+    def test_get_owner_ref_swallows_lookup_exceptions(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-5",
+            Name="Boom",
+            Path="/Ops/Boom",
+            CreatedBy="CONTOSO\\dan",
+        )
+        ssrs_source.source_config.includeOwners = True
+        ssrs_source.metadata = MagicMock()
+        ssrs_source.metadata.get_reference_by_name = MagicMock(
+            side_effect=Exception("lookup failed")
+        )
+
+        assert ssrs_source.get_owner_ref(report) is None
+
+    def test_yield_dashboard_continues_when_owner_not_found(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-missing",
+            Name="Unknown Owner",
+            Path="/Finance/Unknown Owner",
+            CreatedBy="CONTOSO\\ghost",
+        )
+        ssrs_source.source_config.includeOwners = True
+        ssrs_source.metadata = MagicMock()
+        ssrs_source.metadata.get_reference_by_name = MagicMock(return_value=None)
+        ssrs_source.context.get().__dict__["project_name"] = "Finance"
+
+        results = list(ssrs_source.yield_dashboard(report))
+
+        assert len(results) == 1
+        assert isinstance(results[0].right, CreateDashboardRequest)
+        assert results[0].right.owners is None
+        assert str(results[0].right.name.root) == "r-owner-missing"
+
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("CONTOSO\\alice", "alice"),
+            ("alice", "alice"),
+            ("\\alice", "alice"),
+            ("CONTOSO\\", None),
+            ("", None),
+            (None, None),
+            ("   ", None),
+            ("  bob  ", "bob"),
+        ],
+    )
+    def test_normalize_owner_variants(self, raw, expected):
+        assert SsrsSource._normalize_owner(raw) == expected
+
+    def test_yield_dashboard_continues_when_owner_lookup_raises(self, ssrs_source):
+        report = SsrsReport(
+            Id="r-owner-raises",
+            Name="Raises Owner",
+            Path="/Finance/Raises",
+            CreatedBy="CONTOSO\\eve",
+        )
+        ssrs_source.source_config.includeOwners = True
+        ssrs_source.metadata = MagicMock()
+        ssrs_source.metadata.get_reference_by_name = MagicMock(
+            side_effect=Exception("OM lookup failed")
+        )
+        ssrs_source.context.get().__dict__["project_name"] = "Finance"
+
+        results = list(ssrs_source.yield_dashboard(report))
+
+        assert len(results) == 1
+        assert isinstance(results[0].right, CreateDashboardRequest)
+        assert results[0].right.owners is None
+
+
 class TestSsrsModels:
     def test_ssrs_report_parsing(self):
         data = {
@@ -303,6 +443,16 @@ class TestSsrsModels:
         }
         report = SsrsReport(**data)
         assert report.hidden is True
+
+    def test_ssrs_report_created_by_alias(self):
+        data = {
+            "Id": "abc-999",
+            "Name": "Owned Report",
+            "Path": "/Reports/Owned",
+            "CreatedBy": "CONTOSO\\alice",
+        }
+        report = SsrsReport(**data)
+        assert report.created_by == "CONTOSO\\alice"
 
 
 def _build_mock_client():
@@ -697,6 +847,29 @@ class TestSsrsLineage:
 
     def test_skips_stored_procedure(self, ssrs_source):
         self._prepare(ssrs_source, RDL_STORED_PROC)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser:
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert results == []
+        mock_parser.assert_not_called()
+
+    def test_skips_shared_dataset_reference(self, ssrs_source):
+        rdl = SsrsReportDefinition(
+            data_sources=[
+                SsrsDataSource(name="Shared", shared_reference="/Shared/Src")
+            ],
+            data_sets=[
+                SsrsDataSet(
+                    name="SharedDS",
+                    data_source_name="Shared",
+                    command_type="Text",
+                    command_text="SELECT * FROM dbo.X",
+                    shared_reference="/Shared DataSets/Orders",
+                )
+            ],
+        )
+        self._prepare(ssrs_source, rdl)
         with patch(
             "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
         ) as mock_parser:

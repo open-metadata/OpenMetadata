@@ -20,6 +20,7 @@ from xml.etree import ElementTree as ET
 
 SERVER_KEYS = {"data source", "server", "address", "addr", "network address"}
 DATABASE_KEYS = {"initial catalog", "database"}
+FORBIDDEN_XML_TOKENS = (b"<!DOCTYPE", b"<!doctype", b"<!ENTITY", b"<!entity")
 
 
 @dataclass
@@ -55,9 +56,13 @@ class SsrsReportDefinition:
 
 
 def parse_rdl(rdl_bytes: bytes) -> SsrsReportDefinition:
-    """Parse RDL XML into a structured definition. Raises ``ValueError`` on malformed XML."""
+    """Parse RDL XML into a structured definition. Raises ``ValueError`` on malformed
+    XML or when the document contains a DTD / entity declaration (guard against
+    billion-laughs expansion since stdlib ElementTree honors internal entities)."""
     if not rdl_bytes:
         raise ValueError("Empty RDL content")
+    if any(token in rdl_bytes for token in FORBIDDEN_XML_TOKENS):
+        raise ValueError("RDL contains a DTD or entity declaration; refusing to parse")
     try:
         root = ET.fromstring(rdl_bytes)
     except ET.ParseError as exc:

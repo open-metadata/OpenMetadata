@@ -48,6 +48,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     SqlQuery,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
@@ -83,6 +84,17 @@ DATA_PROVIDER_DIALECT = {
     "REDSHIFT": Dialect.REDSHIFT,
     "BIGQUERY": Dialect.BIGQUERY,
     "TERADATA": Dialect.TERADATA,
+    "HIVE": Dialect.HIVE,
+    "CLICKHOUSE": Dialect.CLICKHOUSE,
+    "DATABRICKS": Dialect.DATABRICKS,
+    "VERTICA": Dialect.VERTICA,
+    "TRINO": Dialect.TRINO,
+    "SPARK": Dialect.SPARKSQL,
+    "SPARKSQL": Dialect.SPARKSQL,
+    "ATHENA": Dialect.ATHENA,
+    "IMPALA": Dialect.IMPALA,
+    "MARIADB": Dialect.MARIADB,
+    "SQLITE": Dialect.SQLITE,
 }
 
 
@@ -132,19 +144,27 @@ class SsrsSource(DashboardServiceSource):
 
     def get_dashboards_list(self) -> Iterable[SsrsReport]:
         for report in self.client.get_reports():
-            if not report.hidden:
-                yield report
+            if report.hidden:
+                self.status.filter(report.name, "Hidden report")
+                continue
+            yield report
 
     def get_dashboard_name(self, dashboard: SsrsReport) -> str:
         return dashboard.name
 
     def get_dashboard_details(self, dashboard: SsrsReport) -> Optional[SsrsReport]:
-        self._load_report_definition(dashboard)
         return dashboard
 
-    def _load_report_definition(self, dashboard: SsrsReport) -> None:
+    def _get_report_definition(
+        self, dashboard: SsrsReport
+    ) -> Optional[SsrsReportDefinition]:
+        """Fetch and cache RDL lazily. Returns ``None`` when the report has no
+        sources or the RDL cannot be fetched/parsed."""
+        cached = self._report_definitions.get(dashboard.id)
+        if cached is not None:
+            return cached
         if dashboard.has_data_sources is False:
-            return
+            return None
         try:
             rdl_bytes = self.client.get_report_definition(dashboard.id)
         except Exception as exc:
@@ -152,16 +172,19 @@ class SsrsSource(DashboardServiceSource):
             logger.warning(
                 "Could not fetch RDL for report [%s]: %s", dashboard.name, exc
             )
-            return
+            return None
         if not rdl_bytes:
-            return
+            return None
         try:
-            self._report_definitions[dashboard.id] = parse_rdl(rdl_bytes)
+            parsed = parse_rdl(rdl_bytes)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 "Could not parse RDL for report [%s]: %s", dashboard.name, exc
             )
+            return None
+        self._report_definitions[dashboard.id] = parsed
+        return parsed
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
         try:
@@ -173,6 +196,48 @@ class SsrsSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning("Error fetching project name: %s", exc)
         return None
+
+    def get_owner_ref(
+        self, dashboard_details: SsrsReport
+    ) -> Optional[EntityReferenceList]:
+        """Resolve the report's ``CreatedBy`` (``DOMAIN\\user``) to an OpenMetadata user.
+
+        Defensive: missing owner, unknown user, or lookup failure are all logged and
+        produce ``None`` so the rest of the dashboard ingestion continues."""
+        try:
+            if not self.source_config.includeOwners:
+                return None
+            owner_name = self._normalize_owner(dashboard_details.created_by)
+            if not owner_name:
+                return None
+            owner_ref = self.metadata.get_reference_by_name(
+                name=owner_name, is_owner=True
+            )
+            if owner_ref is None:
+                logger.debug(
+                    "Owner [%s] for report [%s] not found in OpenMetadata; "
+                    "continuing without ownership",
+                    owner_name,
+                    dashboard_details.name,
+                )
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Could not resolve owner for report [%s]: %s; "
+                "continuing without ownership",
+                dashboard_details.name,
+                exc,
+            )
+        return None
+
+    @staticmethod
+    def _normalize_owner(raw: Optional[str]) -> Optional[str]:
+        if not raw:
+            return None
+        _, sep, user = raw.rpartition("\\")
+        candidate = user if sep else raw
+        return candidate.strip() or None
 
     def yield_dashboard(
         self, dashboard_details: SsrsReport
@@ -204,6 +269,7 @@ class SsrsSource(DashboardServiceSource):
                 ],
                 project=self.context.get().project_name,
                 service=self.context.get().dashboard_service,
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -256,7 +322,7 @@ class SsrsSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         if not self.source_config.includeDataModels:
             return
-        rdl = self._report_definitions.get(dashboard_details.id)
+        rdl = self._get_report_definition(dashboard_details)
         if not rdl:
             return
         for dataset in rdl.data_sets:
@@ -330,7 +396,7 @@ class SsrsSource(DashboardServiceSource):
         dashboard_details: SsrsReport,
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
-        rdl = self._report_definitions.get(dashboard_details.id)
+        rdl = self._get_report_definition(dashboard_details)
         if not rdl:
             return
 
