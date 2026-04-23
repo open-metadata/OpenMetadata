@@ -43,6 +43,7 @@ import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError, getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
@@ -130,7 +131,10 @@ function EditConnectionFormPage() {
       });
 
       navigate(
-        getPathByServiceFQN(serviceCategory as ServiceCategory, serviceFQN)
+        connectionsRouterClassBase.getPathByServiceFQN(
+          serviceCategory as ServiceCategory,
+          serviceFQN
+        )
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
