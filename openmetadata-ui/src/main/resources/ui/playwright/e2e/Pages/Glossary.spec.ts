@@ -2667,7 +2667,8 @@ test.describe('Glossary tests', () => {
       ).toContain(tagFqn);
       expect(
         (createdTerm.relatedTerms ?? []).map(
-          (t: { fullyQualifiedName: string }) => t.fullyQualifiedName
+          (t: { term: { fullyQualifiedName: string } }) =>
+            t.term.fullyQualifiedName
         )
       ).toContain(relatedTerm.responseData.fullyQualifiedName);
       expect(
