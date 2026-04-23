@@ -1358,6 +1358,17 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().databases().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().databases().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Database getVersion(UUID id, Double version) {
     return SdkClients.adminClient().databases().getVersion(id.toString(), version);
   }

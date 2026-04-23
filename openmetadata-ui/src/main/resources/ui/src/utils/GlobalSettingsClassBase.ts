@@ -941,6 +941,14 @@ class GlobalSettingsClassBase {
             icon: GlossaryIcon,
           },
           {
+            label: 'Task Forms',
+            description:
+              'Manage the payload schemas and UI schemas used to create tasks.',
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.TASK_FORMS}`,
+            icon: GovernanceIcon,
+          },
+          {
             label: t('label.workflow-plural'),
             description: t(
               'message.governance-workflow-definitions-description'

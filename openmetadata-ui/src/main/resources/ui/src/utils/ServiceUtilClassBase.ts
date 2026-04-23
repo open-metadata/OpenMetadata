@@ -106,6 +106,7 @@ class ServiceUtilClassBase {
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
     DatabaseServiceType.MicrosoftAccess,
+    DashboardServiceType.SapS4Hana,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

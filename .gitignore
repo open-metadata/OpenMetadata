@@ -161,7 +161,7 @@ ingestion/.nox/
 _bmad/
 
 # Claude Flow generated files
-.claude/settings.local.json
+.claude/*
 .mcp.json
 claude-flow.config.json
 .swarm/
@@ -197,5 +197,7 @@ ingestion/.claude/agents
 # Connector audit working files — per-session, never committed
 .claude/audit-results/
 .claude/connector-audit.json
+.claude/scheduled_tasks.lock
+.claude/plans/
 
 test-results/
