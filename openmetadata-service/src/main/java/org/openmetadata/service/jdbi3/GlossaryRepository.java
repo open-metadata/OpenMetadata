@@ -672,6 +672,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
+      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
