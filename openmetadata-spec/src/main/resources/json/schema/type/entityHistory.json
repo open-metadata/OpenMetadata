@@ -113,7 +113,8 @@
       "type": "array"
     },
     "paging": {
-      "$ref": "paging.json"
+      "$ref": "./paging.json",
+      "description": "Pagination information"
     }
   },
   "required": ["entityType", "versions"],
