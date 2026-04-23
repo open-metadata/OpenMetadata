@@ -73,13 +73,13 @@ class ImporterTest(TestCase):
         with self.assertRaises(DynamicImportException) as ctx:
             import_source_class(
                 service_type=ServiceType.Database,
-                source_type="does-not-exist-policy",
+                source_type="doesnotexist-policy",
             )
         message = str(ctx.exception)
         self.assertIn("Policy source type", message)
-        self.assertIn("does-not-exist-policy", message)
+        self.assertIn("doesnotexist-policy", message)
         self.assertIn(
-            "metadata.ingestion.source.database.does_not_exist.policy.PolicyAgentSource",
+            "metadata.ingestion.source.database.doesnotexist.policy.PolicyAgentSource",
             message,
         )
 

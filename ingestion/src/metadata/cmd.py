@@ -28,7 +28,7 @@ from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
 from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
-from metadata.cli.policy_agent import run_policy_agent
+from metadata.cli.policy_agent import run_policy
 from metadata.cli.profile import run_profiler
 from metadata.cli.scaffold import (
     AUTH_CHOICES,
@@ -54,7 +54,7 @@ class MetadataCommands(Enum):
     LINEAGE = "lineage"
     APP = "app"
     AUTO_CLASSIFICATION = "classify"
-    POLICY_AGENT = "policy-agent"
+    POLICY = "policy"
     SCAFFOLD_CONNECTOR = "scaffold-connector"
 
 
@@ -67,7 +67,7 @@ RUN_PATH_METHODS = {
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
     MetadataCommands.AUTO_CLASSIFICATION.value: run_classification,
-    MetadataCommands.POLICY_AGENT.value: run_policy_agent,
+    MetadataCommands.POLICY.value: run_policy,
 }
 
 
@@ -170,7 +170,7 @@ def get_parser(args: Optional[List[str]] = None):
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
-            MetadataCommands.POLICY_AGENT.value,
+            MetadataCommands.POLICY.value,
             help="Workflow for applying access grants against the source system",
         )
     )

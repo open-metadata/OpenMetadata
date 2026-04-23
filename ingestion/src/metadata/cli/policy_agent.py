@@ -28,7 +28,7 @@ from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandl
 logger = cli_logger()
 
 
-def run_policy_agent(config_path: Path) -> None:
+def run_policy(config_path: Path) -> None:
     """
     Run the policy agent workflow from a config path
     to a JSON or YAML file
