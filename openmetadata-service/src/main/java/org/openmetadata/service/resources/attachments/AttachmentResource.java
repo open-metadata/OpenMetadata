@@ -7,7 +7,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -33,6 +32,9 @@ import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.drive.ContextFileUploadSupport;
+import org.openmetadata.service.resources.drive.ContextFileUploadSupport.BufferedUpload;
+import org.openmetadata.service.resources.drive.ContextFileUploadSupport.MaxFileSizeExceededException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -46,10 +48,16 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Attachments")
 public class AttachmentResource {
+  // 5 MiB — conservative default when object storage is configured but didn't specify a
+  // max file size, and the "storage disabled" case where initialize() still leaves the
+  // field at a valid number (so uploads fail with a clear validation error rather than a
+  // silent "size > 0" mismatch).
+  private static final long DEFAULT_MAX_FILE_SIZE = 5L * 1024 * 1024;
+
   private final AssetRepository assetRepository;
   private AssetService assetService;
   private final Authorizer authorizer;
-  private long MAX_FILE_SIZE;
+  private long maxFileSize = DEFAULT_MAX_FILE_SIZE;
   private String cdnUrl;
 
   public AttachmentResource(Jdbi jdbi, Authorizer authorizer) {
@@ -59,12 +67,24 @@ public class AttachmentResource {
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.MAX_FILE_SIZE = config.getObjectStorage().getMaxFileSize();
+    // Object storage is optional — deployments that don't configure it must not crash
+    // the server at startup with an NPE on config.getObjectStorage().getMaxFileSize().
+    // Mirrors the guarded ContextFileResource.initialize() flow.
+    if (config.getObjectStorage() == null) {
+      LOG.info("Object storage is not configured; attachments API will not accept uploads");
+      return;
+    }
+    this.maxFileSize =
+        config.getObjectStorage().getMaxFileSize() > 0
+            ? config.getObjectStorage().getMaxFileSize()
+            : DEFAULT_MAX_FILE_SIZE;
     this.cdnUrl =
         config.getObjectStorage().getAzureConfiguration() != null
                 && config.getObjectStorage().getAzureConfiguration().getCdnUrl() != null
             ? config.getObjectStorage().getAzureConfiguration().getCdnUrl()
-            : config.getObjectStorage().getS3Configuration().getCloudFrontUrl();
+            : config.getObjectStorage().getS3Configuration() != null
+                ? config.getObjectStorage().getS3Configuration().getCloudFrontUrl()
+                : null;
     AssetServiceFactory.init(config);
     this.assetService = AssetServiceFactory.getService();
   }
@@ -192,8 +212,13 @@ public class AttachmentResource {
       if (isImage && direct) {
         return Response.ok(fileStream, asset.getContentType()).build();
       } else {
+        // Use the shared RFC-5987-aware Content-Disposition builder to prevent header
+        // injection via quotes/CRLF in asset.getFileName() and to round-trip non-ASCII
+        // filenames safely. Matches ContextFileResource's download flow.
         return Response.ok(fileStream, asset.getContentType())
-            .header("Content-Disposition", "attachment; filename=\"" + asset.getFileName() + "\"")
+            .header(
+                "Content-Disposition",
+                ContextFileUploadSupport.buildContentDisposition(asset.getFileName()))
             .build();
       }
     } catch (java.util.concurrent.CompletionException e) {
@@ -299,46 +324,50 @@ public class AttachmentResource {
       SecurityContext securityContext)
       throws IOException {
 
-    byte[] fileBytes = org.apache.commons.io.IOUtils.toByteArray(fileInputStream);
-    if (fileBytes.length > MAX_FILE_SIZE) {
-      String readableFileSize = formatFileSize(fileBytes.length);
-      String readableMaxSize = formatFileSize(MAX_FILE_SIZE);
+    // Stream into a bounded temp file instead of IOUtils.toByteArray so an attacker
+    // sending an arbitrarily large body cannot exhaust heap before the size check runs.
+    // The helper throws MaxFileSizeExceededException the moment totalBytes passes
+    // maxFileSize, which we translate to a 4xx-style AttachmentException below.
+    try (BufferedUpload buffered =
+        ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {
+      String originalFileName =
+          fileDetail.getFileName() != null ? fileDetail.getFileName() : fileDetail.getName();
+      String extension = "";
+      int dotIndex = originalFileName == null ? -1 : originalFileName.lastIndexOf('.');
+      if (dotIndex != -1) {
+        extension = originalFileName.substring(dotIndex);
+      }
+
+      String contentType = URLConnection.guessContentTypeFromName(originalFileName);
+      if (contentType == null) {
+        contentType = "application/octet-stream";
+      }
+
+      CreateAsset createAsset = new CreateAsset();
+      createAsset.setEntityLink(entityLink);
+      createAsset.setAssetType(assetType);
+
+      Asset asset = buildAsset(createAsset, "", securityContext.getUserPrincipal().getName());
+      asset.setFileName(originalFileName);
+      asset.setSize(Math.toIntExact(buffered.getSize()));
+      asset.setContentType(contentType);
+      asset.setAssetType(assetType);
+      asset.setExtension(extension);
+      if (assetService == null) {
+        throw AssetServiceException.byMessage(
+            "Asset Service is unavailable", "Please reach out to administrator.");
+      }
+      try (InputStream bodyStream = buffered.newInputStream()) {
+        assetService.upload(asset, bodyStream).join();
+      }
+      return asset;
+    } catch (MaxFileSizeExceededException tooBig) {
       throw AttachmentException.byMessage(
           "File Size Validation",
           String.format(
               "File size (%s) exceeds maximum allowed size of %s",
-              readableFileSize, readableMaxSize));
+              formatFileSize(tooBig.getActualSize()), formatFileSize(tooBig.getMaxFileSize())));
     }
-    String originalFileName =
-        fileDetail.getFileName() != null ? fileDetail.getFileName() : fileDetail.getName();
-    String extension = "";
-    int dotIndex = originalFileName.lastIndexOf('.');
-    if (dotIndex != -1) {
-      extension = originalFileName.substring(dotIndex);
-    }
-
-    String contentType = URLConnection.guessContentTypeFromName(originalFileName);
-    if (contentType == null) {
-      contentType = "application/octet-stream";
-    }
-
-    CreateAsset createAsset = new CreateAsset();
-    createAsset.setEntityLink(entityLink);
-    createAsset.setAssetType(assetType);
-
-    Asset asset = buildAsset(createAsset, "", securityContext.getUserPrincipal().getName());
-    asset.setFileName(originalFileName);
-    asset.setSize(fileBytes.length);
-    asset.setContentType(contentType);
-    asset.setAssetType(assetType);
-    asset.setExtension(extension);
-    if (assetService != null) {
-      assetService.upload(asset, new ByteArrayInputStream(fileBytes)).join();
-    } else {
-      throw AssetServiceException.byMessage(
-          "Asset Service is unavailable", "Please reach out to administrator.");
-    }
-    return asset;
   }
 
   private String formatFileSize(long bytes) {

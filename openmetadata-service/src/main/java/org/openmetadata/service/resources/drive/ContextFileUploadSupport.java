@@ -3,6 +3,8 @@ package org.openmetadata.service.resources.drive;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -17,10 +19,15 @@ import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
-final class ContextFileUploadSupport {
+/**
+ * Shared helpers for attachment/asset upload flows. Promoted to {@code public} so the
+ * attachments resource (a different package) can reuse the streaming upload buffer and
+ * the Content-Disposition sanitization without duplicating them.
+ */
+public final class ContextFileUploadSupport {
   private static final String CONTEXT_FILE_ENTITY = "contextFile";
 
-  static final class MaxFileSizeExceededException extends IOException {
+  public static final class MaxFileSizeExceededException extends IOException {
     private final long actualSize;
     private final long maxFileSize;
 
@@ -31,16 +38,16 @@ final class ContextFileUploadSupport {
       this.maxFileSize = maxFileSize;
     }
 
-    long getActualSize() {
+    public long getActualSize() {
       return actualSize;
     }
 
-    long getMaxFileSize() {
+    public long getMaxFileSize() {
       return maxFileSize;
     }
   }
 
-  static final class BufferedUpload implements AutoCloseable {
+  public static final class BufferedUpload implements AutoCloseable {
     private final Path path;
     private final long size;
     private final String checksum;
@@ -51,15 +58,15 @@ final class ContextFileUploadSupport {
       this.checksum = checksum;
     }
 
-    long getSize() {
+    public long getSize() {
       return size;
     }
 
-    String getChecksum() {
+    public String getChecksum() {
       return checksum;
     }
 
-    InputStream newInputStream() throws IOException {
+    public InputStream newInputStream() throws IOException {
       return Files.newInputStream(path);
     }
 
@@ -124,7 +131,36 @@ final class ContextFileUploadSupport {
     return "<#E::" + CONTEXT_FILE_ENTITY + "::" + file.getFullyQualifiedName() + ">";
   }
 
-  static BufferedUpload bufferUpload(InputStream inputStream, long maxFileSize) throws IOException {
+  /**
+   * Safe-for-{@code Content-Disposition} rendering of {@code fileName}. Strips the
+   * characters that would let a hostile filename break out of the header
+   * ({@code "}, {@code \}, CR, LF) and falls back to {@code "download"} if the
+   * sanitized form is empty. Shared with the attachments resource so both upload/download
+   * paths apply the same protection.
+   */
+  public static String sanitizeFileName(String fileName) {
+    if (fileName == null) {
+      return "download";
+    }
+    String sanitized = fileName.replaceAll("[\"\\\\\\r\\n]", "_").trim();
+    return sanitized.isEmpty() ? "download" : sanitized;
+  }
+
+  /**
+   * Build a {@code Content-Disposition} header value that is safe for non-ASCII
+   * filenames. Emits both the legacy quoted {@code filename=} parameter (for older
+   * clients) and the RFC 5987 {@code filename*=UTF-8''...} parameter with
+   * percent-encoded bytes — so international filenames round-trip while remaining
+   * header-injection safe.
+   */
+  public static String buildContentDisposition(String fileName) {
+    String safeAscii = sanitizeFileName(fileName);
+    String encoded = URLEncoder.encode(safeAscii, StandardCharsets.UTF_8).replace("+", "%20");
+    return "attachment; filename=\"" + safeAscii + "\"; filename*=UTF-8''" + encoded;
+  }
+
+  public static BufferedUpload bufferUpload(InputStream inputStream, long maxFileSize)
+      throws IOException {
     Path tempFile = Files.createTempFile("context-file-upload-", ".bin");
     MessageDigest digest = sha256Digest();
     long totalBytes = 0L;

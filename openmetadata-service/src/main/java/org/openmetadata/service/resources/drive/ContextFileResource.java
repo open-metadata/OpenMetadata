@@ -31,8 +31,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -450,29 +448,14 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
   static final int MAX_EXPIRY_SECONDS = 3600;
 
-  /**
-   * Sanitize a filename for use in the ASCII {@code filename="..."} parameter of a
-   * Content-Disposition header. Strips header-injection characters (quotes, backslashes,
-   * CR/LF) and falls back to "download" if the input is blank.
-   */
+  /** Delegate to {@link ContextFileUploadSupport#sanitizeFileName(String)}. */
   static String sanitizeFileName(String fileName) {
-    if (fileName == null) {
-      return "download";
-    }
-    String sanitized = fileName.replaceAll("[\"\\\\\\r\\n]", "_").trim();
-    return sanitized.isEmpty() ? "download" : sanitized;
+    return ContextFileUploadSupport.sanitizeFileName(fileName);
   }
 
-  /**
-   * Build a Content-Disposition value that is safe for non-ASCII filenames. Emits both
-   * the legacy quoted {@code filename=} parameter (for older clients) and the RFC 5987
-   * {@code filename*=UTF-8''...} parameter with percent-encoded bytes — so international
-   * filenames round-trip while still being header-injection safe.
-   */
+  /** Delegate to {@link ContextFileUploadSupport#buildContentDisposition(String)}. */
   static String buildContentDisposition(String fileName) {
-    String safeAscii = sanitizeFileName(fileName);
-    String encoded = URLEncoder.encode(safeAscii, StandardCharsets.UTF_8).replace("+", "%20");
-    return "attachment; filename=\"" + safeAscii + "\"; filename*=UTF-8''" + encoded;
+    return ContextFileUploadSupport.buildContentDisposition(fileName);
   }
 
   /** Clamp expiry to [1, MAX_EXPIRY_SECONDS]. */

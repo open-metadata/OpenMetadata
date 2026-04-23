@@ -14377,8 +14377,7 @@ public interface CollectionDAO {
     }
 
     @Override
-    default List<String> listAfter(
-        ListFilter filter, int limit, String afterName, String afterId) {
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String entityId = filter.getQueryParam("entityId");
       String entityType = filter.getQueryParam("entityType");
       String knowledgePageType = filter.getQueryParam("pageType");
@@ -14452,7 +14451,8 @@ public interface CollectionDAO {
     private String getKnowledgePageTypeQuery(String clause, String type) {
       if (!nullOrEmpty(type)) {
         if (Boolean.TRUE.equals(
-            org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL())) {
+            org.openmetadata.service.resources.databases.DatasourceConfig.getInstance()
+                .isMySQL())) {
           return String.format(
               " %s JSON_EXTRACT(knowledge_center.json, '$.pageType') = :pageType", clause);
         } else {
