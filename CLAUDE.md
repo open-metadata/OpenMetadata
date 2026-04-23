@@ -428,6 +428,19 @@ hand-editing formatting.
 - One statement per line — no `if (x) return y;` on one line
 
 ### TypeScript/Frontend Code Requirements
+
+**Always run the UI checkstyle sequence before you finish any task that
+touched `.ts`/`.tsx`/`.js`/`.jsx`/`.json` under
+`openmetadata-ui/src/main/resources/ui/src/`, `.../playwright/`, or
+`openmetadata-ui-core-components/src/main/resources/ui/src/`.** CI's
+`UI Checkstyle / lint-src|lint-playwright|lint-core-components` jobs fail the
+PR otherwise. The order matters — run `organize-imports-cli`, then
+`eslint --fix`, then `prettier --write`; reversing organize-imports and
+prettier leaves a dirty diff (organize-imports uses 4-space indentation,
+prettier uses 2 + trailing commas). When asked to "fix UI checkstyle" / "run
+prettier" / "fix UI lint", invoke the `ui-checkstyle` skill (see
+`.claude/skills/ui-checkstyle/`) rather than hand-editing formatting.
+
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards
 - Import types from existing type definitions (e.g., `RJSFSchema` from `@rjsf/utils`)

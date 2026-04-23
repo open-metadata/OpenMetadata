@@ -207,6 +207,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Do not import wild-card packages instead import exactly required packages
 
 ### TypeScript/Frontend Code Requirements
+- **Always run the UI checkstyle sequence** before finishing any task that
+  touched `.ts`/`.tsx`/`.js`/`.jsx`/`.json` under
+  `openmetadata-ui/src/main/resources/ui/src/`, `.../playwright/`, or
+  `openmetadata-ui-core-components/src/main/resources/ui/src/`. CI's
+  `UI Checkstyle / lint-src|lint-playwright|lint-core-components` jobs fail
+  the PR otherwise. Order matters: `organize-imports-cli` → `eslint --fix` →
+  `prettier --write`. A reusable procedure lives at
+  `.agents/skills/ui-checkstyle/SKILL.md`.
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards
 - Import types from existing type definitions (e.g., `RJSFSchema` from `@rjsf/utils`)

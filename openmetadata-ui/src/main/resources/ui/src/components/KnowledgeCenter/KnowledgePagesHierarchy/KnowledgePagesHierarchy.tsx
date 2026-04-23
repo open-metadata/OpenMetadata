@@ -75,9 +75,9 @@ import { useApplicationStore } from 'hooks/useApplicationStore';
 import useCustomLocation from 'hooks/useCustomLocation/useCustomLocation';
 import { isUndefined, uniq } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Transi18next } from 'utils/i18next/LocalUtil';
 import { getEntityName } from 'utils/EntityUtils';
 import Fqn from 'utils/Fqn';
+import { Transi18next } from 'utils/i18next/LocalUtil';
 import {
   convertToTreeData,
   extractKnowledgePageParentFQN,
