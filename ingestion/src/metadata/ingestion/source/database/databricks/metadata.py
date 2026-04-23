@@ -227,10 +227,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     sub_rows = {
                         r[0]: r[1]
                         for r in connection.execute(
-                            text(
-                                f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`"
-                                f".`{table_name}` `{col_name}`"
-                            )
+                            f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`"
+                            f".`{table_name}` `{col_name}`"
                         ).fetchall()
                     }
                     col_info["system_data_type"] = sub_rows["data_type"]
