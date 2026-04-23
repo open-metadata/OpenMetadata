@@ -191,10 +191,16 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
   const [hasMoreVersions, setHasMoreVersions] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const isLoadingMoreRef = useRef<boolean>(false);
+  const versionListRef = useRef<EntityHistory>({} as EntityHistory);
   const versionFetcherRef =
     useRef<
       (params?: { limit?: number; offset?: number }) => Promise<EntityHistory>
     >();
+
+  useEffect(() => {
+    versionListRef.current = versionList;
+  }, [versionList]);
 
   const backHandler = useCallback(
     () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
@@ -485,12 +491,17 @@ const EntityVersionPage: FunctionComponent = () => {
   }, [entityType, decodedEntityFQN, viewVersionPermission]);
 
   const fetchMoreVersions = useCallback(async () => {
-    if (!versionFetcherRef.current || isLoadingMore || !hasMoreVersions) {
+    if (
+      !versionFetcherRef.current ||
+      isLoadingMoreRef.current ||
+      !hasMoreVersions
+    ) {
       return;
     }
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     try {
-      const currentOffset = versionList.versions?.length ?? 0;
+      const currentOffset = versionListRef.current.versions?.length ?? 0;
       const moreVersions = await versionFetcherRef.current({
         limit: VERSION_PAGE_SIZE,
         offset: currentOffset,
@@ -502,16 +513,15 @@ const EntityVersionPage: FunctionComponent = () => {
         moreVersions.paging ? totalLoaded < moreVersions.paging.total : false
       );
 
-      setVersionList((prev) => {
-        return {
-          ...moreVersions,
-          versions: [...(prev.versions ?? []), ...appendedVersions],
-        };
-      });
+      setVersionList((prev) => ({
+        ...moreVersions,
+        versions: [...(prev.versions ?? []), ...appendedVersions],
+      }));
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMoreVersions, versionList]);
+  }, [hasMoreVersions]);
 
   const fetchCurrentVersion = useCallback(
     async (id: string) => {

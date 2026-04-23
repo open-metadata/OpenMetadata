@@ -81,9 +81,18 @@ DIRECT_IMPORT_FIXES = {
 }
 
 for file_path, replacements in DIRECT_IMPORT_FIXES.items():
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(
+            f"Expected generated file not found for DIRECT_IMPORT_FIXES: {file_path}"
+        )
     with open(file_path, "r", encoding=UTF_8) as file_:
         content = file_.read()
     for old_value, new_value in replacements:
+        if old_value not in content:
+            raise RuntimeError(
+                f"DIRECT_IMPORT_FIXES replacement target {old_value!r} not found in {file_path}. "
+                "The generator output may have changed; update datamodel_generation.py."
+            )
         content = content.replace(old_value, new_value)
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)

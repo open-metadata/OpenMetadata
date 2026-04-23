@@ -73,8 +73,9 @@ test.describe('Paginated Version History', () => {
     const fqn = table.entityResponseData?.fullyQualifiedName;
 
     await page.goto(`/table/${fqn}`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="version-button"]');
+    await expect(
+      page.locator('[data-testid="version-button"]')
+    ).toBeVisible();
 
     const versionsApiCall = page.waitForResponse(
       (response) =>
@@ -162,8 +163,9 @@ test.describe('Paginated Version History', () => {
     );
 
     await page.goto(`/table/${fqn}`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="version-button"]');
+    await expect(
+      page.locator('[data-testid="version-button"]')
+    ).toBeVisible();
 
     await page.locator('[data-testid="version-button"]').click();
 

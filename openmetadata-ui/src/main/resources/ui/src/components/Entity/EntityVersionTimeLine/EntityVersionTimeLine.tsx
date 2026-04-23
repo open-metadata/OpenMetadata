@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Spin, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
-import { forwardRef, useEffect, useMemo } from 'react';
+import { forwardRef, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -126,14 +126,40 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionHandler,
   onBack,
   entityType,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
 }) => {
   const { t } = useTranslation();
 
   const { resourceLimit, getResourceLimit } = useLimitStore();
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     entityType && getResourceLimit(entityType);
   }, [entityType]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (
+      !node ||
+      !onLoadMore ||
+      !hasMore ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          onLoadMore();
+        }
+      }
+    });
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore, isLoadingMore]);
 
   const { configuredLimit: { maxVersions } = { maxVersions: -1 } } =
     resourceLimit[entityType ?? ''] ?? {};
@@ -162,6 +188,19 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         {versions?.map((v) => {
           return renderVersionButton(v, currentVersion, versionHandler);
         })}
+        {onLoadMore && hasMore ? (
+          <div
+            className="version-load-more-sentinel"
+            data-testid="version-load-more-sentinel"
+            ref={sentinelRef}
+            style={{ minHeight: '24px' }}>
+            {isLoadingMore ? (
+              <div className="tw:flex tw:justify-center tw:p-2">
+                <Spin size="small" />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {hiddenVersions?.length > 0 ? (
           <>
             <Tooltip title={`+${hiddenVersions.length} more versions`}>
@@ -191,7 +230,15 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         ) : null}
       </div>
     );
-  }, [versionList, currentVersion, versionHandler]);
+  }, [
+    versionList,
+    currentVersion,
+    versionHandler,
+    maxVersions,
+    onLoadMore,
+    hasMore,
+    isLoadingMore,
+  ]);
 
   return (
     <Drawer
