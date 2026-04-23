@@ -33,8 +33,9 @@ export interface WorkflowSettings {
  */
 export interface ExecutorConfiguration {
     /**
-     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for new jobs.
+     * The interval in milliseconds to acquire async jobs. Default: 1 second. Keep this low so
+     * user-facing workflow tasks (e.g. Glossary Term approval) appear within seconds of the
+     * triggering entity change instead of waiting a full polling cycle.
      */
     asyncJobAcquisitionInterval?: number;
     /**
@@ -60,8 +61,9 @@ export interface ExecutorConfiguration {
      */
     tasksDuePerAcquisition?: number;
     /**
-     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for scheduled jobs.
+     * The interval in milliseconds to acquire timer jobs. Default: 5 seconds. Timer jobs
+     * (due-date escalations, etc.) are less latency-sensitive than async jobs but still benefit
+     * from quick pickup.
      */
     timerJobAcquisitionInterval?: number;
 }
