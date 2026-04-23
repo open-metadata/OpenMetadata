@@ -312,7 +312,7 @@ const InlineTestCaseIncidentStatus = ({
     if (userOptions.length === 0) {
       return (
         <Box className="tw:p-2 tw:text-center">
-          <Typography as="span" className="tw:text-tertiary" size="text-sm">
+          <Typography className="tw:text-tertiary" size="text-sm">
             {t('message.no-username-available', { user: '' })}
           </Typography>
         </Box>
@@ -363,7 +363,7 @@ const InlineTestCaseIncidentStatus = ({
         chipLabel={chipLabel}
         chipRef={chipRef}
         dataTestId={`${data.testCaseReference?.name}-status`}
-        hasEditPermission={hasEditPermission}
+        hasEditPermission={hasEditPermission && !isLoading}
         overlayOpen={overlayOpen}
         palette={palette}
       />
@@ -384,7 +384,7 @@ const InlineTestCaseIncidentStatus = ({
           id={status}
           key={status}
           textValue={TEST_CASE_RESOLUTION_STATUS_LABELS[status]}>
-          <Typography as="span" size="text-sm" weight="regular">
+          <Typography size="text-sm" weight="regular">
             {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
           </Typography>
         </Dropdown.Item>

@@ -56,7 +56,7 @@ export const IncidentStatusPopoverHeader = ({
         tooltip={t('label.back')}
         onClick={onBack}
       />
-      <Typography as="span" size="text-sm" weight="semibold">
+      <Typography size="text-sm" weight="semibold">
         {title}
       </Typography>
       <span className="tw:flex-1" />

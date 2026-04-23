@@ -31,8 +31,9 @@ export const IncidentScrollableList = ({
     direction="col"
     style={{ maxHeight }}>
     <Box
-      className="tw:min-w-0 tw:overflow-x-hidden tw:overflow-y-auto tw:w-full tw:max-h-[var(--list-max-h)]"
-      direction="col">
+      className="tw:min-w-0 tw:overflow-x-hidden tw:overflow-y-auto tw:w-full"
+      direction="col"
+      style={{ maxHeight }}>
       {children}
     </Box>
   </Box>
