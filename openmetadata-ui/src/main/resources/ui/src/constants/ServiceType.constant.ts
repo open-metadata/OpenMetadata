@@ -201,6 +201,7 @@ export const BETA_SERVICES = [
   DriveServiceType.SFTP,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DashboardServiceType.SapS4Hana,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
