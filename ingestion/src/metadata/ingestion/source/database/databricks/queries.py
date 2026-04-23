@@ -98,8 +98,8 @@ DATABRICKS_GET_TABLE_LINEAGE = textwrap.dedent(
     FROM system.access.table_lineage
     WHERE entity_type IN ('JOB', 'PIPELINE')
         AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
-        AND (source_table_full_name IS NOT NULL OR source_path IS NOT NULL)
-        AND (target_table_full_name IS NOT NULL OR target_path IS NOT NULL)
+        AND source_table_full_name IS NOT NULL
+        AND target_table_full_name IS NOT NULL
     GROUP BY entity_id, source_table_full_name, target_table_full_name, source_path, target_path
     """
 )
@@ -117,8 +117,8 @@ DATABRICKS_GET_COLUMN_LINEAGE = textwrap.dedent(
     FROM system.access.column_lineage
     WHERE entity_type IN ('JOB', 'PIPELINE')
         AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
-        AND (source_table_full_name IS NOT NULL OR source_path IS NOT NULL)
-        AND (target_table_full_name IS NOT NULL OR target_path IS NOT NULL)
+        AND source_table_full_name IS NOT NULL
+        AND target_table_full_name IS NOT NULL
         AND source_column_name IS NOT NULL
         AND target_column_name IS NOT NULL
     GROUP BY
