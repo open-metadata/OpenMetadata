@@ -230,6 +230,17 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().dataContracts().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().dataContracts().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected DataContract getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dataContracts().getVersion(id.toString(), version);
   }

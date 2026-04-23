@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { ServiceTypes } from '../../constant/settings';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -29,6 +29,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import {
@@ -52,6 +53,258 @@ const SERVICE_ENTITY_TAB: Partial<Record<ServiceTypes, string>> = {
 
 let domain: Domain;
 let dataProduct: DataProduct;
+
+type RestorableEntityPage = {
+  endpoint: string;
+  entityResponseData: {
+    fullyQualifiedName?: string;
+  };
+  visitEntityPage: (page: Page) => Promise<void>;
+};
+
+const waitForInheritedDomainOnEntityApi = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  domainDisplayName: string
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const entityFqn = entity.entityResponseData?.fullyQualifiedName;
+
+          if (!entityFqn) {
+            return false;
+          }
+
+          const response = await apiContext.get(
+            `/api/v1/${entity.endpoint}/name/${encodeURIComponent(entityFqn)}`,
+            {
+              params: {
+                fields: 'domains,dataProducts,owners',
+              },
+            }
+          );
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = await response.json();
+
+          return (body.domains ?? []).some(
+            (domain: { displayName?: string; inherited?: boolean }) =>
+              domain.displayName === domainDisplayName &&
+              domain.inherited !== false
+          );
+        },
+        {
+          message: `Wait for inherited domain in entity API for ${entity.entityResponseData?.fullyQualifiedName}`,
+          timeout: 90_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+const selectDataProductsFromKnowledgePanel = async (
+  page: Page,
+  domain: {
+    name: string;
+    displayName: string;
+  },
+  dataProducts: {
+    displayName: string;
+    fullyQualifiedName?: string;
+  }[],
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await page
+    .getByTestId(parentId)
+    .getByTestId('data-products-container')
+    .getByTestId('add-data-product')
+    .click();
+
+  for (const dataProduct of dataProducts) {
+    const tagLocator = page.getByTestId(
+      `tag-${dataProduct.fullyQualifiedName}`
+    );
+
+    await expect(async () => {
+      const searchDataProduct = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(domain.name))
+      );
+      await page.locator('[data-testid="data-product-selector"] input').clear();
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .fill(dataProduct.displayName);
+      await searchDataProduct;
+      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+    await tagLocator.click();
+  }
+
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
+};
+
+const waitForDataProductsOnEntityApi = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  dataProducts: {
+    fullyQualifiedName?: string;
+  }[]
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const entityFqn = entity.entityResponseData?.fullyQualifiedName;
+
+          if (!entityFqn) {
+            return false;
+          }
+
+          const response = await apiContext.get(
+            `/api/v1/${entity.endpoint}/name/${encodeURIComponent(entityFqn)}`,
+            {
+              params: {
+                fields: 'domains,dataProducts,owners',
+              },
+            }
+          );
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = await response.json();
+          const entityDataProducts = new Set(
+            (body.dataProducts ?? []).map(
+              (dataProduct: { fullyQualifiedName?: string }) =>
+                dataProduct.fullyQualifiedName
+            )
+          );
+
+          return dataProducts.every((dataProduct) =>
+            entityDataProducts.has(dataProduct.fullyQualifiedName)
+          );
+        },
+        {
+          message: `Wait for inherited data products in entity API for ${entity.entityResponseData?.fullyQualifiedName}`,
+          timeout: 90_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+const waitForDataProductsOnEntityPage = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  dataProducts: {
+    fullyQualifiedName?: string;
+  }[],
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await expect(async () => {
+    await entity.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    for (const dataProduct of dataProducts) {
+      await expect(
+        page
+          .getByTestId(parentId)
+          .getByTestId('data-products-list')
+          .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+      ).toBeVisible({ timeout: 3_000 });
+    }
+  }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
+};
+
+const assignInheritedDataProducts = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  domain: {
+    name: string;
+    displayName: string;
+  },
+  dataProducts: {
+    displayName: string;
+    fullyQualifiedName?: string;
+  }[]
+) => {
+  await selectDataProductsFromKnowledgePanel(page, domain, dataProducts);
+  await waitForDataProductsOnEntityApi(page, entity, dataProducts);
+  await waitForDataProductsOnEntityPage(page, entity, dataProducts);
+};
+
+const getInheritanceParentBreadcrumbIndex = (entityType: string) => {
+  if (entityType === 'ApiEndpoint') {
+    return 2;
+  }
+
+  if (['Table', 'Store Procedure'].includes(entityType)) {
+    return 1;
+  }
+
+  return 0;
+};
+
+const waitForInheritedDomainOnEntityPage = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  domainDisplayName: string
+) => {
+  await waitForInheritedDomainOnEntityApi(page, entity, domainDisplayName);
+
+  await expect(async () => {
+    await entity.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const domainCountButton = page.getByTestId('domain-count-button');
+    const hasMultipleDomains = await domainCountButton
+      .isVisible()
+      .catch(() => false);
+
+    if (hasMultipleDomains) {
+      await expect(domainCountButton).toBeVisible({
+        timeout: 2_000,
+      });
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domainDisplayName,
+        { timeout: 2_000 }
+      );
+    }
+  }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
+};
 
 const entities = [
   ApiEndpointClass,

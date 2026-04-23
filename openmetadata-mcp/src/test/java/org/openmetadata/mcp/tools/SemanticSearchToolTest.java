@@ -203,7 +203,8 @@ class SemanticSearchToolTest {
     hit.put("columns", List.of(Map.of("name", "id", "dataType", "INT")));
     hit.put("embedding", new float[] {0.1f, 0.2f});
     hit.put("fingerprint", "abc123");
-    hit.put("textToEmbed", "name: users; entityType: table | description: A short description");
+    hit.put(
+        "textToLLMContext", "name: users; entityType: table | description: A short description");
 
     VectorSearchResponse response = new VectorSearchResponse(10L, List.of(hit));
 
@@ -233,7 +234,7 @@ class SemanticSearchToolTest {
       assertTrue(!cleaned.containsKey("_score"));
       assertTrue(!cleaned.containsKey("embedding"));
       assertTrue(!cleaned.containsKey("fingerprint"));
-      assertTrue(!cleaned.containsKey("textToEmbed"));
+      assertTrue(!cleaned.containsKey("textToLLMContext"));
     }
   }
 
