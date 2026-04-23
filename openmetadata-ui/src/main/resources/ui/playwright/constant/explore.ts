@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+
 export const EXPECTED_BUCKETS = [
   'table',
   'tableColumn',
@@ -153,15 +155,39 @@ export const DATA_ASSETS_SORT = [
   { name: 'Metrics', filter: 'metric' },
 ];
 export const ENDPOINT_TO_FILTER_MAP: Record<string, string> = {
-  tables: 'Table',
-  databases: 'Database',
-  topics: 'Topic',
-  dashboards: 'Dashboard',
-  pipelines: 'Pipeline',
-  searchIndexes: 'Search Index',
-  mlmodels: 'ML Model',
-  containers: 'Container',
-  glossaryTerms: 'Glossary Term',
-  tags: 'Tag',
-  dataProducts: 'Data Product',
+  [EntityTypeEndpoint.Table]: 'Table',
+  [EntityTypeEndpoint.Database]: 'Database',
+  [EntityTypeEndpoint.Topic]: 'Topic',
+  [EntityTypeEndpoint.Dashboard]: 'Dashboard',
+  [EntityTypeEndpoint.Pipeline]: 'Pipeline',
+  [EntityTypeEndpoint.SearchIndex]: 'Search Index',
+  [EntityTypeEndpoint.MlModel]: 'ML Model',
+  [EntityTypeEndpoint.Container]: 'Container',
+  [EntityTypeEndpoint.StoreProcedure]: 'Stored Procedure',
+  [EntityTypeEndpoint.API_ENDPOINT]: 'API Endpoint',
+  [EntityTypeEndpoint.API_COLLECTION]: 'API Collection',
+  [EntityTypeEndpoint.DatabaseSchema]: 'Database Schema',
+  [EntityTypeEndpoint.DataModel]: 'Data Model',
+  [EntityTypeEndpoint.DATA_PRODUCT]: 'Data Product',
+  [EntityTypeEndpoint.GlossaryTerm]: 'Glossary',
+  [EntityTypeEndpoint.Tag]: 'Tag',
+};
+
+export const ENDPOINT_TO_EXPLORE_TAB_MAP: Record<string, string> = {
+  [EntityTypeEndpoint.Table]: 'Tables',
+  [EntityTypeEndpoint.Database]: 'Databases',
+  [EntityTypeEndpoint.Topic]: 'Topics',
+  [EntityTypeEndpoint.Dashboard]: 'Dashboards',
+  [EntityTypeEndpoint.Pipeline]: 'Pipelines',
+  [EntityTypeEndpoint.SearchIndex]: 'Search Indexes',
+  [EntityTypeEndpoint.MlModel]: 'ML Models',
+  [EntityTypeEndpoint.Container]: 'Containers',
+  [EntityTypeEndpoint.StoreProcedure]: 'Stored Procedures',
+  [EntityTypeEndpoint.API_ENDPOINT]: 'API Endpoints',
+  [EntityTypeEndpoint.API_COLLECTION]: 'API Collections',
+  [EntityTypeEndpoint.DatabaseSchema]: 'Database Schemas',
+  [EntityTypeEndpoint.DataModel]: 'Dashboard Data Models',
+  [EntityTypeEndpoint.DATA_PRODUCT]: 'Data Products',
+  [EntityTypeEndpoint.GlossaryTerm]: 'Glossary Terms',
+  [EntityTypeEndpoint.Tag]: 'Tags',
 };

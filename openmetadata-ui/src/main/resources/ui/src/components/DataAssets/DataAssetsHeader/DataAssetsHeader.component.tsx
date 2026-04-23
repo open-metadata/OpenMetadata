@@ -57,13 +57,15 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
@@ -225,7 +227,8 @@ export const DataAssetsHeader = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
 
   const fetchDQFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
@@ -321,7 +324,7 @@ export const DataAssetsHeader = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 

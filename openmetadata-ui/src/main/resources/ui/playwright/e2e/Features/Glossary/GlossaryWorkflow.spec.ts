@@ -525,7 +525,7 @@ test.describe('Workflow History', () => {
     );
 
     if (await approveBtn.isVisible()) {
-      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      const taskResolve = page.waitForResponse('/api/v1/tasks/*/resolve');
       await approveBtn.click();
       await taskResolve;
     }

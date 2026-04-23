@@ -355,17 +355,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
       MessageParser.EntityLink newAbout = new MessageParser.EntityLink(CLASSIFICATION, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       List<Tag> childTags = getAllTagsByClassification(updated);
 
       for (Tag child : childTags) {
         newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

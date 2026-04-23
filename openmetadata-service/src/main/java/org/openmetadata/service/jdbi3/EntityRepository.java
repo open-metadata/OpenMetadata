@@ -174,7 +174,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -198,7 +197,6 @@ import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.TaskType;
@@ -3905,6 +3903,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
     }
+
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
@@ -6860,22 +6859,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(EntityInterface entity) {
-    return new SuggestionRepository.SuggestionWorkflow(entity);
-  }
-
-  public EntityInterface applySuggestion(
-      EntityInterface entity, String childFQN, Suggestion suggestion) {
-    return entity;
-  }
-
-  /**
-   * Bring in the necessary fields required to have all the information before applying a suggestion
-   */
-  public String getSuggestionFields(Suggestion suggestion) {
-    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "tags" : "";
-  }
-
   public final void validateTaskThread(ThreadContext threadContext) {
     ThreadType threadType = threadContext.getThread().getType();
     if (threadType != ThreadType.Task) {
@@ -9193,7 +9176,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       boolean workflowSuccess =
-          workflowHandler.resolveTask(
+          workflowHandler.resolveLegacyThreadTask(
               taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
       if (!workflowSuccess) {
