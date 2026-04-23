@@ -687,6 +687,10 @@ public interface SearchClient
   boolean isNewClientAvailable();
 
   ElasticSearchConfiguration.SearchType getSearchType();
+ 
+   default boolean isAoss() {
+     return false;
+   }
 
   <T> T getHighLevelClient();
 
