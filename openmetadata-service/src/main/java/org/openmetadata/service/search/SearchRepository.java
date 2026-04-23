@@ -852,13 +852,6 @@ public class SearchRepository {
       String entityType = entities.getFirst().getEntityReference().getType();
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
-        if (SearchIndexRetryQueue.isEntityTypeSuspended(entityType)) {
-          LOG.debug(
-              "Skipping live search indexing for {} entities because reindex is active for {}",
-              entities.size(),
-              entityType);
-          return;
-        }
         if (!getSearchClient().isClientAvailable()) {
           for (EntityInterface entity : entities) {
             SearchIndexRetryQueue.enqueue(
@@ -1250,14 +1243,6 @@ public class SearchRepository {
       String entityType = entry.getKey();
       List<EntityInterface> typeEntities = entry.getValue();
 
-      if (SearchIndexRetryQueue.isEntityTypeSuspended(entityType)) {
-        LOG.debug(
-            "Skipping bulk live indexing for {} entities because reindex is active for {}",
-            typeEntities.size(),
-            entityType);
-        continue;
-      }
-
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface entity : typeEntities) {
           SearchIndexRetryQueue.enqueue(
@@ -1366,12 +1351,6 @@ public class SearchRepository {
   public void updateAssetDomainsForDataProduct(
       String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-    if (SearchIndexRetryQueue.isEntityTypeSuspended(Entity.DATA_PRODUCT)) {
-      LOG.debug(
-          "Skipping updateAssetDomainsForDataProduct because reindex is active for {}",
-          Entity.DATA_PRODUCT);
-      return;
-    }
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
           null, dataProductFqn, "updateAssetDomainsForDataProduct: Search client unavailable");
@@ -1393,11 +1372,6 @@ public class SearchRepository {
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
-    if (SearchIndexRetryQueue.isEntityTypeSuspended(Entity.DATA_PRODUCT)) {
-      LOG.debug(
-          "Skipping updateAssetDomainsByIds because reindex is active for {}", Entity.DATA_PRODUCT);
-      return;
-    }
     if (!getSearchClient().isClientAvailable()) {
       for (UUID assetId : listOrEmpty(assetIds)) {
         SearchIndexRetryQueue.enqueue(
@@ -1423,10 +1397,6 @@ public class SearchRepository {
 
   public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-    if (SearchIndexRetryQueue.isEntityTypeSuspended(Entity.DOMAIN)) {
-      LOG.debug("Skipping updateDomainFqnByPrefix because reindex is active for {}", Entity.DOMAIN);
-      return;
-    }
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, "updateDomainFqnByPrefix: Search client unavailable");
@@ -1445,11 +1415,6 @@ public class SearchRepository {
   public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
-    if (SearchIndexRetryQueue.isEntityTypeSuspended(Entity.DOMAIN)) {
-      LOG.debug(
-          "Skipping updateAssetDomainFqnByPrefix because reindex is active for {}", Entity.DOMAIN);
-      return;
-    }
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, "updateAssetDomainFqnByPrefix: Search client unavailable");
@@ -2145,13 +2110,6 @@ public class SearchRepository {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       String fqn = entity.getFullyQualifiedName();
-      if (SearchIndexRetryQueue.isEntityTypeSuspended(entityType)) {
-        LOG.debug(
-            "Skipping deleteEntityByFQNPrefix for {} because reindex is active for {}",
-            fqn,
-            entityType);
-        return;
-      }
       if (!getSearchClient().isClientAvailable()) {
         SearchIndexRetryQueue.enqueue(
             entity.getId() != null ? entity.getId().toString() : null,
@@ -2922,14 +2880,6 @@ public class SearchRepository {
 
   private boolean shouldSkipStreamingIndexing(
       String entityType, String entityId, String entityFqn, String operation) {
-    if (SearchIndexRetryQueue.isEntityTypeSuspended(entityType)) {
-      LOG.debug(
-          "Skipping live search indexing operation {} for entityType {} because reindex is active",
-          operation,
-          entityType);
-      return true;
-    }
-
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(entityId, entityFqn, operation + ": Search client unavailable");
       return true;
