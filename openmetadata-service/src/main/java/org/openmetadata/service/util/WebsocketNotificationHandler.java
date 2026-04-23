@@ -336,6 +336,23 @@ public class WebsocketNotificationHandler {
     }
   }
 
+  /**
+   * Intermediate progress message for a Query Runner job — e.g. "Executing query…",
+   * "Uploading results…". UI's WebSocket hook reads the {@code message} field and surfaces it
+   * as {@code executionStatusMessage}. {@code status} stays "RUNNING" so the UI doesn't treat
+   * this as a terminal event.
+   */
+  public static void sendQueryRunnerProgressNotification(
+      String jobId, UUID userId, String workflowId, String message) {
+    QueryRunnerMessage msg =
+        new QueryRunnerMessage(jobId, "RUNNING", workflowId, null, message, null, null);
+    String jsonMessage = JsonUtils.pojoToJson(msg);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void sendDeleteOperationCompleteNotification(
       String jobId, SecurityContext securityContext, EntityInterface entity) {
     DeleteEntityMessage message =
