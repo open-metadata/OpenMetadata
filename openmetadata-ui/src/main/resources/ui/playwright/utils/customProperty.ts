@@ -530,7 +530,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `pw.${uuid()}_CP- ${Date.now()} # $ .`;
+    const customPropertyName = `cp-${item.name}-${uuid()}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,

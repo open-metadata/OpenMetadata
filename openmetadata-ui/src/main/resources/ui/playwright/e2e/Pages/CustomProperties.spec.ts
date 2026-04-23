@@ -251,15 +251,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       createdCPData: [],
     };
     const propertyNames: Record<string, string> = {};
-    const dashboardSearchPropertyName = `pw._CP-${uuid()} . ${
-      entity.name
-    }:/&^%$#@!`;
+    const dashboardSearchPropertyName = `cp-${uuid()}-${entity.name}`;
     const dashboardPropertyValue = `EXECUTIVE_DASHBOARD_${uuid()}`;
 
     // Pipeline-specific state
-    const pipelineSearchPropertyName = `pw._CP-${uuid()} . ${
-      entity.name
-    }:/&^%$#@!`;
+    const pipelineSearchPropertyName = `cp-${uuid()}-${entity.name}`;
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
@@ -340,7 +336,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
     BASIC_PROPERTIES.forEach((property) => {
       test(property, async ({ page }) => {
-        const propertyName = `pw._CP-${uuid()} . ${entity.name}:/&^%$#@!`;
+        const propertyName = `cp-${uuid()}-${entity.name}`;
 
         await settingClick(
           page,
@@ -375,7 +371,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     CONFIG_PROPERTIES.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
-        const propertyName = `pw._CP-${uuid()} . ${entity.name}:/&^%$#@!`;
+        const propertyName = `cp-${uuid()}-${entity.name}`;
 
         await settingClick(
           page,
