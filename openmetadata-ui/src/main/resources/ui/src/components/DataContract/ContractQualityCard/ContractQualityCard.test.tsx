@@ -184,7 +184,7 @@ describe('ContractQualityCard', () => {
 
     expect(getListTestCaseBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        entityLink: '<#E::table::fqn>',
+        entityLink: '<#E::table::redshift prod.dev.dbt_jaffle.customers>',
         include: 'non-deleted',
         includeAllTests: true,
         limit: 10000,
