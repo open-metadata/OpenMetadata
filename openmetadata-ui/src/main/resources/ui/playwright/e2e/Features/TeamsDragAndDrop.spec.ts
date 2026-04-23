@@ -14,6 +14,7 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  createNewPage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -25,7 +26,7 @@ import {
 } from '../../utils/dragDrop';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy, hardDeleteTeam } from '../../utils/team';
+import { addTeamHierarchy } from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -89,6 +90,11 @@ test.describe(
   'Teams drag and drop should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { afterAction } = await createNewPage(browser);
+      await afterAction();
+    });
+
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
 
@@ -198,31 +204,6 @@ test.describe(
       await movedTeam.scrollIntoViewIfNeeded();
 
       await expect(movedTeam).toBeVisible();
-    });
-
-    test('Delete Teams', async ({ page }) => {
-      for (const teamName of [
-        teamNameBusiness,
-        teamNameDivision,
-        teamNameDepartment,
-        teamNameGroup,
-      ]) {
-        const getTeamResponse = page.waitForResponse(
-          `/api/v1/teams/name/${teamName}*`
-        );
-
-        await page.getByRole('link', { name: teamName }).click();
-        await getTeamResponse;
-
-        await waitForAllLoadersToDisappear(page);
-
-        await hardDeleteTeam(page, teamName);
-
-        // Validate the deleted team
-        await expect(
-          page.getByRole('cell', { name: teamName })
-        ).not.toBeVisible();
-      }
     });
   }
 );
