@@ -334,8 +334,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
         !r.request().postDataJSON()?.dryRun
     );
     await page
-      .getByTestId('confirmation-modal')
-      .filter({ has: page.getByTestId('remove-dry-run-warnings') })
+      .getByTestId('domain-dry-run-modal')
       .getByTestId('save-button')
       .click();
     await removeRes;

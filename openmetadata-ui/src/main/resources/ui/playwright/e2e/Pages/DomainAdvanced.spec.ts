@@ -1031,9 +1031,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
 
       expect(dryRunBody.dryRun).toBe(true);
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Remove' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
 
       await expect(warningModal).toBeVisible();
 
@@ -1113,9 +1111,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
       await page.getByTestId('delete-all-button').click();
       await dryRunPromise;
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Remove' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
 
       await expect(warningModal).toBeVisible();
       await warningModal.getByTestId('cancel').click();
@@ -1175,9 +1171,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
       await page.getByTestId('delete-all-button').click();
       await dryRunPromise;
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Remove' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
       const warnings = warningModal.getByTestId('remove-dry-run-warnings');
 
       await expect(warnings).toContainText(

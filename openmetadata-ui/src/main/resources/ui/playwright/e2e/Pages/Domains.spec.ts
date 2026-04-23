@@ -3478,9 +3478,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       expect(dryRunBody.dryRun).toBe(true);
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Move' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
 
       await expect(warningModal).toBeVisible();
 
@@ -3554,9 +3552,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       await page.getByTestId('save-btn').click();
       await dryRunPromise;
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Move' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
 
       await expect(warningModal).toBeVisible();
       await warningModal.getByTestId('cancel').click();
@@ -3609,9 +3605,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       await page.getByTestId('save-btn').click();
       await dryRunPromise;
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Move' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
       const warnings = warningModal.getByTestId('add-dry-run-warnings');
 
       await expect(warnings).toContainText(
@@ -3664,9 +3658,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       expect(commitBody.dryRun).not.toBe(true);
 
-      const warningModal = page
-        .getByTestId('confirmation-modal')
-        .filter({ hasText: 'Confirm Asset Move' });
+      const warningModal = page.getByTestId('domain-dry-run-modal');
 
       await expect(warningModal).not.toBeVisible();
 

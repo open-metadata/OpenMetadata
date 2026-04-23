@@ -42,7 +42,7 @@ const DomainAssetDryRunModal = ({
       isDismissable={!isLoading}
       isOpen={visible}
       onOpenChange={(v) => !v && !isLoading && onCancel()}>
-      <Modal data-testid="confirmation-modal">
+      <Modal data-testid="domain-dry-run-modal">
         <Dialog title={header}>
           <Dialog.Content className="tw:gap-4">
             <Alert
