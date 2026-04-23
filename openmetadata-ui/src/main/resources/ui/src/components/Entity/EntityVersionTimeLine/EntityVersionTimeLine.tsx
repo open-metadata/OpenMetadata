@@ -162,6 +162,11 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
+          // Stop observing after the first intersect so a sentinel that stays
+          // in view does not fire onLoadMore repeatedly for the same page.
+          // The effect re-runs when isLoadingMore flips back to false and a
+          // fresh observer is attached for the next page.
+          observer.unobserve(entry.target);
           onLoadMore();
         }
       }
