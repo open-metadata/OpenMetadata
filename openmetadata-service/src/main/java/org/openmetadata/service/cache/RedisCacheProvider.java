@@ -330,9 +330,20 @@ public class RedisCacheProvider implements CacheProvider {
     RedisFuture<?>[] array = futures.toArray(new RedisFuture[0]);
     boolean completed = LettuceFutures.awaitAll(timeoutMs, TimeUnit.MILLISECONDS, array);
     int failed = 0;
+    int cancelled = 0;
     Throwable firstFailure = null;
     for (RedisFuture<?> f : array) {
-      if (!f.isDone() || f.isCancelled()) {
+      if (!f.isDone()) {
+        // Cancel futures still in flight on timeout. Without this the Lettuce event loop keeps
+        // the response slot alive until the server (eventually) replies, accumulating memory
+        // and dispatcher work across repeated timeouts.
+        if (f.cancel(false)) {
+          cancelled++;
+        }
+        failed++;
+        continue;
+      }
+      if (f.isCancelled()) {
         failed++;
         continue;
       }
@@ -356,8 +367,8 @@ public class RedisCacheProvider implements CacheProvider {
       IllegalStateException ise =
           new IllegalStateException(
               String.format(
-                  "Redis pipeline batch did not complete cleanly (completed=%s, failed=%d, total=%d, timeoutMs=%d)",
-                  completed, failed, array.length, timeoutMs));
+                  "Redis pipeline batch did not complete cleanly (completed=%s, failed=%d, cancelled=%d, total=%d, timeoutMs=%d)",
+                  completed, failed, cancelled, array.length, timeoutMs));
       if (firstFailure != null) {
         ise.initCause(firstFailure);
       }

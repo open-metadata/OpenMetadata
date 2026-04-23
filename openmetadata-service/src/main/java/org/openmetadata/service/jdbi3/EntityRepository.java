@@ -320,6 +320,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
 
   /**
+   * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
+   * ({@code UserDAO.findEntityByName}), so the Guava cache must use the same normalization —
+   * otherwise {@code Alice@x.com} and {@code alice@x.com} produce two split entries and
+   * invalidations written against the lowercased canonical form miss the mixed-case entry,
+   * serving stale data until TTL.
+   */
+  private static Pair<String, String> cacheNameKey(String entityType, String fqn) {
+    if (fqn != null && Entity.USER.equals(entityType)) {
+      return new ImmutablePair<>(entityType, fqn.toLowerCase(Locale.ROOT));
+    }
+    return new ImmutablePair<>(entityType, fqn);
+  }
+
+  /**
    * Rebuild entity caches with values from {@link CacheConfiguration}. Called once during app
    * startup after the configuration is loaded. Safe to call multiple times — subsequent calls
    * replace the caches (old entries are lost, which is fine during initialization).
@@ -1496,7 +1510,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     if (!fromCache) {
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
     T entity;
     try (var ignored = phase("entityLookup")) {
@@ -2003,7 +2017,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     if (!fromCache) {
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       T entity;
       try (var ignored = phase("dbFindByNameNoCache")) {
         entity = dao.findEntityByName(fqn, include);
@@ -2021,7 +2035,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       String cachedJson;
       try (var ignored = phase("cacheGet")) {
-        cachedJson = CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
+        cachedJson = CACHE_WITH_NAME.get(cacheNameKey(entityType, fqn));
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {
@@ -2854,7 +2868,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (EntityDAO.EntityIdFqnPair row : affected) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, row.id));
       if (row.fqn != null) {
-        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, row.fqn));
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, row.fqn));
       }
       if (cachedEntityDao != null) {
         cachedEntityDao.invalidateBase(entityType, row.id);
@@ -2894,7 +2908,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     if (fqn != null) {
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     if (cachedEntityDao != null) {
@@ -2961,7 +2975,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
     if (fqn != null) {
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
   }
 
@@ -2972,7 +2986,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       // Invalidate Guava LoadingCache entries
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
 
       // Invalidate Redis cache entries
       var cachedEntityDao = CacheBundle.getCachedEntityDao();
@@ -4173,7 +4187,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
-    CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+    CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
 
     // Also invalidate Redis cache
@@ -8306,11 +8320,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Evict the Guava L1 so future reads reload from Redis/DB.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
       // getByName(oldFqn) misses and falls through to a 404 from DB.
       if (originalFqn != null && !originalFqn.equals(fqn)) {
-        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, originalFqn));
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
       }
 
       // Critical: drop Redis *base* entries for the entity BEFORE writeThroughCache repopulates.
