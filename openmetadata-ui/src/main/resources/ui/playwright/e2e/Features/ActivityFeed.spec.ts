@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -24,7 +24,6 @@ import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   removeLandingBanner,
   uuid,
@@ -499,6 +498,26 @@ test.describe('Mention notifications in Notification Box', () => {
       },
     });
 
+    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+      `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
+    )}&type=Conversation&limit=25`;
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(feedUrl);
+          const data = await response.json();
+
+          return (data.data ?? []).some((thread: { message?: string }) =>
+            thread.message?.includes(
+              'Initial conversation thread for mention test'
+            )
+          );
+        },
+        { timeout: 60_000, intervals: [2_000] }
+      )
+      .toBe(true);
+
     await afterAction();
   });
 
@@ -507,30 +526,7 @@ test.describe('Mention notifications in Notification Box', () => {
     user1Page,
   }) => {
     await test.step('User1 mentions admin user in a reply', async () => {
-      const { apiContext, afterAction } = await getApiContext(user1Page);
       await entity.visitEntityPage(user1Page);
-
-      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
-        `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
-      )}&type=Conversation&limit=25`;
-
-      await expect
-        .poll(
-          async () => {
-            const response = await apiContext.get(feedUrl);
-            const data = await response.json();
-
-            return (data.data ?? []).some((thread: { message?: string }) =>
-              thread.message?.includes(
-                'Initial conversation thread for mention test'
-              )
-            );
-          },
-          { timeout: 60_000, intervals: [2_000] }
-        )
-        .toBe(true);
-
-      await afterAction();
 
       await user1Page.getByTestId('activity_feed').click();
 

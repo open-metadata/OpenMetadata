@@ -10,19 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 
-const test = base;
+let adminUser: AdminClass;
+let testTable: TableClass;
+let testTag: TagClass;
 
-const adminUser = new UserClass();
-const testTable = new TableClass();
-const testTag = new TagClass({});
+const test = base.extend<{
+  page: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(
+      adminPage,
+      adminUser.data.email,
+      adminUser.data.password
+    );
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 type ActivityApiEvent = {
   actor?: { displayName?: string; name?: string };
@@ -119,36 +138,47 @@ const addOwnerFromActivitySpec = async (page: Page, owner: string) => {
   await expect(page.getByTestId('owner-link').getByTestId(owner)).toBeVisible();
 };
 
+test.beforeAll('Setup create admin user', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  adminUser = new AdminClass();
+
+  await adminUser.create(apiContext);
+
+  await afterAction();
+});
+
+test.afterAll('Cleanup delete admin user', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  await adminUser.delete(apiContext);
+
+  await afterAction();
+});
+
 test.describe('Activity API - Entity Changes', () => {
   test.describe.configure({ timeout: 120000 });
 
   test.beforeAll('Setup: create entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    testTable = new TableClass();
+    testTag = new TagClass({});
 
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await testTable.create(apiContext);
-      await testTag.create(apiContext);
-    } finally {
-      await afterAction();
-    }
+    await testTable.create(apiContext);
+    await testTag.create(apiContext);
+
+    await afterAction();
   });
 
   test.afterAll('Cleanup: delete entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      await testTable.delete(apiContext);
-      await testTag.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
+    await testTable.delete(apiContext);
+    await testTag.delete(apiContext);
+
+    await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
   });
@@ -157,7 +187,7 @@ test.describe('Activity API - Entity Changes', () => {
     page,
   }) => {
     const newDescription = `Test description updated at ${Date.now()}`;
-    const entityFqn = testTable.entityResponseData.fullyQualifiedName;
+    const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
 
     // Navigate to entity page
     await testTable.visitEntityPage(page);
@@ -166,7 +196,7 @@ test.describe('Activity API - Entity Changes', () => {
     await page.getByTestId('edit-description').click();
 
     // Wait for description modal to appear
-    await page.waitForSelector(descriptionBox, { state: 'visible' });
+    await page.locator(descriptionBox).waitFor({ state: 'visible' });
     await page.locator(descriptionBox).clear();
     await page.locator(descriptionBox).fill(newDescription);
 
@@ -182,7 +212,9 @@ test.describe('Activity API - Entity Changes', () => {
       page,
       entityFqn
     );
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const renderedDescriptionEvent = activityResponse.data?.find(
       (event) => event.eventType === 'DescriptionUpdated'
     );
@@ -192,38 +224,33 @@ test.describe('Activity API - Entity Changes', () => {
     await expect(feedContainer.first()).toContainText(/description/i);
   });
 
-  test('Activity event is created when tags are added', async ({
-    page,
-    browser,
-  }) => {
-    const entityFqn = testTable.entityResponseData.fullyQualifiedName;
+  test('Activity event is created when tags are added', async ({ page }) => {
+    const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
 
     // Add tag via API to bypass search indexing issues
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
 
-    try {
-      // Add tag to the table via API
-      await apiContext.patch(
-        `/api/v1/tables/${testTable.entityResponseData.id}`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: '/tags/0',
-              value: {
-                tagFQN: testTag.responseData.fullyQualifiedName,
-                source: 'Classification',
-              },
+    // Add tag to the table via API
+    await apiContext.patch(
+      `/api/v1/tables/${testTable.entityResponseData.id}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              tagFQN: testTag.responseData.fullyQualifiedName,
+              source: 'Classification',
             },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
           },
-        }
-      );
-    } finally {
-      await afterAction();
-    }
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    await afterAction();
 
     const tagsEvent = await waitForActivityEvent(entityFqn, 'TagsUpdated');
 
@@ -234,7 +261,9 @@ test.describe('Activity API - Entity Changes', () => {
       page,
       entityFqn
     );
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const renderedTagsEvent = activityResponse.data?.find(
       (event) => event.eventType === 'TagsUpdated'
     );
@@ -245,7 +274,7 @@ test.describe('Activity API - Entity Changes', () => {
   });
 
   test('Activity event is created when owner is added', async ({ page }) => {
-    const entityFqn = testTable.entityResponseData.fullyQualifiedName;
+    const entityFqn = testTable.entityResponseData.fullyQualifiedName ?? '';
     const ownerDisplayName = adminUser.getUserDisplayName();
 
     // Navigate to entity page
@@ -258,7 +287,9 @@ test.describe('Activity API - Entity Changes', () => {
       page,
       entityFqn
     );
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const renderedOwnerEvent = activityResponse.data?.find(
       (event) => event.eventType === 'OwnerUpdated'
     );
@@ -271,34 +302,34 @@ test.describe('Activity API - Entity Changes', () => {
 
   test('Activity event shows the actor who made the change', async ({
     page,
-    browser,
   }) => {
     // Make a change via API so we know exactly who the actor is
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
     const uniqueDescription = `Actor test description ${Date.now()}`;
 
-    try {
-      await apiContext.patch(
-        `/api/v1/tables/${testTable.entityResponseData.id}`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: '/description',
-              value: uniqueDescription,
-            },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
+    await apiContext.patch(
+      `/api/v1/tables/${testTable.entityResponseData.id}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/description',
+            value: uniqueDescription,
           },
-        }
-      );
-    } finally {
-      await afterAction();
-    }
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    await afterAction();
 
     // Wait for activity to be indexed
-    await page.waitForTimeout(2000);
+    await waitForActivityEvent(
+      testTable.entityResponseData.fullyQualifiedName ?? '',
+      'DescriptionUpdated'
+    );
 
     // Navigate to entity page
     await testTable.visitEntityPage(page);
@@ -308,27 +339,21 @@ test.describe('Activity API - Entity Changes', () => {
     await waitForPageLoaded(page);
 
     // Check if there are any feed items
-    const feedContainer = page.locator('[data-testid="message-container"]');
-
-    await feedContainer
-      .first()
-      .waitFor({ state: 'visible', timeout: 10000 })
-      .catch(() => {});
-
-    if ((await feedContainer.count()) > 0) {
-      const feedContent = await feedContainer.first().textContent();
-
-      // The activity should show the actor's name (admin user who made the change)
-      // Activity typically shows username or display name
-      const actorName = adminUser.responseData.displayName;
-
-      expect(feedContent).toContain(actorName);
-    } else {
-      test.info().annotations.push({
-        type: 'note',
-        description: 'Activity feed is empty - cannot verify actor',
+    const feedContainer = page
+      .locator('#center-container [data-testid="message-container"]')
+      .filter({
+        hasText: uniqueDescription,
       });
-    }
+
+    await feedContainer.waitFor({ state: 'visible' });
+
+    const feedContent = await feedContainer.first().textContent();
+
+    // The activity should show the actor's name (admin user who made the change)
+    // Activity typically shows username or display name
+    const actorName = adminUser.responseData.displayName;
+
+    expect(feedContent).toContain(actorName);
   });
 
   test('Activity event links to the correct entity', async ({ page }) => {
@@ -340,7 +365,9 @@ test.describe('Activity API - Entity Changes', () => {
     await waitForPageLoaded(page);
 
     // Check if there are any feed items
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
 
     await feedContainer
       .first()
@@ -360,7 +387,9 @@ test.describe('Activity API - Entity Changes', () => {
         // The link should point to the table entity
         expect(href).toContain('table');
         expect(href).toContain(
-          testTable.entityResponseData.fullyQualifiedName.split('.').pop()
+          (testTable.entityResponseData.fullyQualifiedName ?? '')
+            .split('.')
+            .pop() ?? ''
         );
       } else {
         // Some activity types may not have clickable entity links
@@ -418,7 +447,6 @@ test.describe('Activity API - Reactions', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
   });
@@ -432,7 +460,9 @@ test.describe('Activity API - Reactions', () => {
     await waitForPageLoaded(page);
 
     // Wait for feed to load
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const emptyState = page.locator(
       '[data-testid="no-data-placeholder-container"]'
     );
@@ -467,9 +497,9 @@ test.describe('Activity API - Reactions', () => {
       await addReactionBtn.click();
 
       // Wait for reaction popover
-      await page.waitForSelector('.ant-popover-feed-reactions', {
-        state: 'visible',
-      });
+      await page
+        .locator('.ant-popover-feed-reactions')
+        .waitFor({ state: 'visible' });
 
       // Click on thumbsUp reaction
       const reactionResponse = page.waitForResponse(
@@ -502,7 +532,9 @@ test.describe('Activity API - Reactions', () => {
     await waitForPageLoaded(page);
 
     // Wait for feed to load
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const emptyState = page.locator(
       '[data-testid="no-data-placeholder-container"]'
     );
@@ -539,9 +571,9 @@ test.describe('Activity API - Reactions', () => {
           '[data-testid="add-reactions"]'
         );
         await addReactionBtn.click();
-        await page.waitForSelector('.ant-popover-feed-reactions', {
-          state: 'visible',
-        });
+        await page
+          .locator('.ant-popover-feed-reactions')
+          .waitFor({ state: 'visible' });
 
         const addResponse = page.waitForResponse(
           (response) =>
@@ -557,9 +589,9 @@ test.describe('Activity API - Reactions', () => {
 
       // Now remove the reaction by clicking again
       await reactionContainer.locator('[data-testid="add-reactions"]').click();
-      await page.waitForSelector('.ant-popover-feed-reactions', {
-        state: 'visible',
-      });
+      await page
+        .locator('.ant-popover-feed-reactions')
+        .waitFor({ state: 'visible' });
 
       const removeResponse = page.waitForResponse(
         (response) =>
@@ -578,30 +610,52 @@ test.describe('Activity API - Reactions', () => {
 });
 
 test.describe('Activity API - Comments', () => {
-  const adminUser = new UserClass();
-  const testTable = new TableClass();
+  let adminUser: UserClass;
+  let testTable: TableClass;
+  let feedMessage = '';
+  let feedUrl = '';
+  let entityLink = '';
 
   test.beforeAll(
     'Setup: create entities and conversation',
     async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      try {
-        await adminUser.create(apiContext);
-        await adminUser.setAdminRole(apiContext);
-        await testTable.create(apiContext);
+      adminUser = new UserClass();
+      testTable = new TableClass();
 
-        // Create a conversation thread to have something to comment on
-        const entityLink = `<#E::table::${testTable.entityResponseData.fullyQualifiedName}>`;
-        await apiContext.post('/api/v1/feed', {
-          data: {
-            message: 'Test conversation for comments',
-            about: entityLink,
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await testTable.create(apiContext);
+
+      // Create a conversation thread to have something to comment on
+      feedMessage = `Test conversation for comments ${Date.now()}`;
+      entityLink = `<#E::table::${testTable.entityResponseData.fullyQualifiedName}>`;
+      await apiContext.post('/api/v1/feed', {
+        data: {
+          message: feedMessage,
+          about: entityLink,
+        },
+      });
+      feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+        entityLink
+      )}&type=Conversation&limit=25`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(feedUrl);
+            const data = await response.json();
+
+            return (data.data ?? []).some((thread: { message?: string }) =>
+              thread.message?.includes(feedMessage)
+            );
           },
-        });
-      } finally {
-        await afterAction();
-      }
+          { timeout: 60_000, intervals: [2_000] }
+        )
+        .toBe(true);
+
+      await afterAction();
     }
   );
 
@@ -617,7 +671,6 @@ test.describe('Activity API - Comments', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
   });
@@ -633,36 +686,22 @@ test.describe('Activity API - Comments', () => {
     await waitForPageLoaded(page);
 
     // Wait for feed to load
-    const feedContainer = page.locator('[data-testid="message-container"]');
-    const emptyState = page.locator(
-      '[data-testid="no-data-placeholder-container"]'
-    );
-
-    // Wait for either feed items or empty state
-    await Promise.race([
-      feedContainer.first().waitFor({ state: 'visible', timeout: 10000 }),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }),
-    ]).catch(() => {});
-
-    // Skip if no feed items
-    if ((await feedContainer.count()) === 0) {
-      test.info().annotations.push({
-        type: 'skip',
-        description: 'No feed items available to comment on',
+    const feedContainer = page
+      .locator('#center-container [data-testid="message-container"]')
+      .filter({
+        hasText: feedMessage,
       });
 
-      return;
-    }
+    // Wait for either feed items or empty state
+
+    feedContainer.waitFor({ state: 'visible' });
 
     // Click on the feed card to open detail view
-    await feedContainer.first().click();
+    await feedContainer.click();
     await waitForPageLoaded(page);
 
     // Wait for comment input to appear
     const commentInput = page.locator('[data-testid="comments-input-field"]');
-
-    // Wait for comment section to load
-    await page.waitForTimeout(1000);
 
     if (await commentInput.isVisible()) {
       await commentInput.click();
@@ -702,7 +741,9 @@ test.describe('Activity API - Comments', () => {
     await waitForPageLoaded(page);
 
     // Wait for feed to load
-    const feedContainer = page.locator('[data-testid="message-container"]');
+    const feedContainer = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const emptyState = page.locator(
       '[data-testid="no-data-placeholder-container"]'
     );
@@ -790,38 +831,20 @@ test.describe('Activity API - Homepage Widget', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
   });
 
   test('Activity Feed widget displays feed items', async ({ page }) => {
     // Wait for feed widget to load
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-
-    // Widget may not exist if homepage is not customized - check for Activity Feed text
-    const widgetExists = await feedWidget.isVisible().catch(() => false);
-    const activityFeedText = page.getByText('Activity Feed');
-    const hasActivityFeedHeader =
-      (await activityFeedText
-        .first()
-        .isVisible()
-        .catch(() => false)) || widgetExists;
-
-    if (!hasActivityFeedHeader) {
-      test.info().annotations.push({
-        type: 'skip',
-        description: 'Activity Feed widget not visible on homepage',
-      });
-
-      return;
-    }
-
-    // Wait for content to load
-    await page.waitForTimeout(2000);
+    page
+      .getByTestId('KnowledgePanel.ActivityFeed')
+      .waitFor({ state: 'visible' });
 
     // Check for feed content - either messages, empty state, or "No Recent Activity"
-    const messageContainers = page.locator('[data-testid="message-container"]');
+    const messageContainers = page.locator(
+      '#center-container [data-testid="message-container"]'
+    );
     const noRecentActivity = page.getByText('No Recent Activity');
     const emptyState = page.locator(
       '[data-testid="no-data-placeholder-container"]'
@@ -874,7 +897,7 @@ test.describe('Activity API - Homepage Widget', () => {
 
     // Click to open dropdown
     await sortDropdown.click();
-    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
     // Verify filter options are present
     await expect(
