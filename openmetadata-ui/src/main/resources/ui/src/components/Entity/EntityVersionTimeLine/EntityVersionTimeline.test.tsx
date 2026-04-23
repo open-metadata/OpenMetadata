@@ -14,9 +14,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import EntityVersionTimeLine, {
-  VersionButton,
-} from './EntityVersionTimeLine';
+import EntityVersionTimeLine, { VersionButton } from './EntityVersionTimeLine';
 
 jest.mock('../../common/PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
@@ -173,9 +171,9 @@ describe('EntityVersionTimeLine infinite scroll', () => {
       <MemoryRouter>
         <EntityVersionTimeLine
           currentVersion="1.1"
-          onBack={jest.fn()}
           versionHandler={jest.fn()}
           versionList={versionList}
+          onBack={jest.fn()}
           {...overrides}
         />
       </MemoryRouter>
