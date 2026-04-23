@@ -19,7 +19,8 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
  *
  * @see <a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Enabling.html"></a>
  */
-public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticationProvider {
+public class AwsRdsDatabaseAuthenticationProvider
+    implements DatabaseAuthenticationProvider, AutoCloseable {
 
   public static final String AWS_REGION = "awsRegion";
   public static final String ALLOW_PUBLIC_KEY_RETRIEVAL = "allowPublicKeyRetrieval";
@@ -109,5 +110,20 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
               .refreshRequest(assumeRoleRequest)
               .build();
         });
+  }
+
+  @Override
+  public void close() {
+    credentialsProviderCache.values().forEach(p -> {
+        if (p instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception ignored) {
+            }
+        }
+    });
+    stsClientCache.values().forEach(StsClient::close);
+    credentialsProviderCache.clear();
+    stsClientCache.clear();
   }
 }
