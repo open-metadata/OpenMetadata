@@ -532,9 +532,14 @@ const BulkEntityImportPage = () => {
         if (websocketResponse.status === 'COMPLETED') {
           const importResults = websocketResponse.result;
 
-          // If the job is complete and the status is either failure or aborted
-          // then reset the validation data and active step
-          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+          // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
+          // reset to upload step. If rows were processed but all failed, fall through to
+          // show the validation grid so the user can inspect and fix errors.
+          if (
+            ['aborted'].includes(importResults?.status ?? '') ||
+            (importResults?.status === 'failure' &&
+              (importResults?.numberOfRowsProcessed ?? 0) === 0)
+          ) {
             setValidationData(importResults);
 
             handleActiveStepChange(VALIDATION_STEP.UPLOAD);
@@ -643,7 +648,8 @@ const BulkEntityImportPage = () => {
     <PageLayoutV1
       pageTitle={t('label.import-entity', {
         entity: entityType,
-      })}>
+      })}
+    >
       <Row className="p-x-lg" gutter={[16, 16]}>
         {isBulkEdit ? (
           <BulkEditEntity
@@ -720,10 +726,12 @@ const BulkEntityImportPage = () => {
                         align="center"
                         className="w-full justify-center p-lg text-center"
                         direction="vertical"
-                        size={16}>
+                        size={16}
+                      >
                         <Typography.Text
                           className="text-center"
-                          data-testid="abort-reason">
+                          data-testid="abort-reason"
+                        >
                           <strong className="d-block">
                             {t('label.aborted')}
                           </strong>{' '}
@@ -734,7 +742,8 @@ const BulkEntityImportPage = () => {
                             ghost
                             data-testid="cancel-button"
                             type="primary"
-                            onClick={handleRetryCsvUpload}>
+                            onClick={handleRetryCsvUpload}
+                          >
                             {t('label.back')}
                           </Button>
                         </Space>
@@ -792,7 +801,8 @@ const BulkEntityImportPage = () => {
                       className="m-l-sm"
                       disabled={isValidating}
                       type="primary"
-                      onClick={handleValidate}>
+                      onClick={handleValidate}
+                    >
                       {activeStep === 2 ? t('label.update') : t('label.next')}
                     </Button>
                   )}

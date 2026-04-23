@@ -173,8 +173,8 @@ public class EntityCsvTest {
 
     CsvImportResult importResult = testCsv.importCsv(csv, true, callback);
 
-    // 4 rows: 1 header + 3 data rows (numberOfRowsProcessed = last record number = 4)
-    assertSummary(importResult, ApiStatus.SUCCESS, 4, 4, 0);
+    // 3 data rows (header excluded from counts)
+    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0);
     assertTrue(callbackCount.get() >= 1, "Callback should be called at least once");
     assertFalse(progressValues.isEmpty(), "Progress values should be recorded");
     assertEquals(3, totalValues.get(0), "Total rows should be 3 (excluding header)");
@@ -202,8 +202,8 @@ public class EntityCsvTest {
 
     CsvImportResult importResult = testCsv.importCsv(csv, true, callback);
 
-    // numberOfRowsProcessed = header row (1) + totalRecords data rows
-    int expectedRowsProcessed = totalRecords + 1;
+    // numberOfRowsProcessed = data rows only (header excluded)
+    int expectedRowsProcessed = totalRecords;
     assertSummary(importResult, ApiStatus.SUCCESS, expectedRowsProcessed, expectedRowsProcessed, 0);
     assertEquals(2, callbackCount.get(), "Callback should be called twice for 2 batches");
     assertEquals(1, batchNumbers.get(0), "First batch number should be 1");
@@ -242,8 +242,8 @@ public class EntityCsvTest {
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true, null);
 
-    // 2 rows: 1 header + 1 data row
-    assertSummary(importResult, ApiStatus.SUCCESS, 2, 2, 0);
+    // 1 data row (header excluded from counts)
+    assertSummary(importResult, ApiStatus.SUCCESS, 1, 1, 0);
   }
 
   private static class TestCsv extends EntityCsv<EntityInterface> {

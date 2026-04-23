@@ -207,8 +207,8 @@ test.describe('Glossary Bulk Import Export', () => {
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '3',
-          processed: '3',
+          passed: '2',
+          processed: '2',
           failed: '0',
         });
 
@@ -250,14 +250,14 @@ test.describe('Glossary Bulk Import Export', () => {
           (el) => el.textContent
         );
 
-        expect(processedRow).toBe('3');
+        expect(processedRow).toBe('2');
 
         const passedRow = await page.$eval(
           '[data-testid="passed-row"]',
           (el) => el.textContent
         );
 
-        expect(passedRow).toBe('3');
+        expect(passedRow).toBe('2');
 
         const failedRow = await page.$eval(
           '[data-testid="failed-row"]',
@@ -357,8 +357,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '4',
-          processed: '4',
+          passed: '3',
+          processed: '3',
           failed: '0',
         });
 
@@ -424,8 +424,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           await loader.waitFor({ state: 'hidden' });
 
           await validateImportStatus(page, {
-            passed: '3',
-            processed: '4',
+            passed: '2',
+            processed: '3',
             failed: '1',
           });
 
@@ -496,8 +496,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           // Should show failure due to missing required field
           await validateImportStatus(page, {
-            passed: '1',
-            processed: '2',
+            passed: '0',
+            processed: '1',
             failed: '1',
           });
         }
