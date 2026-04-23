@@ -181,9 +181,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setTestCaseStatus((prev) => {
       return prev.map((item) => {
         if (
-            item.testCaseReference?.fullyQualifiedName ===
-            value.testCaseReference?.fullyQualifiedName
-          ) {
+          item.testCaseReference?.fullyQualifiedName ===
+          value.testCaseReference?.fullyQualifiedName
+        ) {
           return value;
         }
 
