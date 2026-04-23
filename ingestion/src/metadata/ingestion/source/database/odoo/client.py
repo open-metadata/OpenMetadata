@@ -192,21 +192,32 @@ class OdooClient:
         """
         try:
             domain = [["model", "=", model_name]]
-            records = self._execute_kw(
-                "ir.model.fields",
-                "search_read",
-                [domain],
-                {
-                    "fields": [
-                        "name",
-                        "field_description",
-                        "ttype",
-                        "relation",
-                        "required",
-                    ]
-                },
-            )
-            return records or []
+            records: List[Dict[str, Any]] = []
+            offset = 0
+            while True:
+                batch = self._execute_kw(
+                    "ir.model.fields",
+                    "search_read",
+                    [domain],
+                    {
+                        "fields": [
+                            "name",
+                            "field_description",
+                            "ttype",
+                            "relation",
+                            "required",
+                        ],
+                        "limit": ODOO_DEFAULT_LIMIT,
+                        "offset": offset,
+                    },
+                )
+                if not batch:
+                    break
+                records.extend(batch)
+                if len(batch) < ODOO_DEFAULT_LIMIT:
+                    break
+                offset += ODOO_DEFAULT_LIMIT
+            return records
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch fields for model '{model_name}': {exc}")
