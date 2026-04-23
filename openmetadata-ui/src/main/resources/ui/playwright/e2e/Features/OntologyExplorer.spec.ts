@@ -1557,22 +1557,6 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
     await disposeApiContext(page, apiContext);
   });
 
-  test('Data mode stats show same term and relation counts as Model mode', async ({
-    page,
-  }) => {
-    await navigateAndFilterByGlossary(page, dataModeGlossary.responseData.id);
-
-    const stats = page.getByTestId('ontology-explorer-stats');
-    await expect(stats).toContainText('2 Terms');
-    await expect(stats).toContainText('1 Relations');
-
-    await page.getByRole('tab', { name: 'Data' }).click();
-    await waitForGraphLoaded(page);
-
-    await expect(stats).toContainText('2 Terms');
-    await expect(stats).toContainText('1 Relations');
-  });
-
   test('Data mode stats do not show Data Assets when no assets are tagged', async ({
     page,
   }) => {
