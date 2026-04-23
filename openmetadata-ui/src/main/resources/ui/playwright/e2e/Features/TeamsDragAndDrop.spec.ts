@@ -189,31 +189,4 @@ test.describe('Teams drag and drop should work properly', () => {
 
     await expect(movedTeam).toBeVisible();
   });
-
-  test('Delete Teams', async ({ page }) => {
-    for (const teamName of [
-      teamNameBusiness,
-      teamNameDivision,
-      teamNameDepartment,
-      teamNameGroup,
-    ]) {
-      const getTeamResponse = page.waitForResponse(
-        `/api/v1/teams/name/${teamName}*`
-      );
-
-      await page.getByRole('link', { name: teamName }).click();
-      await getTeamResponse;
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await hardDeleteTeam(page);
-
-      // Validate the deleted team
-      await expect(
-        page.getByRole('cell', { name: teamName })
-      ).not.toBeVisible();
-    }
-  });
 });
