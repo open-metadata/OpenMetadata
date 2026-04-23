@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ServiceTypes } from 'Models';
 import { PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
@@ -21,7 +22,6 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import type { ServiceTypes } from 'Models';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 
 class ConnectionsRouterClassBase {

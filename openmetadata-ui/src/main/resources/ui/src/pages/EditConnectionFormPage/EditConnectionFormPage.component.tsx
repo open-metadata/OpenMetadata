@@ -41,9 +41,9 @@ import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError, getServiceLogo } from '../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {

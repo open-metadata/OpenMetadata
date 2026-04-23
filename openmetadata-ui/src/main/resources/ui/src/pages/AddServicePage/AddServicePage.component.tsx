@@ -39,10 +39,10 @@ import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,
@@ -111,7 +111,9 @@ const AddServicePage = () => {
 
   // Select service
   const handleSelectServiceCancel = () => {
-    navigate(connectionsRouterClassBase.getSettingsServicesPath(serviceCategory));
+    navigate(
+      connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
+    );
   };
 
   const handleSelectServiceNextClick = () => {
