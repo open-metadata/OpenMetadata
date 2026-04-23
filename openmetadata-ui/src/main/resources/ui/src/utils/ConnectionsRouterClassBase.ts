@@ -17,6 +17,7 @@ import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constant
 import {
   getAddServicePath,
   getEditConnectionPath,
+  getEditIngestionPath,
   getLogsViewerPath,
   getPathByServiceFQN,
   getServiceDetailsPath,
@@ -67,6 +68,20 @@ class ConnectionsRouterClassBase {
     return getPathByServiceFQN(serviceCategory, fqn);
   }
 
+  public getEditIngestionPath(
+    serviceCategory: string,
+    fqn: string,
+    ingestionFqn: string,
+    ingestionType: string
+  ): string {
+    return getEditIngestionPath(
+      serviceCategory,
+      fqn,
+      ingestionFqn,
+      ingestionType
+    );
+  }
+
   public getLogsViewerPath(
     logEntityType: string,
     logEntityName: string,
@@ -80,3 +95,4 @@ const connectionsRouterClassBase = new ConnectionsRouterClassBase();
 
 export default connectionsRouterClassBase;
 export { ConnectionsRouterClassBase };
+
