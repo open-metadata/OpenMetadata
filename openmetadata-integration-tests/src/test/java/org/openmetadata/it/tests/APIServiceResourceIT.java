@@ -143,6 +143,17 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().apiServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().apiServices().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected ApiService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().apiServices().getVersion(id.toString(), version);
   }

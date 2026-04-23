@@ -8,20 +8,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -50,6 +58,44 @@ public class VectorDocBuilder {
 
   private static final Map<String, BodyTextExtractor> BODY_TEXT_EXTRACTORS =
       new ConcurrentHashMap<>();
+
+  private static final int MAX_CHILD_NAMES_IN_CONTEXT = 20;
+
+  /**
+   * Child-entity enumeration spec for container-like types. When an entity has children on the
+   * object (populated during reindexing via {@code fields=*}), their names are joined into a
+   * short natural-language phrase and appended to the semantic body, so queries match against
+   * what a container actually contains. The cast inside each getter is guarded by the map key:
+   * an entry keyed by {@link Entity#DATABASE} is only consulted for {@link Database} entities.
+   */
+  private record SemanticChildrenSpec(
+      Function<EntityInterface, List<EntityReference>> childGetter, String phrasePrefix) {}
+
+  private static final Map<String, SemanticChildrenSpec> SEMANTIC_CHILDREN_SPECS =
+      Map.of(
+          Entity.DATABASE,
+              new SemanticChildrenSpec(
+                  e -> ((Database) e).getDatabaseSchemas(), "Contains schemas"),
+          Entity.DATABASE_SCHEMA,
+              new SemanticChildrenSpec(e -> ((DatabaseSchema) e).getTables(), "Contains tables"),
+          Entity.API_COLLECTION,
+              new SemanticChildrenSpec(
+                  e -> ((APICollection) e).getApiEndpoints(), "Contains endpoints"),
+          Entity.CONTAINER,
+              new SemanticChildrenSpec(e -> ((Container) e).getChildren(), "Contains"),
+          Entity.DATA_PRODUCT,
+              new SemanticChildrenSpec(e -> ((DataProduct) e).getAssets(), "Contains assets"));
+
+  /**
+   * Entity-type-specific enrichments appended to {@link #buildSemanticMetaLightText} after the
+   * shared subject/type phrase. Table-driven so new type enrichers are one map entry rather than
+   * another {@code instanceof} branch.
+   */
+  private static final Map<String, BiConsumer<List<String>, EntityInterface>> SEMANTIC_ENRICHERS =
+      Map.of(
+          Entity.GLOSSARY_TERM,
+              (phrases, e) -> appendGlossaryTermPhrases(phrases, (GlossaryTerm) e),
+          Entity.METRIC, (phrases, e) -> appendMetricPhrases(phrases, (Metric) e));
 
   /**
    * Register a custom {@link BodyTextExtractor} for an entity type. The registry is consulted by
@@ -92,7 +138,12 @@ public class VectorDocBuilder {
 
   /**
    * Generate embedding fields to merge into an entity's search index document. Returns a map with:
-   * embedding, textToEmbed, chunkIndex, chunkCount, parentId, fingerprint.
+   * embedding, textToLLMContext, textToEmbed, chunkIndex, chunkCount, parentId, fingerprint.
+   *
+   * <p>{@code textToLLMContext} preserves the legacy rich-context format (empty fields rendered as
+   * {@code []}) and is consumed by agent tooling as LLM context. {@code textToEmbed} is
+   * the compact variant that omits empty fields and is the actual input fed to the embedding
+   * model.
    */
   public static Map<String, Object> buildEmbeddingFields(
       EntityInterface entity, EmbeddingClient embeddingClient) {
@@ -101,20 +152,25 @@ public class VectorDocBuilder {
 
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
+    String semanticMetaLight = buildSemanticMetaLightText(entity, entityType);
+    String semanticBody = buildSemanticBodyText(entity, entityType);
     String fingerprint = computeFingerprintForEntity(entity);
 
     List<String> chunks = TextChunkManager.chunk(body);
     int chunkCount = chunks.size();
+    List<String> semanticChunks = TextChunkManager.chunk(semanticBody);
 
-    // Use the first chunk for the entity's embedding
     String contTag = "";
-    String textToEmbed =
+    String textToLLMContext =
         String.format("%s%s%s | chunk %d/%d", metaLight, contTag, chunks.get(0), 1, chunkCount);
+    String semanticBodyChunk = semanticChunks.get(0);
+    String textToEmbed = joinSemanticParts(semanticMetaLight, semanticBodyChunk);
 
     float[] embedding = embeddingClient.embed(textToEmbed);
 
     Map<String, Object> fields = new HashMap<>();
     fields.put("embedding", embedding);
+    fields.put("textToLLMContext", textToLLMContext);
     fields.put("textToEmbed", textToEmbed);
     fields.put("chunkIndex", 0);
     fields.put("chunkCount", chunkCount);
@@ -278,6 +334,247 @@ public class VectorDocBuilder {
     }
 
     return String.join("; ", bodyParts);
+  }
+
+  /**
+   * Natural-language metadata for the semantic embedding input. Emits content as sentence-like
+   * phrases without {@code key: value;} label scaffolding, and drops high-noise/low-signal fields
+   * (FQN, entityType, serviceType, owners, customProperties, chunk marker) so the pooled vector
+   * isn't dominated by structural tokens that appear in every document.
+   */
+  static String buildSemanticMetaLightText(EntityInterface entity, String entityType) {
+    boolean isGlossary = entity instanceof Glossary;
+    boolean isGlossaryTerm = entity instanceof GlossaryTerm;
+
+    List<String> phrases = new ArrayList<>();
+    appendSubjectPhrase(phrases, entity, entityType);
+
+    BiConsumer<List<String>, EntityInterface> enricher = SEMANTIC_ENRICHERS.get(entityType);
+    if (enricher != null) {
+      enricher.accept(phrases, entity);
+    }
+
+    appendTagPhrases(phrases, entity, isGlossary, isGlossaryTerm);
+    appendDomainPhrase(phrases, entity);
+
+    if (!isGlossary && !isGlossaryTerm) {
+      appendTierAndCertificationPhrases(phrases, entity);
+    }
+
+    return String.join(". ", phrases);
+  }
+
+  private static void appendSubjectPhrase(
+      List<String> phrases, EntityInterface entity, String entityType) {
+    String name = entity.getName();
+    String displayName = entity.getDisplayName();
+    String subject = null;
+    if (displayName != null && !displayName.isBlank() && !displayName.equals(name)) {
+      subject = (name == null || name.isBlank()) ? displayName : displayName + " (" + name + ")";
+    } else if (name != null && !name.isBlank()) {
+      subject = name;
+    }
+    String typeLabel = humanizeEntityType(entityType);
+    if (!typeLabel.isEmpty() && subject != null) {
+      phrases.add(typeLabel + " " + subject);
+    } else if (!typeLabel.isEmpty()) {
+      phrases.add(typeLabel);
+    } else if (subject != null) {
+      phrases.add(subject);
+    }
+  }
+
+  private static void appendTierAndCertificationPhrases(
+      List<String> phrases, EntityInterface entity) {
+    String tier = extractTierLabel(entity);
+    if (tier != null) {
+      phrases.add(tier.replace('.', ' '));
+    }
+    String cert = extractCertificationLabel(entity);
+    if (cert != null) {
+      phrases.add(cert.replace('.', ' '));
+    }
+  }
+
+  private static void appendGlossaryTermPhrases(List<String> phrases, GlossaryTerm term) {
+    List<String> synonyms = term.getSynonyms();
+    if (synonyms != null && !synonyms.isEmpty()) {
+      phrases.add("Also known as " + String.join(", ", synonyms));
+    }
+    List<TermRelation> relatedTerms = term.getRelatedTerms();
+    if (relatedTerms != null && !relatedTerms.isEmpty()) {
+      List<String> relatedNames =
+          relatedTerms.stream()
+              .map(tr -> tr.getTerm() == null ? null : tr.getTerm().getName())
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList());
+      if (!relatedNames.isEmpty()) {
+        phrases.add("Related to " + String.join(", ", relatedNames));
+      }
+    }
+  }
+
+  private static void appendMetricPhrases(List<String> phrases, Metric metric) {
+    List<String> parts = new ArrayList<>();
+    if (metric.getMetricType() != null) {
+      parts.add(metric.getMetricType().value() + " metric");
+    }
+    if (metric.getUnitOfMeasurement() != null) {
+      String unit = metric.getUnitOfMeasurement().value();
+      String value =
+          "OTHER".equals(unit) && metric.getCustomUnitOfMeasurement() != null
+              ? metric.getCustomUnitOfMeasurement()
+              : unit;
+      parts.add("measured in " + value);
+    }
+    if (metric.getGranularity() != null) {
+      parts.add("granularity " + metric.getGranularity());
+    }
+    if (!parts.isEmpty()) {
+      phrases.add(String.join(", ", parts));
+    }
+    MetricExpression expr = metric.getMetricExpression();
+    if (expr != null && expr.getCode() != null) {
+      phrases.add(expr.getCode());
+    }
+  }
+
+  private static void appendTagPhrases(
+      List<String> phrases, EntityInterface entity, boolean isGlossary, boolean isGlossaryTerm) {
+    List<TagLabel> tagsPojo = entity.getTags() != null ? entity.getTags() : Collections.emptyList();
+    List<String> classificationTagNames =
+        tagsPojo.stream()
+            .filter(tag -> tag.getSource() == null || !"Glossary".equals(tag.getSource().value()))
+            .filter(tag -> !tag.getTagFQN().startsWith("Tier."))
+            .map(tag -> tag.getTagFQN().replace('.', ' '))
+            .collect(Collectors.toList());
+    if (!classificationTagNames.isEmpty()) {
+      phrases.add("Tagged as " + String.join(", ", classificationTagNames));
+    }
+    if (!isGlossary && !isGlossaryTerm) {
+      List<String> glossaryTermNames =
+          tagsPojo.stream()
+              .filter(tag -> tag.getSource() != null && "Glossary".equals(tag.getSource().value()))
+              .map(tag -> tag.getName() != null ? tag.getName() : tag.getTagFQN())
+              .collect(Collectors.toList());
+      if (!glossaryTermNames.isEmpty()) {
+        phrases.add("Related glossary terms " + String.join(", ", glossaryTermNames));
+      }
+    }
+  }
+
+  private static void appendDomainPhrase(List<String> phrases, EntityInterface entity) {
+    List<EntityReference> domainsPojo =
+        entity.getDomains() != null ? entity.getDomains() : Collections.emptyList();
+    List<String> domainNames =
+        domainsPojo.stream()
+            .map(d -> d.getDisplayName() != null ? d.getDisplayName() : d.getName())
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    if (!domainNames.isEmpty()) {
+      phrases.add("In domain " + String.join(", ", domainNames));
+    }
+  }
+
+  private static String joinSemanticParts(String metaLight, String body) {
+    if (metaLight.isEmpty()) {
+      return body;
+    }
+    if (body.isEmpty()) {
+      return metaLight;
+    }
+    return metaLight + ". " + body;
+  }
+
+  static String buildSemanticBodyText(EntityInterface entity, String entityType) {
+    if (entityType != null) {
+      BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
+      if (customExtractor != null) {
+        try {
+          String custom = customExtractor.extract(entity);
+          if (custom != null) {
+            return custom;
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Custom BodyTextExtractor failed for [{}], falling back to default", entityType, e);
+        }
+      }
+    }
+
+    List<String> bodyParts = new ArrayList<>();
+    String description = removeHtml(entity.getDescription() == null ? "" : entity.getDescription());
+    if (!description.isEmpty()) {
+      bodyParts.add(description);
+    }
+
+    if (entity instanceof Table table) {
+      List<Column> columns = table.getColumns();
+      if (columns != null && !columns.isEmpty()) {
+        bodyParts.add("Columns include " + columnsToString(columns));
+      }
+    }
+
+    String childContext = buildChildContextPhrase(entity, entityType);
+    if (childContext != null) {
+      bodyParts.add(childContext);
+    }
+
+    return String.join(". ", bodyParts);
+  }
+
+  /**
+   * Convert an entity type identifier into a natural-language label by inserting spaces at every
+   * lowercase→uppercase boundary. {@code dataProduct} becomes {@code "data Product"},
+   * {@code databaseSchema} becomes {@code "database Schema"}, {@code table} stays {@code "table"}.
+   * Returns an empty string for null or blank input so callers can trivially skip the prefix.
+   */
+  static String humanizeEntityType(String entityType) {
+    if (entityType == null || entityType.isBlank()) {
+      return "";
+    }
+    return entityType.replaceAll("([a-z])([A-Z])", "$1 $2");
+  }
+
+  /**
+   * Produce a "Contains X, Y, Z" phrase listing the names of a container entity's direct
+   * children (database schemas, tables, endpoints, charts, etc.). The per-type getter is looked
+   * up in {@link #SEMANTIC_CHILDREN_SPECS} as a typed method reference, so this stays
+   * compile-time checked. Returns null when the entity is not a known container or when the
+   * child list is empty.
+   */
+  static String buildChildContextPhrase(EntityInterface entity, String entityType) {
+    if (entityType == null) {
+      return null;
+    }
+    SemanticChildrenSpec spec = SEMANTIC_CHILDREN_SPECS.get(entityType);
+    if (spec == null) {
+      return null;
+    }
+    List<String> childNames = readChildNames(spec.childGetter().apply(entity));
+    if (childNames.isEmpty()) {
+      return null;
+    }
+    List<String> limited =
+        childNames.size() > MAX_CHILD_NAMES_IN_CONTEXT
+            ? childNames.subList(0, MAX_CHILD_NAMES_IN_CONTEXT)
+            : childNames;
+    return spec.phrasePrefix() + " " + String.join(", ", limited);
+  }
+
+  private static List<String> readChildNames(List<EntityReference> refs) {
+    if (refs == null || refs.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<String> names = new ArrayList<>(refs.size());
+    for (EntityReference ref : refs) {
+      String displayName = ref.getDisplayName();
+      String name = displayName != null && !displayName.isBlank() ? displayName : ref.getName();
+      if (name != null && !name.isBlank()) {
+        names.add(name);
+      }
+    }
+    return names;
   }
 
   static String extractServiceType(EntityInterface entity) {

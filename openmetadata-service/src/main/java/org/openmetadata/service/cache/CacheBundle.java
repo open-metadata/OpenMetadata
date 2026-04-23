@@ -5,6 +5,7 @@ import io.dropwizard.core.ConfiguredBundle;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.lifecycle.Managed;
+import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -17,6 +18,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedEntityDao cachedEntityDao;
   private static CachedRelationshipDao cachedRelationshipDao;
   private static CachedTagUsageDao cachedTagUsageDao;
+  private static CachedReadBundle cachedReadBundle;
+  private static CacheInvalidationPubSub cacheInvalidationPubSub;
+  private static CacheConfig cacheConfig;
 
   public CacheBundle() {
     instance = this;
@@ -31,7 +35,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   @Override
   public void run(OpenMetadataApplicationConfig configuration, Environment environment) {
-    CacheConfig cacheConfig = configuration.getCacheConfig();
+    cacheConfig = configuration.getCacheConfig();
 
     LOG.info("CacheBundle.run() called with cacheConfig: {}", cacheConfig);
 
@@ -43,6 +47,8 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
     try {
       LOG.info("Initializing cache with provider: {}", cacheConfig.provider);
+
+      CacheMetrics.initialize(Metrics.globalRegistry);
 
       switch (cacheConfig.provider) {
         case redis:
@@ -61,6 +67,21 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
           new CachedRelationshipDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedTagUsageDao =
           new CachedTagUsageDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
+      cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
+      cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
+      cacheInvalidationPubSub.setHandler(
+          msg -> {
+            try {
+              org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
+                  msg.type(), msg.id(), msg.fqn());
+              if (msg.id() != null && cachedReadBundle != null) {
+                cachedReadBundle.invalidate(msg.type(), msg.id());
+              }
+            } catch (Exception e) {
+              LOG.debug("Remote invalidation handler failed for {}", msg, e);
+            }
+          });
+      cacheInvalidationPubSub.start();
 
       environment.lifecycle().manage(new CacheLifecycleManager());
       environment.healthChecks().register("cache", new CacheHealthCheck());
@@ -89,6 +110,18 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     return cachedTagUsageDao;
   }
 
+  public static CachedReadBundle getCachedReadBundle() {
+    return cachedReadBundle;
+  }
+
+  public static CacheInvalidationPubSub getCacheInvalidationPubSub() {
+    return cacheInvalidationPubSub;
+  }
+
+  public static CacheConfig getCacheConfig() {
+    return cacheConfig;
+  }
+
   private static class CacheLifecycleManager implements Managed {
     @Override
     public void start() {
@@ -98,6 +131,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     @Override
     public void stop() {
       try {
+        if (cacheInvalidationPubSub != null) {
+          cacheInvalidationPubSub.stop();
+        }
         if (cacheProvider != null) {
           cacheProvider.close();
         }
