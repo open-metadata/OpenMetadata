@@ -113,10 +113,11 @@ public class PatchTableEmbeddingIT {
           updatedFingerprint,
           "Fingerprint should change after description update");
 
-      String textToEmbed = getFieldFromDoc(searchClient, entityIndexName, tableId, "textToEmbed");
+      String textToLLMContext =
+          getFieldFromDoc(searchClient, entityIndexName, tableId, "textToLLMContext");
       assertTrue(
-          textToEmbed.contains("Revenue metrics"),
-          "textToEmbed should reflect the patched description");
+          textToLLMContext.contains("Revenue metrics"),
+          "textToLLMContext should reflect the patched description");
 
       String embeddingJson = getFieldFromDoc(searchClient, entityIndexName, tableId, "embedding");
       assertNotNull(embeddingJson, "Embedding vector should exist after PATCH");

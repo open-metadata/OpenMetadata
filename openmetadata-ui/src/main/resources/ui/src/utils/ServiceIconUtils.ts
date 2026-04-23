@@ -178,7 +178,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   iomete: iomete,
   domodatabase: domo,
   customdatabase: databasedefault,
-  microsoftFabric: microsoftFabric,
+  microsoftfabric: microsoftFabric,
 
   // Messaging services
   kafka: kafka,
@@ -221,7 +221,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   databrickspipeline: databrick,
   gluepipeline: glue,
   custompipeline: pipelinedefault,
-  microsoftFabricPipeline: microsoftFabric,
+  microsoftfabricpipeline: microsoftFabric,
 
   // ML Model services
   mlflow: mlflow,
