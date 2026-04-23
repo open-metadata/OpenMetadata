@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/logStorageConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LogStorageConfiguration",
+  "description": "Configuration for pipeline log storage",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.LogStorageConfiguration",
+  "properties": {
+    "type": {
+      "description": "Type of log storage implementation",
+      "type": "string",
+      "enum": ["default", "s3"],
+      "default": "default"
+    },
+    "enabled": {
+      "description": "Enable it for pipelines deployed in the server",
+      "type": "boolean",
+      "default": false
+    },
+    "bucketName": {
+      "description": "S3 bucket name for storing logs (required for S3 type)",
+      "type": "string"
+    },
+    "prefix": {
+      "description": "S3 key prefix for organizing logs",
+      "type": "string",
+      "default": "pipeline-logs"
+    },
+    "awsConfig": {
+      "description": "AWS credentials configuration",
+      "$ref": "../security/credentials/awsCredentials.json"
+    },
+    "enableServerSideEncryption": {
+      "description": "Enable server-side encryption for S3 objects",
+      "type": "boolean",
+      "default": true
+    },
+    "sseAlgorithm": {
+      "description": "Server-side encryption algorithm (if applicable)",
+      "type": "string",
+      "enum": ["AES256", "aws:kms"]
+    },
+    "kmsKeyId": {
+      "description": "KMS Key ID for server-side encryption (if applicable)",
+      "type": "string"
+    },
+    "storageClass": {
+      "description": "S3 storage class for log objects",
+      "type": "string",
+      "enum": ["STANDARD", "STANDARD_IA", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER", "DEEP_ARCHIVE"],
+      "default": "STANDARD_IA"
+    },
+    "expirationDays": {
+      "description": "Number of days after which logs are automatically deleted (0 means no expiration)",
+      "type": "integer",
+      "minimum": 0,
+      "default": 30
+    },
+    "maxConcurrentStreams": {
+      "description": "Maximum number of concurrent log streams allowed",
+      "type": "integer",
+      "minimum": 1,
+      "default": 100
+    },
+    "streamTimeoutMinutes": {
+      "description": "Timeout in minutes for idle log streams before automatic cleanup",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
+    "asyncBufferSizeMB": {
+      "description": "Size of async buffer in MB for batching log writes",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/events/webhook.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Webhook",
+  "description": "This schema defines webhook for receiving events from OpenMetadata.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.Webhook",
+  "javaInterfaces": [
+    "org.openmetadata.schema.SubscriptionAction"
+  ],
+  "definitions": {
+    "entityName" : {
+      "description": "Unique name of the application receiving webhook events.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "(?U)^[\\w'\\-.]+$"
+    }
+  },
+  "properties": {
+    "receivers": {
+      "description": "List of receivers to send mail to",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "endpoint": {
+      "description": "Endpoint to receive the webhook events over POST requests.",
+      "type": "string",
+      "format": "uri"
+    },
+    "headers": {
+      "description": "Custom headers to be sent with the webhook request.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, String>"
+    },
+    "queryParams": {
+      "description": "Query parameters to be added to the webhook request URL.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, String>"
+    },
+    "httpMethod": {
+      "description": "HTTP operation to send the webhook request. Supports POST or PUT.",
+      "type": "string",
+      "enum": ["POST", "PUT"],
+      "default": "POST"
+    },
+    "sendToAdmins": {
+      "description": "Send the Event to Admins",
+      "type": "boolean",
+      "default": false
+    },
+    "sendToOwners": {
+      "description": "Send the Event to Owners",
+      "type": "boolean",
+      "default": false
+    },
+    "authType": {
+      "description": "Authentication configuration for the webhook. If not specified, the webhook will be sent without authentication.",
+      "title": "Authentication Configuration Type",
+      "mask": true,
+      "oneOf": [
+        {
+          "$ref": "./authentication/webhookNoAuth.json"
+        },
+        {
+          "$ref": "./authentication/webhookBearerAuth.json"
+        },
+        {
+          "$ref": "./authentication/webhookOAuth2Config.json"
+        }
+      ]
+    },
+    "sendToFollowers": {
+      "description": "Send the Event to Followers",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

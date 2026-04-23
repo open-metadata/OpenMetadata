@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/endEvent/endEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EndEventDefinition",
+  "description": "EndEvent.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "endEvent"
+    },
+    "subType": {
+      "type": "string",
+      "default": "endEvent"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/DatabricksPipelineConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabricksPipelineConnection",
+  "description": "Databricks Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection",
+  "definitions": {
+    "databricksType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "DatabricksPipeline"
+      ],
+      "default": "DatabricksPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/databricksType",
+      "default": "DatabricksPipeline"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Databricks service.",
+      "type": "string"
+    },
+    "token": {
+      "title": "Token",
+      "description": "Generated Token to connect to Databricks.",
+      "type": "string",
+      "format": "password"
+    },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "description": "Connection timeout in seconds.",
+      "type": "number",
+      "default": 120
+    },
+    "httpPath": {
+      "title": "Http Path",
+      "description": "Databricks compute resources URL.",
+      "type": "string"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "lineageLookBackDays": {
+      "title": "Lineage Look Back Days",
+      "description": "Number of days to look back when fetching lineage data from Databricks system tables (system.access.table_lineage and system.access.column_lineage). Default is 90 days.",
+      "type": "integer",
+      "default": 90,
+      "minimum": 1,
+      "maximum": 365
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "token"
+  ]
+}

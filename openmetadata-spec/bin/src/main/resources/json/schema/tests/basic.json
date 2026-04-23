@@ -1,0 +1,302 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/basic.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Basic",
+  "description": "This schema defines basic types that are used by other test schemas.",
+  "definitions": {
+    "columnTestSummaryDefinition": {
+      "description": "Schema to capture test case execution summary at the column level.",
+      "javaType": "org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition",
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Number of test cases that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of test cases that failed.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of test cases that aborted.",
+          "type": "integer"
+        },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
+        },
+        "entityLink": {
+          "$ref": "../type/basic.json#/definitions/entityLink"
+        }
+      }
+    },
+    "testSummary": {
+      "description": "Schema to capture test case execution summary.",
+      "javaType": "org.openmetadata.schema.tests.type.TestSummary",
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Number of test cases that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of test cases that failed.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of test cases that aborted.",
+          "type": "integer"
+        },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
+        },
+        "columnTestSummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnTestSummaryDefinition"
+          }
+        }
+      }
+    },
+    "testResultValue": {
+      "description": "Schema to capture test case result values.",
+      "javaType": "org.openmetadata.schema.tests.type.TestResultValue",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "name of the value",
+          "type": "string"
+        },
+        "value": {
+          "description": "test result value",
+          "type": "string"
+        },
+        "predictedValue": {
+          "description": "predicted value",
+          "type": "string"
+        }
+      }
+    },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
+      "type": "string",
+      "enum": ["Success", "Failed", "Aborted", "Queued"],
+      "javaEnums": [
+        {
+          "name": "Success"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Aborted"
+        },
+        {
+          "name": "Queued"
+        }
+      ]
+    },
+    "testCaseResult": {
+      "description": "Schema to capture test case result.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
+      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier of this failure instance",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "testCaseFQN": {
+          "description": "Fully qualified name of the test case.",
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "timestamp": {
+          "description": "Data one which test case result is taken.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "testCaseStatus": {
+          "description": "Status of Test Case run.",
+          "$ref": "#/definitions/testCaseStatus"
+        },
+        "result": {
+          "description": "Details of test case results.",
+          "type": "string"
+        },
+        "sampleData": {
+          "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
+          "type": "string"
+        },
+        "testResultValue": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testResultValue"
+          }
+        },
+        "passedRows": {
+          "description": "Number of rows that passed.",
+          "type": "integer",
+          "existingJavaType": "java.lang.Long"
+        },
+        "failedRows": {
+          "description": "Number of rows that failed.",
+          "type": "integer",
+          "existingJavaType": "java.lang.Long"
+        },
+        "passedRowsPercentage": {
+          "description": "Percentage of rows that passed.",
+          "type": "number"
+        },
+        "failedRowsPercentage": {
+          "description": "Percentage of rows that failed.",
+          "type": "number"
+        },
+        "incidentId": {
+          "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "maxBound": {
+          "description": "Upper bound limit for the test case result as defined in the test definition.",
+          "type": "number"
+        },
+        "minBound": {
+          "description": "Lower bound limit for the test case result as defined in the test definition.",
+          "type": "number"
+        },
+        "testCase": {
+          "description": "Test case that this result is for.",
+          "$ref": "../type/entityReference.json"
+        },
+        "testDefinition": {
+          "description": "Test definition that this result is for.",
+          "$ref": "../type/entityReference.json"
+        },
+        "dimensionResults": {
+          "description": "List of dimensional test results. Only populated when the test case has dimensionColumns specified.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testCaseDimensionResult"
+          }
+        }
+      },
+      "required": ["timestamp"]
+    },
+    "testSuiteExecutionFrequency": {
+      "description": "How often the test case should run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestSuiteExecutionFrequency",
+      "type": "string",
+      "enum": ["Hourly", "Daily", "Weekly"],
+      "javaEnums": [
+        {
+          "name": "Hourly"
+        },
+        {
+          "name": "Daily"
+        },
+        {
+          "name": "Weekly"
+        }
+      ]
+    },
+    "dimensionValue": {
+      "description": "A single dimension name-value pair for dimensional test results",
+      "javaType": "org.openmetadata.schema.tests.type.DimensionValue",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the dimension (e.g., 'column', 'region', 'tier')",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value for this dimension (e.g., 'address', 'US', 'gold')",
+          "type": "string"
+        }
+      },
+      "required": ["name", "value"],
+      "additionalProperties": false
+    },
+    "testCaseDimensionResult": {
+      "description": "Test case result for dimensional analysis - supports both single and multi-dimensional groupings",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseDimensionResult",
+      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier of this dimensional result instance",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "testCaseResultId": {
+          "description": "Reference to the parent TestCaseResult execution that generated this dimensional result",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "testCase": {
+          "description": "Reference to the test case for efficient querying of dimensional time series",
+          "$ref": "../type/entityReference.json"
+        },
+        "timestamp": {
+          "description": "Timestamp when the dimensional test result was captured (same as parent TestCaseResult)",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "dimensionValues": {
+          "description": "Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value': 'mumbai'}, {'name': 'product', 'value': 'laptop'}])",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dimensionValue"
+          }
+        },
+        "dimensionKey": {
+          "description": "Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'",
+          "type": "string"
+        },
+        "testCaseStatus": {
+          "description": "Status of the test for this dimension combination",
+          "$ref": "#/definitions/testCaseStatus"
+        },
+        "result": {
+          "description": "Details of test case results for this dimension combination",
+          "type": "string"
+        },
+        "testResultValue": {
+          "description": "Test result values for this dimension combination",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testResultValue"
+          }
+        },
+        "passedRows": {
+          "description": "Number of rows that passed for this dimension combination",
+          "type": "integer"
+        },
+        "failedRows": {
+          "description": "Number of rows that failed for this dimension combination",
+          "type": "integer"
+        },
+        "passedRowsPercentage": {
+          "description": "Percentage of rows that passed for this dimension combination",
+          "type": "number"
+        },
+        "failedRowsPercentage": {
+          "description": "Percentage of rows that failed for this dimension combination",
+          "type": "number"
+        },
+        "impactScore": {
+          "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more significant quality issues considering both failure rate and data volume.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": ["id", "testCaseResultId", "timestamp", "dimensionValues", "dimensionKey", "testCaseStatus"],
+      "additionalProperties": false
+    }
+  }
+}

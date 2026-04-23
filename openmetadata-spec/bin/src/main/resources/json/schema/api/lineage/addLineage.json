@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/addLineage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddLineageRequest",
+  "description": "Add lineage details between two entities",
+  "type": "object",
+  "properties": {
+    "edge": {
+      "description": "Lineage edge details.",
+      "$ref": "../../type/entityLineage.json#/definitions/entitiesEdge"
+    }
+  },
+  "required": ["edge"],
+  "additionalProperties": false
+}

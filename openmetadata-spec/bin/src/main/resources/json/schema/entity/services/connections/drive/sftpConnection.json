@@ -1,0 +1,138 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/drive/sftpConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SftpConnection",
+  "description": "SFTP Connection Config for secure file transfer protocol servers.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.drive.SftpConnection",
+  "definitions": {
+    "sftpType": {
+      "description": "SFTP service type",
+      "type": "string",
+      "enum": ["Sftp"],
+      "default": "Sftp"
+    },
+    "basicAuth": {
+      "title": "Username/Password Authentication",
+      "description": "Username and password authentication for SFTP",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "SFTP username",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "SFTP password",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["username", "password"],
+      "additionalProperties": false
+    },
+    "keyAuth": {
+      "title": "Private Key Authentication",
+      "description": "SSH private key authentication for SFTP",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "SFTP username",
+          "type": "string"
+        },
+        "privateKey": {
+          "title": "Private Key",
+          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
+          "type": "string",
+          "format": "password"
+        },
+        "privateKeyPassphrase": {
+          "title": "Private Key Passphrase",
+          "description": "Passphrase for the private key (if encrypted)",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["username", "privateKey"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sftpType",
+      "default": "Sftp"
+    },
+    "host": {
+      "title": "Host",
+      "description": "SFTP server hostname or IP address",
+      "type": "string"
+    },
+    "port": {
+      "title": "Port",
+      "description": "SFTP server port number",
+      "type": "integer",
+      "default": 22
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Authentication method: username/password or SSH private key",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/basicAuth"
+        },
+        {
+          "$ref": "#/definitions/keyAuth"
+        }
+      ]
+    },
+    "rootDirectories": {
+      "title": "Root Directories",
+      "description": "List of root directories to scan for files and subdirectories. If not specified, defaults to the user's home directory.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["/"]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "directoryFilterPattern": {
+      "title": "Directory Filter Pattern",
+      "description": "Regex to only include/exclude directories that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "fileFilterPattern": {
+      "title": "File Filter Pattern",
+      "description": "Regex to only include/exclude files that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "structuredDataFilesOnly": {
+      "title": "Structured Data Files Only",
+      "description": "When enabled, only catalog structured data files (CSV, TSV) that can have schema extracted. Non-structured files like images, PDFs, videos, etc. will be skipped.",
+      "type": "boolean",
+      "default": false
+    },
+    "extractSampleData": {
+      "title": "Extract Sample Data",
+      "description": "When enabled, extract sample data from structured files (CSV, TSV). This is disabled by default to avoid performance overhead.",
+      "type": "boolean",
+      "default": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "required": ["host", "authType"],
+  "additionalProperties": false
+}

@@ -1,0 +1,42 @@
+{
+    "$id": "https://open-metadata.org/schema/api/data/createQueryCostRecord.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CreateQueryCostRecordRequest",
+    "description": "CreateQuery Cost Record",
+    "javaType": "org.openmetadata.schema.entity.data.CreateQueryCostRecord",
+    "type": "object",
+    "properties": {
+        "timestamp": {
+            "description": "Timestamp on which the failure was created.",
+            "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "jsonSchema": {
+            "description": "Json schema of the query",
+            "type": "string"
+        },
+        "queryReference": {
+            "description": "Query entity reference",
+            "$ref": "../../type/entityReference.json"
+        },
+        "cost": {
+            "description": "Avg query cost per execution",
+            "type": "number"
+        },
+        "count": {
+            "description": "Number of times the query was executed",
+            "type": "number"
+        },
+        "totalDuration": {
+            "description": "Total duration of the query",
+            "type": "number",
+            "default": 0
+        }
+    },
+    "required": [
+        "timestamp",
+        "queryReference",
+        "cost",
+        "count"
+    ],
+    "additionalProperties": false
+}

@@ -1,0 +1,43 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/matillion/matillionETL.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Matillion ETL Auth Config",
+    "description": "Matillion ETL Auth Config.",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth",
+    "type": "object",
+    "properties": {
+        "type": {
+            "type": "string",
+            "enum": [
+                "MatillionETL"
+            ],
+            "default": "MatillionETL"
+        },
+        "hostPort": {
+            "type": "string",
+            "title": "Host",
+            "description": "Matillion Host",
+            "default": "localhost"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to the Matillion. This user should have privileges to read all the metadata in Matillion.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to the Matillion.",
+            "type": "string",
+            "format": "password"
+        },
+        "sslConfig": {
+            "$ref": "../../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+        }
+    },
+    "required": [
+        "hostPort",
+        "username",
+        "password"
+    ],
+    "additionalProperties": false
+}

@@ -1,0 +1,123 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/triggers/eventBasedEntityTrigger.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventBasedEntityTriggerDefinition",
+  "description": "Event Based Entity Trigger.",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface"
+  ],
+  "type": "object",
+  "definitions": {
+    "event": {
+      "description": "Event for which it should be triggered.",
+      "type": "string",
+      "enum": [
+        "Created",
+        "Updated"
+      ]
+    },
+    "config": {
+      "title": "Trigger Configuration",
+      "description": "Entity Event Trigger Configuration.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes' for multiple types.",
+          "type": "string"
+        },
+        "entityTypes": {
+          "description": "Array of Entity Types for which this workflow should be triggered. Supports multiple entity types in one workflow.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "events": {
+          "title": "Events",
+          "description": "Select the events that should trigger this workflow",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/event"
+          },
+          "uniqueItems": true
+        },
+        "exclude": {
+          "title": "Exclude Fields",
+          "description": "Select fields that should not trigger the workflow if only them are modified.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "include": {
+          "title": "Include Fields",
+          "description": "Array of field names that must be present in the change description to trigger the workflow. Takes priority over exclude fields.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Field name that must be present in the change description for the workflow to trigger"
+          }
+        },
+        "filter": {
+          "title": "Filter Condition",
+          "description": "JSON Logic expression to determine if the workflow should be triggered. Can be a string (applied to all entity types) or an object mapping entity types to their specific filters.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single filter applied to all entity types (legacy format)"
+            },
+            {
+              "type": "object",
+              "description": "Entity-specific filters with optional default",
+              "properties": {
+                "default": {
+                  "type": "string",
+                  "description": "Default filter for entity types not explicitly configured"
+                }
+              },
+              "additionalProperties": {
+                "type": "string",
+                "description": "Filter for specific entity type"
+              }
+            }
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": ["entityType", "events"]
+        },
+        {
+          "required": ["entityTypes", "events"]
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "eventBasedEntity"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "output": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

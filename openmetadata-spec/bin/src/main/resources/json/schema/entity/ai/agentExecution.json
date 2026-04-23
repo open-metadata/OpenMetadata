@@ -1,0 +1,306 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/agentExecution.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentExecution",
+  "$comment": "@om-entity-type",
+  "description": "Agent Execution entity representing a single execution run of an AI agent. Tracks inputs, outputs, data lineage, performance metrics, and errors for observability and governance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.AgentExecution",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "executionStatus": {
+      "type": "string",
+      "enum": ["Running", "Success", "Failed", "Timeout", "Cancelled", "PartialSuccess"],
+      "javaType": "org.openmetadata.schema.entity.ai.ExecutionStatus",
+      "javaEnums": [
+        {"name": "Running"},
+        {"name": "Success"},
+        {"name": "Failed"},
+        {"name": "Timeout"},
+        {"name": "Cancelled"},
+        {"name": "PartialSuccess"}
+      ]
+    },
+    "modelCall": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ModelCall",
+      "description": "Individual LLM model call during execution",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "$ref": "../../type/entityReference.json",
+          "description": "LLM Model used"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt sent to the model"
+        },
+        "response": {
+          "type": "string",
+          "description": "Response from the model"
+        },
+        "inputTokens": {
+          "type": "integer",
+          "description": "Number of input tokens"
+        },
+        "outputTokens": {
+          "type": "integer",
+          "description": "Number of output tokens"
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Latency in milliseconds"
+        },
+        "cost": {
+          "type": "number",
+          "description": "Cost for this call"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Purpose of this model call"
+        }
+      }
+    },
+    "dataAccess": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.DataAccess",
+      "description": "Data accessed during execution - CRITICAL for lineage and impact analysis",
+      "additionalProperties": false,
+      "properties": {
+        "dataSource": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to the data source (Table, Dashboard, etc.)"
+        },
+        "accessType": {
+          "type": "string",
+          "enum": ["Read", "Write", "Update", "Delete"],
+          "description": "Type of access"
+        },
+        "columns": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Specific columns accessed"
+        },
+        "recordCount": {
+          "type": "integer",
+          "description": "Number of records accessed"
+        },
+        "query": {
+          "type": "string",
+          "description": "Query executed (if applicable)"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "piiAccessed": {
+          "type": "boolean",
+          "description": "Whether PII data was accessed"
+        },
+        "sensitivityLevel": {
+          "type": "string",
+          "enum": ["Public", "Internal", "Confidential", "Restricted"]
+        }
+      },
+      "required": ["dataSource", "accessType"]
+    },
+    "toolCall": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ToolCall",
+      "description": "Tool/function call made during execution",
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to MCP Tool or custom tool"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters passed to the tool"
+        },
+        "result": {
+          "type": "string",
+          "description": "Result from the tool"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the tool call succeeded"
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Latency in milliseconds"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "errorMessage": {
+          "type": "string",
+          "description": "Error message if failed"
+        }
+      }
+    },
+    "executionMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ExecutionMetrics",
+      "description": "Performance and cost metrics for the execution",
+      "additionalProperties": false,
+      "properties": {
+        "totalTokens": {
+          "type": "integer",
+          "description": "Total tokens used across all model calls"
+        },
+        "totalCost": {
+          "type": "number",
+          "description": "Total cost in USD"
+        },
+        "totalLatencyMs": {
+          "type": "number",
+          "description": "Total execution time in milliseconds"
+        },
+        "modelCallCount": {
+          "type": "integer",
+          "description": "Number of model calls made"
+        },
+        "toolCallCount": {
+          "type": "integer",
+          "description": "Number of tool calls made"
+        },
+        "dataSourcesAccessed": {
+          "type": "integer",
+          "description": "Number of unique data sources accessed"
+        },
+        "piiDataAccessed": {
+          "type": "boolean",
+          "description": "Whether any PII data was accessed"
+        }
+      }
+    },
+    "complianceCheck": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ComplianceCheck",
+      "description": "Compliance checks performed during execution",
+      "additionalProperties": false,
+      "properties": {
+        "checkName": {
+          "type": "string",
+          "description": "Name of the compliance check"
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether the check passed"
+        },
+        "details": {
+          "type": "string",
+          "description": "Details about the check result"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High", "Critical"]
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the Agent Execution",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "agent": {
+      "description": "AI Agent that was executed",
+      "$ref": "../../type/entityReference.json"
+    },
+    "agentId": {
+      "description": "ID of the AI Agent (for indexing)",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "timestamp": {
+      "description": "Execution start timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTimestamp": {
+      "description": "Execution end timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "$ref": "#/definitions/executionStatus"
+    },
+    "input": {
+      "description": "Input provided to the agent",
+      "type": "string"
+    },
+    "output": {
+      "description": "Output generated by the agent",
+      "type": "string"
+    },
+    "modelCalls": {
+      "description": "LLM model calls made during execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/modelCall"
+      }
+    },
+    "dataAccessed": {
+      "description": "Data sources accessed during execution - KEY FOR LINEAGE",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataAccess"
+      }
+    },
+    "toolCalls": {
+      "description": "Tool calls made during execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/toolCall"
+      }
+    },
+    "metrics": {
+      "$ref": "#/definitions/executionMetrics"
+    },
+    "errorMessage": {
+      "description": "Error message if execution failed",
+      "type": "string"
+    },
+    "errorStack": {
+      "description": "Error stack trace",
+      "type": "string"
+    },
+    "complianceChecks": {
+      "description": "Compliance checks performed",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/complianceCheck"
+      }
+    },
+    "executedBy": {
+      "description": "User or system that triggered the execution",
+      "type": "string"
+    },
+    "sessionId": {
+      "description": "Session ID for grouping related executions",
+      "type": "string"
+    },
+    "environment": {
+      "description": "Environment where execution occurred",
+      "type": "string",
+      "enum": ["Development", "Staging", "Production"]
+    },
+    "agentVersion": {
+      "description": "Version of the agent at execution time",
+      "type": "string"
+    },
+    "metadata": {
+      "description": "Additional execution metadata",
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["agent", "agentId", "timestamp", "status"],
+  "additionalProperties": false
+}

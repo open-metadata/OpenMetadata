@@ -1,0 +1,123 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Table": {
+        "@id": "om:Table",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Database": {
+        "@id": "om:Database", 
+        "@type": ["om:DataAsset", "dcat:Catalog"]
+      },
+      "DatabaseSchema": {
+        "@id": "om:DatabaseSchema",
+        "@type": ["om:DataAsset", "dcat:Catalog"]
+      },
+      "Pipeline": {
+        "@id": "om:Pipeline",
+        "@type": ["om:DataAsset", "dcat:DataService"]
+      },
+      "Dashboard": {
+        "@id": "om:Dashboard",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Topic": {
+        "@id": "om:Topic",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Container": {
+        "@id": "om:Container",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "MlModel": {
+        "@id": "om:MlModel",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "columns": {
+        "@id": "om:hasColumn",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "database": {
+        "@id": "om:belongsToDatabase",
+        "@type": "@id"
+      },
+      "databaseSchema": {
+        "@id": "om:belongsToSchema",
+        "@type": "@id"
+      },
+      "service": {
+        "@id": "om:belongsToService",
+        "@type": "@id"
+      },
+      "serviceType": {
+        "@id": "om:hasServiceType",
+        "@type": "xsd:string"
+      },
+      "tableType": {
+        "@id": "om:hasTableType",
+        "@type": "xsd:string"
+      },
+      "columns": {
+        "@id": "om:hasColumn",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "columnNames": {
+        "@id": "om:hasColumnName",
+        "@type": "xsd:string",
+        "@container": "@list"
+      },
+      "tablePartition": {
+        "@id": "om:hasPartition",
+        "@type": "@json"
+      },
+      "tableConstraints": {
+        "@id": "om:hasConstraint",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "sampleData": {
+        "@id": "om:hasSampleData",
+        "@type": "@json"
+      },
+      "tableProfile": {
+        "@id": "om:hasProfile",
+        "@type": "@json"
+      },
+      "location": {
+        "@id": "om:hasLocation",
+        "@type": "xsd:string"
+      },
+      "schemaDefinition": {
+        "@id": "om:hasSchemaDefinition",
+        "@type": "xsd:string"
+      },
+      "dataModel": {
+        "@id": "om:hasDataModel",
+        "@type": "@json"
+      },
+      "fileFormat": {
+        "@id": "om:hasFileFormat",
+        "@type": "xsd:string"
+      },
+      "dataLength": {
+        "@id": "om:hasDataLength",
+        "@type": "xsd:integer"
+      },
+      "isPartitioned": {
+        "@id": "om:isPartitioned",
+        "@type": "xsd:boolean"
+      },
+      "numberOfObjects": {
+        "@id": "void:entities",
+        "@type": "xsd:integer"
+      },
+      "size": {
+        "@id": "dcat:byteSize",
+        "@type": "xsd:double"
+      }
+    }
+  ]
+}

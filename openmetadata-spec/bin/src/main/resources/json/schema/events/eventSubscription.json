@@ -1,0 +1,357 @@
+{
+  "$id": "https://open-metadata.org/schema/events/eventSubscription.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventSubscription",
+  "description": "This schema defines the EventSubscription entity. An Event Subscription has trigger, filters and Subscription",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "argumentsInput": {
+      "description": "Observability Filters for Event Subscription.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.ArgumentsInput",
+      "properties": {
+        "name": {
+          "description": "Name of the filter",
+          "type": "string"
+        },
+        "effect" : {
+          "$ref": "./eventFilterRule.json#/definitions/effect"
+        },
+        "prefixCondition": {
+          "description": "Prefix Condition for the filter.",
+          "$ref": "../events/eventFilterRule.json#/definitions/prefixCondition"
+        },
+        "arguments": {
+          "description": "Arguments List",
+          "type": "array",
+          "items": {
+            "description": "Argument for the filter.",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the Argument",
+                "type": "string"
+              },
+              "input": {
+                "description": "Value of the Argument",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "alertFilteringInput": {
+      "description": "Observability of the event subscription.",
+      "type": "object",
+      "properties": {
+        "filters": {
+          "description": "List of filters for the event subscription.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/argumentsInput"
+          }
+        },
+        "actions": {
+          "description": "List of filters for the event subscription.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/argumentsInput"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "triggerType": {
+      "description": "Trigger Configuration for Alerts.",
+      "type": "string",
+      "enum": ["RealTime", "Scheduled"],
+      "default": "RealTime"
+    },
+    "alertType": {
+      "description": "Type of Alerts supported.",
+      "type": "string",
+      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent", "Custom"],
+      "default": "Notification"
+    },
+    "subscriptionCategory": {
+      "description": "Subscription Endpoint Type.",
+      "type": "string",
+      "enum": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Assignees",
+        "Owners",
+        "Mentions",
+        "Followers",
+        "External"
+      ]
+    },
+    "subscriptionType": {
+      "description": "Subscription Endpoint Type.",
+      "type": "string",
+      "enum": [
+        "Webhook",
+        "Slack",
+        "MsTeams",
+        "GChat",
+        "Email",
+        "ActivityFeed",
+        "GovernanceWorkflowChangeEvent"
+      ]
+    },
+    "destination": {
+      "description": "Subscription which has a type and the config.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.SubscriptionDestination",
+      "properties": {
+        "id": {
+          "description": "Unique identifier that identifies this Event Subscription.",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "category": {
+          "$ref": "#/definitions/subscriptionCategory"
+        },
+        "type": {
+          "$ref": "#/definitions/subscriptionType"
+        },
+        "statusDetails": {
+          "oneOf": [
+            {
+              "$ref": "../events/subscriptionStatus.json"
+            },
+            {
+              "$ref": "../events/testDestinationStatus.json"
+            }
+          ]
+        },
+        "timeout": {
+          "description": "Connection timeout in seconds. (Default 10s).",
+          "type": "integer",
+          "default": 10
+        },
+        "readTimeout": {
+          "description": "Read timeout in seconds. (Default 12s).",
+          "type": "integer",
+          "default": 12
+        },
+        "enabled": {
+          "description": "Is the subscription enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "../entity/events/webhook.json"
+            },
+            {
+              "$ref": "./emailAlertConfig.json"
+            },
+            {
+              "$ref": "../type/basic.json#/definitions/map"
+            }
+          ]
+        },
+        "notifyDownstream": {
+          "description": "Enable notification of downstream entity stakeholders. When true, notifications will traverse lineage to include stakeholders of entities that consume data from the affected entity.",
+          "type": "boolean",
+          "default": false
+        },
+        "downstreamDepth": {
+          "description": "Maximum depth for downstream stakeholder notification traversal. If null, traverses without depth limit (with cycle protection).",
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null
+        }
+      },
+      "required": ["category", "type"],
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "Status is `disabled`, when eventSubscription was created with `enabled` set to false and it never started publishing events. Status is `active` when eventSubscription is normally functioning and 200 OK response was received for callback notification. Status is `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received for callback notification. Status is `awaitingRetry` when previous attempt at callback timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.",
+      "type": "string",
+      "enum": [
+        "disabled",
+        "failed",
+        "retryLimitReached",
+        "awaitingRetry",
+        "active"
+      ]
+    },
+    "filteringRules": {
+      "description": "Filtering Rules for Event Subscription.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.FilteringRules",
+      "properties": {
+        "resources": {
+          "description": "Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rules": {
+          "description": "A set of filter rules associated with the Alert.",
+          "type": "array",
+          "items": {
+            "$ref": "./eventFilterRule.json"
+          }
+        },
+        "actions": {
+          "description": "A set of filter rules associated with the Alert.",
+          "type": "array",
+          "items": {
+            "$ref": "./eventFilterRule.json"
+          }
+        }
+      },
+      "required": ["resources"],
+      "additionalProperties": false
+    },
+    "trigger": {
+      "description": "Trigger Configuration for Alerts.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.TriggerConfig",
+      "properties": {
+        "triggerType": {
+          "$ref": "#/definitions/triggerType"
+        },
+        "scheduleInfo": {
+          "description": "Schedule Info",
+          "type": "string",
+          "enum": ["Daily", "Weekly", "Monthly", "Custom"],
+          "default": "Weekly"
+        },
+        "cronExpression": {
+          "description": "Cron Expression in case of Custom scheduled Trigger",
+          "type": "string"
+        }
+      },
+      "required": ["triggerType"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "className": {
+      "description": "Java class for the Event Subscription.",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name that uniquely identifies this Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName that uniquely identifies a Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for this Event Subscription.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A short description of the Event Subscription, comprehensible to regular users.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owners of this Event Subscription.",
+      "$ref": "../type/entityReferenceList.json",
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "version": {
+      "description": "Metadata version of the Event Subscription.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the Event Subscription in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the Event Subscription.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "alertType": {
+      "description": "Type of Alert",
+      "$ref": "#/definitions/alertType"
+    },
+    "trigger": {
+      "description": "Trigger information for Alert.",
+      "$ref": "#/definitions/trigger"
+    },
+    "filteringRules": {
+      "description": "Set of rules that the Event Subscription Contains to allow conditional control for alerting.",
+      "$ref": "#/definitions/filteringRules"
+    },
+    "destinations": {
+      "description": "Destination Config.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/destination"
+      }
+    },
+    "notificationTemplate": {
+      "description": "Optional custom notification template for this subscription. When not set, system default template will be used. Only USER templates can be assigned.",
+      "$ref": "../type/entityReference.json"
+    },
+    "enabled": {
+      "description": "Is the event Subscription enabled.",
+      "type": "boolean",
+      "default": true
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 100).",
+      "type": "integer",
+      "default": 100
+    },
+    "provider" : {
+      "$ref": "../type/basic.json#/definitions/providerType"
+    },
+    "retries": {
+      "description": "Number of times to retry callback on failure. (Default 3).",
+      "type": "integer",
+      "default": 3
+    },
+    "pollInterval": {
+      "description": "Poll Interval in seconds.",
+      "type": "integer",
+      "default": 60
+    },
+    "input": {
+      "description": "Input for the Filters.",
+      "$ref": "#/definitions/alertFilteringInput"
+    },
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
+    },
+    "config": {
+      "$ref": "../type/basic.json#/definitions/map"
+    }
+  },
+  "required": ["id", "name", "alertType", "destinations"],
+  "additionalProperties": false
+}

@@ -1,0 +1,402 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/aiGovernancePolicy.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernancePolicy",
+  "$comment": "@om-entity-type",
+  "description": "AI Governance Policy entity representing organizational policies and rules for AI/LLM usage, compliance, and risk management. Enforces standards for model approval, data access, bias thresholds, and regulatory compliance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.AIGovernancePolicy",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "policyType": {
+      "type": "string",
+      "enum": ["ModelApproval", "DataAccess", "BiasThreshold", "ComplianceCheck", "CostControl", "PerformanceStandard", "SecurityControl"],
+      "javaType": "org.openmetadata.schema.entity.ai.PolicyType",
+      "javaEnums": [
+        {"name": "ModelApproval"},
+        {"name": "DataAccess"},
+        {"name": "BiasThreshold"},
+        {"name": "ComplianceCheck"},
+        {"name": "CostControl"},
+        {"name": "PerformanceStandard"},
+        {"name": "SecurityControl"}
+      ]
+    },
+    "policyRule": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.PolicyRule",
+      "description": "Individual rule within a governance policy",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Rule name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Rule description"
+        },
+        "ruleType": {
+          "type": "string",
+          "enum": ["Threshold", "Approval", "Prohibition", "Requirement", "Notification"],
+          "description": "Type of rule"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Condition expression (e.g., 'biasScore > 0.3')"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["Block", "Warn", "Notify", "Require_Approval", "Log"],
+          "description": "Action to take when rule is triggered"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High", "Critical"]
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": ["name", "ruleType", "action"]
+    },
+    "biasThreshold": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.BiasThreshold",
+      "description": "Bias threshold limits for LLM models",
+      "additionalProperties": false,
+      "properties": {
+        "maxOverallBiasScore": {
+          "type": "number",
+          "description": "Maximum allowed overall bias score (0-1)"
+        },
+        "dimensionThresholds": {
+          "type": "object",
+          "description": "Maximum bias scores per dimension",
+          "properties": {
+            "gender": {"type": "number"},
+            "race": {"type": "number"},
+            "age": {"type": "number"},
+            "religion": {"type": "number"},
+            "disability": {"type": "number"},
+            "nationality": {"type": "number"},
+            "socioeconomic": {"type": "number"}
+          }
+        },
+        "evaluationFrequency": {
+          "type": "string",
+          "enum": ["Continuous", "Daily", "Weekly", "Monthly", "OnDemand"],
+          "description": "How often to evaluate bias"
+        }
+      }
+    },
+    "dataAccessControl": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.DataAccessControl",
+      "description": "Data access controls for AI agents",
+      "additionalProperties": false,
+      "properties": {
+        "allowedDataSources": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Allowed data sources"
+        },
+        "prohibitedDataSources": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Prohibited data sources"
+        },
+        "maxSensitivityLevel": {
+          "type": "string",
+          "enum": ["Public", "Internal", "Confidential", "Restricted"],
+          "description": "Maximum data sensitivity level allowed"
+        },
+        "piiAccessAllowed": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether PII data access is allowed"
+        },
+        "requireApprovalForSensitiveData": {
+          "type": "boolean",
+          "default": true
+        },
+        "dataRetentionDays": {
+          "type": "integer",
+          "description": "How long execution data can be retained"
+        }
+      }
+    },
+    "costControl": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.CostControl",
+      "description": "Cost control limits",
+      "additionalProperties": false,
+      "properties": {
+        "dailyBudget": {
+          "type": "number",
+          "description": "Maximum daily spend in USD"
+        },
+        "monthlyBudget": {
+          "type": "number",
+          "description": "Maximum monthly spend in USD"
+        },
+        "perExecutionLimit": {
+          "type": "number",
+          "description": "Maximum cost per execution"
+        },
+        "warningThreshold": {
+          "type": "number",
+          "description": "Percentage threshold for warnings (0-100)"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD"
+        }
+      }
+    },
+    "complianceRequirement": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ComplianceRequirement",
+      "description": "Regulatory compliance requirement",
+      "additionalProperties": false,
+      "properties": {
+        "standard": {
+          "type": "string",
+          "enum": ["GDPR", "HIPAA", "SOC2", "ISO27001", "NIST_AI_RMF", "EU_AI_Act", "OWASP_LLM_Top10", "Custom"],
+          "description": "Compliance standard"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Specific requirements"
+        },
+        "attestationRequired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether attestation is required"
+        },
+        "auditFrequency": {
+          "type": "string",
+          "enum": ["Continuous", "Weekly", "Monthly", "Quarterly", "Annually"]
+        }
+      }
+    },
+    "performanceStandard": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.PerformanceStandard",
+      "description": "Performance standards for AI agents",
+      "additionalProperties": false,
+      "properties": {
+        "minAccuracy": {
+          "type": "number",
+          "description": "Minimum required accuracy (0-1)"
+        },
+        "maxLatencyMs": {
+          "type": "number",
+          "description": "Maximum allowed latency in milliseconds"
+        },
+        "minSuccessRate": {
+          "type": "number",
+          "description": "Minimum success rate (0-1)"
+        },
+        "maxErrorRate": {
+          "type": "number",
+          "description": "Maximum error rate (0-1)"
+        },
+        "evaluationDataset": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Dataset to use for evaluation"
+        }
+      }
+    },
+    "policyViolation": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.PolicyViolation",
+      "description": "Policy violation record",
+      "additionalProperties": false,
+      "properties": {
+        "violatedRule": {
+          "type": "string",
+          "description": "Name of the violated rule"
+        },
+        "violatingEntity": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Entity that violated the policy"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "details": {
+          "type": "string",
+          "description": "Details about the violation"
+        },
+        "resolved": {
+          "type": "boolean",
+          "default": false
+        },
+        "resolvedBy": {
+          "type": "string"
+        },
+        "resolvedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the AI Governance Policy",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this AI Governance Policy",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the AI Governance Policy",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the AI Governance Policy",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the policy and its purpose",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "policyType": {
+      "$ref": "#/definitions/policyType"
+    },
+    "rules": {
+      "description": "Rules that make up this policy",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/policyRule"
+      }
+    },
+    "biasThresholds": {
+      "$ref": "#/definitions/biasThreshold"
+    },
+    "dataAccessControls": {
+      "$ref": "#/definitions/dataAccessControl"
+    },
+    "costControls": {
+      "$ref": "#/definitions/costControl"
+    },
+    "complianceRequirements": {
+      "description": "Compliance requirements this policy enforces",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/complianceRequirement"
+      }
+    },
+    "performanceStandards": {
+      "$ref": "#/definitions/performanceStandard"
+    },
+    "appliesTo": {
+      "description": "Entities this policy applies to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "enforcementLevel": {
+      "description": "How strictly to enforce this policy",
+      "type": "string",
+      "enum": ["Advisory", "Warning", "Blocking"],
+      "default": "Warning"
+    },
+    "enabled": {
+      "description": "Whether this policy is currently active",
+      "type": "boolean",
+      "default": true
+    },
+    "effectiveDate": {
+      "description": "Date when policy becomes effective",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "expirationDate": {
+      "description": "Date when policy expires",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "approvedBy": {
+      "description": "Who approved this policy",
+      "type": "string"
+    },
+    "violations": {
+      "description": "Recent policy violations",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/policyViolation"
+      }
+    },
+    "owners": {
+      "description": "Owners of this AI Governance Policy",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this AI Governance Policy",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domain": {
+      "description": "Domain the policy belongs to",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this AI Governance Policy",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Domains the policy belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity",
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "policyType"],
+  "additionalProperties": false
+}

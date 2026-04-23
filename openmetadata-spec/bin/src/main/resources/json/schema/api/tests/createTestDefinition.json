@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createTestDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestDefinitionRequest",
+  "description": "Schema corresponding to a Test Definition",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this test case.",
+      "$ref": "../../type/basic.json#/definitions/testCaseEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test case.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityType": {
+      "$ref": "../../tests/testDefinition.json#/definitions/entityType"
+    },
+    "testPlatforms": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testDefinition.json#/definitions/testPlatform"
+      }
+    },
+    "supportedDataTypes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/dataType"
+      }
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "parameterDefinition": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
+      }
+    },
+    "dataQualityDimension": {
+      "$ref": "../../tests/testDefinition.json#/definitions/dataQualityDimensions"
+    },
+    "supportedServices": {
+      "description": "List of services that this test definition supports. When empty, it implies all services are supported.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "domains" : {
+      "description": "Fully qualified names of the domains the Test Definition belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sqlExpression": {
+      "description": "SQL expression template for custom SQL-based test definitions. Supports substitution variables: {table} and {column} for runtime entity references, and {{paramName}} for user-defined parameters.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
+    "validatorClass": {
+      "description": "Class name of the validator to use for this test definition. If not provided for custom SQL-based tests, defaults to 'ruleLibrarySqlExpressionValidator'.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "entityType", "testPlatforms"],
+  "additionalProperties": false
+}

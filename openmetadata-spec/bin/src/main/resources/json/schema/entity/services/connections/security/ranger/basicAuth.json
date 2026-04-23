@@ -1,0 +1,26 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/security/ranger/basicAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Ranger Basic Auth",
+    "description": "Configuration for connecting to Ranger Basic Auth.",
+    "javaType": "org.openmetadata.schema.services.connections.security.ranger.RangerBasicAuth",
+    "type": "object",
+    "properties": {
+        "username": {
+            "title": "Username",
+            "description": "Ranger user to authenticate to the API.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Ranger password to authenticate to the API.",
+            "type": "string",
+            "format": "password"
+        }
+    },
+    "required": [
+        "username",
+        "password"
+    ],
+    "additionalProperties": false
+}

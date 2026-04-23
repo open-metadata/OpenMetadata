@@ -1,0 +1,45 @@
+{
+  "$id": "https://open-metadata.org/schema/api/teams/createPersona.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreatePersonaRequest",
+  "description": "Persona entity",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.teams.CreatePersona",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Optional name used for display purposes. Example 'Data Steward'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the team.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "users": {
+      "description": "Optional IDs of users that are going to assign a Persona.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "domains" : {
+      "description": "Fully qualified names of the domains the Persona belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "default": {
+      "description": "When true, this persona is the system-wide default persona that will be applied to users who don't have any persona assigned or no default persona set.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

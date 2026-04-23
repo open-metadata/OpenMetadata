@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/metadataToElasticSearchPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataToElasticSearchPipeline",
+  "description": "Data Insight Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "metadataToESConfigType": {
+      "description": "Pipeline Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["MetadataToElasticSearch"],
+      "default": "MetadataToElasticSearch"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/metadataToESConfigType",
+      "default": "MetadataToElasticSearch"
+    },
+    "regionName": {
+      "title": "AWS Region Name",
+      "description": "Region name. Required when using AWS Credentials.",
+      "type": "string",
+      "default": null
+    },
+    "caCerts": {
+      "title": "CA Certificates",
+      "description": "Certificate path to be added in configuration. The path should be local in the Ingestion Container.",
+      "type": "string",
+      "default": null
+    },
+    "timeout": {
+      "description": "Connection Timeout",
+      "type": "integer",
+      "default": 30
+    },
+    "useSSL": {
+      "title": "Use SSL",
+      "description": "Indicates whether to use SSL when connecting to ElasticSearch. By default, we will ignore SSL settings.",
+      "type": "boolean",
+      "default": false
+    },
+    "verifyCerts": {
+      "title": "Validate Certificates",
+      "description": "Indicates whether to verify certificates when using SSL connection to ElasticSearch. Ignored by default. Is set to true, make sure to send the certificates in the property `CA Certificates`.",
+      "type": "boolean",
+      "default": false
+    },
+    "useAwsCredentials": {
+      "title": "Use AWS Credentials",
+      "description": "Indicates whether to use aws credentials when connecting to OpenSearch in AWS.",
+      "type": "boolean",
+      "default": false
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of events entities in a batch (Default 1000).",
+      "type": "integer",
+      "default": 1000
+    },
+    "recreateIndex": {
+      "title": "Recreate Indexes",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

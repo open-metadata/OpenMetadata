@@ -1,0 +1,58 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/applications/reverseMetadata/reverseIngestionResponse.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ReverseIngestionResponse",
+    "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.ReverseIngestionResponse",
+    "description": "Apply a set of operations on a service",
+    "type": "object",
+    "definitions": {
+        "reverseIngestionOperationResult": {
+            "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.reverseIngestionOperationResult",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "The id of the operation",
+                    "$ref": "../../../type/basic.json#/definitions/uuid"
+                },
+                "success": {
+                    "description": "Whether the specific operation was successful",
+                    "type": "boolean"
+                },
+                "message": {
+                    "description": "Error message in case of failure",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "success"
+            ]
+        }
+    },
+    "properties": {
+        "serviceId": {
+            "description": "The id of the service to be modified",
+            "$ref": "../../../type/basic.json#/definitions/uuid"
+        },
+        "success": {
+            "description": "Whether the workflow was successful. Failure indicates a critical failure such as connection issues.",
+            "type": "boolean"
+        },
+        "message": {
+            "description": "Error message in case of failure",
+            "type": "string"
+        },
+        "results": {
+            "description": "List of operations to be performed on the service",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reverseIngestionOperationResult"
+            }
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "serviceId",
+        "results"
+    ]
+}

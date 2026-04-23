@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/databricks/databricksOAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Databricks OAuth",
+  "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
+  "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",
+  "type": "object",
+  "properties": {
+    "clientId": {
+      "title": "Client ID",
+      "description": "Service Principal Application ID created in your Databricks Account Console for OAuth Machine-to-Machine authentication.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "OAuth Secret generated for the Service Principal in Databricks Account Console. Used for secure OAuth2 authentication.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "clientId",
+    "clientSecret"
+  ]
+}

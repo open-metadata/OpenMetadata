@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/customDatabaseConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomDatabaseConnection",
+  "description": "Custom Database Service connection to build a source that is not supported by OpenMetadata yet.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.CustomDatabaseConnection",
+  "definitions": {
+    "customDatabaseType": {
+      "title": "Service Type",
+      "description": "Custom database service type",
+      "type": "string",
+      "enum": ["CustomDatabase"],
+      "default": "CustomDatabase"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Custom database service type",
+      "$ref": "#/definitions/customDatabaseType",
+      "default": "CustomDatabase"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "schemaFilterPattern":{
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": true,
+  "required": ["type"]
+}

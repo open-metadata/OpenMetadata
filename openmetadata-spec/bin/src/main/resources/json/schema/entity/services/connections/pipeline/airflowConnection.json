@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/airflowConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AirflowConnection",
+  "description": "Airflow Metadata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.AirflowConnection",
+  "definitions": {
+    "AirflowType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Airflow"],
+      "default": "Airflow"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/AirflowType",
+      "default": "Airflow"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host And Port",
+      "description": "Pipeline Service Management/UI URI.",
+      "type": "string",
+      "format": "uri"
+    },
+    "numberOfStatus": {
+      "description": "Pipeline Service Number Of Status",
+      "type": "integer",
+      "default": "10"
+    },
+    "connection": {
+      "title": "Airflow Connection",
+      "description": "Choose between database connection or REST API connection to fetch metadata from Airflow.",
+      "oneOf": [
+        {
+          "$ref": "../../../utils/airflowRestApiConnection.json"
+        },
+        {
+          "$ref": "backendConnection.json"
+        },
+        {
+          "$ref": "../database/mysqlConnection.json"
+        },
+        {
+          "$ref": "../database/postgresConnection.json"
+        },
+        {
+          "$ref": "../database/sqliteConnection.json"
+        }
+      ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "connection"]
+}

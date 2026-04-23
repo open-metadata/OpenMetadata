@@ -1,0 +1,17 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/common/jwtAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "JWT Auth",
+    "description": "Common Database Connection Config",
+    "javaType": "org.openmetadata.schema.services.connections.database.common.jwtAuth",
+    "type": "object",
+    "properties": {
+        "jwt": {
+            "title": "JWT",
+            "description": "JWT to connect to source.",
+            "type": "string",
+            "format": "password"
+        }
+    },
+    "additionalProperties": false
+}

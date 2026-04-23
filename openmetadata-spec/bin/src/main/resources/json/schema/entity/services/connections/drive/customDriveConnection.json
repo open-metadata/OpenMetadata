@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/drive/customDriveConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomDriveConnection",
+  "description": "Custom Drive Connection to build a source that is not supported.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.drive.CustomDriveConnection",
+  "definitions": {
+    "customDriveType": {
+      "description": "Custom Drive service type",
+      "type": "string",
+      "enum": ["CustomDrive"],
+      "default": "CustomDrive"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/customDriveType",
+      "default": "CustomDrive"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "directoryFilterPattern": {
+      "title": "Default Directory Filter Pattern",
+      "description": "Regex to only include/exclude directories that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "fileFilterPattern": {
+      "title": "Default File Filter Pattern",
+      "description": "Regex to only include/exclude files that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "spreadsheetFilterPattern": {
+      "title": "Default Spreadsheet Filter Pattern",
+      "description": "Regex to only include/exclude spreadsheets that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "worksheetFilterPattern": {
+      "title": "Default Worksheet Filter Pattern",
+      "description": "Regex to only include/exclude worksheets that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": true
+}

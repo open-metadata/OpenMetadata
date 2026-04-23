@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/bulkCreateTable.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkCreateTable",
+  "description": "Schema for bulk creating or updating multiple tables",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BulkCreateTable",
+  "properties": {
+    "tables": {
+      "description": "List of table create requests to be processed",
+      "type": "array",
+      "items": {
+        "$ref": "createTable.json"
+      },
+      "minItems": 1
+    },
+    "dryRun": {
+      "description": "If true, validate requests without persisting changes",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["tables"],
+  "additionalProperties": false
+}

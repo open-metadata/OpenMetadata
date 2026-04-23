@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/api/search/previewSearchRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PreviewSearchRequest",
+  "description": "Preview Search Results",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.search.PreviewSearchRequest",
+  "required": ["query", "index", "searchSettings"],
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The query text to execute against the search index."
+    },
+    "index": {
+      "type": "string",
+      "description": "The index to run the query against (e.g., table_search_index)."
+    },
+    "searchSettings": {
+      "$ref": "../../configuration/searchSettings.json"
+    },
+    "from": {
+      "type": "integer",
+      "default": 0,
+      "description": "Pagination start index."
+    },
+    "size": {
+      "type": "integer",
+      "default": 10,
+      "description": "Number of results to return."
+    },
+    "sortField": {
+      "type": "string",
+      "default": "_score"
+    },
+    "sortOrder": {
+      "type": "string",
+      "default": "desc",
+      "enum": ["asc", "desc"]
+    },
+    "trackTotalHits": {
+      "type": "boolean",
+      "default": false
+    },
+    "queryFilter": {
+      "type": "string"
+    },
+    "postFilter": {
+      "type": "string"
+    },
+    "fetchSource": {
+      "type": "boolean",
+      "default": true
+    },
+    "includeSourceFields": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "explain": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

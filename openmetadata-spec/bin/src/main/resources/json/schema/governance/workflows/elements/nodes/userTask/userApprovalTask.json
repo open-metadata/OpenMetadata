@@ -1,0 +1,174 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTask/userApprovalTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserApprovalTaskDefinition",
+  "description": "Defines a Task for a given User to approve.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "userTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "userApprovalTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "assignees": {
+          "title": "Assignees",
+          "description": "People/Teams assigned to the Task.",
+          "type": "object",
+          "properties": {
+            "addReviewers": {
+              "description": "Add the Reviewers to the assignees List.",
+              "type": "boolean",
+              "default": true
+            },
+            "addOwners": {
+              "description": "Add the Owners to the assignees List.",
+              "type": "boolean",
+              "default": false
+            },
+            "candidates": {
+              "description": "List of specific candidates (users or teams) assigned to this task.",
+              "type": "array",
+              "items": {
+                "$ref": "../../../../../type/entityReference.json"
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        "approvalThreshold": {
+          "title": "Approval Threshold",
+          "description": "Number of reviewers that must approve for the task to be completed. Default is 1 (any single reviewer can approve).",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "rejectionThreshold": {
+          "title": "Rejection Threshold",
+          "description": "Number of reviewers that must reject for the task to be rejected. Default is 1 (any single reviewer can reject). This allows for scenarios where you want multiple approvals but a single rejection can veto.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "stageId": {
+          "title": "Stage Id",
+          "description": "Workflow stage identifier stored on the task while this user task is active.",
+          "type": "string"
+        },
+        "stageDisplayName": {
+          "title": "Stage Display Name",
+          "description": "Human-readable stage label shown to task assignees.",
+          "type": "string"
+        },
+        "taskStatus": {
+          "title": "Task Status",
+          "description": "Coarse task status mapped while this user task is active.",
+          "$ref": "../../../../../entity/tasks/task.json#/definitions/taskStatus"
+        },
+        "assigneeStrategy": {
+          "title": "Assignee Strategy",
+          "description": "Optional label describing how assignees are derived for the stage.",
+          "type": "string"
+        },
+        "transitionMetadata": {
+          "title": "Transition Metadata",
+          "description": "Transitions available from this stage. Edge conditions should match these transition ids.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "targetStageId": {
+                "type": "string"
+              },
+              "targetTaskStatus": {
+                "$ref": "../../../../../entity/tasks/task.json#/definitions/taskStatus"
+              },
+              "resolutionType": {
+                "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
+              },
+              "formRef": {
+                "type": "string"
+              },
+              "requiresComment": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": ["id", "label", "targetStageId", "targetTaskStatus"],
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "required": ["assignees"],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "output": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["updatedBy"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["true", "false"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

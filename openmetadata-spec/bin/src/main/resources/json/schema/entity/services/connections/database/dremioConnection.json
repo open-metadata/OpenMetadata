@@ -1,0 +1,74 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/dremioConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DremioConnection",
+    "description": "Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software (self-hosted)",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.DremioConnection",
+    "definitions": {
+      "dremioType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Dremio"],
+        "default": "Dremio"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/dremioType",
+        "default": "Dremio"
+      },
+      "authType": {
+        "title": "Authentication Type",
+        "description": "Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.",
+        "oneOf": [
+          {
+            "title": "Dremio Cloud",
+            "$ref": "./dremio/cloudAuth.json"
+          },
+          {
+            "title": "Dremio Software",
+            "$ref": "./dremio/softwareAuth.json"
+          }
+        ]
+      },
+      "database": {
+        "title": "Namespace",
+        "description": "Optional: Restrict metadata ingestion to a specific namespace (source/space). When left blank, all namespaces will be ingested.",
+        "type": "string"
+      },
+      "schemaFilterPattern": {
+        "title": "Folder Filter Pattern",
+        "description": "Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders are mapped as schemas.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "tableFilterPattern": {
+        "title": "Table Filter Pattern",
+        "description": "Regex to only include/exclude tables that match the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "databaseFilterPattern": {
+        "title": "Namespace Filter Pattern",
+        "description": "Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In Dremio Cloud, namespaces are mapped as databases.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      },
+      "supportsUsageExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+      },
+      "supportsLineageExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+      },
+      "supportsDatabase": {
+        "title": "Supports Database",
+        "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["authType"]
+  }

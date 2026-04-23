@@ -1,0 +1,9 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/column/tableColumn.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Table Column Type",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the type for table column context to support custom properties extension.",
+  "type": "object",
+  "properties": {}
+}

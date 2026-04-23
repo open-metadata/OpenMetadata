@@ -1,0 +1,35 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearch/apiAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SSL Certificates By Values",
+    "description": "SSL Certificates By Values",
+    "javaType": "org.openmetadata.schema.services.common.SSLCertValues",
+    "type": "object",
+    "properties": {
+        "caCertValue": {
+            "title": "CA Certificate Value",
+            "description": "CA Certificate Value",
+            "type": "string",
+            "format": "password"
+        },
+        "clientCertValue": {
+            "title": "Client Certificate Value",
+            "description": "Client Certificate Value",
+            "type": "string",
+            "format": "password"
+        },
+        "privateKeyValue": {
+            "title": "Private Key Value",
+            "description": "Private Key Value",
+            "type": "string",
+            "format": "password"
+        },
+        "stagingDir": {
+            "title": "Staging Directory Path",
+            "description": "Staging Directory Path",
+            "type": "string",
+            "default": "/tmp/openmetadata-certs"
+        }
+    },
+    "additionalProperties": false
+}

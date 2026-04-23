@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/email/emailRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EmailRequest",
+  "description": "This schema defines the Email Request for creating Email",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.email.EmailRequest",
+  "definitions": {
+    "nameEmailPair": {
+      "javaType": "org.openmetadata.schema.email.NameEmailPair",
+      "description": "Name Email Pair",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email address of the user.",
+          "$ref": "../type/basic.json#/definitions/email"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["email"]
+    }
+  },
+  "properties": {
+    "senderName": {
+      "description": "Sender Name",
+      "type": "string"
+    },
+    "senderMail": {
+      "description": "From Email Address",
+      "type": "string"
+    },
+    "recipientMails": {
+      "description": "List of Receiver Name with Email",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nameEmailPair"
+      }
+    },
+    "ccMails": {
+      "description": "List of CC",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nameEmailPair"
+      }
+    },
+    "bccMails": {
+      "description": "List of BCC",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nameEmailPair"
+      }
+    },
+    "subject": {
+      "description": "Subject for Mail",
+      "type": "string"
+    },
+    "contentType": {
+      "type": "string",
+      "enum": ["plain", "html"],
+      "default": "plain"
+    },
+    "content": {
+      "description": "Content for mail",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["subject", "contentType"]
+}

@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tests/createLogicalTestCases.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateLogicalTestCases",
+  "description": "Object used to create logical test cases.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateLogicalTestCases",
+  "properties": {
+    "testSuiteId": {
+      "description": "TestSuite ID where we will be adding the test cases.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "testCaseIds": {
+      "description": "Ids of the test cases to create.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      }
+    }
+  },
+  "required": ["testSuiteId","testCaseIds"],
+  "additionalProperties": false
+}

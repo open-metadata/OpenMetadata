@@ -1,0 +1,130 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/searchIndexingApp.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchIndexingApp",
+  "type": "object",
+  "description": "Search Indexing App.",
+  "definitions": {
+    "searchIndexingType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["SearchIndexing"],
+      "default": "SearchIndexing"
+    }
+  },
+  "properties" : {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/searchIndexingType",
+      "default": "SearchIndexing"
+    },
+    "entities": {
+      "description": "List of Entities to Reindex",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["all"],
+      "uniqueItems": true
+    },
+    "recreateIndex": {
+      "description": "This schema publisher run modes.",
+      "type": "boolean",
+      "default": true
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 100).",
+      "type": "integer",
+      "default": 100
+    },
+    "payLoadSize": {
+      "description": "Maximum number of events sent in a batch (Default 100).",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 9437184
+    },
+    "producerThreads": {
+      "title": "Number of Producer Threads",
+      "description": "Number of threads to use for reindexing",
+      "type": "integer",
+      "default": 10
+    },
+    "consumerThreads": {
+      "title": "Number of Consumer Threads",
+      "description": "Number of threads to use for reindexing",
+      "type": "integer",
+      "default": 10
+    },
+    "maxConcurrentRequests": {
+      "title": "Max Concurrent Requests",
+      "description": "Maximum number of concurrent requests to the search index",
+      "type": "integer",
+      "default": 100
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for a failed request",
+      "type": "integer",
+      "default": 3
+    },
+    "initialBackoff": {
+      "title": "Initial Backoff Millis",
+      "description": "Initial backoff time in milliseconds",
+      "type": "integer",
+      "default": 1000
+    },
+    "maxBackoff": {
+      "title": "Max Backoff Millis",
+      "description": "Maximum backoff time in milliseconds",
+      "type": "integer",
+      "default": 10000
+    },
+    "queueSize": {
+      "title": "Queue Size to use.",
+      "description": "Queue Size to user internally for reindexing.",
+      "type": "integer",
+      "default": 100
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "autoTune": {
+      "title": "Auto Tune",
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
+    },
+    "useDistributedIndexing": {
+      "title": "Use Distributed Indexing",
+      "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
+      "type": "boolean",
+      "default": true
+    },
+    "partitionSize": {
+      "title": "Partition Size",
+      "description": "Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.",
+      "type": "integer",
+      "default": 10000,
+      "minimum": 1000,
+      "maximum": 50000
+    },
+    "timeSeriesMaxDays": {
+      "title": "Time Series Max Days",
+      "description": "Maximum age in days for time series data during reindexing. Default 0 (index all data). Set to a positive value like 15 to limit to recent data only.",
+      "type": "integer",
+      "default": 0,
+      "minimum": -1
+    },
+    "timeSeriesEntityDays": {
+      "title": "Time Series Entity Days Override",
+      "description": "Per-entity-type override for time series max days. Keys are entity type names (e.g. testCaseResult, queryCostRecord), values are number of days. Entities not listed here use the default Time Series Max Days value.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    }
+  },
+  "additionalProperties": false
+}

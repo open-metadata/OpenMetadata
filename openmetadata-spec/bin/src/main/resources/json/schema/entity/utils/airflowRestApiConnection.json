@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/utils/airflowRestApiConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AirflowRestApiConnection",
+  "description": "Airflow REST API Connection Config for connecting via REST API.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConnection",
+  "definitions": {
+    "ApiVersion": {
+      "description": "Airflow REST API version. Use v1 for Airflow 2.x and v2 for Airflow 3.x. Auto will detect the version automatically.",
+      "type": "string",
+      "enum": ["v1", "v2", "auto"],
+      "default": "auto"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "type": "string",
+      "enum": ["RestAPI"],
+      "default": "RestAPI"
+    },
+    "authConfig": {
+      "title": "Authentication Configuration",
+      "description": "Choose an authentication method: Basic Auth (username/password), Access Token, GCP Service Account (for Cloud Composer), or AWS Credentials (for MWAA).",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuthConfig.json"
+        },
+        {
+          "$ref": "./common/accessTokenConfig.json"
+        },
+        {
+          "$ref": "./common/gcpCredentialsConfig.json"
+        },
+        {
+          "$ref": "./common/mwaaAuthConfig.json"
+        }
+      ]
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "Airflow REST API version.",
+      "$ref": "#/definitions/ApiVersion",
+      "default": "auto"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Whether to verify SSL certificates when connecting to the Airflow API.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["authConfig"],
+  "additionalProperties": false
+}

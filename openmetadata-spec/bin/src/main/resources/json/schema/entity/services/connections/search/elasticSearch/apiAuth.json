@@ -1,0 +1,22 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearch/apiAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "API Key Authentication",
+    "description": "API Key Authentication for ElasticSearch",
+    "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth",
+    "type": "object",
+    "properties": {
+        "apiKey": {
+            "title": "API Key",
+            "description": "Elastic Search API Key for API Authentication",
+            "type": "string",
+            "format": "password"
+        },
+        "apiKeyId": {
+            "title": "API Key ID",
+            "description": "Elastic Search API Key ID for API Authentication",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

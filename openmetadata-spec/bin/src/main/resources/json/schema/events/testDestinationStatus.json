@@ -1,0 +1,49 @@
+{
+  "$id": "https://open-metadata.org/schema/events/testDestinationStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestDestinationStatus",
+  "description": "Detailed status of the destination during a test operation, including HTTP response information.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.TestDestinationStatus",
+  "properties": {
+    "status": {
+      "description": "Overall test status, indicating if the test operation succeeded or failed.",
+      "type": "string",
+      "enum": ["Success", "Failed"]
+    },
+    "reason": {
+      "description": "Detailed reason for failure if the test did not succeed.",
+      "type": "string"
+    },
+    "statusCode": {
+      "description": "HTTP status code of the response (e.g., 200 for OK, 404 for Not Found).",
+      "type": "integer"
+    },
+    "statusInfo": {
+      "description": "HTTP status reason phrase associated with the status code (e.g., 'Not Found').",
+      "type": "string"
+    },
+    "headers": {
+      "description": "HTTP headers returned in the response as a map of header names to values.",
+      "existingJavaType": "java.util.Map<java.lang.String, java.util.List<java.lang.String>>"
+    },
+    "entity": {
+      "description": "Body of the HTTP response, if any, returned by the server.",
+      "type": "string"
+    },
+    "mediaType": {
+      "description": "Media type of the response entity, if specified (e.g., application/json).",
+      "type": "string"
+    },
+    "location": {
+      "description": "URL location if the response indicates a redirect or newly created resource.",
+      "type": "string",
+      "format": "uri"
+    },
+    "timestamp": {
+      "description": "Timestamp when the response was received, in UNIX epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/api/configuration/rdfConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RdfConfiguration",
+  "description": "Configuration for RDF/Knowledge Graph support in OpenMetadata",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.rdf.RdfConfiguration",
+  "definitions": {
+    "reasoningLevel": {
+      "description": "Level of reasoning/inference to apply to SPARQL queries",
+      "type": "string",
+      "enum": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"],
+      "default": "NONE"
+    }
+  },
+  "properties": {
+    "enabled": {
+      "description": "Enable or disable RDF support",
+      "type": "boolean",
+      "default": false
+    },
+    "storageType": {
+      "description": "Type of RDF storage backend",
+      "type": "string",
+      "enum": ["FUSEKI", "QLEVER"],
+      "default": "FUSEKI"
+    },
+    "remoteEndpoint": {
+      "description": "SPARQL endpoint URL for remote RDF storage",
+      "type": "string",
+      "format": "uri"
+    },
+    "username": {
+      "description": "Username for RDF storage authentication",
+      "type": "string"
+    },
+    "password": {
+      "description": "Password for RDF storage authentication",
+      "type": "string"
+    },
+    "dataset": {
+      "description": "Dataset name in RDF storage",
+      "type": "string",
+      "default": "openmetadata"
+    },
+    "baseUri": {
+      "description": "Base URI for RDF resources",
+      "type": "string",
+      "format": "uri",
+      "default": "https://open-metadata.org/"
+    },
+    "inferenceEnabled": {
+      "description": "Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the inference engine to derive additional triples based on the reasoning level.",
+      "type": "boolean",
+      "default": true
+    },
+    "defaultInferenceLevel": {
+      "description": "Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides OpenMetadata-specific inference rules including transitive lineage traversal and inverse relationships.",
+      "$ref": "#/definitions/reasoningLevel",
+      "default": "CUSTOM"
+    },
+    "cacheInferredTriples": {
+      "description": "Cache inferred triples for better query performance (requires more storage)",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["enabled", "storageType"],
+  "additionalProperties": false
+}

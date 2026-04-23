@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/api/entityRelationship/esEntityRelationshipData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EsEntityRelationshipData",
+  "description": "Response object for the search entity relationship request from Elastic Search.",
+  "javaType": "org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData",
+  "type": "object",
+  "properties": {
+    "entity": {
+      "description": "Entity in the relationship (upstream/source entity).",
+      "$ref": "./relationshipRef.json"
+    },
+    "relatedEntity": {
+      "description": "Related Entity in the relationship (downstream/target entity).",
+      "$ref": "./relationshipRef.json"
+    },
+    "columns": {
+      "description": "Columns associated with the relationship.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "columnFQN": {
+            "description": "Column FQN in the entity.",
+            "type": "string"
+          },
+          "relatedColumnFQN": {
+            "description": "Related column FQN in the related entity.",
+            "type": "string"
+          },
+          "relationshipType": {
+            "description": "Type of relationship between columns.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "description": {
+      "description": "Description of the relationship.",
+      "type": "string"
+    },
+    "docId": {
+      "description": "Doc Id for the Entity Relationship.",
+      "type": "string"
+    },
+    "relationshipType": {
+      "description": "Type of relationship.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+} 

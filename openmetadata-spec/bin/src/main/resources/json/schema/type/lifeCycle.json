@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/type/lifeCycle.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Life Cycle",
+  "description": "This schema defines Life Cycle Properties.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.LifeCycle",
+  "definitions": {
+    "accessDetails": {
+      "description": "Access details of an entity ",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "description": "Timestamp of data asset accessed for creation, update, read.",
+          "$ref": "basic.json#/definitions/timestamp",
+          "default": null
+        },
+        "accessedBy": {
+          "description": "User, Pipeline, Query that created,updated or accessed the data asset",
+          "$ref": "entityReference.json",
+          "default": null
+        },
+        "accessedByAProcess": {
+          "description": "Any process that accessed the data asset that is not captured in OpenMetadata.",
+          "type": "string",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["timestamp"]
+    }
+  },
+  "properties": {
+    "created": {
+      "description": "Access Details about created aspect of the data asset",
+      "$ref": "#/definitions/accessDetails"
+    },
+    "updated": {
+      "description": "Access Details about updated aspect of the data asset",
+      "$ref": "#/definitions/accessDetails"
+    },
+    "accessed": {
+      "description": "Access Details about accessed aspect of the data asset",
+      "$ref": "#/definitions/accessDetails"
+    }
+  },
+  "additionalProperties": false
+}

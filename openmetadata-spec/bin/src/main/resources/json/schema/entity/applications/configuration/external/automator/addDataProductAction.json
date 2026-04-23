@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addDataProductAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddDataProductAction",
+  "description": "Add a Data Product to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "AddDataProductActionType": {
+      "description": "Add Data Products Action Type.",
+      "type": "string",
+      "enum": ["AddDataProductAction"],
+      "default": "AddDataProductAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/AddDataProductActionType",
+      "default": "AddDataProductAction"
+    },
+    "dataProducts": {
+      "description": "Data Products to apply",
+      "type": "array",
+        "items": {
+          "$ref": "../../../../../type/entityReference.json"
+        },
+      "default": null
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update the Data Product even if the asset belongs to a different Domain. By default, we will only add the Data Product if the asset has no Domain, or it belongs to the same domain as the Data Product.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "dataProducts"],
+  "additionalProperties": false
+}

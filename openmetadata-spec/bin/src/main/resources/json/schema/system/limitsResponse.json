@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/system/limitsResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LimitsResponse",
+  "description": "Limits Config schema",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.LimitsConfig",
+  "properties": {
+    "enable": {
+      "description": "Limits Enabled",
+      "type": "boolean",
+      "default": false
+    },
+    "limits": {
+      "description": "Limits",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

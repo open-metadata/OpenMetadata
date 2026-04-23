@@ -1,0 +1,51 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/ssasConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SSASConnection",
+    "description": "SSAS Metadata Database Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.SSASConnection",
+    "definitions": {
+      "SSASType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["SSAS"],
+        "default": "SSAS"
+      }
+    },       
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/SSASType",
+        "default": "SSAS"
+      },
+      "httpConnection": {
+        "title": "HTTP Link for SSAS ACCESS",
+        "description": "HTTP Link for SSAS ACCESS",
+        "type": "string"
+      },
+      "username": {
+        "title": "Username",
+        "description": "Username",
+        "type": "string"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Password",
+        "type": "string",
+        "format": "password"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      },
+      "supportsLineageExtraction": {
+        "title": "Supports Lineage Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["httpConnection", "username", "password"]
+  }
+  

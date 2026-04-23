@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/auth/loginRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LoginRequest",
+  "description": "This schema defines Email Verification Token Schema.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.LoginRequest",
+  "properties": {
+    "email": {
+      "description": "Login Email",
+      "type": "string"
+    },
+    "password": {
+      "description": "Login Password in base64 format",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "email",
+    "password"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/entityRelationship/searchSchemaEntityRelationshipResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchSchemaEntityRelationshipResult",
+  "description": "Paginated response for Search Schema Entity Relationship, including ER diagram data and paging metadata.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult",
+  "properties": {
+    "data": {
+      "$ref": "searchEntityRelationshipResult.json"
+    },
+    "paging": {
+      "$ref": "../../type/paging.json"
+    }
+  },
+  "required": ["data", "paging"],
+  "additionalProperties": false
+}

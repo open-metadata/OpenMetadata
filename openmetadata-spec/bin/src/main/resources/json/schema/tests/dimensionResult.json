@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/dimensionResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DimensionResult",
+  "description": "Test case result for a specific combination of dimension values",
+  "javaType": "org.openmetadata.schema.tests.type.DimensionResult",
+  "type": "object",
+  "properties": {
+    "dimensionValues": {
+      "description": "Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value': 'mumbai'}, {'name': 'product', 'value': 'laptop'}])",
+      "type": "array",
+      "items": {
+        "$ref": "basic.json#/definitions/dimensionValue"
+      }
+    },
+    "testCaseStatus": {
+      "description": "Status of the test for this dimension combination",
+      "$ref": "basic.json#/definitions/testCaseStatus"
+    },
+    "result": {
+      "description": "Details of test case results for this dimension combination",
+      "type": "string"
+    },
+    "testResultValue": {
+      "type": "array",
+      "items": {
+        "$ref": "basic.json#/definitions/testResultValue"
+      }
+    },
+    "passedRows": {
+      "description": "Number of rows that passed for this dimension",
+      "type": "integer"
+    },
+    "failedRows": {
+      "description": "Number of rows that failed for this dimension",
+      "type": "integer"
+    },
+    "passedRowsPercentage": {
+      "description": "Percentage of rows that passed for this dimension",
+      "type": "number"
+    },
+    "failedRowsPercentage": {
+      "description": "Percentage of rows that failed for this dimension",
+      "type": "number"
+    },
+    "impactScore": {
+      "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more variance in test results.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": ["dimensionValues", "testCaseStatus"],
+  "additionalProperties": false
+}

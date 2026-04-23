@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/description.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DescriptionFeedInfo",
+  "javaType": "org.openmetadata.schema.entity.feed.DescriptionFeedInfo",
+  "description": "This schema defines the schema for Description Updates.",
+  "type": "object",
+  "properties": {
+    "previousDescription": {
+      "type": "string",
+      "description": "The previous description of the entity."
+    },
+    "newDescription": {
+      "description": "The new description of the entity.",
+      "type": "string"
+    },
+    "diffMessage": {
+      "description": "The difference between the previous and new descriptions.",
+        "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

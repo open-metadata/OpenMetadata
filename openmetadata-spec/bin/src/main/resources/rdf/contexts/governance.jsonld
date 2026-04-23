@@ -1,0 +1,144 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Glossary": {
+        "@id": "om:Glossary",
+        "@type": ["om:Entity", "skos:ConceptScheme"]
+      },
+      "GlossaryTerm": {
+        "@id": "om:GlossaryTerm",
+        "@type": ["om:Entity", "skos:Concept"]
+      },
+      "Classification": {
+        "@id": "om:Classification",
+        "@type": ["om:Entity", "skos:ConceptScheme"]
+      },
+      "Tag": {
+        "@id": "om:Tag",
+        "@type": ["om:Entity", "skos:Concept"]
+      },
+      "DataContract": {
+        "@id": "om:DataContract",
+        "@type": "om:Entity"
+      },
+      "DataProduct": {
+        "@id": "om:DataProduct",
+        "@type": ["om:Entity", "dcat:Dataset"]
+      },
+      "Domain": {
+        "@id": "om:Domain",
+        "@type": "om:Entity"
+      },
+      "Persona": {
+        "@id": "om:Persona",
+        "@type": "om:Entity"
+      },
+      "glossary": {
+        "@id": "om:belongsToGlossary",
+        "@type": "@id"
+      },
+      "synonyms": {
+        "@id": "skos:altLabel",
+        "@type": "xsd:string",
+        "@container": "@set"
+      },
+      "relatedTerms": {
+        "@id": "skos:related",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "references": {
+        "@id": "om:hasReference",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "mutuallyExclusive": {
+        "@id": "om:isMutuallyExclusive",
+        "@type": "xsd:boolean"
+      },
+      "tagFQN": {
+        "@id": "om:tagFQN",
+        "@type": "xsd:string"
+      },
+      "classification": {
+        "@id": "om:belongsToClassification",
+        "@type": "@id"
+      },
+      "usageCount": {
+        "@id": "om:usageCount",
+        "@type": "xsd:integer"
+      },
+      "tagCategoryType": {
+        "@id": "om:tagCategoryType",
+        "@type": "xsd:string"
+      },
+      "associatedTags": {
+        "@id": "om:hasAssociatedTag",
+        "@type": "xsd:string",
+        "@container": "@set"
+      },
+      "contract": {
+        "@id": "om:hasContract",
+        "@type": "@json"
+      },
+      "entityName": {
+        "@id": "om:contractForEntity",
+        "@type": "xsd:string"
+      },
+      "domainType": {
+        "@id": "om:domainType",
+        "@type": "xsd:string"
+      },
+      "subDomains": {
+        "@id": "om:hasSubDomain",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "parentDomain": {
+        "@id": "om:hasParentDomain",
+        "@type": "@id"
+      },
+      "dataProducts": {
+        "@id": "om:hasDataProduct",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "assets": {
+        "@id": "om:hasAsset",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "style": {
+        "@id": "om:hasStyle",
+        "@type": "@json"
+      },
+      "entityFQN": {
+        "@id": "om:appliesToEntity",
+        "@type": "xsd:string"
+      },
+      "entityType": {
+        "@id": "om:appliesToEntityType",
+        "@type": "xsd:string"
+      },
+      "status": {
+        "@id": "om:hasStatus",
+        "@type": "xsd:string"
+      },
+      "reviewers": {
+        "@id": "om:hasReviewer",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "childTerms": {
+        "@id": "skos:narrower",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "termType": {
+        "@id": "om:termType",
+        "@type": "xsd:string"
+      }
+    }
+  ]
+}

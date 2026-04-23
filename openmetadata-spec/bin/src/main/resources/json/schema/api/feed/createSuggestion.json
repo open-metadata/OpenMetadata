@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/api/feed/createSuggestion.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateSuggestionRequest",
+  "description": "Create Suggestion request",
+  "type": "object",
+  "properties": {
+    "description": {
+      "description": "Message in Markdown format. See markdown support for more details.",
+      "type": "string"
+    },
+    "tagLabels": {
+      "description": "Tags or Glossary Terms.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "type": {
+      "$ref": "../../entity/feed/suggestion.json#/definitions/suggestionType"
+    },
+    "entityLink": {
+      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "oneOf": [{"required": ["suggestionType", "entityLink", "description"]},
+    {"required": ["suggestionType", "entityLink","tagLabels"]}],
+  "additionalProperties": false
+}

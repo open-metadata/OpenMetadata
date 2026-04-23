@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/matillionConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MatillionConnection",
+  "description": "Matillion Connection",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MatillionConnection",
+  "definitions": {
+    "matillionType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Matillion"
+      ],
+      "default": "Matillion"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/matillionType",
+      "default": "Matillion"
+    },
+    "connection": {
+      "title": "Matillion Connection",
+      "description": "Matillion Auth Configuration",
+      "oneOf": [
+        {
+          "$ref": "matillion/matillionETL.json"
+        },
+        {
+          "$ref": "matillion/matillionDPC.json"
+        }
+      ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "lineageLookbackDays": {
+      "title": "Lineage Lookback Days",
+      "description": "Number of days to look back when fetching lineage events from Matillion DPC OpenLineage API.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 365
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

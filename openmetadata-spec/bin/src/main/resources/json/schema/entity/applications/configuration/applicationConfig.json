@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/applicationConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApplicationConfigModel",
+  "description": "Application Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "appConfig": {
+      "oneOf": [
+        {
+          "$ref": "external/collateAIAppConfig.json"
+        },
+        {
+          "$ref": "external/automatorAppConfig.json"
+        },
+        {
+          "$ref": "../../../configuration/slackAppConfiguration.json"
+        },
+        {
+          "$ref": "external/collateAIQualityAgentAppConfig.json"
+        },
+        {
+          "$ref": "external/collateAITierAgentAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataInsightsAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataInsightsReportAppConfig.json"
+        },
+        {
+          "$ref": "internal/searchIndexingAppConfig.json"
+        },
+        {
+          "$ref": "internal/cacheWarmupAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataRetentionConfiguration.json"
+        },
+        {
+          "$ref": "internal/autoPilotAppConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "privateConfig": {
+      "oneOf": [
+        {
+          "$ref": "private/external/collateAIAppPrivateConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    }
+  }
+}

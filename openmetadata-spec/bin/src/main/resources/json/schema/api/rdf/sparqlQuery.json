@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/sparqlQuery.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SparqlQuery",
+  "description": "SPARQL query request",
+  "type": "object",
+  "properties": {
+    "query": {
+      "description": "The SPARQL query string",
+      "type": "string"
+    },
+    "format": {
+      "description": "Response format for the query results",
+      "type": "string",
+      "enum": ["json", "xml", "csv", "tsv", "turtle", "rdfxml", "ntriples", "jsonld"],
+      "default": "json"
+    },
+    "timeout": {
+      "description": "Query timeout in milliseconds",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300000,
+      "default": 30000
+    },
+    "defaultGraphUri": {
+      "description": "Default graph URI for the query",
+      "type": "string",
+      "format": "uri"
+    },
+    "namedGraphUri": {
+      "description": "Named graph URIs for the query",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "inference": {
+      "description": "Inference/reasoning level to apply",
+      "type": "string",
+      "enum": ["none", "rdfs", "owl", "custom"],
+      "default": "none"
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}

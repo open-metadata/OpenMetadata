@@ -1,0 +1,149 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/sinkConfig/gitSinkConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitSinkConfig",
+  "description": "Configuration for Git-based sinks using REST/GraphQL APIs. Supports GitHub (GraphQL), GitLab (REST), and Bitbucket (REST).",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.GitSinkConfig",
+  "type": "object",
+  "definitions": {
+    "gitCredentialsType": {
+      "title": "Credentials Type",
+      "description": "Type of authentication for Git API operations.",
+      "type": "string",
+      "enum": ["token"],
+      "default": "token"
+    },
+    "conflictResolution": {
+      "title": "Conflict Resolution",
+      "description": "How to handle files that were modified directly in git.",
+      "type": "string",
+      "enum": ["overwriteExternal", "preserveExternal", "fail"],
+      "default": "overwriteExternal"
+    }
+  },
+  "properties": {
+    "repositoryUrl": {
+      "title": "Repository URL",
+      "description": "Git repository URL (HTTPS format). Example: https://github.com/org/repo.git",
+      "type": "string",
+      "examples": ["https://github.com/org/repo.git", "https://github.mycompany.com/org/repo.git"]
+    },
+    "branch": {
+      "title": "Branch",
+      "description": "Target branch for commits.",
+      "type": "string",
+      "default": "main"
+    },
+    "basePath": {
+      "title": "Base Path",
+      "description": "Base directory path in the repository for metadata files.",
+      "type": "string",
+      "default": "metadata"
+    },
+    "apiBaseUrl": {
+      "title": "API Base URL",
+      "description": "Custom API base URL for GitHub Enterprise. Leave empty for github.com. Example: https://github.mycompany.com/api",
+      "type": "string"
+    },
+    "credentials": {
+      "title": "Git Credentials",
+      "description": "Authentication credentials for Git API operations.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/gitCredentialsType"
+        },
+        "token": {
+          "title": "Access Token",
+          "description": "Personal access token or GitHub App token for authentication. Supports secret references (e.g., secret:/path/to/token).",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["type", "token"],
+      "additionalProperties": false
+    },
+    "commitConfig": {
+      "title": "Commit Configuration",
+      "description": "Configuration for Git commits.",
+      "type": "object",
+      "properties": {
+        "messageTemplate": {
+          "title": "Message Template",
+          "description": "Template for commit messages. Variables: {entityType}, {entityName}, {action}, {count}",
+          "type": "string",
+          "default": "Sync {entityType}: {entityName}"
+        },
+        "authorName": {
+          "title": "Author Name",
+          "description": "Git commit author name.",
+          "type": "string",
+          "default": "OpenMetadata Bot"
+        },
+        "authorEmail": {
+          "title": "Author Email",
+          "description": "Git commit author email.",
+          "type": "string",
+          "format": "email",
+          "default": "bot@openmetadata.org"
+        }
+      },
+      "additionalProperties": false
+    },
+    "conflictResolution": {
+      "$ref": "#/definitions/conflictResolution"
+    },
+    "syncMetadata": {
+      "title": "Sync Metadata Configuration",
+      "description": "Configuration for embedding sync metadata in output files.",
+      "type": "object",
+      "properties": {
+        "embed": {
+          "title": "Embed Metadata",
+          "description": "Embed _syncMetadata block in each YAML/JSON file for conflict detection and audit.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "retryConfig": {
+      "title": "Retry Configuration",
+      "description": "Configuration for retrying failed API calls.",
+      "type": "object",
+      "properties": {
+        "maxRetries": {
+          "title": "Max Retries",
+          "description": "Maximum number of retry attempts for transient failures.",
+          "type": "integer",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10
+        },
+        "retryDelaySeconds": {
+          "title": "Initial Retry Delay",
+          "description": "Initial delay in seconds before first retry (doubles with each attempt).",
+          "type": "integer",
+          "default": 5,
+          "minimum": 1
+        },
+        "maxRetryDelaySeconds": {
+          "title": "Max Retry Delay",
+          "description": "Maximum delay in seconds between retries (caps exponential backoff).",
+          "type": "integer",
+          "default": 60,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Timeout in seconds for API operations.",
+      "type": "integer",
+      "default": 300
+    }
+  },
+  "required": ["repositoryUrl", "credentials"],
+  "additionalProperties": false
+}

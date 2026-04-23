@@ -1,0 +1,103 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Team": {
+        "@id": "om:Team",
+        "@type": ["om:Entity", "prov:Agent", "foaf:Group"]
+      },
+      "User": {
+        "@id": "om:User",
+        "@type": ["om:Entity", "prov:Agent", "foaf:Person"]
+      },
+      "Bot": {
+        "@id": "om:Bot",
+        "@type": ["om:Entity", "prov:Agent"]
+      },
+      "Role": {
+        "@id": "om:Role",
+        "@type": "om:Entity"
+      },
+      "Policy": {
+        "@id": "om:Policy",
+        "@type": "om:Entity"
+      },
+      "email": {
+        "@id": "foaf:mbox",
+        "@type": "xsd:string"
+      },
+      "isAdmin": {
+        "@id": "om:isAdmin",
+        "@type": "xsd:boolean"
+      },
+      "isBot": {
+        "@id": "om:isBot",
+        "@type": "xsd:boolean"
+      },
+      "profile": {
+        "@id": "om:hasProfile",
+        "@type": "@json"
+      },
+      "timezone": {
+        "@id": "om:timezone",
+        "@type": "xsd:string"
+      },
+      "teams": {
+        "@id": "om:memberOf",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "roles": {
+        "@id": "om:hasRole",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "owns": {
+        "@id": "om:owns",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "follows": {
+        "@id": "om:follows",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "teamType": {
+        "@id": "om:teamType",
+        "@type": "xsd:string"
+      },
+      "users": {
+        "@id": "om:hasMember",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "childrenCount": {
+        "@id": "om:childrenCount",
+        "@type": "xsd:integer"
+      },
+      "userCount": {
+        "@id": "om:userCount",
+        "@type": "xsd:integer"
+      },
+      "isJoinable": {
+        "@id": "om:isJoinable",
+        "@type": "xsd:boolean"
+      },
+      "defaultRoles": {
+        "@id": "om:hasDefaultRole",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "parents": {
+        "@id": "om:hasParent",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "policies": {
+        "@id": "om:hasPolicy",
+        "@type": "@id",
+        "@container": "@set"
+      }
+    }
+  ]
+}

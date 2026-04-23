@@ -1,0 +1,225 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/domains/dataProduct.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataProduct",
+  "description": "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store data for analytical or data-intensive use cases made available to data consumers.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.domains.DataProduct",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "lifecycleStage": {
+      "description": "Lifecycle stage of the data product",
+      "type": "string",
+      "enum": ["IDEATION", "DESIGN", "DEVELOPMENT", "TESTING", "PRODUCTION", "DEPRECATED", "RETIRED"],
+      "default": "DEVELOPMENT"
+    },
+    "portType": {
+      "description": "Type of the data product port",
+      "type": "string",
+      "enum": ["INPUT", "OUTPUT"]
+    },
+    "portProtocol": {
+      "description": "Protocol used by the port for data access",
+      "type": "string",
+      "enum": ["REST", "GRPC", "GRAPHQL", "JDBC", "KAFKA", "FILE", "S3", "AZURE_BLOB", "GCS", "WEBHOOK", "CUSTOM"],
+      "default": "REST"
+    },
+    "portFormat": {
+      "description": "Data format supported by the port",
+      "type": "string",
+      "enum": ["JSON", "CSV", "PARQUET", "AVRO", "ORC", "XML", "PROTOBUF", "DELTA", "ICEBERG", "CUSTOM"],
+      "default": "JSON"
+    },
+    "dataProductPort": {
+      "description": "Port definition for data product input/output",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the port",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name of the port",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the port",
+          "type": "string"
+        },
+        "portType": {
+          "$ref": "#/definitions/portType"
+        },
+        "protocol": {
+          "$ref": "#/definitions/portProtocol"
+        },
+        "format": {
+          "$ref": "#/definitions/portFormat"
+        },
+        "endpoint": {
+          "description": "Endpoint URL or connection string",
+          "type": "string"
+        },
+        "dataAsset": {
+          "description": "Reference to the data asset exposed through this port",
+          "$ref": "../../type/entityReference.json"
+        }
+      },
+      "required": ["name", "portType", "dataAsset"],
+      "additionalProperties": false
+    },
+    "slaDefinition": {
+      "description": "Service Level Agreement definition",
+      "type": "object",
+      "properties": {
+        "tier": {
+          "description": "SLA tier (e.g., GOLD, SILVER, BRONZE)",
+          "type": "string",
+          "enum": ["GOLD", "SILVER", "BRONZE", "CUSTOM"]
+        },
+        "availability": {
+          "description": "Expected availability percentage (e.g., 99.9)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "responseTime": {
+          "description": "Expected response time in milliseconds",
+          "type": "integer"
+        },
+        "dataFreshness": {
+          "description": "Maximum data staleness in minutes",
+          "type": "integer"
+        },
+        "dataQuality": {
+          "description": "Minimum data quality score",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique ID of the Data Product",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "A unique name of the Data Product",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName is `domain.dataProductName` or `sub-domain.dataProductName`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Marketing', 'Payments', etc.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Data Product.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this Data Product.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "experts": {
+      "description": "List of users who are experts for this Data Product.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default" : null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this Data Product.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains": {
+      "description": "Domains or sub-domains to which this Data Product belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "assets": {
+      "description": "Data assets collection that is part of this data product.",
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
+    },
+    "lifecycleStage": {
+      "description": "Current lifecycle stage of the data product",
+      "$ref": "#/definitions/lifecycleStage"
+    },
+    "sla": {
+      "description": "Service Level Agreement for this data product",
+      "$ref": "#/definitions/slaDefinition"
+    },
+    "consumesFrom": {
+      "description": "Other data products that this product consumes data from",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "providesTo": {
+      "description": "Other data products that consume data from this product",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags associated with the Data Product.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity.",
+      "$ref": "../../type/votes.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Data Product.",
+      "$ref": "../../type/status.json"
+    }
+  },
+  "required": ["id", "name", "description"],
+  "additionalProperties": false
+}

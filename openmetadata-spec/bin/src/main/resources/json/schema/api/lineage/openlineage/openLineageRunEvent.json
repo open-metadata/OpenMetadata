@@ -1,0 +1,100 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/openlineage/openLineageRunEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageRunEvent",
+  "description": "OpenLineage RunEvent representing a job execution with its inputs and outputs.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageRunEvent",
+  "definitions": {
+    "eventType": {
+      "description": "The type of lifecycle event.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.EventType",
+      "enum": ["START", "RUNNING", "COMPLETE", "ABORT", "FAIL", "OTHER"]
+    },
+    "openLineageRun": {
+      "description": "Run information including run ID and facets.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageRun",
+      "properties": {
+        "runId": {
+          "description": "Globally unique identifier for this run.",
+          "type": "string",
+          "format": "uuid"
+        },
+        "facets": {
+          "description": "Run facets containing metadata like parent run.",
+          "$ref": "openLineageFacets.json#/definitions/runFacets"
+        }
+      },
+      "required": ["runId"]
+    },
+    "openLineageJob": {
+      "description": "Job information including namespace and name.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageJob",
+      "properties": {
+        "namespace": {
+          "description": "The namespace of the job (e.g., 'airflow', 'spark').",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the job.",
+          "type": "string"
+        },
+        "facets": {
+          "description": "Job facets containing metadata like SQL.",
+          "$ref": "openLineageFacets.json#/definitions/jobFacets"
+        }
+      },
+      "required": ["namespace", "name"]
+    }
+  },
+  "properties": {
+    "eventTime": {
+      "description": "The time the event occurred, in ISO 8601 format (UTC).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "description": "URI identifying the producer of this metadata.",
+      "type": "string",
+      "format": "uri"
+    },
+    "schemaURL": {
+      "description": "URI pointing to the OpenLineage schema version.",
+      "type": "string",
+      "format": "uri"
+    },
+    "eventType": {
+      "description": "The lifecycle state of the run.",
+      "$ref": "#/definitions/eventType"
+    },
+    "run": {
+      "description": "The run this event is about.",
+      "$ref": "#/definitions/openLineageRun"
+    },
+    "job": {
+      "description": "The job that executed this run.",
+      "$ref": "#/definitions/openLineageJob"
+    },
+    "inputs": {
+      "description": "Input datasets consumed by this run.",
+      "type": "array",
+      "items": {
+        "$ref": "openLineageDataset.json#/definitions/openLineageInputDataset"
+      },
+      "default": []
+    },
+    "outputs": {
+      "description": "Output datasets produced by this run.",
+      "type": "array",
+      "items": {
+        "$ref": "openLineageDataset.json#/definitions/openLineageOutputDataset"
+      },
+      "default": []
+    }
+  },
+  "required": ["eventTime", "producer", "schemaURL", "run", "job"],
+  "additionalProperties": false
+}

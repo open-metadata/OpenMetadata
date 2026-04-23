@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tests/bundleSuiteBulkAddRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BundleSuiteBulkAddRequest",
+  "description": "Request object for bulk-adding test case to a bundle. Use mode 'ids' to specify exact suites, or mode 'all' to select all suites with optional exclusions.",
+  "javaType": "org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest",
+  "properties": {
+    "selection": {
+      "description": "Configuration for selecting test case to add to the bundle. Choose either 'ids' mode to specify exact suites, or 'all' mode to select all suites with optional exclusions.",
+      "oneOf": [
+        {
+          "$ref": "bundleSuiteBulkAddRequestBulkByIds.json"
+        },
+        {
+          "$ref": "bundleSuiteBulkAddRequestBulkAll.json"
+        }
+      ]
+    },
+    "testSuiteId": {
+      "description": "TestSuite ID where we will be adding the test cases.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "mode": {
+        "description": "Mode of bulk addition. 'ids' to specify exact test suite IDs, 'all' to select all suites with optional exclusions.",
+        "type": "string",
+        "enum": ["ids", "all"]
+    }
+  },
+  "required": [
+    "selection",
+    "testSuiteId",
+    "mode"
+  ],
+  "additionalProperties": false
+}

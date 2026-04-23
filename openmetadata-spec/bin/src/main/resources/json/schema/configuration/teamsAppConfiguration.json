@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/teamsAppConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TeamsAppConfiguration",
+  "description": "This schema defines the Microsoft Teams App configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.service.configuration.teamsApp.TeamsAppConfiguration",
+  "properties": {
+    "microsoftAppId": {
+      "title": "Microsoft App ID",
+      "description": "Azure AD Application (Client) ID for the Teams bot",
+      "type": "string"
+    },
+    "microsoftAppPassword": {
+      "title": "Microsoft App Password",
+      "description": "Azure AD Client Secret for the Teams bot",
+      "type": "string",
+      "format": "password"
+    },
+    "microsoftAppTenantId": {
+      "title": "Microsoft App Tenant ID",
+      "description": "Azure AD Tenant ID (optional, for single-tenant bots). Use 'common' for multi-tenant.",
+      "type": "string"
+    }
+  },
+  "required": ["microsoftAppId", "microsoftAppPassword"],
+  "additionalProperties": false
+}

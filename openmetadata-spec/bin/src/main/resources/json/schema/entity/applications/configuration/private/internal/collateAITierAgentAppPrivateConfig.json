@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/private/external/collateAITierAgentAppPrivateConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CollateAITierAgentAppPrivateConfig",
+  "description": "Private Configuration for the CollateAITierAgent Internal Application.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.internal.CollateAITierAgentAppPrivateConfig",
+  "properties": {
+    "limits": {
+      "title": "Limits",
+      "description": "Limits for the CollateAITierAgent Application.",
+      "$ref": "../../private/limits.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["limits"]
+}

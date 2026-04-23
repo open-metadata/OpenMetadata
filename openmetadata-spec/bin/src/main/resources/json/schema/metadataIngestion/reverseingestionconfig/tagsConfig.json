@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/reverseingestionconfig/tagsConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Reverse Ingestion Tags Config",
+  "type": "object",
+  "description": "Configuration for updating tags",
+  "javaType": "org.openmetadata.schema.metadataIngestion.reverseingestionconfig.tagsConfig",
+  "properties": {
+    "removedTags": {
+      "description": "Removed tags of the entity",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    },
+    "addedTags": {
+      "description": "Added tags to be applied",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

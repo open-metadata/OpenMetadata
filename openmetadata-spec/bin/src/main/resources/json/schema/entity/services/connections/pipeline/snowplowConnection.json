@@ -1,0 +1,103 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/snowplowConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SnowplowConnection",
+    "description": "Snowplow Pipeline Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.SnowplowConnection",
+    "definitions": {
+      "SnowplowType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Snowplow"],
+        "default": "Snowplow"
+      },
+      "SnowplowDeployment": {
+        "description": "Snowplow deployment type",
+        "type": "string",
+        "enum": ["BDP", "Community"],
+        "default": "BDP"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/SnowplowType",
+        "default": "Snowplow"
+      },
+      "deployment": {
+        "title": "Deployment Type",
+        "description": "Snowplow deployment type (BDP for managed or Community for self-hosted)",
+        "$ref": "#/definitions/SnowplowDeployment",
+        "default": "BDP"
+      },
+      "consoleUrl": {
+        "expose": true,
+        "title": "Console URL",
+        "description": "Snowplow Console URL for BDP deployment",
+        "type": "string",
+        "format": "uri"
+      },
+      "apiKey": {
+        "title": "API Key",
+        "description": "API Key for Snowplow Console API",
+        "type": "string",
+        "format": "password"
+      },
+      "organizationId": {
+        "title": "Organization ID",
+        "description": "Snowplow BDP Organization ID",
+        "type": "string"
+      },
+      "configPath": {
+        "title": "Configuration Path",
+        "description": "Path to pipeline configuration files for Community deployment",
+        "type": "string"
+      },
+      "cloudProvider": {
+        "title": "Cloud Provider",
+        "description": "Cloud provider where Snowplow is deployed",
+        "type": "string",
+        "enum": ["AWS", "GCP", "Azure"],
+        "default": "AWS"
+      },
+      "pipelineFilterPattern": {
+        "description": "Regex exclude pipelines.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Pipeline Filter Pattern"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["type", "deployment"],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "deployment": {
+              "const": "BDP"
+            }
+          }
+        },
+        "then": {
+          "required": ["consoleUrl", "apiKey", "organizationId"]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "deployment": {
+              "const": "Community"
+            }
+          }
+        },
+        "then": {
+          "required": ["configPath"]
+        }
+      }
+    ]
+  }
