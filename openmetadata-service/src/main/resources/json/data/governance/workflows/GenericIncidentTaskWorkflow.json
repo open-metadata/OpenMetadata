@@ -1,0 +1,221 @@
+{
+  "name": "GenericIncidentTaskWorkflow",
+  "fullyQualifiedName": "GenericIncidentTaskWorkflow",
+  "displayName": "Generic Incident Task Workflow",
+  "description": "Default workflow-driven lifecycle for incident-style tasks with configurable stages from Open through Closed.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "noOp",
+    "config": {},
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "IncidentStart",
+      "displayName": "Incident Start"
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "OpenStage",
+      "displayName": "Open",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "open",
+        "stageDisplayName": "Open",
+        "taskStatus": "Open",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "pending",
+            "label": "Move to Pending",
+            "targetStageId": "pending",
+            "targetTaskStatus": "Pending",
+            "formRef": "pending"
+          },
+          {
+            "id": "startProgress",
+            "label": "Start Progress",
+            "targetStageId": "inProgress",
+            "targetTaskStatus": "InProgress",
+            "formRef": "startProgress"
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "PendingStage",
+      "displayName": "Pending",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "pending",
+        "stageDisplayName": "Pending",
+        "taskStatus": "Pending",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "startProgress",
+            "label": "Start Progress",
+            "targetStageId": "inProgress",
+            "targetTaskStatus": "InProgress",
+            "formRef": "startProgress"
+          },
+          {
+            "id": "close",
+            "label": "Close",
+            "targetStageId": "closed",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "close",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "InProgressStage",
+      "displayName": "In Progress",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "inProgress",
+        "stageDisplayName": "In Progress",
+        "taskStatus": "InProgress",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "resolve",
+            "label": "Resolve",
+            "targetStageId": "resolved",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "resolve"
+          },
+          {
+            "id": "close",
+            "label": "Close",
+            "targetStageId": "closed",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "close",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ResolvedStage",
+      "displayName": "Resolved",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": true,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "resolved",
+        "stageDisplayName": "Resolved",
+        "taskStatus": "Completed",
+        "assigneeStrategy": "owners-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "close",
+            "label": "Close",
+            "targetStageId": "closed",
+            "targetTaskStatus": "Completed",
+            "resolutionType": "Completed",
+            "formRef": "close",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ClosedEnd",
+      "displayName": "Closed"
+    }
+  ],
+  "edges": [
+    {
+      "from": "IncidentStart",
+      "to": "OpenStage"
+    },
+    {
+      "from": "OpenStage",
+      "to": "PendingStage",
+      "condition": "pending"
+    },
+    {
+      "from": "OpenStage",
+      "to": "InProgressStage",
+      "condition": "startProgress"
+    },
+    {
+      "from": "PendingStage",
+      "to": "InProgressStage",
+      "condition": "startProgress"
+    },
+    {
+      "from": "PendingStage",
+      "to": "ClosedEnd",
+      "condition": "close"
+    },
+    {
+      "from": "InProgressStage",
+      "to": "ResolvedStage",
+      "condition": "resolve"
+    },
+    {
+      "from": "InProgressStage",
+      "to": "ClosedEnd",
+      "condition": "close"
+    },
+    {
+      "from": "ResolvedStage",
+      "to": "ClosedEnd",
+      "condition": "close"
+    }
+  ]
+}
