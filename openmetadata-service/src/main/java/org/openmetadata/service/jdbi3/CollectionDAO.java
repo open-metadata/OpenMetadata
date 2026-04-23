@@ -1281,6 +1281,47 @@ public interface CollectionDAO {
         @Bind("json") List<String> json);
 
     @ConnectionAwareSqlUpdate(
+        value =
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json, versionNum, changedFieldKeys) "
+                + "VALUES (:id, :extension, :jsonSchema, :json, :versionNum, :changedFieldKeys)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json, versionNum, changedFieldKeys) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb), :versionNum, (:changedFieldKeys :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, "
+                + "json = EXCLUDED.json, versionNum = EXCLUDED.versionNum, changedFieldKeys = EXCLUDED.changedFieldKeys",
+        connectionType = POSTGRES)
+    void insertVersionExtension(
+        @BindUUID("id") UUID id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("versionNum") Double versionNum,
+        @Bind("changedFieldKeys") String changedFieldKeys);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json, versionNum, changedFieldKeys) "
+                + "VALUES (:id, :extension, :jsonSchema, :json, :versionNum, :changedFieldKeys)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json, versionNum, changedFieldKeys) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb), :versionNum, (:changedFieldKeys :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, "
+                + "json = EXCLUDED.json, versionNum = EXCLUDED.versionNum, changedFieldKeys = EXCLUDED.changedFieldKeys",
+        connectionType = POSTGRES)
+    void insertVersionExtensions(
+        @BindUUID("id") List<UUID> id,
+        @Bind("extension") List<String> extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") List<String> json,
+        @Bind("versionNum") List<Double> versionNum,
+        @Bind("changedFieldKeys") List<String> changedFieldKeys);
+
+    @ConnectionAwareSqlUpdate(
         value = "UPDATE entity_extension SET json = :json where (json -> '$.id') = :id",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -1409,17 +1450,202 @@ public interface CollectionDAO {
         @Bind("endTs") long endTs,
         @Bind("entityType") String entityType);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+                + "LIKE CONCAT(:extensionPrefix, '.%') "
+                + "ORDER BY COALESCE(versionNum, CAST(SUBSTRING_INDEX(extension, '.version.', -1) AS DOUBLE)) DESC, extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+                + "LIKE CONCAT(:extensionPrefix, '.%') "
+                + "ORDER BY COALESCE(versionNum, split_part(extension, '.version.', 2)::DOUBLE PRECISION) DESC, extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ExtensionMapper.class)
-    @SqlQuery(
-        "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
-            + "LIKE CONCAT (:extensionPrefix, '.%') "
-            + "ORDER BY extension DESC "
-            + "LIMIT :limit OFFSET :offset")
     List<ExtensionRecord> getExtensionsWithOffset(
         @BindUUID("id") UUID id,
         @Bind("extensionPrefix") String extensionPrefix,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+                + "LIKE CONCAT(:extensionPrefix, '.%') "
+                + "ORDER BY CAST(SUBSTRING_INDEX(extension, '.version.', -1) AS DOUBLE) DESC, extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+                + "LIKE CONCAT(:extensionPrefix, '.%') "
+                + "ORDER BY split_part(extension, '.version.', 2)::DOUBLE PRECISION DESC, extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsWithOffsetLegacy(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT e.extension, e.json FROM entity_extension e "
+                + "WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND (JSON_CONTAINS(e.changedFieldKeys, JSON_ARRAY(:fieldPath)) "
+                + "OR (e.changedFieldKeys IS NULL AND EXISTS ("
+                + "SELECT 1 FROM JSON_TABLE("
+                + "JSON_MERGE_PRESERVE("
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsAdded'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsUpdated'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsDeleted'), JSON_ARRAY())"
+                + "), '$[*]' COLUMNS (field_name VARCHAR(1024) PATH '$.name')) field_changes "
+                + "WHERE field_name = :fieldPath"
+                + "))) "
+                + "ORDER BY COALESCE(e.versionNum, CAST(SUBSTRING_INDEX(e.extension, '.version.', -1) AS DOUBLE)) DESC, e.extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT e.extension, e.json FROM entity_extension e "
+                + "WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND (jsonb_exists(e.changedFieldKeys, :fieldPath) "
+                + "OR (e.changedFieldKeys IS NULL AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements("
+                + "COALESCE(e.json #> '{changeDescription,fieldsAdded}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsUpdated}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsDeleted}', '[]'::jsonb)"
+                + ") AS field_change "
+                + "WHERE field_change ->> 'name' = :fieldPath "
+                + "))) "
+                + "ORDER BY COALESCE(e.versionNum, split_part(e.extension, '.version.', 2)::DOUBLE PRECISION) DESC, e.extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsWithFieldChanged(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("fieldPath") String fieldPath,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_extension e WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND (JSON_CONTAINS(e.changedFieldKeys, JSON_ARRAY(:fieldPath)) "
+                + "OR (e.changedFieldKeys IS NULL AND EXISTS ("
+                + "SELECT 1 FROM JSON_TABLE("
+                + "JSON_MERGE_PRESERVE("
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsAdded'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsUpdated'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsDeleted'), JSON_ARRAY())"
+                + "), '$[*]' COLUMNS (field_name VARCHAR(1024) PATH '$.name')) field_changes "
+                + "WHERE field_name = :fieldPath"
+                + ")))",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_extension e WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND (jsonb_exists(e.changedFieldKeys, :fieldPath) "
+                + "OR (e.changedFieldKeys IS NULL AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements("
+                + "COALESCE(e.json #> '{changeDescription,fieldsAdded}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsUpdated}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsDeleted}', '[]'::jsonb)"
+                + ") AS field_change "
+                + "WHERE field_change ->> 'name' = :fieldPath "
+                + ")))",
+        connectionType = POSTGRES)
+    int getExtensionCountByFieldChanged(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("fieldPath") String fieldPath);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT e.extension, e.json FROM entity_extension e "
+                + "WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM JSON_TABLE("
+                + "JSON_MERGE_PRESERVE("
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsAdded'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsUpdated'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsDeleted'), JSON_ARRAY())"
+                + "), '$[*]' COLUMNS (field_name VARCHAR(1024) PATH '$.name')) field_changes "
+                + "WHERE field_name = :fieldPath"
+                + ") "
+                + "ORDER BY CAST(SUBSTRING_INDEX(e.extension, '.version.', -1) AS DOUBLE) DESC, e.extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT e.extension, e.json FROM entity_extension e "
+                + "WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements("
+                + "COALESCE(e.json #> '{changeDescription,fieldsAdded}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsUpdated}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsDeleted}', '[]'::jsonb)"
+                + ") AS field_change "
+                + "WHERE field_change ->> 'name' = :fieldPath "
+                + ") "
+                + "ORDER BY split_part(e.extension, '.version.', 2)::DOUBLE PRECISION DESC, e.extension DESC "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsWithFieldChangedLegacy(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("fieldPath") String fieldPath,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_extension e WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM JSON_TABLE("
+                + "JSON_MERGE_PRESERVE("
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsAdded'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsUpdated'), JSON_ARRAY()), "
+                + "COALESCE(JSON_EXTRACT(e.json, '$.changeDescription.fieldsDeleted'), JSON_ARRAY())"
+                + "), '$[*]' COLUMNS (field_name VARCHAR(1024) PATH '$.name')) field_changes "
+                + "WHERE field_name = :fieldPath"
+                + ")",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_extension e WHERE e.id = :id "
+                + "AND e.extension LIKE CONCAT(:extensionPrefix, '.%') "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements("
+                + "COALESCE(e.json #> '{changeDescription,fieldsAdded}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsUpdated}', '[]'::jsonb) "
+                + "|| COALESCE(e.json #> '{changeDescription,fieldsDeleted}', '[]'::jsonb)"
+                + ") AS field_change "
+                + "WHERE field_change ->> 'name' = :fieldPath "
+                + ")",
+        connectionType = POSTGRES)
+    int getExtensionCountByFieldChangedLegacy(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("fieldPath") String fieldPath);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT(:extensionPrefix, '.%')")
+    int getExtensionCount(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
