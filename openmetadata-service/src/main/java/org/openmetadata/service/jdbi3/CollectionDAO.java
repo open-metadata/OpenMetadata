@@ -4794,6 +4794,25 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT count(*) FROM pipeline_entity <cond>")
     int listCountWithStatus(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE pipeline_entity SET json = jsonb_set(json, '{pipelineStatus}', :statusJson::jsonb) "
+                + "WHERE fqnHash = :fqnHash AND ("
+                + "(json -> 'pipelineStatus') IS NULL OR "
+                + "COALESCE((json -> 'pipelineStatus' ->> 'timestamp')::bigint, 0) < :incomingTimestamp)",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE pipeline_entity SET json = JSON_SET(json, '$.pipelineStatus', CAST(:statusJson AS JSON)) "
+                + "WHERE fqnHash = :fqnHash AND ("
+                + "JSON_EXTRACT(json, '$.pipelineStatus') IS NULL OR "
+                + "COALESCE(CAST(JSON_EXTRACT(json, '$.pipelineStatus.timestamp') AS SIGNED), 0) < :incomingTimestamp)",
+        connectionType = MYSQL)
+    int updatePipelineStatusAtomic(
+        @Bind("fqnHash") String fqnHash,
+        @Bind("statusJson") String statusJson,
+        @Bind("incomingTimestamp") long incomingTimestamp);
   }
 
   interface ClassificationDAO extends EntityDAO<Classification> {

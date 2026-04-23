@@ -318,13 +318,62 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return status;
   }
 
+  public void addPipelineStatusAtomic(String fqn, PipelineStatus incomingStatus) {
+    String statusJson = JsonUtils.pojoToJson(incomingStatus);
+    String fqnHash = FullyQualifiedName.buildHash(fqn);
+
+    int rowsUpdated =
+        Entity.getJdbi()
+            .inTransaction(
+                handle -> {
+                  // 1. Mandatory History: Append to time-series using the transactional handle
+                  CollectionDAO.EntityExtensionTimeSeriesDAO transactionalTsDao =
+                      handle.attach(CollectionDAO.EntityExtensionTimeSeriesDAO.class);
+                  transactionalTsDao.insert(
+                      fqn, PIPELINE_STATUS_EXTENSION, "pipelineStatus", statusJson);
+
+                  // 2. Execution: Direct atomic partial update using the same transactional handle
+                  CollectionDAO.PipelineDAO transactionalPipelineDao = handle.attach(CollectionDAO.PipelineDAO.class);
+                  return transactionalPipelineDao.updatePipelineStatusAtomic(
+                      fqnHash, statusJson, incomingStatus.getTimestamp());
+                });
+
+    if (rowsUpdated > 0) {
+      LOG.info(
+          "[OpenLineage] Decision: ATOMIC_UPDATE_SUCCESS. Pipeline: {}, TS: {}",
+          fqn,
+          incomingStatus.getTimestamp());
+
+      // 3. Side Effects: Indexing and RDF (Best effort, outside the DB transaction)
+      try {
+        Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
+        if (pipeline != null) {
+          // Use the status from the DB (which we just wrote) for consistency
+          indexPipelineExecutionInES(pipeline, pipeline.getPipelineStatus());
+          if (RdfUpdater.isEnabled()) {
+            storePipelineExecutionInRdf(pipeline, pipeline.getPipelineStatus());
+          }
+          searchRepository.updateEntityIndex(pipeline);
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "[OpenLineage] Post-transaction side effects failed for {}: {}", fqn, e.getMessage());
+      }
+    } else {
+      LOG.debug(
+          "[OpenLineage] Decision: MONOTONIC_IGNORE. Pipeline: {}, IncomingTS: {}",
+          fqn,
+          incomingStatus.getTimestamp());
+    }
+  }
+
   public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
 
     // validate all the Tasks
-    for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+    for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
       validateTask(pipeline, taskStatus.getName());
     }
 
@@ -351,7 +400,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
-    pipeline.setPipelineStatus(pipelineStatus);
+
+    PipelineStatus latestStatus = pipelineStatus;
+    String latestStatusJson = getLatestExtensionFromTimeSeries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+    if (latestStatusJson != null) {
+      PipelineStatus storedLatest = JsonUtils.readValue(latestStatusJson, PipelineStatus.class);
+      if (storedLatest != null && storedLatest.getTimestamp() != null && latestStatus.getTimestamp() != null
+          && storedLatest.getTimestamp() > latestStatus.getTimestamp()) {
+        latestStatus = storedLatest;
+      }
+    }
+
+    pipeline.setPipelineStatus(latestStatus);
     pipeline.setChangeDescription(change);
     pipeline.setIncrementalChangeDescription(change);
 
@@ -377,7 +437,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
-        pipeline.withPipelineStatus(pipelineStatus).withUpdatedAt(System.currentTimeMillis()),
+        pipeline.withPipelineStatus(latestStatus).withUpdatedAt(System.currentTimeMillis()),
         ENTITY_UPDATED);
   }
 
@@ -412,6 +472,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     if (RdfUpdater.isEnabled() && latestStatus != null) {
       storePipelineExecutionInRdf(pipeline, latestStatus);
+    }
+
+    String latestStatusJson = getLatestExtensionFromTimeSeries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+    if (latestStatusJson != null) {
+      PipelineStatus storedLatest = JsonUtils.readValue(latestStatusJson, PipelineStatus.class);
+      if (storedLatest != null && storedLatest.getTimestamp() != null && latestStatus != null && latestStatus.getTimestamp() != null
+          && storedLatest.getTimestamp() > latestStatus.getTimestamp()) {
+        latestStatus = storedLatest;
+      }
     }
 
     pipeline.setPipelineStatus(latestStatus);
