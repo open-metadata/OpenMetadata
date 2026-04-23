@@ -166,6 +166,17 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Pipeline getVersion(UUID id, Double version) {
     return SdkClients.adminClient().pipelines().getVersion(id.toString(), version);
   }

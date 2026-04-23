@@ -350,7 +350,8 @@ class TestDatalakeAzureBlobClientTableMethods(unittest.TestCase):
         mock_container_client.list_blobs.assert_called_once_with(
             name_starts_with="atlas-wind/"
         )
-        self.assertEqual(result, ["atlas-wind/file1.csv", "atlas-wind/file2.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["atlas-wind/file1.csv", "atlas-wind/file2.csv"])
 
     def test_get_table_names_with_no_prefix(self):
         """
@@ -380,10 +381,11 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
         self.mock_blob_service_client = MagicMock()
         self.client = DatalakeAzureBlobClient(client=self.mock_blob_service_client)
 
-    def _make_blob(self, name, blob_tier=None):
+    def _make_blob(self, name, blob_tier=None, size=1024):
         blob = MagicMock()
         blob.name = name
         blob.blob_tier = blob_tier
+        blob.size = size
         return blob
 
     def test_get_table_names_skip_cold_storage_filters_cold_tiers(self):
@@ -410,7 +412,8 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["hot_file.csv", "no_tier_file.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["hot_file.csv", "no_tier_file.csv"])
 
     def test_get_table_names_skip_cold_storage_false_returns_all(self):
         """
@@ -433,7 +436,8 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result, ["hot_file.csv", "archive_file.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["hot_file.csv", "archive_file.csv"])
 
     def test_get_table_names_default_skip_cold_storage_is_false(self):
         """
@@ -451,7 +455,8 @@ class TestDatalakeAzureBlobClientColdStorage(unittest.TestCase):
 
         result = list(self.client.get_table_names(bucket_name="container", prefix=None))
 
-        self.assertEqual(result, ["archive_file.csv"])
+        result_keys = [r[0] for r in result]
+        self.assertEqual(result_keys, ["archive_file.csv"])
 
     def test_get_table_names_skip_cold_filters_each_cold_tier(self):
         """

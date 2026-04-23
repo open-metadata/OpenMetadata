@@ -474,6 +474,12 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       LOG.info("Domain FQN changed from {} to {}", oldFqn, newFqn);
 
+      // Drop cache entries for every descendant before we rewrite the DB: child domains and any
+      // data product under this domain. Must happen BEFORE updateFqn so the descendant lookup
+      // matches the old FQN prefix. The publish() fan-out handles peer instances.
+      invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+      invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
 
@@ -484,6 +490,28 @@ public class DomainRepository extends EntityRepository<Domain> {
       updateEntityLinks(oldFqn, newFqn, updated);
       updateSearchIndexes(oldFqn, newFqn, updated);
       updateTagUsage(oldFqn, newFqn);
+
+      // Any asset (table/dashboard/...) that carries this domain in its `domains` reference
+      // now has a stale FQN embedded in its cache. Invalidate them so next read rebuilds with
+      // the new FQN. Covers both the renamed domain and every descendant domain we just bulk-
+      // updated above.
+      invalidateDomainReferencers(updated.getId());
+      for (Domain child : getNestedDomains(updated)) {
+        invalidateDomainReferencers(child.getId());
+      }
+    }
+
+    private void invalidateDomainReferencers(UUID domainId) {
+      // Pull the referencer FQN from the relationship record JSON so the by-name cache variant
+      // is evicted alongside the by-id one. Without it, GET-by-name for assets that embed this
+      // domain would keep returning the stale domain reference until TTL.
+      List<CollectionDAO.EntityRelationshipRecord> referencers =
+          daoCollection
+              .relationshipDAO()
+              .findTo(domainId, Entity.DOMAIN, Relationship.HAS.ordinal());
+      for (CollectionDAO.EntityRelationshipRecord record : referencers) {
+        invalidateCacheForReferencedEntity(record);
+      }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Domain updated) {
@@ -492,17 +520,15 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       // Update feed entity links for the domain
       EntityLink newAbout = new EntityLink(DOMAIN, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       // Update feed entity links for all child domains
       List<Domain> childDomains = getNestedDomains(updated);
       for (Domain child : childDomains) {
         EntityLink childAbout = new EntityLink(DOMAIN, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(childAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
       }
     }
 

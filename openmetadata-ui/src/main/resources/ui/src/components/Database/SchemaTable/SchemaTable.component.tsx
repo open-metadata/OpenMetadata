@@ -56,10 +56,6 @@ import {
   Column,
   Table as TableType,
 } from '../../../generated/entity/data/table';
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../../generated/entity/feed/suggestion';
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -75,6 +71,7 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
+import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getEntityBulkEditPath,

@@ -20,11 +20,7 @@ from sqlalchemy import Table as SqaTable
 from sqlalchemy import text
 from sqlalchemy.orm import Query
 
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -33,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
@@ -96,12 +93,14 @@ class BigQuerySampler(SQASampler):
         Args:
             selectable (Table): Table object
         """
+        static = self.sample_config.get_static_config()
         if (
-            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            static
+            and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
             return selectable.tablesample(
-                text(f"{self.sample_config.profileSample or 100} PERCENT")
+                text(f"{static.profileSample or 100} PERCENT")
             )
 
         return selectable
@@ -136,8 +135,10 @@ class BigQuerySampler(SQASampler):
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
+        static = self.sample_config.get_static_config()
         if (
-            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            static
+            and static.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
             return self._base_sample_query(column).cte(

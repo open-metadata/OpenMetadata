@@ -298,7 +298,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     Set<String> visited = new java.util.HashSet<>();
     Set<String> recursionStack = new java.util.HashSet<>();
 
-    // Check for cycles and collect reachable nodes
     if (hasCycleDFS(startNode, outgoingEdges, visited, recursionStack)) {
       throw BadRequestException.of(
           String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
@@ -318,7 +317,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   /**
    * Depth-First Search to detect cycles in directed graph.
-   * Returns true if a cycle is detected.
    *
    * @param node Current node being visited
    * @param adjacencyList Graph representation
@@ -369,6 +367,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       workflow.setSuspended(true);
       dao.update(workflow);
+      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -392,6 +391,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       workflow.setSuspended(false);
       dao.update(workflow);
+      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
@@ -684,6 +684,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                   workflowName, node.getNodeDisplayName()));
         }
 
+        if (USER_APPROVAL_TASK.equals(node.getSubType())) {
+          List<String> configuredTransitions = getConfiguredUserApprovalTransitions(node);
+          if (!configuredTransitions.isEmpty()) {
+            validateUserApprovalTransitions(
+                workflowName, node.getNodeDisplayName(), configuredTransitions, outgoingEdges);
+            continue;
+          }
+        }
+
         // Check if we have both TRUE and FALSE conditions
         boolean hasTrueCondition = false;
         boolean hasFalseCondition = false;
@@ -718,5 +727,69 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return "checkEntityAttributesTask".equals(nodeType)
         || "userApprovalTask".equals(nodeType)
         || "checkChangeDescriptionTask".equals(nodeType);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<String> getConfiguredUserApprovalTransitions(WorkflowNodeDefinitionInterface node) {
+    if (node.getConfig() == null) {
+      return List.of();
+    }
+
+    Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+    Object transitionMetadata = config.get("transitionMetadata");
+    if (transitionMetadata == null) {
+      return List.of();
+    }
+
+    List<Map<String, Object>> transitions =
+        JsonUtils.readOrConvertValue(transitionMetadata, List.class);
+    List<String> transitionIds = new ArrayList<>();
+    for (Map<String, Object> transition : transitions) {
+      if (transition == null) {
+        continue;
+      }
+      Object transitionId = transition.get("id");
+      if (transitionId instanceof String id && !id.isBlank()) {
+        transitionIds.add(id.trim());
+      }
+    }
+    return transitionIds;
+  }
+
+  private void validateUserApprovalTransitions(
+      String workflowName,
+      String nodeDisplayName,
+      List<String> configuredTransitions,
+      List<EdgeDefinition> outgoingEdges) {
+    Set<String> configuredTransitionSet = Set.copyOf(configuredTransitions);
+    Set<String> outgoingConditions = new java.util.HashSet<>();
+    for (EdgeDefinition edge : outgoingEdges) {
+      if (edge.getCondition() != null && !edge.getCondition().isBlank()) {
+        outgoingConditions.add(edge.getCondition().trim());
+      }
+    }
+
+    List<String> missingTransitions =
+        configuredTransitions.stream()
+            .filter(transitionId -> !outgoingConditions.contains(transitionId))
+            .toList();
+    if (!missingTransitions.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' must have outgoing sequence flows for every configured transition. Missing conditions for %s",
+              workflowName, nodeDisplayName, missingTransitions));
+    }
+
+    List<String> unexpectedConditions =
+        outgoingConditions.stream()
+            .filter(condition -> !configuredTransitionSet.contains(condition))
+            .sorted()
+            .toList();
+    if (!unexpectedConditions.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' has outgoing sequence flows with conditions not declared in transitionMetadata: %s",
+              workflowName, nodeDisplayName, unexpectedConditions));
+    }
   }
 }
