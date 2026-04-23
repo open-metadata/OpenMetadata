@@ -13,7 +13,7 @@ SSRS source module
 """
 import traceback
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -133,7 +133,7 @@ class SsrsSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.folder_path_map: Dict[str, str] = {}
-        self._report_definitions: Dict[str, SsrsReportDefinition] = {}
+        self._current_rdl: Optional[Tuple[str, SsrsReportDefinition]] = None
 
     def prepare(self):
         self.folder_path_map = {
@@ -157,32 +157,32 @@ class SsrsSource(DashboardServiceSource):
     def _get_report_definition(
         self, dashboard: SsrsReport
     ) -> Optional[SsrsReportDefinition]:
-        """Fetch and cache RDL lazily. Returns ``None`` when the report has no
-        sources or the RDL cannot be fetched/parsed."""
-        cached = self._report_definitions.get(dashboard.id)
-        if cached is not None:
-            return cached
+        """Fetch and cache the RDL for the dashboard currently being processed.
+
+        Uses a single-entry cache keyed by report id so memory is bounded at
+        O(1) across the ingestion run — the previous report's RDL is released
+        the moment a new report is requested.
+
+        ``SourceConnectionException`` propagates so that mark-deleted flows do
+        not drop entities during a transient SSRS outage. ``ValueError`` from a
+        malformed RDL is treated as a per-report problem and skipped."""
+        if self._current_rdl and self._current_rdl[0] == dashboard.id:
+            return self._current_rdl[1]
+        self._current_rdl = None
         if dashboard.has_data_sources is False:
             return None
-        try:
-            rdl_bytes = self.client.get_report_definition(dashboard.id)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                "Could not fetch RDL for report [%s]: %s", dashboard.name, exc
-            )
-            return None
+        rdl_bytes = self.client.get_report_definition(dashboard.id)
         if not rdl_bytes:
             return None
         try:
             parsed = parse_rdl(rdl_bytes)
-        except Exception as exc:
+        except ValueError as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 "Could not parse RDL for report [%s]: %s", dashboard.name, exc
             )
             return None
-        self._report_definitions[dashboard.id] = parsed
+        self._current_rdl = (dashboard.id, parsed)
         return parsed
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
@@ -389,15 +389,6 @@ class SsrsSource(DashboardServiceSource):
                     exc,
                 )
         return columns
-
-    def yield_dashboard_lineage(self, dashboard_details: SsrsReport):
-        """Base class loops over ``db_service_prefixes`` and calls
-        ``yield_dashboard_lineage_details`` once per prefix. We evict the
-        cached RDL once at the end so every prefix sees the same parsed RDL."""
-        try:
-            yield from super().yield_dashboard_lineage(dashboard_details)
-        finally:
-            self._report_definitions.pop(dashboard_details.id, None)
 
     def yield_dashboard_lineage_details(
         self,

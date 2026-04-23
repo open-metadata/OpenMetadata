@@ -103,6 +103,34 @@ class TestParseRdl:
         with pytest.raises(ValueError, match="DTD or entity"):
             parse_rdl(payload)
 
+    @pytest.mark.parametrize(
+        "variant",
+        [
+            b"<!DocType",
+            b"<!dOcTyPe",
+            b"<!DOCTYPE",
+            b"<!doctype",
+            b"<!Entity",
+            b"<!eNtItY",
+            b"<!ENTITY",
+            b"<!entity",
+        ],
+    )
+    def test_mixed_case_dtd_variants_rejected(self, variant):
+        payload = b'<?xml version="1.0"?>' + variant + b' x "y"><Report />'
+        with pytest.raises(ValueError, match="DTD or entity"):
+            parse_rdl(payload)
+
+    def test_doctype_after_leading_comment_rejected(self):
+        padding = b"<!-- " + (b"x" * 8192) + b" -->"
+        payload = (
+            b'<?xml version="1.0"?>'
+            + padding
+            + b'<!DOCTYPE lolz [<!ENTITY lol "lol">]><Report />'
+        )
+        with pytest.raises(ValueError, match="DTD or entity"):
+            parse_rdl(payload)
+
     def test_namespace_2008_2010_2016_equivalence(self):
         template = (
             '<Report xmlns="{ns}">'

@@ -466,6 +466,115 @@ def _build_mock_client():
     return client
 
 
+class _StreamResponseStub:
+    """Minimal context-manager stand-in for ``requests.Response`` in streaming mode."""
+
+    def __init__(self, chunks, headers=None, status_code=200):
+        self._chunks = chunks
+        self.headers = headers or {}
+        self.status_code = status_code
+
+    @property
+    def ok(self) -> bool:
+        return 200 <= self.status_code < 400
+
+    def iter_content(self, chunk_size=None):
+        yield from self._chunks
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+class TestSsrsClientRdl:
+    def _client(self):
+        from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnection import (
+            SsrsConnection,
+        )
+
+        return SsrsClient(
+            SsrsConnection(
+                hostPort="http://ssrs.example.com/reports",
+                username="u",
+                password="p",
+            )
+        )
+
+    def test_get_report_definition_aborts_on_oversized_stream(self, monkeypatch):
+        from metadata.ingestion.source.dashboard.ssrs import client as client_module
+
+        monkeypatch.setattr(client_module, "MAX_RDL_BYTES", 100)
+        client = self._client()
+        oversized_chunks = [b"x" * 60, b"y" * 60]
+        client.session = MagicMock()
+        client.session.get = MagicMock(
+            return_value=_StreamResponseStub(
+                chunks=oversized_chunks,
+                headers={"Content-Type": "application/xml"},
+            )
+        )
+        assert client.get_report_definition("big-report") is None
+        client.session.get.assert_called()
+        assert client.session.get.call_args.kwargs["stream"] is True
+
+    def test_get_report_definition_raises_on_permission_error(self):
+        client = self._client()
+        client.session = MagicMock()
+        client.session.get = MagicMock(
+            side_effect=[
+                _StreamResponseStub(chunks=iter([]), status_code=403),
+                _StreamResponseStub(chunks=iter([]), status_code=403),
+            ]
+        )
+        with pytest.raises(SourceConnectionException):
+            client.get_report_definition("no-access")
+
+    def test_get_report_definition_raises_on_server_error(self):
+        client = self._client()
+        client.session = MagicMock()
+        client.session.get = MagicMock(
+            side_effect=[
+                _StreamResponseStub(chunks=iter([]), status_code=500),
+                _StreamResponseStub(chunks=iter([]), status_code=500),
+            ]
+        )
+        with pytest.raises(SourceConnectionException):
+            client.get_report_definition("broken")
+
+    def test_get_report_definition_404_triggers_silent_fallback(self):
+        client = self._client()
+        client.session = MagicMock()
+        client.session.get = MagicMock(
+            side_effect=[
+                _StreamResponseStub(chunks=iter([]), status_code=404),
+                _StreamResponseStub(chunks=iter([]), status_code=404),
+            ]
+        )
+        assert client.get_report_definition("missing") is None
+
+    def test_get_report_definition_rejects_by_content_length_before_reading(
+        self, monkeypatch
+    ):
+        from metadata.ingestion.source.dashboard.ssrs import client as client_module
+
+        monkeypatch.setattr(client_module, "MAX_RDL_BYTES", 100)
+        client = self._client()
+
+        def exploding_chunks():
+            raise AssertionError("body should not be read when Content-Length trips")
+            yield
+
+        stub = _StreamResponseStub(
+            chunks=exploding_chunks(),
+            headers={"Content-Length": "999", "Content-Type": "application/xml"},
+        )
+        client.session = MagicMock()
+        client.session.get = MagicMock(return_value=stub)
+        assert client.get_report_definition("big-by-header") is None
+
+
 class TestSsrsClientPagination:
     def test_get_reports_single_page(self):
         client = _build_mock_client()
@@ -735,7 +844,7 @@ def _set_context(source, **kwargs):
 
 class TestSsrsYieldDatamodel:
     def _prepare(self, ssrs_source, rdl):
-        ssrs_source._report_definitions = {MOCK_REPORTS[0].id: rdl}
+        ssrs_source._current_rdl = (MOCK_REPORTS[0].id, rdl)
         ssrs_source.source_config.includeDataModels = True
 
     def test_emits_one_per_dataset(self, ssrs_source):
@@ -767,19 +876,21 @@ class TestSsrsYieldDatamodel:
         assert results[0].right.sql is None
 
     def test_skipped_when_include_data_models_false(self, ssrs_source):
-        ssrs_source._report_definitions = {MOCK_REPORTS[0].id: RDL_SALES}
+        ssrs_source._current_rdl = (MOCK_REPORTS[0].id, RDL_SALES)
         ssrs_source.source_config.includeDataModels = False
         assert list(ssrs_source.yield_datamodel(MOCK_REPORTS[0])) == []
 
     def test_no_rdl_cached(self, ssrs_source):
-        ssrs_source._report_definitions = {}
+        ssrs_source._current_rdl = None
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_report_definition = MagicMock(return_value=None)
         ssrs_source.source_config.includeDataModels = True
         assert list(ssrs_source.yield_datamodel(MOCK_REPORTS[0])) == []
 
 
 class TestSsrsLineage:
     def _prepare(self, ssrs_source, rdl, *, include_data_models=True):
-        ssrs_source._report_definitions = {MOCK_REPORTS[0].id: rdl}
+        ssrs_source._current_rdl = (MOCK_REPORTS[0].id, rdl)
         ssrs_source.source_config.includeDataModels = include_data_models
         datamodel_entity = SimpleNamespace(
             id=SimpleNamespace(root="dm-uuid"), fullyQualifiedName=None
@@ -862,17 +973,40 @@ class TestSsrsLineage:
                     )
                 )
         assert captured_services == ["service_a", "service_b", "service_c"]
-        assert MOCK_REPORTS[0].id in ssrs_source._report_definitions
+        assert ssrs_source._current_rdl[0] == MOCK_REPORTS[0].id
 
-    def test_yield_dashboard_lineage_evicts_rdl_after_all_prefixes(self, ssrs_source):
-        """Eviction moved from yield_dashboard_lineage_details to the outer
-        yield_dashboard_lineage so it fires once per dashboard, not per prefix."""
+    def test_single_entry_cache_displaces_previous_report(self, ssrs_source):
+        """The cache is bounded to one entry by construction — fetching a new
+        report's RDL evicts the previous one automatically."""
         self._prepare(ssrs_source, RDL_SALES)
-        ssrs_source.context.get().__dict__["dashboard"] = MOCK_REPORTS[0].id
-        ssrs_source.context.get().__dict__["dataModels"] = []
-        assert MOCK_REPORTS[0].id in ssrs_source._report_definitions
-        list(ssrs_source.yield_dashboard_lineage(MOCK_REPORTS[0]))
-        assert MOCK_REPORTS[0].id not in ssrs_source._report_definitions
+        assert ssrs_source._current_rdl[0] == MOCK_REPORTS[0].id
+        new_report = SsrsReport(
+            Id="report-next",
+            Name="Next",
+            Path="/next",
+            HasDataSources=True,
+        )
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_report_definition = MagicMock(return_value=None)
+        ssrs_source._get_report_definition(new_report)
+        assert ssrs_source._current_rdl is None
+
+    def test_source_connection_error_propagates(self, ssrs_source):
+        """Transient SSRS failures must propagate so mark-deleted does not drop
+        entities during an outage."""
+        ssrs_source._current_rdl = None
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_report_definition = MagicMock(
+            side_effect=SourceConnectionException("SSRS is down")
+        )
+        report = SsrsReport(
+            Id="r-outage",
+            Name="Outage",
+            Path="/outage",
+            HasDataSources=True,
+        )
+        with pytest.raises(SourceConnectionException):
+            ssrs_source._get_report_definition(report)
 
     def test_skips_expression_command(self, ssrs_source):
         self._prepare(ssrs_source, RDL_EXPRESSION)
@@ -1016,7 +1150,9 @@ class TestSsrsLineage:
         assert Dialect.ORACLE in mock_parser.call_args.args
 
     def test_no_rdl_yields_nothing(self, ssrs_source):
-        ssrs_source._report_definitions = {}
+        ssrs_source._current_rdl = None
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_report_definition = MagicMock(return_value=None)
         ssrs_source.source_config.includeDataModels = True
         assert list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0])) == []
 

@@ -13,6 +13,7 @@ SSRS REST client
 """
 import base64
 import binascii
+import json
 from typing import Iterable, Iterator, Optional, Union
 
 import requests
@@ -147,16 +148,17 @@ class SsrsClient:
         """Return the RDL XML bytes for a report, or ``None`` if unavailable.
 
         Tries ``/Reports({id})/Content/$value`` first, then ``/CatalogItems({id})/Content``.
-        Not-found responses (404/400) trigger fallback silently; transport errors
-        propagate so operators see outages instead of empty catalogs."""
+        Only 404 triggers silent fallback; permission errors (401/403), server errors
+        (5xx after retries), and transport errors raise ``SourceConnectionException`` so
+        operators see outages instead of silently deleted entities."""
         last_err: Optional[Exception] = None
         for template in RDL_CONTENT_PATHS:
             path = template.format(id=report_id)
             try:
                 body = self._fetch_report_content(path)
-            except requests.RequestException as exc:
+            except (requests.RequestException, SourceConnectionException) as exc:
                 last_err = exc
-                logger.warning("RDL fetch transport error for %s: %s", path, exc)
+                logger.warning("RDL fetch failed for %s: %s", path, exc)
                 continue
             if body is not None:
                 return body
@@ -168,19 +170,45 @@ class SsrsClient:
 
     def _fetch_report_content(self, path: str) -> Optional[bytes]:
         url = f"{self.base_url}{path}"
-        resp = self.session.get(
+        with self.session.get(
             url,
             timeout=(CONNECT_TIMEOUT, RDL_READ_TIMEOUT),
             headers={"Accept": "application/xml,application/octet-stream"},
-        )
-        if resp.status_code in RDL_NOT_FOUND_STATUS:
+            stream=True,
+        ) as resp:
+            if resp.status_code in RDL_NOT_FOUND_STATUS:
+                return None
+            if not resp.ok:
+                raise SourceConnectionException(
+                    f"RDL fetch returned HTTP {resp.status_code} for {path}"
+                )
+            if _exceeds_size_limit(resp, path):
+                return None
+            body = _read_bounded_body(resp, path)
+            if body is None:
+                return None
+            return _decode_rdl_body(
+                body,
+                (resp.headers.get("Content-Type") or "").lower(),
+                path,
+            )
+
+
+def _read_bounded_body(resp: requests.Response, path: str) -> Optional[bytes]:
+    """Stream response body into memory, aborting if it exceeds ``MAX_RDL_BYTES``."""
+    buffer = bytearray()
+    for chunk in resp.iter_content(chunk_size=65536):
+        if not chunk:
+            continue
+        if len(buffer) + len(chunk) > MAX_RDL_BYTES:
+            logger.warning(
+                "RDL at %s exceeds size limit (>%s bytes); aborting download",
+                path,
+                MAX_RDL_BYTES,
+            )
             return None
-        if not resp.ok:
-            logger.warning("RDL fetch returned HTTP %s for %s", resp.status_code, path)
-            return None
-        if _exceeds_size_limit(resp, path):
-            return None
-        return _decode_rdl_response(resp, path)
+        buffer.extend(chunk)
+    return bytes(buffer)
 
 
 def _exceeds_size_limit(resp: requests.Response, path: str) -> bool:
@@ -202,14 +230,16 @@ def _exceeds_size_limit(resp: requests.Response, path: str) -> bool:
     return False
 
 
-def _decode_rdl_response(resp: requests.Response, path: str) -> Optional[bytes]:
-    content_type = (resp.headers.get("Content-Type") or "").lower()
+def _decode_rdl_body(body: bytes, content_type: str, path: str) -> Optional[bytes]:
+    """Decode an already-read response body. If JSON-wrapped base64, unwrap it."""
+    if not body:
+        return None
     if "json" not in content_type:
-        return _truncate_to_limit(resp.content, path) if resp.content else None
+        return body
     try:
-        payload = resp.json()
+        payload = json.loads(body)
     except ValueError:
-        return _truncate_to_limit(resp.content, path) if resp.content else None
+        return body
     value = payload.get("Value") if isinstance(payload, dict) else None
     if not value:
         logger.warning("RDL JSON response missing 'Value' field at %s", path)
@@ -219,16 +249,12 @@ def _decode_rdl_response(resp: requests.Response, path: str) -> Optional[bytes]:
     except (binascii.Error, ValueError) as exc:
         logger.warning("Malformed base64 in RDL response at %s: %s", path, exc)
         return None
-    return _truncate_to_limit(decoded, path)
-
-
-def _truncate_to_limit(body: bytes, path: str) -> Optional[bytes]:
-    if len(body) > MAX_RDL_BYTES:
+    if len(decoded) > MAX_RDL_BYTES:
         logger.warning(
-            "RDL at %s exceeds size limit (%s bytes > %s); skipping to avoid OOM",
+            "RDL at %s exceeds size limit after base64 decode (%s > %s)",
             path,
-            len(body),
+            len(decoded),
             MAX_RDL_BYTES,
         )
         return None
-    return body
+    return decoded
