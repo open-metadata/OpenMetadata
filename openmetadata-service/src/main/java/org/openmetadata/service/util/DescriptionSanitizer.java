@@ -98,7 +98,7 @@ public final class DescriptionSanitizer {
           .globally()
           // Entity mention/hashtag/link attributes on anchor tags (BlockEditor)
           .allowAttributes(
-              "data-type", "data-label", "data-fqn", "data-entitytype", "data-textcontent")
+              "data-type", "data-label", "data-fqn", "data-entitytype")
           .onElements("a")
           // File attachment and callout node attributes (BlockEditor div-based nodes)
           // Note: data-temp-file is intentionally excluded — it holds transient upload state
