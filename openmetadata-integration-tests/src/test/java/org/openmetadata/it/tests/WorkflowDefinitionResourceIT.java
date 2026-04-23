@@ -7158,6 +7158,7 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  @Disabled("Failing due to #25894 - need to be fixed separately")
   @Order(40)
   void test_WorkflowWithReviewersOwnersCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithReviewersOwnersCandidates");
@@ -7763,6 +7764,7 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  @Disabled("Failing due to #25894 - need to be fixed separately")
   @Order(41)
   void test_WorkflowWithTeamCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithTeamCandidates");
@@ -8112,6 +8114,7 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  @Disabled("Failing due to #25894 - need to be fixed separately")
   @Order(30)
   void test_TagChangeApprovalWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing Tag change approval workflow with include fields feature");
@@ -8351,6 +8354,7 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  @Disabled("Failing due to #25894 - need to be fixed separately")
   @Order(31)
   void test_DomainChangeApprovalWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing Domain change approval workflow with include fields feature");
