@@ -358,7 +358,7 @@ class SsrsSource(DashboardServiceSource):
             name=EntityName(datamodel_name),
             displayName=dataset.name,
             service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-            dataModelType=DataModelType.SsrsDataModel.value,
+            dataModelType=DataModelType.PowerBIDataModel.value,
             serviceType=self.service_connection.type.value,
             sql=SqlQuery(sql) if sql else None,
             columns=self._build_datamodel_columns(dataset),
