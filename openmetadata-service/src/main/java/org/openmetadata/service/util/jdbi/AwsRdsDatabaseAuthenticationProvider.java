@@ -30,6 +30,7 @@ public class AwsRdsDatabaseAuthenticationProvider
   private final Map<String, AwsCredentialsProvider> credentialsProviderCache =
       new ConcurrentHashMap<>();
   private final Map<String, StsClient> stsClientCache = new ConcurrentHashMap<>();
+  private final Map<String, RdsUtilities> rdsUtilitiesCache = new ConcurrentHashMap<>();
   private static final AwsCredentialsProvider DEFAULT_CREDENTIALS_PROVIDER =
       DefaultCredentialsProvider.create();
 
@@ -67,10 +68,7 @@ public class AwsRdsDatabaseAuthenticationProvider
               .build();
 
       // Return token
-      return RdsUtilities.builder()
-          .region(Region.of(awsRegion))
-          .build()
-          .generateAuthenticationToken(request);
+      return getRdsUtilities(awsRegion).generateAuthenticationToken(request);
 
     } catch (MalformedURLException e) {
       // Throw
@@ -78,6 +76,11 @@ public class AwsRdsDatabaseAuthenticationProvider
     } catch (Exception e) {
       throw new DatabaseAuthenticationProviderException("Failed to generate AWS RDS IAM token", e);
     }
+  }
+
+  private RdsUtilities getRdsUtilities(final String awsRegion) {
+    return rdsUtilitiesCache.computeIfAbsent(
+        awsRegion, region -> RdsUtilities.builder().region(Region.of(region)).build());
   }
 
   private AwsCredentialsProvider getCredentialsProvider(
@@ -114,16 +117,21 @@ public class AwsRdsDatabaseAuthenticationProvider
 
   @Override
   public void close() {
-    credentialsProviderCache.values().forEach(p -> {
-        if (p instanceof AutoCloseable closeable) {
-            try {
-                closeable.close();
-            } catch (Exception ignored) {
-            }
-        }
-    });
+    credentialsProviderCache
+        .values()
+        .forEach(
+            p -> {
+              if (p instanceof AutoCloseable closeable) {
+                try {
+                  closeable.close();
+                } catch (Exception ignored) {
+                  // Ignored
+                }
+              }
+            });
     stsClientCache.values().forEach(StsClient::close);
     credentialsProviderCache.clear();
     stsClientCache.clear();
+    rdsUtilitiesCache.clear();
   }
 }

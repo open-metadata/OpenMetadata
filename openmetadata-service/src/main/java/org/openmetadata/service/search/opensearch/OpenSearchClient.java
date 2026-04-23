@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsIamAuthEnabl
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URI;
 import java.security.KeyStoreException;
 import java.util.HashMap;
 import java.util.List;
