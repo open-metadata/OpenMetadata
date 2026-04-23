@@ -212,6 +212,14 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     int failed = 0;
     long start = System.currentTimeMillis();
     while (!stopped) {
+      if (!cacheProvider.available()) {
+        // A prior batch tripped the provider to unavailable. Iterating further would silently
+        // drop every subsequent pipelineSet/Hset (their guard `if (!available) return;` fires)
+        // while the accounting below still counted pages as success. Bail out — the health
+        // checker will flip the flag back if Redis recovers; rerun the app to resume warmup.
+        LOG.warn("Cache provider unavailable, aborting warmup for {}", entityType);
+        break;
+      }
       List<String> page;
       try {
         page = dao.listAfterWithOffset(batchSize, offset);
