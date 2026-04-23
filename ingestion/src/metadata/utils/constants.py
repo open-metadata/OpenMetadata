@@ -56,11 +56,11 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
 )
-from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
-    SalesforceType,
-)
 from metadata.generated.schema.entity.services.connections.database.odooConnection import (
     OdooType,
+)
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceType,
 )
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
     SapErpType,

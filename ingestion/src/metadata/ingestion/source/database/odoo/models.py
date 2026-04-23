@@ -21,6 +21,7 @@ class OdooField(BaseModel):
     """
     Odoo Field model from ir.model.fields
     """
+
     name: str
     field_description: Optional[Union[str, bool]] = None
     ttype: Optional[str] = None
@@ -32,6 +33,7 @@ class OdooModel(BaseModel):
     """
     Odoo Model from ir.model
     """
+
     model: str
     name: Optional[Union[str, bool]] = None
     info: Optional[Union[str, bool]] = None

@@ -209,9 +209,7 @@ class OdooClient:
             return records or []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch fields for model '{model_name}': {exc}"
-            )
+            logger.warning(f"Failed to fetch fields for model '{model_name}': {exc}")
             return []
 
     def get_all_models(self) -> List[Dict[str, Any]]:

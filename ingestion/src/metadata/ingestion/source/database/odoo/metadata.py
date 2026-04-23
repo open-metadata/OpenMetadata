@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     Constraint,
     DataType,
+    Table,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.odooConnection import (
@@ -101,7 +102,9 @@ class OdooSource(CommonDbSourceService):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=database_name, error=str(exc), stackTrace=traceback.format_exc()
+                    name=database_name,
+                    error=str(exc),
+                    stackTrace=traceback.format_exc(),
                 )
             )
 
@@ -146,19 +149,38 @@ class OdooSource(CommonDbSourceService):
             try:
                 model = OdooModel(**model_dict)
                 table_name = model.model
-                
-                if filter_by_table(self.source_config.tableFilterPattern, table_name):
-                    self.status.filter(table_name, "Table Filtered Out")
+
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    table_name=table_name,
+                    skip_es_search=True,
+                )
+
+                if filter_by_table(
+                    self.source_config.tableFilterPattern,
+                    (
+                        table_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table_name
+                    ),
+                ):
+                    self.status.filter(table_fqn, "Table Filtered Out")
                     continue
-                    
-                self._model_descriptions[table_name] = model.name if isinstance(model.name, str) else ""
+
+                self._model_descriptions[table_name] = (
+                    model.name if isinstance(model.name, str) else ""
+                )
                 yield table_name, TableType.Regular
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unable to process model information: {err}")
 
     @calculate_execution_time_generator()
-    def yield_table(
+    def yield_table(  # pylint: disable=too-many-locals
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
@@ -169,21 +191,25 @@ class OdooSource(CommonDbSourceService):
         schema_name = self.context.get().database_schema
         try:
             fields_data = self.connection_obj.get_model_fields(table_name)
-            
+
             om_columns = []
             for ordinal, field_dict in enumerate(fields_data or [], start=1):
                 field = OdooField(**field_dict)
                 col_type = ODOO_TO_OPENMETADATA_TYPE_MAP.get(
                     field.ttype, DataType.UNKNOWN.name
                 )
-                
+
                 # Format relations in datatype display
                 data_type_display = field.ttype
                 if field.relation and isinstance(field.relation, str):
                     data_type_display = f"{field.ttype} ({field.relation})"
 
                 # In case field_description is empty but we need a description
-                description = field.field_description if isinstance(field.field_description, str) else None
+                description = (
+                    field.field_description
+                    if isinstance(field.field_description, str)
+                    else None
+                )
 
                 om_columns.append(
                     Column(
@@ -193,7 +219,9 @@ class OdooSource(CommonDbSourceService):
                         dataType=col_type,
                         dataTypeDisplay=data_type_display,
                         ordinalPosition=ordinal,
-                        constraint=Constraint.NOT_NULL if field.required else Constraint.NULL,
+                        constraint=Constraint.NOT_NULL
+                        if field.required
+                        else Constraint.NULL,
                     )
                 )
 
@@ -224,6 +252,3 @@ class OdooSource(CommonDbSourceService):
                     name=table_name, error=error, stackTrace=traceback.format_exc()
                 )
             )
-
-    def close(self):
-        super().close()

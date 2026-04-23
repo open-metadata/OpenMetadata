@@ -47,11 +47,11 @@ import hiveConnection from '../jsons/connectionSchemas/connections/database/hive
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import iometeConnection from '../jsons/connectionSchemas/connections/database/iometeConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
-import odooConnection from '../jsons/connectionSchemas/connections/database/odooConnection.json';
 import microsoftFabricConnection from '../jsons/connectionSchemas/connections/database/microsoftFabricConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
+import odooConnection from '../jsons/connectionSchemas/connections/database/odooConnection.json';
 import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
 import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
