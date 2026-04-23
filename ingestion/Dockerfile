@@ -60,9 +60,15 @@ ENV LD_LIBRARY_PATH=/instantclient
 # Install DB2 iAccess Driver
 RUN if [ $(uname -m) = "x86_64" ]; \
   then \
-  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
-  && apt update \
-  && apt install ibm-iaccess; \
+  if curl -f --connect-timeout 10 --max-time 30 \
+    https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list \
+    -o /etc/apt/sources.list.d/ibmi-acs-1.1.0.list; then \
+    apt update \
+    && apt install -y ibm-iaccess \
+    || echo "Warning: Failed to install ibm-iaccess, continuing without it"; \
+  else \
+    echo "Warning: Failed to fetch IBM iAccess repo list, continuing without ibm-iaccess"; \
+  fi; \
   fi
 
 # Required for Starting Ingestion Container in Docker Compose

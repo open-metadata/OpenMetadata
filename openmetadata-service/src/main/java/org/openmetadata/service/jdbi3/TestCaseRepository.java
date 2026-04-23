@@ -145,7 +145,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
         fields.contains(TEST_SUITE_FIELD)
-            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM)
+            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM, true)
             : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
@@ -632,6 +632,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
+    validateLogicalTestSuites(test, update);
+
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
@@ -667,6 +669,50 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestSuite(testSuite);
   }
 
+  private void validateLogicalTestSuites(TestCase test, boolean update) {
+    List<TestSuite> testSuites = test.getTestSuites();
+    if (testSuites == null || testSuites.isEmpty()) return;
+
+    final Set<UUID> existingSuiteIds = new HashSet<>();
+    if (update && test.getId() != null) {
+      existingSuiteIds.addAll(
+          findFromRecords(test.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE).stream()
+              .map(CollectionDAO.EntityRelationshipRecord::getId)
+              .collect(Collectors.toSet()));
+    }
+
+    List<UUID> newSuiteIds =
+        testSuites.stream()
+            .filter(ts -> ts != null && ts.getId() != null)
+            .map(TestSuite::getId)
+            .filter(id -> !existingSuiteIds.contains(id))
+            .distinct()
+            .toList();
+
+    if (newSuiteIds.isEmpty()) {
+      return;
+    }
+
+    List<EntityReference> suiteReferences =
+        newSuiteIds.stream()
+            .map(id -> new EntityReference().withId(id).withType(TEST_SUITE))
+            .toList();
+    List<TestSuite> fetchedSuites = Entity.getEntities(suiteReferences, "basic", NON_DELETED);
+    Map<UUID, TestSuite> testSuiteById =
+        fetchedSuites.stream().collect(Collectors.toMap(TestSuite::getId, Function.identity()));
+
+    for (UUID suiteId : newSuiteIds) {
+      TestSuite testSuite = testSuiteById.get(suiteId);
+      if (testSuite == null) {
+        throw new EntityNotFoundException(entityNotFound(TEST_SUITE, suiteId));
+      }
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
+        throw new IllegalArgumentException(
+            "You are trying to add test cases to a basic test suite.");
+      }
+    }
+  }
+
   /*
    * Get the test suite for a test case. We'll use the entity linked to the test case
    * to find the basic test suite. If it doesn't exist, create a new one.
@@ -679,7 +725,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface tableEntity) {
     try {
-      return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
+      return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO, false);
     } catch (EntityNotFoundException e) {
       var entityLink = EntityLink.parse(test.getEntityLink());
       var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
@@ -695,7 +741,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private EntityReference getTestSuite(UUID id, String to, String from, Direction direction)
+  private EntityReference getTestSuite(
+      UUID id, String to, String from, Direction direction, boolean allowMissingExecutable)
       throws EntityNotFoundException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records = new ArrayList<>();
@@ -703,11 +750,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       case FROM -> records = findFromRecords(id, to, Relationship.CONTAINS, from);
       case TO -> records = findToRecords(id, from, Relationship.CONTAINS, to);
     }
+    EntityReference firstSuite = null;
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
+      if (firstSuite == null) {
+        firstSuite = testSuite.getEntityReference();
+      }
       if (Boolean.TRUE.equals(testSuite.getBasic())) {
         return testSuite.getEntityReference();
       }
+    }
+    if (allowMissingExecutable) {
+      return firstSuite;
     }
     throw new EntityNotFoundException(
         String.format(
@@ -857,6 +911,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TEST_DEFINITION,
         TEST_CASE,
         Relationship.CONTAINS);
+    addLogicalTestSuiteRelationships(test);
   }
 
   @Override
@@ -878,6 +933,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
+    if (testCase == null
+        || testCase.getTestSuite() == null
+        || testCase.getTestSuite().getId() == null) {
+      return;
+    }
     var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
     var original = TestSuiteRepository.copyTestSuite(testSuite);
@@ -889,6 +949,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "*", ALL);
     var original = TestSuiteRepository.copyTestSuite(testSuite);
     testSuiteRepository.postUpdate(original, testSuite);
+  }
+
+  private void addLogicalTestSuiteRelationships(TestCase testCase) {
+    if (testCase == null || nullOrEmpty(testCase.getTestSuites())) return;
+
+    Set<UUID> suiteIds =
+        testCase.getTestSuites().stream()
+            .filter(ts -> ts != null && ts.getId() != null)
+            .map(TestSuite::getId)
+            .collect(Collectors.toSet());
+
+    for (UUID suiteId : suiteIds) {
+      addRelationship(suiteId, testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    }
   }
 
   @Transaction
@@ -1368,6 +1442,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   TEST_DEFINITION,
                   original.getTestDefinition(),
                   updated.getTestDefinition(),
+                  Relationship.CONTAINS,
+                  TEST_CASE,
+                  updated.getId()));
+      compareAndUpdate(
+          "testSuites",
+          () ->
+              updateFromRelationships(
+                  "testSuites",
+                  TEST_SUITE,
+                  getTestSuiteReferences(original.getTestSuites()),
+                  getTestSuiteReferences(updated.getTestSuites()),
                   Relationship.CONTAINS,
                   TEST_CASE,
                   updated.getId()));
@@ -2068,5 +2153,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .map(json -> JsonUtils.readValue(json, TestCaseParameterValue.class))
           .collect(Collectors.toList());
     }
+  }
+
+  private List<EntityReference> getTestSuiteReferences(List<TestSuite> testSuites) {
+    return nullOrEmpty(testSuites)
+        ? List.of()
+        : testSuites.stream()
+            .filter(testSuite -> testSuite != null && testSuite.getId() != null)
+            .map(TestSuite::getEntityReference)
+            .toList();
   }
 }

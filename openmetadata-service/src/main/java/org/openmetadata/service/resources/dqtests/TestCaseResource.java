@@ -53,6 +53,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
@@ -692,6 +693,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new CreateResourceContext<>(entityType, test),
         new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE_TESTS));
 
+    authorizeOptionalLogicalTestSuites(create, securityContext);
+
     OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS);
     ResourceContextInterface tableResourceContext =
@@ -761,6 +764,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     createTestCases.forEach(
         create -> {
+          authorizeOptionalLogicalTestSuites(create, securityContext);
           TestCase test =
               mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
           limits.enforceLimits(
@@ -860,6 +864,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpCreate, testCaseRC),
             new AuthRequest(testCaseOpUpdate, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
@@ -1581,6 +1586,32 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     if (Boolean.TRUE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
+    }
+  }
+
+  private void authorizeOptionalLogicalTestSuites(
+      CreateTestCase create, SecurityContext securityContext) {
+    if (create.getTestSuites() == null || create.getTestSuites().isEmpty()) return;
+
+    for (EntityReference suiteReference : create.getTestSuites()) {
+      if (nullOrEmpty(suiteReference) || nullOrEmpty(suiteReference.getId())) {
+        throw new IllegalArgumentException("Test suite reference must include a valid id.");
+      }
+      if (!nullOrEmpty(suiteReference.getType())
+          && !Entity.TEST_SUITE.equals(suiteReference.getType())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid test suite reference type '%s'. Expected '%s'.",
+                suiteReference.getType(), Entity.TEST_SUITE));
+      }
+      TestSuite testSuite =
+          Entity.getEntity(
+              Entity.TEST_SUITE,
+              suiteReference.getId(),
+              "domains,owners",
+              Include.NON_DELETED,
+              false);
+      validateTestSuiteOps(testSuite, securityContext);
     }
   }
 

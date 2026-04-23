@@ -26,6 +26,10 @@
     "entityLink": {
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
+    "testSuites": {
+      "description": "Logical test suites this test case belongs to. Basic suite membership is derived automatically from entityLink/testSuite and should not be provided here.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "parameterValues": {
       "type": "array",
       "items": {

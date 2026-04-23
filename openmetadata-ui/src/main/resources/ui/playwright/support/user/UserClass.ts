@@ -35,12 +35,14 @@ let dataStewardTeam: TeamClass;
 
 export class UserClass {
   data: UserData;
+  private readonly hasCustomData: boolean;
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
 
   constructor(data?: UserData) {
     this.data = data ? data : generateRandomUsername();
+    this.hasCustomData = Boolean(data);
   }
 
   async create(apiContext: APIRequestContext, assignRole = true) {
@@ -50,9 +52,28 @@ export class UserClass {
 
     const dataConsumerRole = await dataConsumerRoleResponse.json();
 
-    const response = await apiContext.post('/api/v1/users/signup', {
+    let response = await apiContext.post('/api/v1/users/signup', {
       data: this.data,
     });
+
+    if (!response.ok()) {
+      const errorText = await response.text();
+      const canRetryWithNewUser =
+        !this.hasCustomData &&
+        response.status() === 400 &&
+        errorText.includes('User with Email Already Exists');
+
+      if (canRetryWithNewUser) {
+        this.data = generateRandomUsername();
+        response = await apiContext.post('/api/v1/users/signup', {
+          data: this.data,
+        });
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${errorText}`
+        );
+      }
+    }
 
     if (!response.ok()) {
       throw new Error(

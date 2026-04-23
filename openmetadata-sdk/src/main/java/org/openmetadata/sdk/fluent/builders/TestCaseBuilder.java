@@ -166,6 +166,14 @@ public class TestCaseBuilder {
   }
 
   /**
+   * Set test suite references (logical suites) for this test case.
+   */
+  public TestCaseBuilder testSuites(List<EntityReference> testSuites) {
+    request.setTestSuites(testSuites);
+    return this;
+  }
+
+  /**
    * Build the CreateTestCase request without executing it.
    */
   public CreateTestCase build() {

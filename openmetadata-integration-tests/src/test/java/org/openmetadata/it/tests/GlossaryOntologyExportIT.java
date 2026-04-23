@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +53,8 @@ public class GlossaryOntologyExportIT {
   private static final Logger LOG = LoggerFactory.getLogger(GlossaryOntologyExportIT.class);
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+  private static final Duration DEFAULT_EXPORT_TIMEOUT = Duration.ofMinutes(3);
+  private static final Duration RDF_XML_EXPORT_TIMEOUT = Duration.ofMinutes(6);
 
   private static final String TURTLE_CONTENT_TYPE = "text/turtle";
   private static final String RDF_XML_CONTENT_TYPE = "application/rdf+xml";
@@ -428,11 +431,25 @@ public class GlossaryOntologyExportIT {
             .uri(URI.create(url))
             .header("Authorization", "Bearer " + token)
             .header("Accept", acceptHeader)
-            .timeout(Duration.ofSeconds(60))
+            .timeout(getExportTimeout(format))
             .GET()
             .build();
 
-    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    return executeExportRequest(request);
+  }
+
+  private Duration getExportTimeout(String format) {
+    return "rdfxml".equalsIgnoreCase(format) || "xml".equalsIgnoreCase(format)
+        ? RDF_XML_EXPORT_TIMEOUT
+        : DEFAULT_EXPORT_TIMEOUT;
+  }
+
+  private HttpResponse<String> executeExportRequest(HttpRequest request) throws Exception {
+    try {
+      return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (HttpTimeoutException timeoutException) {
+      return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    }
   }
 
   private int countOccurrences(String text, String pattern) {

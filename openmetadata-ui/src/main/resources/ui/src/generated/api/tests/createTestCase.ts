@@ -56,6 +56,11 @@ export interface CreateTestCase {
      */
     testDefinition: string;
     /**
+     * Logical test suites this test case belongs to. Basic suite membership is derived
+     * automatically from entityLink/testSuite and should not be provided here.
+     */
+    testSuites?: EntityReference[];
+    /**
      * Number of top dimension values to show before grouping the rest as Others. Controls the
      * cardinality of dimensional test results. Defaults to 5 when not specified.
      */
