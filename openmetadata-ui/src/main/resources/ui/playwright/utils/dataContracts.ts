@@ -170,18 +170,17 @@ export const waitForContractExecutionWithFallback = async (
 
     await expect(page.getByTestId('manage-button')).toBeVisible();
 
+    type TestCaseEntry = { testCaseResult?: { testCaseStatus?: string } };
+
     const testCases = testCasesJson?.data ?? [];
     const hasFailure = testCases.some(
-      (tc: { testCaseResult?: { testCaseStatus?: string } }) =>
-        tc.testCaseResult?.testCaseStatus === 'Failed'
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Failed'
     );
     const hasAborted = testCases.some(
-      (tc: { testCaseResult?: { testCaseStatus?: string } }) =>
-        tc.testCaseResult?.testCaseStatus === 'Aborted'
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Aborted'
     );
     const hasSuccess = testCases.some(
-      (tc: { testCaseResult?: { testCaseStatus?: string } }) =>
-        tc.testCaseResult?.testCaseStatus === 'Success'
+      (tc: TestCaseEntry) => tc.testCaseResult?.testCaseStatus === 'Success'
     );
 
     let suiteStatus = 'Running';
