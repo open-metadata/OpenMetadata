@@ -47,7 +47,7 @@ public class IndexResource {
   }
 
   public static String getIndexFile(String basePath) {
-    LOG.info("IndexResource.getIndexFile called with basePath: [{}]", basePath);
+    LOG.debug("IndexResource.getIndexFile called with basePath: [{}]", basePath);
 
     String result = RAW_INDEX_HTML.replace("${basePath}", basePath);
     String basePathLine =
@@ -56,7 +56,7 @@ public class IndexResource {
             .filter(line -> line.contains("window.BASE_PATH"))
             .findFirst()
             .orElse("NOT FOUND");
-    LOG.info("After replacement, window.BASE_PATH line: {}", basePathLine.trim());
+    LOG.debug("After replacement, window.BASE_PATH line: {}", basePathLine.trim());
 
     return result;
   }
