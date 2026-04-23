@@ -111,7 +111,7 @@ const AddServicePage = () => {
 
   // Select service
   const handleSelectServiceCancel = () => {
-    navigate(connectionsRouterClassBase.getSettingsServicesPath());
+    navigate(connectionsRouterClassBase.getSettingsServicesPath(serviceCategory));
   };
 
   const handleSelectServiceNextClick = () => {

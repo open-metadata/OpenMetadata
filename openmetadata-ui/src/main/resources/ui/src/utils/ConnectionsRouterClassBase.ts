@@ -19,7 +19,10 @@ import {
   getLogsViewerPath,
   getPathByServiceFQN,
   getServiceDetailsPath,
+  getSettingPath,
 } from './RouterUtils';
+import type { ServiceTypes } from 'Models';
+import { getServiceRouteFromServiceType } from './ServiceUtils';
 
 class ConnectionsRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
@@ -30,7 +33,14 @@ class ConnectionsRouterClassBase {
     return false;
   }
 
-  public getSettingsServicesPath(): string {
+  public getSettingsServicesPath(serviceCategory?: string): string {
+    if (serviceCategory) {
+      return getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+      );
+    }
+
     return ROUTES.SETTINGS_WITH_CATEGORY.replace(
       PLACEHOLDER_SETTING_CATEGORY,
       GlobalSettingsMenuCategory.SERVICES

@@ -31,6 +31,12 @@ jest.mock('./RouterUtils', () => ({
     logEntityName: string,
     ingestionName: string
   ) => `/logs/${logEntityType}/${logEntityName}/${ingestionName}`,
+  getSettingPath: (category: string, option: string) =>
+    `/settings/${category}/${option}`,
+}));
+
+jest.mock('./ServiceUtils', () => ({
+  getServiceRouteFromServiceType: (type: string) => `${type}Route`,
 }));
 
 jest.mock('../constants/constants', () => ({
@@ -66,8 +72,14 @@ describe('ConnectionsRouterClassBase', () => {
   });
 
   describe('getSettingsServicesPath', () => {
-    it('should return the settings services path', () => {
+    it('should return the generic settings services path when no category given', () => {
       expect(router.getSettingsServicesPath()).toBe('/settings/services');
+    });
+
+    it('should return the specific service-type tab path when serviceCategory given', () => {
+      expect(router.getSettingsServicesPath('databaseServices')).toBe(
+        '/settings/services/databaseServicesRoute'
+      );
     });
   });
 
