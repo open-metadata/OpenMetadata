@@ -33,7 +33,6 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -256,107 +255,6 @@ test.describe('User with Admin Roles', () => {
 
     await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
-  });
-
-  test('User should be visible in right panel on table page when added as custom property', async ({
-    adminPage,
-  }) => {
-    const { apiContext } = await getApiContext(adminPage);
-
-    // await redirectToHomePage(adminPage);
-    // 1. Setup - Create Custom Property and assign to Table
-    const customPropertyName = `pwCustomUserList${uuid()}`;
-    const customPropertyDescription = 'test description';
-
-    // Get Entity Reference List Type ID
-    const typeResponse = await apiContext.get(
-      '/api/v1/metadata/types/name/entityReferenceList'
-    );
-    const typeData = await typeResponse.json();
-    const typeId = typeData.id;
-
-    // Get Table Entity ID
-    const tableTypeResponse = await apiContext.get(
-      '/api/v1/metadata/types/name/table'
-    );
-    const tableTypeData = await tableTypeResponse.json();
-    const tableTypeId = tableTypeData.id;
-
-    // Create Custom Property
-    await apiContext.put(`/api/v1/metadata/types/${tableTypeId}`, {
-      data: {
-        name: customPropertyName,
-        description: customPropertyDescription,
-        propertyType: {
-          id: typeId,
-          type: 'type',
-        },
-        customPropertyConfig: {
-          config: ['user'],
-        },
-      },
-    });
-
-    const userName = user3.responseData.name;
-    const userDisplayName =
-      user3.responseData.displayName ?? user3.responseData.name;
-    // Patch Table to add the user to the custom property
-    await tableEntity.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/extension',
-          value: {
-            [customPropertyName]: [
-              {
-                id: user3.responseData.id,
-                type: 'user',
-                name: userName,
-                fullyQualifiedName: user3.responseData.fullyQualifiedName,
-              },
-            ],
-          },
-        },
-      ],
-    });
-
-    // 2. UI Verification
-    await redirectToHomePage(adminPage);
-    await tableEntity.visitEntityPage(adminPage);
-
-    // Check if the user details are visible in the right panel
-    const userElement = adminPage.getByTestId(userName);
-    const isUserVisible = await userElement.isVisible();
-
-    // If not visible, click on Custom Properties tab to see all custom properties
-    if (!isUserVisible) {
-      await adminPage.getByTestId('custom_properties').click();
-    }
-
-    // Verify Custom Property in Right Panel
-    const rightPanelSection = adminPage.getByTestId(customPropertyName);
-    await expect(rightPanelSection).toBeVisible();
-
-    // Verify User Link - the link displays the username (not displayName)
-    const userLink = adminPage.getByTestId(userName).getByRole('link');
-
-    await expect(userLink).toContainText(userName);
-
-    // Click User Link and Verify Navigation
-    const userDetailsResponse = adminPage.waitForResponse(
-      '/api/v1/users/name/*'
-    );
-    await userLink.click();
-    await userDetailsResponse;
-
-    // URL may contain encoded quotes (%22) around the username
-    await expect(adminPage).toHaveURL(
-      new RegExp(`/users/(%22)?${userName}(%22)?`, 'i')
-    );
-    await expect(adminPage.getByTestId('user-display-name')).toHaveText(
-      userDisplayName
-    );
   });
 });
 

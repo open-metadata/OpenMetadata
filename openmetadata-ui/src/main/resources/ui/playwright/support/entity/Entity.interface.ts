@@ -71,7 +71,7 @@ export enum ENTITY_PATH {
   glossaries = 'glossary',
   searchIndexes = 'searchIndex',
   storedProcedures = 'storedProcedure',
-  glossaryTerm = 'glossaryTerm',
+  glossaryTerms = 'glossaryTerm',
   databases = 'database',
   databaseSchemas = 'databaseSchema',
   'dashboard/datamodels' = 'dashboardDataModel',
@@ -82,6 +82,7 @@ export enum ENTITY_PATH {
   charts = 'chart',
   'tableColumn' = 'tableColumn',
   dataProductsTab = 'dataProductsTab',
+  domains = 'domain',
 }
 
 export type ResponseDataType = {
