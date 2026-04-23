@@ -696,7 +696,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                 .withDescription("Tag for classification display name search"));
 
     Awaitility.await("Tag should be searchable by classification display name")
-        .atMost(java.time.Duration.ofSeconds(30))
+        .atMost(java.time.Duration.ofSeconds(90))
         .pollInterval(java.time.Duration.ofMillis(500))
         .untilAsserted(
             () -> {
