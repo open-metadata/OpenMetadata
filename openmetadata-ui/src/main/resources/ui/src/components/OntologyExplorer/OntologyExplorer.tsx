@@ -446,7 +446,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               )}
             </SlideoutMenu>
           )}
-
         </div>
       </div>
     </div>

@@ -143,7 +143,6 @@ export interface GraphSettingsPanelProps {
   onSettingsChange: (settings: GraphSettings) => void;
 }
 
-
 export interface OntologyControlButtonsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Browser, expect, Page, test } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Page,
+  test,
+} from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -112,10 +118,7 @@ async function createApiContext(browser: Browser) {
   return { page, apiContext };
 }
 
-async function disposeApiContext(
-  page: Page,
-  apiContext: APIRequestContext
-) {
+async function disposeApiContext(page: Page, apiContext: APIRequestContext) {
   await apiContext.dispose();
   await page.close();
 }
@@ -187,7 +190,15 @@ test.describe('Ontology Explorer', () => {
 
   test.afterAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, term1, term2, glossary, term3, term4, glossary2);
+    await deleteEntities(
+      apiContext,
+      term1,
+      term2,
+      glossary,
+      term3,
+      term4,
+      glossary2
+    );
     await disposeApiContext(page, apiContext);
   });
 
@@ -312,7 +323,7 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
     });
 
-    test('should show empty state when relation type filter prunes all nodes', async ({
+    test('should show empty state when relation type filter removes all edges and no isolated nodes remain', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
@@ -322,7 +333,6 @@ test.describe('Ontology Explorer', () => {
 
       await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
     });
-
   });
 
   test.describe('Control Buttons', () => {
@@ -1404,7 +1414,13 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
   test.afterAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, crossTerm1, crossTerm2, crossGlossary1, crossGlossary2);
+    await deleteEntities(
+      apiContext,
+      crossTerm1,
+      crossTerm2,
+      crossGlossary1,
+      crossGlossary2
+    );
     await disposeApiContext(page, apiContext);
   });
 
@@ -1511,9 +1527,7 @@ test.describe('Ontology Explorer - Search Highlight Node-Level Effect', () => {
     await expect(page.getByTestId('ontology-search-overlay')).toBeVisible();
 
     await searchInput.clear();
-    await expect(
-      page.getByTestId('ontology-search-overlay')
-    ).not.toBeVisible();
+    await expect(page.getByTestId('ontology-search-overlay')).not.toBeVisible();
 
     const highlighted = await readSearchHighlightIds(page);
     expect(highlighted).toHaveLength(0);
@@ -1539,12 +1553,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
 
   test.afterAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      dataTerm1,
-      dataTerm2,
-      dataModeGlossary
-    );
+    await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
     await disposeApiContext(page, apiContext);
   });
 
@@ -1572,9 +1581,9 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);
 
-    await expect(
-      page.getByTestId('ontology-explorer-stats')
-    ).not.toContainText(/data.asset/i);
+    await expect(page.getByTestId('ontology-explorer-stats')).not.toContainText(
+      /data.asset/i
+    );
   });
 
   test('switching back from Data to Model mode restores stats', async ({
