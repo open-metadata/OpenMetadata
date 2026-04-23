@@ -118,19 +118,14 @@ export class EntityDataClass {
   static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
   static readonly mlModel1 = new MlModelClass();
   static readonly mlModel2 = new MlModelClass();
-  static readonly pipeline1 = new PipelineClass();
-  static readonly pipeline2 = (() => {
-    const pipeline = new PipelineClass();
-    // Keep task criteria values distinct between pipeline1 and pipeline2 so
-    // Advanced Search "AND + !=" assertions are deterministic.
-    pipeline.children = [
-      { name: 'presto_task', displayName: 'Presto Task' },
-      { name: 'databricks_task', displayName: 'Databricks Task' },
-    ];
-    pipeline.entity.tasks = pipeline.children;
-
-    return pipeline;
-  })();
+  static readonly pipeline1 = new PipelineClass(undefined, [
+    { name: 'snowflake_task', displayName: 'Snowflake Task' },
+    { name: 'bigquery_task', displayName: 'BigQuery Task' },
+  ]);
+  static readonly pipeline2 = new PipelineClass(undefined, [
+    { name: 'presto_task', displayName: 'Presto Task' },
+    { name: 'databricks_task', displayName: 'Databricks Task' },
+  ]);
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
   static readonly dashboardDataModel2 = new DashboardDataModelClass();
   static readonly apiCollection1 = new ApiCollectionClass();

@@ -41,6 +41,7 @@ export enum EntityTypeEndpoint {
   StoreProcedure = 'storedProcedures',
   Table = 'tables',
   TableColumn = 'tableColumn',
+  Task = 'tasks',
   Teams = 'teams',
   TestSuites = 'dataQuality/testSuites',
   Topic = 'topics',
@@ -90,6 +91,7 @@ export type ResponseDataType = {
   id: string;
   fullyQualifiedName: string;
   version?: number;
+  serviceType?: string;
 };
 export type TestCaseData = {
   parameterValues?: unknown[];
