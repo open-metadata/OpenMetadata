@@ -67,7 +67,6 @@ const InlineTestCaseIncidentStatus = ({
   onSubmit,
 }: InlineTestCaseIncidentStatusProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const chipRef = React.useRef<HTMLButtonElement>(null);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showAssigneePopover, setShowAssigneePopover] = useState(false);
