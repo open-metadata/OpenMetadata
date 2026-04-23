@@ -493,6 +493,7 @@ class EntityUtilClassBase {
       // Route through the KC-specific API instead.
       return getKnowledgePageByFqn(fqn, { fields });
     }
+
     return getEntityByFqnUtil(entityType, fqn, fields);
   }
 
