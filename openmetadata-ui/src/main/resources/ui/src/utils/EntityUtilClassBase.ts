@@ -62,6 +62,10 @@ import { patchDataProduct } from '../rest/dataProductAPI';
 import { patchDomains } from '../rest/domainAPI';
 import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import {
+  getKnowledgePageByFqn,
+  patchKnowledgePage,
+} from '../rest/knowledgeCenterAPI';
 import { patchKPI } from '../rest/KpiAPI';
 import { patchMetric } from '../rest/metricsAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
@@ -80,6 +84,7 @@ import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
+import { getKnowledgePagePath } from './KnowledgePageUtils';
 import { EntityTypeName } from './EntityUtils';
 import {
   FormattedAPIServiceType,
@@ -200,6 +205,7 @@ class EntityUtilClassBase {
       patchPolicy(patch, id),
     [EntityType.CLASSIFICATION]: patchClassification,
     [EntityType.TEAM]: patchTeamDetail,
+    [EntityType.KNOWLEDGE_PAGE]: patchKnowledgePage,
   };
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
@@ -447,6 +453,13 @@ class EntityUtilClassBase {
       case EntityType.KPI:
         return getKpiPath(fullyQualifiedName);
 
+      case EntityType.KNOWLEDGE_PAGE:
+        // Notifications for @-mentions on Knowledge Pages need to route to the knowledge
+        // center detail view, not the default `/table/<fqn>` that other entity types fall
+        // back to. Without this case, clicking a mention notification navigates to a
+        // non-existent Table entity and the page renders as an error.
+        return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -473,6 +486,13 @@ class EntityUtilClassBase {
     return api;
   }
   public getEntityByFqn(entityType: string, fqn: string, fields?: string) {
+    if (entityType === EntityType.KNOWLEDGE_PAGE) {
+      // The shared getEntityByFqnUtil has no case for knowledge pages, so the
+      // KnowledgeCenter detail page (reached via notification, reviewer workflow, or
+      // explore result click) would fall back to an entity API that 404s on the page FQN.
+      // Route through the KC-specific API instead.
+      return getKnowledgePageByFqn(fqn, { fields });
+    }
     return getEntityByFqnUtil(entityType, fqn, fields);
   }
 
@@ -588,6 +608,13 @@ class EntityUtilClassBase {
       }
       case EntityType.WORKSHEET: {
         return ResourceEntity.WORKSHEET;
+      }
+      case EntityType.KNOWLEDGE_PAGE:
+      case 'knowledge-center': {
+        // The sidebar / notification flows pass the route slug 'knowledge-center' as the
+        // entityType when they derive permission scope — map both it and the canonical
+        // 'page' EntityType to the KNOWLEDGE_PAGE ResourceEntity so policy lookups succeed.
+        return ResourceEntity.KNOWLEDGE_PAGE;
       }
 
       default: {

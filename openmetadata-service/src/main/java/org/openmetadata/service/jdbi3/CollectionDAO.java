@@ -15,11 +15,15 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
+import static org.openmetadata.schema.type.Relationship.HAS;
 import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
+import static org.openmetadata.schema.type.Relationship.OWNS;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -12450,6 +12454,8 @@ public interface CollectionDAO {
   }
 
   interface KnowledgePageDAO extends EntityDAO<org.openmetadata.schema.entity.data.Page> {
+    String KNOWLEDGE_PAGE_ENTITY = "page";
+
     @Override
     default String getTableName() {
       return "knowledge_center";
@@ -12469,6 +12475,224 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    /**
+     * When the caller supplies {@code entityId} + {@code entityType} (e.g. from a data-asset
+     * page that wants the list of knowledge pages referencing it), join against
+     * {@code entity_relationship} so that only pages whose {@code relatedEntities} contains
+     * the target entity are returned. Without this override, the base {@code EntityDAO.listAfter}
+     * ignores those params and returns every knowledge page — breaking the Knowledge
+     * Articles right-panel widget (and the corresponding playwright assertions).
+     */
+    @Override
+    default int listCount(ListFilter filter) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityType = filter.getQueryParam("entityType");
+      String knowledgePageType = filter.getQueryParam("pageType");
+      String tagFQN = filter.getQueryParam("tagFQN");
+      String tagListCondition =
+          "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
+      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      if (nullOrEmpty(tagFQN)) {
+        tagListCondition = "";
+        tagFilterCondition = "WHERE";
+      }
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!nullOrEmpty(entityId) && !nullOrEmpty(entityType)) {
+        String knowledgePageTypeQuery = getKnowledgePageTypeQuery("AND", knowledgePageType);
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship ON knowledge_center.id = entity_relationship.toId %s %s "
+                    + "entity_relationship.fromId IN (%s) %s"
+                    + "and entity_relationship.toEntity = :toEntityType %s",
+                tagListCondition,
+                tagFilterCondition,
+                entityId,
+                getRelationCondition(entityType),
+                knowledgePageTypeQuery);
+        bindMap.put("toEntityType", KNOWLEDGE_PAGE_ENTITY);
+        bindMap.put("tagFQN", tagFQN);
+        if (!nullOrEmpty(knowledgePageTypeQuery)) {
+          bindMap.put("pageType", knowledgePageType);
+        }
+        return listKnowledgePageCountByEntity(condition, bindMap);
+      } else if ((!nullOrEmpty(entityId) && nullOrEmpty(entityType))
+          || (nullOrEmpty(entityId) && !nullOrEmpty(entityType))) {
+        throw new IllegalArgumentException(
+            "Query Param Entity Id and Entity Type both needs to be provided.");
+      }
+
+      String knowledgePageQueryClause =
+          String.format(
+              "%s %s %s",
+              tagListCondition,
+              tagFilterCondition,
+              getKnowledgePageTypeQuery("", knowledgePageType));
+      return listCount(
+          getTableName(),
+          getNameHashColumn(),
+          filter.getQueryParams(),
+          getKnowledgePageWhereClause(knowledgePageQueryClause));
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityType = filter.getQueryParam("entityType");
+      String knowledgePageType = filter.getQueryParam("pageType");
+      String tagFQN = filter.getQueryParam("tagFQN");
+      String tagListCondition =
+          "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
+      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      if (nullOrEmpty(tagFQN)) {
+        tagListCondition = "";
+        tagFilterCondition = "WHERE";
+      }
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!nullOrEmpty(entityId) && !nullOrEmpty(entityType)) {
+        String knowledgePageTypeQuery = getKnowledgePageTypeQuery("AND", knowledgePageType);
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship ON knowledge_center.id = entity_relationship.toId %s %s entity_relationship.fromId IN (%s) "
+                    + "%s and entity_relationship.toEntity = :toEntity %s "
+                    + "and (knowledge_center.name < :beforeName OR (knowledge_center.name = :beforeName AND knowledge_center.id < :beforeId)) order by knowledge_center.name DESC,knowledge_center.id DESC LIMIT :limit",
+                tagListCondition,
+                tagFilterCondition,
+                entityId,
+                getRelationCondition(entityType),
+                knowledgePageTypeQuery);
+        bindMap.put("toEntity", KNOWLEDGE_PAGE_ENTITY);
+        bindMap.put("beforeName", beforeName);
+        bindMap.put("beforeId", beforeId);
+        bindMap.put("limit", limit);
+        bindMap.put("tagFQN", tagFQN);
+        if (!nullOrEmpty(knowledgePageTypeQuery)) {
+          bindMap.put("pageType", knowledgePageType);
+        }
+        return listBeforeKnowledgePageByEntityId(condition, bindMap);
+      } else if ((!nullOrEmpty(entityId) && nullOrEmpty(entityType))
+          || (nullOrEmpty(entityId) && !nullOrEmpty(entityType))) {
+        throw new IllegalArgumentException(
+            "Query Param Entity Id and Entity Type both needs to be provided.");
+      }
+      String knowledgePageQueryClause =
+          String.format(
+              "%s %s %s",
+              tagListCondition,
+              tagFilterCondition,
+              getKnowledgePageTypeQuery("", knowledgePageType));
+      beforeName = FullyQualifiedName.unquoteName(beforeName);
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          limit,
+          beforeName,
+          beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(
+        ListFilter filter, int limit, String afterName, String afterId) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityType = filter.getQueryParam("entityType");
+      String knowledgePageType = filter.getQueryParam("pageType");
+      String tagFQN = filter.getQueryParam("tagFQN");
+      String tagListCondition =
+          "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
+      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      if (nullOrEmpty(tagFQN)) {
+        tagListCondition = "";
+        tagFilterCondition = "WHERE";
+      }
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!nullOrEmpty(entityId) && !nullOrEmpty(entityType)) {
+        String knowledgePageTypeQuery = getKnowledgePageTypeQuery("AND", knowledgePageType);
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship ON knowledge_center.id = entity_relationship.toId %s %s entity_relationship.fromId IN (%s) "
+                    + "%s and entity_relationship.toEntity = :toEntity %s "
+                    + "and (knowledge_center.name > :afterName OR (knowledge_center.name = :afterName AND knowledge_center.id > :afterId)) order by knowledge_center.name ASC,knowledge_center.id ASC LIMIT :limit",
+                tagListCondition,
+                tagFilterCondition,
+                entityId,
+                getRelationCondition(entityType),
+                knowledgePageTypeQuery);
+        bindMap.put("toEntity", KNOWLEDGE_PAGE_ENTITY);
+        bindMap.put("afterName", afterName);
+        bindMap.put("afterId", afterId);
+        bindMap.put("limit", limit);
+        bindMap.put("tagFQN", tagFQN);
+        if (!nullOrEmpty(knowledgePageTypeQuery)) {
+          bindMap.put("pageType", knowledgePageType);
+        }
+        return listAfterKnowledgePageByEntityId(condition, bindMap);
+      } else if ((!nullOrEmpty(entityId) && nullOrEmpty(entityType))
+          || (nullOrEmpty(entityId) && !nullOrEmpty(entityType))) {
+        throw new IllegalArgumentException(
+            "Query Param Entity Id and Entity Type both needs to be provided.");
+      }
+      String knowledgePageQueryClause =
+          String.format(
+              "%s %s %s",
+              tagListCondition,
+              tagFilterCondition,
+              getKnowledgePageTypeQuery("", knowledgePageType));
+      afterName = FullyQualifiedName.unquoteName(afterName);
+      return listAfter(
+          getTableName(),
+          filter.getQueryParams(),
+          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          limit,
+          afterName,
+          afterId);
+    }
+
+    private String getRelationCondition(String entityType) {
+      // Users/teams "own" pages (membership-based); every other entity type reaches the page
+      // through a HAS relationship (the page's relatedEntities list).
+      String owns = String.valueOf(OWNS.ordinal());
+      String has = String.valueOf(HAS.ordinal());
+      if (entityType.equals(USER) || entityType.equals(TEAM)) {
+        return String.format(" and entity_relationship.relation = %s ", owns);
+      } else {
+        return String.format(" and entity_relationship.relation = %s ", has);
+      }
+    }
+
+    private String getKnowledgePageWhereClause(String knowledgePageQueryClause) {
+      return nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+    }
+
+    private String getKnowledgePageTypeQuery(String clause, String type) {
+      if (!nullOrEmpty(type)) {
+        if (Boolean.TRUE.equals(
+            org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL())) {
+          return String.format(
+              " %s JSON_EXTRACT(knowledge_center.json, '$.pageType') = :pageType", clause);
+        } else {
+          return String.format(" %s knowledge_center.json->>'pageType' = :pageType", clause);
+        }
+      }
+      if ("AND".equals(clause)) {
+        return "";
+      }
+      return "TRUE";
+    }
+
+    @SqlQuery("SELECT knowledge_center.json FROM knowledge_center <cond>")
+    List<String> listAfterKnowledgePageByEntityId(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery(
+        "SELECT json FROM (SELECT knowledge_center.name,knowledge_center.id, knowledge_center.json FROM knowledge_center <cond>) last_rows_subquery ORDER BY name,id")
+    List<String> listBeforeKnowledgePageByEntityId(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery("SELECT count(*) FROM knowledge_center <cond> ")
+    int listKnowledgePageCountByEntity(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery(
         "SELECT json "

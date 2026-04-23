@@ -99,6 +99,7 @@ import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
+import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
   getApplicationDetailsPath,
   getBotsPagePath,
@@ -545,6 +546,12 @@ export const getEntityLinkFromType = (
       return getPersonaDetailsPath(fullyQualifiedName);
     case EntityType.KPI:
       return getKpiPath(fullyQualifiedName);
+    case EntityType.KNOWLEDGE_PAGE:
+      // Search results (both explore left-panel hits and right-panel cards) need to
+      // deep-link into /knowledge-center/<fqn>; without this case getEntityLinkFromType
+      // would fall into the default branch and return an empty string, which renders as
+      // "/" for every article card and breaks ExplorePageRightPanel_KnowledgeCenter.spec.
+      return getKnowledgePagePath(fullyQualifiedName);
     default:
       return '';
   }
