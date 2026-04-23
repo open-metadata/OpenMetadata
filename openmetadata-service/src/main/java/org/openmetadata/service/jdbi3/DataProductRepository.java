@@ -911,10 +911,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       }
 
       // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
-      // field and would otherwise serve stale data. invalidateCacheForEntity also publishes
-      // pub/sub for peer instances and invalidates the Guava L1.
+      // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the
+      // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
+      // too; otherwise GET-by-name would keep serving stale domain references until TTL.
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForEntity(record.getType(), record.getId(), null);
+        invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -951,12 +952,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
       // Every asset that had this data product in its `dataProducts` reference list now holds a
       // stale FQN in its cache entry. Invalidate them so next read rebuilds with the new FQN.
+      // Pull the asset FQN from the record JSON so both ID and by-name cache variants are evicted.
       List<CollectionDAO.EntityRelationshipRecord> assetRecords =
           daoCollection
               .relationshipDAO()
               .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForEntity(record.getType(), record.getId(), null);
+        invalidateCacheForReferencedEntity(record);
       }
     }
 

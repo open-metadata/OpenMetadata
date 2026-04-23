@@ -109,14 +109,15 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   @Transaction
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
-    // Capture the affected persona IDs *before* the bulk update so we can still identify them.
-    // The bulk update rewrites JSON directly — bypassing invalidateCachesAfterStore — so every
-    // affected persona would keep stale "default=true" in CACHE_WITH_ID / Redis base entries.
-    List<String> affected =
-        daoCollection.personaDAO().findOtherDefaultPersonaIds(newDefaultPersonaId);
+    // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
+    // bypassing invalidateCachesAfterStore — so every affected persona would keep stale
+    // "default=true" in both CACHE_WITH_ID and CACHE_WITH_NAME variants. Passing fqn lets
+    // invalidateCacheForEntity drop the by-name cache alongside the by-id one.
+    List<EntityDAO.EntityIdFqnPair> affected =
+        daoCollection.personaDAO().findOtherDefaultPersonaIdsWithFqn(newDefaultPersonaId);
     daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
-    for (String id : affected) {
-      invalidateCacheForEntity(Entity.PERSONA, UUID.fromString(id), null);
+    for (EntityDAO.EntityIdFqnPair persona : affected) {
+      invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
     }
   }
 

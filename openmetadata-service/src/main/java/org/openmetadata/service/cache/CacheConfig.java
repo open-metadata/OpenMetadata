@@ -46,6 +46,11 @@ public class CacheConfig {
     public int connectTimeoutMs = 2000;
     public int commandTimeoutMs = 300;
 
+    // Background PING cadence. Flips the provider back to available once Redis recovers after a
+    // command failure tripped it to unavailable. Kept short so multi-instance readers stop serving
+    // per-instance cached data within a few seconds of the outage.
+    public int healthCheckIntervalMs = 5000;
+
     // AWS ElastiCache IAM authentication
     public AwsConfig aws = new AwsConfig();
   }

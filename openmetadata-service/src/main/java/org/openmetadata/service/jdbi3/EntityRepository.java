@@ -2920,6 +2920,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Invalidate cache entries for an entity identified by an {@link
+   * CollectionDAO.EntityRelationshipRecord}. Extracts {@code fullyQualifiedName} from the record's
+   * JSON payload (when present) so the by-name cache variant is evicted alongside the by-id one.
+   * Callers that only have {@code (type, id)} and pass {@code fqn=null} leave GET-by-name entries
+   * stale until TTL expiry — use this when the referenced entity's FQN needs to be invalidated too.
+   */
+  public static void invalidateCacheForReferencedEntity(
+      CollectionDAO.EntityRelationshipRecord record) {
+    if (record == null) {
+      return;
+    }
+    invalidateCacheForEntity(record.getType(), record.getId(), extractFqn(record.getJson()));
+  }
+
+  private static String extractFqn(String json) {
+    if (json == null || json.isEmpty()) {
+      return null;
+    }
+    try {
+      var node = JsonUtils.readTree(json);
+      return node.hasNonNull("fullyQualifiedName") ? node.get("fullyQualifiedName").asText() : null;
+    } catch (Exception e) {
+      LOG.debug("Failed to extract fullyQualifiedName for cache invalidation", e);
+      return null;
+    }
+  }
+
+  /**
    * Invoked by {@link org.openmetadata.service.cache.CacheInvalidationPubSub} when another OM
    * instance signals an entity change. Evicts this instance's per-process Guava caches so the next
    * read pulls fresh data. Does not touch Redis — the writer already invalidated shared keys

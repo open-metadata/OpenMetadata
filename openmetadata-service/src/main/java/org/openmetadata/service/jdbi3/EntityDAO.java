@@ -455,7 +455,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("startHash") String startHash,
       @Bind("endHash") String endHash);
 
-  @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> ORDER BY id LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(
       @Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
 

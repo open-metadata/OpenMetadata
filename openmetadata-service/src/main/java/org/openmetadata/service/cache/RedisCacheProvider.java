@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +28,7 @@ public class RedisCacheProvider implements CacheProvider {
   private StatefulRedisConnection<String, String> connection;
   private RedisCommands<String, String> syncCommands;
   private RedisAsyncCommands<String, String> asyncCommands;
+  private ScheduledExecutorService healthChecker;
   private volatile boolean available = false;
 
   public RedisCacheProvider(CacheConfig config) {
@@ -39,11 +42,54 @@ public class RedisCacheProvider implements CacheProvider {
       RedisURI uri = RedisURIFactory.build(config.redis);
       initializeStandalone(uri);
       available = true;
+      startHealthChecker();
       LOG.info(
           "Redis cache provider initialized (commandTimeoutMs={})", config.redis.commandTimeoutMs);
     } catch (Exception e) {
       LOG.error("Failed to initialize Redis cache provider", e);
       available = false;
+    }
+  }
+
+  private void startHealthChecker() {
+    long intervalMs = Math.max(1000L, config.redis.healthCheckIntervalMs);
+    healthChecker =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t = new Thread(r, "redis-cache-health-check");
+              t.setDaemon(true);
+              return t;
+            });
+    healthChecker.scheduleWithFixedDelay(
+        this::healthCheck, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
+  }
+
+  private void healthCheck() {
+    try {
+      String reply = syncCommands.ping();
+      if (!"PONG".equalsIgnoreCase(reply)) {
+        markUnhealthy(new IllegalStateException("Unexpected PING reply: " + reply));
+        return;
+      }
+      if (!available) {
+        available = true;
+        LOG.info("Redis cache provider recovered, available=true");
+      }
+    } catch (Exception e) {
+      markUnhealthy(e);
+    }
+  }
+
+  /**
+   * Flip {@code available=false} so callers (and {@code EntityResource.isDistributedCacheEnabled})
+   * fall back to DB reads until the background health check confirms Redis is reachable again.
+   * Transient errors are rare; leaving {@code available=true} after a failure causes multi-instance
+   * readers to diverge via per-instance Guava L1.
+   */
+  private void markUnhealthy(Exception e) {
+    if (available) {
+      available = false;
+      LOG.warn("Redis cache provider marked unavailable after command failure", e);
     }
   }
 
@@ -95,6 +141,7 @@ public class RedisCacheProvider implements CacheProvider {
       return Optional.ofNullable(value);
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error getting key: {}", key, e);
       return Optional.empty();
     } finally {
@@ -114,6 +161,7 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) m.recordWrite();
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error setting key: {}", key, e);
     } finally {
       stopWriteTimer(m, sample);
@@ -134,6 +182,7 @@ public class RedisCacheProvider implements CacheProvider {
       return acquired;
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error setting key if absent: {}", key, e);
       return false;
     } finally {
@@ -152,6 +201,7 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) m.recordEviction();
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error deleting keys", e);
     } finally {
       stopWriteTimer(m, sample);
@@ -173,6 +223,7 @@ public class RedisCacheProvider implements CacheProvider {
       return Optional.ofNullable(value);
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error getting hash field: {} -> {}", key, field, e);
       return Optional.empty();
     } finally {
@@ -194,6 +245,7 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) m.recordWrite();
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error setting hash fields: {}", key, e);
     } finally {
       stopWriteTimer(m, sample);
@@ -211,6 +263,7 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) m.recordEviction();
     } catch (Exception e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error deleting hash fields: {}", key, e);
     } finally {
       stopWriteTimer(m, sample);
@@ -233,9 +286,11 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) {
         for (int i = 0; i < keyValues.size(); i++) m.recordWrite();
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error on pipelineSet (batch={})", keyValues.size(), e);
+      throw e;
     } finally {
       stopWriteTimer(m, sample);
     }
@@ -260,9 +315,11 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) {
         for (int i = 0; i < keyFields.size(); i++) m.recordWrite();
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       if (m != null) m.recordError();
+      markUnhealthy(e);
       LOG.error("Error on pipelineHset (batch={})", keyFields.size(), e);
+      throw e;
     } finally {
       stopWriteTimer(m, sample);
     }
@@ -366,6 +423,9 @@ public class RedisCacheProvider implements CacheProvider {
   @Override
   public void close() {
     try {
+      if (healthChecker != null) {
+        healthChecker.shutdownNow();
+      }
       if (connection != null) {
         connection.close();
       }

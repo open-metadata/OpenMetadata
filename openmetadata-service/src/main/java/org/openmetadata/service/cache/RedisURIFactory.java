@@ -36,12 +36,16 @@ final class RedisURIFactory {
           RedisURI.Builder.redis(parsed.getHost(), parsed.getPort())
               .withTimeout(connectTimeout)
               .withSsl(parsed.isSsl());
-    } else if (url.contains(":")) {
-      String[] parts = url.split(":");
-      builder =
-          RedisURI.Builder.redis(parts[0], Integer.parseInt(parts[1])).withTimeout(connectTimeout);
     } else {
-      builder = RedisURI.Builder.redis(url).withTimeout(connectTimeout);
+      // Normalize bare "host" / "host:port" / "[ipv6]:port" through RedisURI.create so Lettuce
+      // handles IPv6 bracketing and validation. split(":") on a raw string breaks on IPv6 (e.g.
+      // "fe80::1:6379") and throws on malformed input.
+      RedisURI parsed = RedisURI.create("redis://" + url);
+      if (parsed.getHost() == null || parsed.getHost().isEmpty()) {
+        throw new IllegalArgumentException("Invalid Redis URL: " + url);
+      }
+      builder =
+          RedisURI.Builder.redis(parsed.getHost(), parsed.getPort()).withTimeout(connectTimeout);
     }
 
     if (redis.authType == CacheConfig.AuthType.PASSWORD && redis.passwordRef != null) {

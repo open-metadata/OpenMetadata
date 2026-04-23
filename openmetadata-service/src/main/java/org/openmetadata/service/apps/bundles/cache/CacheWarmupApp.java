@@ -111,7 +111,11 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       initCacheComponents();
       initJobData(jobExecutionContext);
       if (cacheProvider == null || !cacheProvider.available()) {
+        // Surface this as FAILED — initJobData set status to RUNNING above, and the finally block
+        // will broadcast the terminal state. Leaving it RUNNING here would pin the job record in
+        // an active state indefinitely.
         LOG.warn("Cache not available, skipping warmup");
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
         return;
       }
       runWarmup();
@@ -187,7 +191,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private void warmupEntityType(String entityType, int batchSize, Duration ttl) {
-    if ("user".equals(entityType)) {
+    if (Entity.USER.equals(entityType)) {
       LOG.debug("Skipping user entity type — not cached by design");
       return;
     }
@@ -241,13 +245,18 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       try {
         cacheProvider.pipelineHset(hsetBatch, ttl);
         cacheProvider.pipelineSet(setBatch, ttl);
-      } catch (Exception e) {
+        success += pageSuccess;
+        failed += pageFailed;
+        updateEntityStats(entityType, pageSuccess, pageFailed);
+      } catch (RuntimeException e) {
+        // Redis rejected the batch. Count every row in this page as failed so warmup progress and
+        // the WebSocket status reflect the actual state — the cache is not warm for these rows.
         LOG.warn("Pipelined write failed for {} batch at offset {}", entityType, offset, e);
+        int pageTotal = pageSuccess + pageFailed;
+        failed += pageTotal;
+        updateEntityStats(entityType, 0, pageTotal);
       }
-      success += pageSuccess;
-      failed += pageFailed;
       offset += page.size();
-      updateEntityStats(entityType, pageSuccess, pageFailed);
       sendUpdates(jobExecutionContext, false);
       if (page.size() < batchSize) break;
     }
@@ -264,7 +273,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     if (configured.isEmpty() || configured.contains(ALL)) {
       configured = new LinkedHashSet<>(Entity.getEntityList());
     }
-    configured.remove("user");
+    configured.remove(Entity.USER);
     return configured;
   }
 

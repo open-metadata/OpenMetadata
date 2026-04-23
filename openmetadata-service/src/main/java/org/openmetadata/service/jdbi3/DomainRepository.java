@@ -502,12 +502,15 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     private void invalidateDomainReferencers(UUID domainId) {
+      // Pull the referencer FQN from the relationship record JSON so the by-name cache variant
+      // is evicted alongside the by-id one. Without it, GET-by-name for assets that embed this
+      // domain would keep returning the stale domain reference until TTL.
       List<CollectionDAO.EntityRelationshipRecord> referencers =
           daoCollection
               .relationshipDAO()
               .findTo(domainId, Entity.DOMAIN, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : referencers) {
-        invalidateCacheForEntity(record.getType(), record.getId(), null);
+        invalidateCacheForReferencedEntity(record);
       }
     }
 
