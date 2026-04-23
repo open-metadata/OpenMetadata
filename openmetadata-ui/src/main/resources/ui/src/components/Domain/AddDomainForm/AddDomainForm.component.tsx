@@ -124,10 +124,13 @@ export const transformDomainFormData = (
     'domains',
     'domainType'
   );
-  const style = {
-    color: formData.color,
-    iconURL: formData.iconURL,
-  };
+  const style: { color?: string; iconURL?: string } = {};
+  if (formData.color) {
+    style.color = formData.color;
+  }
+  if (formData.iconURL) {
+    style.iconURL = formData.iconURL;
+  }
 
   const data: CreateDomain | CreateDataProduct = {
     ...updatedData,
