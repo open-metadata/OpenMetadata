@@ -14,7 +14,6 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  createNewPage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -90,11 +89,6 @@ test.describe(
   'Teams drag and drop should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.afterAll('Cleanup', async ({ browser }) => {
-      const { afterAction } = await createNewPage(browser);
-      await afterAction();
-    });
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
 
