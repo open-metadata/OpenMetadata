@@ -192,6 +192,49 @@ class TestParseSyncEvents:
         assert syncs["sync-1"]["extract_data"]["status"] == "SUCCESS"
         assert syncs["sync-1"]["sync_end_data"]["status"] == "SUCCESSFUL"
 
+    def test_write_to_table_start_keeps_earliest(self):
+        ts = [datetime(2026, 3, 20, 8, 0, s, tzinfo=timezone.utc) for s in (10, 5, 15)]
+        rows = [("s1", "write_to_table_start", None, t) for t in ts]
+        assert parse_sync_events(rows)["s1"]["write_start_min"] == ts[1]
+
+    def test_write_to_table_end_keeps_latest(self):
+        ts = [datetime(2026, 3, 20, 8, 0, s, tzinfo=timezone.utc) for s in (10, 20, 15)]
+        rows = [("s1", "write_to_table_end", None, t) for t in ts]
+        assert parse_sync_events(rows)["s1"]["write_end_max"] == ts[1]
+
+    def test_ignores_unknown_events(self):
+        rows = [
+            ("s1", "sync_start", None, datetime(2026, 3, 20, 8, 0, 0)),
+            (
+                "s1",
+                "unknown_event_type",
+                '{"foo":"bar"}',
+                datetime(2026, 3, 20, 8, 0, 5),
+            ),
+        ]
+        sync = parse_sync_events(rows)["s1"]
+        assert sync == {"sync_start_ts": datetime(2026, 3, 20, 8, 0, 0)}
+
+    def test_sync_stats_malformed_json_is_skipped(self):
+        rows = [("s1", "sync_stats", "not json", datetime(2026, 3, 20, 8, 0, 0))]
+        assert "sync_stats" not in parse_sync_events(rows)["s1"]
+
+    def test_sync_end_malformed_json_still_records_timestamp(self):
+        ts = datetime(2026, 3, 20, 8, 0, 0, tzinfo=timezone.utc)
+        rows = [("s1", "sync_end", "not json", ts)]
+        sync = parse_sync_events(rows)["s1"]
+        assert sync["sync_end_ts"] == ts
+        assert "sync_end_data" not in sync
+
+    def test_groups_events_across_multiple_sync_ids(self):
+        ts = datetime(2026, 3, 20, 8, 0, 0, tzinfo=timezone.utc)
+        rows = [
+            ("s1", "sync_start", None, ts),
+            ("s2", "sync_start", None, ts),
+        ]
+        result = parse_sync_events(rows)
+        assert set(result.keys()) == {"s1", "s2"}
+
 
 class TestBuildTaskStatuses:
     def test_successful_sync(self):

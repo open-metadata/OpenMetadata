@@ -131,6 +131,48 @@ def query_sync_logs(
             engine.dispose()
 
 
+def _handle_sync_start(sync: dict, _data_str: Optional[str], ts: datetime) -> None:
+    sync["sync_start_ts"] = ts
+
+
+def _handle_extract_summary(sync: dict, data_str: Optional[str], ts: datetime) -> None:
+    sync["extract_end_ts"] = ts
+    parsed = _try_parse_json(data_str)
+    if parsed:
+        sync["extract_data"] = parsed
+
+
+def _handle_write_start(sync: dict, _data_str: Optional[str], ts: datetime) -> None:
+    sync["write_start_min"] = min(ts, sync.get("write_start_min", ts))
+
+
+def _handle_write_end(sync: dict, _data_str: Optional[str], ts: datetime) -> None:
+    sync["write_end_max"] = max(ts, sync.get("write_end_max", ts))
+
+
+def _handle_sync_end(sync: dict, data_str: Optional[str], ts: datetime) -> None:
+    sync["sync_end_ts"] = ts
+    parsed = _try_parse_json(data_str)
+    if parsed:
+        sync["sync_end_data"] = parsed
+
+
+def _handle_sync_stats(sync: dict, data_str: Optional[str], _ts: datetime) -> None:
+    parsed = _try_parse_json(data_str)
+    if parsed:
+        sync["sync_stats"] = parsed
+
+
+_EVENT_HANDLERS = {
+    "sync_start": _handle_sync_start,
+    "extract_summary": _handle_extract_summary,
+    "write_to_table_start": _handle_write_start,
+    "write_to_table_end": _handle_write_end,
+    "sync_end": _handle_sync_end,
+    "sync_stats": _handle_sync_stats,
+}
+
+
 def parse_sync_events(
     rows: Iterable[Tuple],
     syncs: Optional[Dict[str, dict]] = None,
@@ -145,31 +187,9 @@ def parse_sync_events(
         syncs = {}
     for row in rows:
         sync_id, event, data_str, ts = row[0], row[1], row[2], row[3]
-        sync = syncs.setdefault(sync_id, {})
-
-        if event == "sync_start":
-            sync["sync_start_ts"] = ts
-        elif event == "extract_summary":
-            sync["extract_end_ts"] = ts
-            parsed = _try_parse_json(data_str)
-            if parsed:
-                sync["extract_data"] = parsed
-        elif event == "write_to_table_start":
-            if "write_start_min" not in sync or ts < sync["write_start_min"]:
-                sync["write_start_min"] = ts
-        elif event == "write_to_table_end":
-            if "write_end_max" not in sync or ts > sync["write_end_max"]:
-                sync["write_end_max"] = ts
-        elif event == "sync_end":
-            sync["sync_end_ts"] = ts
-            parsed = _try_parse_json(data_str)
-            if parsed:
-                sync["sync_end_data"] = parsed
-        elif event == "sync_stats":
-            parsed = _try_parse_json(data_str)
-            if parsed:
-                sync["sync_stats"] = parsed
-
+        handler = _EVENT_HANDLERS.get(event)
+        if handler is not None:
+            handler(syncs.setdefault(sync_id, {}), data_str, ts)
     return syncs
 
 
