@@ -148,6 +148,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
                 entityType);
             return;
           }
+          searchRepository.unregisterStagedIndex(entityType, stagedIndex);
         }
 
         LOG.info(
@@ -176,6 +177,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       } catch (Exception ex) {
         LOG.error(
             "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
         ReindexingMetrics metrics = ReindexingMetrics.getInstance();
         if (metrics != null) {
           metrics.recordPromotionFailure(entityType);
@@ -196,6 +198,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             stagedIndex,
             entityType,
             ex);
+      } finally {
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
     }
   }
@@ -262,6 +266,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             stagedIndex,
             entityType,
             ex);
+      } finally {
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
       return;
     }
@@ -306,6 +312,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
               aliasesToAttach);
           return;
         }
+        searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       } else {
         LOG.warn("Entity '{}': aliasesToAttach is empty, skipping alias swap", entityType);
       }
@@ -336,6 +343,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     } catch (Exception ex) {
       LOG.error(
           "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
+      searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       ReindexingMetrics promoteMetrics = ReindexingMetrics.getInstance();
       if (promoteMetrics != null) {
         promoteMetrics.recordPromotionFailure(entityType);
@@ -422,6 +430,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     String stagedIndexName = buildStagedIndexName(canonicalIndexName);
     searchClient.createIndex(stagedIndexName, mappingContent);
+    searchRepository.registerStagedIndex(entityType, stagedIndexName);
 
     Set<String> existingAliases =
         activeIndexName != null ? searchClient.getAliases(activeIndexName) : new HashSet<>();
