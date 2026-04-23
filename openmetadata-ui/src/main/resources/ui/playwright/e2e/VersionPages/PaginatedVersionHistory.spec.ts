@@ -15,6 +15,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const table = new TableClass();
 const adminUser = new UserClass();
@@ -69,8 +70,9 @@ test.describe('Paginated Version History', () => {
 
     const fqn = table.entityResponseData?.fullyQualifiedName;
 
-    await page.goto(`/table/${fqn}`);
-    await expect(page.locator('[data-testid="version-button"]')).toBeVisible();
+    await page.goto(`/table/${fqn}`, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('version-button')).toBeVisible();
 
     const versionsApiCall = page.waitForResponse(
       (response) =>
@@ -79,7 +81,7 @@ test.describe('Paginated Version History', () => {
         response.status() === 200
     );
 
-    await page.locator('[data-testid="version-button"]').click();
+    await page.getByTestId('version-button').click();
     const response = await versionsApiCall;
     const responseBody = await response.json();
 
@@ -157,18 +159,29 @@ test.describe('Paginated Version History', () => {
       }
     );
 
-    await page.goto(`/table/${fqn}`);
-    await expect(page.locator('[data-testid="version-button"]')).toBeVisible();
+    await page.goto(`/table/${fqn}`, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('version-button')).toBeVisible();
 
-    await page.locator('[data-testid="version-button"]').click();
+    // Await the second paginated call explicitly rather than relying on a
+    // manual timeout on the next-version locator — the infinite-scroll
+    // sentinel must trigger a fetch with offset>0 for this test to pass.
+    const secondPageCall = page.waitForResponse(
+      (response) =>
+        response.url().includes(`${entityId}/versions`) &&
+        response.url().includes('offset=') &&
+        !response.url().includes('offset=0') &&
+        response.status() === 200
+    );
 
-    // The sentinel is immediately visible with only 1 version, so infinite scroll
-    // auto-triggers the second API call. Wait for both versions to render.
+    await page.getByTestId('version-button').click();
+    await secondPageCall;
+
     const versionSelectors = page.locator(
       '[data-testid^="version-selector-v"]'
     );
 
-    await expect(versionSelectors.nth(1)).toBeVisible({ timeout: 15_000 });
+    await expect(versionSelectors.nth(1)).toBeVisible();
 
     const totalCount = await versionSelectors.count();
 
