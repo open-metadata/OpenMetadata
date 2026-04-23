@@ -176,21 +176,11 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  PipelineServiceType.OpenLineage,
-  PipelineServiceType.Wherescape,
-  DatabaseServiceType.Cassandra,
-  MetadataServiceType.AlationSink,
-  DatabaseServiceType.Cockroach,
-  SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
   DatabaseServiceType.Ssas,
-  DashboardServiceType.ThoughtSpot,
-  SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
-  DashboardServiceType.Grafana,
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
-  DatabaseServiceType.Timescale,
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,

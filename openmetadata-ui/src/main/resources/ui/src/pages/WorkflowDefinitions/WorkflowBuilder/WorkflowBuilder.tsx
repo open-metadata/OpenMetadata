@@ -250,6 +250,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     handleConnectionCancel,
     handleConnectionSave,
     handleEdgeClick,
+    handleEdgeDelete: originalHandleEdgeDelete,
     handleNodeClick,
     handleNodeConfigSave: originalHandleNodeConfigSave,
     handleSaveWorkflow,
@@ -257,6 +258,14 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     handleWorkflowMetadataUpdate,
     performDeleteWorkflow,
   } = workflowActions;
+
+  const handleEdgeDelete = useCallback(
+    (edgeId: string) => {
+      saveState(nodes, edges, 'Before Edge Delete');
+      originalHandleEdgeDelete(edgeId);
+    },
+    [saveState, nodes, edges, originalHandleEdgeDelete]
+  );
 
   const handleNodeConfigSave = (
     nodeId: string,
@@ -426,6 +435,10 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
+      pageContainerStyle={{
+        height: 'calc(100vh - var(--ant-navbar-height))',
+        overflow: 'hidden',
+      }}
       pageTitle={t('label.workflow-plural')}>
       {isConnectionModalOpen && (
         <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
@@ -468,9 +481,9 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
             </Tabs.List>
           </Tabs>
         </Card>
-        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden tw:pt-4">
+        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
           {activeTab === workflowBuilderTabs[0].value ? (
-            <div className="tw:flex-1 tw:min-h-0">
+            <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
               <WorkflowCanvas
                 canRedo={canRedo}
                 canUndo={canUndo}
@@ -489,6 +502,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 onEdgeClick={handleEdgeClick}
+                onEdgeDelete={handleEdgeDelete}
                 onEdgesChange={onEdgesChange}
                 onNodeClick={handleNodeClick}
                 onNodesChange={onNodesChange}
@@ -498,7 +512,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
               />
             </div>
           ) : (
-            <div className="tw:mt-4">
+            <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
               <WorkflowExecutionHistory />
             </div>
           )}
