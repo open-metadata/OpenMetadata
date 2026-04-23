@@ -193,7 +193,12 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - If the code needs a comment to be understood, refactor the code to be clearer instead
 
 ### Java Code Requirements
-- **Always mention** running `mvn spotless:apply` when generating/modifying .java files
+- **Always run `mvn spotless:apply`** before finishing any task that touched
+  `.java` files. CI runs `mvn spotless:check` and will fail the PR otherwise
+  (bot's exact phrasing: "Please run `mvn spotless:apply` in the root of your
+  repository and commit the changes to this PR"). Scope with `-pl <module>`
+  for speed if only one module changed. A reusable procedure is written up at
+  `.agents/skills/java-checkstyle/SKILL.md`.
 - Use clear, descriptive variable and method names instead of comments
 - Follow existing project patterns and conventions
 - Generate production-ready code, not tutorial code

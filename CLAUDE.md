@@ -283,7 +283,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Java Code Requirements
 
-**Always run `mvn spotless:apply` when generating/modifying .java files.**
+**Always run `mvn spotless:apply` before you finish any task that touched
+`.java` files.** CI runs `mvn spotless:check` and will fail the PR otherwise —
+the bot's exact suggestion is "Please run `mvn spotless:apply` in the root of
+your repository and commit the changes to this PR." Scope the run with
+`-pl <module>` for speed if only one module changed. When asked to "fix
+checkstyle" / "fix Java formatting" / "apply spotless", invoke the
+`java-checkstyle` skill (see `.claude/skills/java-checkstyle/`) rather than
+hand-editing formatting.
 
 #### Method Size and Complexity (Kafka-Grade Standards)
 - **Methods must be 15 lines or fewer** (excluding blank lines and braces). If a method is longer, break it into smaller focused methods with descriptive names.
