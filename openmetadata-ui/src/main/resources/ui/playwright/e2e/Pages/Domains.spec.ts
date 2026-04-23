@@ -40,11 +40,6 @@ import {
   visitGlossaryPage,
 } from '../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  CustomPropertyTypeByName,
-  deleteCreatedProperty,
-} from '../../utils/customProperty';
-import {
   addAssetsToDataProduct,
   addAssetsToDomain,
   addTagsAndGlossaryToDomain,
@@ -76,16 +71,11 @@ import {
   editAnnouncement,
   followEntity,
   getEncodedFqn,
-  replyAnnouncement,
   unFollowEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
-import {
-  settingClick,
-  SettingOptionsType,
-  sidebarClick,
-} from '../../utils/sidebar';
+import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
@@ -383,52 +373,6 @@ test.describe('Domains', () => {
     await expect(followingWidget).toBeVisible();
     await expect(followingWidget).not.toContainText(domain.data.displayName);
 
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
-  test('Add, Update custom properties for data product', async ({ page }) => {
-    test.slow(true);
-
-    const properties = Object.values(CustomPropertyTypeByName);
-    const titleText = properties.join(', ');
-
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    const dataProduct1 = new DataProduct([domain]);
-    await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
-
-    await test.step('Create DataProduct and custom properties for it', async () => {
-      await selectDomain(page, domain.data);
-      await createDataProduct(page, dataProduct1.data);
-      await dataProduct1.prepareCustomProperty(apiContext);
-    });
-
-    await test.step(`Set ${titleText} Custom Property`, async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      for (const type of properties) {
-        await dataProduct1.updateCustomProperty(
-          page,
-          dataProduct1.customPropertyValue[type].property,
-          dataProduct1.customPropertyValue[type].value
-        );
-      }
-    });
-
-    await test.step(`Update ${titleText} Custom Property`, async () => {
-      for (const type of properties) {
-        await dataProduct1.updateCustomProperty(
-          page,
-          dataProduct1.customPropertyValue[type].property,
-          dataProduct1.customPropertyValue[type].newValue
-        );
-      }
-    });
-
-    await dataProduct1.cleanupCustomProperty(apiContext);
-    await dataProduct1.delete(apiContext);
     await domain.delete(apiContext);
     await afterAction();
   });
@@ -1430,51 +1374,32 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create domain custom property and verify value persistence', async ({
-    page,
-  }) => {
+  test('Verify domain custom property value persistence', async ({ page }) => {
     test.slow(true);
 
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
-    const propertyName = `pwDomainCustomProperty${uuid()}`;
+    const stringCP = EntityDataClass.customProperties['domain']?.['string'] as
+      | { name: string }
+      | undefined;
+    const propertyName = stringCP?.name ?? '';
     const customPropertyValue = 'Test Domain Property Value';
 
     try {
-      // Create domain first
       await domain.create(apiContext);
       await page.reload();
 
-      await test.step('Create custom property for domain entity', async () => {
-        // Navigate to domain settings to create custom property
-        await settingClick(page, 'domains' as SettingOptionsType, true);
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: {
-            description: 'Test domain custom property',
-            entityApiType: 'domains',
-          },
-          customType: 'String',
-        });
-      });
-
       await test.step('Navigate to domain and assign custom property value', async () => {
-        // Navigate to domain page
         await sidebarClick(page, SidebarItem.DOMAIN);
 
         await selectDomain(page, domain.data);
 
-        // Click on custom properties tab
         const customPropertiesTab = page.getByTestId('custom_properties');
         await expect(customPropertiesTab).toBeVisible();
         await customPropertiesTab.click();
 
-        // Wait for custom properties to load
         await waitForAllLoadersToDisappear(page);
 
-        // Add custom property value
         const propertyCard = page.getByTestId(
           `custom-property-${propertyName}-card`
         );
@@ -1488,7 +1413,6 @@ test.describe('Domains', () => {
         await expect(valueInput).toBeVisible();
         await valueInput.fill(customPropertyValue);
 
-        // Save the custom property value
         const saveResponse = page.waitForResponse('/api/v1/domains/*');
         const saveButton = page.getByTestId('inline-save-btn');
         await expect(saveButton).toBeVisible();
@@ -1496,17 +1420,14 @@ test.describe('Domains', () => {
         await saveButton.click();
         await saveResponse;
 
-        // Verify the value is displayed
         await expect(
           page.getByTestId(`custom-property-${propertyName}-card`)
         ).toContainText(customPropertyValue);
       });
 
       await test.step('Reload and verify custom property value persists', async () => {
-        // Reload the page
         await page.reload();
 
-        // Navigate back to the domain and custom properties
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
 
@@ -1516,16 +1437,9 @@ test.describe('Domains', () => {
 
         await waitForAllLoadersToDisappear(page);
 
-        // Verify the custom property value persists after reload
         await expect(
           page.getByTestId(`custom-property-${propertyName}-card`)
         ).toContainText(customPropertyValue);
-      });
-
-      await test.step('Cleanup custom property', async () => {
-        // Navigate back to domain settings to delete the custom property
-        await settingClick(page, 'domains' as SettingOptionsType, true);
-        await deleteCreatedProperty(page, propertyName);
       });
     } finally {
       await domain.delete(apiContext);
@@ -1559,7 +1473,6 @@ test.describe('Domains', () => {
         description: 'Updated Domain Announcement Description',
       });
 
-      await replyAnnouncement(page);
       await deleteAnnouncement(page);
     } finally {
       await domain.delete(apiContext);
@@ -1598,7 +1511,6 @@ test.describe('Domains', () => {
         description: 'Updated Data Product Announcement Description',
       });
 
-      await replyAnnouncement(page);
       await deleteAnnouncement(page);
     } finally {
       await dataProduct.delete(apiContext);

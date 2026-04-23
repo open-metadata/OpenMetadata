@@ -332,6 +332,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
+      invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
       daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
       daoCollection
           .tagUsageDAO()
@@ -353,17 +355,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
       MessageParser.EntityLink newAbout = new MessageParser.EntityLink(CLASSIFICATION, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       List<Tag> childTags = getAllTagsByClassification(updated);
 
       for (Tag child : childTags) {
         newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

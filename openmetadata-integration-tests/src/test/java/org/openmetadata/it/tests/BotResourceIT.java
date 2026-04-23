@@ -169,6 +169,17 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().bots().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().bots().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Bot getVersion(UUID id, Double version) {
     return SdkClients.adminClient().bots().getVersion(id.toString(), version);
   }

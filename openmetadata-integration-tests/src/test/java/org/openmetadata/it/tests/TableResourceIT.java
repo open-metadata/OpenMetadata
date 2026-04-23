@@ -5387,6 +5387,45 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().tables().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().tables().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Test
+  void get_entityVersionHistory_fieldChanged_requiresExactColumnDescriptionPath(TestNamespace ns) {
+    Table created = createEntity(createMinimalRequest(ns));
+    Column nameColumn = findColumnByName(created.getColumns(), "name");
+    assertNotNull(nameColumn);
+
+    nameColumn.setDescription("Column description change for exact field filter test");
+    patchEntity(created.getId().toString(), created);
+
+    EntityHistory topLevelDescriptionHistory =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+    assertNotNull(topLevelDescriptionHistory);
+    assertNotNull(topLevelDescriptionHistory.getPaging());
+    assertEquals(0, (int) topLevelDescriptionHistory.getPaging().getTotal());
+
+    EntityHistory columnDescriptionHistory =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "columns.description");
+    assertNotNull(columnDescriptionHistory);
+    assertNotNull(columnDescriptionHistory.getPaging());
+    assertEquals(0, (int) columnDescriptionHistory.getPaging().getTotal());
+
+    EntityHistory exactColumnDescriptionHistory =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "columns.name.description");
+    assertNotNull(exactColumnDescriptionHistory);
+    assertNotNull(exactColumnDescriptionHistory.getPaging());
+    assertTrue(exactColumnDescriptionHistory.getPaging().getTotal() >= 1);
+  }
+
+  @Override
   protected Table getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tables().getVersion(id.toString(), version);
   }

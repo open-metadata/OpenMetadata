@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { forwardRef } from 'react';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { postThread } from '../../../rest/feedsAPI';
+import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateDescription from './UpdateDescriptionPage';
 const mockNavigate = jest.fn();
@@ -70,6 +69,7 @@ const mockTableData = {
   ],
 };
 jest.mock('../../../utils/TasksUtils', () => ({
+  ...jest.requireActual('../../../utils/TasksUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
@@ -78,10 +78,10 @@ jest.mock('../../../utils/TasksUtils', () => ({
   fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
-  getEntityColumnsDetails: jest
+  getTaskFieldColumns: jest
     .fn()
     .mockImplementation(() => mockTableData.columns),
-  getColumnObject: jest.fn().mockImplementation(() => ({
+  getColumnObjectByPath: jest.fn().mockImplementation(() => ({
     description: mockTableData.columns[0].description,
   })),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
@@ -101,13 +101,21 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
-  forwardRef(
-    jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
-  )
+jest.mock('../shared/TaskPayloadSchemaFields', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="description-tabs">RichTextEditor.component</div>
+    ))
 );
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/taskFormSchemasAPI', () => ({
+  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../rest/tasksAPI', () => ({
+  createTask: jest.fn().mockResolvedValue({}),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityType: { DescriptionUpdate: 'DescriptionUpdate' },
+  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -149,7 +157,7 @@ describe('UpdateDescriptionPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockPostThread = postThread as jest.Mock;
+    const mockCreateTask = createTask as jest.Mock;
     render(
       <UpdateDescription pageTitle={i18n.t('label.update-description')} />
     );
@@ -159,25 +167,39 @@ describe('UpdateDescriptionPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockPostThread).toHaveBeenCalledWith({
-      about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::shop_id::description>',
-      from: undefined,
-      message: 'Task message',
-      taskDetails: {
-        assignees: [
-          {
-            id: 'id1',
-            type: 'User',
-          },
-        ],
-        oldValue:
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'DescriptionUpdate',
+      priority: 'Medium',
+      about: 'sample_data.ecommerce_db.shopify.dim_location',
+      aboutType: 'table',
+      assignees: ['sample_data'],
+      payload: {
+        newDescription:
           'Unique identifier for the store. This column is the primary key for this table.',
-        suggestion:
+        currentDescription:
           'Unique identifier for the store. This column is the primary key for this table.',
-        type: 'UpdateDescription',
+        fieldPath: 'columns::shop_id::description',
       },
-      type: 'Task',
     });
+  });
+
+  it('should render description editor when current description is empty', async () => {
+    const { getColumnObjectByPath } = jest.requireMock(
+      '../../../utils/TasksUtils'
+    );
+    getColumnObjectByPath.mockReturnValueOnce({
+      description: '',
+    });
+
+    render(
+      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
+    );
+
+    expect(await screen.findByTestId('description-tabs')).toBeInTheDocument();
+    expect(
+      await screen.findByText('RichTextEditor.component')
+    ).toBeInTheDocument();
   });
 });

@@ -289,7 +289,7 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client, metadata_entry: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None: columns
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")
@@ -363,6 +363,37 @@ class StorageUnitTest(TestCase):
                     metadata_entry=self.return_metadata_entry()[0],
                 ),
             )
+
+    def test_extract_column_definitions_propagates_session(self):
+        sentinel_session = object()
+        with patch(
+            "metadata.ingestion.source.storage.storage_service.fetch_dataframe_first_chunk",
+            return_value=(None, None),
+        ) as mock_fetch:
+            self.object_store_source.extract_column_definitions(
+                bucket_name="test_bucket",
+                sample_key="test.json",
+                config_source=None,
+                client=None,
+                metadata_entry=self.return_metadata_entry()[0],
+                session=sentinel_session,
+            )
+            self.assertIs(mock_fetch.call_args.kwargs["session"], sentinel_session)
+
+    def test_get_columns_threads_session_through(self):
+        sentinel_session = object()
+        with patch.object(
+            self.object_store_source, "extract_column_definitions", return_value=[]
+        ) as mock_extract:
+            self.object_store_source._get_columns(
+                container_name="test_bucket",
+                sample_key="test.json",
+                metadata_entry=self.return_metadata_entry()[0],
+                config_source=None,
+                client=None,
+                session=sentinel_session,
+            )
+            self.assertIs(mock_extract.call_args.args[-1], sentinel_session)
 
     def test_get_sample_file_prefix_for_structured_and_partitioned_metadata(self):
         input_metadata = MetadataEntry(
