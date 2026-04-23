@@ -757,6 +757,7 @@ export enum DataModelType {
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
     SigmaDataModel = "SigmaDataModel",
+    SsrsDataModel = "SsrsDataModel",
     SupersetDataModel = "SupersetDataModel",
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",

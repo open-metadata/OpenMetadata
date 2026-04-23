@@ -24,7 +24,9 @@ interface UseWorkflowEdgeManagementProps {
   setEditingEdge: (edge: Edge | null) => void;
   setIsConnectionModalOpen: (open: boolean) => void;
   setPendingConnection: (connection: Connection | null) => void;
-  setFocusedConnection: (connection: unknown) => void;
+  setFocusedConnection: (
+    connection: { sourceId: string; targetId: string } | null
+  ) => void;
   setModalPosition: (position: { x: number; y: number }) => void;
   isViewMode: boolean;
 }
@@ -320,11 +322,19 @@ export const useWorkflowEdgeManagement = ({
     ]
   );
 
+  const handleEdgeDelete = useCallback(
+    (edgeId: string) => {
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    },
+    [setEdges]
+  );
+
   return {
     fixInvalidEdgeConditions,
     fixMissingEdgeLabels,
     handleConnectionSave,
     handleConnectionCancel,
     handleEdgeClick,
+    handleEdgeDelete,
   };
 };
