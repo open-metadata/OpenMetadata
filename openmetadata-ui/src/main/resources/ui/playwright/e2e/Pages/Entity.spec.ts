@@ -2046,7 +2046,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         // Since the test iterates through all 17 types of custom property and
         // performs multiple actions for each, we need to increase the timeout
         // to avoid premature test failure
-        test.setTimeout(600000);
+        // TODO: Reduce timeout once the latency issue is fixed
+        test.setTimeout(960000);
         const { apiContext, afterAction } = await getApiContext(page);
 
         await prepareCustomProperty(apiContext);
