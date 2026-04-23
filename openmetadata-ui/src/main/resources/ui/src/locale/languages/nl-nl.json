@@ -3076,7 +3076,7 @@
     "passed-x-checks": "{{count}} controles geslaagd",
     "password-error-message": "Het wachtwoord moet minimaal 8 en maximaal 56 tekens lang zijn en ten minste één hoofdletter (A-Z), één kleine letter (a-z), één cijfer en één speciaal teken (zoals !, %, @ of #) bevatten",
     "password-pattern-error": "Wachtwoord moet minimaal 8 en maximaal 56 tekens lang zijn, met één speciaal teken, één hoofdletter, één kleine letter",
-    "password-saved": "Password is saved. Enter a new value to update or remove it.",
+    "password-saved": "Het wachtwoord is opgeslagen. Voer een nieuwe waarde in om het bij te werken of te verwijderen.",
     "path-of-the-dbt-files-stored": "Pad naar de map waarin de dbt-bestanden zijn opgeslagen",
     "permanently-delete-ingestion-pipeline": "Als u deze <0>{{entityName}}</0> definitief verwijdert, gaat de pijplijnconfiguratie verloren en kan deze niet worden hersteld.",
     "permanently-delete-metadata": "Het permanent verwijderen van deze <0>{{entityName}}</0> verwijdert de metadata ervan permanent uit {{brandName}}.",

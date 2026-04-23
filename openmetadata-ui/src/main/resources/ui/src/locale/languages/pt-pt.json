@@ -3076,7 +3076,7 @@
     "passed-x-checks": "{{count}} verificações aprovadas",
     "password-error-message": "A senha deve ter no mínimo 8 e no máximo 56 caracteres e conter pelo menos uma letra maiúscula (A-Z), uma letra minúscula (a-z), um número e um caracter especial (como !, %, @ ou #)",
     "password-pattern-error": "A senha deve ter no mínimo 8 e no máximo 56 caracteres, com pelo menos um caracter especial, uma letra maiúscula e uma letra minúscula",
-    "password-saved": "Password is saved. Enter a new value to update or remove it.",
+    "password-saved": "A palavra-passe foi guardada. Introduza um novo valor para a atualizar ou remover.",
     "path-of-the-dbt-files-stored": "Caminho da pasta onde os arquivos dbt são armazenados",
     "permanently-delete-ingestion-pipeline": "A exclusão permanente deste <0>{{entityName}}</0> resultará na perda da configuração do pipeline e não poderá ser recuperada.",
     "permanently-delete-metadata": "Excluir permanentemente este(a) <0>{{entityName}}</0> removerá seus metadados do {{brandName}} permanentemente.",

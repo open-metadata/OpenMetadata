@@ -60,7 +60,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const handleRemove = useCallback(() => {
     props.onChange('');
     setIsEditing(true);
-  }, [props]);
+  }, [props.onChange]);
 
   const handleUpdate = useCallback(() => {
     setIsEditing(true);
