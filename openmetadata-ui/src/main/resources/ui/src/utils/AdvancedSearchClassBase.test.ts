@@ -73,6 +73,7 @@ describe('AdvancedSearchClassBase', () => {
       'tags.labelType',
       'tier.labelType',
       'createdBy',
+      EntityFields.ENTITY_STATUS,
     ]);
   });
 });

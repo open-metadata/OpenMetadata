@@ -721,9 +721,22 @@ export const fillStaticListRule = async (
 ) => {
   const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
 
-  await selectOption(page, ruleLocator.locator('.rule--field .ant-select'), fieldLabel, true);
-  await selectOption(page, ruleLocator.locator('.rule--operator .ant-select'), condition);
-  await selectOption(page, ruleLocator.locator('.widget--widget > .ant-select'), value);
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    fieldLabel,
+    true
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    condition
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.widget--widget > .ant-select'),
+    value
+  );
 };
 
 export const getFieldsSuggestionSearchText = (

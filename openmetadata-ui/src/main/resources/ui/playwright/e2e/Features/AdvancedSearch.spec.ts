@@ -26,9 +26,9 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   FIELDS,
-  OPERATOR,
   fillRule,
   fillStaticListRule,
+  OPERATOR,
   runRuleGroupTests,
   runRuleGroupTestsWithNonExistingValue,
   selectOption,
@@ -249,17 +249,23 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         topic2.entityResponseData?.messageSchema?.schemaFields?.[1]?.name || '',
       ],
       'dataModel.columns.name.keyword': [
-        EntityDataClass.container1.entityResponseData.dataModel?.columns?.[0]?.name || '',
-        EntityDataClass.container2.entityResponseData.dataModel?.columns?.[1]?.name || '',
+        EntityDataClass.container1.entityResponseData.dataModel?.columns?.[0]
+          ?.name || '',
+        EntityDataClass.container2.entityResponseData.dataModel?.columns?.[1]
+          ?.name || '',
       ],
       dataModelType: [
         (
-          EntityDataClass.dashboard1
-            .dataModelResponseData as unknown as Record<string, string>
+          EntityDataClass.dashboard1.dataModelResponseData as unknown as Record<
+            string,
+            string
+          >
         ).dataModelType,
         (
-          EntityDataClass.dashboard2
-            .dataModelResponseData as unknown as Record<string, string>
+          EntityDataClass.dashboard2.dataModelResponseData as unknown as Record<
+            string,
+            string
+          >
         ).dataModelType,
       ],
       'fields.name.keyword': [
@@ -268,12 +274,16 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       ],
       'tasks.displayName.keyword': [
         (
-          EntityDataClass.pipeline1
-            .entityResponseData as unknown as Record<string, { displayName: string }[]>
+          EntityDataClass.pipeline1.entityResponseData as unknown as Record<
+            string,
+            { displayName: string }[]
+          >
         ).tasks[0].displayName,
         (
-          EntityDataClass.pipeline2
-            .entityResponseData as unknown as Record<string, { displayName: string }[]>
+          EntityDataClass.pipeline2.entityResponseData as unknown as Record<
+            string,
+            { displayName: string }[]
+          >
         ).tasks[1].displayName,
       ],
       'domains.displayName.keyword': [
