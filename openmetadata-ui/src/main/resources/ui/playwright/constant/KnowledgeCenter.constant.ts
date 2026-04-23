@@ -10,16 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// Editor shortcuts use Cmd on macOS and Ctrl on Linux/Windows. Previously hard-coded
+// to "Meta+..." which maps to Cmd on macOS but to the Super/Windows key on Linux —
+// that's why bold / undo / redo / copy / paste tests all failed on CI (Linux runners)
+// while slash-command tests kept working: Linux Super+b is not a bold shortcut, but
+// typing "/" followed by a block name does not need any modifier key at all.
+const IS_MAC = process.platform === 'darwin';
+const MOD = IS_MAC ? 'Meta' : 'Control';
+
 export const SHORTCUTS = {
-  bold: 'Meta+b',
-  italic: 'Meta+i',
-  code: 'Meta+e',
-  undo: 'Meta+z',
-  redo: 'Meta+Shift+z',
-  selectAll: 'Meta+a',
-  copy: 'Meta+c',
-  paste: 'Meta+v',
-  selectWord: 'Meta+Shift+ArrowLeft',
+  bold: `${MOD}+b`,
+  italic: `${MOD}+i`,
+  code: `${MOD}+e`,
+  undo: `${MOD}+z`,
+  redo: `${MOD}+Shift+z`,
+  selectAll: `${MOD}+a`,
+  copy: `${MOD}+c`,
+  paste: `${MOD}+v`,
+  selectWord: `${MOD}+Shift+ArrowLeft`,
   enter: 'Enter',
   end: 'End',
   backspace: 'Backspace',
