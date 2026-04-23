@@ -50,6 +50,7 @@ export const IncidentStatusPopoverHeader = ({
       gap={2}
       justify="start">
       <ButtonUtility
+        className="tw:outline-none"
         color="tertiary"
         icon={ArrowBackIcon}
         size="sm"

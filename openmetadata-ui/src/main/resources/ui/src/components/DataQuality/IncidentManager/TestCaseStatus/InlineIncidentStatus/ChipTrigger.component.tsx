@@ -36,7 +36,7 @@ export type ChipTriggerProps = {
 };
 
 const CHIP_TRIGGER_BTN_CLASS =
-  'tw:inline-flex tw:h-auto tw:min-h-0 tw:p-0 tw:shadow-none tw:ring-0 tw:bg-transparent hover:tw:bg-transparent';
+  'tw:inline-flex tw:h-auto tw:min-h-0 tw:p-0 tw:shadow-none tw:ring-0 tw:bg-transparent hover:tw:bg-transparent tw:outline-none';
 
 const CHIP_PILL_CLASS =
   'tw:inline-flex tw:max-w-max tw:items-center tw:gap-0.5 tw:whitespace-nowrap tw:rounded-full tw:border tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
