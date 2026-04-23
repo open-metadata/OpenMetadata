@@ -431,6 +431,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
         metadata_entry: MetadataEntry,
+        session: Any = None,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
         data_structure_details, raw_data = fetch_dataframe_first_chunk(
@@ -443,6 +444,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 separator=metadata_entry.separator,
             ),
             fetch_raw_data=True,
+            session=session,
         )
         if data_structure_details:
             data_structure_details = next(data_structure_details)
@@ -479,10 +481,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata_entry: MetadataEntry,
         config_source: ConfigSource,
         client: Any,
+        session: Any = None,
     ) -> Optional[List[Column]]:
         """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
-            container_name, sample_key, config_source, client, metadata_entry
+            container_name,
+            sample_key,
+            config_source,
+            client,
+            metadata_entry,
+            session,
         )
         partition_cols = self._partition_columns_to_table_columns(
             metadata_entry.partitionColumns
