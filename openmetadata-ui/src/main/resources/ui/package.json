@@ -98,7 +98,6 @@
     "@tiptap/react": "^2.3.0",
     "@tiptap/starter-kit": "^2.3.0",
     "@tiptap/suggestion": "^2.3.0",
-    "@toast-ui/react-editor": "^3.1.8",
     "@untitledui/icons": "^0.0.21",
     "@windmillcode/quill-emoji": "2.0.3000",
     "analytics": "^0.8.1",

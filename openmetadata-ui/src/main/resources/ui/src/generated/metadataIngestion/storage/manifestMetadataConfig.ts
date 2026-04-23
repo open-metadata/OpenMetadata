@@ -23,11 +23,18 @@ export interface ManifestMetadataConfigClass {
  */
 export interface ManifestMetadataEntry {
     /**
+     * When true and dataPath is a glob, automatically detect Hive-style partition columns from
+     * matched paths (e.g. year=2024/month=01). Ignored for literal paths.
+     */
+    autoPartitionDetection?: boolean;
+    /**
      * The top-level container name containing the data path to be ingested
      */
     containerName: string;
     /**
-     * The path where the data resides in the container, excluding the bucket name
+     * Literal path relative to the container, or a glob-style pattern. Use a single-star
+     * wildcard for one path level, a double-star wildcard for any depth, and a question mark
+     * for a single character.
      */
     dataPath: string;
     /**
@@ -35,115 +42,71 @@ export interface ManifestMetadataEntry {
      */
     depth?: number;
     /**
+     * Path segments to skip during glob discovery. Any file whose path contains one of these
+     * segments is ignored. Common defaults applied when unset: _delta_log, _temporary,
+     * _spark_metadata, .tmp, _SUCCESS.
+     */
+    excludePaths?: string[];
+    /**
+     * Glob patterns to exclude during glob discovery. Any file matching one of these patterns
+     * is skipped.
+     */
+    excludePatterns?: string[];
+    /**
      * Flag indicating whether the container's data is partitioned
      */
     isPartitioned?: boolean;
     /**
-     * What are the partition columns in case the container's data is partitioned
+     * Explicit partition column definitions. Overrides auto-detection when provided.
      */
-    partitionColumns?: Column[];
+    partitionColumns?: PartitionColumn[];
     /**
      * For delimited files such as CSV, what is the separator being used?
      */
     separator?: string;
     /**
-     * What's the schema format for the container, eg. avro, parquet, csv.
+     * Expected file format for schema inference. Leave blank to auto-detect from the file
+     * extension. Ignored when Unstructured Data is enabled.
      */
     structureFormat?: string;
     /**
-     * What's the schema formats for the container, eg. avro, parquet, csv.
+     * When true, files matching the glob dataPath are cataloged as individual containers
+     * without schema extraction. Use for images, documents, and other non-tabular files.
+     */
+    unstructuredData?: boolean;
+    /**
+     * Legacy option for literal dataPath entries. List of file extensions (e.g. png, pdf, jpg)
+     * to catalog as unstructured. Prefer the unstructuredData flag with a glob dataPath for new
+     * configurations.
      */
     unstructuredFormats?: string[];
     [property: string]: any;
 }
 
-/**
- * This schema defines the type for a column in a table.
- */
-export interface Column {
+export interface PartitionColumn {
     /**
-     * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
-     * arrayDataType as `int`.
-     */
-    arrayDataType?: DataType;
-    /**
-     * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
-     */
-    children?: Column[];
-    /**
-     * Column level constraint.
-     */
-    constraint?: Constraint;
-    /**
-     * List of Custom Metrics registered for a table.
-     */
-    customMetrics?: CustomMetric[];
-    /**
-     * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
-     * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
-     */
-    dataLength?: number;
-    /**
-     * Data type of the column (int, date etc.).
+     * Partition column data type.
      */
     dataType: DataType;
     /**
-     * Display name used for dataType. This is useful for complex types, such as `array<int>`,
-     * `map<int,string>`, `struct<>`, and union types.
+     * Display name for the data type (optional).
      */
     dataTypeDisplay?: string;
     /**
-     * Description of the column.
+     * Description of the partition column (optional).
      */
     description?: string;
     /**
-     * Display Name that identifies this column name.
+     * Partition column name.
      */
-    displayName?: string;
-    /**
-     * Entity extension data with custom attributes added to the entity.
-     */
-    extension?:          any;
-    fullyQualifiedName?: string;
-    /**
-     * Json schema only if the dataType is JSON else null.
-     */
-    jsonSchema?: string;
-    name:        string;
-    /**
-     * Ordinal position of the column.
-     */
-    ordinalPosition?: number;
-    /**
-     * The precision of a numeric is the total count of significant digits in the whole number,
-     * that is, the number of digits to both sides of the decimal point. Precision is applicable
-     * Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric
-     * types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
-     */
-    precision?: number;
-    /**
-     * Latest Data profile for a Column.
-     */
-    profile?: ColumnProfile;
-    /**
-     * The scale of a numeric is the count of decimal digits in the fractional part, to the
-     * right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non
-     * Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
-     */
-    scale?: number;
-    /**
-     * Tags associated with the column.
-     */
-    tags?: TagLabel[];
+    name: string;
+    [property: string]: any;
 }
 
 /**
- * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
- * arrayDataType as `int`.
+ * Partition column data type.
  *
  * This enum defines the type of data stored in a column.
- *
- * Data type of the column (int, date etc.).
  */
 export enum DataType {
     AggState = "AGG_STATE",
@@ -232,487 +195,4 @@ export enum DataType {
     Variant = "VARIANT",
     XML = "XML",
     Year = "YEAR",
-}
-
-/**
- * Column level constraint.
- *
- * This enum defines the type for column constraint.
- */
-export enum Constraint {
-    NotNull = "NOT_NULL",
-    Null = "NULL",
-    PrimaryKey = "PRIMARY_KEY",
-    Unique = "UNIQUE",
-}
-
-/**
- * Custom Metric definition that we will associate with a column.
- */
-export interface CustomMetric {
-    /**
-     * Name of the column in a table.
-     */
-    columnName?: string;
-    /**
-     * Description of the Metric.
-     */
-    description?: string;
-    /**
-     * SQL expression to compute the Metric. It should return a single numerical value.
-     */
-    expression: string;
-    /**
-     * Unique identifier of this Custom Metric instance.
-     */
-    id?: string;
-    /**
-     * Name that identifies this Custom Metric.
-     */
-    name: string;
-    /**
-     * Owners of this Custom Metric.
-     */
-    owners?: EntityReference[];
-    /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds.
-     */
-    updatedAt?: number;
-    /**
-     * User who made the update.
-     */
-    updatedBy?: string;
-}
-
-/**
- * Owners of this Custom Metric.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- */
-export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
-}
-
-/**
- * Latest Data profile for a Column.
- *
- * This schema defines the type to capture the table's column profile.
- */
-export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
-    cardinalityDistribution?: CardinalityDistribution;
-    /**
-     * Custom Metrics profile list bound to a column.
-     */
-    customMetrics?: CustomMetricProfile[];
-    /**
-     * Number of values that contain distinct values.
-     */
-    distinctCount?: number;
-    /**
-     * Proportion of distinct values in a column.
-     */
-    distinctProportion?: number;
-    /**
-     * No.of Rows that contain duplicates in a column.
-     */
-    duplicateCount?: number;
-    /**
-     * First quartile of a column.
-     */
-    firstQuartile?: number;
-    /**
-     * Histogram of a column.
-     */
-    histogram?: any[] | boolean | HistogramClass | number | number | null | string;
-    /**
-     * Inter quartile range of a column.
-     */
-    interQuartileRange?: number;
-    /**
-     * Maximum value in a column.
-     */
-    max?: number | string;
-    /**
-     * Maximum string length in a column.
-     */
-    maxLength?: number;
-    /**
-     * Avg value in a column.
-     */
-    mean?: number;
-    /**
-     * Median of a column.
-     */
-    median?: number;
-    /**
-     * Minimum value in a column.
-     */
-    min?: number | string;
-    /**
-     * Minimum string length in a column.
-     */
-    minLength?: number;
-    /**
-     * Missing count is calculated by subtracting valuesCount - validCount.
-     */
-    missingCount?: number;
-    /**
-     * Missing Percentage is calculated by taking percentage of validCount/valuesCount.
-     */
-    missingPercentage?: number;
-    /**
-     * Column Name.
-     */
-    name: string;
-    /**
-     * Non parametric skew of a column.
-     */
-    nonParametricSkew?: number;
-    /**
-     * No.of null values in a column.
-     */
-    nullCount?: number;
-    /**
-     * No.of null value proportion in columns.
-     */
-    nullProportion?: number;
-    /**
-     * Standard deviation of a column.
-     */
-    stddev?: number;
-    /**
-     * Median value in a column.
-     */
-    sum?: number;
-    /**
-     * First quartile of a column.
-     */
-    thirdQuartile?: number;
-    /**
-     * Timestamp on which profile is taken.
-     */
-    timestamp: number;
-    /**
-     * No. of unique values in the column.
-     */
-    uniqueCount?: number;
-    /**
-     * Proportion of number of unique values in a column.
-     */
-    uniqueProportion?: number;
-    /**
-     * Total count of valid values in this column.
-     */
-    validCount?: number;
-    /**
-     * Total count of the values in this column.
-     */
-    valuesCount?: number;
-    /**
-     * Percentage of values in this column with respect to row count.
-     */
-    valuesPercentage?: number;
-    /**
-     * Variance of a column.
-     */
-    variance?: number;
-}
-
-/**
- * Cardinality distribution showing top categories with an 'Others' bucket.
- */
-export interface CardinalityDistribution {
-    /**
-     * Flag indicating that all values in the column are unique, so no distribution is
-     * calculated.
-     */
-    allValuesUnique?: boolean;
-    /**
-     * List of category names including 'Others'.
-     */
-    categories?: string[];
-    /**
-     * List of counts corresponding to each category.
-     */
-    counts?: number[];
-    /**
-     * List of percentages corresponding to each category.
-     */
-    percentages?: number[];
-}
-
-/**
- * Profiling results of a Custom Metric.
- */
-export interface CustomMetricProfile {
-    /**
-     * Custom metric name.
-     */
-    name?: string;
-    /**
-     * Profiling results for the metric.
-     */
-    value?: number;
-}
-
-export interface HistogramClass {
-    /**
-     * Boundaries of Histogram.
-     */
-    boundaries?: any[];
-    /**
-     * Frequencies of Histogram.
-     */
-    frequencies?: any[];
-}
-
-/**
- * This schema defines the type for labeling an entity with a Tag.
- */
-export interface TagLabel {
-    /**
-     * Timestamp when this tag was applied in ISO 8601 format
-     */
-    appliedAt?: Date;
-    /**
-     * Who it is that applied this tag (e.g: a bot, AI or a human)
-     */
-    appliedBy?: string;
-    /**
-     * Description for the tag label.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this tag.
-     */
-    displayName?: string;
-    /**
-     * Link to the tag resource.
-     */
-    href?: string;
-    /**
-     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
-     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
-     * used to determine the tag label.
-     */
-    labelType: LabelType;
-    /**
-     * Additional metadata associated with this tag label, such as recognizer information for
-     * automatically applied tags.
-     */
-    metadata?: TagLabelMetadata;
-    /**
-     * Name of the tag or glossary term.
-     */
-    name?: string;
-    /**
-     * An explanation of why this tag was proposed, specially for autoclassification tags
-     */
-    reason?: string;
-    /**
-     * Label is from Tags or Glossary.
-     */
-    source: TagSource;
-    /**
-     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-     */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
-}
-
-/**
- * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
- * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
- * relationship (see Classification.json for more details). 'Propagated` indicates a tag
- * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
- * used to determine the tag label.
- */
-export enum LabelType {
-    Automated = "Automated",
-    Derived = "Derived",
-    Generated = "Generated",
-    Manual = "Manual",
-    Propagated = "Propagated",
-}
-
-/**
- * Additional metadata associated with this tag label, such as recognizer information for
- * automatically applied tags.
- *
- * Additional metadata associated with a tag label, including information about how the tag
- * was applied.
- */
-export interface TagLabelMetadata {
-    /**
-     * Epoch time in milliseconds when the certification tag expires
-     */
-    expiryDate?: number;
-    /**
-     * Metadata about the recognizer that automatically applied this tag
-     */
-    recognizer?: TagLabelRecognizerMetadata;
-}
-
-/**
- * Metadata about the recognizer that automatically applied this tag
- *
- * Metadata about the recognizer that applied a tag, including scoring and pattern
- * information.
- */
-export interface TagLabelRecognizerMetadata {
-    /**
-     * Details of patterns that matched during recognition
-     */
-    patterns?: PatternMatch[];
-    /**
-     * Unique identifier of the recognizer that applied this tag
-     */
-    recognizerId: string;
-    /**
-     * Human-readable name of the recognizer
-     */
-    recognizerName: string;
-    /**
-     * Confidence score assigned by the recognizer (0.0 to 1.0)
-     */
-    score: number;
-    /**
-     * What the recognizer analyzed to apply this tag
-     */
-    target?: Target;
-}
-
-/**
- * Information about a pattern that matched during recognition
- */
-export interface PatternMatch {
-    /**
-     * Name of the pattern that matched
-     */
-    name: string;
-    /**
-     * Regular expression or pattern definition
-     */
-    regex?: string;
-    /**
-     * Confidence score for this specific pattern match
-     */
-    score: number;
-}
-
-/**
- * What the recognizer analyzed to apply this tag
- */
-export enum Target {
-    ColumnName = "column_name",
-    Content = "content",
-}
-
-/**
- * Label is from Tags or Glossary.
- */
-export enum TagSource {
-    Classification = "Classification",
-    Glossary = "Glossary",
-}
-
-/**
- * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
- * entity must confirm the suggested labels before it is marked as 'Confirmed'.
- */
-export enum State {
-    Confirmed = "Confirmed",
-    Suggested = "Suggested",
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
 }
