@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ServiceTypes } from '../../constant/settings';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -35,6 +36,19 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+
+// Service management pages render KnowledgePanel.DataProducts only inside the
+// entity-count tab (ServiceMainTabContent). This maps each ServiceTypes value
+// to the matching tab label so we can click it before assigning data products.
+const SERVICE_ENTITY_TAB: Partial<Record<ServiceTypes, string>> = {
+  [ServiceTypes.API_SERVICES]: 'Collections',
+  [ServiceTypes.DASHBOARD_SERVICES]: 'Dashboards',
+  [ServiceTypes.MESSAGING_SERVICES]: 'Topics',
+  [ServiceTypes.PIPELINE_SERVICES]: 'Pipelines',
+  [ServiceTypes.ML_MODEL_SERVICES]: 'ML Models',
+  [ServiceTypes.STORAGE_SERVICES]: 'Containers',
+  [ServiceTypes.SEARCH_SERVICES]: 'Search Indexes',
+};
 
 let domain: Domain;
 let dataProduct: DataProduct;
@@ -68,7 +82,7 @@ entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
-    test.beforeAll('setup  entity' + entity.getType(), async ({ browser }) => {
+    test.beforeAll('setup entity ' + entity.getType(), async ({ browser }) => {
       const { afterAction, apiContext } = await performAdminLogin(browser);
       await entity.create(apiContext);
       await afterAction();
@@ -85,39 +99,83 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(page);
 
+      // Table and StoredProcedure have 3 breadcrumbs; clicking index 1 lands
+      // on the Database entity page which already exposes KnowledgePanel.DataProducts.
+      // All other entities have 1 breadcrumb (service) or their intermediate
+      // breadcrumb resolves to the service management page.
+      const isDbEntity = ['Table', 'Store Procedure'].includes(
+        entity.getType()
+      );
+      const is3Breadcrumb = [
+        'Table',
+        'ApiEndpoint',
+        'Store Procedure',
+      ].includes(entity.getType());
+
       await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
-        ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())
-          ? 3
-          : 1
+        is3Breadcrumb ? 3 : 1
       );
 
-      // click database
+      // Navigate to the parent and assign domain.
       await page
         .getByTestId('breadcrumb-link')
-        .nth(
-          ['Table', 'ApiEndpoint', 'Store Procedure'].includes(entity.getType())
-            ? 1
-            : 0
-        )
+        .nth(is3Breadcrumb ? 1 : 0)
         .click();
-      // assign domain
+
       await assignSingleSelectDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      await redirectToHomePage(page);
+      // For service management pages KnowledgePanel.DataProducts is rendered
+      // inside ServiceMainTabContent, which lives in the entity-count tab
+      // (e.g. "ML Models", "Dashboards"). Click it so the panel becomes visible.
+      if (!isDbEntity && entity.serviceType) {
+        const tabLabel = SERVICE_ENTITY_TAB[entity.serviceType];
 
+        if (tabLabel) {
+          await page
+            .getByRole('tab', { name: new RegExp(tabLabel, 'i') })
+            .click();
+          await waitForAllLoadersToDisappear(page);
+        }
+      }
+
+      // Assign data product to the parent so the entity inherits it.
+      // Domain is directly assigned above, no polling needed.
+      await assignDataProduct(page, domain.responseData, [
+        dataProduct.responseData,
+      ]);
+
+      // Back to entity; poll until the inherited domain propagates via ES.
+      await redirectToHomePage(page);
       await entity.visitEntityPage(page);
 
-      await assignDataProduct(
-        page,
-        domain.responseData,
-        [dataProduct.responseData],
-        'Add',
-        'KnowledgePanel.DataProducts',
-        true
-      );
+      await expect
+        .poll(
+          async () => {
+            const entityResponse = page.waitForResponse(
+              (r) =>
+                r.url().includes(`/api/v1/${entity.endpoint}/`) &&
+                r.status() === 200
+            );
+            await page.reload();
+            await entityResponse;
+            await waitForAllLoadersToDisappear(page);
 
-      // This will delete and restore and ensure both operation are successful
+            return page
+              .getByTestId('domain-link')
+              .textContent()
+              .catch(() => null);
+          },
+          {
+            message: `Waiting for inherited domain "${domain.responseData.displayName}"`,
+            timeout: 120_000,
+            intervals: [3_000, 5_000, 10_000],
+          }
+        )
+        .toContain(domain.responseData.displayName);
+
+      // Entity owns no domain or data products (both inherited from parent),
+      // so the backend restore check passes.
       await softDeleteEntity(
         page,
         entity.entityResponseData.name,
