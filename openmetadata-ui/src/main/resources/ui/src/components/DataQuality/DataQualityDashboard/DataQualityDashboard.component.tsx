@@ -633,7 +633,7 @@ const DataQualityDashboard = ({
     'tw:shadow-none': isGovernanceView,
   });
 
-  const cardBodyClass = isGovernanceView ? 'tw:py-6' : 'tw:p-6';
+  const cardBodyClass = 'tw:p-6';
 
   const filterBarContent = (
     <div
