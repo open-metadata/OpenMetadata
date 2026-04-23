@@ -16,6 +16,7 @@ import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
+import ColumnIcon from '../assets/svg/ic-column-icon.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
@@ -385,6 +386,8 @@ class ServiceUtilClassBase {
 
     if (entityType === EntityType.CHART) {
       return ChartIcon;
+    } else if (entityType === EntityType.TABLE_COLUMN) {
+      return ColumnIcon;
     }
 
     return this.getServiceLogo(type);
