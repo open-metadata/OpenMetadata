@@ -10,23 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import {
+  expect,
+  type Browser,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { addMentionCommentInFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
-import {
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-} from '../../utils/common';
-import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
   addAssigneeFromPopoverWidget,
@@ -36,6 +34,7 @@ import {
 } from '../../utils/incidentManager';
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForTaskResolveResponse } from '../../utils/task';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -45,6 +44,376 @@ let users: UserClass[] = [];
 let table1: TableClass;
 let tablePagination: TableClass;
 const PAGINATION_INCIDENT_COUNT = 22;
+
+const performIncidentAdminLogin = async (browser: Browser) => {
+  try {
+    const context = await browser.newContext({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    const page = await context.newPage();
+    await redirectToHomePage(page);
+    const { apiContext } = await getApiContext(page);
+    const afterAction = async () => {
+      await apiContext.dispose();
+      await page.close();
+      await context.close();
+    };
+
+    return { page, apiContext, afterAction };
+  } catch {
+    return performAdminLogin(browser);
+  }
+};
+
+const openIncidentTaskTab = async (page: Page, waitForTaskPanel = false) => {
+  const incidentTab = page.getByRole('tab', { name: /Incident/i });
+  const taskListResponse = page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('/api/v1/tasks') &&
+        response.url().includes('aboutEntity='),
+      {
+        timeout: 10_000,
+      }
+    )
+    .catch(() => null);
+
+  await expect(incidentTab).toBeVisible();
+  await incidentTab.click();
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('issue-tab-container')).toBeVisible();
+  await taskListResponse;
+
+  if (waitForTaskPanel) {
+    await expect(page.getByTestId('task-cta-buttons')).toBeVisible({
+      timeout: 30_000,
+    });
+  }
+};
+
+const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get('/api/v1/tasks', {
+            params: {
+              category: 'Incident',
+              limit: 100,
+              fields: 'about,payload,assignees',
+            },
+          });
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = await response.json();
+
+          return (body.data ?? []).some(
+            (task: {
+              about?: { fullyQualifiedName?: string };
+              payload?: {
+                testCaseResult?: { fullyQualifiedName?: string };
+                testCaseReference?: { fullyQualifiedName?: string };
+              };
+            }) =>
+              task.about?.fullyQualifiedName === testCaseFqn ||
+              task.payload?.testCaseResult?.fullyQualifiedName ===
+                testCaseFqn ||
+              task.payload?.testCaseReference?.fullyQualifiedName ===
+                testCaseFqn
+          );
+        },
+        {
+          message: `Wait for incident task for ${testCaseFqn}`,
+          timeout: 60_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+const isVisible = async (locator: Locator) =>
+  locator.isVisible().catch(() => false);
+
+const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
+  const rows = page.locator(
+    '.ant-table-tbody tr:not(.ant-table-measure-row):not(.ant-table-placeholder)'
+  );
+  const rowCount = await rows.count();
+
+  expect(rowCount).toBeGreaterThan(0);
+
+  for (let index = 0; index < rowCount; index++) {
+    await expect(rows.nth(index)).toContainText(text);
+  }
+};
+
+const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
+  const visibleReassignButton = page
+    .getByRole('button', { name: /^Re-?assign$/ })
+    .last();
+  const primaryActionButton = page
+    .locator(
+      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+    )
+    .last();
+  const actionTrigger = page
+    .locator(
+      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+    )
+    .last();
+  const editAssigneesButton = page
+    .locator('[data-testid="edit-assignees"]:visible')
+    .last();
+  const reassignModal = page
+    .locator('.ant-modal-wrap:visible')
+    .filter({ hasText: /Re-?assign Task/i });
+  const reassignMenuItem = page
+    .locator('.task-action-dropdown:visible')
+    .getByRole('menuitem', { name: /^Reassign$/ })
+    .last();
+  const incidentListRowAction = testCaseName
+    ? page
+        .locator('.ant-table-tbody tr')
+        .filter({ hasText: testCaseName })
+        .first()
+        .locator('button')
+        .last()
+    : null;
+  const getPrimaryActionText = async () =>
+    (await primaryActionButton.textContent())?.trim() ?? '';
+
+  if (await isVisible(visibleReassignButton)) {
+    await visibleReassignButton.click();
+    await expect(reassignModal).toBeVisible({ timeout: 10_000 });
+
+    return reassignModal;
+  }
+
+  try {
+    await expect
+      .poll(getPrimaryActionText, {
+        timeout: 15_000,
+      })
+      .toContain('Reassign');
+
+    await primaryActionButton.click();
+
+    await expect(reassignModal).toBeVisible({ timeout: 10_000 });
+
+    return reassignModal;
+  } catch {
+    // Fall back to explicit menu selection if the incident status has not
+    // switched the primary action to Reassign yet.
+  }
+
+  if (await isVisible(editAssigneesButton)) {
+    await editAssigneesButton.click();
+    await expect(reassignModal).toBeVisible({ timeout: 10_000 });
+
+    return reassignModal;
+  }
+
+  if (incidentListRowAction && (await isVisible(incidentListRowAction))) {
+    await incidentListRowAction.click();
+    await expect(reassignModal).toBeVisible({ timeout: 10_000 });
+
+    return reassignModal;
+  }
+
+  await expect(actionTrigger).toBeVisible();
+  await actionTrigger.scrollIntoViewIfNeeded();
+  await actionTrigger.click();
+  await expect(reassignMenuItem).toBeVisible();
+  await reassignMenuItem.click();
+
+  try {
+    await expect(reassignModal).toBeVisible({ timeout: 3_000 });
+  } catch {
+    await expect
+      .poll(getPrimaryActionText, {
+        timeout: 3_000,
+      })
+      .toContain('Reassign');
+    await primaryActionButton.click();
+    await expect(reassignModal).toBeVisible({ timeout: 10_000 });
+  }
+
+  return reassignModal;
+};
+
+const reassignIncidentTask = async (
+  page: Page,
+  assignee: {
+    name: string;
+    displayName: string;
+  },
+  testCaseName?: string
+) => {
+  const reassignModal = await openIncidentReassignModal(page, testCaseName);
+  const assigneeSelect = reassignModal.getByTestId('select-assignee');
+  const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
+  const assigneeInput = assigneeSelect.locator('input').last();
+  const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
+
+  await expect(assigneeSelector).toBeVisible();
+  await assigneeSelector.click();
+  await assigneeInput.fill(assignee.displayName);
+  await expect(assigneeOption).toBeVisible({ timeout: 30_000 });
+
+  await assigneeOption.click();
+
+  const updateAssignee = waitForTaskResolveResponse(page);
+
+  await reassignModal.getByRole('button', { name: 'Save' }).click();
+
+  await updateAssignee;
+  await waitForAllLoadersToDisappear(page);
+
+  try {
+    await expect(reassignModal).not.toBeVisible({ timeout: 10_000 });
+
+    return;
+  } catch {
+    // Fall through and close the modal explicitly only if it remains open.
+  }
+
+  const cancelButton = reassignModal.getByRole('button', { name: 'Cancel' });
+
+  if (await isVisible(cancelButton)) {
+    await cancelButton.click();
+  }
+  await expect(reassignModal).not.toBeVisible();
+};
+
+const openIncidentResolveDialog = async (
+  page: Page,
+  allowProgressTransition = true
+) => {
+  const primaryActionButton = page
+    .locator(
+      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+    )
+    .last();
+  const actionTrigger = page
+    .locator(
+      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+    )
+    .last();
+  const resolveModal = page.locator('.ant-modal .ant-modal-content').last();
+  const modalTextareas = resolveModal.locator('textarea');
+
+  if (await isVisible(resolveModal)) {
+    return resolveModal;
+  }
+
+  const primaryActionText =
+    (await primaryActionButton.textContent())?.trim() ?? '';
+  const canAdvanceWorkflowFromPrimaryAction =
+    allowProgressTransition &&
+    /move to pending|start progress/i.test(primaryActionText);
+
+  if (primaryActionText.includes('Resolve')) {
+    await primaryActionButton.click();
+  } else if (canAdvanceWorkflowFromPrimaryAction) {
+    const advanceIncident = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/resolve')
+    );
+
+    await primaryActionButton.click();
+    const response = await advanceIncident;
+    expect(response.ok()).toBeTruthy();
+
+    await waitForAllLoadersToDisappear(page);
+
+    return openIncidentResolveDialog(page, false);
+  } else {
+    await expect(actionTrigger).toBeVisible();
+    await actionTrigger.scrollIntoViewIfNeeded();
+    await actionTrigger.click();
+
+    const resolveMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
+      )
+      .last();
+    const startProgressMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+      )
+      .last();
+    const workflowMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible, [data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+      )
+      .first();
+
+    await expect(workflowMenuItem).toBeVisible({ timeout: 5_000 });
+
+    if (await resolveMenuItem.isVisible().catch(() => false)) {
+      await resolveMenuItem.click();
+    } else if (
+      allowProgressTransition &&
+      (await startProgressMenuItem.isVisible().catch(() => false))
+    ) {
+      await startProgressMenuItem.click();
+
+      if (await resolveModal.isVisible().catch(() => false)) {
+        const advanceIncident = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'POST' &&
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().includes('/resolve')
+        );
+
+        await resolveModal.getByRole('button', { name: /ok|save/i }).click();
+        await advanceIncident;
+      } else {
+        await expect
+          .poll(async () => (await primaryActionButton.textContent())?.trim(), {
+            timeout: 10_000,
+          })
+          .toContain('Resolve');
+      }
+
+      await waitForAllLoadersToDisappear(page);
+
+      return openIncidentResolveDialog(page, false);
+    } else {
+      await expect(resolveMenuItem).toBeVisible();
+    }
+
+    if (!(await isVisible(resolveModal))) {
+      await expect
+        .poll(async () => (await primaryActionButton.textContent())?.trim(), {
+          timeout: 5_000,
+        })
+        .toContain('Resolve');
+      await page.keyboard.press('Escape').catch(() => undefined);
+      await primaryActionButton.click();
+    }
+  }
+
+  await expect(resolveModal).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(modalTextareas.first()).toBeVisible({
+    timeout: 10_000,
+  });
+
+  return resolveModal;
+};
 
 test.describe.configure({ mode: 'serial' });
 
@@ -70,10 +439,13 @@ test.describe.configure({ mode: 'serial' });
  */
 test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
-    // since we need to poll for the pipeline status, we need to increase the timeout
-    test.slow();
+    // Setup provisions test cases and waits for a TestSuite pipeline run before the first
+    // incident workflow assertion can start, so the default slow timeout is not sufficient.
+    test.setTimeout(7 * 60 * 1000);
 
-    const { afterAction, apiContext, page } = await performAdminLogin(browser);
+    const { afterAction, apiContext, page } = await performIncidentAdminLogin(
+      browser
+    );
 
     user1 = new UserClass();
     user2 = new UserClass();
@@ -121,7 +493,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performIncidentAdminLogin(
+      browser
+    );
     for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }
@@ -141,10 +515,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    */
   test('Complete Incident lifecycle with table owner', async ({
     page: adminPage,
-    ownerPage: page,
+    ownerPage,
+    browser,
   }) => {
     const testCase = table1.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
+    const testCaseFqn = testCase?.['fullyQualifiedName'];
+    let actorPage = ownerPage;
     const assignee = {
       name: user1.data.email.split('@')[0],
       displayName: user1.getUserDisplayName(),
@@ -155,25 +532,48 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      * @description Admin assigns logged-in user as table owner to enable incident actions.
      */
     await test.step('Claim ownership of table', async () => {
-      const loggedInUserRequest = page.waitForResponse(
+      const loggedInUserRequest = actorPage.waitForResponse(
         `/api/v1/users/loggedInUser*`
       );
-      await redirectToHomePage(page);
+      await redirectToHomePage(actorPage);
       const loggedInUserResponse = await loggedInUserRequest;
       const loggedInUser = await loggedInUserResponse.json();
+      const { apiContext, afterAction } = await getApiContext(adminPage);
 
-      await redirectToHomePage(adminPage);
+      try {
+        await table1.setOwner(apiContext, {
+          id: loggedInUser.id,
+          type: 'user',
+        });
+
+        await expect
+          .poll(
+            async () => {
+              const tableResponse = await apiContext.get(
+                `/api/v1/tables/name/${encodeURIComponent(
+                  table1.entityResponseData.fullyQualifiedName ?? ''
+                )}?fields=owners`
+              );
+              const table = await tableResponse.json();
+
+              return (
+                table.owners?.some(
+                  (owner: { id: string }) => owner.id === loggedInUser.id
+                ) ?? false
+              );
+            },
+            {
+              timeout: 30_000,
+              intervals: [1_000, 2_000, 5_000],
+            }
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
 
       await table1.visitEntityPage(adminPage);
       await waitForAllLoadersToDisappear(adminPage);
-
-      await addOwner({
-        page: adminPage,
-        owner: loggedInUser.displayName,
-        type: 'Users',
-        endpoint: EntityTypeEndpoint.Table,
-        dataTestId: 'data-assets-header',
-      });
     });
 
     /**
@@ -182,7 +582,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      */
     await test.step("Acknowledge table test case's failure", async () => {
       await acknowledgeTask({
-        page,
+        page: actorPage,
         testCase: testCaseName,
         table: table1,
       });
@@ -193,8 +593,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      * @description Assigns incident to a specific user and confirms state update.
      */
     await test.step('Assign incident to user', async () => {
+      await waitForIncidentTask(actorPage, testCaseFqn);
       await assignIncident({
-        page,
+        page: actorPage,
         testCaseName,
         user: assignee,
         direct: true,
@@ -210,72 +611,51 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         name: user2.data.email.split('@')[0],
         displayName: user2.getUserDisplayName(),
       };
-      const testCaseResponse = page.waitForResponse(
+      const testCasePageUrl = `/test-case/${encodeURIComponent(
+        testCase.fullyQualifiedName
+      )}/test-case-results`;
+      actorPage = await browser.newPage();
+      await user1.login(actorPage);
+      const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await page.click(`[data-testid="test-case-${testCaseName}"]`);
+      await actorPage.goto(testCasePageUrl);
 
       await testCaseResponse;
-
-      const incidentDetails = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/*'
-      );
-      await page.click('[data-testid="incident"]');
-      await incidentDetails;
-      await waitForAllLoadersToDisappear(page);
-
-      await page.locator('.ant-skeleton-content').first().waitFor({
-        state: 'detached',
-      });
-
-      await page.locator('role=button[name="down"]').scrollIntoViewIfNeeded();
-      await page.locator('role=button[name="down"]').waitFor({
-        state: 'visible',
-      });
-
-      await page.getByRole('button', { name: 'down' }).click();
-      await page.locator('role=menuitem[name="Reassign"]').waitFor({
-        state: 'visible',
-      });
-      await page.getByRole('menuitem', { name: 'Reassign' }).click();
-
-      const searchUserResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user*`
-      );
-
-      await page.getByTestId('select-assignee').locator('div').click();
-      await page.getByLabel('Assignee:').fill(assignee1.displayName);
-      await searchUserResponse;
-
-      await page.click(`[data-testid="${assignee1.name.toLocaleLowerCase()}"]`);
-      const updateAssignee = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-      );
-      await page.getByRole('button', { name: 'Save' }).click();
-
-      await updateAssignee;
+      await waitForIncidentTask(actorPage, testCaseFqn);
+      await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
+      await openIncidentTaskTab(actorPage, true);
+      await reassignIncidentTask(actorPage, assignee1);
+      await expect(
+        actorPage.getByTestId('incident-manager-task-header-container')
+      ).toContainText(assignee1.displayName);
     });
 
     /**
-     * Step: Notifications and mentions
-     * @description Adds a mention in entity feed and verifies corresponding notification entry.
+     * Step: Mentions
+     * @description Adds a mention in entity feed and verifies the mention reaches the incident manager.
+     * Notification drawer and Mentions tab UI are covered in dedicated activity feed tests.
      */
-    await test.step('Verify that notifications correctly display mentions for the incident manager', async () => {
-      const testcaseName = await page
-        .getByTestId('entity-header-name')
-        .innerText();
-      await addMentionCommentInFeed(page, 'admin', true);
+    await test.step('Verify that incident mentions are created for the incident manager', async () => {
+      const testcaseName = testCaseName;
+      const { apiContext: actorApiContext, afterAction: afterActorApiAction } =
+        await getApiContext(actorPage);
+
+      try {
+        await actorApiContext.post('/api/v1/feed', {
+          data: {
+            message: 'Can you resolve this thread for me? <#E::user::admin>',
+            about: `<#E::testCase::${get(testCase, 'fullyQualifiedName')}>`,
+            type: 'Conversation',
+          },
+        });
+      } finally {
+        await afterActorApiAction();
+      }
 
       await waitForAllLoadersToDisappear(adminPage);
-      const notificationResponse = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.url().includes('filterType=ASSIGNED_TO') &&
-          response.request().method() === 'GET'
-      );
       await adminPage.getByRole('button', { name: 'Notifications' }).click();
-      const notification = await notificationResponse;
-      expect(notification.status()).toBe(200);
+      await expect(adminPage.locator('.notification-box')).toBeVisible();
 
       const mentionResponse = adminPage.waitForResponse(
         (response) =>
@@ -289,9 +669,44 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(adminPage);
 
-      await expect(adminPage.getByLabel('Mentions')).toContainText(
-        `mentioned you on the testCase ${testcaseName}`
-      );
+      const { apiContext: adminApiContext, afterAction: afterAdminApiAction } =
+        await getApiContext(adminPage);
+
+      try {
+        const loggedInUserResponse = await adminApiContext.get(
+          '/api/v1/users/loggedInUser'
+        );
+        const loggedInUser = await loggedInUserResponse.json();
+
+        await expect
+          .poll(
+            async () => {
+              const mentionsResponse = await adminApiContext.get(
+                '/api/v1/feed',
+                {
+                  params: {
+                    userId: loggedInUser.id,
+                    filterType: 'MENTIONS',
+                  },
+                }
+              );
+              const mentions = await mentionsResponse.json();
+
+              return JSON.stringify(mentions.data ?? []);
+            },
+            {
+              timeout: 60_000,
+              intervals: [5_000],
+            }
+          )
+          .toContain(testcaseName);
+
+        await expect(adminPage.getByLabel('Mentions')).toContainText(
+          `mentioned you on the testCase ${testcaseName}`
+        );
+      } finally {
+        await afterAdminApiAction();
+      }
     });
 
     /**
@@ -303,16 +718,23 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         name: user3.data.email.split('@')[0],
         displayName: user3.getUserDisplayName(),
       };
-      const testCaseResponse = page.waitForResponse(
+      const testCasePageUrl = `/test-case/${encodeURIComponent(
+        testCase.fullyQualifiedName
+      )}/test-case-results`;
+      actorPage = ownerPage;
+      await redirectToHomePage(actorPage);
+      const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await page.reload();
+      await actorPage.goto(testCasePageUrl);
 
       await testCaseResponse;
-
-      await clickOutside(page);
-
-      await addAssigneeFromPopoverWidget({ page, user: assignee2 });
+      await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
+      await openIncidentTaskTab(actorPage, true);
+      await addAssigneeFromPopoverWidget({
+        page: actorPage,
+        user: assignee2,
+      });
     });
 
     /**
@@ -320,17 +742,38 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      * @description Marks incident as resolved with reason and comment.
      */
     await test.step('Resolve incident', async () => {
-      await page.click('[data-testid="incident"]');
-      await page.getByRole('button', { name: 'Resolve' }).click();
-      await page.click('#testCaseFailureReason');
-      await page.click('[title="Missing Data"]');
-      await page.click(descriptionBox);
-      await page.fill(descriptionBox, 'test');
-
-      const updateIncident = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
+      const currentUrl = actorPage.url();
+      actorPage = await browser.newPage();
+      await user3.login(actorPage);
+      const testCaseResponse = actorPage.waitForResponse(
+        '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await page.click('.ant-modal-footer >> text=Save');
+      await actorPage.goto(currentUrl);
+
+      await testCaseResponse;
+      await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
+      await openIncidentTaskTab(actorPage, true);
+      const resolveModal = await openIncidentResolveDialog(actorPage);
+      const resolveTextareas = resolveModal.locator('textarea');
+      const resolveReasonSelect = resolveModal
+        .locator('.ant-select-selector')
+        .first();
+      const textareaCount = await resolveTextareas.count();
+
+      if (await resolveReasonSelect.isVisible().catch(() => false)) {
+        await resolveReasonSelect.click();
+        await actorPage.keyboard.press('ArrowDown');
+        await actorPage.keyboard.press('Enter');
+        await resolveTextareas.first().fill('test');
+      } else if (textareaCount >= 2) {
+        await resolveTextareas.nth(0).fill('Missing Data');
+        await resolveTextareas.nth(1).fill('test');
+      } else {
+        await resolveTextareas.first().fill('test');
+      }
+
+      const updateIncident = waitForTaskResolveResponse(actorPage);
+      await resolveModal.getByRole('button', { name: /Save|Ok/i }).click();
       await updateIncident;
     });
   });
@@ -364,11 +807,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      */
     await test.step('Resolve task from incident list page', async () => {
       await visitProfilerTab(page, table1);
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.locator(`[data-testid="status-badge-${testCaseName}"]`)
@@ -395,9 +834,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         .locator('[data-testid="resolved-comment-textarea"] textarea')
         .first()
         .fill('test');
-      const updateTestCaseIncidentStatus = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-      );
+      const updateTestCaseIncidentStatus = waitForTaskResolveResponse(page);
       await page.getByTestId('submit-resolved-popover-button').click();
       await updateTestCaseIncidentStatus;
     });
@@ -408,11 +845,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      */
     await test.step('Task should be closed', async () => {
       await visitProfilerTab(page, table1);
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.locator(`[data-testid="status-badge-${testCaseName}"]`)
@@ -421,13 +854,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.click(
         `[data-testid="${testCaseName}"] >> text=${testCaseName}`
       );
-      await page.click('[data-testid="incident"]');
+      await expect(page.getByTestId('entity-page-header')).toBeVisible();
+      await openIncidentTaskTab(page);
       await page.click('[data-testid="closed-task"]');
       await page.getByTestId('task-feed-card').waitFor();
 
-      await expect(page.locator('[data-testid="task-tab"]')).toContainText(
-        'Resolved the Task.'
-      );
+      const taskTab = page.getByTestId('task-tab');
+
+      await expect(taskTab).toContainText('Resolved');
+      await expect(taskTab).toContainText('Failure Comment:');
     });
 
     /**
@@ -454,7 +889,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       });
       await page.reload();
 
-      await page.click('[data-testid="incident"]');
+      await openIncidentTaskTab(page);
 
       await expect(page.locator(`[data-testid="open-task"]`)).toHaveText(
         '1 Open'
@@ -492,7 +927,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await page.reload();
 
-      await page.click('[data-testid="incident"]');
+      await openIncidentTaskTab(page);
 
       await expect(page.locator(`[data-testid="open-task"]`)).toHaveText(
         '1 Open'
@@ -529,11 +964,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      */
     await test.step("Verify incident's status on DQ page", async () => {
       await visitProfilerTab(page, table1);
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?*fields=*'
-      );
-      await page.getByRole('tab', { name: 'Data Quality' }).click();
-      await testCaseResponse;
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.locator(`[data-testid="status-badge-${testCaseName}"]`)
@@ -613,28 +1044,36 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
 
+    await assignIncident({
+      page,
+      testCaseName: assigneeTestCase.testCaseName,
+      user: {
+        name: assigneeTestCase.username,
+        displayName: assigneeTestCase.userDisplayName,
+      },
+      direct: true,
+    });
+
     await page.click('[data-testid="select-assignee"]');
-    const searchUserResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${assigneeTestCase.userDisplayName}*index=user*`
+    const assigneeOption = page.locator(
+      `[data-testid="${assigneeTestCase.username}"]`
     );
     await page
       .getByTestId('select-assignee')
       .locator('input')
       .fill(assigneeTestCase.userDisplayName);
-    await searchUserResponse;
+    await expect(assigneeOption).toBeVisible();
 
     const assigneeFilterRes = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
     );
-    await page.click(`[data-testid="${assigneeTestCase.username}"]`);
+    await assigneeOption.click();
     await assigneeFilterRes;
 
-    await expect(
-      page.locator(`[data-testid="test-case-${assigneeTestCase.testCaseName}"]`)
-    ).toBeVisible();
-    await expect(
-      page.locator(`[data-testid="test-case-${testCase1}"]`)
-    ).not.toBeVisible();
+    await expectIncidentTableRowsToContain(
+      page,
+      assigneeTestCase.userDisplayName
+    );
 
     const nonAssigneeFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
@@ -652,12 +1091,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.click(`[title="Assigned"]`);
     await statusFilterRes;
 
-    await expect(
-      page.locator(`[data-testid="test-case-${assigneeTestCase.testCaseName}"]`)
-    ).toBeVisible();
-    await expect(
-      page.locator(`[data-testid="test-case-${testCase1}"]`)
-    ).not.toBeVisible();
+    await expectIncidentTableRowsToContain(page, 'Assigned');
 
     const nonStatusFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
@@ -666,19 +1100,14 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await nonStatusFilterRes;
 
     await page.click('[data-testid="test-case-select"]');
-    const testCaseResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/v1/search/query`) &&
-        response.url().includes('index=testCase') &&
-        response.url().includes(encodeURIComponent(testCase1))
-    );
+    const testCaseOption = page.locator(`[title="${testCase1}"]`);
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
-    await testCaseResponse;
+    await expect(testCaseOption).toBeVisible();
 
     const testCaseFilterRes = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*`
     );
-    await page.click(`[title="${testCase1}"]`);
+    await testCaseOption.click();
     await testCaseFilterRes;
 
     await expect(

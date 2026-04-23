@@ -12,6 +12,7 @@
  */
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -636,6 +637,23 @@ export const generateRandomUsername = (prefix = '') => {
     lastName,
     email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
+  };
+};
+
+export const generateRandomAdminUsername = (prefix = '') => {
+  const timestamp = Date.now();
+  const firstName = `${prefix}${getRandomFirstName()}`;
+  const lastName = `${prefix}${getRandomLastName()}`;
+  const name = toLower(`${firstName}.${lastName}.${timestamp}`);
+  const password = 'Admin@OMD123';
+
+  return {
+    name,
+    displayName: `${firstName}${lastName}`,
+    email: `${name}@example.com`,
+    password,
+    confirmPassword: password,
+    isAdmin: true,
   };
 };
 

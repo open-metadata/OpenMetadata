@@ -1645,24 +1645,38 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   await page.getByTestId('domain-dropdown').click();
-  await page.getByTestId('domain-selectable-tree').waitFor({
+  const domainTree = page.getByTestId('domain-selectable-tree');
+  await domainTree.waitFor({
     state: 'visible',
   });
+  const searchBar = domainTree.getByTestId('searchbar');
+  const searchTerm = domain.displayName ?? domain.name;
+  const domainOption = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
 
-  const searchDomainRes = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain')
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.displayName);
-  await searchDomainRes;
+  await expect
+    .poll(
+      async () => {
+        if (!(await domainTree.isVisible().catch(() => false))) {
+          await page.getByTestId('domain-dropdown').click();
+          await domainTree.waitFor({ state: 'visible' });
+        }
 
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
+        await searchBar.fill('');
+        await searchBar.fill(searchTerm);
+
+        return await domainOption.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60000,
+        intervals: [1000, 2000, 5000],
+        message: `Timed out waiting for domain ${
+          domain.displayName ?? domain.name
+        } to appear in navbar selector`,
+      }
+    )
+    .toBe(true);
+
+  await domainOption.click();
   await waitForAllLoadersToDisappear(page);
 };
 

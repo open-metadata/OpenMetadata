@@ -16,7 +16,7 @@ the cloudwatch:GetMetricData permissions
 """
 from dataclasses import dataclass
 from functools import partial
-from typing import Optional
+from typing import Any, Optional
 
 from botocore.client import BaseClient
 
@@ -39,6 +39,7 @@ from metadata.utils.constants import THREE_MIN
 class S3ObjectStoreClient:
     s3_client: BaseClient
     cloudwatch_client: BaseClient
+    session: Any = None
 
 
 def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
@@ -46,9 +47,17 @@ def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
     Returns 2 clients - the s3 client and the cloudwatch client needed for total nr of objects and total size
     """
     aws_client = AWSClient(connection.awsConfig)
+    session = aws_client.create_session()
+    endpoint_url = (
+        str(connection.awsConfig.endPointURL)
+        if connection.awsConfig.endPointURL
+        else None
+    )
+    kwargs = {"endpoint_url": endpoint_url} if endpoint_url else {}
     return S3ObjectStoreClient(
-        s3_client=aws_client.get_client(service_name="s3"),
-        cloudwatch_client=aws_client.get_client(service_name="cloudwatch"),
+        s3_client=session.client(service_name="s3", **kwargs),
+        cloudwatch_client=session.client(service_name="cloudwatch", **kwargs),
+        session=session,
     )
 
 

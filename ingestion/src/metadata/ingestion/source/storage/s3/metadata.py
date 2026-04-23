@@ -90,6 +90,7 @@ class S3Source(StorageServiceSource):
         super().__init__(config, metadata)
         self.s3_client = self.connection.s3_client
         self.cloudwatch_client = self.connection.cloudwatch_client
+        self.session = getattr(self.connection, "session", None)
 
         self._bucket_cache: Dict[str, Container] = {}
         self._unstructured_container_cache: Dict[str, Tuple[str, str]] = {}
@@ -295,6 +296,7 @@ class S3Source(StorageServiceSource):
                         securityConfig=self.service_connection.awsConfig
                     ),
                     client=self.s3_client,
+                    session=self.session,
                 )
             except Exception as err:
                 self.status.failed(

@@ -47,6 +47,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
   onConnect,
   onNodeClick,
   onEdgeClick,
+  onEdgeDelete,
   onDragOver,
   onDragEnter,
   onDragLeave,
@@ -104,14 +105,13 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
   const canvasClassName = classNames(
     'workflow-canvas',
     isViewMode ? 'view-mode' : 'edit-mode',
-    'tw:relative tw:h-full tw:w-full tw:overflow-hidden'
+    'tw:relative tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-hidden'
   );
 
   return (
     <Card
-      className={canvasClassName}
-      data-testid="workflow-canvas"
-      style={{ height: '100%', minHeight: 0 }}>
+      className={classNames(canvasClassName, 'tw:flex-1 tw:min-h-0')}
+      data-testid="workflow-canvas">
       {focusedConnection && (
         <div className="tw:absolute tw:inset-0 tw:bg-brand-900/20 tw:z-[1] tw:pointer-events-none tw:transition-opacity tw:duration-300" />
       )}
@@ -156,6 +156,10 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
               ...edge.labelStyle,
               cursor:
                 edge.data?.conditions && !isViewMode ? 'pointer' : 'default',
+            },
+            data: {
+              ...edge.data,
+              onEdgeDelete,
             },
           };
         })}
