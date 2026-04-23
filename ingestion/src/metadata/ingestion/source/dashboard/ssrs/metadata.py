@@ -104,7 +104,6 @@ class _LineageContext:
     db_service_entity: Optional[DatabaseService]
     prefix_database: Optional[str]
     prefix_schema: Optional[str]
-    prefix_table: Optional[str]
     dialect: Dialect
 
 
@@ -391,6 +390,15 @@ class SsrsSource(DashboardServiceSource):
                 )
         return columns
 
+    def yield_dashboard_lineage(self, dashboard_details: SsrsReport):
+        """Base class loops over ``db_service_prefixes`` and calls
+        ``yield_dashboard_lineage_details`` once per prefix. We evict the
+        cached RDL once at the end so every prefix sees the same parsed RDL."""
+        try:
+            yield from super().yield_dashboard_lineage(dashboard_details)
+        finally:
+            self._report_definitions.pop(dashboard_details.id, None)
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: SsrsReport,
@@ -404,40 +412,36 @@ class SsrsSource(DashboardServiceSource):
             db_service_name,
             prefix_database,
             prefix_schema,
-            prefix_table,
+            _,
         ) = self.parse_db_service_prefix(db_service_prefix)
 
         db_service_entity = self._resolve_db_service(db_service_name)
         datasource_index = {ds.name: ds for ds in rdl.data_sources}
 
-        try:
-            for dataset in rdl.data_sets:
-                datasource = datasource_index.get(dataset.data_source_name or "")
-                context = _LineageContext(
-                    db_service_name=db_service_name,
-                    db_service_entity=db_service_entity,
-                    prefix_database=prefix_database,
-                    prefix_schema=prefix_schema,
-                    prefix_table=prefix_table,
-                    dialect=self._resolve_dialect(db_service_entity, datasource),
+        for dataset in rdl.data_sets:
+            datasource = datasource_index.get(dataset.data_source_name or "")
+            context = _LineageContext(
+                db_service_name=db_service_name,
+                db_service_entity=db_service_entity,
+                prefix_database=prefix_database,
+                prefix_schema=prefix_schema,
+                dialect=self._resolve_dialect(db_service_entity, datasource),
+            )
+            try:
+                yield from self._yield_dataset_lineage(
+                    dashboard_details, dataset, datasource, context
                 )
-                try:
-                    yield from self._yield_dataset_lineage(
-                        dashboard_details, dataset, datasource, context
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=f"{dashboard_details.name}.{dataset.name}",
+                        error=(
+                            f"Error yielding lineage for dataset [{dataset.name}] "
+                            f"in report [{dashboard_details.name}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
                     )
-                except Exception as exc:
-                    yield Either(
-                        left=StackTraceError(
-                            name=f"{dashboard_details.name}.{dataset.name}",
-                            error=(
-                                f"Error yielding lineage for dataset [{dataset.name}] "
-                                f"in report [{dashboard_details.name}]: {exc}"
-                            ),
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
-        finally:
-            self._report_definitions.pop(dashboard_details.id, None)
+                )
 
     def _yield_dataset_lineage(
         self,
@@ -567,7 +571,7 @@ class SsrsSource(DashboardServiceSource):
         default_database: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         split = fqn.split_table_name(source_table)
-        table_name = context.prefix_table or split.get("table")
+        table_name = split.get("table")
         if not table_name:
             return
         database_name = (

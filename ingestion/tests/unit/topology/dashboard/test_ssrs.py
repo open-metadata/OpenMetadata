@@ -834,6 +834,44 @@ class TestSsrsLineage:
         assert "SalesDB" in search_call.kwargs["fqn_search_string"]
         assert "dbo" in search_call.kwargs["fqn_search_string"]
         assert "Orders" in search_call.kwargs["fqn_search_string"]
+
+    def test_multiple_prefixes_all_produce_lineage(self, ssrs_source):
+        """Regression: base class calls yield_dashboard_lineage_details once per
+        db_service_prefix. Evicting the RDL inside that method dropped lineage
+        for every prefix after the first."""
+        self._prepare(ssrs_source, RDL_SALES)
+        captured_services = []
+
+        def record(*, fqn_search_string, **_):
+            captured_services.append(fqn_search_string.split(".", 1)[0])
+            return SimpleNamespace(id=SimpleNamespace(root="t"))
+
+        ssrs_source.metadata.search_in_any_service = MagicMock(side_effect=record)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser, patch.object(
+            SsrsSource,
+            "_get_add_lineage_request",
+            staticmethod(lambda **_: Either(right=SimpleNamespace())),
+        ):
+            mock_parser.return_value.source_tables = ["dbo.Orders"]
+            for prefix in ("service_a", "service_b", "service_c"):
+                list(
+                    ssrs_source.yield_dashboard_lineage_details(
+                        MOCK_REPORTS[0], db_service_prefix=prefix
+                    )
+                )
+        assert captured_services == ["service_a", "service_b", "service_c"]
+        assert MOCK_REPORTS[0].id in ssrs_source._report_definitions
+
+    def test_yield_dashboard_lineage_evicts_rdl_after_all_prefixes(self, ssrs_source):
+        """Eviction moved from yield_dashboard_lineage_details to the outer
+        yield_dashboard_lineage so it fires once per dashboard, not per prefix."""
+        self._prepare(ssrs_source, RDL_SALES)
+        ssrs_source.context.get().__dict__["dashboard"] = MOCK_REPORTS[0].id
+        ssrs_source.context.get().__dict__["dataModels"] = []
+        assert MOCK_REPORTS[0].id in ssrs_source._report_definitions
+        list(ssrs_source.yield_dashboard_lineage(MOCK_REPORTS[0]))
         assert MOCK_REPORTS[0].id not in ssrs_source._report_definitions
 
     def test_skips_expression_command(self, ssrs_source):
@@ -914,6 +952,39 @@ class TestSsrsLineage:
             mock_parser.return_value.source_tables = []
             list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
         assert Dialect.TSQL in mock_parser.call_args.args
+
+    def test_four_part_prefix_does_not_collapse_lineage(self, ssrs_source):
+        """A dbServicePrefix with 4 dot-parts used to overwrite every source
+        table with its last segment, collapsing all lineage to one target."""
+        self._prepare(ssrs_source, RDL_MULTI)
+        parser_revenue = MagicMock()
+        parser_revenue.source_tables = ["dbo.Revenue"]
+        parser_expenses = MagicMock()
+        parser_expenses.source_tables = ["dbo.Expenses"]
+        captured_tables = []
+
+        def record(*, fqn_search_string, **_):
+            captured_tables.append(fqn_search_string)
+            return SimpleNamespace(id=SimpleNamespace(root="tbl"))
+
+        ssrs_source.metadata.search_in_any_service = MagicMock(side_effect=record)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser",
+            side_effect=[parser_revenue, parser_expenses],
+        ), patch.object(
+            SsrsSource,
+            "_get_add_lineage_request",
+            staticmethod(lambda **_: Either(right=SimpleNamespace())),
+        ):
+            list(
+                ssrs_source.yield_dashboard_lineage_details(
+                    MOCK_REPORTS[0],
+                    db_service_prefix="my_mssql.FinanceDB.dbo.OVERRIDE_TABLE",
+                )
+            )
+        assert any("Revenue" in q for q in captured_tables)
+        assert any("Expenses" in q for q in captured_tables)
+        assert not any("OVERRIDE_TABLE" in q for q in captured_tables)
 
     def test_dialect_uses_data_provider_when_no_db_service(self, ssrs_source):
         rdl = SsrsReportDefinition(
