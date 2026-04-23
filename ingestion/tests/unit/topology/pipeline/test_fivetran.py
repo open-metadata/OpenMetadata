@@ -178,6 +178,20 @@ class TestParseSyncEvents:
     def test_handles_empty_rows(self):
         assert parse_sync_events([]) == {}
 
+    def test_folds_partitions_into_shared_accumulator(self):
+        ts = [datetime(2026, 3, 20, 8, 0, i * 5, tzinfo=timezone.utc) for i in range(3)]
+        syncs: dict = {}
+        parse_sync_events([("sync-1", "sync_start", None, ts[0])], syncs)
+        parse_sync_events(
+            [("sync-1", "extract_summary", '{"status":"SUCCESS"}', ts[1])], syncs
+        )
+        parse_sync_events(
+            [("sync-1", "sync_end", '{"status":"SUCCESSFUL"}', ts[2])], syncs
+        )
+        assert syncs["sync-1"]["sync_start_ts"] == ts[0]
+        assert syncs["sync-1"]["extract_data"]["status"] == "SUCCESS"
+        assert syncs["sync-1"]["sync_end_data"]["status"] == "SUCCESSFUL"
+
 
 class TestBuildTaskStatuses:
     def test_successful_sync(self):
@@ -463,21 +477,23 @@ class TestFivetranStatus:
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.query_sync_logs")
     def test_status_from_db(self, mock_query_logs, fivetran_source):
         source, _ = fivetran_source
-        mock_query_logs.return_value = [
-            ("sync-1", "sync_start", None, datetime(2026, 3, 20, 8, 0, 0)),
-            (
-                "sync-1",
-                "extract_summary",
-                '{"status":"SUCCESS"}',
-                datetime(2026, 3, 20, 8, 0, 10),
-            ),
-            (
-                "sync-1",
-                "sync_end",
-                '{"status":"SUCCESSFUL"}',
-                datetime(2026, 3, 20, 8, 0, 22),
-            ),
-        ]
+        mock_query_logs.return_value = parse_sync_events(
+            [
+                ("sync-1", "sync_start", None, datetime(2026, 3, 20, 8, 0, 0)),
+                (
+                    "sync-1",
+                    "extract_summary",
+                    '{"status":"SUCCESS"}',
+                    datetime(2026, 3, 20, 8, 0, 10),
+                ),
+                (
+                    "sync-1",
+                    "sync_end",
+                    '{"status":"SUCCESSFUL"}',
+                    datetime(2026, 3, 20, 8, 0, 22),
+                ),
+            ]
+        )
         source._resolve_log_source = Mock(return_value=Mock())
         statuses = list(source.yield_pipeline_status(EXPECTED_FIVETRAN_DETAILS))
         assert len(statuses) == 1

@@ -48,6 +48,22 @@ Present as a table: | File:Line | Data Structure | Growth Pattern | Classificati
 2. Dicts/caches that grow per-entity and are never cleared between schemas/databases
 3. File reads without size checks (reading entire query log files into memory)
 4. String concatenation in loops (building large SQL strings)
+5. **Streaming-defeated-by-materialization** — a lazy iterator wrapped in a collection
+   constructor so nothing actually streams. Grep for these specific shapes and treat
+   each hit as ❌ Unbounded unless the enclosing query has a proven small hard cap:
+   - SQLAlchemy: `list(conn.execute(...))`, `list(result.yield_per(N))`,
+     `result.all()`, `result.fetchall()`, `list(result.scalars())`,
+     `list(result.partitions())`, `list(result.mappings())`, `[r for r in result]`
+   - DB-API: `cursor.fetchall()`, `list(cursor)`
+   - Generators: `list(gen_fn())`, `[x for x in gen_fn()]` where the caller could
+     iterate directly
+   - REST pagers: `list(paginator)`, accumulating pages via `items.extend(...)`
+     inside a `while next_cursor` loop
+   `yield_per` / `stream_results` / `partitions()` / `iter_pages()` only help when
+   the consumer stays lazy — a single `list(...)` at any point on the chain collapses
+   the whole result set into memory and negates the streaming primitive. Also check
+   return types: a helper returning `List[...]` whose source is a cursor is itself
+   the materialization point; its signature should be `Iterable`/`Iterator`.
 
 ### Pagination Completeness
 
@@ -110,6 +126,7 @@ For each scenario, identify:
 - "It uses generators" — For primary entity iteration only? Secondary operations (fetching tags, descriptions, column metadata, lineage per table) may still collect everything in memory.
 - "Connection pool handles it" — Does the connector create new engines per schema or per database? A pool per schema × 100 schemas = 100 pools.
 - "Results are paginated" — But are paginated results collected into a list before processing? Pagination that loads all pages into memory before yielding defeats the purpose.
+- "It uses `yield_per` / streaming" — Look at the *enclosing* expression. `list(conn.execute(q).yield_per(500))`, `result.all()`, `result.fetchall()`, `list(result.partitions())`, `[r for r in result]`, `cursor.fetchall()`, `list(paginator)` all materialize the full result set, regardless of the streaming primitive underneath. A function whose return type is `List[...]` but whose source is a cursor is itself the materialization point — the streaming hint is load-bearing only if the caller iterates lazily.
 - "There's a LIMIT" — A LIMIT/TOP without an offset loop or cursor continuation is NOT pagination. It is a hard cap that silently drops data. Classify as "Not paginated — hard cap" in the pagination table. If the default value could plausibly be exceeded in production (e.g., 1000 queries on a system doing 50K/day), this directly degrades the Scale rating — rate ⚠️ minimum.
 - "It's fine for test data" — Test environments have 10 tables. Production has 10,000. What's O(n) at 10 is still O(n) at 10,000 — but the constant matters when n is large.
 - "The base class is efficient" — Does the connector override base class methods? Overrides may lose generator patterns, add unbounded caches, or introduce O(n×m) lookups.

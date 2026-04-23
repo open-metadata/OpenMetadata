@@ -61,7 +61,6 @@ from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
     FIVETRAN_TASK_PROCESS,
     build_fallback_task_statuses,
     build_task_statuses,
-    parse_sync_events,
     query_sync_logs,
     sort_and_limit_syncs,
 )
@@ -238,11 +237,10 @@ class FivetranSource(PipelineServiceSource):
         if not service:
             return None
 
-        rows = query_sync_logs(service, log_database, pipeline_details.connector_id)
-        if rows is None:
+        syncs = query_sync_logs(service, log_database, pipeline_details.connector_id)
+        if syncs is None:
             return None
 
-        syncs = parse_sync_events(rows)
         statuses = []
         for sync in sort_and_limit_syncs(syncs):
             task_statuses = build_task_statuses(sync)

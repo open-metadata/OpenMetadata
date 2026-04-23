@@ -18,7 +18,7 @@ publishes operational metadata to fivetran_metadata.log with 90 days of history.
 import json
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy import MetaData as SaMetaData
 from sqlalchemy import desc, select
@@ -36,6 +36,7 @@ LOG_RETENTION_DAYS = 90
 MAX_SYNC_RUNS = 100
 # Cap raw rows fetched: MAX_SYNC_RUNS syncs * ~6 events each, with headroom
 MAX_LOG_ROWS = MAX_SYNC_RUNS * 10
+LOG_STREAM_PARTITION_SIZE = 500
 
 FIVETRAN_TASK_EXTRACT = "extract"
 FIVETRAN_TASK_PROCESS = "process"
@@ -74,12 +75,15 @@ def query_sync_logs(
     service: DatabaseService,
     log_database: str,
     connector_id: str,
-) -> Optional[List[Tuple]]:
-    """Query fivetran_metadata.log in the warehouse and return raw rows.
+) -> Optional[Dict[str, dict]]:
+    """Query fivetran_metadata.log and return parsed syncs grouped by sync_id.
 
     Fivetran's "destination" warehouse is, from OpenMetadata's perspective,
     the *source* of pipeline-status data.  We call it ``log_database`` here
     to avoid confusion with the OM destination concept.
+
+    Rows are streamed in partitions and folded into the per-sync dict as they
+    arrive so we never materialize the full result set in memory.
 
     Returns None on failure so the caller can fall back to the REST API.
     """
@@ -109,7 +113,11 @@ def query_sync_logs(
                 .limit(MAX_LOG_ROWS)
             )
 
-            return list(conn.execute(query).yield_per(500))
+            syncs: Dict[str, dict] = {}
+            result = conn.execute(query).yield_per(LOG_STREAM_PARTITION_SIZE)
+            for partition in result.partitions():
+                parse_sync_events(partition, syncs)
+            return syncs
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -123,9 +131,18 @@ def query_sync_logs(
             engine.dispose()
 
 
-def parse_sync_events(rows: Sequence[Tuple]) -> Dict[str, dict]:
-    """Group log rows by sync_id into per-sync event dictionaries."""
-    syncs: Dict[str, dict] = {}
+def parse_sync_events(
+    rows: Iterable[Tuple],
+    syncs: Optional[Dict[str, dict]] = None,
+) -> Dict[str, dict]:
+    """Group log rows by sync_id into per-sync event dictionaries.
+
+    Accepts an optional ``syncs`` accumulator so callers can fold multiple
+    row partitions into the same dict without ever materializing the full
+    result set in memory.
+    """
+    if syncs is None:
+        syncs = {}
     for row in rows:
         sync_id, event, data_str, ts = row[0], row[1], row[2], row[3]
         sync = syncs.setdefault(sync_id, {})
