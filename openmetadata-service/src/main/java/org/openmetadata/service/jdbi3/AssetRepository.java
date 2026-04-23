@@ -59,7 +59,7 @@ public class AssetRepository {
       }
       return JsonUtils.readObjects(json, Asset.class);
     } catch (Exception e) {
-      LOG.error("Failed to read asset with id {}: {}", fqn, e.getMessage(), e);
+      LOG.error("Failed to read asset with FQN {}: {}", fqn, e.getMessage(), e);
       throw e;
     }
   }

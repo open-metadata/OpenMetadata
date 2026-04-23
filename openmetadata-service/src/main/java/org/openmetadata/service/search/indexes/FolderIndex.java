@@ -26,7 +26,12 @@ public class FolderIndex implements TaggableIndex {
     if (folder.getParent() != null) {
       doc.put("parent", getEntityWithDisplayName(folder.getParent()));
     }
-    doc.put("childrenCount", folder.getChildrenCount());
+    // Default to 0 when the entity hasn't had its children recomputed yet (e.g. just-created
+     // folders). Storing null as a long/integer in ES indexes as `missing` and breaks
+     // numeric range/sort queries that assume the field is always present.
+    doc.put(
+        "childrenCount",
+        folder.getChildrenCount() != null ? folder.getChildrenCount() : 0);
     return doc;
   }
 

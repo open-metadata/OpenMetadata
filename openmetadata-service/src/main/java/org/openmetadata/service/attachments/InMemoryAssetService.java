@@ -118,6 +118,17 @@ public class InMemoryAssetService implements AssetService {
   }
 
   /**
+   * Match S3/Azure providers by delegating the no-expiry entry point to the expiry
+   * variant. The default in {@link AssetService} returns {@code asset.getUrl()} which
+   * for in-memory assets is never set (the stored URL is always empty), leading to
+   * broken download links for callers that use the non-expiry API.
+   */
+  @Override
+  public String generateDownloadURL(Asset asset) {
+    return generateDownloadUrlWithExpiry(asset, Duration.ofMinutes(15));
+  }
+
+  /**
    * Get the current size of the in-memory store (for debugging/monitoring)
    * @return number of assets stored
    */

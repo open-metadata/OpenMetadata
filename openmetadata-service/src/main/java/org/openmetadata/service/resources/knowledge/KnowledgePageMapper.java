@@ -16,10 +16,14 @@ import org.openmetadata.service.mapper.EntityMapper;
 public class KnowledgePageMapper implements EntityMapper<Page, CreatePage> {
   @Override
   public Page createToEntity(CreatePage create, String user) {
-    if (create.getRelatedEntities() == null || create.getRelatedEntities().isEmpty()) {
-      List<EntityReference> references = new ArrayList<>();
-      references.add(Entity.getEntityReferenceByName(TEAM, ORGANIZATION_NAME, Include.ALL));
-      create.withRelatedEntities(references);
+    // Resolve the effective related-entities list locally without mutating the inbound
+    // CreatePage. Mutating the request object (previously via create.withRelatedEntities)
+    // leaked the Organization fallback into the caller's request copy, which is surprising
+    // if the request is re-used or logged.
+    List<EntityReference> relatedEntities = create.getRelatedEntities();
+    if (relatedEntities == null || relatedEntities.isEmpty()) {
+      relatedEntities = new ArrayList<>();
+      relatedEntities.add(Entity.getEntityReferenceByName(TEAM, ORGANIZATION_NAME, Include.ALL));
     }
     return copy(new Page(), create, user)
         .withTags(create.getTags())
@@ -27,6 +31,6 @@ public class KnowledgePageMapper implements EntityMapper<Page, CreatePage> {
         .withPageType(create.getPageType())
         .withPage(create.getPage())
         .withParent(create.getParent())
-        .withRelatedEntities(create.getRelatedEntities());
+        .withRelatedEntities(relatedEntities);
   }
 }

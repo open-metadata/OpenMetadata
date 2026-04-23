@@ -26,9 +26,30 @@ public class ObjectDeleteQueueService implements Managed {
   static final long DEFAULT_KEEP_ALIVE_MILLIS =
       Long.getLong("collate.object.delete.keepalive.ms", 5000L);
 
-  private static final ObjectDeleteQueueService INSTANCE =
-      new ObjectDeleteQueueService(
-          DEFAULT_WORKER_COUNT, DEFAULT_QUEUE_CAPACITY, DEFAULT_ENQUEUE_TIMEOUT_MILLIS);
+  private static final ObjectDeleteQueueService INSTANCE = createInstance();
+
+  private static ObjectDeleteQueueService createInstance() {
+    ObjectDeleteQueueService service =
+        new ObjectDeleteQueueService(
+            DEFAULT_WORKER_COUNT, DEFAULT_QUEUE_CAPACITY, DEFAULT_ENQUEUE_TIMEOUT_MILLIS);
+    // Ensure the non-daemon worker threads are drained on JVM exit even when Dropwizard's
+    // Managed.stop() wasn't invoked (e.g. when the server is run outside of a full
+    // application lifecycle, or if the stop hook is missed). Without this, ungracefully
+    // terminated servers can leave orphan threads that prevent the JVM from exiting.
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  try {
+                    service.stop();
+                  } catch (Exception e) {
+                    // Best-effort shutdown — log at JVM-exit-time is fine here.
+                    LOG.warn("Failed to cleanly stop ObjectDeleteQueueService on JVM exit", e);
+                  }
+                },
+                "object-delete-queue-shutdown"));
+    return service;
+  }
 
   private final ThreadPoolExecutor executorService;
   private final Semaphore capacitySemaphore;

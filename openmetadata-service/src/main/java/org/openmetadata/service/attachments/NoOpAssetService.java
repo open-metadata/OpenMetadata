@@ -37,4 +37,15 @@ public class NoOpAssetService implements AssetService {
     String url = asset.getUrl();
     return url == null || url.isBlank() ? "" : url;
   }
+
+  /**
+   * Keep {@link #generateDownloadURL(Asset)} aligned with the expiry variant so the two
+   * entry points never disagree. The default {@code AssetService} implementation returns
+   * {@code asset.getUrl()} as-is (potentially {@code null}); delegating ensures NoOp
+   * always satisfies the non-null contract.
+   */
+  @Override
+  public String generateDownloadURL(Asset asset) {
+    return generateDownloadUrlWithExpiry(asset, Duration.ofMinutes(15));
+  }
 }
