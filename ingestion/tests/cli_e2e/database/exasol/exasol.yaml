@@ -7,7 +7,7 @@ source:
       username: sys
       password: exasol
       hostPort: localhost:8563
-      tls: disable-tls
+      tls: ignore-certificate
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:
@@ -16,7 +16,7 @@ source:
       markDeletedTables: true
       includeTables: true
       includeViews: true
-      includeDDL: true
+      includeDDL: false
 sink:
   type: metadata-rest
   config: {}
