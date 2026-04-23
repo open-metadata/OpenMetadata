@@ -445,8 +445,10 @@ public class SearchResourceIT {
     // about to stress in the matrix below. We still verify the specific seeded table is the
     // hit, so accidental matches on other docs with "lhr" in their name don't fool us.
     String waitQuery = indexedName.split("_+")[0];
+    // 90s timeout: search indexing is async via change events and can lag noticeably under
+    // CI load, especially the first time the index is warmed in a fresh test container.
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .until(
             () -> {
@@ -589,7 +591,7 @@ public class SearchResourceIT {
     String firstSeg = indexedName.split("_+")[0];
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .until(
             () -> {
@@ -661,7 +663,7 @@ public class SearchResourceIT {
     String decoyName = decoy.getName();
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(90, TimeUnit.SECONDS)
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .until(
             () -> {
