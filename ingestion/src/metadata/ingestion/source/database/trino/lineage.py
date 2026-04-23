@@ -11,6 +11,7 @@
 """
 Trino lineage module
 """
+
 import traceback
 from typing import Iterable, Iterator, List
 
@@ -112,9 +113,11 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         """
         Method to check whether the table1 and table2 are same
         """
-        return table1.name.root == table2.name.root and {
-            column.name.root for column in table1.columns
-        } == {column.name.root for column in table2.columns}
+        # Trino folds all identifiers to lowercase; use case-insensitive
+        # comparison so cross-database tables with mixed-case names still match.
+        return table1.name.root.lower() == table2.name.root.lower() and {
+            column.name.root.lower() for column in table1.columns
+        } == {column.name.root.lower() for column in table2.columns}
 
     def get_cross_database_lineage(
         self, from_table: Table, to_table: Table
@@ -151,19 +154,56 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                 for trino_table in trino_tables:
                     trino_table_fqn = trino_table.fullyQualifiedName.root
                     for cross_database_fqn in all_cross_database_fqns:
-                        # Construct the FQN for cross-database tables
+                        # Build the candidate FQN by replacing the Trino database prefix.
+                        # Trino folds identifiers to lowercase; the target service may
+                        # store them in any case.  We try the as-built FQN first, then
+                        # fall back to a lowercased schema+table suffix to handle
+                        # case mismatches.
                         cross_database_table_fqn = trino_table_fqn.replace(
                             trino_database_fqn, cross_database_fqn
                         )
                         # Cache cross-database table against its FQN to avoid repeated API calls
-                        cross_database_table = cross_database_table_fqn_mapping[
-                            cross_database_table_fqn
-                        ] = cross_database_table_fqn_mapping.get(
-                            cross_database_table_fqn,
-                            self.metadata.get_by_name(
+                        if cross_database_table_fqn in cross_database_table_fqn_mapping:
+                            cross_database_table = cross_database_table_fqn_mapping[
+                                cross_database_table_fqn
+                            ]
+                        else:
+                            cross_database_table = self.metadata.get_by_name(
                                 Table, fqn=cross_database_table_fqn
-                            ),
-                        )
+                            )
+                            cross_database_table_fqn_mapping[
+                                cross_database_table_fqn
+                            ] = cross_database_table
+                        if cross_database_table is None:
+                            # Fallback: lowercase only the schema and table suffix
+                            # portions.  The service name prefix from
+                            # cross_database_fqn is preserved as-is because
+                            # OpenMetadata service names are case-sensitive.
+                            fqn_suffix = trino_table_fqn[len(trino_database_fqn) :]
+                            cross_database_table_fqn_lower = (
+                                cross_database_fqn + fqn_suffix.lower()
+                            )
+                            if (
+                                cross_database_table_fqn_lower
+                                in cross_database_table_fqn_mapping
+                            ):
+                                cross_database_table = cross_database_table_fqn_mapping[
+                                    cross_database_table_fqn_lower
+                                ]
+                            else:
+                                cross_database_table = self.metadata.get_by_name(
+                                    Table, fqn=cross_database_table_fqn_lower
+                                )
+                                cross_database_table_fqn_mapping[
+                                    cross_database_table_fqn_lower
+                                ] = cross_database_table
+                            if cross_database_table is not None:
+                                logger.debug(
+                                    "Cross-database table resolved via"
+                                    " case-insensitive fallback: "
+                                    f"{cross_database_table_fqn!r} ->"
+                                    f" {cross_database_table_fqn_lower!r}"
+                                )
                         # Create cross database lineage request if both tables are same
                         if cross_database_table and self.check_same_table(
                             trino_table, cross_database_table

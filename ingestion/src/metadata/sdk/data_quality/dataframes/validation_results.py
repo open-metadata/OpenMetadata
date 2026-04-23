@@ -26,7 +26,9 @@ from metadata.sdk.data_quality.dataframes.models import MockTestCase
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
-from metadata.utils.entity_link import get_column_name_or_none
+from metadata.utils.entity_link import (
+    get_column_name_or_none,
+)
 
 logger = logging.getLogger(__name__)
 

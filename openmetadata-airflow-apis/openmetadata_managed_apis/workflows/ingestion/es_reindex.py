@@ -37,7 +37,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    WorkflowConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

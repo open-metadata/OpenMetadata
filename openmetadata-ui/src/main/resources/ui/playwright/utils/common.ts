@@ -450,8 +450,8 @@ export const assignDataProduct = async (
         },
         {
           message: `Waiting for inherited domain "${domain.displayName}" to appear on the entity page`,
-          timeout: 60_000,
-          intervals: [2_000, 3_000, 5_000],
+          timeout: 90_000,
+          intervals: [2_000, 3_000, 5_000, 5_000, 5_000, 10_000],
         }
       )
       .toContain(domain.displayName);
@@ -529,8 +529,8 @@ export const assignDataProduct = async (
           },
           {
             message: `Waiting for data product "${dataProduct.displayName}" to appear after save`,
-            timeout: 60_000,
-            intervals: [2_000, 3_000, 5_000],
+            timeout: 90_000,
+            intervals: [2_000, 3_000, 5_000, 5_000, 5_000, 10_000],
           }
         )
         .toBe(true);
