@@ -89,13 +89,16 @@ public class SearchIndexClusterValidator {
 
       int maxShardsPerNode = getMaxShardsPerNode(client);
       int maxShards = totalNodes * maxShardsPerNode;
-
       double usagePercent = maxShards > 0 ? (double) totalShards / maxShards : 0;
       int availableShards = maxShards - totalShards;
 
       LOG.debug(
           "OpenSearch cluster capacity: {} current shards, {} max shards ({} nodes x {} per node), {:.1f}% used",
-          totalShards, maxShards, totalNodes, maxShardsPerNode, usagePercent * 100);
+          totalShards,
+          maxShards,
+          totalNodes,
+          maxShardsPerNode,
+          usagePercent * 100);
 
       return new ClusterCapacity(totalShards, maxShards, usagePercent, availableShards);
     } catch (Exception e) {

@@ -1615,6 +1615,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  protected void postDelete(TestCase entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    if (hardDelete) {
+      // Delete test case results and resolution statuses
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT)
+          .delete(entity.getFullyQualifiedName());
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
+          .delete(entity.getFullyQualifiedName());
+    }
+  }
+
+  @Override
   public void postUpdate(TestCase original, TestCase updated) {
     hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);

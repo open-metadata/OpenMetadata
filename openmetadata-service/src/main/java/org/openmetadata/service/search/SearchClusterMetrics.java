@@ -76,9 +76,6 @@ public class SearchClusterMetrics {
       var nodesStats = osClient.nodesStats();
       var clusterSettings = osClient.clusterSettings();
 
-      LOG.debug("ClusterStats response: {}", clusterStats);
-      LOG.debug("NodesStats response: {}", nodesStats);
-
       int totalNodes = clusterStats != null && clusterStats.nodes() != null && clusterStats.nodes().count() != null
           ? clusterStats.nodes().count().total()
           : 1;
