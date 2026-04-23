@@ -59,10 +59,15 @@ jest.mock('antd', () => {
   };
 });
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
   Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
     return <span>{i18nKey}</span>;
   }),
+  __esModule: true,
+  default: {
+    t: jest.fn().mockImplementation((key) => key),
+  },
+  t: jest.fn().mockImplementation((key) => key),
 }));
 
 describe('DestinationSelectItem component', () => {

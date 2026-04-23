@@ -80,10 +80,13 @@ export const restoreApiCollection = async (id: string) => {
   return response.data;
 };
 
-export const getApiCollectionVersions = async (id: string) => {
+export const getApiCollectionVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `/apiCollections/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

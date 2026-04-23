@@ -182,7 +182,7 @@ test.describe('Data Contracts', () => {
         // Add owner using created user to verify displayName is shown in UserTag
         await addOwnerWithoutValidation({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           initiatorId: 'select-owners',
         });
@@ -190,7 +190,7 @@ test.describe('Data Contracts', () => {
         // Verify the UserTag shows the user's displayName (not name)
         await expect(page.getByTestId('user-tag')).toBeVisible();
         await expect(
-          page.getByTestId('user-tag').getByText(user.responseData.displayName)
+          page.getByTestId('user-tag').getByText(user.getUserDisplayName())
         ).toBeVisible();
       });
 

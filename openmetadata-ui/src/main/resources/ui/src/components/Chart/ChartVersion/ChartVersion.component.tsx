@@ -51,6 +51,9 @@ export interface ChartVersionProp {
   tier: TagLabel;
   slashedChartName: string[];
   versionList: EntityHistory;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
@@ -67,6 +70,9 @@ const ChartVersion: FC<ChartVersionProp> = ({
   tier,
   slashedChartName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -259,9 +265,12 @@ const ChartVersion: FC<ChartVersionProp> = ({
         <EntityVersionTimeLine
           currentVersion={version ?? ''}
           entityType={EntityType.CHART}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}
+          onLoadMore={onLoadMore}
         />
       </>
     );

@@ -402,7 +402,7 @@ class SnowflakeSource(
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
-        results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES))
+        results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES)).fetchall()
         for res in results:
             row = list(res)
             yield row[1]

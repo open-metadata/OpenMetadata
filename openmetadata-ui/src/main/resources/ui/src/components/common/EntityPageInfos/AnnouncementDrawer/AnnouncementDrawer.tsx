@@ -18,7 +18,6 @@ import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
@@ -44,7 +43,6 @@ const AnnouncementDrawer: FC<Props> = ({
   showToastInSnackbar = false,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
     useState<boolean>(false);
   const [refetchThread, setRefetchThread] = useState<boolean>(false);
@@ -73,7 +71,6 @@ const AnnouncementDrawer: FC<Props> = ({
   const postFeedHandler = async (value: string, id: string): Promise<void> => {
     const data = {
       message: value,
-      from: currentUser?.name,
     } as Post;
 
     try {
