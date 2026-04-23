@@ -1019,10 +1019,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that collide
+    // with concurrent test-case creation. MySQL raises "Deadlock found when trying to get lock"
+    // intermittently under IT parallel load. Wrap the retry *outside* the @Transaction boundary
+    // so each attempt runs in a fresh transaction instead of replaying on a rolled-back handle.
+    return DeadlockRetry.execute(
+        () -> addAllTestCasesToLogicalTestSuiteTxn(testSuite, excludedTestCaseIds));
+  }
 
+  @Transaction
+  RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteTxn(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
     List<EntityReference> originalTestCaseReferences =
         findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
 

@@ -215,6 +215,27 @@ def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
 CustomSecretStr = Annotated[_CustomSecretStr, WrapSerializer(handle_secret)]
 
 
+def format_validation_error(exc: Exception) -> str:
+    """Render a Pydantic ``ValidationError`` (v2) as a compact one-liner
+    suitable for log messages and workflow status warnings.
+
+    Each field error becomes ``field.path: message``, joined by ``; ``.
+    Falls back to ``str(exc)`` for non-Pydantic exceptions so callers
+    don't need to type-check.
+
+    Example output::
+
+        entries.0.dataPath: Field required; entries.1.structureFormat: Input should be a valid string
+    """
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        return "; ".join(
+            f"{'.'.join(str(p) for p in err.get('loc', ()))}: {err.get('msg', '')}"
+            for err in errors()
+        )
+    return str(exc)
+
+
 def ignore_type_decoder(type_: Any) -> None:
     """Given a type_, add a custom decoder to the BaseModel
     to ignore any decoding errors for that type_."""
