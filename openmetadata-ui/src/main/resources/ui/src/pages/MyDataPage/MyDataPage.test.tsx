@@ -20,8 +20,8 @@ import {
   mockPersonaName,
   mockUserData,
 } from '../../mocks/MyDataPage.mock';
+import { getActiveAnnouncements } from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import MyDataPage from './MyDataPage.component';
 
 const mockLocalStorage = (() => {
@@ -101,8 +101,8 @@ jest.mock('../../rest/DocStoreAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockDocumentData)),
 }));
-jest.mock('../../rest/feedsAPI', () => ({
-  getActiveAnnouncement: jest
+jest.mock('../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockActiveAnnouncementData)),
 }));
@@ -257,7 +257,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
-    (getActiveAnnouncement as jest.Mock).mockImplementationOnce(() =>
+    (getActiveAnnouncements as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ...mockActiveAnnouncementData,
         data: [],

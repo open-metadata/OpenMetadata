@@ -520,17 +520,15 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       // Update feed entity links for the domain
       EntityLink newAbout = new EntityLink(DOMAIN, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       // Update feed entity links for all child domains
       List<Domain> childDomains = getNestedDomains(updated);
       for (Domain child : childDomains) {
         EntityLink childAbout = new EntityLink(DOMAIN, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(childAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
       }
     }
 
