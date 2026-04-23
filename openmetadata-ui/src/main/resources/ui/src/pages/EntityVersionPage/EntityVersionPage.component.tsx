@@ -1106,8 +1106,7 @@ const EntityVersionPage: FunctionComponent = () => {
       className="version-page-container"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(currentVersionData),
-      })}
-    >
+      })}>
       {versionComponent()}
     </PageLayoutV1>
   );

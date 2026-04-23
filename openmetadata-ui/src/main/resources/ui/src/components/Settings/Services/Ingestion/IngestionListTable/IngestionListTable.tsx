@@ -442,8 +442,7 @@ function IngestionListTable({
     <>
       <div
         className={classNames('ingestion-list-table', tableContainerClassName)}
-        data-testid="ingestion-table"
-      >
+        data-testid="ingestion-table">
         <Table
           columns={tableColumn}
           containerClassName={tableClassName}

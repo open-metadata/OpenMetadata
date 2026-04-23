@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Drawer, Row, Spin, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Drawer,
+  Row,
+  Spin,
+  Tooltip,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { forwardRef, useEffect, useMemo, useRef } from 'react';
@@ -145,6 +154,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
       !node ||
       !onLoadMore ||
       !hasMore ||
+      isLoadingMore ||
       typeof IntersectionObserver === 'undefined'
     ) {
       return;

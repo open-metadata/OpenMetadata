@@ -415,9 +415,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
     if (limit > 0 || offset > 0) {
       int effectiveLimit = limit > 0 ? limit : DEFAULT_FIELD_CHANGED_VERSION_LIMIT;
-      return repository
-          .listVersionsWithOffset(id, effectiveLimit, offset, null)
-          .entityHistory();
+      return repository.listVersionsWithOffset(id, effectiveLimit, offset, null).entityHistory();
     }
     return repository.listVersions(id);
   }

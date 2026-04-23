@@ -164,8 +164,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px"
-            >
+              flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -244,8 +243,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.TOPIC}
-              onUpdate={() => Promise.resolve()}
-            >
+              onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"

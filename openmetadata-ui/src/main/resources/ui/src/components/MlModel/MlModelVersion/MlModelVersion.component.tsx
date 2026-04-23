@@ -187,8 +187,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                             bordered
                             className="m-b-xlg"
                             data-testid={`feature-card-${feature.name ?? ''}`}
-                            key={feature.fullyQualifiedName}
-                          >
+                            key={feature.fullyQualifiedName}>
                             <Row>
                               <Col className="m-b-xs" span={24}>
                                 <Typography.Text className="font-semibold">
@@ -301,8 +300,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px"
-            >
+              flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -380,8 +378,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.MLMODEL}
-              onUpdate={() => Promise.resolve()}
-            >
+              onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"

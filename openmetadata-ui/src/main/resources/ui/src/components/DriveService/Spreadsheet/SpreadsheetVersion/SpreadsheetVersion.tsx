@@ -193,8 +193,7 @@ const SpreadsheetVersion = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px"
-            >
+              flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -310,8 +309,7 @@ const SpreadsheetVersion = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.SPREADSHEET as CustomizeEntityType}
-              onUpdate={() => Promise.resolve()}
-            >
+              onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"

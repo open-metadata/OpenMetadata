@@ -164,8 +164,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px"
-            >
+              flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -224,8 +223,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
     return (
       <>
         <div
-          className={`version-data ${deleted ? 'version-data--deleted' : ''}`}
-        >
+          className={`version-data ${deleted ? 'version-data--deleted' : ''}`}>
           <Row gutter={[0, 12]}>
             <Col span={24}>
               <DataAssetsVersionHeader
@@ -249,8 +247,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
                 data={currentVersionData}
                 permissions={entityPermissions}
                 type={EntityType.CHART}
-                onUpdate={() => Promise.resolve()}
-              >
+                onUpdate={() => Promise.resolve()}>
                 <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
                     className="tabs-new"

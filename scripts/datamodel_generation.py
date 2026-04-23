@@ -80,6 +80,12 @@ DIRECT_IMPORT_FIXES = {
     ],
 }
 
+DIRECT_IMPORT_FIXES_EXPECTED = {
+    f"{ingestion_path}src/metadata/generated/schema/type/entityHistory.py": (
+        "from .paging import Paging"
+    ),
+}
+
 for file_path, replacements in DIRECT_IMPORT_FIXES.items():
     if not os.path.exists(file_path):
         raise FileNotFoundError(
@@ -88,12 +94,14 @@ for file_path, replacements in DIRECT_IMPORT_FIXES.items():
     with open(file_path, "r", encoding=UTF_8) as file_:
         content = file_.read()
     for old_value, new_value in replacements:
-        if old_value not in content:
-            raise RuntimeError(
-                f"DIRECT_IMPORT_FIXES replacement target {old_value!r} not found in {file_path}. "
-                "The generator output may have changed; update datamodel_generation.py."
-            )
         content = content.replace(old_value, new_value)
+    expected_marker = DIRECT_IMPORT_FIXES_EXPECTED.get(file_path)
+    if expected_marker is not None and expected_marker not in content:
+        raise RuntimeError(
+            f"DIRECT_IMPORT_FIXES produced no change in {file_path} "
+            f"(expected {expected_marker!r} to be present). "
+            "The generator output may have changed; update datamodel_generation.py."
+        )
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
 

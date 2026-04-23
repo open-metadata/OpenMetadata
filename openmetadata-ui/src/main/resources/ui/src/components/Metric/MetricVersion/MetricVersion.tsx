@@ -148,8 +148,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px"
-            >
+              flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -221,8 +220,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.METRIC as CustomizeEntityType}
-              onUpdate={() => Promise.resolve()}
-            >
+              onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"
