@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -13,8 +14,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
@@ -611,6 +615,56 @@ public abstract class EntityServiceBase<T> {
     return httpClient.execute(HttpMethod.GET, path, null, EntityHistory.class);
   }
 
+  public EntityHistory getVersionList(UUID id, int limit, int offset) throws OpenMetadataException {
+    return getVersionList(id.toString(), limit, offset);
+  }
+
+  public EntityHistory getVersionList(String id, int limit, int offset)
+      throws OpenMetadataException {
+    return getVersionList(id, limit, offset, null);
+  }
+
+  public EntityHistory getVersionList(UUID id, int limit, int offset, String fieldChanged)
+      throws OpenMetadataException {
+    return getVersionList(id.toString(), limit, offset, fieldChanged);
+  }
+
+  public EntityHistory getVersionList(String id, int limit, int offset, String fieldChanged)
+      throws OpenMetadataException {
+    String path = basePath + "/" + id + "/versions";
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("limit", String.valueOf(limit));
+    queryParams.put("offset", String.valueOf(offset));
+    if (fieldChanged != null && !fieldChanged.isEmpty()) {
+      queryParams.put("fieldChanged", fieldChanged);
+    }
+    RequestOptions options = RequestOptions.builder().queryParams(queryParams).build();
+    return httpClient.execute(HttpMethod.GET, path, null, EntityHistory.class, options);
+  }
+
+  public ResultList<T> getEntityHistory(long startTs, long endTs) throws OpenMetadataException {
+    return getEntityHistory(startTs, endTs, 10, null, null);
+  }
+
+  public ResultList<T> getEntityHistory(
+      long startTs, long endTs, int limit, String before, String after)
+      throws OpenMetadataException {
+    String path = basePath + "/history";
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("startTs", String.valueOf(startTs));
+    queryParams.put("endTs", String.valueOf(endTs));
+    queryParams.put("limit", String.valueOf(limit));
+    if (before != null) {
+      queryParams.put("before", before);
+    }
+    if (after != null) {
+      queryParams.put("after", after);
+    }
+    RequestOptions options = RequestOptions.builder().queryParams(queryParams).build();
+    String responseStr = httpClient.executeForString(HttpMethod.GET, path, null, options);
+    return deserializeResultList(responseStr);
+  }
+
   /**
    * Get a specific version of an entity.
    *
@@ -669,5 +723,42 @@ public abstract class EntityServiceBase<T> {
   @SuppressWarnings("unchecked")
   protected Class<ListResponse<T>> getListResponseClass() {
     return (Class<ListResponse<T>>) (Class<?>) ListResponse.class;
+  }
+
+  protected ResultList<T> deserializeResultList(String json) throws OpenMetadataException {
+    try {
+      JsonNode rootNode = objectMapper.readTree(json);
+
+      ResultList<T> result = new ResultList<>();
+
+      if (rootNode.has("data") && rootNode.get("data").isArray()) {
+        List<T> items = new ArrayList<>();
+        for (JsonNode node : rootNode.get("data")) {
+          items.add(objectMapper.treeToValue(node, getEntityClass()));
+        }
+        result.setData(items);
+      }
+
+      if (rootNode.has("paging") && !rootNode.get("paging").isNull()) {
+        result.setPaging(objectMapper.treeToValue(rootNode.get("paging"), Paging.class));
+      }
+
+      if (rootNode.has("errors") && rootNode.get("errors").isArray()) {
+        List<EntityError> errors = new ArrayList<>();
+        for (JsonNode node : rootNode.get("errors")) {
+          errors.add(objectMapper.treeToValue(node, EntityError.class));
+        }
+        result.setErrors(errors);
+      }
+
+      if (rootNode.has("warningsCount") && !rootNode.get("warningsCount").isNull()) {
+        result.setWarningsCount(rootNode.get("warningsCount").asInt());
+      }
+
+      return result;
+    } catch (Exception e) {
+      throw new OpenMetadataException(
+          "Failed to deserialize result list response: " + e.getMessage(), e);
+    }
   }
 }
