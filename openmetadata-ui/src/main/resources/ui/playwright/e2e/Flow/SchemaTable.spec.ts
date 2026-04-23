@@ -203,9 +203,7 @@ test('Copy column link should have valid URL format', async ({ page }) => {
       (response) =>
         response
           .url()
-          .includes(
-            `/api/v1/tables/name/${encodeURIComponent(tableFqn)}`
-          ) &&
+          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
         response.url().includes('fields=') &&
         response.request().method() === 'GET'
     ),
@@ -213,9 +211,7 @@ test('Copy column link should have valid URL format', async ({ page }) => {
       (response) =>
         response
           .url()
-          .includes(
-            `/api/v1/tables/name/${encodeURIComponent(tableFqn)}`
-          ) &&
+          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
         response.url().includes('profile') &&
         response.request().method() === 'GET',
       { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
@@ -275,7 +271,8 @@ test('Copy nested column link should include full hierarchical path', async ({
       );
 
       // Visit the copied link to verify it opens the side panel
-      const nestedTableFqn = table.entityResponseData?.['fullyQualifiedName'] ?? '';
+      const nestedTableFqn =
+        table.entityResponseData?.['fullyQualifiedName'] ?? '';
       await Promise.all([
         page.waitForResponse(
           (response) =>
