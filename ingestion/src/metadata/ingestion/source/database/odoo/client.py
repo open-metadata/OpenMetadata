@@ -220,13 +220,26 @@ class OdooClient:
         Returns a list of dicts with keys: id, name, model, info.
         """
         try:
-            records = self._execute_kw(
-                "ir.model",
-                "search_read",
-                [[]],
-                {"fields": ["name", "model", "info"]},
-            )
-            return records or []
+            records: List[Dict[str, Any]] = []
+            offset = 0
+            while True:
+                batch = self._execute_kw(
+                    "ir.model",
+                    "search_read",
+                    [[]],
+                    {
+                        "fields": ["name", "model", "info"],
+                        "limit": ODOO_DEFAULT_LIMIT,
+                        "offset": offset,
+                    },
+                )
+                if not batch:
+                    break
+                records.extend(batch)
+                if len(batch) < ODOO_DEFAULT_LIMIT:
+                    break
+                offset += ODOO_DEFAULT_LIMIT
+            return records
         except Exception as exc:
             logger.debug(traceback.format_exc())
             raise OdooApiException(
