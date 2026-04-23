@@ -92,12 +92,24 @@ def lineage_source():
 class TestCacheLineage:
     def test_cache_table_lineage(self, lineage_source):
         TableRow = namedtuple(
-            "TableRow", ["source_table_full_name", "target_table_full_name"]
+            "TableRow",
+            [
+                "source_table_full_name",
+                "target_table_full_name",
+                "source_path",
+                "target_path",
+            ],
         )
         mock_rows = [
-            TableRow("cat.schema.source1", "cat.schema.target1"),
-            TableRow("cat.schema.source2", "cat.schema.target1"),
-            TableRow("cat.schema.source1", "cat.schema.target2"),
+            TableRow(
+                "cat.schema.source1", "cat.schema.target1", None, None
+            ),
+            TableRow(
+                "cat.schema.source2", "cat.schema.target1", None, None
+            ),
+            TableRow(
+                "cat.schema.source1", "cat.schema.target2", None, None
+            ),
         ]
 
         mock_conn = MagicMock()
@@ -120,7 +132,13 @@ class TestCacheLineage:
 
     def test_cache_column_lineage(self, lineage_source):
         TableRow = namedtuple(
-            "TableRow", ["source_table_full_name", "target_table_full_name"]
+            "TableRow",
+            [
+                "source_table_full_name",
+                "target_table_full_name",
+                "source_path",
+                "target_path",
+            ],
         )
         ColumnRow = namedtuple(
             "ColumnRow",
@@ -129,6 +147,8 @@ class TestCacheLineage:
                 "source_column_name",
                 "target_table_full_name",
                 "target_column_name",
+                "source_path",
+                "target_path",
             ],
         )
 
@@ -138,10 +158,28 @@ class TestCacheLineage:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return [TableRow("cat.schema.src", "cat.schema.tgt")]
+                return [
+                    TableRow(
+                        "cat.schema.src", "cat.schema.tgt", None, None
+                    )
+                ]
             return [
-                ColumnRow("cat.schema.src", "col_a", "cat.schema.tgt", "col_x"),
-                ColumnRow("cat.schema.src", "col_b", "cat.schema.tgt", "col_y"),
+                ColumnRow(
+                    "cat.schema.src",
+                    "col_a",
+                    "cat.schema.tgt",
+                    "col_x",
+                    None,
+                    None,
+                ),
+                ColumnRow(
+                    "cat.schema.src",
+                    "col_b",
+                    "cat.schema.tgt",
+                    "col_y",
+                    None,
+                    None,
+                ),
             ]
 
         mock_conn = MagicMock()
@@ -172,6 +210,75 @@ class TestCacheLineage:
 
         assert len(lineage_source.table_lineage_map) == 0
         assert len(lineage_source.column_lineage_map) == 0
+
+    def test_cache_table_lineage_resolves_path_to_fqn(self, lineage_source):
+        lineage_source.external_path_to_fqn = {
+            "abfss://raw@store.dfs.core.windows.net/external_table": "bronze_ns.deltalake_ns.external_table",
+        }
+
+        TableRow = namedtuple(
+            "TableRow",
+            [
+                "source_table_full_name",
+                "target_table_full_name",
+                "source_path",
+                "target_path",
+            ],
+        )
+        mock_rows = [
+            TableRow(
+                None,
+                "bronze_ns.deltalake_ns.managed_table",
+                "abfss://raw@store.dfs.core.windows.net/external_table",
+                None,
+            ),
+        ]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_rows
+        lineage_source.engine.connect.return_value.__enter__ = Mock(
+            return_value=mock_conn
+        )
+        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        lineage_source._cache_lineage()
+
+        assert (
+            lineage_source.table_lineage_map["bronze_ns.deltalake_ns.managed_table"]
+            == {"bronze_ns.deltalake_ns.external_table"}
+        )
+
+    def test_cache_table_lineage_skips_unresolvable_path(self, lineage_source):
+        lineage_source.external_path_to_fqn = {}
+
+        TableRow = namedtuple(
+            "TableRow",
+            [
+                "source_table_full_name",
+                "target_table_full_name",
+                "source_path",
+                "target_path",
+            ],
+        )
+        mock_rows = [
+            TableRow(
+                None,
+                "cat.schema.target",
+                "abfss://unknown@store.dfs.core.windows.net/ghost",
+                None,
+            ),
+        ]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_rows
+        lineage_source.engine.connect.return_value.__enter__ = Mock(
+            return_value=mock_conn
+        )
+        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        lineage_source._cache_lineage()
+
+        assert "cat.schema.target" not in lineage_source.table_lineage_map
 
 
 class TestProcessTableLineage:
@@ -384,6 +491,33 @@ class TestColumnLineageDetails:
 
 
 class TestExternalLocationLineage:
+    def test_cache_external_locations_builds_reverse_map(self, lineage_source):
+        ExternalRow = namedtuple(
+            "ExternalRow",
+            ["table_catalog", "table_schema", "table_name", "storage_path"],
+        )
+        mock_rows = [
+            ExternalRow("cat", "schema", "ext_table1", "s3://bucket/path1"),
+            ExternalRow("cat", "schema", "ext_table2", "s3://bucket/path2/"),
+        ]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_rows
+        lineage_source.engine.connect.return_value.__enter__ = Mock(
+            return_value=mock_conn
+        )
+        lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+        lineage_source._cache_external_locations()
+
+        assert len(lineage_source.external_location_map) == 2
+        assert lineage_source.external_location_map["cat.schema.ext_table1"] == "s3://bucket/path1"
+        assert lineage_source.external_location_map["cat.schema.ext_table2"] == "s3://bucket/path2/"
+
+        assert len(lineage_source.external_path_to_fqn) == 2
+        assert lineage_source.external_path_to_fqn["s3://bucket/path1"] == "cat.schema.ext_table1"
+        assert lineage_source.external_path_to_fqn["s3://bucket/path2"] == "cat.schema.ext_table2"
+
     def test_cache_external_locations(self, lineage_source):
         ExternalRow = namedtuple(
             "ExternalRow",

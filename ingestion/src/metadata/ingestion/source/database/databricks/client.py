@@ -350,6 +350,8 @@ class DatabricksClient:
                     {
                         "source_table_full_name": row.source_table_full_name,
                         "target_table_full_name": row.target_table_full_name,
+                        "source_path": getattr(row, "source_path", None),
+                        "target_path": getattr(row, "target_path", None),
                     }
                 )
             except Exception as exc:
