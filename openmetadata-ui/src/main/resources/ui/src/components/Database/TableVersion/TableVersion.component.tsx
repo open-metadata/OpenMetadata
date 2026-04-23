@@ -32,6 +32,11 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useFqn } from '../../../hooks/useFqn';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+} from '../../../rest/tableAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
@@ -84,6 +89,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     paging,
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
+  const { fqn: tableFqn } = useFqn();
   const [searchText, setSearchText] = useState('');
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
@@ -92,23 +98,47 @@ const TableVersion: React.FC<TableVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const allHistoricalColumns = useMemo(
-    () => pruneEmptyChildren(currentVersionData.columns) ?? [],
-    [currentVersionData.columns]
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!tableFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchTableColumnsByFQN(tableFqn, {
+              q: searchQuery,
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags',
+            })
+          : await getTableColumnsByFQN(tableFqn, {
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags',
+            });
+
+        setTableColumns(pruneEmptyChildren(response.data) || []);
+        handlePagingChange(response.paging);
+      } catch {
+        // Set empty state if API fails
+        setTableColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      } finally {
+        setColumnsLoading(false);
+      }
+    },
+    [tableFqn, pageSize]
   );
-
-  const filteredHistoricalColumns = useMemo(() => {
-    if (!searchText) {
-      return allHistoricalColumns;
-    }
-    const lower = searchText.toLowerCase();
-
-    return allHistoricalColumns.filter(
-      (col) =>
-        col.name?.toLowerCase().includes(lower) ||
-        col.description?.toLowerCase().includes(lower)
-    );
-  }, [allHistoricalColumns, searchText]);
 
   const handleSearchAction = useCallback(
     (searchValue: string) => {
@@ -120,9 +150,10 @@ const TableVersion: React.FC<TableVersionProp> = ({
 
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
+      fetchPaginatedColumns(currentPage, searchText);
       handlePageChange(currentPage);
     },
-    [handlePageChange]
+    [paging, fetchPaginatedColumns, searchText]
   );
 
   const paginationProps = useMemo(
@@ -130,7 +161,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
       currentPage,
       showPagination,
       isLoading: columnsLoading,
-      isNumberBased: true,
+      isNumberBased: Boolean(searchText),
       pageSize,
       paging,
       pagingHandler: handleColumnsPageChange,
@@ -324,19 +355,20 @@ const TableVersion: React.FC<TableVersionProp> = ({
     ]
   );
 
+  // Fetch columns when search changes
   useEffect(() => {
-    if (isVersionLoading) {
-      return;
+    if (tableFqn && !isVersionLoading) {
+      // Reset to first page when search changes
+      fetchPaginatedColumns(currentPage, searchText || undefined);
     }
-    const offset = (currentPage - 1) * pageSize;
-    setTableColumns(filteredHistoricalColumns.slice(offset, offset + pageSize));
-    handlePagingChange({
-      offset,
-      limit: pageSize,
-      total: filteredHistoricalColumns.length,
-    });
-    setColumnsLoading(false);
-  }, [isVersionLoading, filteredHistoricalColumns, currentPage, pageSize]);
+  }, [
+    isVersionLoading,
+    tableFqn,
+    searchText,
+    fetchPaginatedColumns,
+    pageSize,
+    currentPage,
+  ]);
 
   return (
     <>
