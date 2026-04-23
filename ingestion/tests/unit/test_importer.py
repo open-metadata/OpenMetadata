@@ -16,6 +16,7 @@ from unittest import TestCase
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
+    DynamicImportException,
     get_class_name_root,
     get_module_name,
     get_source_module_name,
@@ -61,6 +62,25 @@ class ImporterTest(TestCase):
         self.assertEqual(
             import_source_class(service_type=ServiceType.Database, source_type="mysql"),
             MysqlSource,
+        )
+
+    def test_import_policy_source_class_invalid_format(self) -> None:
+        with self.assertRaises(DynamicImportException) as ctx:
+            import_source_class(service_type=ServiceType.Database, source_type="policy")
+        self.assertIn("Invalid policy source type", str(ctx.exception))
+
+    def test_import_policy_source_class_unsupported_connector(self) -> None:
+        with self.assertRaises(DynamicImportException) as ctx:
+            import_source_class(
+                service_type=ServiceType.Database,
+                source_type="does-not-exist-policy",
+            )
+        message = str(ctx.exception)
+        self.assertIn("Policy source type", message)
+        self.assertIn("does-not-exist-policy", message)
+        self.assertIn(
+            "metadata.ingestion.source.database.does_not_exist.policy.PolicyAgentSource",
+            message,
         )
 
     def test_import_processor_class(self) -> None:

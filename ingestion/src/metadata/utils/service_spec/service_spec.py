@@ -125,27 +125,51 @@ def import_source_class(
 ) -> Type[Source]:
     """
     Import the source class for a given service type and source type.
-    The source type can follow the format {base_source_type}:{source_class_type},
-    where source_class_type is one of "metadata", "lineage", "usage", or "policy".
-    If in this format, the class is imported from:
-    metadata.{from_}.source.{service_type}.{base_source_type}.{source_class_type}.Source
 
-    Otherwise, it is imported from:
-    metadata.{from_}.source.{service_type}.{source_type}.Source
+    The source type can follow the format
+    {base_source_type}{TYPE_SEPARATOR}{source_class_type} (for example,
+    ``mysql-usage``), where ``source_class_type`` is one of ``metadata``,
+    ``lineage``, ``usage``, or ``policy``.
+
+    For ``policy`` source types, the class is imported from:
+    ``metadata.{from_}.source.{service_type}.{base_source_type}.policy.PolicyAgentSource``
+
+    For ``usage`` and ``lineage`` source types, and for all other source
+    types, the class path is resolved from the source ``ServiceSpec`` via the
+    corresponding ``*_source_class`` field.
     """
-    source_class_type = source_type.split(TYPE_SEPARATOR)[-1]
+    source_parts = source_type.split(TYPE_SEPARATOR)
+    source_class_type = source_parts[-1]
     if source_class_type == "policy":
-        base_source_type = source_type.split(TYPE_SEPARATOR)[0]
-        return cast(
-            Type[Source],
-            import_from_module(
-                "metadata.{}.source.{}.{}.policy.PolicyAgentSource".format(  # pylint: disable=C0209
-                    from_,
-                    service_type.name.lower(),
-                    get_module_dir(base_source_type),
+        if len(source_parts) != 2 or not source_parts[0]:
+            raise DynamicImportException(
+                "Invalid policy source type '{}'. Expected format '<connector>{}policy'.".format(  # pylint: disable=C0209
+                    source_type,
+                    TYPE_SEPARATOR,
                 )
-            ),
+            )
+
+        base_source_type = source_parts[0]
+        policy_class_path = "metadata.{}.source.{}.{}.policy.PolicyAgentSource".format(  # pylint: disable=C0209
+            from_,
+            service_type.name.lower(),
+            get_module_dir(base_source_type),
         )
+        try:
+            return cast(
+                Type[Source],
+                import_from_module(policy_class_path),
+            )
+        except DynamicImportException as exc:
+            raise DynamicImportException(
+                "Policy source type '{}' is not supported for service type '{}' "
+                "from '{}'. Attempted import '{}'.".format(  # pylint: disable=C0209
+                    source_type,
+                    service_type.name.lower(),
+                    from_,
+                    policy_class_path,
+                )
+            ) from exc
     if source_class_type in ["usage", "lineage"]:
         field = f"{source_class_type}_source_class"
     else:
