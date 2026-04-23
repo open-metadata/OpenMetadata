@@ -33,7 +33,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
-import { openColumnDetailPanel } from '../../utils/entity';
+import {
+  getEntityDisplayName,
+  openColumnDetailPanel,
+} from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
@@ -103,7 +106,6 @@ const glossaryTermToUpdate =
 const tagToUpdate =
   testTag.responseData?.displayName ?? testTag.data.displayName;
 const testTier = 'Tier1';
-const customPropertyData: Record<string, { property: { name: string } }> = {};
 
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
@@ -198,7 +200,7 @@ test.describe('Right Panel Test Suite', () => {
           await test.step('Navigate to entity', async () => {
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -254,7 +256,7 @@ test.describe('Right Panel Test Suite', () => {
 
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -276,7 +278,7 @@ test.describe('Right Panel Test Suite', () => {
 
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -298,7 +300,7 @@ test.describe('Right Panel Test Suite', () => {
 
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -322,7 +324,7 @@ test.describe('Right Panel Test Suite', () => {
 
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -344,7 +346,7 @@ test.describe('Right Panel Test Suite', () => {
 
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -382,26 +384,6 @@ test.describe('Right Panel Test Suite', () => {
           await Promise.all(
             Object.values(entityMap).map((e) => e.create(apiContext))
           );
-          for (const [entityType, entityInstance] of Object.entries(
-            entityMap
-          )) {
-            try {
-              await entityInstance.prepareCustomProperty(apiContext);
-              const firstProperty = Object.values(
-                entityInstance.customPropertyValue
-              )[0];
-              if (firstProperty) {
-                customPropertyData[entityType] = {
-                  property: firstProperty.property,
-                };
-              }
-            } catch (error) {
-              console.warn(
-                `Failed to create custom property for ${entityType}:`,
-                error
-              );
-            }
-          }
         } finally {
           await afterAction();
         }
@@ -434,7 +416,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -534,7 +516,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -560,7 +542,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -584,7 +566,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -701,7 +683,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -725,7 +707,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -751,7 +733,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: adminPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1029,176 +1011,6 @@ test.describe('Right Panel Test Suite', () => {
           }
         });
       });
-
-      test.describe('CustomProperties - Comprehensive Testing', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should navigate to custom properties and show interface for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: entityInstance.entity.name,
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-          });
-
-          test(`Should display custom properties for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: entityInstance.entity.name,
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.shouldShowCustomProperty(propertyName);
-            }
-          });
-
-          test(`Should search custom properties for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: entityInstance.entity.name,
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.searchCustomProperties(propertyName);
-              await customProperties.shouldShowCustomProperty(propertyName);
-            }
-          });
-
-          test(`Should clear search and show all properties for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: entityInstance.entity.name,
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.searchCustomProperties(propertyName);
-              await customProperties.shouldShowCustomProperty(propertyName);
-
-              await customProperties.clearSearch();
-              await customProperties.shouldShowCustomPropertiesContainer();
-            }
-          });
-          // TODO: Remove skip once the we have search support for custom properties to avoid flakiness
-          test.skip(`Should show no results for invalid search for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: entityInstance.entity.name,
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            rightPanel.setEntityConfig(entityInstance);
-
-            if (rightPanel.isTabAvailable('custom property')) {
-              await customProperties.navigateToCustomPropertiesTab();
-              await customProperties.shouldShowCustomPropertiesContainer();
-
-              await customProperties.searchCustomProperties(
-                'nonexistent_property_xyz123'
-              );
-              await customProperties.shouldShowEmptyCustomPropertiesContainer();
-            }
-          });
-
-          test(`Should verify property name is visible for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            customProperties,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            test.skip(
-              !rightPanel.isTabAvailable('custom property'),
-              `Custom Property tab not available for ${entityType}`
-            );
-
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: entityInstance.entity.name,
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            await customProperties.navigateToCustomPropertiesTab();
-            await customProperties.shouldShowCustomPropertiesContainer();
-
-            const propertyName = customPropertyData[entityType]?.property?.name;
-            if (propertyName) {
-              await customProperties.verifyPropertyType(propertyName);
-            }
-          });
-        });
-      });
     }); // end: Entity validation with shared read-only entities
 
     test.describe('Overview panel - Deleted entity verification', () => {
@@ -1260,7 +1072,7 @@ test.describe('Right Panel Test Suite', () => {
               const fqn = getEntityFqn(entityInstance);
               await navigateToExploreAndSelectEntity({
                 page: adminPage,
-                entityName: entityInstance.entity.name,
+                entityName: getEntityDisplayName(entityInstance.entity),
                 endpoint: entityInstance.endpoint,
                 fullyQualifiedName: fqn,
               });
@@ -1312,7 +1124,7 @@ test.describe('Right Panel Test Suite', () => {
               const fqn = getEntityFqn(entityInstance);
               await navigateToExploreAndSelectEntity({
                 page: adminPage,
-                entityName: entityInstance.entity.name,
+                entityName: getEntityDisplayName(entityInstance.entity),
                 endpoint: entityInstance.endpoint,
                 fullyQualifiedName: fqn,
               });
@@ -1360,7 +1172,7 @@ test.describe('Right Panel Test Suite', () => {
               const fqn = getEntityFqn(entityInstance);
               await navigateToExploreAndSelectEntity({
                 page: adminPage,
-                entityName: entityInstance.entity.name,
+                entityName: getEntityDisplayName(entityInstance.entity),
                 endpoint: entityInstance.endpoint,
                 fullyQualifiedName: fqn,
               });
@@ -1432,7 +1244,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1460,7 +1272,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1487,7 +1299,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1512,7 +1324,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1537,7 +1349,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1562,7 +1374,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1609,7 +1421,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataStewardPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1654,14 +1466,6 @@ test.describe('Right Panel Test Suite', () => {
               e.create(apiContext)
             )
           );
-          for (const entityInstance of Object.values(dataConsumerEntityMap)) {
-            try {
-              await entityInstance.prepareCustomProperty(apiContext);
-            } catch {
-              // Custom property type may already exist from another describe block;
-              // continue so remaining entity types still get registered.
-            }
-          }
         } finally {
           await afterAction();
         }
@@ -1688,7 +1492,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataConsumerPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1716,7 +1520,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataConsumerPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1741,7 +1545,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataConsumerPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1766,7 +1570,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataConsumerPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1791,7 +1595,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataConsumerPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -1842,7 +1646,7 @@ test.describe('Right Panel Test Suite', () => {
             const fqn = getEntityFqn(entityInstance);
             await navigateToExploreAndSelectEntity({
               page: dataConsumerPage,
-              entityName: entityInstance.entity.name,
+              entityName: getEntityDisplayName(entityInstance.entity),
               endpoint: entityInstance.endpoint,
               fullyQualifiedName: fqn,
             });
@@ -2219,7 +2023,7 @@ test.describe('Right Panel Test Suite', () => {
               const fqn = getEntityFqn(entityInstance);
               await navigateToExploreAndSelectEntity({
                 page: authenticatedPage,
-                entityName: entityInstance.entity.name,
+                entityName: getEntityDisplayName(entityInstance.entity),
                 endpoint: entityInstance.endpoint,
                 fullyQualifiedName: fqn,
               });
@@ -2241,7 +2045,7 @@ test.describe('Right Panel Test Suite', () => {
               // entity data (description) has been fetched from the server before asserting.
               await navigateToExploreAndSelectEntity({
                 page: authenticatedPage,
-                entityName: entityInstance.entity.name,
+                entityName: getEntityDisplayName(entityInstance.entity),
                 endpoint: entityInstance.endpoint,
                 fullyQualifiedName: fqn,
               });

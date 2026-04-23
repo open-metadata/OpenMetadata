@@ -429,7 +429,7 @@ export const permanentDeleteUser = async (
     // initialization effect before switching, otherwise the click races
     // with setFieldsValue and the selection gets clobbered.
     await page
-      .locator('[data-testid="soft-delete"].ant-radio-wrapper-checked')
+      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
       .waitFor();
   }
 
@@ -635,7 +635,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await page
     .getByRole('cell', { name: /user_id/i })
     .getByTestId('edit-displayName-button')
-    .waitFor({ state: 'attached'});
+    .waitFor({ state: 'attached' });
 
   // Check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).toBeVisible();

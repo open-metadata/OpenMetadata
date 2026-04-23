@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { getEntityDisplayName } from '../../utils/entity';
 import {
   editDisplayNameFromPanel,
   navigateToExploreAndSelectTable,
@@ -196,7 +197,10 @@ test.describe('Entity Title Section - Edit Display Name', () => {
   }) => {
     const newDisplayName = `Updated Table ${uuid()}`;
 
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
+    await navigateToExploreAndSelectTable(
+      page,
+      getEntityDisplayName(table.entityResponseData)
+    );
 
     const summaryPanel = page.locator('.entity-summary-panel-container');
     await expect(summaryPanel).toBeVisible();
@@ -208,7 +212,10 @@ test.describe('Entity Title Section - Edit Display Name', () => {
   });
 
   test('should cancel edit display name modal', async ({ page }) => {
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
+    await navigateToExploreAndSelectTable(
+      page,
+      getEntityDisplayName(table.entityResponseData)
+    );
 
     const summaryPanel = page.locator('.entity-summary-panel-container');
     await expect(summaryPanel).toBeVisible();

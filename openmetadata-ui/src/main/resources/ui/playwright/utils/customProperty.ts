@@ -111,21 +111,17 @@ export const setValueForProperty = async (data: {
   );
 
   await expect(
-    page.locator(
-      `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
-    )
+    container.locator('[data-testid="property-name"]')
   ).toContainText(propertyName);
 
-  const editButton = page.locator(
-    `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
-  );
+  const editButton = container.getByTestId('edit-icon');
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
 
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await page.locator(descriptionBox).isVisible();
+      await expect(page.locator(descriptionBox)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -133,57 +129,70 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'email':
-      await page.locator('[data-testid="email-input"]').isVisible();
-      await page.locator('[data-testid="email-input"]').fill(value);
+      await expect(
+        container.locator('[data-testid="email-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="email-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      await page.locator('[data-testid="duration-input"]').isVisible();
-      await page.locator('[data-testid="duration-input"]').fill(value);
+      await expect(
+        container.locator('[data-testid="duration-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="duration-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'enum':
-      await page.click('#enumValues');
-      await page.fill('#enumValues', value, { force: true });
-      await page.press('#enumValues', 'Enter');
+      await container.locator('#enumValues').click();
+      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
+      await container.locator('#enumValues').fill(value, { force: true });
+      await container.locator('#enumValues').press('Enter');
       await clickOutside(page);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
+      await container.locator("pre[role='presentation']").last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timestamp':
-      await page.locator('[data-testid="timestamp-input"]').isVisible();
-      await page.locator('[data-testid="timestamp-input"]').fill(value);
+      await expect(
+        container.locator('[data-testid="timestamp-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="timestamp-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      await page.locator('[data-testid="start-input"]').isVisible();
-      await page.locator('[data-testid="start-input"]').fill(startValue);
-      await page.locator('[data-testid="end-input"]').isVisible();
-      await page.locator('[data-testid="end-input"]').fill(endValue);
+      await expect(
+        container.locator('[data-testid="start-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="start-input"]').fill(startValue);
+      await expect(
+        container.locator('[data-testid="end-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="end-input"]').fill(endValue);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
 
     case 'time-cp': {
-      await page.locator('[data-testid="time-picker"]').isVisible();
-      await page.locator('[data-testid="time-picker"]').click();
-      await page.locator('[data-testid="time-picker"]').fill(value);
+      await expect(
+        container.locator('[data-testid="time-picker"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="time-picker"]').click();
+      await container.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -192,14 +201,12 @@ export const setValueForProperty = async (data: {
 
     case 'date-cp':
     case 'dateTime-cp': {
-      await page.locator('[data-testid="date-time-picker"]').isVisible();
-      await page.locator('[data-testid="date-time-picker"]').click();
-      await page.locator('[data-testid="date-time-picker"]').fill(value);
-      if (propertyType === 'dateTime-cp') {
-        await page.getByText('Now', { exact: true }).click();
-      } else {
-        await page.getByText('Today', { exact: true }).click();
-      }
+      await expect(
+        container.locator('[data-testid="date-time-picker"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="date-time-picker"]').click();
+      await container.locator('[data-testid="date-time-picker"]').fill(value);
+      await page.keyboard.press('Enter');
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -208,8 +215,10 @@ export const setValueForProperty = async (data: {
     case 'string':
     case 'integer':
     case 'number':
-      await page.locator('[data-testid="value-input"]').isVisible();
-      await page.locator('[data-testid="value-input"]').fill(value);
+      await expect(
+        container.locator('[data-testid="value-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="value-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -223,9 +232,9 @@ export const setValueForProperty = async (data: {
           val
         )}*`;
         await page.route(searchApi, (route) => route.continue());
-        await page.locator('#entityReference').clear();
+        await container.locator('#entityReference').clear();
         const searchEntity = page.waitForResponse(searchApi);
-        await page.locator('#entityReference').fill(val);
+        await container.locator('#entityReference').fill(val);
         await searchEntity;
         await page.locator(`[data-testid="${val}"]`).click();
       }
@@ -256,10 +265,12 @@ export const setValueForProperty = async (data: {
     case 'hyperlink-cp': {
       // Value format: "url,displayText" or just "url"
       const [url, displayText] = value.split(',');
-      await page.locator('[data-testid="hyperlink-url-input"]').isVisible();
-      await page.locator('[data-testid="hyperlink-url-input"]').fill(url);
+      await expect(
+        container.locator('[data-testid="hyperlink-url-input"]')
+      ).toBeVisible();
+      await container.locator('[data-testid="hyperlink-url-input"]').fill(url);
       if (displayText) {
-        await page
+        await container
           .locator('[data-testid="hyperlink-display-text-input"]')
           .fill(displayText);
       }
@@ -518,7 +529,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `pw${uuid()}cp${Date.now()}`;
+    const customPropertyName = `cp${item.name}${uuid()}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -695,7 +706,8 @@ export const addCustomPropertiesForEntity = async ({
 
   // Select custom type
   await page.locator('[data-testid="propertyType"]').click();
-  await page.getByTitle(`${customType}`, { exact: true }).click();
+  await expect(page.getByTitle(customType, { exact: true })).toBeVisible();
+  await page.getByTitle(customType, { exact: true }).click();
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
@@ -1027,8 +1039,14 @@ export const editColumnCustomProperty = async (
       .getByText(testValue, { exact: true })
       .click();
   } else if (propertyType === 'table-cp') {
-    await page.locator('[data-testid="add-new-row"]').click();
-    await page.waitForSelector('.om-rdg', { state: 'visible' });
+    await page
+      .getByTestId('edit-table-type-property-modal')
+      .getByTestId('add-new-row')
+      .waitFor({
+        state: 'visible',
+      });
+    await page.getByTestId('add-new-row').click();
+    await page.locator('.om-rdg').waitFor({ state: 'visible' });
 
     // Fill Row
     await page.locator('div.rdg-cell-pw-column1').last().dblclick();
@@ -1246,23 +1264,42 @@ export const updateCustomPropertyInRightPanel = async (data: {
   value: string;
   endpoint: EntityTypeEndpoint;
   skipNavigation?: boolean;
+  entityFQN?: string;
+  exploreTab?: string;
 }) => {
-  const { page, entityName, propertyDetails, value, endpoint, skipNavigation } =
-    data;
+  const {
+    page,
+    entityName,
+    propertyDetails,
+    value,
+    endpoint,
+    skipNavigation,
+    entityFQN,
+    exploreTab,
+  } = data;
   const propertyName = propertyDetails.name;
   const propertyType = propertyDetails.propertyType.name;
 
   if (!skipNavigation) {
-    await navigateToExploreAndSelectTable(page, entityName, endpoint);
+    await navigateToExploreAndSelectTable(
+      page,
+      entityName,
+      endpoint,
+      exploreTab,
+      entityFQN
+    );
     await waitForAllLoadersToDisappear(page);
     await navigateToEntityPanelTab(page, 'custom property');
     await waitForAllLoadersToDisappear(page);
   }
 
-  const searchContainer = page.getByTestId('search-bar-container');
-  if (await searchContainer.isVisible()) {
-    await searchContainer.getByTestId('searchbar').fill(propertyName);
-  }
+  const searchContainer = page
+    .getByTestId('search-bar-container')
+    .getByTestId('searchbar');
+
+  await expect(searchContainer).toBeVisible();
+
+  await searchContainer.fill(propertyName);
 
   // Since the search is client side, can't wait on APIs and names are unique,
   // waiting for only single custom property card to be visible
@@ -1291,7 +1328,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   switch (propertyType) {
     case 'markdown':
-      await page.locator(descriptionBox).isVisible();
+      await expect(page.locator(descriptionBox)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -1299,14 +1336,16 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
 
     case 'email':
-      await page.locator('[data-testid="email-input"]').isVisible();
+      await expect(page.locator('[data-testid="email-input"]')).toBeVisible();
       await page.locator('[data-testid="email-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      await page.locator('[data-testid="duration-input"]').isVisible();
+      await expect(
+        page.locator('[data-testid="duration-input"]')
+      ).toBeVisible();
       await page.locator('[data-testid="duration-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -1327,14 +1366,16 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
 
     case 'timestamp':
-      await page.locator('[data-testid="timestamp-input"]').isVisible();
+      await expect(
+        page.locator('[data-testid="timestamp-input"]')
+      ).toBeVisible();
       await page.locator('[data-testid="timestamp-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'time-cp': {
-      await page.locator('[data-testid="time-picker"]').isVisible();
+      await expect(page.locator('[data-testid="time-picker"]')).toBeVisible();
       await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
       await page.getByRole('button', { name: 'OK', exact: true }).click();
@@ -1345,9 +1386,9 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      await page.locator('[data-testid="start-input"]').isVisible();
+      await expect(page.locator('[data-testid="start-input"]')).toBeVisible();
       await page.locator('[data-testid="start-input"]').fill(startValue);
-      await page.locator('[data-testid="end-input"]').isVisible();
+      await expect(page.locator('[data-testid="end-input"]')).toBeVisible();
       await page.locator('[data-testid="end-input"]').fill(endValue);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -1356,7 +1397,9 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
     case 'date-cp':
     case 'dateTime-cp': {
-      await page.locator('[data-testid="date-time-picker"]').isVisible();
+      await expect(
+        page.locator('[data-testid="date-time-picker"]')
+      ).toBeVisible();
       await page.locator('[data-testid="date-time-picker"]').click();
       await page.locator('[data-testid="date-time-picker"]').fill(value);
       await page.locator('[data-testid="date-time-picker"]').press('Enter');
@@ -1368,7 +1411,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     case 'string':
     case 'integer':
     case 'number':
-      await page.locator('[data-testid="value-input"]').isVisible();
+      await expect(page.locator('[data-testid="value-input"]')).toBeVisible();
       await page.locator('[data-testid="value-input"]').clear();
       await page.locator('[data-testid="value-input"]').fill(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
