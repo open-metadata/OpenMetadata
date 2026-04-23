@@ -104,7 +104,6 @@ public final class DescriptionSanitizer {
           // Note: data-temp-file is intentionally excluded — it holds transient upload state
           .allowAttributes(
               "data-type",
-              "data-url",
               "data-filename",
               "data-filesize",
               "data-mimetype",
@@ -113,6 +112,17 @@ public final class DescriptionSanitizer {
               "data-is-image",
               "data-alt",
               "data-callouttype")
+          .onElements("div")
+          .allowAttributes("data-url")
+          .matching(
+              (elementName, attributeName, value) -> {
+                if (value.startsWith("http://")
+                    || value.startsWith("https://")
+                    || value.startsWith("/")) {
+                  return value;
+                }
+                return null;
+              })
           .onElements("div")
           .allowAttributes("align")
           .onElements("td", "th", "tr", "table")

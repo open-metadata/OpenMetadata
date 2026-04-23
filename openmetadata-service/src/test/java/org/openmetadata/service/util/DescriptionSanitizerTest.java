@@ -239,7 +239,10 @@ class DescriptionSanitizerTest {
             + " data-mimetype=\"image\""
             + " data-uploading=\"false\""
             + " data-upload-progress=\"0\""
-            + " data-is-image=\"true\"></div><p></p>";
+            + " data-is-image=\"true\""
+            + " data-filesize=\"1024\""
+            + " data-alt=\"test image\""
+            + " data-callouttype=\"info\"></div><p></p>";
     String result = DescriptionSanitizer.sanitize(input);
 
     assertTrue(result.contains("data-type=\"file-attachment\""));
@@ -249,6 +252,9 @@ class DescriptionSanitizerTest {
     assertTrue(result.contains("data-uploading=\"false\""));
     assertTrue(result.contains("data-upload-progress=\"0\""));
     assertTrue(result.contains("data-is-image=\"true\""));
+    assertTrue(result.contains("data-filesize=\"1024\""));
+    assertTrue(result.contains("data-alt=\"test image\""));
+    assertTrue(result.contains("data-callouttype=\"info\""));
   }
 
   @Test
@@ -256,7 +262,8 @@ class DescriptionSanitizerTest {
     String input =
         "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""
             + " href=\"https://open-metadata.example.org/users/admin\""
-            + " data-entitytype=\"user\" data-fqn=\"admin\">"
+            + " data-entitytype=\"user\" data-fqn=\"admin\""
+            + " data-textcontent=\"@admin\">"
             + "<#E::user::admin|[@admin](https://open-metadata.example.org/users/admin)>"
             + "</a>";
     String result = DescriptionSanitizer.sanitize(input);
@@ -265,5 +272,6 @@ class DescriptionSanitizerTest {
     assertTrue(result.contains("data-label=\"admin\""));
     assertTrue(result.contains("data-fqn=\"admin\""));
     assertTrue(result.contains("data-entitytype=\"user\""));
+    assertTrue(result.contains("data-textcontent=\"@admin\""));
   }
 }
