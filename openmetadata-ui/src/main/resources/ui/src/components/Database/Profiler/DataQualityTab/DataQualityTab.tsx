@@ -47,12 +47,13 @@ import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
-import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
+import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   getEntityDetailsPath,
   getTestCaseDetailPagePath,

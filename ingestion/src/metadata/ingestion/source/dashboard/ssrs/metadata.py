@@ -12,7 +12,7 @@
 SSRS source module
 """
 import traceback
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -77,13 +77,15 @@ class SsrsSource(DashboardServiceSource):
         self.folder_path_map: Dict[str, str] = {}
 
     def prepare(self):
-        folders = self.client.get_folders()
-        self.folder_path_map = {folder.path: folder.name for folder in folders}
+        self.folder_path_map = {
+            folder.path: folder.name for folder in self.client.get_folders()
+        }
         return super().prepare()
 
-    def get_dashboards_list(self) -> Optional[List[SsrsReport]]:
-        reports = self.client.get_reports()
-        return [r for r in reports if not r.hidden]
+    def get_dashboards_list(self) -> Iterable[SsrsReport]:
+        for report in self.client.get_reports():
+            if not report.hidden:
+                yield report
 
     def get_dashboard_name(self, dashboard: SsrsReport) -> str:
         return dashboard.name

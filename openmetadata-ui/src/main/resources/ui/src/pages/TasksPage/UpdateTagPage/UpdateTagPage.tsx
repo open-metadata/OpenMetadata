@@ -37,7 +37,6 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
@@ -69,7 +68,6 @@ const UpdateTag = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [form] = useForm();
-  const { currentUser } = useApplicationStore();
 
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
@@ -150,7 +148,6 @@ const UpdateTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
     const data: CreateThread = {
-      from: currentUser?.name as string,
       message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {

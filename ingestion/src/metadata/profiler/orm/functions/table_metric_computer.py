@@ -793,7 +793,50 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
     """SAP HANA Table Metric Computer"""
 
     def compute(self):
-        """compute table metrics for SAP HANA using SYS.M_TABLES"""
+        """Compute table metrics from SYS.M_TABLES and CREATE_TIME from SYS.TABLES."""
+        if not self.schema_name or not self.table_name:
+            logger.warning(
+                "Missing schema or table name for HANA table metric computation. "
+                "Falling back to base computation with schema_name=%r, table_name=%r",
+                self.schema_name,
+                self.table_name,
+            )
+            return super().compute()
+        # HANA system catalog stores identifiers in uppercase
+        schema_upper = self.schema_name.upper()
+        table_upper = self.table_name.upper()
+
+        m_tables_cte = cte(
+            self._build_query(
+                [
+                    Column("SCHEMA_NAME"),
+                    Column("TABLE_NAME"),
+                    Column("RECORD_COUNT"),
+                    Column("TABLE_SIZE"),
+                ],
+                self._build_table("M_TABLES", "SYS"),
+                [
+                    Column("SCHEMA_NAME") == schema_upper,
+                    Column("TABLE_NAME") == table_upper,
+                ],
+            )
+        )
+
+        tables_cte = cte(
+            self._build_query(
+                [
+                    Column("SCHEMA_NAME"),
+                    Column("TABLE_NAME"),
+                    Column("CREATE_TIME"),
+                ],
+                self._build_table("TABLES", "SYS"),
+                [
+                    Column("SCHEMA_NAME") == schema_upper,
+                    Column("TABLE_NAME") == table_upper,
+                ],
+            )
+        )
+
         columns = [
             Column("RECORD_COUNT").label(ROW_COUNT),
             Column("TABLE_SIZE").label(SIZE_IN_BYTES),
@@ -801,15 +844,13 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
             *self._get_col_names_and_count(),
         ]
 
-        where_clause = [
-            Column("SCHEMA_NAME") == self.schema_name,
-            Column("TABLE_NAME") == self.table_name,
-        ]
-
-        query = self._build_query(
-            columns,
-            self._build_table("M_TABLES", "SYS"),
-            where_clause,
+        query = self._build_query(columns, m_tables_cte).join(
+            tables_cte,
+            and_(
+                m_tables_cte.c.SCHEMA_NAME == tables_cte.c.SCHEMA_NAME,
+                m_tables_cte.c.TABLE_NAME == tables_cte.c.TABLE_NAME,
+            ),
+            isouter=True,
         )
 
         res = self.runner._session.execute(query).first()

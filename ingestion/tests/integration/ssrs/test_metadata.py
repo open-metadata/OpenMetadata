@@ -26,7 +26,7 @@ class TestSsrsMetadata:
             hostPort=ssrs_service, username="test_user", password="test_pass"
         )
         client = SsrsClient(connection)
-        reports = client.get_reports()
+        reports = list(client.get_reports())
         assert len(reports) == 4
         assert reports[0].name == "Report 1"
         assert reports[0].path == "/TestFolder/Report 1"
@@ -36,7 +36,7 @@ class TestSsrsMetadata:
             hostPort=ssrs_service, username="test_user", password="test_pass"
         )
         client = SsrsClient(connection)
-        folders = client.get_folders()
+        folders = list(client.get_folders())
         assert len(folders) == 1
         assert folders[0].name == "TestFolder"
 
@@ -52,7 +52,7 @@ class TestSsrsMetadata:
             hostPort=ssrs_service, username="test_user", password="test_pass"
         )
         client = SsrsClient(connection)
-        reports = client.get_reports()
+        reports = list(client.get_reports())
         assert any(r.hidden for r in reports)
         visible = [r for r in reports if not r.hidden]
         assert len(visible) == 3
