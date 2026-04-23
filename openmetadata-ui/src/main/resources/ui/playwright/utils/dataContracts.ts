@@ -193,7 +193,8 @@ export const waitForContractExecutionWithFallback = async (
       suiteStatus = 'Success';
     }
 
-    const terminalStatusPattern = /(Aborted|Success|Failed|PartialSuccess|Queued)/;
+    const terminalStatusPattern =
+      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
 
     expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
 
