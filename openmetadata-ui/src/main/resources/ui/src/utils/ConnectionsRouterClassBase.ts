@@ -95,4 +95,3 @@ const connectionsRouterClassBase = new ConnectionsRouterClassBase();
 
 export default connectionsRouterClassBase;
 export { ConnectionsRouterClassBase };
-
