@@ -1,4 +1,4 @@
-# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -192,7 +192,12 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
+    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
+    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
+    "googledrive": {
+        "google-api-python-client>=2.0.0",
+    },
     "bigquery": {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
