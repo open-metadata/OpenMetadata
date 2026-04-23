@@ -67,20 +67,35 @@ public final class DeadlockRetry {
   /** {@code true} if {@code throwable} (or any cause in its chain) is a MySQL/Postgres deadlock or
    * lock-wait timeout that is safe to retry as a fresh transaction. */
   public static boolean isDeadlock(Throwable throwable) {
-    Throwable root = throwable;
-    while (root.getCause() != null) {
-      root = root.getCause();
+    // Walk every link — JDBI wraps SQLException in UnableToExecuteStatementException, and some
+    // drivers wrap the deadlock further with a connection-release or cleanup exception that
+    // ends up as the terminal cause. Checking only the leaf would miss those cases and silently
+    // skip the retry.
+    Throwable current = throwable;
+    int guard = 0;
+    while (current != null && guard++ < 32) {
+      if (current instanceof SQLException sqlException && isDeadlockSqlException(sqlException)) {
+        return true;
+      }
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+      if (current.getCause() == current) {
+        break;
+      }
+      current = current.getCause();
     }
-    if (root instanceof SQLException sqlException) {
-      String sqlState = sqlException.getSQLState();
-      int errorCode = sqlException.getErrorCode();
-      // MySQL: 1213 deadlock, 1205 lock-wait timeout. Postgres: 40P01 deadlock. Generic: 40001.
-      return "40001".equals(sqlState)
-          || "40P01".equals(sqlState)
-          || errorCode == 1213
-          || errorCode == 1205;
-    }
-    String message = root.getMessage();
-    return message != null && message.contains("Deadlock found when trying to get lock");
+    return false;
+  }
+
+  private static boolean isDeadlockSqlException(SQLException sqlException) {
+    String sqlState = sqlException.getSQLState();
+    int errorCode = sqlException.getErrorCode();
+    // MySQL: 1213 deadlock, 1205 lock-wait timeout. Postgres: 40P01 deadlock. Generic: 40001.
+    return "40001".equals(sqlState)
+        || "40P01".equals(sqlState)
+        || errorCode == 1213
+        || errorCode == 1205;
   }
 }

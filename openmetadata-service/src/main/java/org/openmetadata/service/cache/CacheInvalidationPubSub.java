@@ -82,8 +82,11 @@ public class CacheInvalidationPubSub {
 
       LOG.info("CacheInvalidationPubSub started instance={} channel={}", instanceId, CHANNEL);
     } catch (Exception e) {
+      // Tear down any partial allocation before flipping `running` back, otherwise stop() would
+      // short-circuit on the flag and leak the half-initialised Lettuce client/connections.
+      LOG.error("Failed to start CacheInvalidationPubSub, cleaning up partial state", e);
+      closeResources(false);
       running.set(false);
-      LOG.error("Failed to start CacheInvalidationPubSub", e);
     }
   }
 
@@ -91,21 +94,42 @@ public class CacheInvalidationPubSub {
     if (!running.compareAndSet(true, false)) {
       return;
     }
+    closeResources(true);
+    LOG.info("CacheInvalidationPubSub stopped instance={}", instanceId);
+  }
+
+  private void closeResources(boolean unsubscribe) {
     try {
       if (subConnection != null) {
-        subConnection.sync().unsubscribe(CHANNEL);
+        if (unsubscribe) {
+          try {
+            subConnection.sync().unsubscribe(CHANNEL);
+          } catch (Exception e) {
+            LOG.debug("Unsubscribe failed during cleanup", e);
+          }
+        }
         subConnection.close();
       }
+    } catch (Exception e) {
+      LOG.debug("Error closing sub connection", e);
+    }
+    try {
       if (pubConnection != null) {
         pubConnection.close();
       }
+    } catch (Exception e) {
+      LOG.debug("Error closing pub connection", e);
+    }
+    try {
       if (client != null) {
         client.shutdown();
       }
-      LOG.info("CacheInvalidationPubSub stopped instance={}", instanceId);
     } catch (Exception e) {
-      LOG.error("Error stopping CacheInvalidationPubSub", e);
+      LOG.debug("Error shutting down Redis client", e);
     }
+    subConnection = null;
+    pubConnection = null;
+    client = null;
   }
 
   public void publish(String entityType, UUID id, String fqn, String op) {
