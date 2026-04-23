@@ -20,20 +20,31 @@ import requests
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.ssrs.client import SsrsClient
 from metadata.ingestion.source.dashboard.ssrs.metadata import SsrsSource
 from metadata.ingestion.source.dashboard.ssrs.models import SsrsFolder, SsrsReport
+from metadata.ingestion.source.dashboard.ssrs.rdl_parser import (
+    SsrsDataSet,
+    SsrsDataSource,
+    SsrsField,
+    SsrsReportDefinition,
+)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -237,10 +248,6 @@ class TestSsrsSource:
         ):
             results = list(ssrs_source.yield_dashboard_chart(MOCK_REPORTS[0]))
         assert len(results) == 0
-
-    def test_yield_dashboard_lineage_is_noop(self, ssrs_source):
-        result = ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0])
-        assert result is None
 
     def test_chart_source_state_populated(self, ssrs_source):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
@@ -448,10 +455,6 @@ class TestSsrsClientPagination:
         """Ensure a failed page surfaces as SourceConnectionException rather
         than a silently truncated stream — otherwise mark-deleted would wipe
         dashboards whenever SSRS is slow or briefly down."""
-        from metadata.ingestion.connections.test_connections import (
-            SourceConnectionException,
-        )
-
         client = _build_mock_client()
         client._get = MagicMock(side_effect=requests.ReadTimeout("boom"))
 
@@ -462,10 +465,6 @@ class TestSsrsClientPagination:
         """If page N succeeds but page N+1 fails, the generator must raise —
         yielding a partial set silently would cause mark_deleted to drop the
         rest of the catalog."""
-        from metadata.ingestion.connections.test_connections import (
-            SourceConnectionException,
-        )
-
         client = _build_mock_client()
         page1 = {
             "value": [
@@ -481,12 +480,324 @@ class TestSsrsClientPagination:
             next(reports_iter)
 
     def test_get_folders_raises_on_failure(self):
-        from metadata.ingestion.connections.test_connections import (
-            SourceConnectionException,
-        )
-
         client = _build_mock_client()
         client._get = MagicMock(side_effect=requests.ConnectionError("no route"))
 
         with pytest.raises(SourceConnectionException):
             list(client.get_folders())
+
+
+RDL_SALES = SsrsReportDefinition(
+    data_sources=[
+        SsrsDataSource(
+            name="SalesDS",
+            data_provider="SQL",
+            connect_string="Data Source=sql01;Initial Catalog=SalesDB",
+            server="sql01",
+            database="SalesDB",
+        )
+    ],
+    data_sets=[
+        SsrsDataSet(
+            name="SalesDataset",
+            data_source_name="SalesDS",
+            command_type="Text",
+            command_text="SELECT OrderId, CustomerName FROM dbo.Orders",
+            fields=[
+                SsrsField(name="OrderId", data_field="OrderId"),
+                SsrsField(name="CustomerName", data_field="CustomerName"),
+            ],
+        )
+    ],
+)
+
+RDL_MULTI = SsrsReportDefinition(
+    data_sources=[
+        SsrsDataSource(
+            name="FinanceDS",
+            data_provider="SQL",
+            connect_string="Server=fin;Database=FinanceDB",
+            server="fin",
+            database="FinanceDB",
+        )
+    ],
+    data_sets=[
+        SsrsDataSet(
+            name="Revenue",
+            data_source_name="FinanceDS",
+            command_type="Text",
+            command_text="SELECT MonthName, Amount FROM dbo.Revenue",
+            fields=[SsrsField(name="MonthName"), SsrsField(name="Amount")],
+        ),
+        SsrsDataSet(
+            name="Expenses",
+            data_source_name="FinanceDS",
+            command_type="Text",
+            command_text="SELECT Category, Amount FROM dbo.Expenses",
+            fields=[SsrsField(name="Category"), SsrsField(name="Amount")],
+        ),
+    ],
+)
+
+RDL_EXPRESSION = SsrsReportDefinition(
+    data_sources=[SsrsDataSource(name="D", data_provider="SQL", database="DB")],
+    data_sets=[
+        SsrsDataSet(
+            name="Dyn",
+            data_source_name="D",
+            command_type="Expression",
+            command_text='="SELECT * FROM " & Parameters!Tbl.Value',
+        )
+    ],
+)
+
+RDL_STORED_PROC = SsrsReportDefinition(
+    data_sources=[SsrsDataSource(name="D", data_provider="SQL", database="DB")],
+    data_sets=[
+        SsrsDataSet(
+            name="Proc",
+            data_source_name="D",
+            command_type="StoredProcedure",
+            command_text="dbo.usp_GetThings",
+        )
+    ],
+)
+
+RDL_MDX = SsrsReportDefinition(
+    data_sources=[
+        SsrsDataSource(name="Cube", data_provider="OLEDB-MD", database="OLAP")
+    ],
+    data_sets=[
+        SsrsDataSet(
+            name="MDXQuery",
+            data_source_name="Cube",
+            command_type="Text",
+            command_text="SELECT [Measures].[X] ON 0 FROM [Cube]",
+        )
+    ],
+)
+
+
+def _set_context(source, **kwargs):
+    for key, value in kwargs.items():
+        source.context.get().__dict__[key] = value
+
+
+class TestSsrsYieldDatamodel:
+    def _prepare(self, ssrs_source, rdl):
+        ssrs_source._report_definitions = {MOCK_REPORTS[0].id: rdl}
+        ssrs_source.source_config.includeDataModels = True
+
+    def test_emits_one_per_dataset(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_MULTI)
+        results = list(ssrs_source.yield_datamodel(MOCK_REPORTS[0]))
+        names = [str(r.right.name.root) for r in results]
+        assert names == [
+            f"{MOCK_REPORTS[0].id}.Revenue",
+            f"{MOCK_REPORTS[0].id}.Expenses",
+        ]
+        assert all(r.right.dataModelType.value == "SsrsDataModel" for r in results)
+
+    def test_single_dataset_attaches_sql_and_columns(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_SALES)
+        results = list(ssrs_source.yield_datamodel(MOCK_REPORTS[0]))
+        assert len(results) == 1
+        model = results[0].right
+        assert model.sql.root == "SELECT OrderId, CustomerName FROM dbo.Orders"
+        assert [c.name.root for c in model.columns] == ["OrderId", "CustomerName"]
+
+    def test_sql_omitted_for_stored_procedure(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_STORED_PROC)
+        results = list(ssrs_source.yield_datamodel(MOCK_REPORTS[0]))
+        assert results[0].right.sql is None
+
+    def test_sql_omitted_for_expression(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_EXPRESSION)
+        results = list(ssrs_source.yield_datamodel(MOCK_REPORTS[0]))
+        assert results[0].right.sql is None
+
+    def test_skipped_when_include_data_models_false(self, ssrs_source):
+        ssrs_source._report_definitions = {MOCK_REPORTS[0].id: RDL_SALES}
+        ssrs_source.source_config.includeDataModels = False
+        assert list(ssrs_source.yield_datamodel(MOCK_REPORTS[0])) == []
+
+    def test_no_rdl_cached(self, ssrs_source):
+        ssrs_source._report_definitions = {}
+        ssrs_source.source_config.includeDataModels = True
+        assert list(ssrs_source.yield_datamodel(MOCK_REPORTS[0])) == []
+
+
+class TestSsrsLineage:
+    def _prepare(self, ssrs_source, rdl, *, include_data_models=True):
+        ssrs_source._report_definitions = {MOCK_REPORTS[0].id: rdl}
+        ssrs_source.source_config.includeDataModels = include_data_models
+        datamodel_entity = SimpleNamespace(
+            id=SimpleNamespace(root="dm-uuid"), fullyQualifiedName=None
+        )
+        dashboard_entity = SimpleNamespace(
+            id=SimpleNamespace(root="dash-uuid"), fullyQualifiedName=None
+        )
+        table_entity = SimpleNamespace(
+            id=SimpleNamespace(root="tbl-uuid"), fullyQualifiedName=None
+        )
+
+        def by_name(entity, fqn=None, **_):
+            if entity is DashboardDataModel:
+                return datamodel_entity
+            if entity is Dashboard:
+                return dashboard_entity
+            if entity is DatabaseService:
+                return None
+            return None
+
+        ssrs_source.metadata = MagicMock()
+        ssrs_source.metadata.get_by_name = MagicMock(side_effect=by_name)
+        ssrs_source.metadata.search_in_any_service = MagicMock(
+            return_value=table_entity
+        )
+        return datamodel_entity, dashboard_entity, table_entity
+
+    def test_inline_datasource_yields_lineage(self, ssrs_source):
+        datamodel, _, table = self._prepare(ssrs_source, RDL_SALES)
+        lineage_calls = []
+
+        def fake_lineage(to_entity=None, from_entity=None, sql=None, **_):
+            lineage_calls.append({"to": to_entity, "from": from_entity, "sql": sql})
+            return Either(right=SimpleNamespace(sql=sql))
+
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser, patch.object(
+            SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)
+        ):
+            mock_parser.return_value.source_tables = ["dbo.Orders"]
+            results = list(
+                ssrs_source.yield_dashboard_lineage_details(
+                    MOCK_REPORTS[0], db_service_prefix="my_mssql"
+                )
+            )
+        assert len(results) == 1
+        assert lineage_calls[0]["sql"] == "SELECT OrderId, CustomerName FROM dbo.Orders"
+        assert lineage_calls[0]["to"] is datamodel
+        assert lineage_calls[0]["from"] is table
+        search_call = ssrs_source.metadata.search_in_any_service.call_args
+        assert "SalesDB" in search_call.kwargs["fqn_search_string"]
+        assert "dbo" in search_call.kwargs["fqn_search_string"]
+        assert "Orders" in search_call.kwargs["fqn_search_string"]
+        assert MOCK_REPORTS[0].id not in ssrs_source._report_definitions
+
+    def test_skips_expression_command(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_EXPRESSION)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser:
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert results == []
+        mock_parser.assert_not_called()
+
+    def test_skips_stored_procedure(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_STORED_PROC)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser:
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert results == []
+        mock_parser.assert_not_called()
+
+    def test_skips_mdx_datasource(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_MDX)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser:
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert results == []
+        mock_parser.assert_not_called()
+
+    def test_parser_failure_for_one_dataset_does_not_block_others(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_MULTI)
+        parser_expenses = MagicMock()
+        parser_expenses.source_tables = ["dbo.Expenses"]
+        captured = []
+
+        def fake_lineage(to_entity=None, from_entity=None, sql=None, **_):
+            captured.append(sql)
+            return Either(right=SimpleNamespace(sql=sql))
+
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser",
+            side_effect=[Exception("parse error"), parser_expenses],
+        ), patch.object(
+            SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)
+        ):
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert len(results) == 1
+        assert captured == ["SELECT Category, Amount FROM dbo.Expenses"]
+
+    def test_dialect_defaults_to_tsql(self, ssrs_source):
+        self._prepare(ssrs_source, RDL_SALES)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser:
+            mock_parser.return_value.source_tables = []
+            list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert Dialect.TSQL in mock_parser.call_args.args
+
+    def test_dialect_uses_data_provider_when_no_db_service(self, ssrs_source):
+        rdl = SsrsReportDefinition(
+            data_sources=[
+                SsrsDataSource(
+                    name="Oracle",
+                    data_provider="ORACLE",
+                    connect_string="Data Source=ora;Initial Catalog=ODB",
+                    server="ora",
+                    database="ODB",
+                )
+            ],
+            data_sets=[
+                SsrsDataSet(
+                    name="Q",
+                    data_source_name="Oracle",
+                    command_type="Text",
+                    command_text="SELECT * FROM ora_schema.things",
+                    fields=[SsrsField(name="things")],
+                )
+            ],
+        )
+        self._prepare(ssrs_source, rdl)
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser:
+            mock_parser.return_value.source_tables = []
+            list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert Dialect.ORACLE in mock_parser.call_args.args
+
+    def test_no_rdl_yields_nothing(self, ssrs_source):
+        ssrs_source._report_definitions = {}
+        ssrs_source.source_config.includeDataModels = True
+        assert list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0])) == []
+
+    def test_falls_back_to_dashboard_target_when_datamodels_disabled(self, ssrs_source):
+        _, dashboard_entity, _ = self._prepare(
+            ssrs_source, RDL_SALES, include_data_models=False
+        )
+        captured = []
+
+        def fake_lineage(to_entity=None, from_entity=None, sql=None, **_):
+            captured.append(to_entity)
+            return Either(right=SimpleNamespace())
+
+        with patch(
+            "metadata.ingestion.source.dashboard.ssrs.metadata.LineageParser"
+        ) as mock_parser, patch.object(
+            SsrsSource, "_get_add_lineage_request", staticmethod(fake_lineage)
+        ):
+            mock_parser.return_value.source_tables = ["dbo.Orders"]
+            results = list(ssrs_source.yield_dashboard_lineage_details(MOCK_REPORTS[0]))
+        assert len(results) == 1
+        assert captured == [dashboard_entity]
+        entity_classes = {
+            call.kwargs.get("entity")
+            for call in ssrs_source.metadata.get_by_name.call_args_list
+        }
+        assert Dashboard in entity_classes
+        assert DashboardDataModel not in entity_classes
