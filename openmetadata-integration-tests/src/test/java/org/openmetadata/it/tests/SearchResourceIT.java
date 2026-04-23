@@ -425,7 +425,11 @@ public class SearchResourceIT {
     // OpenSearch's 1024 max_clause_count even with fuzziness=0 + max_expansions=1.
     // Production names like kochi__expected_vessels__portcall_v1 are ~36 chars, which is
     // the length we want to pin behavior against.
-    String uniq = ns.uniqueShortId().substring(0, 8);
+    // Prefix the unique tag with a distinctive "xqz" marker. uniqueShortId() returns hex,
+    // and pure-hex prefixes share ngrams with every UUID/hash in a busy CI index, which can
+    // push our seeded table out of the top-N hits. "xqz" is rare in any real document and
+    // makes the first sub-token uniquely ours.
+    String uniq = "xqz" + ns.uniqueShortId().substring(0, 5);
     String longName = uniq + "_lhr__incoming_flights__arrivals_schedule_v1";
     Table table =
         createTestTableWithColumns(
@@ -529,7 +533,7 @@ public class SearchResourceIT {
     JsonNode root;
     try {
       String response =
-          client.search().query(s.query()).index("dataAsset").deleted(false).size(15).execute();
+          client.search().query(s.query()).index("dataAsset").deleted(false).size(50).execute();
       root = OBJECT_MAPPER.readTree(response);
     } catch (Exception e) {
       // A thrown exception means the whole search was rejected (e.g. ES 9 "too many clauses"
@@ -650,7 +654,7 @@ public class SearchResourceIT {
     // over the near-duplicate `decoy` that shares the same first segment. Use short unique
     // tags (bypassing ns.prefix()) so the seeded names stay at production-realistic lengths
     // and the exact-name query stays well under OpenSearch's default 1024-clause cap.
-    String uniq = ns.uniqueShortId().substring(0, 8);
+    String uniq = "xqz" + ns.uniqueShortId().substring(0, 5);
     String targetNameRaw = uniq + "_exact_rank_target_v1";
     String decoyNameRaw = uniq + "_exact_rank_target_v1_extended_suffix";
     List<Column> cols =
