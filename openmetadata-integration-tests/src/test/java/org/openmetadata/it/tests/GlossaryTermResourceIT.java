@@ -192,6 +192,17 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().glossaryTerms().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().glossaryTerms().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected GlossaryTerm getVersion(UUID id, Double version) {
     return SdkClients.adminClient().glossaryTerms().getVersion(id.toString(), version);
   }

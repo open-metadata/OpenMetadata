@@ -49,6 +49,9 @@ const MetricVersion: FC<MetricVersionProp> = ({
   tier,
   slashedMetricName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   backHandler,
   versionHandler,
   entityPermissions,
@@ -234,9 +237,12 @@ const MetricVersion: FC<MetricVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.METRIC}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

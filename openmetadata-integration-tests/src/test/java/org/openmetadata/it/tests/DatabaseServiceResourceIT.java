@@ -168,6 +168,19 @@ public class DatabaseServiceResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().databaseServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .databaseServices()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected DatabaseService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().databaseServices().getVersion(id.toString(), version);
   }
@@ -984,5 +997,263 @@ public class DatabaseServiceResourceIT
   private String[] splitCsvRow(String row) {
     // Split on commas not enclosed in quotes.
     return row.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+  }
+
+  @Test
+  void test_recursiveImportCustomPropertyExtension(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String propName = ns.prefix("potato");
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    HttpClient client = HttpClient.newHttpClient();
+
+    HttpRequest getStringTypeReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + "/v1/metadata/types/name/string"))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> stringTypeResp =
+        client.send(getStringTypeReq, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, stringTypeResp.statusCode(), "Should fetch string type");
+
+    HttpRequest getTableTypeReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + "/v1/metadata/types/name/table"))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> tableTypeResp =
+        client.send(getTableTypeReq, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, tableTypeResp.statusCode(), "Should fetch table type");
+
+    com.fasterxml.jackson.databind.JsonNode stringTypeNode = mapper.readTree(stringTypeResp.body());
+    com.fasterxml.jackson.databind.JsonNode tableTypeNode = mapper.readTree(tableTypeResp.body());
+    String tableTypeId = tableTypeNode.get("id").asText();
+
+    java.util.Map<String, Object> propertyTypeRef =
+        java.util.Map.of(
+            "id", stringTypeNode.get("id").asText(),
+            "type", "type",
+            "name", stringTypeNode.get("name").asText(),
+            "fullyQualifiedName", stringTypeNode.get("fullyQualifiedName").asText());
+    String customPropertyBody =
+        mapper.writeValueAsString(
+            java.util.Map.of(
+                "name",
+                propName,
+                "description",
+                "Test extension property for recursive import",
+                "propertyType",
+                propertyTypeRef));
+
+    HttpRequest registerPropReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + "/v1/metadata/types/" + tableTypeId))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(customPropertyBody))
+            .build();
+    HttpResponse<String> registerResp =
+        client.send(registerPropReq, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, registerResp.statusCode(), "Should register custom property on table type");
+
+    try {
+      DatabaseService service =
+          createEntity(createMinimalRequest(ns).withName(ns.prefix("ext_svc")));
+      Database database =
+          SdkClients.adminClient()
+              .databases()
+              .create(
+                  new CreateDatabase()
+                      .withName(ns.prefix("ext_db"))
+                      .withService(service.getFullyQualifiedName()));
+      DatabaseSchema schema =
+          SdkClients.adminClient()
+              .databaseSchemas()
+              .create(
+                  new CreateDatabaseSchema()
+                      .withName(ns.prefix("ext_schema"))
+                      .withDatabase(database.getFullyQualifiedName()));
+
+      String tableName = ns.prefix("ext_tbl");
+      String tableFqn = schema.getFullyQualifiedName() + "." + tableName;
+
+      // Positive case: registered custom property on table row → should succeed
+      String validCsv =
+          buildRecursiveCsv(
+              database, schema, tableName, tableFqn, "", propName + ":s3://bucket/file.csv");
+      CsvImportResult validResult =
+          importCsvRecursive(service.getFullyQualifiedName(), validCsv, true);
+      assertEquals(ApiStatus.SUCCESS, validResult.getStatus(), validResult.getImportResultsCsv());
+      assertEquals(0, validResult.getNumberOfRowsFailed());
+      assertEquals(3, validResult.getNumberOfRowsProcessed());
+      assertEquals(3, validResult.getNumberOfRowsPassed());
+
+      // Negative case: unknown custom property on table row → 1 failed row
+      String badExtCsv =
+          buildRecursiveCsv(
+              database, schema, tableName, tableFqn, "", "unknown_prop_xyz_test:somevalue");
+      CsvImportResult badResult =
+          importCsvRecursive(service.getFullyQualifiedName(), badExtCsv, true);
+      assertEquals(ApiStatus.PARTIAL_SUCCESS, badResult.getStatus());
+      assertEquals(1, badResult.getNumberOfRowsFailed());
+      assertEquals(3, badResult.getNumberOfRowsProcessed());
+      assertEquals(2, badResult.getNumberOfRowsPassed());
+
+      // Dedup case: malformed owner AND unknown extension on same row → failed=1, not 2
+      String dedupCsv =
+          buildRecursiveCsv(
+              database,
+              schema,
+              tableName,
+              tableFqn,
+              "invalidownerformat",
+              "unknown_prop_xyz_test:somevalue");
+      CsvImportResult dedupResult =
+          importCsvRecursive(service.getFullyQualifiedName(), dedupCsv, true);
+      assertEquals(
+          1,
+          dedupResult.getNumberOfRowsFailed(),
+          "Multi-field failure on one row must count as 1 failed row");
+
+    } finally {
+      removeCustomPropertyFromType(tableTypeId, propName, token);
+    }
+  }
+
+  private String buildRecursiveCsv(
+      Database database,
+      DatabaseSchema schema,
+      String tableName,
+      String tableFqn,
+      String tableOwner,
+      String tableExtension) {
+    String header =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,"
+            + "retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName,"
+            + "column.dataTypeDisplay,column.dataType,column.arrayDataType,column.dataLength,"
+            + "storedProcedure.code,storedProcedure.language";
+    String dbRow =
+        csvRow(
+            database.getName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "database",
+            database.getFullyQualifiedName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "");
+    String schemaRow =
+        csvRow(
+            schema.getName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "databaseSchema",
+            schema.getFullyQualifiedName(),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "");
+    String tableRow =
+        csvRow(
+            tableName,
+            "",
+            "",
+            tableOwner,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            tableExtension,
+            "table",
+            tableFqn,
+            "",
+            "",
+            "",
+            "",
+            "",
+            "");
+    return header + "\n" + dbRow + "\n" + schemaRow + "\n" + tableRow + "\n";
+  }
+
+  private void removeCustomPropertyFromType(String typeId, String propName, String token)
+      throws IOException, InterruptedException {
+    com.fasterxml.jackson.databind.ObjectMapper localMapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    HttpClient client = HttpClient.newHttpClient();
+    String baseUrl = SdkClients.getServerUrl();
+    String getUrl = baseUrl + "/v1/metadata/types/" + typeId + "?fields=customProperties";
+    HttpRequest getReq =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getUrl))
+            .header("Authorization", "Bearer " + token)
+            .GET()
+            .build();
+    HttpResponse<String> getResp = client.send(getReq, HttpResponse.BodyHandlers.ofString());
+    if (getResp.statusCode() != 200) {
+      return;
+    }
+    com.fasterxml.jackson.databind.JsonNode typeNode = localMapper.readTree(getResp.body());
+    com.fasterxml.jackson.databind.JsonNode customProps = typeNode.get("customProperties");
+    if (customProps == null || !customProps.isArray()) {
+      return;
+    }
+    for (int i = 0; i < customProps.size(); i++) {
+      if (propName.equals(customProps.get(i).path("name").asText())) {
+        String patchBody = "[{\"op\":\"remove\",\"path\":\"/customProperties/" + i + "\"}]";
+        HttpRequest patchReq =
+            HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/metadata/types/" + typeId))
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json-patch+json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(patchBody))
+                .build();
+        client.send(patchReq, HttpResponse.BodyHandlers.ofString());
+        break;
+      }
+    }
+  }
+
+  private String csvRow(String... fields) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < fields.length; i++) {
+      if (i > 0) sb.append(",");
+      String field = fields[i];
+      if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+        sb.append('"').append(field.replace("\"", "\"\"")).append('"');
+      } else {
+        sb.append(field);
+      }
+    }
+    return sb.toString();
   }
 }

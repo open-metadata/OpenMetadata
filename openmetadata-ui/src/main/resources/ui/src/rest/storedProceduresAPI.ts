@@ -104,10 +104,13 @@ export const removeStoredProceduresFollower = async (
   return response.data;
 };
 
-export const getStoredProceduresVersionsList = async (id: string) => {
+export const getStoredProceduresVersionsList = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

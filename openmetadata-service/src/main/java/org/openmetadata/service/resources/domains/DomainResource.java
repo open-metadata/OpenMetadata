@@ -47,21 +47,31 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityHierarchyList;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/domains")
@@ -135,6 +145,107 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           String after) {
     return listInternal(
         uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+  }
+
+  @GET
+  @Path("/{fqn}/tasks")
+  @Operation(
+      operationId = "listDomainTasks",
+      summary = "List tasks for a domain",
+      description = "Get a list of tasks belonging to the given domain.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of tasks in the domain",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Task.class))),
+        @ApiResponse(responseCode = "404", description = "Domain for instance {fqn} is not found")
+      })
+  public ResultList<Task> listTasksByDomain(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the domain") @PathParam("fqn") String fqn,
+      @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Filter by task status") @QueryParam("status")
+          TaskEntityStatus status,
+      @Parameter(
+              description =
+                  "Filter by status group: 'open' for Open tasks, 'closed' for Approved/Rejected/Completed/Cancelled/Failed tasks")
+          @QueryParam("statusGroup")
+          String statusGroup,
+      @Parameter(description = "Filter by task category") @QueryParam("category")
+          TaskCategory category,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
+      @Parameter(description = "Filter by priority") @QueryParam("priority") TaskPriority priority,
+      @Parameter(description = "Filter by assignee (user or team FQN)") @QueryParam("assignee")
+          String assignee,
+      @Parameter(description = "Filter by creator FQN") @QueryParam("createdBy") String createdBy,
+      @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
+          String aboutEntity,
+      @Parameter(description = "Filter by user FQN who was mentioned in task comments")
+          @QueryParam("mentionedUser")
+          String mentionedUser,
+      @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(description = "Returns list of tasks before this cursor") @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
+          String after,
+      @Parameter(description = "Include deleted tasks")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Fields taskFields = taskRepository.getFields(fieldsParam);
+
+    ListFilter filter = new ListFilter(include);
+    taskRepository.addDomainFilter(filter, fqn);
+
+    if (statusGroup != null) {
+      filter.addQueryParam("taskStatusGroup", statusGroup);
+    } else if (status != null) {
+      filter.addQueryParam("taskStatus", status.value());
+    }
+    if (category != null) {
+      filter.addQueryParam("category", category.value());
+    }
+    if (type != null) {
+      filter.addQueryParam("taskType", type.value());
+    }
+    if (priority != null) {
+      filter.addQueryParam("taskPriority", priority.value());
+    }
+    if (assignee != null) {
+      filter.addQueryParam("assignee", assignee);
+    }
+    if (createdBy != null) {
+      filter.addQueryParam("createdBy", createdBy);
+    }
+    if (aboutEntity != null) {
+      filter.addQueryParam("aboutEntity", aboutEntity);
+    }
+    if (mentionedUser != null) {
+      filter.addQueryParam("mentionedUser", mentionedUser);
+    }
+
+    RestUtil.validateCursors(before, after);
+    OperationContext listOperationContext =
+        new OperationContext(Entity.TASK, getViewOperations(taskFields));
+    authorizer.authorize(
+        securityContext, listOperationContext, filter.getResourceContext(Entity.TASK));
+    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TASK);
+
+    return before != null
+        ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
+        : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after);
   }
 
   @GET
@@ -215,8 +326,24 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET

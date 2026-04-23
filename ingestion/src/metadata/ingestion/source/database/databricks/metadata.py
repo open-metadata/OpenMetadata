@@ -182,55 +182,72 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
     result = []
-    for ordinal_position, (col_name, col_type, _comment) in enumerate(rows):
-        # Handle both oss hive and Databricks' hive partition header, respectively
-        if col_name in (
-            "# Partition Information",
-            "# Partitioning",
-            "# Clustering Information",
-            "# Delta Statistics Columns",
-            "# Detailed Table Information",
-            "# Delta Uniform Iceberg",
-        ):
+    for col_name, col_type, _comment in rows:
+        # DESCRIBE TABLE EXTENDED emits real columns first, then '#'-prefixed
+        # section markers (e.g. '# Partition Information', '# Metadata Columns',
+        # '# Detailed Table Information', '# Constraints'). Spark's v2
+        # DescribeTableExec can emit markers not in any hardcoded whitelist, so
+        # treat any '#'-prefixed row or row with empty col_type as end-of-columns.
+        # ('# col_name' sub-header is filtered upstream in _get_column_rows.)
+        if col_name.startswith("#") or not col_type:
+            logger.debug(
+                f"End of columns for {schema}.{table_name}. Found end-of-columns marker: {col_name}. Stopping column extraction."
+            )
             break
-        # Take out the more detailed type information
-        # e.g. 'map<ixnt,int>' -> 'map'
-        #      'decimal(10,1)' -> decimal
-        raw_col_type = col_type
-        col_type = re.search(r"^\w+", col_type).group(0)
         try:
-            coltype = _type_map[col_type]
-        except KeyError:
-            util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
-            coltype = types.NullType
-
-        col_info = {
-            "name": col_name,
-            "type": coltype,
-            "nullable": True,
-            "default": None,
-            "comment": _comment,
-            "system_data_type": raw_col_type,
-            "ordinal_position": ordinal_position,
-        }
-        if col_type in {"array", "struct", "map"}:
-            try:
-                rows = {
-                    r[0]: r[1]
-                    for r in connection.execute(
-                        text(
-                            f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
-                        )
-                    ).fetchall()
-                }
-                col_info["system_data_type"] = rows["data_type"]
-                col_info["is_complex"] = True
-            except DatabaseError as err:
-                logger.error(
-                    f"Failed to fetch column details for column {col_name} in table {table_name} due to: {err}"
+            # Take out the more detailed type information
+            # e.g. 'map<int,int>' -> 'map', 'decimal(10,1)' -> 'decimal'
+            raw_col_type = col_type
+            type_match = re.search(r"^\w+", col_type)
+            if type_match is None:
+                logger.warning(
+                    f"Skipping column '{col_name}' in {schema}.{table_name}: "
+                    f"unparseable col_type '{col_type}'"
                 )
-                logger.debug(traceback.format_exc())
-        result.append(col_info)
+                continue
+            col_type = type_match.group(0)
+
+            try:
+                coltype = _type_map[col_type]
+            except KeyError:
+                util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
+                coltype = types.NullType
+
+            col_info = {
+                "name": col_name,
+                "type": coltype,
+                "nullable": True,
+                "default": None,
+                "comment": _comment,
+                "system_data_type": raw_col_type,
+                "ordinal_position": len(result),
+            }
+            if col_type in {"array", "struct", "map"}:
+                try:
+                    sub_rows = {
+                        r[0]: r[1]
+                        for r in connection.execute(
+                            text(
+                                f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`"
+                                f".`{table_name}` `{col_name}`"
+                            )
+                        ).fetchall()
+                    }
+                    col_info["system_data_type"] = sub_rows["data_type"]
+                    col_info["is_complex"] = True
+                except (DatabaseError, KeyError) as err:
+                    logger.error(
+                        f"Failed to fetch complex-type details for column "
+                        f"{col_name} in table {table_name}: {err}"
+                    )
+                    logger.debug(traceback.format_exc())
+            result.append(col_info)
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning(
+                f"Skipping column '{col_name}' in {schema}.{table_name} due to "
+                f"unexpected error: {err}"
+            )
+            logger.debug(traceback.format_exc())
     return result
 
 
