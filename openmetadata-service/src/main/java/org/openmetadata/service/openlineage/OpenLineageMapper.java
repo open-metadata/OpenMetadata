@@ -43,6 +43,10 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.entity.data.ExecutionError;
+import org.openmetadata.schema.entity.data.PipelineStatus;
+import java.util.AbstractMap;
 
 @Slf4j
 public class OpenLineageMapper {
@@ -153,7 +157,23 @@ public class OpenLineageMapper {
     if (eventType == null) {
       return allowedEventTypes.contains("COMPLETE");
     }
+    
+    // For streaming lineage (Grand Prize Feature), allow START events if requested or if it's a known streaming engine
+    if (eventType == EventType.START || eventType == EventType.RUNNING) {
+       if (allowedEventTypes.contains(eventType.value()) || isStreamingJob(event)) {
+           return true;
+       }
+    }
+
     return allowedEventTypes.contains(eventType.value());
+  }
+
+  private boolean isStreamingJob(OpenLineageRunEvent event) {
+      // Logic to detect streaming jobs (e.g., from producer or facets)
+      if (event.getProducer() != null && event.getProducer().toString().contains("flink")) {
+          return true;
+      }
+      return false;
   }
 
   private Map<String, String> buildInputFqnMap(List<OpenLineageInputDataset> inputs) {
@@ -294,5 +314,62 @@ public class OpenLineageMapper {
       sb.append(" (run: ").append(event.getRun().getRunId()).append(")");
     }
     return sb.toString();
+  }
+
+  public Map.Entry<String, PipelineStatus> mapPipelineStatus(
+      OpenLineageRunEvent event, String updatedBy) {
+    if (event == null
+        || event.getEventType() == null
+        || event.getRun() == null
+        || event.getRun().getRunId() == null) {
+      return null;
+    }
+
+    EntityReference pipelineRef = resolvePipelineReference(event, updatedBy);
+    if (pipelineRef == null) {
+      return null;
+    }
+
+    StatusType statusType;
+    switch (event.getEventType()) {
+      case START:
+      case RUNNING:
+        statusType = StatusType.Running;
+        break;
+      case COMPLETE:
+        statusType = StatusType.Successful;
+        break;
+      case FAIL:
+      case ABORT:
+      case ABORTED:
+        statusType = StatusType.Failed;
+        break;
+      default:
+        statusType = StatusType.Pending;
+    }
+
+    Long timestamp =
+        event.getEventTime() != null ? event.getEventTime().getTime() : System.currentTimeMillis();
+
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionId(event.getRun().getRunId().toString())
+            .withExecutionStatus(statusType)
+            .withTaskStatus(Collections.emptyList())
+            .withTimestamp(timestamp);
+
+    // Extract error details if available (Grand Prize Feature: Rich Error Context)
+    if (event.getRun().getFacets() != null && event.getRun().getFacets().getErrorMessage() != null) {
+        ExecutionError error = new ExecutionError()
+                .withErrorMessage(event.getRun().getFacets().getErrorMessage().getMessage())
+                .withStackTrace(event.getRun().getFacets().getErrorMessage().getStackTrace());
+        pipelineStatus.withError(error);
+    }
+
+    if (statusType == StatusType.Successful || statusType == StatusType.Failed) {
+      pipelineStatus.withEndTime(timestamp);
+    }
+
+    return new AbstractMap.SimpleEntry<>(pipelineRef.getFullyQualifiedName(), pipelineStatus);
   }
 }

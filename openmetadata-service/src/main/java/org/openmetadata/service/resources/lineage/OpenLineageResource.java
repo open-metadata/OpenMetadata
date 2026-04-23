@@ -40,8 +40,10 @@ import org.openmetadata.schema.api.lineage.openlineage.ProcessingSummary;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.openlineage.OpenLineageEntityResolver;
 import org.openmetadata.service.openlineage.OpenLineageMapper;
 import org.openmetadata.service.resources.Collection;
@@ -52,10 +54,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 @Path("/v1/openlineage")
-@Tag(
-    name = "OpenLineage",
-    description =
-        "OpenLineage API for receiving lineage events from external systems like Spark, Airflow, etc.")
+@Tag(name = "OpenLineage", description = "OpenLineage API for receiving lineage events from external systems like Spark, Airflow, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "openlineage")
@@ -64,11 +63,13 @@ public class OpenLineageResource {
   private static final String DEFAULT_PIPELINE_SERVICE = "openlineage";
 
   private final LineageRepository lineageRepository;
+  private final PipelineRepository pipelineRepository;
   private final Authorizer authorizer;
 
   public OpenLineageResource(Authorizer authorizer) {
     this.authorizer = authorizer;
     this.lineageRepository = Entity.getLineageRepository();
+    this.pipelineRepository = (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
   }
 
   private OpenLineageSettings getSettings() {
@@ -84,41 +85,27 @@ public class OpenLineageResource {
   private OpenLineageMapper createMapper() {
     OpenLineageSettings settings = getSettings();
 
-    boolean autoCreate =
-        settings.getAutoCreateEntities() != null ? settings.getAutoCreateEntities() : true;
-    String pipelineService =
-        settings.getDefaultPipelineService() != null
-            ? settings.getDefaultPipelineService()
-            : DEFAULT_PIPELINE_SERVICE;
+    boolean autoCreate = settings.getAutoCreateEntities() != null ? settings.getAutoCreateEntities() : true;
+    String pipelineService = settings.getDefaultPipelineService() != null
+        ? settings.getDefaultPipelineService()
+        : DEFAULT_PIPELINE_SERVICE;
 
-    Map<String, String> namespaceMapping =
-        settings.getNamespaceToServiceMapping() != null
-            ? settings.getNamespaceToServiceMapping().getAdditionalProperties()
-            : null;
+    Map<String, String> namespaceMapping = settings.getNamespaceToServiceMapping() != null
+        ? settings.getNamespaceToServiceMapping().getAdditionalProperties()
+        : null;
 
-    OpenLineageEntityResolver entityResolver =
-        new OpenLineageEntityResolver(autoCreate, pipelineService, namespaceMapping);
+    OpenLineageEntityResolver entityResolver = new OpenLineageEntityResolver(autoCreate, pipelineService,
+        namespaceMapping);
     return new OpenLineageMapper(entityResolver, settings);
   }
 
   @POST
   @Path("/lineage")
-  @Operation(
-      operationId = "postOpenLineageEvent",
-      summary = "Receive a single OpenLineage event",
-      description =
-          "Process a single OpenLineage RunEvent and create lineage edges in OpenMetadata. "
-              + "Only COMPLETE events are processed by default.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Event processed successfully",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = OpenLineageResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid event format"),
-        @ApiResponse(responseCode = "403", description = "Not authorized to create lineage")
+  @Operation(operationId = "postOpenLineageEvent", summary = "Receive a single OpenLineage event", description = "Process a single OpenLineage RunEvent and create lineage edges in OpenMetadata. "
+      + "Only COMPLETE events are processed by default.", responses = {
+          @ApiResponse(responseCode = "200", description = "Event processed successfully", content = @Content(mediaType = "application/json", schema = @Schema(implementation = OpenLineageResponse.class))),
+          @ApiResponse(responseCode = "400", description = "Invalid event format"),
+          @ApiResponse(responseCode = "403", description = "Not authorized to create lineage")
       })
   public Response postLineage(
       @Context SecurityContext securityContext, @Valid OpenLineageRunEvent event) {
@@ -145,6 +132,15 @@ public class OpenLineageResource {
     try {
       List<AddLineage> lineageRequests = mapper.mapRunEvent(event, updatedBy);
 
+      Map.Entry<String, PipelineStatus> pipelineStatusEntry = mapper.mapPipelineStatus(event, updatedBy);
+      if (pipelineStatusEntry != null) {
+        try {
+          pipelineRepository.addPipelineStatusAtomic(pipelineStatusEntry.getKey(), pipelineStatusEntry.getValue());
+        } catch (Exception e) {
+          LOG.warn("Failed to add pipeline status: {}", e.getMessage());
+        }
+      }
+
       int edgesCreated = 0;
       for (AddLineage addLineage : lineageRequests) {
         try {
@@ -155,24 +151,22 @@ public class OpenLineageResource {
         }
       }
 
-      OpenLineageResponse response =
-          new OpenLineageResponse()
-              .withStatus(OpenLineageResponse.Status.SUCCESS)
-              .withMessage(
-                  edgesCreated > 0
-                      ? String.format("Created %d lineage edge(s)", edgesCreated)
-                      : "Event processed, no lineage edges created")
-              .withLineageEdgesCreated(edgesCreated);
+      OpenLineageResponse response = new OpenLineageResponse()
+          .withStatus(OpenLineageResponse.Status.SUCCESS)
+          .withMessage(
+              edgesCreated > 0
+                  ? String.format("Created %d lineage edge(s)", edgesCreated)
+                  : "Event processed, no lineage edges created")
+          .withLineageEdgesCreated(edgesCreated);
 
       return Response.ok(response).build();
 
     } catch (Exception e) {
       LOG.error("Error processing OpenLineage event: {}", e.getMessage(), e);
-      OpenLineageResponse response =
-          new OpenLineageResponse()
-              .withStatus(OpenLineageResponse.Status.FAILURE)
-              .withMessage("Error processing event: " + e.getMessage())
-              .withLineageEdgesCreated(0);
+      OpenLineageResponse response = new OpenLineageResponse()
+          .withStatus(OpenLineageResponse.Status.FAILURE)
+          .withMessage("Error processing event: " + e.getMessage())
+          .withLineageEdgesCreated(0);
 
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(response).build();
     }
@@ -180,22 +174,11 @@ public class OpenLineageResource {
 
   @POST
   @Path("/lineage/batch")
-  @Operation(
-      operationId = "postOpenLineageBatch",
-      summary = "Receive multiple OpenLineage events",
-      description =
-          "Process multiple OpenLineage RunEvents in a single request. "
-              + "Returns a summary of processed events including any failures.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Batch processed",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = OpenLineageResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid batch format"),
-        @ApiResponse(responseCode = "403", description = "Not authorized to create lineage")
+  @Operation(operationId = "postOpenLineageBatch", summary = "Receive multiple OpenLineage events", description = "Process multiple OpenLineage RunEvents in a single request. "
+      + "Returns a summary of processed events including any failures.", responses = {
+          @ApiResponse(responseCode = "200", description = "Batch processed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = OpenLineageResponse.class))),
+          @ApiResponse(responseCode = "400", description = "Invalid batch format"),
+          @ApiResponse(responseCode = "403", description = "Not authorized to create lineage")
       })
   public Response postLineageBatch(
       @Context SecurityContext securityContext, @Valid OpenLineageBatchRequest batch) {
@@ -232,6 +215,15 @@ public class OpenLineageResource {
       try {
         List<AddLineage> lineageRequests = mapper.mapRunEvent(event, updatedBy);
 
+        Map.Entry<String, PipelineStatus> pipelineStatusEntry = mapper.mapPipelineStatus(event, updatedBy);
+        if (pipelineStatusEntry != null) {
+          try {
+            pipelineRepository.addPipelineStatusAtomic(pipelineStatusEntry.getKey(), pipelineStatusEntry.getValue());
+          } catch (Exception e) {
+            LOG.warn("Failed to add pipeline status for event {}: {}", i, e.getMessage());
+          }
+        }
+
         if (lineageRequests.isEmpty()) {
           skipped++;
           continue;
@@ -262,12 +254,11 @@ public class OpenLineageResource {
       }
     }
 
-    ProcessingSummary summary =
-        new ProcessingSummary()
-            .withReceived(received)
-            .withSuccessful(successful)
-            .withFailed(failed)
-            .withSkipped(skipped);
+    ProcessingSummary summary = new ProcessingSummary()
+        .withReceived(received)
+        .withSuccessful(successful)
+        .withFailed(failed)
+        .withSkipped(skipped);
 
     OpenLineageResponse.Status status;
     if (failed == 0 && successful > 0) {
@@ -280,16 +271,15 @@ public class OpenLineageResource {
       status = OpenLineageResponse.Status.SUCCESS;
     }
 
-    OpenLineageResponse response =
-        new OpenLineageResponse()
-            .withStatus(status)
-            .withMessage(
-                String.format(
-                    "Processed %d events: %d successful, %d failed, %d skipped. Created %d lineage edges.",
-                    received, successful, failed, skipped, totalEdgesCreated))
-            .withSummary(summary)
-            .withFailedEvents(failedEvents.isEmpty() ? null : failedEvents)
-            .withLineageEdgesCreated(totalEdgesCreated);
+    OpenLineageResponse response = new OpenLineageResponse()
+        .withStatus(status)
+        .withMessage(
+            String.format(
+                "Processed %d events: %d successful, %d failed, %d skipped. Created %d lineage edges.",
+                received, successful, failed, skipped, totalEdgesCreated))
+        .withSummary(summary)
+        .withFailedEvents(failedEvents.isEmpty() ? null : failedEvents)
+        .withLineageEdgesCreated(totalEdgesCreated);
 
     return Response.ok(response).build();
   }
