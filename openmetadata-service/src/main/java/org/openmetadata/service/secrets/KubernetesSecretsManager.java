@@ -47,7 +47,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   private static final String SECRET_KEY = "value";
   private static final int K8S_SECRET_NAME_MAX_LENGTH = 253;
 
-  private static KubernetesSecretsManager instance = null;
+  private static volatile KubernetesSecretsManager instance = null;
   @Getter private CoreV1Api apiClient;
   private String namespace;
 
@@ -100,7 +100,9 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   public static KubernetesSecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new KubernetesSecretsManager(secretsConfig);
+      synchronized (KubernetesSecretsManager.class) {
+        if (instance == null) instance = new KubernetesSecretsManager(secretsConfig);
+      }
     }
     return instance;
   }

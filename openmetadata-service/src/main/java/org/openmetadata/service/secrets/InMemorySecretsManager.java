@@ -21,7 +21,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */
 public class InMemorySecretsManager extends ExternalSecretsManager {
-  private static InMemorySecretsManager instance;
+  private static volatile InMemorySecretsManager instance;
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(SecretsConfig secretsConfig) {
@@ -30,7 +30,9 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
 
   public static InMemorySecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new InMemorySecretsManager(secretsConfig);
+      synchronized (InMemorySecretsManager.class) {
+        if (instance == null) instance = new InMemorySecretsManager(secretsConfig);
+      }
     }
     return instance;
   }

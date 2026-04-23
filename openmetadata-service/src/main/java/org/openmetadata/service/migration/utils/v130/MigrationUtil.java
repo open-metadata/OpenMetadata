@@ -20,29 +20,37 @@ public class MigrationUtil {
     /* Cannot create object  util class*/
   }
 
-  private static Map extractConnectionURIDetails(String connectionString) {
-    Map connectionDetailsMap = new LinkedHashMap();
+  private static Map<String, Object> extractConnectionURIDetails(String connectionString) {
+    Map<String, Object> connectionDetailsMap = new LinkedHashMap<>();
     try {
-      // Parse the MongoDB connection string
       URI uri = new URI(connectionString);
 
-      // Extract components
-      String username = uri.getUserInfo().split(":")[0];
-      String password = uri.getUserInfo().split(":")[1];
+      String userInfo = uri.getUserInfo();
+      String username = "";
+      String password = "";
+      if (userInfo != null) {
+        String[] parts = userInfo.split(":", 2);
+        username = parts[0];
+        password = parts.length > 1 ? parts[1] : "";
+      }
+
       String host = uri.getHost();
       String scheme = uri.getScheme();
       int port = uri.getPort();
       String query = uri.getQuery();
-      Map queryMap = new HashMap<>();
+      Map<String, String> queryMap = new HashMap<>();
       if (query != null) {
-        String[] queryParams = query.split("&");
-        System.out.println("Query Parameters:");
-        for (String param : queryParams) {
-          queryMap.put(param.split("=")[0], param.split("=")[1]);
+        LOG.debug("Parsing query parameters from MongoDB connection string");
+        for (String param : query.split("&")) {
+          String[] kv = param.split("=", 2);
+          if (kv.length == 2) {
+            queryMap.put(kv[0], kv[1]);
+          } else if (kv.length == 1 && !kv[0].isEmpty()) {
+            queryMap.put(kv[0], "");
+          }
         }
       }
 
-      // populate connection details map the extracted components
       connectionDetailsMap.put("username", username);
       connectionDetailsMap.put("password", password);
       connectionDetailsMap.put("hostPort", host + ":" + port);
@@ -50,7 +58,7 @@ public class MigrationUtil {
       connectionDetailsMap.put("connectionOptions", queryMap);
 
     } catch (URISyntaxException e) {
-      e.printStackTrace();
+      LOG.error("Failed to parse MongoDB connection URI: {}", e.getMessage(), e);
     }
     return connectionDetailsMap;
   }
@@ -65,10 +73,14 @@ public class MigrationUtil {
                 DatabaseService mongoService =
                     JsonUtils.readValue(row.get("json").toString(), DatabaseService.class);
                 String id = row.get("id").toString();
-                Map mongoDBConnection = (LinkedHashMap) mongoService.getConnection().getConfig();
-                Map connDetails = (LinkedHashMap) mongoDBConnection.get("connectionDetails");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mongoDBConnection =
+                    (LinkedHashMap<String, Object>) mongoService.getConnection().getConfig();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> connDetails =
+                    (LinkedHashMap<String, Object>) mongoDBConnection.get("connectionDetails");
 
-                Map finalConnectionDetails;
+                Map<String, Object> finalConnectionDetails;
                 if (connDetails != null) {
                   if (connDetails.get("connectionURI") != null) {
                     String connectionURI = connDetails.get("connectionURI").toString();

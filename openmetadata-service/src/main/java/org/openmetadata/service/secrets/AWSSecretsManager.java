@@ -29,7 +29,7 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 @Slf4j
 public class AWSSecretsManager extends AWSBasedSecretsManager {
-  private static AWSSecretsManager instance = null;
+  private static volatile AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
   private AWSSecretsManager(SecretsConfig secretsConfig) {
@@ -92,7 +92,9 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
 
   public static AWSSecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new AWSSecretsManager(secretsConfig);
+      synchronized (AWSSecretsManager.class) {
+        if (instance == null) instance = new AWSSecretsManager(secretsConfig);
+      }
     }
     return instance;
   }

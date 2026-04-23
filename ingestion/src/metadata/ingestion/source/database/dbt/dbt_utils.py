@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import (
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
@@ -939,51 +940,27 @@ def format_entity_reference(
         EntityReference dict with all fields as strings/primitives
     """
     # Extract ID (ensure string)
-    if hasattr(entity, "id"):
-        entity_id = (
-            str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)
-        )
-    else:
-        entity_id = str(entity.get("id", ""))
+    entity_id = model_str(entity.id) if hasattr(entity, "id") else str(entity.get("id", ""))
 
     # Extract FQN
     if hasattr(entity, "fullyQualifiedName"):
-        if hasattr(entity.fullyQualifiedName, "root"):
-            entity_fqn = str(entity.fullyQualifiedName.root)
-        else:
-            entity_fqn = str(entity.fullyQualifiedName)
+        entity_fqn = model_str(entity.fullyQualifiedName)
     else:
         entity_fqn = str(getattr(entity, "name", "Unknown"))
 
-    # Extract name (handle EntityName Pydantic model)
-    if hasattr(entity, "name"):
-        if hasattr(entity.name, "root"):
-            entity_name = str(entity.name.root)
-        else:
-            entity_name = str(entity.name)
-    else:
-        entity_name = "Unknown"
+    # Extract name
+    entity_name = model_str(entity.name) if hasattr(entity, "name") else "Unknown"
 
     # Extract display name
-    if hasattr(entity, "displayName"):
-        if hasattr(entity.displayName, "root"):
-            display_name = str(entity.displayName.root)
-        elif entity.displayName:
-            display_name = str(entity.displayName)
-        else:
-            display_name = entity_name
+    if hasattr(entity, "displayName") and entity.displayName:
+        display_name = model_str(entity.displayName)
     else:
         display_name = entity_name
 
     # Extract description
     description = ""
-    if hasattr(entity, "description"):
-        if hasattr(entity.description, "root"):
-            description = (
-                str(entity.description.root) if entity.description.root else ""
-            )
-        elif entity.description:
-            description = str(entity.description)
+    if hasattr(entity, "description") and entity.description:
+        description = model_str(entity.description)
 
     # Use provided entity_type, or fall back to entity.type
     if entity_type:
@@ -1020,21 +997,9 @@ def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:
     Formats domain into EntityReference structure
     """
     try:
-        domain_id = (
-            domain_entity.id.root
-            if hasattr(domain_entity.id, "root")
-            else str(domain_entity.id)
-        )
-        domain_name = (
-            domain_entity.name.root
-            if hasattr(domain_entity.name, "root")
-            else str(domain_entity.name)
-        )
-        domain_fqn = (
-            domain_entity.fullyQualifiedName.root
-            if hasattr(domain_entity.fullyQualifiedName, "root")
-            else str(domain_entity.fullyQualifiedName)
-        )
+        domain_id = model_str(domain_entity.id)
+        domain_name = model_str(domain_entity.name)
+        domain_fqn = model_str(domain_entity.fullyQualifiedName)
 
         return {
             "id": domain_id,

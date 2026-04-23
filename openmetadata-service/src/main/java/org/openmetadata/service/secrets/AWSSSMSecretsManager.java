@@ -25,7 +25,7 @@ import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
-  private static AWSSSMSecretsManager instance = null;
+  private static volatile AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
   private AWSSSMSecretsManager(SecretsConfig secretsConfig) {
@@ -87,7 +87,11 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   public static AWSSSMSecretsManager getInstance(SecretsConfig secretsConfig) {
-    if (instance == null) instance = new AWSSSMSecretsManager(secretsConfig);
+    if (instance == null) {
+      synchronized (AWSSSMSecretsManager.class) {
+        if (instance == null) instance = new AWSSSMSecretsManager(secretsConfig);
+      }
+    }
     return instance;
   }
 
