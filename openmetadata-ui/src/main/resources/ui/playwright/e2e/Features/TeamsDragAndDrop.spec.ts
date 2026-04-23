@@ -23,7 +23,7 @@ import {
   openDragDropDropdown,
 } from '../../utils/dragDrop';
 import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy, hardDeleteTeam } from '../../utils/team';
+import { addTeamHierarchy } from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
