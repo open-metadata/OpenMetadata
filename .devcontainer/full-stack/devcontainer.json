@@ -20,7 +20,6 @@
       "version": "22.17.0"
     }
   },
-  "_comment": "Use post-create script for one-time environment initialization (ANTLR, dependencies, venv)",
   "postCreateCommand": "npm install -g yarn@1.22.22 --force && bash .devcontainer/dev/post-create.sh",
   "customizations": {
     "vscode": {

@@ -73,6 +73,10 @@ public class SearchIndexClusterValidator {
   }
 
   private ClusterCapacity getOpenSearchCapacity(OpenSearchClient client) {
+    if (client.isAoss()) {
+      LOG.debug("AWS OpenSearch Serverless detected, using conservative capacity estimate");
+      return getConservativeEstimate();
+    }
     try {
       var clusterStats = client.clusterStats();
 
@@ -127,6 +131,9 @@ public class SearchIndexClusterValidator {
   }
 
   private int getMaxShardsPerNode(OpenSearchClient client) {
+    if (client.isAoss()) {
+      return DEFAULT_MAX_SHARDS_PER_NODE;
+    }
     try {
       var settings = client.clusterSettings();
       if (settings != null && settings.persistent() != null) {

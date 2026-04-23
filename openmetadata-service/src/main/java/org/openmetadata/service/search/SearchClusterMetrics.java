@@ -67,6 +67,10 @@ public class SearchClusterMetrics {
       OpenSearchClient osClient,
       long totalEntities,
       int maxDbConnections) {
+    if (osClient.isAoss()) {
+      LOG.debug("AWS OpenSearch Serverless detected, using conservative metrics");
+      return getConservativeDefaults(searchRepository, totalEntities, maxDbConnections);
+    }
     try {
       var clusterStats = osClient.clusterStats();
       var nodesStats = osClient.nodesStats();
