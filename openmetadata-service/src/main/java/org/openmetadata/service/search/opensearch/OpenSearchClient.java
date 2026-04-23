@@ -1107,7 +1107,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static boolean checkIsAoss(ElasticSearchConfiguration config) {
-    String hostConfig = config != null ? config.getHost() : null;
+    if (config == null) {
+      return false;
+    }
+
+    // Secondary signal: Check AWS service name configuration
+    if (config.getAws() != null && "aoss".equalsIgnoreCase(config.getAws().getServiceName())) {
+      return true;
+    }
+
+    String hostConfig = config.getHost();
     if (StringUtils.isBlank(hostConfig)) {
       return false;
     }

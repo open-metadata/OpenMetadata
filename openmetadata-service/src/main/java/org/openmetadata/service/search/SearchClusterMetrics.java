@@ -85,7 +85,9 @@ public class SearchClusterMetrics {
                 ? clusterStats.nodes().count().total()
                 : 1;
         totalShards =
-            (clusterStats.indices() != null && clusterStats.indices().shards() != null)
+            (clusterStats.indices() != null
+                    && clusterStats.indices().shards() != null
+                    && clusterStats.indices().shards().total() != null)
                 ? clusterStats.indices().shards().total().intValue()
                 : 0;
       }

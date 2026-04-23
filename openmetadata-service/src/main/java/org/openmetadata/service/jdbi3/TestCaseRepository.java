@@ -863,6 +863,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void postDelete(TestCase testCase, boolean hardDelete) {
     super.postDelete(testCase, hardDelete);
     updateTestSuite(testCase);
+    if (hardDelete) {
+      // Delete test case results and resolution statuses
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT)
+          .delete(testCase.getFullyQualifiedName());
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
+          .delete(testCase.getFullyQualifiedName());
+    }
   }
 
   @Override
@@ -1623,18 +1630,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private enum Direction {
     TO,
     FROM
-  }
-
-  @Override
-  protected void postDelete(TestCase entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
-    if (hardDelete) {
-      // Delete test case results and resolution statuses
-      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT)
-          .delete(entity.getFullyQualifiedName());
-      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
-          .delete(entity.getFullyQualifiedName());
-    }
   }
 
   @Override
