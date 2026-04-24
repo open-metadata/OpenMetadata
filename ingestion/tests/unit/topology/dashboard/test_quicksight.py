@@ -109,6 +109,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     displayName="New Dashboard",
     sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
+    dataModels=[],
     tags=None,
     owners=None,
     service="quicksight_source_test",
@@ -183,6 +184,23 @@ class QuickSightUnitTest(TestCase):
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
+
+    def test_dashboard_includes_datamodels(self):
+        self.quicksight.context.get().__dict__["dataModels"] = [
+            "dataset-A",
+            "dataset-B",
+        ]
+
+        results = list(
+            self.quicksight.yield_dashboard(DashboardDetail(**MOCK_DASHBOARD_DETAILS))
+        )
+
+        dashboard = next(result.right for result in results if result.right)
+
+        assert dashboard.dataModels == [
+            FullyQualifiedEntityName("quicksight_source_test.model.dataset-A"),
+            FullyQualifiedEntityName("quicksight_source_test.model.dataset-B"),
+        ]
 
     @pytest.mark.order(2)
     def test_dashboard_name(self):

@@ -188,6 +188,17 @@ class QuicksightSource(DashboardServiceSource):
                 )
                 for chart in self.context.get().charts or []
             ],
+            dataModels=[
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.context.get().dashboard_service,
+                        data_model_name=data_model,
+                    )
+                )
+                for data_model in self.context.get().dataModels or []
+            ],
             service=self.context.get().dashboard_service,
             owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
