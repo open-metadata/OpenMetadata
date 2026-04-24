@@ -534,7 +534,7 @@ test.describe('Glossary tests', () => {
         );
         await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm1.data.name
+          glossary1.data.name
         );
         await glossaryRequest;
 
@@ -553,7 +553,7 @@ test.describe('Glossary tests', () => {
         );
         await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm2.data.name
+          glossary1.data.name
         );
         await glossaryRequest2;
 
@@ -578,7 +578,7 @@ test.describe('Glossary tests', () => {
 
         // Add non mutually exclusive tags
         await page.click(
-          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="edit-button"]'
         );
 
         // Select 1st term
@@ -589,7 +589,7 @@ test.describe('Glossary tests', () => {
         );
         await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm3.data.name
+          glossary2.data.name
         );
         await glossaryRequest3;
 
@@ -608,7 +608,7 @@ test.describe('Glossary tests', () => {
         );
         await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm4.data.name
+          glossary2.data.name
         );
         await glossaryRequest4;
 
@@ -648,7 +648,7 @@ test.describe('Glossary tests', () => {
           '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
-        expect(await icons.count()).toBe(2);
+        expect(await icons.count()).toBe(3);
 
         // Add Glossary to Dashboard Charts
         await page.click(
