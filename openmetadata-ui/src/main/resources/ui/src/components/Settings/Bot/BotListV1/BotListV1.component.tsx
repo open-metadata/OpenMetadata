@@ -104,6 +104,14 @@ const BotListV1 = ({
     []
   );
 
+  const getBotUserFromUser = (botUser: User): NonNullable<Bot['botUser']> => ({
+    id: botUser.id,
+    name: botUser.name,
+    displayName: botUser.displayName,
+    fullyQualifiedName: botUser.fullyQualifiedName,
+    email: botUser.email,
+  });
+
   const enrichBotWithMatchedUser = useCallback((bot: Bot, botUser?: User) => {
     if (!botUser) {
       return bot;
@@ -113,11 +121,7 @@ const BotListV1 = ({
       ...bot,
       botUser: {
         ...(bot.botUser ?? {}),
-        id: botUser.id,
-        name: botUser.name,
-        displayName: botUser.displayName,
-        fullyQualifiedName: botUser.fullyQualifiedName,
-        email: botUser.email,
+        ...getBotUserFromUser(botUser),
       } as Bot['botUser'],
     };
   }, []);

@@ -197,6 +197,17 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
+export const updateSearchInputAndWait = async (
+  page: Page,
+  searchInput: Locator,
+  value: string
+) => {
+  await searchInput.clear();
+  await searchInput.fill(value);
+  await expect(searchInput).toHaveValue(value);
+  await waitForAllLoadersToDisappear(page);
+};
+
 export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.locator('[role="menu"].profile-dropdown').waitFor({

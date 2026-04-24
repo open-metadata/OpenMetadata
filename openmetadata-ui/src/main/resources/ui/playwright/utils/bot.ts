@@ -16,6 +16,7 @@ import {
   descriptionBox,
   redirectToHomePage,
   toastNotification,
+  updateSearchInputAndWait,
   uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
@@ -170,10 +171,15 @@ export const verifyBotSearch = async (page: Page) => {
   );
 
   const searchBot = async (searchTerm: string) => {
-    await searchInput.clear();
-    await searchInput.fill(searchTerm);
-    await expect(searchInput).toHaveValue(searchTerm);
-    await waitForAllLoadersToDisappear(page);
+    const searchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.request().method() === 'GET' &&
+        response.url().includes(encodeURIComponent(searchTerm))
+    );
+
+    await updateSearchInputAndWait(page, searchInput, searchTerm);
+    await searchResponse;
   };
 
   await searchBot(BOT_DETAILS.updatedBotName);
@@ -185,8 +191,7 @@ export const verifyBotSearch = async (page: Page) => {
   await searchBot(`${BOT_DETAILS.updatedBotName}-no-match`);
   await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
-  await searchInput.clear();
-  await waitForAllLoadersToDisappear(page);
+  await updateSearchInputAndWait(page, searchInput, '');
   await expect(createdBotLink).toBeVisible();
 };
 
