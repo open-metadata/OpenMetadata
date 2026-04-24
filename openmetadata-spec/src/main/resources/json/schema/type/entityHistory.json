@@ -25,10 +25,14 @@
           "$ref": "#/definitions/fieldName"
         },
         "oldValue": {
-          "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+          "description": "Previous value of the field. This can be any JSON primitive, object, or array depending on the field type.",
+          "x-openmetadata-openapi-anyOf": ["string", "boolean", "number", "object", "array"],
+          "x-openmetadata-openapi-nullable": true
         },
         "newValue": {
-          "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+          "description": "New value of the field. This can be any JSON primitive, object, or array depending on the field type.",
+          "x-openmetadata-openapi-anyOf": ["string", "boolean", "number", "object", "array"],
+          "x-openmetadata-openapi-nullable": true
         }
       },
       "additionalProperties": false

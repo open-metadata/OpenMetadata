@@ -104,6 +104,10 @@
       <artifactId>commons-codec</artifactId>
       <version>1.17.1</version>
     </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations</artifactId>
+    </dependency>
   </dependencies>
 
   <profiles>
