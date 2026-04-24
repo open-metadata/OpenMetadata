@@ -106,6 +106,13 @@ public class RdfRepository {
     return config.getBaseUri().toString();
   }
 
+  public void ensureStorageReady() {
+    if (!isEnabled()) {
+      return;
+    }
+    storageService.ensureStorageReady();
+  }
+
   public void createOrUpdate(EntityInterface entity) {
     if (!isEnabled()) {
       return;
@@ -147,6 +154,9 @@ public class RdfRepository {
           entity.getEntityReference().getType(),
           entity.getFullyQualifiedName(),
           e);
+      // Rethrow so callers (e.g. RdfBatchProcessor) can count this as a failure instead of
+      // reporting a false success. Entity-hook callers (RdfUpdater) already wrap in try/catch.
+      throw new RuntimeException("Failed to create/update entity in RDF", e);
     }
   }
 
