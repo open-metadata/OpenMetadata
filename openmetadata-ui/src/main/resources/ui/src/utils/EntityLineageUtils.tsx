@@ -1523,7 +1523,7 @@ const processPipelineEdge = (
   edge: EdgeDetails,
   pipelineNode: Pipeline
 ): EdgeDetails[] => {
-  const pipelineEntityType = get(pipelineNode, 'entityType') as unknown as string;
+  const pipelineEntityType = String(get(pipelineNode, 'entityType'));
   const pipelineRef = {
     id: pipelineNode.id,
     type: pipelineEntityType,
@@ -1720,9 +1720,13 @@ export const parseLineageData = (
     (node) => node.fullyQualifiedName === entityFqn
   ) as LineageNodeType;
 
+  const baseEdges = tempEdges.length
+    ? finalEdges.filter((e) => !e.tempLineageTables?.length)
+    : finalEdges;
+
   return {
     nodes: [...finalNodes, ...tempNodes],
-    edges: [...finalEdges, ...tempEdges],
+    edges: [...baseEdges, ...tempEdges],
     entity,
   };
 };

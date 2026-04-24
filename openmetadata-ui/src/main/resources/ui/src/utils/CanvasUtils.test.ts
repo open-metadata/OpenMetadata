@@ -440,7 +440,6 @@ describe('CanvasUtils', () => {
         expect(result?.sourceY).toBe(175); // 100 + 150/2
         expect(result?.targetY).toBe(200); // 100 + 200/2
       });
-
     });
   });
 

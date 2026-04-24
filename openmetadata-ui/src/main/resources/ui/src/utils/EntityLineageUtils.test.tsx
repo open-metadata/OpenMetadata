@@ -1915,3 +1915,138 @@ describe('getLineageTableConfig', () => {
     });
   });
 });
+
+describe('extractTempLineageNodes (via parseLineageData)', () => {
+  const actualLodash = jest.requireActual('lodash');
+
+  beforeEach(() => {
+    mockUniqWith.mockImplementation(actualLodash.uniqWith);
+    mockIsEqual.mockImplementation(actualLodash.isEqual);
+    mockGet.mockImplementation(actualLodash.get);
+  });
+
+  const makeNodeData = (id: string, fqn: string) => ({
+    entity: {
+      id,
+      type: EntityType.TABLE,
+      fullyQualifiedName: fqn,
+      name: fqn,
+      columns: [],
+    },
+    paging: { entityDownstreamCount: 0, entityUpstreamCount: 0 },
+  });
+
+  const makeLineageData = (
+    downstreamEdges: Record<string, EdgeDetails> = {}
+  ): LineageData => ({
+    nodes: {
+      'id-a': makeNodeData('id-a', 'db.tableA'),
+      'id-b': makeNodeData('id-b', 'db.tableB'),
+    },
+    downstreamEdges,
+    upstreamEdges: {},
+  });
+
+  it('creates a temp node with correct shape for an unknown FQN', () => {
+    const data = makeLineageData({
+      'e1': {
+        fromEntity: { id: 'id-a', type: EntityType.TABLE, fullyQualifiedName: 'db.tableA' },
+        toEntity: { id: 'id-b', type: EntityType.TABLE, fullyQualifiedName: 'db.tableB' },
+        tempLineageTables: [{ fromEntity: 'tmp_staging', toEntity: 'db.tableB' }],
+      },
+    });
+
+    const { nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const tempNodes = nodes.filter((n) => n.isTempTable);
+
+    expect(tempNodes).toHaveLength(1);
+    expect(tempNodes[0].id).toBe('temp_tmp_staging');
+    expect(tempNodes[0].fullyQualifiedName).toBe('tmp_staging');
+    expect(tempNodes[0].entityType).toBe(EntityType.TABLE);
+    expect(tempNodes[0].isTempTable).toBe(true);
+  });
+
+  it('does not create a temp node when the FQN already exists as a real node', () => {
+    const data = makeLineageData({
+      'e1': {
+        fromEntity: { id: 'id-a', type: EntityType.TABLE, fullyQualifiedName: 'db.tableA' },
+        toEntity: { id: 'id-b', type: EntityType.TABLE, fullyQualifiedName: 'db.tableB' },
+        tempLineageTables: [{ fromEntity: 'db.tableA', toEntity: 'tmp_staging' }],
+      },
+    });
+
+    const { nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const tempNodes = nodes.filter((n) => n.isTempTable);
+
+    expect(tempNodes).toHaveLength(1);
+    expect(tempNodes[0].fullyQualifiedName).toBe('tmp_staging');
+  });
+
+  it('deduplicates temp nodes when the same FQN appears in multiple hops', () => {
+    const data = makeLineageData({
+      'e1': {
+        fromEntity: { id: 'id-a', type: EntityType.TABLE, fullyQualifiedName: 'db.tableA' },
+        toEntity: { id: 'id-b', type: EntityType.TABLE, fullyQualifiedName: 'db.tableB' },
+        tempLineageTables: [
+          { fromEntity: 'tmp_staging', toEntity: 'tmp_mid' },
+          { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+        ],
+      },
+    });
+
+    const { nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const stagingNodes = nodes.filter((n) => n.fullyQualifiedName === 'tmp_staging');
+
+    expect(stagingNodes).toHaveLength(1);
+  });
+
+  it('creates one hop edge per tempLineageTables entry', () => {
+    const data = makeLineageData({
+      'e1': {
+        fromEntity: { id: 'id-a', type: EntityType.TABLE, fullyQualifiedName: 'db.tableA' },
+        toEntity: { id: 'id-b', type: EntityType.TABLE, fullyQualifiedName: 'db.tableB' },
+        tempLineageTables: [
+          { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+          { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+        ],
+      },
+    });
+
+    const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+
+    expect(edges).toHaveLength(2);
+    expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
+    expect(edges[0].toEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(edges[1].fromEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(edges[1].toEntity.fullyQualifiedName).toBe('db.tableB');
+  });
+
+  it('removes the original edge when it is expanded into temp hop edges', () => {
+    const data = makeLineageData({
+      'e1': {
+        fromEntity: { id: 'id-a', type: EntityType.TABLE, fullyQualifiedName: 'db.tableA' },
+        toEntity: { id: 'id-b', type: EntityType.TABLE, fullyQualifiedName: 'db.tableB' },
+        tempLineageTables: [{ fromEntity: 'db.tableA', toEntity: 'db.tableB' }],
+      },
+    });
+
+    const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+
+    expect(edges.some((e) => e.tempLineageTables?.length)).toBe(false);
+  });
+
+  it('preserves regular edges that have no tempLineageTables', () => {
+    const data = makeLineageData({
+      'e1': {
+        fromEntity: { id: 'id-a', type: EntityType.TABLE, fullyQualifiedName: 'db.tableA' },
+        toEntity: { id: 'id-b', type: EntityType.TABLE, fullyQualifiedName: 'db.tableB' },
+      },
+    });
+
+    const { edges, nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+
+    expect(edges).toHaveLength(1);
+    expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
+    expect(nodes.filter((n) => n.isTempTable)).toHaveLength(0);
+  });
+});
