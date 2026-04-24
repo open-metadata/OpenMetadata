@@ -12,6 +12,7 @@
  */
 
 import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
+import type { FormInstance } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
@@ -35,6 +36,7 @@ import {
 } from '../../../rest/rolesAPIV1';
 import { getField } from '../../../utils/formUtils';
 import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
+import { filterRedundantPolicyOperations } from '../../../utils/PolicyRuleUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -44,12 +46,14 @@ export interface RuleFormProps {
   ruleData: Rule;
   setRuleData: (value: React.SetStateAction<Rule>) => void;
   description?: string;
+  form?: FormInstance;
 }
 
 const RuleForm: FC<RuleFormProps> = ({
   ruleData,
   setRuleData,
   description,
+  form: formFromParent,
 }) => {
   const { t } = useTranslation();
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
@@ -298,10 +302,12 @@ const RuleForm: FC<RuleFormProps> = ({
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
           onChange={(values: Operation[]) => {
+            const next = filterRedundantPolicyOperations(values);
             setRuleData((prev: Rule) => ({
               ...prev,
-              operations: values,
+              operations: next,
             }));
+            formFromParent?.setFieldValue('operations', next);
           }}
         />
       </Form.Item>

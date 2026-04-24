@@ -34,6 +34,7 @@ import {
   getPolicyWithFqnPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
+import { filterRedundantPolicyOperations } from '../../../utils/PolicyRuleUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
@@ -55,6 +56,7 @@ const EditRulePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
+  const [form] = Form.useForm();
 
   const selectedRuleRef = useRef<Rule | undefined>(InitialData);
 
@@ -91,8 +93,16 @@ const EditRulePage = () => {
       if (data) {
         setPolicy(data);
         const selectedRule = data.rules.find((rule) => rule.name === ruleName);
-        selectedRuleRef.current = selectedRule;
-        setRuleData(selectedRule ?? InitialData);
+        const nextRule = selectedRule
+          ? {
+              ...selectedRule,
+              operations: filterRedundantPolicyOperations(
+                selectedRule.operations ?? []
+              ),
+            }
+          : undefined;
+        selectedRuleRef.current = nextRule;
+        setRuleData(nextRule ?? InitialData);
       } else {
         setPolicy({} as Policy);
       }
@@ -115,8 +125,14 @@ const EditRulePage = () => {
           ...ruleData,
           name: trim(ruleData.name),
         };
+        const withNormalizedOps = {
+          ...rest,
+          operations: filterRedundantPolicyOperations(rest.operations),
+        };
 
-        return condition ? { ...rest, condition } : rest;
+        return condition
+          ? { ...withNormalizedOps, condition }
+          : withNormalizedOps;
       } else {
         return rule;
       }
@@ -174,6 +190,7 @@ const EditRulePage = () => {
         </Typography.Paragraph>
         <Form
           data-testid="rule-form"
+          form={form}
           id="rule-form"
           initialValues={{
             ruleEffect: ruleData.effect,
@@ -182,10 +199,12 @@ const EditRulePage = () => {
             operations: ruleData.operations,
             condition: ruleData.condition,
           }}
+          key={`${fqn}-${ruleName}`}
           layout="vertical"
           onFinish={handleSubmit}>
           <RuleForm
             description={selectedRuleRef.current?.description}
+            form={form}
             ruleData={ruleData}
             setRuleData={setRuleData}
           />

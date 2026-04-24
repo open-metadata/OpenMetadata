@@ -36,6 +36,7 @@ import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
+import { filterRedundantPolicyOperations } from '../../../utils/PolicyRuleUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
@@ -56,6 +57,7 @@ const AddPolicyPage = () => {
     effect: Effect.Allow,
   });
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+  const [form] = Form.useForm();
 
   const handleCancel = () => {
     navigate(policiesPath);
@@ -63,10 +65,14 @@ const AddPolicyPage = () => {
 
   const handleSubmit = async () => {
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
+    const rulePayload = {
+      ...rest,
+      operations: filterRedundantPolicyOperations(rest.operations),
+    };
     const data: CreatePolicy = {
       name: trim(name),
       description,
-      rules: [condition ? { ...rest, condition } : rest],
+      rules: [condition ? { ...rulePayload, condition } : rulePayload],
     };
 
     setIsSaveLoading(true);
@@ -140,6 +146,7 @@ const AddPolicyPage = () => {
               </Typography.Paragraph>
               <Form
                 data-testid="policy-form"
+                form={form}
                 id="policy-form"
                 initialValues={{
                   ruleEffect: ruleData.effect,
@@ -166,7 +173,11 @@ const AddPolicyPage = () => {
                     entity: t('label.rule'),
                   })}
                 </Divider>
-                <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+                <RuleForm
+                  form={form}
+                  ruleData={ruleData}
+                  setRuleData={setRuleData}
+                />
 
                 <Space align="center" className="w-full justify-end">
                   <Button

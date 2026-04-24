@@ -34,6 +34,7 @@ import {
   getPolicyWithFqnPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
+import { filterRedundantPolicyOperations } from '../../../utils/PolicyRuleUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
@@ -45,6 +46,7 @@ const AddRulePage = () => {
   const { fqn } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
+  const [form] = Form.useForm();
   const [ruleData, setRuleData] = useState<Rule>({
     name: '',
     description: '',
@@ -100,9 +102,16 @@ const AddRulePage = () => {
 
   const handleSubmit = async () => {
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
+    const ruleToAdd = {
+      ...rest,
+      operations: filterRedundantPolicyOperations(rest.operations),
+    };
     const patch = compare(policy, {
       ...policy,
-      rules: [...policy.rules, condition ? { ...rest, condition } : rest],
+      rules: [
+        ...policy.rules,
+        condition ? { ...ruleToAdd, condition } : ruleToAdd,
+      ],
     });
     try {
       const data = await patchPolicy(patch, policy.id);
@@ -154,13 +163,14 @@ const AddRulePage = () => {
         </Typography.Paragraph>
         <Form
           data-testid="rule-form"
+          form={form}
           id="rule-form"
           initialValues={{
             ruleEffect: ruleData.effect,
           }}
           layout="vertical"
           onFinish={handleSubmit}>
-          <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+          <RuleForm form={form} ruleData={ruleData} setRuleData={setRuleData} />
           <Space align="center" className="w-full justify-end">
             <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
               {t('label.cancel')}
