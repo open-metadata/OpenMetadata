@@ -88,5 +88,14 @@ export interface GrpcConfiguration {
      * Host for the gRPC server
      */
     port: number;
+    /**
+     * Client-side deadline (minutes) for an AI Platform streaming response. If the stream has
+     * not completed within this window the client abandons it and surfaces a timeout. Must be
+     * coordinated with any server-side deadline on the AI Platform side; the chat lock sweeper
+     * derives its default ceiling as streamDeadlineMinutes + 2. Capped at 60 minutes — longer
+     * tasks should use an async job + polling pattern rather than a single long-lived streaming
+     * RPC.
+     */
+    streamDeadlineMinutes?: number;
     [property: string]: any;
 }
