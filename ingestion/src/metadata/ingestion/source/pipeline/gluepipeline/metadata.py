@@ -308,7 +308,7 @@ class GluepipelineSource(PipelineServiceSource):
             response = self.s3_client.get_object(Bucket=bucket, Key=key)
             return response["Body"].read().decode("utf-8")
         except Exception as exc:
-            logger.warning(f"Failed to download script from {s3_uri}: {exc}")
+            logger.error(f"Failed to download script from {s3_uri}: {exc}")
             logger.debug(traceback.format_exc())
             return None
 

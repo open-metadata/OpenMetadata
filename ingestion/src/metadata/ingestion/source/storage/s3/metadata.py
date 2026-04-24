@@ -757,7 +757,7 @@ class S3Source(StorageServiceSource):
             region = region_resp.get("LocationConstraint")
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get the region for bucket: {bucket_name}")
+            logger.error(f"Unable to get the region for bucket: {bucket_name}")
         return region or self.service_connection.awsConfig.awsRegion
 
     def _get_bucket_source_url(self, bucket_name: str) -> Optional[str]:

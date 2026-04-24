@@ -152,7 +152,7 @@ class AirflowApiClient:
             try:
                 return response.json()
             except Exception as exc:
-                logger.warning(f"Failed to parse JSON response: {exc}")
+                logger.error(f"Failed to parse JSON response: {exc}")
                 logger.warning(
                     f"Response content type: {response.headers.get('content-type')}"
                 )

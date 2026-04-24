@@ -455,6 +455,6 @@ class MetadataUsageBulkSink(BulkSink):
             self.metadata.compute_percentile(Database, self.today)
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to publish compute.percentile: {err}")
+            logger.error(f"Failed to publish compute.percentile: {err}")
 
         self.metadata.close()

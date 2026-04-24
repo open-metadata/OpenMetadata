@@ -155,7 +155,7 @@ class SplineSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"failed to parse datasource details due to: {exc}")
+            logger.error(f"failed to parse datasource details due to: {exc}")
 
         return None
 

@@ -149,7 +149,7 @@ class StdioTransport:
         try:
             response = json.loads(line)
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse MCP response: {e}")
+            logger.error(f"Failed to parse MCP response: {e}")
             return
         msg_id = response.get("id")
         if msg_id is None:
@@ -294,7 +294,7 @@ class HttpTransport:
                 timeout=self.timeout,
             )
         except Exception as e:
-            logger.warning(f"Failed to send notification '{method}': {e}")
+            logger.error(f"Failed to send notification '{method}': {e}")
 
     def send_request(
         self, method: str, params: Optional[Dict] = None
@@ -482,7 +482,7 @@ def parse_claude_desktop_config(
             with open(path, "r", encoding="utf-8") as f:
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse config file {config_path}: {e}")
+            logger.error(f"Failed to parse config file {config_path}: {e}")
             return []
 
     servers = []
@@ -529,7 +529,7 @@ def parse_vscode_config(
             with open(path, "r", encoding="utf-8") as f:
                 config = json.load(f)
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse VS Code settings {config_path}: {e}")
+            logger.error(f"Failed to parse VS Code settings {config_path}: {e}")
             return []
 
     servers = []

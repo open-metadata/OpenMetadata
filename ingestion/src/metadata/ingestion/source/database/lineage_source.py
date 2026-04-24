@@ -223,7 +223,7 @@ class LineageSource(QueryParserSource, ABC):
             try:
                 yield from process_queue_items()
             except Exception as exc:
-                logger.warning(f"Error processing queue: {exc}")
+                logger.error(f"Error processing queue: {exc}")
                 logger.debug(traceback.format_exc())
 
             # Check for completed or timed-out processes
@@ -266,7 +266,7 @@ class LineageSource(QueryParserSource, ABC):
             # check if there are more than MAX_ACTIVE_TIMED_OUT_THREADS
             if len(active_timed_out_threads) > MAX_ACTIVE_TIMED_OUT_THREADS:
                 remaining_chunks = sum(1 for _ in chunk_iter)
-                logger.warning(
+                logger.error(
                     f"There are more than {MAX_ACTIVE_TIMED_OUT_THREADS} active timed out threads, "
                     f"skipping remaining {remaining_chunks}/{completed_chunks+remaining_chunks} chunks. "
                 )
@@ -289,7 +289,7 @@ class LineageSource(QueryParserSource, ABC):
         try:
             yield from process_queue_items()
         except Exception as exc:
-            logger.warning(f"Error processing queue: {exc}")
+            logger.error(f"Error processing queue: {exc}")
             logger.debug(traceback.format_exc())
 
         logger.info(
