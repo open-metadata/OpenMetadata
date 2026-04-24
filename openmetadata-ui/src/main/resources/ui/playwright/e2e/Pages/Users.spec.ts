@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -33,6 +33,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import {
+  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,

@@ -532,7 +532,7 @@ test.describe('Glossary tests', () => {
         const glossaryRequest = page.waitForResponse(
           `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
         );
-        await page.type(
+        await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
           glossaryTerm1.data.name
         );
@@ -551,7 +551,7 @@ test.describe('Glossary tests', () => {
         const glossaryRequest2 = page.waitForResponse(
           `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
         );
-        await page.type(
+        await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
           glossaryTerm2.data.name
         );
@@ -587,7 +587,7 @@ test.describe('Glossary tests', () => {
         const glossaryRequest3 = page.waitForResponse(
           `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
         );
-        await page.type(
+        await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
           glossaryTerm3.data.name
         );
@@ -606,7 +606,7 @@ test.describe('Glossary tests', () => {
         const glossaryRequest4 = page.waitForResponse(
           `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
         );
-        await page.type(
+        await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
           glossaryTerm4.data.name
         );
@@ -660,7 +660,7 @@ test.describe('Glossary tests', () => {
         const glossaryRequest5 = page.waitForResponse(
           `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
         );
-        await page.type(
+        await page.fill(
           '[data-testid="tag-selector"] #tagsForm_tags',
           glossaryTerm3.data.name
         );
