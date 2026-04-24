@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Edge, Node, Viewport } from 'reactflow';
+import { EntityType } from '../enums/entity.enum';
 import {
   BoundingBox,
   boundsIntersect,
@@ -218,11 +219,12 @@ describe('CanvasUtils', () => {
 
         const result = getEdgeCoordinates(edge, sourceNode, targetNode);
 
+        // Y uses node.height (100) from createMockNode, so midpoint = 50
         expect(result).toEqual({
           sourceX: 400,
-          sourceY: 33,
+          sourceY: 50,
           targetX: 490,
-          targetY: 33,
+          targetY: 50,
         });
       });
 
@@ -237,9 +239,9 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
-        expect(result?.sourceY).toBe(233);
+        expect(result?.sourceY).toBe(250); // 200 + 100/2
         expect(result?.targetX).toBe(590);
-        expect(result?.targetY).toBe(333);
+        expect(result?.targetY).toBe(350); // 300 + 100/2
       });
     });
 
@@ -391,6 +393,55 @@ describe('CanvasUtils', () => {
         expect(result?.targetX).toBe(490);
       });
     });
+
+    describe('temp lineage nodes', () => {
+      const createTempNode = (id: string, measuredHeight: number): Node => ({
+        id,
+        position: { x: 0, y: 0 },
+        data: {
+          node: {
+            id,
+            name: id,
+            entityType: EntityType.TABLE,
+            isTempTable: true,
+            columns: [],
+          },
+          isRootNode: false,
+        },
+        width: 400,
+        height: measuredHeight,
+      });
+
+      it('uses measured node.height for temp node entity-level edge', () => {
+        const edge = createMockEdge('edge1', 'temp_staging', 'node2', false);
+        const tempNode = createTempNode('temp_staging', 80);
+        const targetNode = createMockNode('node2');
+        targetNode.position = { x: 500, y: 0 };
+
+        const result = getEdgeCoordinates(edge, tempNode, targetNode);
+
+        expect(result).not.toBeNull();
+        expect(result?.sourceY).toBe(40); // 0 + 80/2 (measured height), not 33 (getNodeHeight formula)
+        expect(result?.targetY).toBe(50); // 0 + 100/2
+      });
+
+      it('centers edge at actual midpoint when measured height differs from computed height', () => {
+        const edge = createMockEdge('edge1', 'node1', 'node2', false);
+        const sourceNode = createMockNode('node1');
+        sourceNode.height = 150;
+        sourceNode.position = { x: 0, y: 100 };
+        const targetNode = createMockNode('node2');
+        targetNode.height = 200;
+        targetNode.position = { x: 500, y: 100 };
+
+        const result = getEdgeCoordinates(edge, sourceNode, targetNode);
+
+        expect(result).not.toBeNull();
+        expect(result?.sourceY).toBe(175); // 100 + 150/2
+        expect(result?.targetY).toBe(200); // 100 + 200/2
+      });
+
+    });
   });
 
   describe('getEdgeBounds', () => {
@@ -414,7 +465,8 @@ describe('CanvasUtils', () => {
       expect(result).not.toBeNull();
       expect(result!.minX).toBeLessThan(351);
       expect(result!.maxX).toBeGreaterThan(500);
-      expect(result!.minY).toBeLessThan(0);
+      // sourceY = 50 (node.height=100 / 2), padding=50 → minY = 0
+      expect(result!.minY).toBeLessThanOrEqual(0);
       expect(result!.maxY).toBeGreaterThan(100);
     });
   });

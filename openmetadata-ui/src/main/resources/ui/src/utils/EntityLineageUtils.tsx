@@ -100,7 +100,11 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
-import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
+import {
+  ColumnLineage,
+  LineageDetails,
+  TempLineageTable,
+} from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { useLineageStore } from '../hooks/useLineageStore';
@@ -117,12 +121,7 @@ import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 interface LayoutedElements {
-  node: Array<
-    Node & {
-      nodeHeight: number;
-      childrenHeight: number;
-    }
-  >;
+  node: Array<Node & { nodeHeight: number }>;
   edge: Edge[];
 }
 
@@ -1520,31 +1519,21 @@ const processNodeArray = (
   );
 };
 
-const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
-  const pipelineEntityType = get(pipelineNode, 'entityType');
-
-  // Create two edges: fromEntity -> pipeline and pipeline -> toEntity
-  const edgeFromToPipeline = {
-    fromEntity: edge.fromEntity,
-    toEntity: {
-      id: pipelineNode.id,
-      type: pipelineEntityType,
-      fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
-    },
-    extraInfo: edge,
+const processPipelineEdge = (
+  edge: EdgeDetails,
+  pipelineNode: Pipeline
+): EdgeDetails[] => {
+  const pipelineEntityType = get(pipelineNode, 'entityType') as unknown as string;
+  const pipelineRef = {
+    id: pipelineNode.id,
+    type: pipelineEntityType,
+    fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
   };
 
-  const edgePipelineToTo = {
-    fromEntity: {
-      id: pipelineNode.id,
-      type: pipelineEntityType,
-      fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
-    },
-    toEntity: edge.toEntity,
-    extraInfo: edge,
-  };
-
-  return [edgeFromToPipeline, edgePipelineToTo];
+  return [
+    { fromEntity: edge.fromEntity, toEntity: pipelineRef, extraInfo: edge },
+    { fromEntity: pipelineRef, toEntity: edge.toEntity, extraInfo: edge },
+  ];
 };
 
 const processEdges = (
@@ -1615,6 +1604,71 @@ const processPagination = (
   return { newNodes, newEdges };
 };
 
+const extractTempLineageNodes = (
+  edges: EdgeDetails[],
+  existingNodes: LineageNodeType[]
+): { nodes: LineageNodeType[]; edges: EdgeDetails[] } => {
+  const newTempNodes = new Map<string, LineageNodeType>();
+  const newEdges: EdgeDetails[] = [];
+
+  const existingByFqn = new Map(
+    existingNodes
+      .filter((n) => n.fullyQualifiedName)
+      .map((n) => [n.fullyQualifiedName!, n])
+  );
+
+  const getOrCreateNode = (nameOrFqn: string): LineageNodeType => {
+    const existing = existingByFqn.get(nameOrFqn);
+    if (existing) {
+      return existing;
+    }
+    if (newTempNodes.has(nameOrFqn)) {
+      return newTempNodes.get(nameOrFqn) as LineageNodeType;
+    }
+    const tempNode: LineageNodeType = {
+      id: `temp_${nameOrFqn}`,
+      name: nameOrFqn,
+      displayName: nameOrFqn,
+      fullyQualifiedName: nameOrFqn,
+      type: EntityType.TABLE,
+      entityType: EntityType.TABLE,
+      isTempTable: true,
+      columns: [],
+    };
+    newTempNodes.set(nameOrFqn, tempNode);
+
+    return tempNode;
+  };
+
+  edges.forEach((edge) => {
+    if (!edge.tempLineageTables?.length) {
+      return;
+    }
+    edge.tempLineageTables.forEach((hop: TempLineageTable) => {
+      const fromNode = getOrCreateNode(hop.fromEntity);
+      const toNode = getOrCreateNode(hop.toEntity);
+      newEdges.push({
+        fromEntity: {
+          id: fromNode.id,
+          type: fromNode.type ?? EntityType.TABLE,
+          fullyQualifiedName: fromNode.fullyQualifiedName,
+        },
+        toEntity: {
+          id: toNode.id,
+          type: toNode.type ?? EntityType.TABLE,
+          fullyQualifiedName: toNode.fullyQualifiedName,
+        },
+      });
+    });
+  });
+
+  const pureNewNodes = Array.from(newTempNodes.values()).filter(
+    (n) => !existingByFqn.has(n.fullyQualifiedName ?? '')
+  );
+
+  return { nodes: pureNewNodes, edges: newEdges };
+};
+
 export const parseLineageData = (
   data: LineageData,
   entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
@@ -1656,14 +1710,19 @@ export const parseLineageData = (
     ...newEdges,
   ];
 
+  const { nodes: tempNodes, edges: tempEdges } = extractTempLineageNodes(
+    finalEdges,
+    finalNodes
+  );
+
   // Find the main entity
   const entity = nodesArray.find(
     (node) => node.fullyQualifiedName === entityFqn
   ) as LineageNodeType;
 
   return {
-    nodes: finalNodes,
-    edges: finalEdges,
+    nodes: [...finalNodes, ...tempNodes],
+    edges: [...finalEdges, ...tempEdges],
     entity,
   };
 };
