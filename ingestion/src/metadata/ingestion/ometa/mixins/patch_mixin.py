@@ -167,6 +167,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
+        patch = None
         try:
             patch = build_patch(
                 source=source,
@@ -189,18 +190,20 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
+            patch_body = str(patch) if patch is not None else "<patch not built>"
             if skip_on_failure:
                 entity_name = get_log_name(source)
                 logger.warning(
                     f"Failed to update {entity_name}. The patch operation was skipped. "
-                    f"Reason: {exc}"
+                    f"Reason: {exc} | Patch body: {patch_body}"
                 )
                 return None
             else:
                 entity_name = get_log_name(source)
                 raise RuntimeError(
                     f"Failed to update {entity_name}. The patch operation failed. "
-                    f"Set 'skip_on_failure=True' to skip failed patches. Error: {exc}"
+                    f"Set 'skip_on_failure=True' to skip failed patches. "
+                    f"Error: {exc} | Patch body: {patch_body}"
                 ) from exc
 
     def patch_description(
