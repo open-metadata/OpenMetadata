@@ -275,6 +275,11 @@ export interface Connection {
      */
     type?: MessagingServiceType;
     /**
+     * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+     * connection.
+     */
+    adminApiSSL?: Config;
+    /**
      * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
      * transform lineage. E.g., http://localhost:9644
      */
@@ -315,6 +320,35 @@ export interface Connection {
      */
     sourcePythonClass?: string;
     [property: string]: any;
+}
+
+/**
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Client SSL configuration
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
+ * connection.
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
 }
 
 /**
@@ -367,32 +401,6 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-}
-
-/**
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Client SSL configuration
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
 }
 
 /**
