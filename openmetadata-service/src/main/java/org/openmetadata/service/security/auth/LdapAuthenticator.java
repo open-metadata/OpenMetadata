@@ -494,8 +494,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    */
   private void checkAndApplyAdminPrincipals(User user) {
     try {
-      boolean shouldBeAdminFromPrincipals =
-          checkAdminPrincipals(user.getName(), user.getEmail());
+      boolean shouldBeAdminFromPrincipals = checkAdminPrincipals(user.getName(), user.getEmail());
 
       if (shouldBeAdminFromPrincipals) {
         user.setIsAdmin(true);

@@ -178,8 +178,7 @@ class TestLoginHandlerTest {
   @Test
   void buildClientAuthentication_basicExplicit() {
     ClientAuthentication auth =
-        TestLoginHandler.buildClientAuthentication(
-            "client-id", "secret", "client_secret_basic");
+        TestLoginHandler.buildClientAuthentication("client-id", "secret", "client_secret_basic");
 
     assertInstanceOf(ClientSecretBasic.class, auth);
   }
@@ -187,8 +186,7 @@ class TestLoginHandlerTest {
   @Test
   void buildClientAuthentication_postWhenSpecified() {
     ClientAuthentication auth =
-        TestLoginHandler.buildClientAuthentication(
-            "client-id", "secret", "client_secret_post");
+        TestLoginHandler.buildClientAuthentication("client-id", "secret", "client_secret_post");
 
     assertInstanceOf(ClientSecretPost.class, auth);
   }

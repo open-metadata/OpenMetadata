@@ -63,8 +63,9 @@ public final class TestLdapHandler {
 
     LDAPConnection adminConn = null;
     try {
-      adminConn = buildConnection(ldapConfig, ldapConfig.getDnAdminPrincipal(),
-          ldapConfig.getDnAdminPassword());
+      adminConn =
+          buildConnection(
+              ldapConfig, ldapConfig.getDnAdminPrincipal(), ldapConfig.getDnAdminPassword());
 
       String userDn = searchUserDn(adminConn, ldapConfig, email);
       if (userDn == null) {
@@ -88,8 +89,7 @@ public final class TestLdapHandler {
       result.put("success", true);
       result.put("email", mail);
       result.put("username", extractCn(userDn));
-      result.put(
-          "derivedPrincipalDomain", mail.contains("@") ? mail.split("@")[1] : "");
+      result.put("derivedPrincipalDomain", mail.contains("@") ? mail.split("@")[1] : "");
       result.put("suggestedAdminPrincipal", mail);
       return result;
     } catch (Exception e) {
@@ -125,10 +125,8 @@ public final class TestLdapHandler {
 
   private static String searchUserDn(
       LDAPConnection conn, LdapConfiguration ldapConfig, String email) throws Exception {
-    Filter filter =
-        Filter.createEqualityFilter(ldapConfig.getMailAttributeName(), email);
-    SearchResult result =
-        conn.search(ldapConfig.getUserBaseDN(), SearchScope.SUB, filter, "dn");
+    Filter filter = Filter.createEqualityFilter(ldapConfig.getMailAttributeName(), email);
+    SearchResult result = conn.search(ldapConfig.getUserBaseDN(), SearchScope.SUB, filter, "dn");
     if (result.getEntryCount() == 0) {
       return null;
     }

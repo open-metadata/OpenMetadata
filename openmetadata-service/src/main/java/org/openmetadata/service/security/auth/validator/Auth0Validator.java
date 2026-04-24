@@ -135,8 +135,7 @@ public class Auth0Validator {
       return null;
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
-          fieldPath,
-          "Auth0 domain could not be verified: " + e.getMessage());
+          fieldPath, "Auth0 domain could not be verified: " + e.getMessage());
     }
   }
 

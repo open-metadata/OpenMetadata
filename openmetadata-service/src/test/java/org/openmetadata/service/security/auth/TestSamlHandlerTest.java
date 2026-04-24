@@ -52,8 +52,7 @@ class TestSamlHandlerTest {
   void handleInitiate_missingIdpEntityId_returnsHtmlError() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
-        TestSamlHandler.handleInitiate(
-            req, null, null, IDP_SSO_URL, IDP_CERT, null, null, null);
+        TestSamlHandler.handleInitiate(req, null, null, IDP_SSO_URL, IDP_CERT, null, null, null);
 
     assertEquals(400, resp.getStatus());
     assertTrue(((String) resp.getEntity()).contains("IdP Entity ID is required"));
@@ -63,8 +62,7 @@ class TestSamlHandlerTest {
   void handleInitiate_missingIdpSsoLoginUrl_returnsHtmlError() {
     HttpServletRequest req = mock(HttpServletRequest.class);
     Response resp =
-        TestSamlHandler.handleInitiate(
-            req, null, IDP_ENTITY_ID, null, IDP_CERT, null, null, null);
+        TestSamlHandler.handleInitiate(req, null, IDP_ENTITY_ID, null, IDP_CERT, null, null, null);
 
     assertEquals(400, resp.getStatus());
     assertTrue(((String) resp.getEntity()).contains("IdP SSO Login URL is required"));
@@ -134,8 +132,7 @@ class TestSamlHandlerTest {
     assertEquals(IDP_SSO_URL, settings.getIdpSingleSignOnServiceUrl().toString());
     assertEquals("http://localhost:8585", settings.getSpEntityId());
     assertEquals(
-        "http://localhost:8585/callback",
-        settings.getSpAssertionConsumerServiceUrl().toString());
+        "http://localhost:8585/callback", settings.getSpAssertionConsumerServiceUrl().toString());
   }
 
   @Test
@@ -150,8 +147,7 @@ class TestSamlHandlerTest {
             "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
 
     assertEquals(
-        "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
-        settings.getSpNameIDFormat());
+        "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress", settings.getSpNameIDFormat());
   }
 
   @Test
