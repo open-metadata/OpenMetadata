@@ -12,6 +12,7 @@
 """
 Avro parser tests
 """
+import logging
 from unittest import TestCase
 
 from metadata.parsers.avro_parser import parse_avro_schema
@@ -823,3 +824,14 @@ class AvroParserTests(TestCase):
             .children[0]
             .children
         )
+
+    def test_parse_failure_does_not_leak_schema_content(self):
+        sensitive_schema = '{"secret_key": "super_secret_value_12345"}'
+
+        with self.assertLogs("metadata.Ingestion", level="DEBUG") as log_ctx:
+            result = parse_avro_schema(sensitive_schema)
+
+        self.assertIsNone(result)
+        for log_line in log_ctx.output:
+            self.assertNotIn("super_secret_value_12345", log_line)
+            self.assertNotIn("secret_key", log_line)

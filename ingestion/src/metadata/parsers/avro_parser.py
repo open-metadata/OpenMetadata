@@ -16,6 +16,7 @@ Utils module to parse the avro schema
 import traceback
 from typing import List, Optional, Tuple, Type, Union
 
+import avro.errors
 import avro.schema as avroschema
 from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
 from pydantic import BaseModel
@@ -260,9 +261,11 @@ def parse_avro_schema(
             )
         ]
         return models
+    except avro.errors.SchemaParseException:
+        logger.warning("Unable to parse the avro schema: SchemaParseException")
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unable to parse the avro schema: {exc}")
+        logger.warning(f"Unable to parse the avro schema: {type(exc).__name__}")
     return None
 
 
@@ -303,7 +306,9 @@ def get_avro_fields(
                 )
             else:
                 field_models.append(parse_single_field(field, cls=cls))
+        except avro.errors.SchemaParseException:
+            logger.warning("Unable to parse the avro schema into models: SchemaParseException")
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse the avro schema into models: {exc}")
+            logger.warning(f"Unable to parse the avro schema into models: {type(exc).__name__}")
     return field_models
