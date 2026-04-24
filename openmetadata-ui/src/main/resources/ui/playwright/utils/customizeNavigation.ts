@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
+import { SIDEBAR_LIST_ITEMS, SidebarItem } from '../constant/sidebar';
 import { PersonaClass } from '../support/persona/PersonaClass';
 
 const NAV_ITEMS = [
@@ -71,15 +71,7 @@ export const validateLeftSidebarWithHiddenItems = async (
           .locator(`[data-testid^="app-bar-item-"]`)
           .first();
 
-        try {
-          // Wait for at least one child to be visible (with timeout)
-          await anyChildInDropdown.waitFor({ state: 'visible', timeout: 3000 });
-        } catch {
-          // If no children are visible, the dropdown might not have expanded
-          // Wait a bit more and continue
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown expansion fallback delay
-          await page.waitForTimeout(500);
-        }
+        await expect(anyChildInDropdown).toBeVisible(); // Ensure at least one child is visible before proceeding
 
         const childElement = page
           .locator(`[data-testid="app-bar-item-${items[1]}"]`)
@@ -103,10 +95,6 @@ export const validateLeftSidebarWithHiddenItems = async (
         }
 
         await page.click(`[data-testid="${items[0]}"]`);
-
-        await page.mouse.move(1280, 0); // Move mouse to top right corner
-
-        continue;
       }
       if (hiddenItems.includes(item)) {
         await expect(
