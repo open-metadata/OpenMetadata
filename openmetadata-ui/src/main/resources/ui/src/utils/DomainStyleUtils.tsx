@@ -19,7 +19,14 @@ export type StyledDomainReference = EntityReference & {
   style?: Style;
 };
 
-const domainStyleCache = new Map<string, Style | null>();
+type CachedDomainStyleEntry = {
+  expiresAt: number;
+  style: Style | null;
+};
+
+const DOMAIN_STYLE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const domainStyleCache = new Map<string, CachedDomainStyleEntry>();
 const domainStyleRequestCache = new Map<string, Promise<Style | undefined>>();
 
 export const clearDomainStyleCache = () => {
@@ -31,6 +38,53 @@ const getStyleFromDomainReference = (
   domain: EntityReference
 ): Style | undefined => (domain as StyledDomainReference).style;
 
+const getDomainSignature = (domain: EntityReference): string =>
+  [
+    domain.id ?? '',
+    domain.fullyQualifiedName ?? '',
+    domain.name ?? '',
+    domain.displayName ?? '',
+    domain.type ?? '',
+    domain.inherited ? '1' : '0',
+    getStyleFromDomainReference(domain)?.color ?? '',
+  ].join('::');
+
+const pruneExpiredDomainStyleCache = (now = Date.now()) => {
+  for (const [domainFqn, cachedEntry] of domainStyleCache.entries()) {
+    if (cachedEntry.expiresAt <= now) {
+      domainStyleCache.delete(domainFqn);
+    }
+  }
+};
+
+const setCachedDomainStyle = (domainFqn: string, style: Style | null) => {
+  const now = Date.now();
+
+  pruneExpiredDomainStyleCache(now);
+  domainStyleCache.set(domainFqn, {
+    expiresAt: now + DOMAIN_STYLE_CACHE_TTL_MS,
+    style,
+  });
+};
+
+const getCachedDomainStyle = (
+  domainFqn: string
+): CachedDomainStyleEntry | undefined => {
+  const cachedEntry = domainStyleCache.get(domainFqn);
+
+  if (!cachedEntry) {
+    return undefined;
+  }
+
+  if (cachedEntry.expiresAt <= Date.now()) {
+    domainStyleCache.delete(domainFqn);
+
+    return undefined;
+  }
+
+  return cachedEntry;
+};
+
 const getStyledDomainReference = (
   domain: EntityReference
 ): StyledDomainReference => {
@@ -38,25 +92,25 @@ const getStyledDomainReference = (
   const domainFqn = domain.fullyQualifiedName;
 
   if (domainFqn && style !== undefined) {
-    domainStyleCache.set(domainFqn, style);
+    setCachedDomainStyle(domainFqn, style);
 
     return domain as StyledDomainReference;
   }
 
-  const cachedStyle = domainFqn ? domainStyleCache.get(domainFqn) : undefined;
+  const cachedEntry = domainFqn ? getCachedDomainStyle(domainFqn) : undefined;
 
-  if (cachedStyle) {
-    return { ...domain, style: cachedStyle };
+  if (cachedEntry?.style) {
+    return { ...domain, style: cachedEntry.style };
   }
 
   return domain as StyledDomainReference;
 };
 
 const fetchDomainStyle = async (domainFqn: string) => {
-  const cachedStyle = domainStyleCache.get(domainFqn);
+  const cachedEntry = getCachedDomainStyle(domainFqn);
 
-  if (cachedStyle !== undefined) {
-    return cachedStyle ?? undefined;
+  if (cachedEntry) {
+    return cachedEntry.style ?? undefined;
   }
 
   const cachedRequest = domainStyleRequestCache.get(domainFqn);
@@ -69,9 +123,14 @@ const fetchDomainStyle = async (domainFqn: string) => {
     .then((domain) => {
       const style = domain.style;
 
-      domainStyleCache.set(domainFqn, style ?? null);
+      setCachedDomainStyle(domainFqn, style ?? null);
 
       return style;
+    })
+    .catch(() => {
+      setCachedDomainStyle(domainFqn, null);
+
+      return undefined;
     })
     .finally(() => {
       domainStyleRequestCache.delete(domainFqn);
@@ -85,9 +144,11 @@ const fetchDomainStyle = async (domainFqn: string) => {
 export const useDomainsWithStyle = (
   domains?: EntityReference[]
 ): StyledDomainReference[] => {
-  const [resolvedDomains, setResolvedDomains] = useState<StyledDomainReference[]>(
-    () => (domains ?? []).map(getStyledDomainReference)
-  );
+  const cacheWindow = Math.floor(Date.now() / DOMAIN_STYLE_CACHE_TTL_MS);
+  const domainsSignature = (domains ?? []).map(getDomainSignature).join('|');
+  const [resolvedDomains, setResolvedDomains] = useState<
+    StyledDomainReference[]
+  >(() => (domains ?? []).map(getStyledDomainReference));
 
   useEffect(() => {
     const nextDomains = (domains ?? []).map(getStyledDomainReference);
@@ -100,7 +161,7 @@ export const useDomainsWithStyle = (
           return false;
         }
 
-        return !domainStyleCache.has(domainFqn);
+        return !getCachedDomainStyle(domainFqn);
       });
 
     if (missingDomainFqns.length === 0) {
@@ -129,13 +190,14 @@ export const useDomainsWithStyle = (
     return () => {
       isCancelled = true;
     };
-  }, [domains]);
+  }, [cacheWindow, domainsSignature]);
 
   return resolvedDomains;
 };
 
-export const getDomainReferenceColor = (domain: EntityReference): string | undefined =>
-  getStyleFromDomainReference(domain)?.color;
+export const getDomainReferenceColor = (
+  domain: EntityReference
+): string | undefined => getStyleFromDomainReference(domain)?.color;
 
 export const getDomainReferenceIconColor = (
   domain: EntityReference,

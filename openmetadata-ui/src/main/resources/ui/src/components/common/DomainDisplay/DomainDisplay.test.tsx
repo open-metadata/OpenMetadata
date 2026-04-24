@@ -77,13 +77,14 @@ const mockDomain3: EntityReference = {
   },
 } as EntityReference;
 
-type DomainDisplayTestProps = Omit<ComponentProps<typeof DomainDisplay>, 'domains'> & {
+type DomainDisplayTestProps = Omit<
+  ComponentProps<typeof DomainDisplay>,
+  'domains'
+> & {
   domains?: EntityReference[] | null;
 };
 
-const renderDomainDisplay = (
-  props: DomainDisplayTestProps
-) =>
+const renderDomainDisplay = (props: DomainDisplayTestProps) =>
   render(
     <MemoryRouter>
       <DomainDisplay {...(props as ComponentProps<typeof DomainDisplay>)} />
@@ -309,13 +310,11 @@ describe('DomainDisplay Component', () => {
       type: 'domain',
     } as EntityReference;
 
-    mockGetDomainByName.mockResolvedValue(
-      {
-        style: {
-          color: '#0891b2',
-        },
-      } as Awaited<ReturnType<typeof getDomainByName>>
-    );
+    mockGetDomainByName.mockResolvedValue({
+      style: {
+        color: '#0891b2',
+      },
+    } as Awaited<ReturnType<typeof getDomainByName>>);
 
     renderDomainDisplay({ domains: [unresolvedDomain] });
 
@@ -331,5 +330,76 @@ describe('DomainDisplay Component', () => {
         '#0891b2'
       )
     );
+  });
+
+  it('should cache failed domain style lookups and avoid refetching on rerender', async () => {
+    const unresolvedDomain = {
+      id: 'domain-unresolved',
+      fullyQualifiedName: 'domain.one',
+      name: 'Domain One',
+      type: 'domain',
+    } as EntityReference;
+
+    mockGetDomainByName.mockRejectedValue(new Error('request failed'));
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <DomainDisplay domains={[unresolvedDomain]} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetDomainByName).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <MemoryRouter>
+        <DomainDisplay
+          domains={[{ ...unresolvedDomain, name: 'Domain One Updated' }]}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Domain One Updated')).toBeInTheDocument()
+    );
+
+    expect(mockGetDomainByName).toHaveBeenCalledTimes(1);
+  });
+
+  it('should refetch cached styles after the ttl expires', async () => {
+    const unresolvedDomain = {
+      id: 'domain-unresolved',
+      fullyQualifiedName: 'domain.one',
+      name: 'Domain One',
+      type: 'domain',
+    } as EntityReference;
+    const nowSpy = jest.spyOn(Date, 'now');
+
+    nowSpy.mockReturnValue(0);
+    mockGetDomainByName.mockResolvedValue({
+      style: {
+        color: '#0891b2',
+      },
+    } as Awaited<ReturnType<typeof getDomainByName>>);
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <DomainDisplay domains={[unresolvedDomain]} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetDomainByName).toHaveBeenCalledTimes(1));
+
+    nowSpy.mockReturnValue(5 * 60 * 1000 + 1);
+    rerender(
+      <MemoryRouter>
+        <DomainDisplay
+          domains={[{ ...unresolvedDomain, name: 'Domain One Updated' }]}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetDomainByName).toHaveBeenCalledTimes(2));
+
+    nowSpy.mockRestore();
   });
 });
