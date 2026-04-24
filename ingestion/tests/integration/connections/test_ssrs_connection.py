@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnect
     SsrsConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.dashboard.ssrs.client import SsrsClient
+from metadata.ingestion.source.dashboard.ssrs.client import MAX_RETRIES, SsrsClient
 from metadata.ingestion.source.dashboard.ssrs.connection import get_connection
 
 
@@ -38,9 +38,68 @@ class _MockHandler(BaseHTTPRequestHandler):
         pass
 
 
+class _FlakyHandler(BaseHTTPRequestHandler):
+    failures_remaining = 2
+    request_count = 0
+
+    def do_GET(self):
+        type(self).request_count += 1
+        if type(self).failures_remaining > 0:
+            type(self).failures_remaining -= 1
+            self.send_response(503)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        body = json.dumps({"value": []}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format, *args):
+        pass
+
+
+class _AlwaysFailingHandler(BaseHTTPRequestHandler):
+    request_count = 0
+
+    def do_GET(self):
+        type(self).request_count += 1
+        self.send_response(500)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        pass
+
+
 @pytest.fixture(scope="module")
 def ssrs_mock_url():
     server = HTTPServer(("127.0.0.1", 0), _MockHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{port}/reports"
+    server.shutdown()
+
+
+@pytest.fixture()
+def ssrs_flaky_url():
+    _FlakyHandler.failures_remaining = 2
+    _FlakyHandler.request_count = 0
+    server = HTTPServer(("127.0.0.1", 0), _FlakyHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{port}/reports"
+    server.shutdown()
+
+
+@pytest.fixture()
+def ssrs_always_failing_url():
+    _AlwaysFailingHandler.request_count = 0
+    server = HTTPServer(("127.0.0.1", 0), _AlwaysFailingHandler)
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -64,6 +123,13 @@ class TestSsrsConnection:
         client = get_connection(connection)
         client.test_access()
 
+    def test_get_connection_test_get_reports(self, ssrs_mock_url):
+        connection = SsrsConnection(
+            hostPort=ssrs_mock_url, username="test_user", password="test_pass"
+        )
+        client = get_connection(connection)
+        client.test_get_reports()
+
     def test_connection_bad_host(self):
         connection = SsrsConnection(
             hostPort="http://localhost:1", username="test_user", password="test_pass"
@@ -71,3 +137,34 @@ class TestSsrsConnection:
         client = get_connection(connection)
         with pytest.raises(SourceConnectionException):
             client.test_access()
+
+    def test_connection_bad_host_get_reports(self):
+        connection = SsrsConnection(
+            hostPort="http://localhost:1", username="test_user", password="test_pass"
+        )
+        client = get_connection(connection)
+        with pytest.raises(SourceConnectionException):
+            client.test_get_reports()
+
+    def test_get_reports_retries_transient_failures(self, ssrs_flaky_url):
+        connection = SsrsConnection(
+            hostPort=ssrs_flaky_url, username="test_user", password="test_pass"
+        )
+        client = get_connection(connection)
+        reports = list(client.get_reports())
+        assert reports == []
+        assert _FlakyHandler.request_count == 3
+
+    def test_get_reports_raises_on_persistent_failure(self, ssrs_always_failing_url):
+        """A /Reports endpoint that keeps 5xx'ing after retries must surface
+        as SourceConnectionException — otherwise the pipeline reports success
+        with zero records and mark_deleted wipes the catalog."""
+        connection = SsrsConnection(
+            hostPort=ssrs_always_failing_url,
+            username="test_user",
+            password="test_pass",
+        )
+        client = get_connection(connection)
+        with pytest.raises(SourceConnectionException):
+            list(client.get_reports())
+        assert _AlwaysFailingHandler.request_count == MAX_RETRIES + 1

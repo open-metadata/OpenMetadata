@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition">
+  <DataSources>
+    <DataSource Name="DynamicDS">
+      <ConnectionProperties>
+        <DataProvider>SQL</DataProvider>
+        <ConnectString>Data Source=sql01;Initial Catalog=DynDB</ConnectString>
+      </ConnectionProperties>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="DynamicDataset">
+      <Query>
+        <DataSourceName>DynamicDS</DataSourceName>
+        <CommandType>Expression</CommandType>
+        <CommandText>="SELECT * FROM " &amp; Parameters!Tbl.Value</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Col"><DataField>Col</DataField></Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+</Report>

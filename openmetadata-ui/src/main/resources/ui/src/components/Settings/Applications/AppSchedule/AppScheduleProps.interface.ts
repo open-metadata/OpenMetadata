@@ -19,7 +19,7 @@ export interface AppScheduleProps {
     isRunLoading: boolean;
     isDeployLoading: boolean;
   };
-  jsonSchema: RJSFSchema;
+  jsonSchema?: RJSFSchema;
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;

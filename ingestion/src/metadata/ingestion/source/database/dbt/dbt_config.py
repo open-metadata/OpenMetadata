@@ -53,6 +53,7 @@ from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.s3_utils import list_s3_objects
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
 
@@ -125,12 +126,29 @@ def _(config: DbtLocalConfig):
 @get_dbt_details.register
 def _(config: DbtHttpConfig):
     try:
+        verify_ssl_fn = (
+            get_verify_ssl_fn(config.dbtVerifySSL)
+            if config.dbtVerifySSL
+            else lambda _: None
+        )
+        ssl_verify = verify_ssl_fn(config.dbtSSLConfig) if config.dbtVerifySSL else None
+        if ssl_verify is None:
+            ssl_verify = True
+        request_headers = dict(config.dbtHttpHeaders) if config.dbtHttpHeaders else {}
+
         manifest_url = config.dbtManifestHttpPath
         logger.debug(f"Requesting [dbtManifestHttpPath] to: {manifest_url}")
 
         try:
-            dbt_manifest = requests.get(manifest_url, timeout=30)
+            dbt_manifest = requests.get(
+                manifest_url, headers=request_headers, verify=ssl_verify, timeout=30
+            )
             dbt_manifest.raise_for_status()
+        except requests.exceptions.SSLError as exc:
+            raise DBTConfigException(
+                f"SSL verification failed while fetching manifest from '{manifest_url}'. "
+                "Check your dbtVerifySSL and dbtSSLConfig settings."
+            ) from exc
         except requests.exceptions.Timeout as exc:
             raise DBTConfigException(
                 f"Connection timeout while fetching manifest from '{manifest_url}'. "
@@ -150,7 +168,7 @@ def _(config: DbtHttpConfig):
             if exc.response.status_code in (401, 403):
                 raise DBTConfigException(
                     f"Access denied to '{manifest_url}'. "
-                    "Please check authentication credentials if required."
+                    "Check your dbtHttpHeaders contain the correct authentication headers."
                 ) from exc
             raise DBTConfigException(
                 f"HTTP error {exc.response.status_code} fetching manifest from '{manifest_url}'."
@@ -171,7 +189,10 @@ def _(config: DbtHttpConfig):
             )
             try:
                 run_results_resp = requests.get(
-                    config.dbtRunResultsHttpPath, timeout=30
+                    config.dbtRunResultsHttpPath,
+                    headers=request_headers,
+                    verify=ssl_verify,
+                    timeout=30,
                 )
                 run_results_resp.raise_for_status()
                 dbt_run_results = run_results_resp.json()
@@ -186,7 +207,12 @@ def _(config: DbtHttpConfig):
                 f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}"
             )
             try:
-                catalog_resp = requests.get(config.dbtCatalogHttpPath, timeout=30)
+                catalog_resp = requests.get(
+                    config.dbtCatalogHttpPath,
+                    headers=request_headers,
+                    verify=ssl_verify,
+                    timeout=30,
+                )
                 catalog_resp.raise_for_status()
                 dbt_catalog = catalog_resp.json()
             except Exception as exc:
@@ -200,7 +226,12 @@ def _(config: DbtHttpConfig):
                 f"Requesting [dbtSourcesHttpPath] to: {config.dbtSourcesHttpPath}"
             )
             try:
-                sources_resp = requests.get(config.dbtSourcesHttpPath, timeout=30)
+                sources_resp = requests.get(
+                    config.dbtSourcesHttpPath,
+                    headers=request_headers,
+                    verify=ssl_verify,
+                    timeout=30,
+                )
                 sources_resp.raise_for_status()
                 dbt_sources = sources_resp.json()
             except Exception as exc:

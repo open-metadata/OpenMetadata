@@ -28,10 +28,10 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.Lists;
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,7 +60,6 @@ import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -84,7 +83,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -99,7 +97,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
@@ -109,7 +106,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
@@ -964,17 +960,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    * incident
    */
   private UUID getIncidentId(TestCase test) {
-    UUID ongoingIncident = null;
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
 
-    String json =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecord(test.getFullyQualifiedName());
-    TestCaseResult latestTestCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-
-    if (!nullOrEmpty(latestTestCaseResult)) {
-      ongoingIncident = latestTestCaseResult.getIncidentId();
+    if (latest != null && latest.getStateId() != null) {
+      return latest.getStateId();
     }
 
-    return ongoingIncident;
+    return null;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
@@ -1019,29 +1014,46 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that collide
+    // with concurrent test-case creation. MySQL raises "Deadlock found when trying to get lock"
+    // intermittently under IT parallel load. Wrap the retry *outside* the @Transaction boundary
+    // so each attempt runs in a fresh transaction instead of replaying on a rolled-back handle.
+    return DeadlockRetry.execute(
+        () -> addAllTestCasesToLogicalTestSuiteTxn(testSuite, excludedTestCaseIds));
+  }
 
+  @Transaction
+  RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteTxn(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
     List<EntityReference> originalTestCaseReferences =
         findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
 
     String tableName = daoCollection.testCaseDAO().getTableName();
     if (nullOrEmpty(excludedTestCaseIds)) {
-      daoCollection
-          .relationshipDAO()
-          .bulkInsertAllToRelationship(
-              testSuite.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal(), tableName);
+      executeWithDeadlockRetry(
+          () ->
+              daoCollection
+                  .relationshipDAO()
+                  .bulkInsertAllToRelationship(
+                      testSuite.getId(),
+                      TEST_SUITE,
+                      TEST_CASE,
+                      Relationship.CONTAINS.ordinal(),
+                      tableName));
     } else {
-      daoCollection
-          .relationshipDAO()
-          .bulkInsertAllToRelationshipWithExclusions(
-              excludedTestCaseIds.stream().map(UUID::toString).toList(),
-              testSuite.getId(),
-              TEST_SUITE,
-              TEST_CASE,
-              Relationship.CONTAINS.ordinal(),
-              tableName);
+      executeWithDeadlockRetry(
+          () ->
+              daoCollection
+                  .relationshipDAO()
+                  .bulkInsertAllToRelationshipWithExclusions(
+                      excludedTestCaseIds.stream().map(UUID::toString).toList(),
+                      testSuite.getId(),
+                      TEST_SUITE,
+                      TEST_CASE,
+                      Relationship.CONTAINS.ordinal(),
+                      tableName));
     }
 
     List<EntityReference> updatedTestCaseReferences =
@@ -1062,6 +1074,40 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     updateLogicalTestSuite(testSuite.getId());
 
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private void executeWithDeadlockRetry(Runnable operation) {
+    int maxAttempts = 3;
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        operation.run();
+        return;
+      } catch (RuntimeException ex) {
+        if (!isTransientDeadlock(ex) || attempt == maxAttempts) {
+          throw ex;
+        }
+        LOG.debug(
+            "Retrying logical test suite bulk insert after transient deadlock (attempt {}/{})",
+            attempt + 1,
+            maxAttempts);
+      }
+    }
+  }
+
+  private boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        String sqlState = sqlException.getSQLState();
+        if (errorCode == 1213
+            || errorCode == 1205
+            || "40001".equals(sqlState)
+            || "40P01".equals(sqlState)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   @Transaction
@@ -1389,6 +1435,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   original.getComputePassedFailedRowCount(),
                   updated.getComputePassedFailedRowCount()));
       compareAndUpdate(
+          "autoCloseIncident",
+          () ->
+              recordChange(
+                  "autoCloseIncident",
+                  original.getAutoCloseIncident(),
+                  updated.getAutoCloseIncident()));
+      compareAndUpdate(
           "useDynamicAssertion",
           () ->
               recordChange(
@@ -1557,56 +1610,29 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void closeApprovalTask(TestCase entity, String comment) {
-    MessageParser.EntityLink about =
-        new MessageParser.EntityLink(TEST_CASE, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-
-    // Skip closing tasks if updatedBy is null (e.g., during tests)
     if (entity.getUpdatedBy() == null) {
       LOG.debug(
           "Skipping task closure for test case {} - updatedBy is null",
           entity.getFullyQualifiedName());
       return;
     }
-
-    // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for test case {}", entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(TestCase testCase) {
-    try {
-      MessageParser.EntityLink about =
-          new MessageParser.EntityLink(TEST_CASE, testCase.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      testCase =
-          Entity.getEntityByName(
-              Entity.TEST_CASE,
-              testCase.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(testCase.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for test case {}",
-          TaskType.RequestApproval,
-          testCase.getFullyQualifiedName());
-    }
+    testCase =
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            testCase.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        testCase.getFullyQualifiedName(),
+        new ArrayList<>(testCase.getReviewers()),
+        testCase.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {

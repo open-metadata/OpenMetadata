@@ -32,6 +32,11 @@ public class ColumnSearchIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.TABLE_COLUMN;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return Set.of(
         "children",

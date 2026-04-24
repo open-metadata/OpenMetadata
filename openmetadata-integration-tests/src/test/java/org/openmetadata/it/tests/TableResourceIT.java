@@ -79,6 +79,8 @@ import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.ProfileSampleConfig;
+import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -89,6 +91,7 @@ import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -1564,13 +1567,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Create profiler config
     TableProfilerConfig config =
         new TableProfilerConfig()
-            .withProfileSample(50.0)
-            .withProfileSampleType(TableProfilerConfig.ProfileSampleType.PERCENTAGE);
+            .withProfileSampleConfig(
+                new ProfileSampleConfig()
+                    .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
+                    .withConfig(
+                        new StaticSamplingConfig()
+                            .withProfileSample(50.0)
+                            .withProfileSampleType(
+                                org.openmetadata.schema.type.TableProfile.ProfileSampleType
+                                    .PERCENTAGE)));
 
     // Update profiler config
     Table updated = client.tables().updateProfilerConfig(table.getId(), config);
     assertNotNull(updated.getTableProfilerConfig());
-    assertEquals(50.0, updated.getTableProfilerConfig().getProfileSample());
+    assertNotNull(updated.getTableProfilerConfig().getProfileSampleConfig());
+    StaticSamplingConfig staticConfig =
+        JsonUtils.convertValue(
+            updated.getTableProfilerConfig().getProfileSampleConfig().getConfig(),
+            StaticSamplingConfig.class);
+    assertEquals(50.0, staticConfig.getProfileSample());
   }
 
   // ===================================================================
@@ -5369,6 +5384,45 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().tables().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().tables().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().tables().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Test
+  void get_entityVersionHistory_fieldChanged_requiresExactColumnDescriptionPath(TestNamespace ns) {
+    Table created = createEntity(createMinimalRequest(ns));
+    Column nameColumn = findColumnByName(created.getColumns(), "name");
+    assertNotNull(nameColumn);
+
+    nameColumn.setDescription("Column description change for exact field filter test");
+    patchEntity(created.getId().toString(), created);
+
+    EntityHistory topLevelDescriptionHistory =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+    assertNotNull(topLevelDescriptionHistory);
+    assertNotNull(topLevelDescriptionHistory.getPaging());
+    assertEquals(0, (int) topLevelDescriptionHistory.getPaging().getTotal());
+
+    EntityHistory columnDescriptionHistory =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "columns.description");
+    assertNotNull(columnDescriptionHistory);
+    assertNotNull(columnDescriptionHistory.getPaging());
+    assertEquals(0, (int) columnDescriptionHistory.getPaging().getTotal());
+
+    EntityHistory exactColumnDescriptionHistory =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "columns.name.description");
+    assertNotNull(exactColumnDescriptionHistory);
+    assertNotNull(exactColumnDescriptionHistory.getPaging());
+    assertTrue(exactColumnDescriptionHistory.getPaging().getTotal() >= 1);
   }
 
   @Override
