@@ -62,6 +62,11 @@ public class TestCaseResolutionStatusRepository
   }
 
   @Override
+  protected boolean shouldCleanupRelationshipsOnDelete() {
+    return true;
+  }
+
+  @Override
   protected List<String> getExcludeSearchFields() {
     return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
   }

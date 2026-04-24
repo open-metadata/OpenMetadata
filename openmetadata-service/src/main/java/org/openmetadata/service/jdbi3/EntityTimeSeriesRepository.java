@@ -401,7 +401,17 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       return;
     }
     timeSeriesDao.deleteById(id);
-    daoCollection.relationshipDAO().deleteAll(id, entityType);
+    if (shouldCleanupRelationshipsOnDelete()) {
+      daoCollection.relationshipDAO().deleteAll(id, entityType);
+    }
+  }
+
+  /**
+   * Hook for subclasses to opt into relationship cleanup on entity deletion. Default is false to
+   * avoid unnecessary SQL round-trips for entities without relationships.
+   */
+  protected boolean shouldCleanupRelationshipsOnDelete() {
+    return false;
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
