@@ -1343,7 +1343,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Version history tests require patch support
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1365,7 +1365,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_paginated_200(TestNamespace ns) {
-    if (!supportsPatch) return;
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1429,7 +1429,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_specificVersion_200(TestNamespace ns) {
-    if (!supportsPatch) return; // Specific version tests require patch support
+    if (!supportsVersionHistory || !supportsGetByVersion || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1448,7 +1448,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_fieldChanged_200(TestNamespace ns) {
-    if (!supportsPatch) return;
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1505,7 +1505,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_fieldChanged_ignoresWrongExtensionPrefix(TestNamespace ns) {
-    if (!supportsPatch) return;
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
@@ -1591,7 +1591,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityVersionHistory_fieldChanged_matchesNullChangedFieldKeysRows(TestNamespace ns) {
-    if (!supportsPatch) return;
+    if (!supportsVersionHistory || !supportsPatch) return;
 
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);

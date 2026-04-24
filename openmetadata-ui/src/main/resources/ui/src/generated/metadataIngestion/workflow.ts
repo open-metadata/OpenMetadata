@@ -7232,6 +7232,10 @@ export interface LineageInformation {
      */
     dbServiceNames?: string[];
     /**
+     * List of Messaging Service Names for creation of lineage
+     */
+    messagingServiceNames?: string[];
+    /**
      * List of Storage Service Names for creation of lineage
      */
     storageServiceNames?: string[];
