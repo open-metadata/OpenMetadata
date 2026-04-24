@@ -124,7 +124,7 @@ export const deleteBot = async (page: Page) => {
   await page.getByTestId('searchbar').clear();
   await page.getByTestId('searchbar').fill(BOT_DETAILS.updatedBotName);
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByText(/No data found!?/i)).toBeVisible();
+  await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 };
 
 export const updateBotDetails = async (page: Page) => {
@@ -183,7 +183,7 @@ export const verifyBotSearch = async (page: Page) => {
   await expect(createdBotLink).toBeVisible();
 
   await searchBot(`${BOT_DETAILS.updatedBotName}-no-match`);
-  await expect(page.getByText(/No data found!?/i)).toBeVisible();
+  await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
   await searchInput.clear();
   await waitForAllLoadersToDisappear(page);
