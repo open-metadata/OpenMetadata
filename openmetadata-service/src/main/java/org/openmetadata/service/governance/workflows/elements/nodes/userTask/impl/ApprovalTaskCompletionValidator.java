@@ -18,8 +18,10 @@ public class ApprovalTaskCompletionValidator implements TaskListener {
       LOG.debug("[ApprovalValidator] Validating completion for task: {}", delegateTask.getId());
 
       // Get approval thresholds
-      Integer approvalThreshold = (Integer) delegateTask.getVariable("approvalThreshold");
-      Integer rejectionThreshold = (Integer) delegateTask.getVariable("rejectionThreshold");
+      Integer approvalThreshold =
+          parseThresholdValue(delegateTask.getVariable("approvalThreshold"));
+      Integer rejectionThreshold =
+          parseThresholdValue(delegateTask.getVariable("rejectionThreshold"));
 
       if (approvalThreshold == null) {
         approvalThreshold = 1;
@@ -73,20 +75,34 @@ public class ApprovalTaskCompletionValidator implements TaskListener {
         throw e;
       }
       LOG.error(
-          String.format(
-              "[%s] Approval validation error: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Approval validation error: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           e);
       // Re-throw to prevent incorrect completion
       throw e;
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "[%s] Approval validation error: ",
-              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          "[{}] Approval validation error: ",
+          getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId()),
           e);
       // Convert to runtime exception to prevent incorrect completion
       throw new RuntimeException("Validation failed: " + e.getMessage(), e);
     }
+  }
+
+  private Integer parseThresholdValue(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Integer integerValue) {
+      return integerValue;
+    }
+    if (value instanceof Number numericValue) {
+      return numericValue.intValue();
+    }
+    if (value instanceof String stringValue && !stringValue.isBlank()) {
+      return Integer.parseInt(stringValue.trim());
+    }
+    return null;
   }
 }

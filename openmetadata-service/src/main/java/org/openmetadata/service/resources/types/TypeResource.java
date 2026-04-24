@@ -303,8 +303,24 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET
@@ -544,7 +560,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {
-      LOG.error("Error processing schema for entity type: " + entityType, e);
+      LOG.error("Error processing schema for entity type: {}", entityType, e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(
               "Error processing schema for entity type: "

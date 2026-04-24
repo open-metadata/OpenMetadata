@@ -214,3 +214,21 @@ export const getDefaultIconForEntityType = (entityType?: string): FC => {
 
   return Globe01;
 };
+
+export const getEntityAvatarProps = (entity: {
+  style?: { iconURL?: string; color?: string };
+  entityType?: string;
+}) => ({
+  src:
+    entity.style?.iconURL?.startsWith('http') ||
+    entity.style?.iconURL?.startsWith('/')
+      ? entity.style.iconURL
+      : undefined,
+  className: 'tw:text-white',
+  style: {
+    backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
+  },
+  placeholderIcon: getDefaultIconForEntityType(entity.entityType) as FC<{
+    className?: string;
+  }>,
+});

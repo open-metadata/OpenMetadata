@@ -17,11 +17,11 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
+import { isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -36,7 +36,7 @@ import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/As
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ERROR_MESSAGE } from '../../../constants/constants';
+import { ERROR_MESSAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -49,21 +49,24 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import {
   addDataProducts,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -71,7 +74,6 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
-import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import {
   getQueryFilterForDataProducts,
   getQueryFilterForDomain,
@@ -104,13 +106,14 @@ import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
-import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
+import { Avatar } from '@openmetadata/ui-core-components';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
-import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -145,6 +148,11 @@ const DomainDetails = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const { isMarketplace } = useMarketplaceStore();
+  const location = useLocation();
+  const fromMarketplace =
+    (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
+    false;
   const { getEntityPermission, permissions } = usePermissionProvider();
   const routeParams = useParams<{
     fqn?: string;
@@ -203,7 +211,8 @@ const DomainDetails = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
@@ -343,12 +352,9 @@ const DomainDetails = ({
     closeDrawer: closeDataProductDrawer,
   } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.data-product') }),
-    anchor: 'right',
     width: 670,
     closeOnEscape: false,
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
+    className: 'tw:z-[20]',
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -402,18 +408,24 @@ const DomainDetails = ({
   });
 
   const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
+    const marketplaceRoot: BreadcrumbItem[] = isMarketplace
+      ? [{ name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }]
+      : [];
+
+    const rootCrumb: BreadcrumbItem = fromMarketplace
+      ? { name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }
+      : { name: t('label.domain-plural'), url: getDomainPath() };
+
     if (!domainFqn) {
-      return [{ name: t('label.domain-plural'), url: getDomainPath() }];
+      return [...marketplaceRoot, rootCrumb];
     }
 
     const arr = Fqn.split(domainFqn);
     const dataFQN: Array<string> = [];
 
     return [
-      {
-        name: t('label.domain-plural'),
-        url: getDomainPath(),
-      },
+      ...marketplaceRoot,
+      rootCrumb,
       ...arr.map((d) => {
         dataFQN.push(d);
 
@@ -423,7 +435,7 @@ const DomainDetails = ({
         };
       }),
     ];
-  }, [domainFqn, t]);
+  }, [domainFqn, isMarketplace, fromMarketplace, t]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
@@ -440,7 +452,7 @@ const DomainDetails = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(EntityType.DOMAIN, domain.fullyQualifiedName ?? '')
       );
       if (isEmpty(announcements.data)) {
@@ -490,12 +502,9 @@ const DomainDetails = ({
     closeDrawer: closeSubDomainDrawer,
   } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.sub-domain') }),
-    anchor: 'right',
     width: 670,
     closeOnEscape: false,
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
+    className: 'tw:z-[20]',
     onCancel: () => {
       subDomainForm.resetFields();
     },
@@ -659,9 +668,8 @@ const DomainDetails = ({
 
   const onNameSave = async (obj: { name: string; displayName?: string }) => {
     const { name: newName, displayName } = obj;
-    let updatedDetails = cloneDeep(domain);
 
-    updatedDetails = {
+    const updatedDetails = {
       ...domain,
       displayName: displayName?.trim(),
       name: newName?.trim(),
@@ -678,7 +686,7 @@ const DomainDetails = ({
           : newName.trim();
         navigate(getDomainDetailsPath(newFqn, activeTab));
       }
-    } catch (error) {
+    } catch {
       setIsNameEditing(false);
     }
   };
@@ -866,21 +874,9 @@ const DomainDetails = ({
 
   const iconData = useMemo(() => {
     return (
-      <EntityAvatar
-        className="entity-header-avatar"
-        entity={{
-          ...domain,
-          entityType: 'domain',
-          parent: isSubDomain ? { type: 'domain' } : undefined,
-        }}
-        size={isTreeView ? 60 : 91}
-        sx={{
-          borderRadius: '5px',
-          border: '2px solid',
-          borderColor: theme.palette.allShades.white,
-          marginTop: isTreeView ? 0 : '-25px',
-          marginRight: 2,
-        }}
+      <Avatar
+        size={isTreeView ? 'md' : '2xl'}
+        {...getEntityAvatarProps({ ...domain, entityType: 'domain' })}
       />
     );
   }, [domain, isSubDomain, theme, isTreeView]);
@@ -1137,14 +1133,12 @@ const DomainDetails = ({
   return (
     <>
       {breadcrumbs}
-      <Box
-        className={isTreeView ? 'domain-tree-view-variant' : ''}
-        sx={{
-          ...getDomainContainerStyles(theme),
-          ...(isTreeView && { border: 'none' }),
-        }}>
+      <div
+        className={classNames('domain-page-container', {
+          'domain-tree-view-variant': isTreeView,
+        })}>
         {content}
-      </Box>
+      </div>
     </>
   );
 };

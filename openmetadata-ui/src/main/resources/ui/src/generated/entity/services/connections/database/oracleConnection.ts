@@ -86,6 +86,11 @@ export interface OracleConnection {
      */
     type?: OracleType;
     /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
+    /**
      * Username to connect to Oracle. This user should have privileges to read all the metadata
      * in Oracle.
      */

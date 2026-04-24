@@ -345,7 +345,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'table_search_index',
+      searchIndex: SearchIndex.TABLE,
     });
   });
 
@@ -363,7 +363,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'domain_search_index',
+      searchIndex: SearchIndex.DOMAIN,
     });
   });
 
@@ -386,7 +386,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'table_search_index',
+      searchIndex: SearchIndex.TABLE,
     });
   });
 
@@ -409,7 +409,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: ['team_search_index', 'user_search_index'],
+      searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
     });
   });
 
@@ -432,7 +432,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'user_search_index',
+      searchIndex: SearchIndex.USER,
     });
   });
 
@@ -450,7 +450,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: 'user_search_index',
+      searchIndex: SearchIndex.USER,
     });
   });
 
@@ -563,7 +563,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'test_suite_search_index',
+      searchIndex: SearchIndex.TEST_SUITE,
     });
   });
 
@@ -1081,7 +1081,7 @@ describe('handleAlertSave - downstream notification fields', () => {
               entityType: 'table',
               name: 'table',
             },
-            _index: 'table_search_index',
+            _index: SearchIndex.TABLE,
           },
           {
             _source: {
@@ -1090,7 +1090,7 @@ describe('handleAlertSave - downstream notification fields', () => {
               entityType: 'user',
               name: 'user',
             },
-            _index: 'user_search_index',
+            _index: SearchIndex.USER,
           },
         ],
       },
@@ -1221,7 +1221,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 displayName: 'Test Entity',
                 entityType: 'test',
               },
-              _index: 'test_search_index',
+              _index: 'test',
             },
           ],
         },
@@ -1252,7 +1252,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 fullyQualifiedName: 'test.database.table1',
                 entityType: 'table',
               },
-              _index: 'table_search_index',
+              _index: SearchIndex.TABLE,
             },
             {
               _source: {
@@ -1260,7 +1260,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 fullyQualifiedName: 'test.database.table2',
                 entityType: 'table',
               },
-              _index: 'table_search_index',
+              _index: SearchIndex.TABLE,
             },
           ],
         },
@@ -1303,7 +1303,7 @@ describe('handleAlertSave - downstream notification fields', () => {
                 fullyQualifiedName: 'test.entity',
                 // entityType is missing
               },
-              _index: 'test_search_index',
+              _index: 'test',
             },
           ],
         },

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -39,25 +39,26 @@ import {
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 
-const entities = [
-  new ApiEndpointClass(),
-  new TableClass(),
-  new StoredProcedureClass(),
-  new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-  new DashboardDataModelClass(),
-  new DirectoryClass(),
-  new FileClass(),
-  new SpreadsheetClass(),
-  new WorksheetClass(),
+let adminUser: UserClass;
+
+const entityClasses = [
+  ApiEndpointClass,
+  TableClass,
+  StoredProcedureClass,
+  DashboardClass,
+  PipelineClass,
+  TopicClass,
+  MlModelClass,
+  ContainerClass,
+  SearchIndexClass,
+  DashboardDataModelClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ];
 
-// use the admin user to login
-const adminUser = new UserClass();
+let entities: InstanceType<(typeof entityClasses)[number]>[];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -71,6 +72,9 @@ const test = base.extend<{ page: Page }>({
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow();
+
+    adminUser = new UserClass();
+    entities = entityClasses.map((EntityClass) => new EntityClass());
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
@@ -148,14 +152,17 @@ test.describe('Entity Version pages', () => {
     await afterAction();
   });
 
-  entities.forEach((entity) => {
-    test(`${entity.getType()}`, async ({ page }) => {
+  entityClasses.forEach((EntityClass) => {
+    test(`${new EntityClass().getType()}`, async ({ page }) => {
       test.slow();
+
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
 
       const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
 
-      await page.waitForLoadState('networkidle');
       // Read actual version from API response to avoid hardcoding version numbers.
       const setupPatchVersion = entity.entityResponseData.version;
       const setupVersionText = `v${Number.parseFloat(
@@ -163,11 +170,14 @@ test.describe('Entity Version pages', () => {
       ).toFixed(1)}`;
       const versionDetailResponse = page.waitForResponse(
         (response) =>
-          response.url().includes(`/versions/${setupPatchVersion}`) &&
-          response.status() === 200
+          response.url().includes('/versions') && response.status() === 200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
+      // Wait for version selector to render before clicking
+      await page
+        .locator(`[data-testid="version-selector-${setupVersionText}"]`)
+        .waitFor({ state: 'visible' });
       // Explicitly select the incremental version in the history panel.
       await page
         .locator(`[data-testid="version-selector-${setupVersionText}"]`)
@@ -269,7 +279,7 @@ test.describe('Entity Version pages', () => {
             .locator('.ant-modal-footer [data-testid="save-button"]')
             .click();
 
-          await page.waitForSelector('.ant-modal-body', {
+          await page.locator('.ant-modal-body').waitFor({
             state: 'detached',
           });
 
@@ -339,7 +349,7 @@ test.describe('Entity Version pages', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="delete-button"]');
 
-        await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.locator('[role="dialog"].ant-modal').waitFor();
 
         await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 

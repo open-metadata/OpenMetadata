@@ -124,7 +124,7 @@ class QueryParserSource(Source, ABC):
 
     def get_filters(self) -> str:
         if self.source_config.filterCondition:
-            return f"{self.filters} AND {self.source_config.filterCondition}"
+            return f"{self.filters} AND ({self.source_config.filterCondition})"
         return self.filters
 
     def get_query_parser_type(self) -> QueryParserType:

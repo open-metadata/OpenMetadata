@@ -94,6 +94,12 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
         "type": "text",
         "fields": {
@@ -190,6 +196,110 @@
       "entityStatus": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "upstreamLineage": {
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "toEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "columns": {
+            "properties": {
+              "fromColumns": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "toColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "docId": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 512
+              }
+            }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
+          }
+        }
       },
       "owners": {
         "type": "nested",
@@ -573,6 +683,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -592,6 +705,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

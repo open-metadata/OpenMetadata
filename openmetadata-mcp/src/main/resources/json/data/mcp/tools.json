@@ -210,6 +210,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "Glossary Term reviewers. These are OpenMetadata Users or Teams who will review and approve the glossary term. If reviewers are set, the term will go through an approval workflow (status will be Draft until approved). If you don't know who the reviewers should be, you can leave this empty.",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

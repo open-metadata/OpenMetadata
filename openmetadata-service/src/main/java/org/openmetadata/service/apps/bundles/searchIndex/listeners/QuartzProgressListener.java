@@ -234,7 +234,7 @@ public class QuartzProgressListener implements ReindexingProgressListener {
       if (ctx == null) {
         ctx = new SuccessContext();
       }
-      ctx.withAdditionalProperty("stats", jobData.getStats());
+      ctx.setStats(jobData.getStats());
 
       Map<String, Object> metadata = latestDistributedMetadata;
       if (metadata != null) {
@@ -247,8 +247,7 @@ public class QuartzProgressListener implements ReindexingProgressListener {
     }
 
     if (jobData.getFailure() != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
+      appRecord.setFailureContext(new FailureContext().withFailure(jobData.getFailure()));
     }
 
     return appRecord;

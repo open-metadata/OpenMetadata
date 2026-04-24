@@ -149,6 +149,7 @@ export interface EntityReference {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
@@ -822,6 +823,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

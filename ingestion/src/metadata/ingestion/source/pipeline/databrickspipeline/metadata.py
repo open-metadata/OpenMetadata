@@ -1225,15 +1225,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
             # Works automatically - no configuration required!
             yield from self._yield_kafka_lineage(pipeline_details, pipeline_entity)
 
-            if not pipeline_details.job_id:
+            entity_id = pipeline_details.job_id or pipeline_details.pipeline_id
+            if not entity_id:
                 return
 
-            table_lineage_list = self.client.get_table_lineage(
-                job_id=pipeline_details.job_id
-            )
-            logger.debug(
-                f"Processing pipeline lineage for job {pipeline_details.job_id}"
-            )
+            table_lineage_list = self.client.get_table_lineage(entity_id=entity_id)
+            logger.debug(f"Processing pipeline lineage for {entity_id}")
             if table_lineage_list:
                 for table_lineage in table_lineage_list:
                     source_table_full_name = table_lineage.get("source_table_full_name")
@@ -1296,7 +1293,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         processed_column_lineage = (
                             self._process_and_validate_column_lineage(
                                 column_lineage=self.client.get_column_lineage(
-                                    job_id=pipeline_details.job_id,
+                                    entity_id=entity_id,
                                     TableKey=(
                                         source_table_full_name,
                                         target_table_full_name,
@@ -1330,15 +1327,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 )
                             )
                         )
-
-                else:
-                    logger.debug(
-                        f"No source or target table full name found for job {pipeline_details.job_id}"
-                    )
             else:
-                logger.debug(
-                    f"No table lineage found for job {pipeline_details.job_id}"
-                )
+                logger.debug(f"No table lineage found for {entity_id}")
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

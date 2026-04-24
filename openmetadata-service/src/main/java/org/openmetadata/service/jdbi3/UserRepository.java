@@ -29,11 +29,14 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import com.google.gson.Gson;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,6 +68,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -104,6 +108,21 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+  private static final int MAX_TASK_CLEANUP_RETRIES = 3;
+  private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
+  private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
+  private static final IntervalFunction TASK_CLEANUP_RETRY_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS);
+      };
+  private static final RetryConfig TASK_CLEANUP_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(MAX_TASK_CLEANUP_RETRIES)
+          .intervalFunction(TASK_CLEANUP_RETRY_INTERVAL_FUNCTION)
+          .retryOnException(UserRepository::isTransientDeadlock)
+          .build();
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
@@ -241,17 +260,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
+  }
+
+  @Override
   public void storeEntity(User user, boolean update) {
-    List<EntityReference> roles = user.getRoles();
-    List<EntityReference> teams = user.getTeams();
-    EntityReference defaultPersona = user.getDefaultPersona();
-
-    user.withRoles(null)
-        .withTeams(null)
-        .withInheritedRoles(null)
-        .withInheritedPersonas(null)
-        .withDefaultPersona(null);
-
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
@@ -259,39 +273,25 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     store(user, update);
-
-    user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
   }
 
   @Override
   public void storeEntities(List<User> entities) {
-    List<User> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
 
     for (User user : entities) {
-      List<EntityReference> roles = user.getRoles();
-      List<EntityReference> teams = user.getTeams();
-      EntityReference defaultPersona = user.getDefaultPersona();
-
-      user.withRoles(null)
-          .withTeams(null)
-          .withInheritedRoles(null)
-          .withInheritedPersonas(null)
-          .withDefaultPersona(null);
-
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
         secretsManager.encryptAuthenticationMechanism(
             user.getName(), user.getAuthenticationMechanism());
       }
 
-      String jsonCopy = gson.toJson(user);
-      entitiesToStore.add(gson.fromJson(jsonCopy, User.class));
-
-      user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
+      fqns.add(user.getFullyQualifiedName());
+      jsons.add(serializeForStorage(user));
     }
 
-    storeMany(entitiesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -324,7 +324,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Use the custom DAO method for optimized update
     // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
-    ((UserDAO) daoCollection.userDAO()).updateLastActivityTime(fqn, lastActivityTime);
+    daoCollection.userDAO().updateLastActivityTime(fqn, lastActivityTime);
   }
 
   @Transaction
@@ -335,7 +335,7 @@ public class UserRepository extends EntityRepository<User> {
 
     // Bulk update all users' activity times in a single query
     // This is much more efficient than individual updates
-    UserDAO userDAO = (UserDAO) daoCollection.userDAO();
+    UserDAO userDAO = daoCollection.userDAO();
 
     // Build the CASE statement and collect nameHashes
     StringBuilder caseBuilder = new StringBuilder();
@@ -624,7 +624,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
-      Team team = Entity.getEntity(t, "", Include.ALL);
+      Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {
@@ -1255,8 +1255,8 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
-    // Remove suggestions
-    daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
+    deleteSuggestionTasksForUser(entity);
+
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
@@ -1266,6 +1266,51 @@ public class UserRepository extends EntityRepository<User> {
             LOG.error("Error updating test case incident assignee: ", ex);
           }
         });
+  }
+
+  private void deleteSuggestionTasksForUser(User entity) {
+    Retry retry = Retry.of("user-task-cleanup", TASK_CLEANUP_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying suggestion task cleanup for user {} after transient deadlock in {} "
+                        + "ms (attempt {}/{})",
+                    entity.getFullyQualifiedName(),
+                    event.getWaitInterval().toMillis(),
+                    event.getNumberOfRetryAttempts() + 1,
+                    MAX_TASK_CLEANUP_RETRIES));
+    retry.executeRunnable(
+        () ->
+            daoCollection
+                .taskDAO()
+                .deleteByCreatorAndCategory(
+                    entity.getId().toString(), TaskCategory.MetadataUpdate.value()));
+  }
+
+  static long getTaskCleanupRetryDelayMillis(int attempt) {
+    return TASK_CLEANUP_RETRY_INTERVAL_FUNCTION.apply(attempt);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      if (current instanceof SQLException sqlException) {
+        int errorCode = sqlException.getErrorCode();
+        String sqlState = sqlException.getSQLState();
+        if (errorCode == 1213
+            || errorCode == 1205
+            || "40001".equals(sqlState)
+            || "40P01".equals(sqlState)) {
+          return true;
+        }
+      }
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -1337,30 +1382,47 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
-      recordChange(
+      compareAndUpdate(
           "lastLoginTime",
-          original.getLastLoginTime(),
-          updated.getLastLoginTime(),
-          false,
-          objectMatch,
-          false);
+          () ->
+              recordChange(
+                  "lastLoginTime",
+                  original.getLastLoginTime(),
+                  updated.getLastLoginTime(),
+                  false,
+                  objectMatch,
+                  false));
 
-      // Updates
-      updateRoles(original, updated);
-      updateTeams(original, updated);
-      updatePersonas(original, updated);
-      updateDefaultPersona(original, updated);
-      recordChange("profile", original.getProfile(), updated.getProfile(), true);
-      recordChange("timezone", original.getTimezone(), updated.getTimezone());
-      recordChange("isBot", original.getIsBot(), updated.getIsBot());
-      recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-      recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
-      recordChange(
-          "allowImpersonation", original.getAllowImpersonation(), updated.getAllowImpersonation());
-      updatePersonaPreferences(original, updated);
-      updateAuthenticationMechanism(original, updated);
-      // Invalidate policy cache for this user when roles/teams change
-      SubjectCache.invalidateUser(updated.getName());
+      compareAndUpdate("roles", () -> updateRoles(original, updated));
+      compareAndUpdate("teams", () -> updateTeams(original, updated));
+      compareAndUpdate("personas", () -> updatePersonas(original, updated));
+      compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
+      compareAndUpdate(
+          "profile",
+          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
+      compareAndUpdate(
+          "timezone",
+          () -> recordChange("timezone", original.getTimezone(), updated.getTimezone()));
+      compareAndUpdate(
+          "isBot", () -> recordChange("isBot", original.getIsBot(), updated.getIsBot()));
+      compareAndUpdate(
+          "isAdmin", () -> recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin()));
+      compareAndUpdate(
+          "isEmailVerified",
+          () ->
+              recordChange(
+                  "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
+      compareAndUpdate(
+          "allowImpersonation",
+          () ->
+              recordChange(
+                  "allowImpersonation",
+                  original.getAllowImpersonation(),
+                  updated.getAllowImpersonation()));
+      compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
+      compareAndUpdate(
+          "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
+      compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
     }
 
     private void updateRoles(User original, User updated) {
@@ -1529,8 +1591,7 @@ public class UserRepository extends EntityRepository<User> {
               systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
 
           if (!isAssignedPersona && !isSystemDefaultPersona) {
-            LOG.warn(
-                "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
+            LOG.warn("Persona with ID {} is not assigned to this user", pref.getPersonaId());
           }
           if (pref.getLandingPageSettings() != null) {
             UserUtil.validateUserPersonaPreferencesImage(pref.getLandingPageSettings());

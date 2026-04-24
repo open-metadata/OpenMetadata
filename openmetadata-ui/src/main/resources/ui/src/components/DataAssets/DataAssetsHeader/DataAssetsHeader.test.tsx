@@ -185,6 +185,8 @@ jest.mock('../../../utils/TableClassBase', () => ({
   getAlertEnableStatus: jest
     .fn()
     .mockImplementation(() => mockIsAlertSupported),
+  getShowRequestDataAccess: jest.fn().mockImplementation(() => false),
+  getRequestDataAccessDrawer: jest.fn().mockImplementation(() => null),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({
@@ -458,6 +460,49 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('certification-label')).not.toBeInTheDocument();
   });
 
+  it('should not render the auto-pilot button when user has no Trigger permission (view-only policy)', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+        permissions={{
+          ...DEFAULT_ENTITY_PERMISSION,
+          ViewAll: true,
+          ViewBasic: true,
+          Trigger: false,
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('trigger-auto-pilot-application-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should not render the auto-pilot button when user has deny-all permissions', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+        permissions={DEFAULT_ENTITY_PERMISSION}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('trigger-auto-pilot-application-button')
+    ).not.toBeInTheDocument();
+  });
+
   it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
@@ -468,6 +513,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -492,6 +538,7 @@ describe('DataAssetsHeader component', () => {
           serviceType: DatabaseServiceType.BigQuery,
         }}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -510,6 +557,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -530,6 +578,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButtonMessage={customMessage}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -549,6 +598,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
       />
     );
 
@@ -556,6 +606,14 @@ describe('DataAssetsHeader component', () => {
 
     expect(button).toBeInTheDocument();
     expect(button).toBeEnabled();
+  });
+
+  it('should not render the request data access button on OSS', () => {
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      screen.queryByTestId('request-data-access-button')
+    ).not.toBeInTheDocument();
   });
 
   describe('dataContractLatestResultButton', () => {

@@ -14,7 +14,8 @@
 import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import { SERVICE_TYPE } from '../../constant/service';
 import {
   CERT_FILE,
   lookerFormDetails,
@@ -23,16 +24,12 @@ import {
   supersetFormDetails3,
   supersetFormDetails4,
 } from '../../constant/serviceForm';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { UserClass } from '../../support/user/UserClass';
-import {
-  createNewPage,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { visitServiceDetailsPage } from '../../utils/service';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const SERVICE_NAMES = {
   service1: `PlaywrightService_${uuid()}`,
@@ -56,6 +53,12 @@ test.describe(
       const { apiContext, afterAction } = await createNewPage(browser);
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup admin user', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await adminUser.delete(apiContext);
       await afterAction();
     });
 
@@ -121,12 +124,11 @@ test.describe(
 
         await endTestConnection1;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 2
         await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -161,12 +163,11 @@ test.describe(
 
         await endTestConnection2;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 3
         await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -207,12 +208,11 @@ test.describe(
 
         await endTestConnection3;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
 
         // Fill superset form details - 4
         await fillSupersetFormDetails({ page, ...supersetFormDetails4 });
@@ -264,7 +264,7 @@ test.describe(
         await fileInput1.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'visible',
         });
 
@@ -274,7 +274,7 @@ test.describe(
           .click();
 
         // Wait for file removal to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'hidden',
         });
 
@@ -289,7 +289,7 @@ test.describe(
         await fileInput2.setInputFiles(testCertPath);
 
         // Wait for file upload to complete
-        await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        await page.locator(`[title="${CERT_FILE}"]`).waitFor({
           state: 'visible',
         });
 
@@ -318,12 +318,11 @@ test.describe(
 
         await endTestConnection1;
 
-        await page.waitForSelector(
-          '[data-testid="test-connection-modal"] .ant-modal-mask',
-          {
+        await page
+          .locator('[data-testid="test-connection-modal"] .ant-modal-mask')
+          .waitFor({
             state: 'detached',
-          }
-        );
+          });
       });
     });
 
@@ -332,7 +331,6 @@ test.describe(
         test.slow();
 
         await page.goto('/databaseServices/add-service');
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('BigQuery').click();
@@ -350,16 +348,13 @@ test.describe(
         await page.getByTestId('next-button').click();
         await page.getByTestId('submit-btn').click();
         await page.getByTestId('submit-btn').click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('entity-header-title')).toBeVisible();
 
         await page.getByRole('link', { name: 'Database Services' }).click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('add-service-button').click();
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('Databricks').click();
         await page.getByTestId('next-button').click();
@@ -368,34 +363,23 @@ test.describe(
         await page
           .getByTestId('service-name')
           .fill(`${SERVICE_NAMES.service1}`);
-        await page.waitForLoadState('networkidle');
 
         await expect(page.locator('#name_help')).toContainText(
           'Name already exists.'
         );
+      });
 
-        await page.getByRole('link', { name: 'Database Services' }).click();
-        await page.waitForLoadState('networkidle');
-        await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId(`service-name-${SERVICE_NAMES.service1}`)
-          .click();
-        await page.waitForLoadState('networkidle');
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('delete-button-title').click();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
 
-        const deleteResponse = page.waitForResponse(
-          `/api/v1/services/databaseServices/async/*?hardDelete=false&recursive=true`
+        // Cleanup the created service
+        await apiContext.delete(
+          `/api/v1/services/databaseServices/name/${encodeURIComponent(
+            SERVICE_NAMES.service1
+          )}?recursive=true&hardDelete=true`
         );
-        await page.getByTestId('confirm-button').click();
-        await deleteResponse;
 
-        await toastNotification(
-          page,
-          /(deleted successfully!|Delete operation initiated)/,
-          BIG_ENTITY_DELETE_TIMEOUT
-        );
+        await afterAction();
       });
     });
 
@@ -404,7 +388,6 @@ test.describe(
         page,
       }) => {
         await page.goto('/dashboardServices/add-service');
-        await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId('Looker').click();
@@ -417,27 +400,36 @@ test.describe(
           .fill(`${SERVICE_NAMES.service2}`);
         await page.getByTestId('next-button').click();
 
-        await page.locator('#root\\/clientId').clear();
-        await page.fill('#root\\/clientId', lookerFormDetails.clientId);
+        await page.locator(String.raw`#root\/clientId`).clear();
+        await page.fill(
+          String.raw`#root\/clientId`,
+          lookerFormDetails.clientId
+        );
 
-        await page.locator('#root\\/clientSecret').clear();
-        await page.fill('#root\\/clientSecret', lookerFormDetails.clientSecret);
+        await page.locator(String.raw`#root\/clientSecret`).clear();
+        await page.fill(
+          String.raw`#root\/clientSecret`,
+          lookerFormDetails.clientSecret
+        );
 
-        await page.locator('#root\\/hostPort').clear();
-        await page.fill('#root\\/hostPort', lookerFormDetails.hostPort);
+        await page.locator(String.raw`#root\/hostPort`).clear();
+        await page.fill(
+          String.raw`#root\/hostPort`,
+          lookerFormDetails.hostPort
+        );
 
         await page
           .getByTestId('select-widget-root/gitCredentials__oneof_select')
           .click();
         await page.click(`.ant-select-dropdown:visible [title="Local Path"]`);
 
-        await page.waitForSelector('#root\\/gitCredentials', {
+        await page.locator(String.raw`#root\/gitCredentials`).waitFor({
           state: 'visible',
         });
 
-        await page.locator('#root\\/gitCredentials').clear();
+        await page.locator(String.raw`#root\/gitCredentials`).clear();
         await page.fill(
-          '#root\\/gitCredentials',
+          String.raw`#root\/gitCredentials`,
           lookerFormDetails.gitCredentials
         );
 
@@ -462,6 +454,104 @@ test.describe(
         expect(testConnection.request.connection.config.gitCredentials).toEqual(
           lookerFormDetails.gitCredentials
         );
+      });
+    });
+
+    // Regression coverage for issue #25434:
+    // Clearing `schemaRegistryTopicSuffixName` on a Kafka connection must
+    // send an empty string to the backend instead of dropping the field,
+    // so the cleared value is persisted on reload.
+    test.describe('Kafka', () => {
+      const kafkaService = new MessagingServiceClass(
+        `pw-kafka-empty-suffix-${uuid()}`
+      );
+
+      test.beforeAll(
+        'Create Kafka service with suffix set',
+        async ({ browser }) => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+          await kafkaService.create(apiContext);
+          await kafkaService.patch(apiContext, [
+            {
+              op: 'add',
+              path: '/connection/config/schemaRegistryURL',
+              value: 'http://localhost:8081',
+            },
+            {
+              op: 'add',
+              path: '/connection/config/schemaRegistryTopicSuffixName',
+              value: '-value',
+            },
+          ]);
+          await afterAction();
+        }
+      );
+
+      test.afterAll('Cleanup Kafka service', async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await kafkaService.delete(apiContext);
+        await afterAction();
+      });
+
+      test('should persist empty schemaRegistryTopicSuffixName when the field is cleared', async ({
+        page,
+      }) => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: kafkaService.entity.name,
+            type: SERVICE_TYPE.Messaging,
+          },
+          false,
+          false
+        );
+
+        await page.getByRole('tab', { name: 'Connection' }).click();
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+
+        const suffixInput = page.locator(
+          String.raw`#root\/schemaRegistryTopicSuffixName`
+        );
+
+        await expect(suffixInput).toHaveValue('-value');
+        await suffixInput.clear();
+        await expect(suffixInput).toHaveValue('');
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/services/messagingServices') &&
+            response.request().method() === 'PATCH'
+        );
+
+        await page.getByTestId('submit-btn').click();
+        await page.getByTestId('submit-btn').click();
+
+        const patch = await patchResponse;
+        const patchBody = patch.request().postDataJSON() as Array<{
+          op: string;
+          path: string;
+          value?: unknown;
+        }>;
+
+        const suffixOp = patchBody.find(
+          (op) => op.path === '/connection/config/schemaRegistryTopicSuffixName'
+        );
+
+        // The fix must send an explicit empty string, not drop the field
+        // (which would leave the stale "-value" on the server).
+        expect(suffixOp).toBeDefined();
+        expect(suffixOp?.value).toBe('');
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Reopen the edit form and verify the cleared value persisted.
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.locator(String.raw`#root\/schemaRegistryTopicSuffixName`)
+        ).toHaveValue('');
       });
     });
   }

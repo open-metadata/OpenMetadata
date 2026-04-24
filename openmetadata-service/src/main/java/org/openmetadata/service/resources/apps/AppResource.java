@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -46,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -58,6 +61,7 @@ import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -93,6 +97,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
@@ -118,6 +123,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ScheduleType.NoSchedule,
           ScheduleType.OnlyManual);
   private final AppMapper mapper = new AppMapper();
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return listOf(MetadataOperation.TRIGGER, MetadataOperation.DEPLOY);
+  }
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -368,8 +378,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
               case SUCCESS -> AppRunRecord.Status.SUCCESS;
               case FAILED, PARTIAL_SUCCESS -> AppRunRecord.Status.FAILED;
               case RUNNING -> AppRunRecord.Status.RUNNING;
+              case STOPPED -> AppRunRecord.Status.STOPPED;
             })
-        .withConfig(pipelineStatus.getConfig());
+        .withConfig(pipelineStatus.getConfig())
+        .withProperties(
+            pipelineStatus.getRunId() != null
+                ? Map.of("pipelineRunId", pipelineStatus.getRunId())
+                : null);
   }
 
   private ResultList<AppRunRecord> sortRunsByStartTime(ResultList<AppRunRecord> runs) {
@@ -382,6 +397,48 @@ public class AppResource extends EntityResource<App, AppRepository> {
             AppRunRecord::getStartTime, Comparator.nullsLast(Comparator.reverseOrder())));
     runs.setData(sortedRuns);
     return runs;
+  }
+
+  @GET
+  @Path("/name/{name}/live-indexing-queue")
+  @Operation(
+      operationId = "listSearchIndexRetryQueue",
+      summary = "List Search Index Retry Queue",
+      description =
+          "Get the current live indexing retry queue entries for the SearchIndexingApplication.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of retry queue records",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response listRetryQueue(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit records. (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000)
+          int limitParam,
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          int offset) {
+    App app = repository.getByName(uriInfo, name, repository.getFields("id"));
+    if (!"SearchIndexingApplication".equals(app.getName())) {
+      throw new BadRequestException(
+          "Live indexing queue is only available for SearchIndexingApplication");
+    }
+    CollectionDAO.SearchIndexRetryQueueDAO retryQueueDAO =
+        Entity.getCollectionDAO().searchIndexRetryQueueDAO();
+    var records = retryQueueDAO.listAll(limitParam, offset);
+    int total = retryQueueDAO.countAll();
+    return Response.ok(new ResultList<>(records, offset, total)).build();
   }
 
   @GET
@@ -479,12 +536,27 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           @DefaultValue("")
-          String after) {
+          String after,
+      @Parameter(
+              description =
+                  "Pipeline run ID to fetch logs for a specific run. "
+                      + "If not provided, returns logs for the latest run.",
+              schema = @Schema(type = "string"))
+          @QueryParam("runId")
+          String runId,
+      @Parameter(
+              description = "Maximum number of lines to return (only applies to streamable logs)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("1000")
+          int limit) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
-          .build();
+      AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
+      if (latestRun == null) {
+        return Response.status(Response.Status.NO_CONTENT).build();
+      }
+      return Response.status(Response.Status.OK).entity(latestRun).build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -492,14 +564,61 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
-        return Response.ok(
-                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after),
-                MediaType.APPLICATION_JSON_TYPE)
-            .build();
+                uriInfo,
+                pipelineRef.getId(),
+                ingestionPipelineRepository.getFields(
+                    FIELD_OWNERS + ",pipelineStatuses,ingestionRunner"));
+        Map<String, String> lastLogs =
+            getAppLastLogs(ingestionPipelineRepository, ingestionPipeline, after, runId, limit);
+        return Response.ok(lastLogs, MediaType.APPLICATION_JSON_TYPE).build();
       }
     }
     throw new BadRequestException("Failed to Get Logs for the Installation.");
+  }
+
+  private Map<String, String> getAppLastLogs(
+      IngestionPipelineRepository ingestionPipelineRepository,
+      IngestionPipeline ingestionPipeline,
+      String after,
+      String runId,
+      int limit) {
+    boolean useStreamableLogs =
+        Boolean.TRUE.equals(ingestionPipeline.getEnableStreamableLogs())
+            || (ingestionPipeline.getIngestionRunner() != null
+                && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
+    if (useStreamableLogs) {
+      String effectiveRunId =
+          !nullOrEmpty(runId)
+              ? runId
+              : (ingestionPipeline.getPipelineStatuses() != null
+                  ? ingestionPipeline.getPipelineStatuses().getRunId()
+                  : null);
+      if (!nullOrEmpty(effectiveRunId)) {
+        UUID runUuid;
+        try {
+          runUuid = UUID.fromString(effectiveRunId);
+        } catch (IllegalArgumentException e) {
+          throw new BadRequestException("Invalid runId format: " + effectiveRunId);
+        }
+        Map<String, Object> raw =
+            ingestionPipelineRepository.getLogs(
+                ingestionPipeline.getFullyQualifiedName(), runUuid, after, limit);
+        Map<String, String> lastLogs =
+            raw.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString()));
+        Object logs = lastLogs.remove("logs");
+        if (logs != null) {
+          lastLogs.put(
+              PipelineServiceClientInterface.TYPE_TO_TASK.get(
+                  ingestionPipeline.getPipelineType().toString()),
+              logs.toString());
+        }
+        return lastLogs;
+      }
+    }
+    return pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId);
   }
 
   @GET
@@ -531,9 +650,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
-          .build();
+      AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
+      if (latestRun == null) {
+        return Response.status(Response.Status.NO_CONTENT).build();
+      }
+      return Response.status(Response.Status.OK).entity(latestRun).build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -574,8 +695,24 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET
@@ -1045,6 +1182,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(
@@ -1084,6 +1224,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
     ApplicationHandler.getInstance()
@@ -1120,6 +1263,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
@@ -1167,9 +1312,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      @Parameter(
+              description = "Pipeline run ID to stop a specific run",
+              schema = @Schema(type = "string"))
+          @QueryParam("runId")
+          String runId) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
         Thread.ofVirtual()
@@ -1179,15 +1331,146 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .entity("Application stop in progress. Please check status via.")
             .build();
       } else {
-        if (!app.getPipelines().isEmpty()) {
-          IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
-          PipelineServiceClientResponse response =
-              pipelineServiceClient.killIngestion(ingestionPipeline);
-          return Response.status(response.getCode()).entity(response).build();
+        if (nullOrEmpty(app.getPipelines())) {
+          throw new BadRequestException(
+              String.format(
+                  "Application [%s] supports interrupts but has no associated pipeline configured.",
+                  name));
+        }
+        IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
+        if (runId != null && !runId.isBlank()) {
+          return stopSpecificRun(uriInfo, ingestionPipeline, runId);
+        } else {
+          return stopAllRuns(app, ingestionPipeline);
         }
       }
     }
     throw new BadRequestException("Application does not support Interrupts.");
+  }
+
+  private Response stopSpecificRun(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, String runId) {
+    markPipelineStatusAsStopped(ingestionPipeline, runId);
+    PipelineServiceClientResponse killResponse;
+    try {
+      killResponse = pipelineServiceClient.killIngestionRun(ingestionPipeline, runId);
+    } catch (Exception e) {
+      LOG.error(
+          "Kill request for run [{}] on pipeline [{}] failed after DB update. Workflow may still be running.",
+          runId,
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return Response.status(Response.Status.BAD_GATEWAY)
+          .entity(
+              new PipelineServiceClientResponse()
+                  .withCode(Response.Status.BAD_GATEWAY.getStatusCode())
+                  .withReason(e.getMessage())
+                  .withPlatform(pipelineServiceClient.getPlatform()))
+          .build();
+    }
+    return toStopResponse(killResponse);
+  }
+
+  private Response stopAllRuns(App app, IngestionPipeline ingestionPipeline) {
+    Long runStartTime =
+        repository
+            .getLatestAppRunsOptional(app, ingestionPipeline.getService().getId())
+            .map(AppRunRecord::getStartTime)
+            .orElse(null);
+    markLatestPipelineStatusAsStopped(ingestionPipeline, runStartTime);
+    PipelineServiceClientResponse killResponse;
+    try {
+      killResponse = pipelineServiceClient.killIngestion(ingestionPipeline);
+    } catch (Exception e) {
+      LOG.error(
+          "Kill request for pipeline [{}] failed after DB update. Workflows may still be running.",
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return Response.status(Response.Status.BAD_GATEWAY)
+          .entity(
+              new PipelineServiceClientResponse()
+                  .withCode(Response.Status.BAD_GATEWAY.getStatusCode())
+                  .withReason(e.getMessage())
+                  .withPlatform(pipelineServiceClient.getPlatform()))
+          .build();
+    }
+    return toStopResponse(killResponse);
+  }
+
+  private void markPipelineStatusAsStopped(IngestionPipeline ingestionPipeline, String runId) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    try {
+      PipelineStatus status =
+          ingestionPipelineRepository.getPipelineStatus(
+              ingestionPipeline.getFullyQualifiedName(), runId);
+      if (status == null) {
+        LOG.warn(
+            "Pipeline status not found in DB for run [{}] on pipeline [{}]. Proceeding with kill but DB state will remain inconsistent.",
+            runId,
+            ingestionPipeline.getFullyQualifiedName());
+        return;
+      }
+      if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
+        status.setPipelineState(PipelineStatusType.STOPPED);
+        status.setEndDate(System.currentTimeMillis());
+        // Use updatePipelineStatusByRunId instead of addPipelineStatus to avoid overwriting
+        // the pipeline-level current status. When stopping a specific run, other runs may still
+        // be active and their status should not be affected.
+        ingestionPipelineRepository.updatePipelineStatusByRunId(
+            ingestionPipeline.getFullyQualifiedName(), status);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to mark run [{}] as STOPPED in DB for pipeline [{}]. Kill will proceed but DB status may remain inconsistent.",
+          runId,
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+    }
+  }
+
+  private void markLatestPipelineStatusAsStopped(
+      IngestionPipeline ingestionPipeline, Long runStartTime) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    long now = System.currentTimeMillis();
+    long startTs = runStartTime != null ? runStartTime : now - TimeUnit.HOURS.toMillis(1);
+    ResultList<PipelineStatus> statuses;
+    try {
+      statuses =
+          ingestionPipelineRepository.listPipelineStatus(
+              ingestionPipeline.getFullyQualifiedName(), startTs, now);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to list pipeline statuses for [{}]. Kill will proceed but DB statuses may remain inconsistent.",
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return;
+    }
+    for (PipelineStatus status : statuses.getData()) {
+      if (status.getRunId() == null || status.getRunId().isBlank()) {
+        continue;
+      }
+      if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
+        markPipelineStatusAsStopped(ingestionPipeline, status.getRunId());
+      }
+    }
+  }
+
+  private Response toStopResponse(PipelineServiceClientResponse killResponse) {
+    int code = killResponse.getCode();
+    if (code >= 200 && code < 300) {
+      return Response.status(code).entity(killResponse).build();
+    }
+    if (code == 404) {
+      LOG.warn(
+          "Kill request returned 404 — workflow already completed. DB status already marked STOPPED.");
+      return Response.ok(killResponse).build();
+    }
+    LOG.error(
+        "Kill request returned unexpected code [{}]. DB status already marked STOPPED but workflow may still be running.",
+        code);
+    return Response.status(Response.Status.BAD_GATEWAY).entity(killResponse).build();
   }
 
   @POST
@@ -1213,6 +1496,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");

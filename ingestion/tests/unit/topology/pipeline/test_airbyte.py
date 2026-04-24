@@ -44,6 +44,14 @@ from metadata.ingestion.source.pipeline.airbyte.metadata import (
     AirbytePipelineDetails,
     AirbyteSource,
 )
+from metadata.ingestion.source.pipeline.airbyte.models import (
+    AirbyteCloudJob,
+    AirbyteConnectionModel,
+    AirbyteDestinationResponse,
+    AirbyteSelfHostedJob,
+    AirbyteSourceResponse,
+    AirbyteWorkspace,
+)
 from metadata.utils.constants import UTF_8
 
 mock_file_path = (
@@ -86,7 +94,8 @@ mock_airbyte_config = {
 
 
 EXPECTED_AIRBYTE_DETAILS = AirbytePipelineDetails(
-    workspace=mock_data["workspace"][0], connection=mock_data["connection"][0]
+    workspace=AirbyteWorkspace.model_validate(mock_data["workspace"][0]),
+    connection=AirbyteConnectionModel.model_validate(mock_data["connection"][0]),
 )
 
 MOCK_CONNECTION_URI_PATH = (
@@ -261,9 +270,16 @@ class AirbyteUnitTest(TestCase):
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.root
         self.client = airbyte_client.return_value
-        self.client.list_jobs.return_value = mock_data.get("jobs")
-        self.client.list_workspaces.return_value = mock_data.get("workspace")
-        self.client.list_connections.return_value = mock_data.get("connection")
+        self.client.list_jobs.return_value = [
+            AirbyteSelfHostedJob.model_validate(j) for j in mock_data.get("jobs")
+        ]
+        self.client.list_workspaces.return_value = [
+            AirbyteWorkspace.model_validate(w) for w in mock_data.get("workspace")
+        ]
+        self.client.list_connections.return_value = [
+            AirbyteConnectionModel.model_validate(c)
+            for c in mock_data.get("connection")
+        ]
         self.airbyte.airbyte_cloud = False
 
     def setUp(self):
@@ -295,29 +311,28 @@ class AirbyteUnitTest(TestCase):
     def test_yield_pipeline_lineage_details(self):
         """Test the Airbyte lineage generation functionality."""
         # Mock the client methods needed for lineage with supported source and destination types
-        self.client.get_source.return_value = {
-            "sourceName": "Postgres",
-            "connectionConfiguration": {
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceName="Postgres",
+            connectionConfiguration={
                 "database": "mock_source_db",
                 "schema": "mock_source_schema",
             },
-        }
+        )
 
-        self.client.get_destination.return_value = {
-            "destinationName": "Postgres",
-            "connectionConfiguration": {
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationName="Postgres",
+            connectionConfiguration={
                 "database": "mock_destination_db",
                 "schema": "mock_destination_schema",
             },
-        }
+        )
 
-        # Mock connection with stream data for lineage test
-        test_connection = {
-            "connectionId": "test-connection-id",
-            "sourceId": "test-source-id",
-            "destinationId": "test-destination-id",
-            "name": "Test Connection",
-            "syncCatalog": {
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-connection-id",
+            sourceId="test-source-id",
+            destinationId="test-destination-id",
+            name="Test Connection",
+            syncCatalog={
                 "streams": [
                     {
                         "stream": {
@@ -328,9 +343,9 @@ class AirbyteUnitTest(TestCase):
                     }
                 ]
             },
-        }
+        )
 
-        test_workspace = {"workspaceId": "test-workspace-id"}
+        test_workspace = AirbyteWorkspace(workspaceId="test-workspace-id")
         test_pipeline_details = AirbytePipelineDetails(
             workspace=test_workspace, connection=test_connection
         )
@@ -389,8 +404,8 @@ mock_airbyte_cloud_config = {
 }
 
 EXPECTED_CLOUD_AIRBYTE_DETAILS = AirbytePipelineDetails(
-    workspace=mock_cloud_data["workspace"][0],
-    connection=mock_cloud_data["connection"][0],
+    workspace=AirbyteWorkspace.model_validate(mock_cloud_data["workspace"][0]),
+    connection=AirbyteConnectionModel.model_validate(mock_cloud_data["connection"][0]),
 )
 
 MOCK_CLOUD_CONNECTION_URI_PATH = (
@@ -498,9 +513,16 @@ class AirbyteCloudUnitTest(TestCase):
         ] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
         self.client = airbyte_cloud_client.return_value
         self.client.__class__ = AirbyteCloudClient
-        self.client.list_jobs.return_value = mock_cloud_data.get("jobs")
-        self.client.list_workspaces.return_value = mock_cloud_data.get("workspace")
-        self.client.list_connections.return_value = mock_cloud_data.get("connection")
+        self.client.list_jobs.return_value = [
+            AirbyteCloudJob.model_validate(j) for j in mock_cloud_data.get("jobs")
+        ]
+        self.client.list_workspaces.return_value = [
+            AirbyteWorkspace.model_validate(w) for w in mock_cloud_data.get("workspace")
+        ]
+        self.client.list_connections.return_value = [
+            AirbyteConnectionModel.model_validate(c)
+            for c in mock_cloud_data.get("connection")
+        ]
         self.airbyte.airbyte_cloud = True
         self.airbyte.source_url_prefix = "https://cloud.airbyte.com"
 

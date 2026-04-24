@@ -28,10 +28,17 @@ from metadata.data_quality.validations.column.base.columnValueLengthsToBeBetween
     BaseColumnValueLengthsToBeBetweenValidator,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasFailedRowSamplerMixin,
+)
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
@@ -41,7 +48,10 @@ logger = test_suite_logger()
 
 
 class ColumnValueLengthsToBeBetweenValidator(
-    BaseColumnValueLengthsToBeBetweenValidator, PandasValidatorMixin
+    FailedSampleValidatorMixin,
+    BaseColumnValueLengthsToBeBetweenValidator,
+    PandasValidatorMixin,
+    PandasFailedRowSamplerMixin,
 ):
     """Validator for column value lengths to be between test case"""
 
@@ -238,3 +248,21 @@ class ColumnValueLengthsToBeBetweenValidator(
         )
 
         return row_count, failed_rows
+
+    def filter(self):
+        min_bound = self.get_min_bound("minLength")
+        max_bound = self.get_max_bound("maxLength")
+        filters = []
+        if min_bound is not None and min_bound > float("-inf"):
+            filters.append(
+                f"{self.get_column().name}.astype('str').str.len() < {min_bound}"
+            )
+        if max_bound is not None and max_bound < float("inf"):
+            filters.append(
+                f"{self.get_column().name}.astype('str').str.len() > {max_bound}"
+            )
+        return " or ".join(filters)
+
+    def fetch_failed_rows_sample(self):
+        cols, rows = self._get_failed_rows_sample()
+        return TableData(columns=cols, rows=rows)

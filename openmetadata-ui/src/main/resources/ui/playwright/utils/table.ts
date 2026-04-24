@@ -16,9 +16,11 @@ import { TableClass } from '../support/entity/TableClass';
 // Pagination is performed for "performance_test_table" Table Entity
 export const columnPaginationTable = async (page: Page) => {
   // 50 Row + 1 Header row
-  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
+  await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
+    51
+  );
 
-  expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+  await expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
 
   const columnsResponse1 = page.waitForResponse(
     '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
@@ -27,16 +29,18 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByTestId('next').click();
 
   await columnsResponse1;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
+    });
+
+  await expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
+
+  await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
+    51
   );
-
-  expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
-
-  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
 
   const columnsResponse2 = page.waitForResponse(
     '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
@@ -45,14 +49,14 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByTestId('previous').click();
 
   await columnsResponse2;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
-  expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
+  await expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
 
   // Change page size to 15
   await page.getByTestId('page-size-selection-dropdown').click();
@@ -64,15 +68,17 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
   await columnsResponse3;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
   // 15 Row + 1 Header row
-  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
+  await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
+    16
+  );
 
   // Change page size to 25
   await page.getByTestId('page-size-selection-dropdown').click();
@@ -84,15 +90,17 @@ export const columnPaginationTable = async (page: Page) => {
   await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
   await columnsResponse4;
-  await page.waitForSelector(
-    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-    {
+  await page
+    .locator('#KnowledgePanel\\.TableSchema')
+    .getByTestId('loader')
+    .waitFor({
       state: 'detached',
-    }
-  );
+    });
 
   // 25 Row + 1 Header row
-  expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
+  await expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(
+    26
+  );
 };
 
 export const getTableColumnsCount = (columns: TableClass['children']) => {

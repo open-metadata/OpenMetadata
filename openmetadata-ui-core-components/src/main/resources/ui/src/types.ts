@@ -63,8 +63,8 @@ export interface ThemeColors {
 export interface CustomColors {
   primaryColor?: string;
   infoColor?: string;
-  hoverColor?:string;
-  selectedColor?:string;
+  hoverColor?: string;
+  selectedColor?: string;
   successColor?: string;
   warningColor?: string;
   errorColor?: string;

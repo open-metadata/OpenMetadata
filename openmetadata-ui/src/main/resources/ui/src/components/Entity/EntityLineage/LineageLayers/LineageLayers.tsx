@@ -25,6 +25,7 @@ import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-dat
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
+import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table.svg';
 import { ReactComponent as ServiceView } from '../../../../assets/svg/services.svg';
 import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
@@ -32,7 +33,6 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
-import searchClassBase from '../../../../utils/SearchClassBase';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
 import { LineageLayersProps } from './LineageLayers.interface';
@@ -173,7 +173,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
           data-testid="lineage-layer-column-btn"
           key={LineageLayer.ColumnLevelLineage}
           value={LineageLayer.ColumnLevelLineage}>
-          {searchClassBase.getEntityIcon(EntityType.TABLE)}
+          <TableIcon />
           {t('label.column')}
         </StyledButton>,
         <StyledButton

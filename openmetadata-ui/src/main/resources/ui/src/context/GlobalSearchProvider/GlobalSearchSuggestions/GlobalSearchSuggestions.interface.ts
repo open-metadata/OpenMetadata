@@ -136,26 +136,26 @@ export interface Option {
   _index: string;
   _id: string;
   _source:
-    | TableSource &
-        DashboardSource &
-        TopicSource &
-        PipelineSource &
-        MlModelSource &
-        ContainerSearchSource &
-        StoredProcedureSearchSource &
-        DashboardDataModelSearchSource &
-        GlossarySource &
-        TagSource &
-        SearchIndexSource &
-        DataProductSource &
-        ChartSource &
-        APIEndpointSource &
-        APICollectionSource &
-        MetricSource &
-        DirectorySource &
-        FileSource &
-        SpreadsheetSource &
-        WorksheetSource;
+    | TableSource
+    | DashboardSource
+    | TopicSource
+    | PipelineSource
+    | MlModelSource
+    | ContainerSearchSource
+    | StoredProcedureSearchSource
+    | DashboardDataModelSearchSource
+    | GlossarySource
+    | TagSource
+    | SearchIndexSource
+    | DataProductSource
+    | ChartSource
+    | APIEndpointSource
+    | APICollectionSource
+    | MetricSource
+    | DirectorySource
+    | FileSource
+    | SpreadsheetSource
+    | WorksheetSource;
 }
 
 export type SearchSuggestions =

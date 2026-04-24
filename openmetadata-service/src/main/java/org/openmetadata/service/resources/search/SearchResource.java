@@ -31,6 +31,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -39,6 +40,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -67,11 +69,13 @@ import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
@@ -87,6 +91,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "search")
+@LatencyPhase
 public class SearchResource {
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
@@ -138,7 +143,7 @@ public class SearchResource {
           @QueryParam("q")
           String query,
       @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
+          @DefaultValue("table")
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
@@ -252,6 +257,128 @@ public class SearchResource {
     return searchRepository.search(request, subjectContext);
   }
 
+  @GET
+  @Path("/export")
+  @Produces("text/csv; charset=utf-8")
+  @Operation(
+      operationId = "exportSearchResults",
+      summary = "Export search results as CSV (streaming)",
+      description =
+          "Exports the current search results as a streaming CSV download. "
+              + "The response is streamed directly to the client without buffering the entire result set in memory.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "CSV file stream",
+            content = @Content(mediaType = "text/csv; charset=utf-8"))
+      })
+  public Response exportSearchResults(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search Query Text") @DefaultValue("*") @QueryParam("q")
+          String query,
+      @Parameter(description = "ElasticSearch Index name, defaults to table")
+          @DefaultValue("table")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(
+              description = "Sort order asc for ascending or desc for descending, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Maximum number of rows to export. When null, exports all matching results up to the hard cap.")
+          @QueryParam("size")
+          Integer size,
+      @Parameter(
+              description =
+                  "Starting offset for export. Use with size to export a specific page of results (e.g., from=30&size=15 for page 3).")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from)
+      throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    SearchRequest request =
+        buildExportSearchRequest(
+            subjectContext,
+            query,
+            index,
+            deleted,
+            queryFilter,
+            postFilter,
+            sortFieldParam,
+            sortOrder);
+
+    int totalHits = searchRepository.countSearchResults(request, subjectContext);
+    final int effectiveTotal =
+        Math.max(
+            (size != null && size > 0) ? Math.min(size, totalHits - from) : totalHits - from, 0);
+
+    if (effectiveTotal > SearchResultCsvExporter.MAX_EXPORT_ROWS) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              String.format(
+                  "Results contain %d rows, max is %d. Please add filters to reduce the result set.",
+                  effectiveTotal, SearchResultCsvExporter.MAX_EXPORT_ROWS))
+          .type(MediaType.TEXT_PLAIN)
+          .build();
+    }
+
+    StreamingOutput stream =
+        output ->
+            searchRepository.exportSearchResultsCsvStream(
+                request, subjectContext, effectiveTotal, from, output);
+
+    return Response.ok(stream)
+        .header("Content-Disposition", "attachment; filename=\"search_export.csv\"")
+        .build();
+  }
+
+  private SearchRequest buildExportSearchRequest(
+      SubjectContext subjectContext,
+      String query,
+      String index,
+      Boolean deleted,
+      String queryFilter,
+      String postFilter,
+      String sortFieldParam,
+      String sortOrder) {
+    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+
+    List<EntityReference> domains = new ArrayList<>();
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    return new SearchRequest()
+        .withQuery(resolvedQuery)
+        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+        .withQueryFilter(queryFilter)
+        .withPostFilter(postFilter)
+        .withDeleted(deleted)
+        .withSortFieldParam(sortFieldParam)
+        .withSortOrder(sortOrder)
+        .withDomains(domains)
+        .withApplyDomainFilter(
+            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+  }
+
   @POST
   @Path("/preview")
   @Consumes(MediaType.APPLICATION_JSON)
@@ -319,7 +446,7 @@ public class SearchResource {
       @Parameter(description = "NLQ query string in natural language") @QueryParam("q")
           String nlqQuery,
       @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
+          @DefaultValue("table")
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
@@ -451,7 +578,7 @@ public class SearchResource {
       @Parameter(description = "field name") @QueryParam("fieldName") String fieldName,
       @Parameter(description = "field value") @QueryParam("fieldValue") String fieldValue,
       @Parameter(description = "Search Index name, defaults to table_search_index")
-          @DefaultValue("table_search_index")
+          @DefaultValue("table")
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
@@ -504,7 +631,7 @@ public class SearchResource {
   public Response aggregate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @DefaultValue("table_search_index") @QueryParam("index") String index,
+      @DefaultValue("table") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
       @Parameter(description = "value for searching in aggregation")
           @DefaultValue("")
@@ -534,7 +661,10 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
+      @DefaultValue("false") @QueryParam("deleted") boolean deleted,
+      @Parameter(description = "Free-text search query to scope aggregation results")
+          @QueryParam("queryText")
+          String queryText)
       throws IOException {
 
     AggregationRequest aggregationRequest =
@@ -545,7 +675,8 @@ public class SearchResource {
             .withFieldName(fieldName)
             .withFieldValue(value)
             .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
-            .withDeleted(deleted);
+            .withDeleted(deleted)
+            .withQueryText(queryText);
 
     return searchRepository.aggregate(aggregationRequest);
   }
@@ -988,7 +1119,7 @@ public class SearchResource {
             responseCode = "409",
             description = "Conflict - Search indexing is currently running")
       })
-  public Response cleanOrphanIndexes(@Context SecurityContext securityContext) throws IOException {
+  public Response cleanOrphanIndexes(@Context SecurityContext securityContext) {
     authorizer.authorizeAdminOrBot(securityContext);
 
     if (isSearchIndexingRunning()) {
@@ -1008,6 +1139,88 @@ public class SearchResource {
     response.setDeletedCount(result.deleted());
 
     return Response.ok(response).build();
+  }
+
+  @PUT
+  @Path("/templates")
+  @Operation(
+      operationId = "syncAllIndexTemplates",
+      summary = "Sync all index templates",
+      description =
+          "Create or update index templates for all entity types from indexMapping.json. "
+              + "Templates ensure proper mappings when ES/OS auto-creates indices.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Sync result"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response syncAllIndexTemplates(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    int success = 0;
+    int failed = 0;
+    List<String> failedEntities = new ArrayList<>();
+    Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
+
+    for (String entityType : indexMap.keySet()) {
+      try {
+        searchRepository.createOrUpdateIndexTemplate(entityType);
+        success++;
+      } catch (Exception e) {
+        failed++;
+        failedEntities.add(entityType);
+        LOG.warn("Failed to sync index template for {}: {}", entityType, e.getMessage());
+      }
+    }
+
+    return Response.ok(
+            Map.of(
+                "total", indexMap.size(),
+                "success", success,
+                "failed", failed,
+                "failedEntities", failedEntities))
+        .build();
+  }
+
+  @PUT
+  @Path("/templates/{entityType}")
+  @Operation(
+      operationId = "syncIndexTemplateByEntityType",
+      summary = "Sync index template for a specific entity type",
+      description =
+          "Create or update index template for a specific entity type from indexMapping.json.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Template synced"),
+        @ApiResponse(responseCode = "400", description = "Invalid entity type"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response syncIndexTemplate(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    try {
+      searchRepository.createOrUpdateIndexTemplate(entityType);
+      IndexMapping indexMapping = searchRepository.getEntityIndexMap().get(entityType);
+      String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
+      return Response.ok(
+              Map.of(
+                  "entityType",
+                  entityType,
+                  "templateName",
+                  "om_" + indexName,
+                  "indexPattern",
+                  indexName + "*",
+                  "status",
+                  "synced"))
+          .build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", e.getMessage()))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Failed to sync index template for {}", entityType, e);
+      return Response.serverError().entity(Map.of("error", e.getMessage())).build();
+    }
   }
 
   private static final String SEARCH_INDEXING_APP_NAME = "SearchIndexingApplication";

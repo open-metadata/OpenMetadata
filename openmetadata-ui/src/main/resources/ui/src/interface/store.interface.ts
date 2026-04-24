@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
@@ -27,7 +26,6 @@ import { LoginConfiguration } from '../generated/configuration/loginConfiguratio
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
-import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 
@@ -81,15 +79,9 @@ export interface ApplicationStore
 }
 
 export interface DomainStore {
-  domains: Domain[];
   userDomains: EntityReference[];
-  domainLoading: boolean;
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
-  domainOptions: ItemType[];
-  updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
   updateActiveDomain: (domain: EntityReference) => void;
-  setDomains: (domains: Domain[]) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
-  updateDomainLoading: (loading: boolean) => void;
 }

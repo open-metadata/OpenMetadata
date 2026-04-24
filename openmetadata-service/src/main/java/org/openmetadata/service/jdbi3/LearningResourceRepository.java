@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -100,8 +99,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     if (!java.util.Objects.equals(existing.getContexts(), seed.getContexts())) return true;
     if (!java.util.Objects.equals(existing.getDifficulty(), seed.getDifficulty())) return true;
     if (!java.util.Objects.equals(existing.getSource(), seed.getSource())) return true;
-    if (!java.util.Objects.equals(existing.getStatus(), seed.getStatus())) return true;
-    return false;
+    return !java.util.Objects.equals(existing.getStatus(), seed.getStatus());
   }
 
   @Override
@@ -143,13 +141,13 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
   @Override
   public void storeEntities(List<LearningResource> entities) {
-    List<LearningResource> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(entities.size());
+    List<String> jsons = new ArrayList<>(entities.size());
     for (LearningResource entity : entities) {
-      String jsonCopy = gson.toJson(entity);
-      entitiesToStore.add(gson.fromJson(jsonCopy, LearningResource.class));
+      fqns.add(entity.getFullyQualifiedName());
+      jsons.add(serializeForStorage(entity));
     }
-    storeMany(entitiesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   @Override
@@ -409,13 +407,28 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      compareAndUpdate("categories", this::run);
+      compareAndUpdate(
+          "contexts",
+          () -> recordChange("contexts", original.getContexts(), updated.getContexts(), true));
+      compareAndUpdate(
+          "difficulty",
+          () -> recordChange("difficulty", original.getDifficulty(), updated.getDifficulty()));
+      compareAndUpdate(
+          "source", () -> recordChange("source", original.getSource(), updated.getSource(), true));
+      compareAndUpdate(
+          "estimatedDuration",
+          () ->
+              recordChange(
+                  "estimatedDuration",
+                  original.getEstimatedDuration(),
+                  updated.getEstimatedDuration()));
+      compareAndUpdate(
+          "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
+    }
+
+    private void run() {
       recordChange("categories", original.getCategories(), updated.getCategories());
-      recordChange("contexts", original.getContexts(), updated.getContexts(), true);
-      recordChange("difficulty", original.getDifficulty(), updated.getDifficulty());
-      recordChange("source", original.getSource(), updated.getSource(), true);
-      recordChange(
-          "estimatedDuration", original.getEstimatedDuration(), updated.getEstimatedDuration());
-      recordChange("status", original.getStatus(), updated.getStatus());
     }
   }
 }

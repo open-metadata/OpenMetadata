@@ -19,6 +19,11 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     agentType?: AgentType;
     /**
+     * When true, the bot created for this application will have allowImpersonation enabled,
+     * allowing it to act on behalf of users.
+     */
+    allowBotImpersonation?: boolean;
+    /**
      * If true, multiple instances of this app can run concurrently. This is useful for apps
      * like QueryRunner that support parallel executions with different configurations.
      */
@@ -557,6 +562,12 @@ export interface Action {
      */
     propagationDepthMode?: PropagationDepthMode;
     /**
+     * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+     * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+     * entities receive metadata from upstream lineage.
+     */
+    propagationFilterMode?: PropagationFilterMode;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
@@ -647,6 +658,16 @@ export enum LabelElement {
 export enum PropagationDepthMode {
     DataAsset = "DATA_ASSET",
     Root = "ROOT",
+}
+
+/**
+ * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+ * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+ * entities receive metadata from upstream lineage.
+ */
+export enum PropagationFilterMode {
+    Source = "SOURCE",
+    Target = "TARGET",
 }
 
 /**
@@ -805,6 +826,10 @@ export enum LabelTypeEnum {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */

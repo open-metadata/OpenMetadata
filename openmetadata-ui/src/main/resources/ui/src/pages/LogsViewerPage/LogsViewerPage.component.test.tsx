@@ -43,6 +43,7 @@ jest.mock('react-router-dom', () => ({
     ingestionName: 'ingestion_123456',
   }),
   useNavigate: jest.fn(),
+  useSearchParams: jest.fn(() => [new URLSearchParams(), jest.fn()]),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
@@ -95,6 +96,20 @@ jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => () => <>TitleBreadcrumb.component</>
 );
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <>{children}</>),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ icon, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {icon}
+      </button>
+    )),
+}));
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
@@ -662,6 +677,48 @@ describe('LogsViewerPage.component', () => {
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  it('should pass runId from search params to getLatestApplicationRuns', async () => {
+    const mockUseSearchParams =
+      jest.requireMock('react-router-dom').useSearchParams;
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ runId: 'run-abc-123' }),
+      jest.fn(),
+    ]);
+
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    render(<LogsViewerPage />);
+
+    await waitFor(() => {
+      expect(getLatestApplicationRuns).toHaveBeenCalledWith(
+        'DataInsightsApplication',
+        'run-abc-123'
+      );
+    });
+
+    // Reset to default mock
+    mockUseSearchParams.mockReturnValue([new URLSearchParams(), jest.fn()]);
+  });
+
+  it('should pass undefined runId to getLatestApplicationRuns when not in search params', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    render(<LogsViewerPage />);
+
+    await waitFor(() => {
+      expect(getLatestApplicationRuns).toHaveBeenCalledWith(
+        'DataInsightsApplication',
+        undefined
+      );
     });
   });
 

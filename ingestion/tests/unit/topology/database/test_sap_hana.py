@@ -15,6 +15,13 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedure,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
     SapHanaSQLConnection,
 )
@@ -43,6 +50,7 @@ from metadata.ingestion.source.database.saphana.cdata_parser import (
     parse_registry,
 )
 from metadata.ingestion.source.database.saphana.lineage import SaphanaLineageSource
+from metadata.ingestion.source.database.saphana.models import SapHanaStoredProcedure
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -1152,3 +1160,407 @@ def test_calculation_view_end_to_end_lineage() -> None:
         assert (
             source.source_type != ViewType.LOGICAL
         ), f"Final lineage should not contain LOGICAL datasources: {source}"
+
+
+# ---- Tests for TABLE_FUNCTION support (issue #24586) ----
+
+
+def test_sap_hana_stored_procedure_model() -> None:
+    """Verify SapHanaStoredProcedure model validates from lowercase keys returned by hdbcli _asdict()"""
+    row_data = {
+        "function_name": "my-package::TF_ORDERS",
+        "schema_name": "SYSTEM",
+        "definition": "FUNCTION my-package::TF_ORDERS() RETURNS TABLE ...",
+    }
+    sp = SapHanaStoredProcedure.model_validate(row_data)
+    assert sp.name == "my-package::TF_ORDERS"
+    assert sp.schema_name == "SYSTEM"
+    assert sp.definition == "FUNCTION my-package::TF_ORDERS() RETURNS TABLE ..."
+
+
+def test_sap_hana_stored_procedure_model_none_definition() -> None:
+    """Verify SapHanaStoredProcedure handles None definition from SYS.FUNCTIONS"""
+    row_data = {
+        "function_name": "TF_SIMPLE",
+        "schema_name": "SYSTEM",
+        "definition": None,
+    }
+    sp = SapHanaStoredProcedure.model_validate(row_data)
+    assert sp.name == "TF_SIMPLE"
+    assert sp.definition is None
+
+
+def test_parse_calculation_view_with_table_function() -> None:
+    """Test parsing a real CDATA XML that references a TABLE_FUNCTION data source.
+
+    Uses a real calculation view exported from HANA Studio where CV_TF_ORDERS
+    references table function my-package::TF_ORDERS through a Projection view.
+    This validates:
+    - TABLE_FUNCTION is recognized as a valid ViewType from the XML
+    - Column mappings are correctly traced through the Projection layer
+    - The DataSource location preserves the package::name format
+    """
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_table_function.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    ds_tf = DataSource(
+        name="TF_ORDERS",
+        location="my-package::TF_ORDERS",
+        source_type=ViewType.TABLE_FUNCTION,
+    )
+
+    assert parsed_lineage
+    assert parsed_lineage.sources == {ds_tf}
+    assert len(parsed_lineage.mappings) == 3
+
+    targets = {m.target for m in parsed_lineage.mappings}
+    assert targets == {"ORDER_ID", "QUANTITY", "PRICE"}
+
+    for m in parsed_lineage.mappings:
+        assert m.data_source == ds_tf
+        assert m.sources == [m.target]
+        assert m.formula is None
+
+
+def test_get_entity_delegates_to_table_function_for_table_function_type() -> None:
+    """Test that get_entity routes TABLE_FUNCTION sources to _get_table_function_entity,
+    not to the regular Table FQN-based lookup.
+    This follows the same pattern as test_schema_mapping_in_datasource.
+    """
+    ds = DataSource(
+        name="TF_ORDERS",
+        location="my-package::TF_ORDERS",
+        source_type=ViewType.TABLE_FUNCTION,
+    )
+
+    mock_metadata = MagicMock()
+    mock_engine = MagicMock()
+    mock_sp = MagicMock()
+
+    with patch.object(
+        ds, "_get_table_function_entity", return_value=mock_sp
+    ) as mock_fn:
+        result = ds.get_entity(
+            metadata=mock_metadata, engine=mock_engine, service_name="test_service"
+        )
+        mock_fn.assert_called_once_with(
+            metadata=mock_metadata, service_name="test_service"
+        )
+        assert result is mock_sp
+
+
+def test_get_table_function_entity_encodes_fqn_and_searches_es() -> None:
+    """Test _get_table_function_entity encodes :: separators and searches via ES.
+
+    SAP HANA table function names use :: (e.g. my-package::TF_ORDERS),
+    but OpenMetadata FQNs encode :: as __reserved__colon__. This test verifies
+    the encoding is applied before the ES search.
+    """
+    ds = DataSource(
+        name="TF_ORDERS",
+        location="my-package::TF_ORDERS",
+        source_type=ViewType.TABLE_FUNCTION,
+    )
+
+    mock_metadata = MagicMock()
+    mock_sp = MagicMock()
+    mock_metadata.es_search_from_fqn.return_value = [mock_sp]
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.cdata_parser.get_entity_from_es_result",
+        return_value=mock_sp,
+    ) as mock_get_entity:
+        result = ds._get_table_function_entity(
+            metadata=mock_metadata, service_name="sap-hana-svc"
+        )
+
+    call_args = mock_metadata.es_search_from_fqn.call_args
+    assert call_args.kwargs["entity_type"] is StoredProcedure
+    search_string = call_args.kwargs["fqn_search_string"]
+    assert "my-package__reserved__colon__TF_ORDERS" in search_string
+    assert "sap-hana-svc" in search_string
+    assert "::" not in search_string
+
+    mock_get_entity.assert_called_once()
+    assert result is mock_sp
+
+
+def test_get_table_function_entity_returns_none_when_not_found() -> None:
+    """Test _get_table_function_entity returns None when the table function
+    has not been ingested yet (ES returns no results)."""
+    ds = DataSource(
+        name="TF_MISSING",
+        location="pkg::TF_MISSING",
+        source_type=ViewType.TABLE_FUNCTION,
+    )
+
+    mock_metadata = MagicMock()
+    mock_metadata.es_search_from_fqn.return_value = None
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.cdata_parser.get_entity_from_es_result",
+        return_value=None,
+    ):
+        result = ds._get_table_function_entity(
+            metadata=mock_metadata, service_name="sap-hana-svc"
+        )
+
+    assert result is None
+
+
+def test_to_request_skips_source_when_entity_not_found() -> None:
+    """Test that to_request gracefully skips sources whose entity cannot be resolved.
+    This follows the same pattern as test_parsed_lineage_with_schema_mapping.
+    """
+    ds = DataSource(
+        name="TF_MISSING",
+        location="pkg::TF_MISSING",
+        source_type=ViewType.TABLE_FUNCTION,
+    )
+    mapping = ColumnMapping(data_source=ds, sources=["COL"], target="COL")
+    parsed = ParsedLineage(mappings=[mapping], sources={ds})
+
+    mock_metadata = MagicMock()
+    mock_engine = MagicMock()
+    mock_to_entity = MagicMock()
+    mock_to_entity.fullyQualifiedName.root = "svc.db.schema.cv"
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.cdata_parser.DataSource.get_entity",
+        return_value=None,
+    ):
+        results = list(
+            parsed.to_request(
+                metadata=mock_metadata,
+                engine=mock_engine,
+                service_name="test_service",
+                to_entity=mock_to_entity,
+            )
+        )
+
+    assert len(results) == 0
+
+
+def test_get_stored_procedures_with_filter() -> None:
+    """Test get_stored_procedures queries SYS.FUNCTIONS and applies name filter.
+    Follows the same pattern as test_get_stored_procedures in test_mssql.py.
+    """
+    from metadata.ingestion.source.database.saphana.metadata import SaphanaSource
+
+    mock_source = MagicMock(spec=SaphanaSource)
+    mock_source.source_config = MagicMock()
+    mock_source.source_config.includeStoredProcedures = True
+
+    mock_context = MagicMock()
+    mock_context.database_schema = "SYSTEM"
+    mock_source.context = MagicMock()
+    mock_source.context.get.return_value = mock_context
+
+    class MockRow:
+        """Simulates SQLAlchemy Row returned by hdbcli with lowercase keys"""
+
+        def __init__(self, data):
+            self._data = data
+
+        def _asdict(self):
+            return self._data
+
+    mock_rows = [
+        MockRow(
+            {
+                "function_name": "pkg::TF_INCLUDE",
+                "schema_name": "SYSTEM",
+                "definition": "...",
+            }
+        ),
+        MockRow(
+            {
+                "function_name": "pkg::TF_EXCLUDE",
+                "schema_name": "SYSTEM",
+                "definition": "...",
+            }
+        ),
+    ]
+
+    mock_conn = MagicMock()
+    mock_result = MagicMock()
+    mock_result.all.return_value = mock_rows
+    mock_conn.execute.return_value = mock_result
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    mock_source.engine = mock_engine
+
+    def mock_is_filtered(name):
+        return "EXCLUDE" in name
+
+    mock_source.is_stored_procedure_filtered = mock_is_filtered
+
+    results = list(SaphanaSource.get_stored_procedures(mock_source))
+
+    assert len(results) == 1
+    assert results[0].name == "pkg::TF_INCLUDE"
+    assert results[0].schema_name == "SYSTEM"
+
+
+def test_get_stored_procedures_disabled() -> None:
+    """Test get_stored_procedures is a no-op when includeStoredProcedures is False"""
+    from metadata.ingestion.source.database.saphana.metadata import SaphanaSource
+
+    mock_source = MagicMock(spec=SaphanaSource)
+    mock_source.source_config = MagicMock()
+    mock_source.source_config.includeStoredProcedures = False
+
+    results = list(SaphanaSource.get_stored_procedures(mock_source))
+    assert len(results) == 0
+
+
+def test_get_stored_procedures_bad_row_does_not_abort() -> None:
+    """A single unparseable row should not abort the generator.
+
+    The try/except must be *inside* the for-loop so that remaining
+    rows are still yielded and the failure is surfaced via status.failed().
+    """
+    from metadata.ingestion.source.database.saphana.metadata import SaphanaSource
+
+    mock_source = MagicMock(spec=SaphanaSource)
+    mock_source.source_config = MagicMock()
+    mock_source.source_config.includeStoredProcedures = True
+
+    mock_context = MagicMock()
+    mock_context.database_schema = "SYSTEM"
+    mock_source.context = MagicMock()
+    mock_source.context.get.return_value = mock_context
+
+    class MockRow:
+        def __init__(self, data):
+            self._data = data
+
+        def _asdict(self):
+            return self._data
+
+    mock_rows = [
+        MockRow(
+            {
+                "function_name": "TF_GOOD_1",
+                "schema_name": "SYSTEM",
+                "definition": "...",
+            }
+        ),
+        # Bad row: missing required field 'function_name'
+        MockRow({"schema_name": "SYSTEM", "definition": "..."}),
+        MockRow(
+            {
+                "function_name": "TF_GOOD_2",
+                "schema_name": "SYSTEM",
+                "definition": "...",
+            }
+        ),
+    ]
+
+    mock_conn = MagicMock()
+    mock_result = MagicMock()
+    mock_result.all.return_value = mock_rows
+    mock_conn.execute.return_value = mock_result
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    mock_source.engine = mock_engine
+
+    mock_source.is_stored_procedure_filtered = MagicMock(return_value=False)
+    mock_source.status = MagicMock()
+
+    results = list(SaphanaSource.get_stored_procedures(mock_source))
+
+    # Both good rows should be yielded — the bad row must not abort the generator
+    assert len(results) == 2
+    assert results[0].name == "TF_GOOD_1"
+    assert results[1].name == "TF_GOOD_2"
+
+    # The failure should have been surfaced
+    mock_source.status.failed.assert_called_once()
+
+
+def test_yield_stored_procedure_creates_request() -> None:
+    """Test yield_stored_procedure produces a valid CreateStoredProcedureRequest.
+    Follows the same pattern as test_yield_stored_procedure in test_mariadb.py.
+    """
+    from metadata.ingestion.source.database.saphana.metadata import SaphanaSource
+
+    stored_proc = SapHanaStoredProcedure.model_validate(
+        {
+            "function_name": "my-package::TF_ORDERS",
+            "schema_name": "SYSTEM",
+            "definition": "FUNCTION my-package::TF_ORDERS() RETURNS TABLE (ORDER_ID INT)",
+        }
+    )
+
+    mock_source = MagicMock(spec=SaphanaSource)
+    mock_source.metadata = MagicMock()
+    mock_source.register_record_stored_proc_request = MagicMock()
+
+    mock_context = MagicMock()
+    mock_context.database_service = "sap-hana-svc"
+    mock_context.database = "SYSTEMDB"
+    mock_context.database_schema = "SYSTEM"
+    mock_source.context = MagicMock()
+    mock_source.context.get.return_value = mock_context
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.metadata.fqn.build",
+        return_value="sap-hana-svc.SYSTEMDB.SYSTEM",
+    ):
+        results = list(SaphanaSource.yield_stored_procedure(mock_source, stored_proc))
+
+    assert len(results) == 1
+    assert results[0].right is not None
+    request = results[0].right
+    assert isinstance(request, CreateStoredProcedureRequest)
+    # EntityName encodes :: as __reserved__colon__ via replace_separators
+    assert "TF_ORDERS" in str(request.name.root)
+    assert request.storedProcedureType == StoredProcedureType.Function
+    assert (
+        request.storedProcedureCode.code
+        == "FUNCTION my-package::TF_ORDERS() RETURNS TABLE (ORDER_ID INT)"
+    )
+    mock_source.register_record_stored_proc_request.assert_called_once_with(request)
+
+
+def test_yield_stored_procedure_empty_definition() -> None:
+    """Test yield_stored_procedure uses empty string when definition is None"""
+    from metadata.ingestion.source.database.saphana.metadata import SaphanaSource
+
+    stored_proc = SapHanaStoredProcedure.model_validate(
+        {
+            "function_name": "TF_SIMPLE",
+            "schema_name": "SYSTEM",
+            "definition": None,
+        }
+    )
+
+    mock_source = MagicMock(spec=SaphanaSource)
+    mock_source.metadata = MagicMock()
+    mock_source.register_record_stored_proc_request = MagicMock()
+
+    mock_context = MagicMock()
+    mock_context.database_service = "sap-hana-svc"
+    mock_context.database = "SYSTEMDB"
+    mock_context.database_schema = "SYSTEM"
+    mock_source.context = MagicMock()
+    mock_source.context.get.return_value = mock_context
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.metadata.fqn.build",
+        return_value="sap-hana-svc.SYSTEMDB.SYSTEM",
+    ):
+        results = list(SaphanaSource.yield_stored_procedure(mock_source, stored_proc))
+
+    assert len(results) == 1
+    request = results[0].right
+    assert request.storedProcedureCode.code == ""

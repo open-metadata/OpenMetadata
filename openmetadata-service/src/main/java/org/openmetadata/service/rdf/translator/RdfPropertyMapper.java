@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
@@ -15,6 +16,9 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 
 /**
@@ -26,6 +30,7 @@ public class RdfPropertyMapper {
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
+  private final Map<String, UUID> glossaryTermIdCache = new ConcurrentHashMap<>();
 
   // Common namespace URIs
   private static final String OM_NS = "https://open-metadata.org/ontology/";
@@ -38,7 +43,10 @@ public class RdfPropertyMapper {
 
   // Properties that should be mapped to structured RDF instead of JSON literals
   private static final Set<String> STRUCTURED_PROPERTIES =
-      Set.of("changeDescription", "votes", "lifeCycle", "customProperties", "extension");
+      Set.of("votes", "lifeCycle", "customProperties", "extension");
+
+  // Properties that should be omitted from RDF because they are audit/helper data.
+  private static final Set<String> IGNORED_PROPERTIES = Set.of("changeDescription");
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
@@ -92,6 +100,9 @@ public class RdfPropertyMapper {
     }
   }
 
+  // Fields that are handled separately with typed predicates (not via JSON-LD context)
+  private static final Set<String> TYPED_RELATION_FIELDS = Set.of("relatedTerms");
+
   private void processContextMappings(
       Map<String, Object> contextMap, JsonNode entityJson, Resource entityResource, Model model) {
     // Iterate through all fields in the entity JSON
@@ -106,6 +117,12 @@ public class RdfPropertyMapper {
           || fieldName.equals("href")
           || fieldName.equals("id")
           || fieldName.equals("type")) {
+        continue;
+      }
+
+      // Skip fields that are handled separately with typed predicates
+      // (e.g., relatedTerms which use typed relations like broader, synonym, etc.)
+      if (TYPED_RELATION_FIELDS.contains(fieldName) || IGNORED_PROPERTIES.contains(fieldName)) {
         continue;
       }
 
@@ -288,8 +305,9 @@ public class RdfPropertyMapper {
       tagResource.addProperty(model.createProperty(OM_NS, "tagSource"), source);
 
       // Also add appropriate type based on source
-      if ("Glossary".equals(source)) {
+      if ("Glossary".equalsIgnoreCase(source)) {
         tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
+        addGlossaryTermReference(resource, tagFqn, tagLabel, model);
       }
     }
 
@@ -306,6 +324,78 @@ public class RdfPropertyMapper {
     }
   }
 
+  private void addGlossaryTermReference(
+      Resource resource, String termFqn, JsonNode tagLabel, Model model) {
+    UUID termId = resolveGlossaryTermId(termFqn, tagLabel);
+    if (termId == null) {
+      return;
+    }
+
+    String termUri = baseUri + "entity/glossaryTerm/" + termId;
+    Resource termResource = model.createResource(termUri);
+    resource.addProperty(model.createProperty(OM_NS, "hasGlossaryTerm"), termResource);
+    termResource.addProperty(RDF.type, model.createResource(getRdfType("glossaryTerm")));
+  }
+
+  private UUID resolveGlossaryTermId(String termFqn, JsonNode tagLabel) {
+    if (termFqn == null || termFqn.isEmpty()) {
+      return null;
+    }
+
+    if (glossaryTermIdCache.containsKey(termFqn)) {
+      return glossaryTermIdCache.get(termFqn);
+    }
+
+    try {
+      UUID resolvedTermId = tryResolveGlossaryTermIdFromHref(tagLabel);
+      if (resolvedTermId != null) {
+        glossaryTermIdCache.put(termFqn, resolvedTermId);
+        return resolvedTermId;
+      }
+
+      GlossaryTerm term =
+          Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "id", Include.NON_DELETED, false);
+      UUID termId = term != null ? term.getId() : null;
+      if (termId != null) {
+        glossaryTermIdCache.put(termFqn, termId);
+      }
+      return termId;
+    } catch (Exception e) {
+      LOG.debug("Could not resolve glossary term id for FQN {}", termFqn);
+      return null;
+    }
+  }
+
+  private UUID tryResolveGlossaryTermIdFromHref(JsonNode tagLabel) {
+    if (tagLabel == null || !tagLabel.has("href")) {
+      return null;
+    }
+
+    String href = tagLabel.get("href").asText();
+    if (href == null || href.isBlank()) {
+      return null;
+    }
+
+    try {
+      java.net.URI uri = java.net.URI.create(href);
+      String path = uri.getPath();
+      if (path == null || path.isBlank()) {
+        return null;
+      }
+      String[] parts = path.split("/");
+      if (parts.length == 0) {
+        return null;
+      }
+      String last = parts[parts.length - 1];
+      if (last.isBlank()) {
+        return null;
+      }
+      return java.util.UUID.fromString(last);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   /**
    * Dispatches structured property handling based on field name. These properties are converted
    * from JSON literals to proper RDF structures for better queryability via SPARQL.
@@ -313,7 +403,6 @@ public class RdfPropertyMapper {
   private void addStructuredProperty(
       String fieldName, JsonNode value, Resource entityResource, Model model) {
     switch (fieldName) {
-      case "changeDescription" -> addChangeDescription(value, entityResource, model);
       case "votes" -> addVotes(value, entityResource, model);
       case "lifeCycle" -> addLifeCycle(value, entityResource, model);
       case "extension" -> addExtension(value, entityResource, model);
@@ -335,101 +424,8 @@ public class RdfPropertyMapper {
   }
 
   /**
-   * Converts ChangeDescription to structured RDF triples. Enables SPARQL queries like: "Find all
-   * entities where description was changed by user X after date Y"
-   *
-   * <p>Structure: entity -> om:hasChangeDescription -> _:changeNode _:changeNode a
-   * om:ChangeDescription _:changeNode om:previousVersion "1.0" _:changeNode om:fieldsAdded ->
-   * _:fieldChange1
-   */
-  private void addChangeDescription(JsonNode changeDesc, Resource entityResource, Model model) {
-    if (changeDesc == null || changeDesc.isNull()) {
-      return;
-    }
-
-    // Create a blank node for the change description
-    String changeNodeUri =
-        baseUri + "change/" + entityResource.getLocalName() + "/" + UUID.randomUUID();
-    Resource changeNode = model.createResource(changeNodeUri);
-
-    // Link entity to change description
-    Property hasChangeDesc = model.createProperty(OM_NS, "hasChangeDescription");
-    entityResource.addProperty(hasChangeDesc, changeNode);
-
-    // Add type
-    changeNode.addProperty(RDF.type, model.createResource(OM_NS + "ChangeDescription"));
-
-    // Add previous version
-    if (changeDesc.has("previousVersion")) {
-      changeNode.addProperty(
-          model.createProperty(OM_NS, "previousVersion"),
-          model.createTypedLiteral(changeDesc.get("previousVersion").asDouble()));
-    }
-
-    // Add fields added
-    if (changeDesc.has("fieldsAdded") && changeDesc.get("fieldsAdded").isArray()) {
-      addFieldChanges(
-          changeDesc.get("fieldsAdded"), changeNode, "fieldsAdded", entityResource, model);
-    }
-
-    // Add fields updated
-    if (changeDesc.has("fieldsUpdated") && changeDesc.get("fieldsUpdated").isArray()) {
-      addFieldChanges(
-          changeDesc.get("fieldsUpdated"), changeNode, "fieldsUpdated", entityResource, model);
-    }
-
-    // Add fields deleted
-    if (changeDesc.has("fieldsDeleted") && changeDesc.get("fieldsDeleted").isArray()) {
-      addFieldChanges(
-          changeDesc.get("fieldsDeleted"), changeNode, "fieldsDeleted", entityResource, model);
-    }
-  }
-
-  /**
-   * Adds field change details as structured RDF
-   */
-  private void addFieldChanges(
-      JsonNode fieldsArray,
-      Resource changeNode,
-      String changeType,
-      Resource entityResource,
-      Model model) {
-    Property changeProp = model.createProperty(OM_NS, changeType);
-
-    for (JsonNode fieldChange : fieldsArray) {
-      // Create a blank node for each field change
-      String fieldChangeUri =
-          baseUri + "fieldChange/" + entityResource.getLocalName() + "/" + UUID.randomUUID();
-      Resource fieldChangeNode = model.createResource(fieldChangeUri);
-
-      changeNode.addProperty(changeProp, fieldChangeNode);
-      fieldChangeNode.addProperty(RDF.type, model.createResource(OM_NS + "FieldChange"));
-
-      // Add field name
-      if (fieldChange.has("name")) {
-        fieldChangeNode.addProperty(
-            model.createProperty(OM_NS, "fieldName"), fieldChange.get("name").asText());
-      }
-
-      // Add old value (as string representation for queryability)
-      if (fieldChange.has("oldValue") && !fieldChange.get("oldValue").isNull()) {
-        JsonNode oldVal = fieldChange.get("oldValue");
-        String oldValueStr = oldVal.isTextual() ? oldVal.asText() : oldVal.toString();
-        fieldChangeNode.addProperty(model.createProperty(OM_NS, "oldValue"), oldValueStr);
-      }
-
-      // Add new value (as string representation for queryability)
-      if (fieldChange.has("newValue") && !fieldChange.get("newValue").isNull()) {
-        JsonNode newVal = fieldChange.get("newValue");
-        String newValueStr = newVal.isTextual() ? newVal.asText() : newVal.toString();
-        fieldChangeNode.addProperty(model.createProperty(OM_NS, "newValue"), newValueStr);
-      }
-    }
-  }
-
-  /**
    * Converts Votes to structured RDF triples. Enables SPARQL queries like: "Find all entities with
-   * more than 10 upvotes" or "Find entities upvoted by user X"
+   * more than 10 upvotes" without exposing individual voter identities as graph edges.
    */
   private void addVotes(JsonNode votes, Resource entityResource, Model model) {
     if (votes == null || votes.isNull()) {
@@ -459,30 +455,6 @@ public class RdfPropertyMapper {
       votesNode.addProperty(
           model.createProperty(OM_NS, "downVotes"),
           model.createTypedLiteral(votes.get("downVotes").asInt()));
-    }
-
-    // Add upVoters as entity references
-    if (votes.has("upVoters") && votes.get("upVoters").isArray()) {
-      Property upVotersProp = model.createProperty(OM_NS, "upVoters");
-      for (JsonNode voter : votes.get("upVoters")) {
-        if (voter.has("id") && voter.has("type")) {
-          String voterUri =
-              baseUri + "entity/" + voter.get("type").asText() + "/" + voter.get("id").asText();
-          votesNode.addProperty(upVotersProp, model.createResource(voterUri));
-        }
-      }
-    }
-
-    // Add downVoters as entity references
-    if (votes.has("downVoters") && votes.get("downVoters").isArray()) {
-      Property downVotersProp = model.createProperty(OM_NS, "downVoters");
-      for (JsonNode voter : votes.get("downVoters")) {
-        if (voter.has("id") && voter.has("type")) {
-          String voterUri =
-              baseUri + "entity/" + voter.get("type").asText() + "/" + voter.get("id").asText();
-          votesNode.addProperty(downVotersProp, model.createResource(voterUri));
-        }
-      }
     }
   }
 

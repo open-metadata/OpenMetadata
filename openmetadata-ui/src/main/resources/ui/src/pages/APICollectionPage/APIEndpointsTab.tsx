@@ -108,7 +108,7 @@ function APIEndpointsTab({
             decodedAPICollectionFQN,
             searchValue
           ),
-          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          searchIndex: SearchIndex.API_ENDPOINT,
           includeDeleted: filters.showDeletedEndpoints,
           trackTotalHits: true,
         });

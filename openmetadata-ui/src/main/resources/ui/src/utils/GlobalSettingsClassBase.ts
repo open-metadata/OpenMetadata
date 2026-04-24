@@ -68,6 +68,8 @@ import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored-new.svg';
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
+import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
+import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflows.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
@@ -126,6 +128,14 @@ class GlobalSettingsClassBase {
     [GlobalSettingsMenuCategory.SSO]: {
       name: t('label.sso'),
       url: GlobalSettingsMenuCategory.SSO,
+    },
+    [GlobalSettingsMenuCategory.GOVERNANCE]: {
+      name: t('label.governance'),
+      url: GlobalSettingsMenuCategory.GOVERNANCE,
+    },
+    [GlobalSettingOptions.WORKFLOW_DEFINITIONS]: {
+      name: t('label.workflow-plural'),
+      url: `${GlobalSettingsMenuCategory.GOVERNANCE}/${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
     },
   };
 
@@ -914,6 +924,40 @@ class GlobalSettingsClassBase {
         key: GlobalSettingOptions.SSO,
         icon: SSOIcon,
         description: t('message.sso-configuration-directly-from-the-ui'),
+      },
+      {
+        category: t('label.governance'),
+        key: GlobalSettingsMenuCategory.GOVERNANCE,
+        icon: GovernanceIcon,
+        description: t('message.governance-settings-description'),
+        items: [
+          {
+            label: t('label.glossary-term-relation-plural'),
+            description: t(
+              'message.glossary-term-relation-settings-description'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`,
+            icon: GlossaryIcon,
+          },
+          {
+            label: 'Task Forms',
+            description:
+              'Manage the payload schemas and UI schemas used to create tasks.',
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.TASK_FORMS}`,
+            icon: GovernanceIcon,
+          },
+          {
+            label: t('label.workflow-plural'),
+            description: t(
+              'message.governance-workflow-definitions-description'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
+            icon: WorkflowsSettingsIcon,
+          },
+        ],
       },
     ];
   }

@@ -26,13 +26,13 @@ import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -215,9 +215,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       <div className="h-full flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
           className="border-none"
-          contentMaxWidth="24rem"
+          contentMaxWidthClass="tw:max-w-96"
           icon={<CustomPropertyEmpty />}
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
           <Transi18next
             i18nKey="message.no-custom-properties-entity"
             renderElement={

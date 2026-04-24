@@ -106,7 +106,7 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
 
   @Override
   protected String getEntityType() {
-    return "mlModelService";
+    return "mlmodelService";
   }
 
   @Override
@@ -142,6 +142,19 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().mlModelServices().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().mlModelServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .mlModelServices()
+        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

@@ -13,6 +13,7 @@ Mixin class containing PATCH specific methods
 
 To be used by OpenMetadata class
 """
+
 import json
 import traceback
 from copy import deepcopy
@@ -608,10 +609,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         }
 
         try:
-            self.client.patch(
+            resp = self.client.patch(
                 path=f"{self.get_suffix(AutomationWorkflow)}/{model_str(automation_workflow.id)}",
                 data=json.dumps([result_data, status_data]),
             )
+            if resp is None:
+                logger.error(
+                    "PATCH returned None for automation workflow "
+                    f"[{model_str(automation_workflow)}] — the server may have rejected the request"
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
@@ -726,9 +732,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 data=json.dumps(
                     [
                         {
-                            PatchField.OPERATION: PatchOperation.REPLACE
-                            if existing_custom_properties
-                            else PatchOperation.ADD,
+                            PatchField.OPERATION: (
+                                PatchOperation.REPLACE
+                                if existing_custom_properties
+                                else PatchOperation.ADD
+                            ),
                             PatchField.PATH: "/extension",
                             PatchField.VALUE: final_properties,
                         }

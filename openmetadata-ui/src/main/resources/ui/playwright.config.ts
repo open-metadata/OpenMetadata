@@ -19,32 +19,6 @@ import dotenv from 'dotenv';
  */
 dotenv.config();
 
-const STATEFUL_TEST_FILES = [
-  '**/Pages/LoginConfiguration.spec.ts',
-  '**/Pages/Tag.spec.ts',
-  '**/Pages/TagPageRightPanel.spec.ts',
-  '**/Pages/TeamAssetsRightPanel.spec.ts',
-  '**/Pages/Teams.spec.ts',
-  '**/Pages/UserDetails.spec.ts',
-  '**/Pages/Users.spec.ts',
-  '**/VersionPages/*.spec.ts',
-];
-
-const GRAPH_TEST_FILES = [
-  '**/Features/ImpactAnalysis.spec.ts',
-  '**/Pages/ExplorePageRightPanel.spec.ts',
-  '**/Pages/InputOutputPorts.spec.ts',
-  '**/Pages/Lineage.spec.ts',
-];
-
-const LANDING_TEST_FILES = [
-  '**/Features/ActivityFeed.spec.ts',
-  '**/Features/CustomizeDetailPage.spec.ts',
-  '**/Features/LandingPageWidgets/*.spec.ts',
-  '**/Flow/CustomizeLandingPage.spec.ts',
-  '**/Flow/CustomizeWidgets.spec.ts',
-];
-
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -56,9 +30,9 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 3 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -80,9 +54,8 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
      * This ensures page.goto() and waitForLoadState() calls timeout after 60s
@@ -107,49 +80,24 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
-      grepInvert: [/@data-insight/, /@ingestion/, /@sample-data/, /@basic/],
-      teardown: 'SearchRBAC',
+      grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
+      teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
+        '**/Auth/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
-        ...STATEFUL_TEST_FILES,
-        ...GRAPH_TEST_FILES,
-        ...LANDING_TEST_FILES,
+        '**/SSOLogin.spec.ts',
       ],
     },
     {
-      name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
+      name: 'sso-auth',
+      testMatch: '**/SSOLogin.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'landing',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      testMatch: LANDING_TEST_FILES,
       fullyParallel: false,
-      teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'graph',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      testMatch: GRAPH_TEST_FILES,
-      fullyParallel: false,
-      teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'stateful',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      testMatch: STATEFUL_TEST_FILES,
-      grepInvert: [/@sample-data/],
-      fullyParallel: false,
-      teardown: 'entity-data-teardown',
+      workers: 1,
     },
     {
       name: 'entity-data-teardown',
@@ -165,6 +113,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
+      teardown: 'entity-data-teardown',
+    },
+    {
+      name: 'Knowledge Graph',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },
     {
@@ -187,21 +142,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
-      testIgnore: LANDING_TEST_FILES,
     },
     {
-      name: 'ingestion',
+      name: 'SearchRBAC',
+      testMatch: '**/SearchRBAC.spec.ts',
+      dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      grep: /@ingestion|@sample-data/,
       teardown: 'entity-data-teardown',
-      testIgnore: [
-        '**/nightly/**',
-        '**/DataAssetRulesEnabled.spec.ts',
-        '**/DataAssetRulesDisabled.spec.ts',
-        '**/SystemCertificationTags.spec.ts',
-        ...LANDING_TEST_FILES,
-      ],
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness

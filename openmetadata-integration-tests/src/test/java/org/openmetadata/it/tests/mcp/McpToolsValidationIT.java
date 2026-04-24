@@ -367,6 +367,40 @@ public class McpToolsValidationIT extends McpTestBase {
 
   @Test
   @Order(16)
+  void testCreateMetric() throws Exception {
+    String metricName = "mcp_metric_" + System.currentTimeMillis();
+    Map<String, Object> toolCall =
+        McpTestUtils.createMetricToolCall(
+            metricName, "Test metric created via MCP tool", "SQL", "SELECT COUNT(*) FROM orders");
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = OBJECT_MAPPER.readTree(firstResult.get("text").asText());
+    assertThat(response.has("name")).isTrue();
+    assertThat(response.get("name").asText()).isEqualTo(metricName);
+  }
+
+  @Test
+  @Order(17)
+  void testCreateMetricMissingExpression() throws Exception {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("name", "incomplete_metric");
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_metric", arguments);
+
+    JsonNode result = executeToolCall(toolCall);
+    assertThat(result.has("isError")).isTrue();
+    assertThat(result.get("isError").asBoolean()).isTrue();
+  }
+
+  @Test
+  @Order(18)
   void testSearchMetadataIncludesDeletedField() throws Exception {
     String deletionTestTableName = "mcp_deletion_test_table_" + System.currentTimeMillis();
     CreateTable createDeletionTestTable =

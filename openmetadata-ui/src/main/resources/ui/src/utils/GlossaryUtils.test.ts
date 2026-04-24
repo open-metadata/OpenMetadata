@@ -29,6 +29,7 @@ import {
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryUtils';
@@ -223,6 +224,52 @@ describe('Glossary Utils', () => {
     ]);
 
     expect(filteredOptions).toEqual(expected_glossary);
+  });
+
+  it('should allow glossary review actions for task assignees even when reviewers are not hydrated', () => {
+    const result = permissionForApproveOrReject(
+      {
+        fullyQualifiedName: '"Glossary"."Term"',
+        reviewers: [],
+      } as ModifiedGlossaryTerm,
+      { id: 'user-1' } as never,
+      {
+        '<#E::glossaryTerm::"Glossary"."Term">': [
+          {
+            id: 'task-uuid-1',
+            assignees: [{ id: 'user-1' }],
+          },
+        ],
+      } as never
+    );
+
+    expect(result).toEqual({
+      permission: true,
+      taskId: 'task-uuid-1',
+    });
+  });
+
+  it('should deny glossary review actions when the current user is only a reviewer and not a remaining task assignee', () => {
+    const result = permissionForApproveOrReject(
+      {
+        fullyQualifiedName: '"Glossary"."Term"',
+        reviewers: [{ id: 'user-1' }],
+      } as ModifiedGlossaryTerm,
+      { id: 'user-1' } as never,
+      {
+        '<#E::glossaryTerm::"Glossary"."Term">': [
+          {
+            id: 'task-uuid-1',
+            assignees: [{ id: 'user-2' }],
+          },
+        ],
+      } as never
+    );
+
+    expect(result).toEqual({
+      permission: false,
+      taskId: 'task-uuid-1',
+    });
   });
 });
 

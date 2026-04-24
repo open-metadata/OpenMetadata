@@ -47,6 +47,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.ClassificationResource;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -64,6 +65,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
+  }
+
+  @Override
+  protected void postDelete(Classification entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    PolicyConditionUpdater.updateAllPolicyConditions(
+        condition ->
+            PolicyConditionUpdater.removeByPrefixFromCondition(
+                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
   }
 
   @Override
@@ -285,13 +295,18 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
-      recordChange("disabled", original.getDisabled(), updated.getDisabled());
-      recordChange(
+      compareAndUpdate(
+          "disabled",
+          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
+      compareAndUpdate(
           "autoClassificationConfig",
-          original.getAutoClassificationConfig(),
-          updated.getAutoClassificationConfig(),
-          true);
-      updateName(updated);
+          () ->
+              recordChange(
+                  "autoClassificationConfig",
+                  original.getAutoClassificationConfig(),
+                  updated.getAutoClassificationConfig(),
+                  true));
+      compareAndUpdate("name", () -> updateName(updated));
     }
 
     public void updateName(Classification updated) {
@@ -317,6 +332,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
+      invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
       daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
       daoCollection
           .tagUsageDAO()
@@ -326,6 +343,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       updateEntityLinks(oldFqn, newFqn, updated);
       updateAssetIndexes(oldFqn, newFqn);
 
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
       invalidateClassification(updated.getId());
     }
 
@@ -333,17 +355,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
       MessageParser.EntityLink newAbout = new MessageParser.EntityLink(CLASSIFICATION, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       List<Tag> childTags = getAllTagsByClassification(updated);
 
       for (Tag child : childTags) {
         newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

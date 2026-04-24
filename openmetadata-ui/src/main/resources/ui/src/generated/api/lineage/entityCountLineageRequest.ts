@@ -24,6 +24,10 @@ export interface EntityCountLineageRequest {
      */
     direction: LineageDirection;
     /**
+     * Maximum downstream depth to compute pagination info for when requested
+     */
+    downstreamDepth?: number;
+    /**
      * Entity Fqn to search lineage
      */
     fqn: string;
@@ -35,6 +39,10 @@ export interface EntityCountLineageRequest {
      * Include deleted entities
      */
     includeDeleted?: boolean;
+    /**
+     * Include pagination totals and depth counts in the response
+     */
+    includePaginationInfo?: boolean;
     /**
      * Include source fields
      */
@@ -65,6 +73,10 @@ export interface EntityCountLineageRequest {
      * Number of entities to return in this page
      */
     size?: number;
+    /**
+     * Maximum upstream depth to compute pagination info for when requested
+     */
+    upstreamDepth?: number;
 }
 
 /**

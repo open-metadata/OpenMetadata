@@ -25,7 +25,7 @@ set -e
 declare -A python
 python["name"]="Python"
 python["version_command"]="python --version 2>&1 | awk '{print \$2}'"
-python["required_version"]="3.9 3.10 3.11"
+python["required_version"]="3.11 3.12 3.13"
 
 declare -A docker
 docker["name"]="Docker"

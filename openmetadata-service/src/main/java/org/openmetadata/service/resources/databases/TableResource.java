@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineObservability;
+import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -81,6 +82,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -199,6 +201,22 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String databaseSchemaParam,
       @Parameter(
               description =
+                  "Filter tables by database schema regex pattern applied to databaseSchema.name by default. "
+                      + "To apply the regex to the fully qualified name, set regexFilterByFqn=true. "
+                      + "For better performance, use this in combination with the database query filter.",
+              schema = @Schema(type = "string", example = "finance_schema_.*"))
+          @QueryParam("databaseSchemaRegex")
+          String databaseSchemaParamRegex,
+      @Parameter(
+              description =
+                  "Filter tables by table regex pattern applied to the table name by default. "
+                      + "To apply the regex to the table fully qualified name, set regexFilterByFqn=true. "
+                      + "For better performance, use this in combination with the database and/or databaseSchema query filters.",
+              schema = @Schema(type = "string", example = "orders_.*"))
+          @QueryParam("tableRegex")
+          String tableParamRegex,
+      @Parameter(
+              description =
                   "Include tables with an empty test suite (i.e. no test cases have been created for this table). Default to true",
               schema = @Schema(type = "boolean", example = "true"))
           @QueryParam("includeEmptyTestSuite")
@@ -225,13 +243,41 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "When true, regex filters match against fullyQualifiedName instead of name. Default is false.",
+              schema = @Schema(type = "boolean", example = "false"))
+          @QueryParam("regexFilterByFqn")
+          @DefaultValue("false")
+          boolean regexFilterByFqn,
+      @Parameter(
+              description =
+                  "Controls how regex filters are applied. 'include' returns matching entities, 'exclude' returns non-matching entities. Default is 'include'.",
+              schema = @Schema(implementation = RegexMode.class))
+          @QueryParam("regexMode")
+          @DefaultValue("include")
+          RegexMode regexMode) {
     ListFilter filter = new ListFilter(include);
     if (databaseParam != null) {
       filter.addQueryParam("database", databaseParam);
     }
     if (databaseSchemaParam != null) {
       filter.addQueryParam("databaseSchema", databaseSchemaParam);
+    }
+    if (regexFilterByFqn) {
+      filter.addQueryParam("regexFilterByFqn", true);
+    }
+    if (regexMode != null) {
+      filter.addQueryParam("regexMode", regexMode.value());
+    }
+    if (databaseSchemaParamRegex != null) {
+      filter.addQueryParam("databaseSchemaRegex", databaseSchemaParamRegex);
+      filter.addQueryParam("databaseSchemaRegexField", "databaseSchema.name");
+    }
+    if (tableParamRegex != null) {
+      filter.addQueryParam("tableRegex", tableParamRegex);
+      filter.addQueryParam("tableRegexField", "name");
     }
     // Only add includeEmptyTestSuite when it's explicitly false (default is true)
     if (!includeEmptyTestSuite) {
@@ -351,8 +397,24 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Table Id", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET
@@ -821,6 +883,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/sampleData")
+  @LatencyPhase("tableSampleDataPut")
   @Operation(
       operationId = "addSampleData",
       summary = "Add sample data",
@@ -849,6 +912,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{id}/sampleData")
+  @LatencyPhase("tableSampleDataGet")
   @Operation(
       operationId = "getSampleData",
       summary = "Get sample data",
@@ -879,6 +943,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/sampleData")
+  @LatencyPhase("tableSampleDataDelete")
   @Operation(
       operationId = "deleteSampleData",
       summary = "Delete sample data",
@@ -906,6 +971,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityPut")
   @Operation(
       operationId = "addPipelineObservability",
       summary = "Add pipeline observability data",
@@ -942,6 +1008,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{id}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityGet")
   @Operation(
       operationId = "getPipelineObservability",
       summary = "Get pipeline observability data",
@@ -968,6 +1035,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{fqn}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityGetByName")
   @Operation(
       operationId = "getPipelineObservabilityByFQN",
       summary = "Get pipeline observability data by table FQN",
@@ -997,6 +1065,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityDelete")
   @Operation(
       operationId = "deletePipelineObservability",
       summary = "Delete pipeline observability data",
@@ -1024,6 +1093,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @LatencyPhase("tablePipelineObservabilityPutSingle")
   @Operation(
       operationId = "addSinglePipelineObservability",
       summary = "Add or update single pipeline observability data",
@@ -1062,6 +1132,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @LatencyPhase("tablePipelineObservabilityDeleteSingle")
   @Operation(
       operationId = "deleteSinglePipelineObservability",
       summary = "Delete single pipeline observability data",
@@ -1091,6 +1162,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableProfilerConfig")
+  @LatencyPhase("tableProfilerConfigPut")
   @Operation(
       operationId = "addDataProfilerConfig",
       summary = "Add table profile config",
@@ -1119,6 +1191,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{id}/tableProfilerConfig")
+  @LatencyPhase("tableProfilerConfigGet")
   @Operation(
       operationId = "getDataProfilerConfig",
       summary = "Get table profile config",
@@ -1147,6 +1220,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/tableProfilerConfig")
+  @LatencyPhase("tableProfilerConfigDelete")
   @Operation(
       operationId = "delete DataProfilerConfig",
       summary = "Delete table profiler config",
@@ -1174,6 +1248,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{fqn}/tableProfile/latest")
+  @LatencyPhase("tableProfileLatestGet")
   @Operation(
       operationId = "Get the latest table and column profile",
       summary = "Get the latest table profile",
@@ -1212,6 +1287,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{fqn}/tableProfile")
+  @LatencyPhase("tableProfileListGet")
   @Operation(
       operationId = "list Profiles",
       summary = "List of table profiles",
@@ -1337,6 +1413,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableProfile")
+  @LatencyPhase("tableProfilePut")
   @Operation(
       operationId = "addDataProfiler",
       summary = "Add table profile data",
@@ -1644,7 +1721,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String sortOrder) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    ResourceContext<Table> resourceContext = getResourceContextById(id, include);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.getTableColumns(
@@ -1655,6 +1733,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            resourceContext.getOwners(),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
@@ -1731,7 +1810,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     // JAX-RS automatically URL-decodes path parameters, so fqn is already decoded
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    ResourceContext<Table> resourceContext = getResourceContextByName(fqn, include);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.getTableColumnsByFQN(
@@ -1742,6 +1822,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            resourceContext.getOwners(),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();

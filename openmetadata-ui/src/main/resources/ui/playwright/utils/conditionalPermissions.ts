@@ -278,7 +278,7 @@ export const checkViewAllPermission = async ({
   // Check if the details are shown properly
   await expect(page.getByTestId('data-assets-header')).toBeAttached();
 
-  await page.waitForSelector(`[data-testid="${childTabId}"]`);
+  await page.getByTestId(childTabId).waitFor();
 
   await page.click(`[data-testid="${childTabId}"]`);
 

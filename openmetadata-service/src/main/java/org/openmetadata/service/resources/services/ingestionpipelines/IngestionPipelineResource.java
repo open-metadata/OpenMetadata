@@ -401,8 +401,24 @@ public class IngestionPipelineResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET
@@ -715,7 +731,8 @@ public class IngestionPipelineResource
                     .withCode(500)
                     .withReason(
                         String.format("Error deploying [%s] due to [%s]", id, e.getMessage()))
-                    .withPlatform(pipelineServiceClient.getPlatform());
+                    .withPlatform(
+                        pipelineServiceClient != null ? pipelineServiceClient.getPlatform() : null);
               }
             })
         .collect(Collectors.toList());
@@ -1307,6 +1324,11 @@ public class IngestionPipelineResource
 
   private PipelineServiceClientResponse deployPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
@@ -1331,6 +1353,11 @@ public class IngestionPipelineResource
 
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =

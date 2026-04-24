@@ -8,7 +8,7 @@ source:
         securityConfig: 
           awsAccessKeyId: aws access key id
           awsSecretAccessKey: aws secret access key
-          awsRegion: aws region
+          awsRegion: us-east-1
       bucketName: bucket name
       prefix: prefix
   sourceConfig:

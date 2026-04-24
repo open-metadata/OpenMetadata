@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
+import static org.openmetadata.service.search.SearchUtils.buildScopedCredentialsProvider;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
@@ -15,13 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hc.client5.http.auth.AuthScope;
-import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
@@ -52,6 +52,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -80,12 +81,14 @@ import software.amazon.awssdk.regions.Region;
 public class OpenSearchClient implements SearchClient {
   private static final int REQUEST_COMPRESSION_THRESHOLD_BYTES = 8 * 1024;
 
-  private final boolean isClientAvailable;
+  private volatile boolean isClientAvailable;
+  private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private final AtomicLong lastHealthCheckAt = new AtomicLong();
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   // New OpenSearch Java API client
   @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
-  private final boolean isNewClientAvailable;
+  private volatile boolean isNewClientAvailable;
   private final OpenSearchTransport transport;
   private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
@@ -100,7 +103,7 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
   private final OpenSearchSearchManager searchManager;
 
-  private NLQService nlqService;
+  private final NLQService nlqService;
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
     this(config, null);
@@ -157,6 +160,25 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public boolean isClientAvailable() {
+    if (newClient == null) {
+      return false;
+    }
+    long now = System.currentTimeMillis();
+    long last = lastHealthCheckAt.get();
+    if (now - last < HEALTH_CHECK_CACHE_MS) {
+      return isClientAvailable;
+    }
+    if (!lastHealthCheckAt.compareAndSet(last, now)) {
+      return isClientAvailable;
+    }
+    try {
+      boolean alive = newClient.ping().value();
+      isClientAvailable = alive;
+      isNewClientAvailable = alive;
+    } catch (Exception e) {
+      isClientAvailable = false;
+      isNewClientAvailable = false;
+    }
     return isClientAvailable;
   }
 
@@ -259,6 +281,12 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.search(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchForExport(
+      SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchManager.searchForExport(request, subjectContext);
   }
 
   @Override
@@ -385,6 +413,14 @@ public class OpenSearchClient implements SearchClient {
           "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
+  }
+
+  @Override
+  public void invalidateLineageCache(String fqn) {
+    if (lineageGraphBuilder == null) {
+      return;
+    }
+    lineageGraphBuilder.invalidateLineageCacheForFqn(fqn);
   }
 
   @Override
@@ -540,6 +576,11 @@ public class OpenSearchClient implements SearchClient {
                   }
                 } catch (Exception ex) {
                   LOG.error("Reindexing Across Entities Failed", ex);
+                  SearchIndexRetryQueue.enqueue(
+                      sourceRef.getId() != null ? sourceRef.getId().toString() : null,
+                      sourceRef.getFullyQualifiedName(),
+                      sourceRef.getType(),
+                      SearchIndexRetryQueue.failureReason("reindexAcrossIndices", ex));
                 }
               });
     }
@@ -776,13 +817,9 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-            if (StringUtils.isNotEmpty(esConfig.getUsername())
-                && StringUtils.isNotEmpty(esConfig.getPassword())) {
-              BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-              credentialsProvider.setCredentials(
-                  new AuthScope(null, -1),
-                  new UsernamePasswordCredentials(
-                      esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+            BasicCredentialsProvider credentialsProvider =
+                buildScopedCredentialsProvider(esConfig, httpHosts);
+            if (credentialsProvider != null) {
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             }
 
@@ -793,6 +830,8 @@ public class OpenSearchClient implements SearchClient {
                       org.apache.hc.core5.util.TimeValue.ofSeconds(
                           esConfig.getKeepAliveTimeoutSecs()));
             }
+
+            httpClientBuilder.useSystemProperties();
 
             return httpClientBuilder;
           });
@@ -835,6 +874,12 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
     genericManager.deleteILMPolicy(policyName);
+  }
+
+  @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
   }
 
   @Override

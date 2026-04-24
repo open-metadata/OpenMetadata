@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
   createBot,
   deleteBot,
@@ -20,7 +21,6 @@ import {
   updateBotDetails,
   verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });

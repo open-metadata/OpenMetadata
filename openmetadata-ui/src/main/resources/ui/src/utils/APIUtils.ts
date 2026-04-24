@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { isArray, isObject, transform } from 'lodash';
+import { AxiosError } from 'axios';
+import { get, isArray, isObject, isString, transform } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
@@ -33,6 +34,7 @@ export const formatUsersResponse = (
       teams: d._source.teams,
       roles: d._source.roles,
       href: d._source.href,
+      isBot: d._source.isBot,
     };
   });
 };
@@ -93,11 +95,50 @@ export const formatDataProductResponse = (
   });
 };
 
+export const isBlobLikeResponse = (value: unknown): value is Blob => {
+  if (value instanceof Blob) {
+    return true;
+  }
+
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as Blob).text === 'function' &&
+      typeof (value as Blob).size === 'number' &&
+      typeof (value as Blob).type === 'string' &&
+      typeof (value as Blob).slice === 'function'
+  );
+};
+
+export const parseExportErrorMessage = async (
+  error: AxiosError<Blob | { message?: string }>,
+  fallback: string
+): Promise<string> => {
+  const responseData = error.response?.data;
+
+  if (isBlobLikeResponse(responseData)) {
+    const text = await responseData.text();
+    try {
+      const json = JSON.parse(text) as { message?: string };
+
+      return json?.message ?? (text || fallback);
+    } catch {
+      return text || fallback;
+    }
+  }
+
+  if (isString(responseData)) {
+    return responseData || fallback;
+  }
+
+  return responseData?.message ?? fallback;
+};
+
 export const omitDeep = <T>(
   obj: T,
   predicate: (value: string, key: string | number | symbol) => boolean
 ): T => {
-  return transform(obj as any, function (result, value, key) {
+  return transform(obj as object, function (result, value, key) {
     if (isObject(value)) {
       value = omitDeep(value, predicate) as unknown as string;
     }
@@ -106,8 +147,26 @@ export const omitDeep = <T>(
       if (isArray(obj) && isArray(result)) {
         result.push(value);
       } else {
-        (result as any)[key] = value;
+        (result as Record<string | number | symbol, unknown>)[key] = value;
       }
     }
   });
+};
+
+export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
+  let errorMessage = '';
+
+  if (error) {
+    errorMessage = get(error, 'response.data.message', '');
+    if (!errorMessage) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorMessage = get(error, 'response.data.responseMessage', '');
+    }
+    if (!errorMessage) {
+      errorMessage = get(error, 'response.data', '') as string;
+      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
+    }
+  }
+
+  return errorMessage.includes(key);
 };

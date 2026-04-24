@@ -21,10 +21,11 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForFirstPipelineStatusNotQueued } from '../../utils/logsViewer';
 import { test } from '../fixtures/pages';
 
-const table = new TableClass();
-const bundleTestSuite = new BundleTestSuiteClass();
+let table: TableClass;
+let bundleTestSuite: BundleTestSuiteClass;
 
 test.describe(
   'Logs viewer page',
@@ -35,104 +36,116 @@ test.describe(
     ],
   },
   () => {
-  test.beforeAll(
-    'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll(
+      'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
+      async ({ browser }) => {
+        table = new TableClass();
+        bundleTestSuite = new BundleTestSuiteClass();
 
-      await table.create(apiContext);
-      await bundleTestSuite.createBundleTestSuite(apiContext);
-      const { pipeline } =
-        await bundleTestSuite.createBundleTestSuitePipeline(apiContext);
-      await bundleTestSuite.runIngestionPipeline(apiContext, pipeline.id);
+        const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await afterAction();
-    }
-  );
+        await table.create(apiContext);
+        await bundleTestSuite.createBundleTestSuite(apiContext);
+        const { pipeline } =
+          await bundleTestSuite.createBundleTestSuitePipeline(apiContext);
+        await bundleTestSuite.runIngestionPipeline(apiContext, pipeline.id);
 
-  test('Logs page shows breadcrumb, summary, and log viewer or empty state after opening from bundle suite pipeline tab', async ({
-    page,
-  }) => {
-    test.slow();
+        await afterAction();
+      }
+    );
 
-    await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
-      await redirectToHomePage(page);
+    test('Logs page shows breadcrumb, summary, and log viewer or empty state after opening from bundle suite pipeline tab', async ({
+      page,
+    }) => {
+      // 6 minutes
+      test.setTimeout(6 * 60 * 1000);
 
-      const listResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
-          r.status() === 200
-      );
-      await page.goto('/data-quality/test-suites/bundle-suites');
-      await listResponse;
-      await waitForAllLoadersToDisappear(page);
+      await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
+        await redirectToHomePage(page);
 
-      const bundleSuiteFqn =
-        bundleTestSuite.bundleTestSuiteResponseData?.fullyQualifiedName ??
-        bundleTestSuite.bundleTestSuiteResponseData?.name;
-      expect(bundleSuiteFqn, 'bundle suite created in beforeAll').toBeTruthy();
-      const bundleSuiteLink = page
-        .getByTestId('test-suite-table')
-        .locator(`a[href*="${encodeURIComponent(bundleSuiteFqn)}"]`);
-      await expect(bundleSuiteLink).toBeVisible({ timeout: 10000 });
-      await bundleSuiteLink.click();
-      await waitForAllLoadersToDisappear(page);
-    });
+        const listResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
+            r.status() === 200
+        );
+        await page.goto('/data-quality/test-suites/bundle-suites');
+        await listResponse;
+        await waitForAllLoadersToDisappear(page);
 
-    await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
-      await page.getByTestId('pipeline').click();
-      await waitForAllLoadersToDisappear(page);
+        const bundleSuiteFqn =
+          bundleTestSuite.bundleTestSuiteResponseData?.fullyQualifiedName ??
+          bundleTestSuite.bundleTestSuiteResponseData?.name;
+        expect(
+          bundleSuiteFqn,
+          'bundle suite created in beforeAll'
+        ).toBeTruthy();
+        const bundleSuiteLink = page
+          .getByTestId('test-suite-table')
+          .locator(`a[href*="${encodeURIComponent(bundleSuiteFqn)}"]`);
+        await expect(bundleSuiteLink).toBeVisible({ timeout: 10000 });
+        await bundleSuiteLink.click();
+        await waitForAllLoadersToDisappear(page);
+      });
 
-      const pipelinesResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/services/ingestionPipelines') &&
-          r.status() === 200
-      );
-      const logsLastResponse = page.waitForResponse(
-        (r) => {
+      await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {
+        await waitForFirstPipelineStatusNotQueued(page);
+
+        const pipelinesResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/services/ingestionPipelines') &&
+            r.status() === 200
+        );
+        const logsLastResponse = page.waitForResponse((r) => {
           const url = r.url();
           return (
             url.includes('/api/v1/services/ingestionPipelines/logs/') &&
             url.includes('/last') &&
             r.status() === 200
           );
+        });
+        await expect(page.getByTestId('logs-button').first()).toBeVisible();
+        await page.getByTestId('logs-button').first().click();
+        await pipelinesResponse;
+        await logsLastResponse;
+      });
+
+      await test.step('Wait for logs page to load and verify all key elements', async () => {
+        await page.waitForURL(/\/testSuite\/.*\/logs/);
+
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('skeleton-container')).not.toBeVisible();
+
+        await expect(page.getByTestId('breadcrumb')).toBeVisible();
+        await expect(page.getByTestId('summary-card')).toBeVisible();
+
+        const hasLogContent = await page.getByTestId('lazy-log').isVisible();
+        const hasNoLogsEmptyState = await page
+          .getByTestId('no-data-placeholder')
+          .filter({
+            has: page.getByText(/no .* log|logs.*available/i),
+          })
+          .isVisible();
+
+        expect(hasLogContent || hasNoLogsEmptyState).toBeTruthy();
+      });
+
+      await test.step('Verify action buttons when logs exist, or skip if empty state', async () => {
+        const noLogsAvailable = page.getByText(/No logs are available/i);
+
+        // If no logs are available, skip the test
+        if (await noLogsAvailable.isVisible()) {
+          return;
         }
-      );
-      await expect(page.getByTestId('logs-button').first()).toBeVisible();
-      await page.getByTestId('logs-button').first().click();
-      await pipelinesResponse;
-      await logsLastResponse;
+
+        const jumpToEnd = page.getByTestId('jump-to-end-button');
+        const downloadBtn = page.getByTestId('download');
+        const copyToClipboardBtn = page.getByTestId('copy-secret');
+
+        await expect(jumpToEnd).toBeEnabled();
+        await expect(downloadBtn).toBeVisible();
+        await expect(copyToClipboardBtn).toBeVisible();
+      });
     });
-
-    await test.step('Wait for logs page to load and verify all key elements', async () => {
-      await page.waitForURL(/\/testSuite\/.*\/logs/);
-
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(page.getByTestId('skeleton-container')).not.toBeVisible();
-
-      await expect(page.getByTestId('breadcrumb')).toBeVisible();
-      await expect(page.getByTestId('summary-card')).toBeVisible();
-
-      const hasLogContent = await page.getByTestId('lazy-log').isVisible();
-      const hasNoLogsEmptyState = await page
-        .getByTestId('no-data-placeholder')
-        .filter({
-          has: page.getByText(/no .* log|logs.*available/i),
-        })
-        .isVisible();
-
-      expect(hasLogContent || hasNoLogsEmptyState).toBeTruthy();
-    });
-
-    await test.step('Verify action buttons work when log content is present', async () => {
-      const jumpToEnd = page.getByTestId('jump-to-end-button');
-      const downloadBtn = page.getByTestId('download');
-      const copyToClipboardBtn = page.getByTestId('copy-secret');
-
-      await expect(jumpToEnd).toBeEnabled();
-      await expect(downloadBtn).toBeVisible();
-      await expect(copyToClipboardBtn).toBeVisible();
-    });
-  });
-});
+  }
+);

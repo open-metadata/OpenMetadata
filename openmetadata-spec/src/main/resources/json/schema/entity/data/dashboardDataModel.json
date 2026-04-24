@@ -30,7 +30,9 @@
         "SigmaDataModel",
         "PowerBIDataFlow",
         "MicroStrategyDataset",
-        "ThoughtSpotDataModel"
+        "ThoughtSpotDataModel",
+        "SapS4HanaCdsView",
+        "SsrsDataModel"
       ],
       "javaEnums": [
         {
@@ -74,6 +76,12 @@
         },
         {
           "name": "ThoughtSpotDataModel"
+        },
+        {
+          "name": "SapS4HanaCdsView"
+        },
+        {
+          "name": "SsrsDataModel"
         }
       ]
     }
@@ -127,6 +135,10 @@
     "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataContract": {
+      "description": "Reference to the data contract for this entity.",
+      "$ref": "../../type/entityReference.json"
     },
     "tags": {
       "description": "Tags for this data model.",

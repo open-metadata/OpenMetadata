@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { getEntityDisplayName } from '../../utils/entity';
 import {
   editDisplayNameFromPanel,
   navigateToExploreAndSelectTable,
@@ -27,14 +28,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 async function openEntitySummaryPanel(page: Page, entityType: EntityType) {
   await selectDataAssetFilter(page, entityType);
-  await page.waitForLoadState('networkidle');
 
   const firstEntityCard = page
     .locator('[data-testid="table-data-card"]')
     .first();
   if (await firstEntityCard.isVisible()) {
     await firstEntityCard.click();
-    await page.waitForLoadState('networkidle');
   }
 }
 
@@ -196,7 +195,10 @@ test.describe('Entity Title Section - Edit Display Name', () => {
   }) => {
     const newDisplayName = `Updated Table ${uuid()}`;
 
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
+    await navigateToExploreAndSelectTable(
+      page,
+      getEntityDisplayName(table.entityResponseData)
+    );
 
     const summaryPanel = page.locator('.entity-summary-panel-container');
     await expect(summaryPanel).toBeVisible();
@@ -208,7 +210,10 @@ test.describe('Entity Title Section - Edit Display Name', () => {
   });
 
   test('should cancel edit display name modal', async ({ page }) => {
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
+    await navigateToExploreAndSelectTable(
+      page,
+      getEntityDisplayName(table.entityResponseData)
+    );
 
     const summaryPanel = page.locator('.entity-summary-panel-container');
     await expect(summaryPanel).toBeVisible();

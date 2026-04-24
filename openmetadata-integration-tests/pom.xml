@@ -12,8 +12,8 @@
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
     <maven.failsafe.version>3.1.2</maven.failsafe.version>
-    <junit.jupiter.version>5.10.2</junit.jupiter.version>
-    <junit.platform.version>1.10.2</junit.platform.version>
+    <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
+    <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
     <dockerjava.version>3.4.2</dockerjava.version>
   </properties>
   <dependencyManagement>
@@ -218,6 +218,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -251,6 +253,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
@@ -302,6 +306,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                   </includes>
@@ -336,6 +342,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                   </excludes>
@@ -388,6 +396,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -421,6 +431,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
@@ -472,6 +484,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                   </includes>
@@ -506,6 +520,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                   </excludes>
@@ -524,6 +540,95 @@
                 </configuration>
               </execution>
               <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!-- MySQL + Elasticsearch + Redis (Redis cache enabled) -->
+    <profile>
+      <id>mysql-elasticsearch-redis</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>sequential-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <execution>
+                <id>parallel-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    <cacheProvider>redis</cacheProvider>
+                    <redisImage>redis:7-alpine</redisImage>
+
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
               <execution>
                 <id>verify</id>
                 <goals>
@@ -558,6 +663,8 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/AppsResourceIT.java</include>
+                    <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -593,6 +700,8 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>

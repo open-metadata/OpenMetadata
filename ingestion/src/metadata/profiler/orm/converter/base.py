@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
 class Base(DeclarativeBase):
@@ -102,7 +105,7 @@ def build_orm_col(
 
 def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
-) -> type:
+) -> Optional[type]:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy ORM class
@@ -126,11 +129,11 @@ def ometa_to_sqa_orm(
     # SQA 2.x raises a hard error if no primary key columns are found (was just a warning in 1.x).
     # Since build_orm_col assigns PK to the first column, we need at least one column.
     if not table.columns:
-        raise ValueError(
-            f"Table '{table.name.root}' has no columns. "
-            "Cannot create ORM class without at least one column. "
-            "Ensure the table's column metadata was ingested correctly."
+        logger.warning(
+            "Table '%s' has no columns. Skipping ORM class creation.",
+            table.name.root,
         )
+        return None
 
     orm_database_name = get_orm_database(table, metadata)
     # SQLite does not support schemas

@@ -15,13 +15,14 @@ import {
   CloseOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { CheckCircleOutline, ErrorOutline } from '@mui/icons-material';
 import {
   Box,
   Button,
   Divider as MuiDivider,
   Typography as MuiTypography,
+  useTheme,
 } from '@mui/material';
+import { AlertCircle, CheckCircle } from '@untitledui/icons';
 import { Alert, Checkbox, Divider, List, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -111,6 +112,7 @@ export const useAssetSelectionContent = ({
   infoBannerText,
 }: AssetSelectionContentProps) => {
   const { theme } = useApplicationStore();
+  const muiTheme = useTheme();
   const { t } = useTranslation();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [search, setSearch] = useState('');
@@ -574,7 +576,7 @@ export const useAssetSelectionContent = ({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {selectedItems && selectedItems.size >= 1 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <CheckCircleOutline color="success" fontSize="small" />
+            <CheckCircle color={muiTheme.palette.success.main} size={20} />
             <MuiTypography variant="body2">
               {selectedItems.size} {t('label.selected-lowercase')}
             </MuiTypography>
@@ -585,7 +587,7 @@ export const useAssetSelectionContent = ({
             <>
               <MuiDivider flexItem orientation="vertical" sx={{ mx: 1 }} />
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <ErrorOutline color="error" fontSize="small" />
+                <AlertCircle color={muiTheme.palette.error.main} size={20} />
                 <MuiTypography color="error" variant="body2">
                   {failedStatus.failedRequest.length} {t('label.error')}
                 </MuiTypography>

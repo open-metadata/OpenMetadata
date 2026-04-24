@@ -20,7 +20,7 @@
       "tableType",
       "columns",
       "databaseSchema",
-      "tableConstraint",
+      "tableConstraints",
       "database",
       "service",
       "serviceType"
@@ -117,6 +117,13 @@
       "parent",
       "children",
       "usageCount"
+    ],
+    "metric": [
+      "metricType",
+      "unitOfMeasurement",
+      "granularity",
+      "relatedMetrics",
+      "metricExpression"
     ]
   }
 }

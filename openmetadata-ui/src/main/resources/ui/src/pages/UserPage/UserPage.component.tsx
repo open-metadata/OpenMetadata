@@ -29,7 +29,7 @@ import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
-import { Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 

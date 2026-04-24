@@ -68,9 +68,13 @@ import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/Add
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  EXTENSION_POINTS,
+  TabContribution,
+} from '../../../../utils/ExtensionPointTypes';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
@@ -92,6 +96,7 @@ import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.inter
 import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
+import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import {
@@ -134,6 +139,7 @@ const TeamDetailsV1 = ({
   const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
+  const { extensionRegistry } = useApplicationsProvider();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;
@@ -630,7 +636,13 @@ const TeamDetailsV1 = ({
       );
     }
 
-    return currentTeam.childrenCount === 0 && !searchTerm ? (
+    const showEmptyTeamPlaceholder =
+      isEmpty(searchTerm) &&
+      isEmpty(childTeamList) &&
+      (currentTeam.childrenCount ?? 0) === 0 &&
+      !isTeamBasicDataLoading;
+
+    return showEmptyTeamPlaceholder ? (
       <ErrorPlaceHolder
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
@@ -690,6 +702,7 @@ const TeamDetailsV1 = ({
     entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
     isSearchLoading,
+    isTeamBasicDataLoading,
     onTeamExpand,
     handleAddTeamButtonClick,
     handleTeamSearch,
@@ -940,15 +953,10 @@ const TeamDetailsV1 = ({
   const teamsCollapseHeader = useMemo(
     () => (
       <>
-        <Space wrap className="w-full justify-between">
-          <Space
-            align="start"
-            className="w-full flex-col justify-center p-t-xs"
-            size="middle">
-            {!isOrganization && (
-              <TitleBreadcrumb titleLinks={slashedTeamName} />
-            )}
-            <div className="d-flex items-center gap-2">
+        <div className="w-full p-t-xs">
+          {!isOrganization && <TitleBreadcrumb titleLinks={slashedTeamName} />}
+          <div className="d-flex items-center justify-between p-t-xs">
+            <div className="d-flex items-center gap-2 flex-1 w-min-0">
               <Avatar className="teams-profile" size={40}>
                 <IconTeams className="text-primary" width={20} />
               </Avatar>
@@ -959,50 +967,54 @@ const TeamDetailsV1 = ({
                 updateTeamHandler={updateTeamHandler}
               />
 
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.TEAMS}
-                title={t('label.team-plural')}
-              />
+              <div className="d-flex flex-1 items-center justify-end w-min-0">
+                <LearningIcon
+                  pageId={LEARNING_PAGE_IDS.TEAMS}
+                  title={t('label.team-plural')}
+                />
+              </div>
             </div>
-          </Space>
 
-          <Space align="center">
-            {teamActionButton}
-            {!isOrganization ? (
-              entityPermissions.EditAll && (
+            <Space align="center">
+              {teamActionButton}
+              {!isOrganization ? (
+                entityPermissions.EditAll && (
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={afterDeleteAction}
+                    allowSoftDelete={!currentTeam.deleted}
+                    canDelete={entityPermissions.EditAll}
+                    displayName={getEntityName(currentTeam)}
+                    entityId={currentTeam.id}
+                    entityName={
+                      currentTeam.fullyQualifiedName ?? currentTeam.name
+                    }
+                    entityType={EntityType.TEAM}
+                    extraDropdownContent={extraDropdownContent}
+                    hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName ?? currentTeam.name,
+                      t('label.permanently-lowercase')
+                    )}
+                    softDeleteMessagePostFix={getDeleteMessagePostFix(
+                      currentTeam.fullyQualifiedName ?? currentTeam.name,
+                      t('label.soft-lowercase')
+                    )}
+                  />
+                )
+              ) : (
                 <ManageButton
-                  isRecursiveDelete
-                  afterDeleteAction={afterDeleteAction}
-                  allowSoftDelete={!currentTeam.deleted}
-                  canDelete={entityPermissions.EditAll}
+                  canDelete={false}
                   displayName={getEntityName(currentTeam)}
-                  entityId={currentTeam.id}
                   entityName={
                     currentTeam.fullyQualifiedName ?? currentTeam.name
                   }
                   entityType={EntityType.TEAM}
-                  extraDropdownContent={extraDropdownContent}
-                  hardDeleteMessagePostFix={getDeleteMessagePostFix(
-                    currentTeam.fullyQualifiedName ?? currentTeam.name,
-                    t('label.permanently-lowercase')
-                  )}
-                  softDeleteMessagePostFix={getDeleteMessagePostFix(
-                    currentTeam.fullyQualifiedName ?? currentTeam.name,
-                    t('label.soft-lowercase')
-                  )}
+                  extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
                 />
-              )
-            ) : (
-              <ManageButton
-                canDelete={false}
-                displayName={getEntityName(currentTeam)}
-                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-                entityType={EntityType.TEAM}
-                extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
-              />
-            )}
-          </Space>
-        </Space>
+              )}
+            </Space>
+          </div>
+        </div>
         <div className="p-t-md ">
           <TeamsInfo
             childTeamsCount={childTeams.length}
@@ -1124,6 +1136,44 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  // Get plugin-contributed tabs
+  const pluginTabs = useMemo(() => {
+    const extensionContext = {
+      teamId: currentTeam.id,
+    };
+
+    return extensionRegistry
+      .getContributions<TabContribution>(EXTENSION_POINTS.TEAM_DETAILS_TABS)
+      .filter((tab) => {
+        if (tab.condition) {
+          return tab.condition(extensionContext);
+        }
+
+        return !tab.isHidden;
+      })
+      .map((tab) => {
+        const TabComponent = tab.component;
+
+        return {
+          label:
+            typeof tab.label === 'string' ? (
+              <TabsLabel
+                count={tab.count}
+                id={tab.key}
+                isActive={currentTab === tab.key}
+                name={tab.label}
+              />
+            ) : (
+              tab.label
+            ),
+          key: tab.key,
+          children: <TabComponent {...extensionContext} />,
+        };
+      });
+  }, [extensionRegistry, currentTeam.id, currentTab]);
+
+  const allTabs = useMemo(() => [...tabs, ...pluginTabs], [tabs, pluginTabs]);
+
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
@@ -1158,7 +1208,7 @@ const TeamDetailsV1 = ({
             destroyInactiveTabPane
             activeKey={currentTab}
             className="tabs-new"
-            items={tabs}
+            items={allTabs}
             onChange={updateActiveTab}
           />
         </Col>

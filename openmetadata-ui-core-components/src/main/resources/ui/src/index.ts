@@ -17,7 +17,7 @@
 // Theme system
 export * from './theme';
 
-// Color system  
+// Color system
 export * from './colors';
 
 // Components

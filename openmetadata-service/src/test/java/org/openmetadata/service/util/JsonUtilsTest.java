@@ -14,10 +14,12 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
@@ -138,8 +140,6 @@ class JsonUtilsTest {
 
   @Test
   void testPojoToMaskedJson() {
-    String expectedJson =
-        "{\"name\":\"test\",\"connection\":{},\"tags\":[],\"version\":0.1,\"deleted\":false}";
     DatabaseService databaseService =
         new DatabaseService()
             .withName("test")
@@ -148,7 +148,128 @@ class JsonUtilsTest {
                     .withConfig(
                         new MysqlConnection()
                             .withAuthType(new basicAuth().withPassword("password"))));
-    String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
-    assertEquals(expectedJson, actualJson);
+
+    JsonNode actualJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(databaseService));
+
+    assertEquals("test", actualJson.get("name").asText());
+    assertFalse(actualJson.toString().contains("password"));
+    assertTrue(actualJson.has("connection"));
+    assertTrue(actualJson.get("connection").isObject());
+    assertEquals(0, actualJson.get("connection").size());
+    assertTrue(actualJson.has("deleted"));
+    assertFalse(actualJson.get("deleted").asBoolean());
+  }
+
+  @Test
+  void testApplyPatchReplaceMissingLeafTreatsAsAdd() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder
+        .add(
+            "/messageSchema",
+            Json.createObjectBuilder()
+                .add(
+                    "schemaFields",
+                    Json.createArrayBuilder()
+                        .add(Json.createObjectBuilder().add("name", "id").build()))
+                .build())
+        .replace("/messageSchema/schemaFields/0/description", "<p>updated</p>");
+
+    JsonNode original = JsonUtils.readTree("{}");
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+
+    assertEquals(
+        "<p>updated</p>", updated.at("/messageSchema/schemaFields/0/description").asText());
+  }
+
+  @Test
+  void testApplyPatchReplaceStillFailsWhenParentMissing() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/messageSchema/schemaFields/0/description", "<p>updated</p>");
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            JsonUtils.applyPatch(
+                JsonUtils.readTree("{\"messageSchema\":[]}"),
+                patchBuilder.build(),
+                JsonNode.class));
+  }
+
+  @Test
+  void testApplyPatchReplaceUnchangedWhenPathExists() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/messageSchema/schemaFields/0/description", "<p>updated</p>");
+    JsonNode original =
+        JsonUtils.readTree(
+            "{\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\",\"description\":\"old\"}]}}");
+
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+    assertEquals(
+        "<p>updated</p>", updated.at("/messageSchema/schemaFields/0/description").asText());
+  }
+
+  @Test
+  void testApplyPatchAddToArrayStillFailsForOutOfRangeIndex() {
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/messageSchema/schemaFields/2/description", "<p>updated</p>");
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                JsonUtils.applyPatch(
+                    JsonUtils.readTree(
+                        "{\"messageSchema\":{\"schemaFields\":[{\"name\":\"id\"}]}}"),
+                    patchBuilder.build(),
+                    JsonNode.class));
+    assertTrue(exception.getMessage() != null && !exception.getMessage().isBlank());
+  }
+
+  /**
+   * Companion to {@link #testApplyPatchReplaceMissingLeafTreatsAsAdd()} which tests nested paths.
+   * This test covers top-level paths where the parent is the root object. The bug was that
+   * parentPath="" was converted to "/" and Json.createPointer("/") matches the empty-string key, not
+   * the root, so the conversion was skipped.
+   */
+  @Test
+  void testApplyPatchReplaceTopLevelMissingField_treatsAsAdd() {
+    // Plain JSON: {"name":"test"} — no "displayName" key
+    JsonNode original = JsonUtils.readTree("{\"name\":\"test\"}");
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/displayName", "New Display Name");
+
+    JsonNode updated = JsonUtils.applyPatch(original, patchBuilder.build(), JsonNode.class);
+
+    assertEquals("New Display Name", updated.get("displayName").asText());
+    assertEquals("test", updated.get("name").asText());
+  }
+
+  /**
+   * End-to-end test with a real entity that has {@code @JsonInclude(NON_NULL)}. When displayName is
+   * null, it's excluded from serialization. A PATCH with op:replace on /displayName must succeed
+   * (converted to add). This is the exact scenario the UI triggers when the search index enriches
+   * displayName but the DB entity has it as null.
+   */
+  @Test
+  void testApplyPatchReplaceOnNullDisplayName_entityWithNonNullAnnotation() {
+    org.openmetadata.schema.tests.TestCase testCase = new org.openmetadata.schema.tests.TestCase();
+    testCase.setId(UUID.randomUUID());
+    testCase.setName("my_test_case");
+    testCase.setFullyQualifiedName("svc.db.schema.table.my_test_case");
+    testCase.setEntityLink("<#E::table::svc.db.schema.table>");
+    // displayName is null — excluded by @JsonInclude(NON_NULL)
+
+    String json = JsonUtils.pojoToJson(testCase);
+    assertFalse(json.contains("\"displayName\""), "NON_NULL should exclude null displayName");
+
+    JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
+    patchBuilder.replace("/displayName", "New Display Name");
+
+    org.openmetadata.schema.tests.TestCase result =
+        JsonUtils.applyPatch(
+            testCase, patchBuilder.build(), org.openmetadata.schema.tests.TestCase.class);
+
+    assertEquals("New Display Name", result.getDisplayName());
   }
 }

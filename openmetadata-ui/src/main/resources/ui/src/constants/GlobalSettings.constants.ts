@@ -23,6 +23,7 @@ export enum GlobalSettingsMenuCategory {
   PERSONA = 'persona',
   SEARCH = 'search',
   SSO = 'sso',
+  GOVERNANCE = 'governance',
 }
 
 export enum GlobalSettingOptions {
@@ -99,6 +100,9 @@ export enum GlobalSettingOptions {
   WORKSHEETS = 'worksheets',
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
   AUDIT_LOGS = 'audit-logs',
+  GLOSSARY_TERM_RELATIONS = 'glossary-term-relations',
+  TASK_FORMS = 'task-forms',
+  WORKFLOW_DEFINITIONS = 'workflow-definitions',
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
 }

@@ -20,7 +20,7 @@ export interface ChartData {
 }
 
 export interface ChartSeriesData {
-  chartType: SystemChartType;
+  chartType?: SystemChartType;
   percentageChange?: number;
   currentPercentage: number;
   isIncreased?: boolean;

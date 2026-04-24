@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.events.lifecycle;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -41,10 +44,39 @@ public interface EntityLifecycleEventHandler {
   }
 
   /**
+   * Called after multiple entities are updated. Default implementation delegates to
+   * the single-entity onEntityUpdated for backward compatibility.
+   */
+  default void onEntitiesUpdated(
+      List<? extends EntityInterface> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    for (EntityInterface entity : entities) {
+      onEntityUpdated(
+          entity,
+          entity.getChangeDescription() != null ? entity.getChangeDescription() : changeDescription,
+          subjectContext);
+    }
+  }
+
+  /**
    * Called after an entity is successfully updated.
    */
   default void onEntityUpdated(EntityReference entityRef, SubjectContext subjectContext) {
     // Default empty implementation
+  }
+
+  /**
+   * Called after multiple entities are successfully created in bulk.
+   * Default implementation delegates to individual onEntityCreated calls.
+   */
+  default void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+    for (EntityInterface entity : entities) {
+      onEntityCreated(entity, subjectContext);
+    }
   }
 
   /**
@@ -98,7 +130,7 @@ public interface EntityLifecycleEventHandler {
    *
    * @return Set of entity types to handle, or empty for all types
    */
-  default java.util.Set<String> getSupportedEntityTypes() {
-    return java.util.Collections.emptySet();
+  default Set<String> getSupportedEntityTypes() {
+    return Collections.emptySet();
   }
 }

@@ -85,7 +85,7 @@ function FilesTable({
             serviceFqn,
             searchValue
           ),
-          searchIndex: SearchIndex.FILE_SEARCH_INDEX,
+          searchIndex: SearchIndex.FILE,
           includeDeleted: showDeleted,
           trackTotalHits: true,
         });

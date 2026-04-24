@@ -22,7 +22,7 @@ import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
 
-type UserData = {
+export type UserData = {
   email: string;
   firstName: string;
   lastName: string;
@@ -38,9 +38,11 @@ export class UserClass {
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
+  isAdmin: boolean;
 
-  constructor(data?: UserData) {
-    this.data = data ? data : generateRandomUsername();
+  constructor(data?: UserData, isAdmin = false) {
+    this.data = data ?? generateRandomUsername();
+    this.isAdmin = isAdmin;
   }
 
   async create(apiContext: APIRequestContext, assignRole = true) {
@@ -54,24 +56,45 @@ export class UserClass {
       data: this.data,
     });
 
+    if (!response.ok()) {
+      throw new Error(
+        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
+      );
+    }
+
     this.responseData = await response.json();
     if (assignRole) {
-      const { entity } = await this.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/roles/0',
-            value: {
-              id: dataConsumerRole.id,
-              type: 'role',
-              name: dataConsumerRole.name,
+      if (this.isAdmin) {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/isAdmin',
+              value: true,
             },
-          },
-        ],
-      });
+          ],
+        });
 
-      return entity;
+        return entity;
+      } else {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/roles/0',
+              value: {
+                id: dataConsumerRole.id,
+                type: 'role',
+                name: dataConsumerRole.name,
+              },
+            },
+          ],
+        });
+
+        return entity;
+      }
     }
 
     return this.responseData;
@@ -207,8 +230,14 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
-    await page.waitForURL('**/signin');
-    await page.waitForLoadState('networkidle');
+    try {
+      await page.waitForURL('**/signin', { timeout: 5000 });
+    } catch {
+      await page.context().clearCookies();
+      await page.goto('/signin');
+      await page.waitForURL('**/signin');
+    }
+    await page.waitForLoadState('domcontentloaded');
     const emailInput = page.locator('input[id="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);
@@ -217,6 +246,12 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
+    await page
+      .waitForURL((url) => !url.pathname.includes('/signin'), {
+        timeout: 60000,
+      })
+      .catch(() => undefined);
+    await page.waitForLoadState('domcontentloaded').catch(() => undefined);
 
     const modal = await page
       .getByRole('dialog')
@@ -230,11 +265,13 @@ export class UserClass {
     }
 
     // Collapse the left side bar after logging in if it's open
-    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+    const leftNavBar = page.getByTestId('left-sidebar');
 
-    const hasOpenClass = await leftNavBar.evaluate((el) =>
-      el.classList.contains('sidebar-open')
-    );
+    const hasOpenClass = await leftNavBar
+      .evaluate((el) => el.classList.contains('sidebar-open'), null, {
+        timeout: 10000,
+      })
+      .catch(() => false);
 
     if (hasOpenClass) {
       await page.getByTestId('sidebar-toggle').click();
@@ -269,7 +306,6 @@ export class UserClass {
     await Promise.all([waitLogout, waitSigninNavigation]);
 
     // Ensure all network requests complete
-    await page.waitForLoadState('networkidle');
 
     // Clean up the route interception
     await page.unroute('**/analytics/web/events/collect');

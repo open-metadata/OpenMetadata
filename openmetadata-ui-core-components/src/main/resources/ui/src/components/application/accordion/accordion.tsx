@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from "react";
-import { useContext } from "react";
-import { ChevronDown } from "@untitledui/icons";
+import type { ReactNode } from 'react';
+import { useContext } from 'react';
+import { ChevronDown } from '@untitledui/icons';
 import type {
   ButtonProps as AriaButtonProps,
   DisclosureGroupProps as AriaDisclosureGroupProps,
   DisclosurePanelProps as AriaDisclosurePanelProps,
   DisclosureProps as AriaDisclosureProps,
-} from "react-aria-components";
+} from 'react-aria-components';
 import {
   Button as AriaButton,
   Disclosure as AriaDisclosure,
@@ -26,8 +26,8 @@ import {
   DisclosurePanel as AriaDisclosurePanel,
   DisclosureStateContext,
   Heading as AriaHeading,
-} from "react-aria-components";
-import { cx } from "@/utils/cx";
+} from 'react-aria-components';
+import { cx } from '@/utils/cx';
 
 export interface AccordionProps extends AriaDisclosureGroupProps {
   /**
@@ -36,7 +36,7 @@ export interface AccordionProps extends AriaDisclosureGroupProps {
   className?: string;
 }
 
-export interface AccordionItemProps extends AriaDisclosureProps {}
+export type AccordionItemProps = AriaDisclosureProps;
 
 export interface AccordionHeaderProps extends AriaButtonProps {
   /**
@@ -72,15 +72,18 @@ export interface AccordionPanelProps extends AriaDisclosurePanelProps {
  *   </AccordionItem>
  * </Accordion>
  */
-export const Accordion = ({ children, className, ...props }: AccordionProps) => {
+export const Accordion = ({
+  children,
+  className,
+  ...props
+}: AccordionProps) => {
   return (
     <AriaDisclosureGroup
       {...props}
       className={cx(
-        "tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:ring-1 tw:ring-border-secondary tw:overflow-hidden",
-        className,
-      )}
-    >
+        'tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:ring-1 tw:ring-border-secondary tw:overflow-hidden',
+        className
+      )}>
       {children}
     </AriaDisclosureGroup>
   );
@@ -100,12 +103,11 @@ export const AccordionItem = ({
       {...props}
       className={(state) =>
         cx(
-          "tw:group/item tw:w-full tw:bg-primary",
-          state.isDisabled && "tw:cursor-not-allowed tw:opacity-50",
-          typeof className === "function" ? className(state) : className,
+          'tw:group/item tw:w-full tw:bg-primary',
+          state.isDisabled && 'tw:cursor-not-allowed tw:opacity-50',
+          typeof className === 'function' ? className(state) : className
         )
-      }
-    >
+      }>
       {children}
     </AriaDisclosure>
   );
@@ -127,16 +129,14 @@ export const AccordionHeader = ({
         {...props}
         className={(state) =>
           cx(
-            "tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:px-6 tw:py-4 tw:text-left tw:outline-hidden tw:transition tw:duration-200 tw:ease-in-out",
-            "tw:text-sm tw:font-semibold tw:text-primary",
-            "hover:tw:bg-primary_hover",
-            state.isFocusVisible &&
-              "tw:ring-2 tw:ring-inset tw:ring-brand-300",
-            state.isDisabled && "tw:cursor-not-allowed tw:text-disabled",
-            typeof className === "function" ? className(state) : className,
+            'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:px-6 tw:py-4 tw:text-left tw:outline-hidden tw:transition tw:duration-200 tw:ease-in-out',
+            'tw:text-sm tw:font-semibold tw:text-primary',
+            'hover:tw:bg-primary_hover',
+            state.isFocusVisible && 'tw:ring-2 tw:ring-inset tw:ring-brand-300',
+            state.isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
+            typeof className === 'function' ? className(state) : className
           )
-        }
-      >
+        }>
         <span className="tw:grow">{children}</span>
         <ChevronDown
           aria-hidden="true"
@@ -161,11 +161,10 @@ export const AccordionPanel = ({
     <AriaDisclosurePanel
       {...props}
       className={cx(
-        "tw:overflow-hidden tw:border-t tw:border-border-secondary tw:px-6 tw:py-4 tw:text-sm tw:text-secondary",
-        !state?.isExpanded && "tw:hidden",
-        className,
-      )}
-    >
+        'tw:overflow-hidden tw:border-t tw:border-border-secondary tw:px-6 tw:py-4 tw:text-sm tw:text-secondary',
+        !state?.isExpanded && 'tw:hidden',
+        className
+      )}>
       {children}
     </AriaDisclosurePanel>
   );

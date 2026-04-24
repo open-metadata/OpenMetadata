@@ -45,7 +45,15 @@
           "isSystemDefault": true,
           "recognizerConfig": {
             "type": "predefined",
-            "name": "PhoneRecognizer"
+            "name": "PhoneRecognizer",
+            "context": [
+              "phone",
+              "telephone",
+              "cell",
+              "cellphone",
+              "mobile",
+              "call"
+            ]
           },
           "confidenceThreshold": 0.6,
           "target": "content"
@@ -76,6 +84,22 @@
               "DATE_TIME",
               "NRP",
               "LOCATION"
+            ],
+            "context": [
+              "city",
+              "county",
+              "region",
+              "province",
+              "state_name",
+              "stateName",
+              "state",
+              "street_address",
+              "street",
+              "address",
+              "birthday",
+              "birth_date",
+              "date",
+              "datetime"
             ]
           },
           "confidenceThreshold": 0.6,
@@ -215,7 +239,10 @@
                 "jcb",
                 "diners",
                 "maestro",
-                "instapayment"
+                "instapayment",
+                "cc_number",
+                "card_number",
+                "payment_info"
               ]
             },
             "confidenceThreshold": 0.6,
@@ -257,7 +284,19 @@
             "recognizerConfig": {
               "type": "predefined",
               "name": "CreditCardRecognizer",
-              "supportedLanguage": "it"
+              "supportedLanguage": "it",
+              "context": [
+                "carta",
+                "credito",
+                "visa",
+                "mastercard",
+                "cc",
+                "amex",
+                "discover",
+                "jcb",
+                "diners",
+                "maestro"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"
@@ -271,7 +310,55 @@
             "recognizerConfig": {
               "type": "predefined",
               "name": "CreditCardRecognizer",
-              "supportedLanguage": "pl"
+              "supportedLanguage": "pl",
+              "context": [
+                "karta",
+                "kredytowa",
+                "visa",
+                "mastercard",
+                "cc",
+                "amex",
+                "discover",
+                "jcb",
+                "diners",
+                "maestro"
+              ]
+            },
+            "confidenceThreshold": 0.6,
+            "target": "content"
+          },
+          {
+            "name": "CvvRecognizer",
+            "displayName": "CVV Recognizer",
+            "description": "Recognize CVV/CVC codes (3-4 digit card verification values).",
+            "enabled": true,
+            "isSystemDefault": true,
+            "recognizerConfig": {
+              "type": "pattern",
+              "patterns": [
+                {
+                  "name": "cvv_pattern",
+                  "regex": "\\b\\d{3,4}\\b",
+                  "score": 0.5
+                }
+              ],
+              "context": [
+                "cvv",
+                "cvc",
+                "security",
+                "code",
+                "verification",
+                "card",
+                "cvv2",
+                "cid",
+                "csc"
+              ],
+              "regexFlags": {
+                "dotAll": true,
+                "multiline": true,
+                "ignoreCase": true
+              },
+              "supportedLanguage": "en"
             },
             "confidenceThreshold": 0.6,
             "target": "content"
@@ -285,7 +372,18 @@
             "recognizerConfig": {
               "type": "predefined",
               "name": "UsBankRecognizer",
-              "supportedLanguage": "en"
+              "supportedLanguage": "en",
+              "context": [
+                "check",
+                "account",
+                "acct",
+                "bank",
+                "save",
+                "debit",
+                "bank_account",
+                "bank",
+                "account_number"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"
@@ -341,7 +439,16 @@
             "recognizerConfig": {
               "type": "predefined",
               "name": "UsSsnRecognizer",
-              "supportedLanguage": "en"
+              "supportedLanguage": "en",
+              "context": [
+                "social",
+                "security",
+                "ssn",
+                "ssns",
+                "ssid",
+                "national_id",
+                "id_number"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"
@@ -355,7 +462,12 @@
             "recognizerConfig": {
               "type": "predefined",
               "name": "NhsRecognizer",
-              "supportedLanguage": "en"
+              "supportedLanguage": "en",
+              "context": [
+                "nhs",
+                "national_health_service",
+                "nhs_number"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"
@@ -620,7 +732,18 @@
             "isSystemDefault": true,
             "recognizerConfig": {
               "type": "predefined",
-              "name": "CryptoRecognizer"
+              "name": "CryptoRecognizer",
+              "context": [
+                "crypto",
+                "bitcoin",
+                "btc",
+                "ethereum",
+                "eth",
+                "litecoin",
+                "ltc",
+                "wallet",
+                "address"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"
@@ -741,6 +864,16 @@
               "name": "SpacyRecognizer",
               "supportedEntities": [
                 "PERSON"
+              ],
+              "context": [
+                "name",
+                "first_name",
+                "last_name",
+                "given_name",
+                "firstName",
+                "lastName",
+                "givenName",
+                "familyName"
               ]
             },
             "confidenceThreshold": 0.6,
@@ -823,8 +956,7 @@
                 "dotAll": true,
                 "multiline": true,
                 "ignoreCase": true
-              },
-              "context": []
+              }
             },
             "confidenceThreshold": 0.6,
             "target": "column_name"

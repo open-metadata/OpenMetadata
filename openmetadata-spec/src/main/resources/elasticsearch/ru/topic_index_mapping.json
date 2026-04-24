@@ -94,8 +94,20 @@
   },
   "mappings": {
     "properties": {
+      "changeDescription": {
+        "enabled": false
+      },
+      "incrementalChangeDescription": {
+        "enabled": false
+      },
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -654,6 +666,9 @@
                 "ignore_above": 512
               }
             }
+          },
+          "sqlQueryKey": {
+            "type": "keyword"
           }
         }
       },
@@ -804,6 +819,9 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "textToLLMContext": {
+        "type": "text"
+      },
       "textToEmbed": {
         "type": "text"
       },
@@ -823,6 +841,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

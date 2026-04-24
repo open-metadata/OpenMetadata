@@ -14,6 +14,28 @@ import { render, screen } from '@testing-library/react';
 import incidentManagerClassBase from './IncidentManagerClassBase';
 import IncidentManagerPage from './IncidentManagerPage';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(
+      ({ icon, onClick, className, 'data-testid': testId }) => (
+        <button className={className} data-testid={testId} onClick={onClick}>
+          {icon}
+        </button>
+      )
+    ),
+  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
@@ -31,8 +53,8 @@ describe('IncidentManagerPage', () => {
   it('should render component', async () => {
     render(<IncidentManagerPage />);
 
-    expect(await screen.findByTestId('page-title')).toBeInTheDocument();
-    expect(await screen.findByTestId('page-sub-title')).toBeInTheDocument();
+    expect(await screen.findByTestId('heading')).toBeInTheDocument();
+    expect(await screen.findByTestId('sub-heading')).toBeInTheDocument();
 
     expect(
       await screen.findByText('IncidentManager.component')

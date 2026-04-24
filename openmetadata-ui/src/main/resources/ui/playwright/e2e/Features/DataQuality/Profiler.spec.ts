@@ -60,7 +60,7 @@ const validateProfilerAccessForRole = async (
   await redirectToHomePage(page);
   await tableInstance.visitEntityPage(page);
 
-  await page.waitForSelector(`[data-testid="entity-header-name"]`);
+  await page.getByTestId('entity-header-name').waitFor();
 
   await expect(
     page.locator(`[data-testid="entity-header-name"]`)
@@ -74,15 +74,16 @@ const validateProfilerAccessForRole = async (
 
   expect(profilerResponse.status()).toBe(200);
 
+  // TODO: Reduce timeout once the latency issue is fixed
   const listColumnApiCall = page.waitForResponse(
-    '/api/v1/tables/name/*/columns?*'
+    '/api/v1/tables/name/*/columns?*',
+    { timeout: 150_000 }
   );
   await page
     .getByRole('tab', {
       name: 'Column Profile',
     })
     .click();
-  await listColumnApiCall;
   const listColumnResponse = await listColumnApiCall;
 
   expect(listColumnResponse.status()).toBe(200);
@@ -96,7 +97,6 @@ const validateProfilerAccessForRole = async (
     )
     .getByText(tableInstance.entity.columns[1].name)
     .click();
-  await getProfilerInfo;
   const getProfilerInfoResponse = await getProfilerInfo;
 
   expect(getProfilerInfoResponse.status()).toBe(200);
@@ -268,11 +268,10 @@ test.describe(
       await page.getByRole('tab', { name: 'Data Quality' }).click();
 
       await page.reload();
-      await page.waitForLoadState('networkidle');
 
       await test.step('Update profiler setting', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await page.locator('[data-testid="slider-input"]').clear();
         await page
@@ -334,8 +333,13 @@ test.describe(
           JSON.stringify({
             excludeColumns: [table.entity?.columns[0].name],
             profileQuery: 'select * from table',
-            profileSample: 60,
-            profileSampleType: 'PERCENTAGE',
+            profileSampleConfig: {
+              sampleConfigType: 'STATIC',
+              config: {
+                profileSample: 60,
+                profileSampleType: 'PERCENTAGE',
+              },
+            },
             includeColumns: [{ columnName: table.entity?.columns[1].name }],
             partitioning: {
               partitionColumnName: table.entity?.columns[2].name,
@@ -350,7 +354,7 @@ test.describe(
 
       await test.step('Reset profile sample type', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await expect(
           page.locator('[data-testid="profile-sample"]')
@@ -374,8 +378,6 @@ test.describe(
           JSON.stringify({
             excludeColumns: [table.entity?.columns[0].name],
             profileQuery: 'select * from table',
-            profileSample: null,
-            profileSampleType: 'PERCENTAGE',
             includeColumns: [{ columnName: table.entity?.columns[1].name }],
             partitioning: {
               partitionColumnName: table.entity?.columns[2].name,
@@ -387,18 +389,20 @@ test.describe(
           })
         );
 
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]', {
+        await page.getByTestId('profiler-settings-modal').waitFor({
           state: 'detached',
         });
 
         // Validate the profiler setting is updated
         await page.click('[data-testid="profiler-setting-btn"]');
-        await page.waitForSelector('[data-testid="profiler-settings-modal"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
 
         await expect(
           page.locator('[data-testid="profile-sample"]')
         ).toBeVisible();
-        await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+        await expect(
+          page.locator('[data-testid="slider-input"]')
+        ).not.toBeVisible();
         await expect(
           page.getByTestId('profile-sample').locator('div')
         ).toBeVisible();

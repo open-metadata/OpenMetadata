@@ -46,7 +46,6 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -200,8 +199,24 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET
@@ -615,10 +630,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       return workflowConverted;
     }
     Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    workflowDecrypted.setOpenMetadataServerConnection(
-        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    workflowDecrypted.setOpenMetadataServerConnection(null);
     if (authorizer.shouldMaskPasswords(securityContext)) {
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useTranslation } from 'react-i18next';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
@@ -19,13 +18,12 @@ import Suggestions from './Suggestions';
 
 // Mock dependencies
 jest.mock('../../rest/searchAPI');
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(),
-}));
 jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
   filterOptionsByIndex: jest.fn((options, index) => {
-    return options.filter((option: any) => option._index === index);
+    return options.filter(
+      (option: any) => option._source?.entityType === index
+    );
   }),
   getGroupLabel: jest.fn((index) => `Group ${index}`),
   getSuggestionElement: jest.fn((suggestion) => (
@@ -37,12 +35,15 @@ jest.mock('../../utils/SearchUtils', () => ({
 jest.mock('../../utils/SearchClassBase', () => ({
   getEntitiesSuggestions: jest.fn(() => []),
 }));
-jest.mock('../../utils/CommonUtils', () => ({
-  Transi18next: ({ i18nKey, values }: { i18nKey: string; values: any }) => (
-    <span data-testid="transi18next">
-      {i18nKey} {values?.keyword || ''}
-    </span>
-  ),
+jest.mock('../../utils/i18next/LocalUtil', () => ({
+  Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
+    return <span>{i18nKey}</span>;
+  }),
+  __esModule: true,
+  default: {
+    t: jest.fn().mockImplementation((key) => key),
+  },
+  t: jest.fn().mockImplementation((key) => key),
 }));
 
 // Mock location.search for the component
@@ -54,7 +55,6 @@ Object.defineProperty(window, 'location', {
 });
 
 const mockSearchQuery = searchQuery as jest.Mock;
-const mockUseTranslation = useTranslation as jest.Mock;
 const mockUseTourProvider = useTourProvider as jest.Mock;
 
 const defaultProps = {
@@ -69,15 +69,11 @@ const defaultProps = {
 describe('Suggestions Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseTranslation.mockReturnValue({
-      t: jest.fn((key: string) => key),
-      i18n: { language: 'en' },
-    } as any);
     mockUseTourProvider.mockReturnValue({
       isTourOpen: false,
       updateTourPage: jest.fn(),
       updateTourSearch: jest.fn(),
-    } as any);
+    });
   });
 
   describe('AI Query Suggestions', () => {
@@ -137,7 +133,9 @@ describe('Suggestions Component', () => {
       render(<Suggestions {...defaultProps} />);
 
       // The component should show the no results message
-      expect(screen.getByTestId('transi18next')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.please-enter-to-find-data-assets')
+      ).toBeInTheDocument();
     });
 
     it('should not call searchQuery when tour is open', () => {

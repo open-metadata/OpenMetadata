@@ -126,6 +126,7 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
@@ -135,13 +136,8 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -183,7 +179,6 @@ import {
 } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
-import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import {
@@ -205,10 +200,51 @@ import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
 
-const EntityLineageTab = lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+const SampleDataTableComponent = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Database/SampleDataTable/SampleDataTable.component')
   )
+);
+
+const TableQueries = withSuspenseFallback(
+  lazy(() => import('../components/Database/TableQueries/TableQueries'))
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const DataObservabilityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
+      )
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
+  )
+);
+
+const TableConstraints = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
+
+const KnowledgeGraph = withSuspenseFallback(
+  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
 );
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
@@ -221,20 +257,30 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   return usagePercentile;
 };
 
-export const getTierTags = (tags: Array<TagLabel>) => {
-  const tierTag = tags.find((item) =>
-    item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-  );
+export const isTierTag = (tagFQN: string) =>
+  tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`);
 
-  return tierTag;
+export const isCertificationTag = (tagFQN: string) =>
+  tagFQN.startsWith(`Certification${FQN_SEPARATOR_CHAR}`);
+
+export const getTierTags = (tags: Array<TagLabel>) => {
+  return tags.find((item) => isTierTag(item.tagFQN));
 };
 
 export const getTagsWithoutTier = (
   tags: Array<EntityTags>
 ): Array<EntityTags> => {
-  return tags.filter(
-    (item) => !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-  );
+  return tags.filter((item) => !isTierTag(item.tagFQN));
+};
+
+export const getCertificationTag = (tags: Array<TagLabel>) => {
+  return tags.find((item) => isCertificationTag(item.tagFQN));
+};
+
+export const getTagsWithoutCertification = (
+  tags: Array<EntityTags>
+): Array<EntityTags> => {
+  return tags.filter((item) => !isCertificationTag(item.tagFQN));
 };
 
 export const getConstraintIcon = ({
@@ -395,6 +441,67 @@ export const getColumnDataTypeIcon = ({
   return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
 };
 
+const entityIconMapping: Record<string, SvgComponent> = {
+  [SearchIndex.DATABASE]: DatabaseIcon,
+  [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
+  [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
+  [SearchIndex.TOPIC]: TopicIcon,
+  [EntityType.MESSAGING_SERVICE]: TopicIcon,
+  [SearchIndex.DASHBOARD]: DashboardIcon,
+  [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
+  [SearchIndex.MLMODEL]: MlModelIcon,
+  [EntityType.MLMODEL_SERVICE]: MlModelIcon,
+  [SearchIndex.PIPELINE]: PipelineIcon,
+  [EntityType.PIPELINE_SERVICE]: PipelineIcon,
+  [SearchIndex.CONTAINER]: ContainerIcon,
+  [EntityType.STORAGE_SERVICE]: ContainerIcon,
+  [SearchIndex.DASHBOARD_DATA_MODEL]: IconDataModel,
+  [SearchIndex.STORED_PROCEDURE]: IconStoredProcedure,
+  [EntityType.CLASSIFICATION]: ClassificationIcon,
+  [SearchIndex.TAG]: TagIcon,
+  [SearchIndex.GLOSSARY]: GlossaryIcon,
+  [SearchIndex.GLOSSARY_TERM]: GlossaryTermIcon,
+  [SearchIndex.DOMAIN]: DomainIcon,
+  [SearchIndex.CHART]: ChartIcon,
+  [SearchIndex.TABLE]: TableIcon,
+  [SearchIndex.COLUMN]: ColumnIcon,
+  [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
+  [SearchIndex.DATA_PRODUCT]: DataProductIcon,
+  [EntityType.TEST_CASE]: IconTestCase,
+  [EntityType.TEST_SUITE]: IconTestSuite,
+  [EntityType.DATA_CONTRACT]: DataQualityIcon,
+  [EntityType.BOT]: BotIcon,
+  [EntityType.TEAM]: TeamIcon,
+  [EntityType.APPLICATION]: ApplicationIcon,
+  [EntityType.PERSONA]: PersonaIcon,
+  [EntityType.ROLE]: RoleIcon,
+  [EntityType.POLICY]: PolicyIcon,
+  [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
+  [EntityType.USER]: UserIcon,
+  [EntityType.INGESTION_PIPELINE]: PipelineIcon,
+  [EntityType.ALERT]: AlertIcon,
+  [EntityType.KPI]: KPIIcon,
+  ['tagCategory']: ClassificationIcon,
+  ['announcement']: AnnouncementIcon,
+  ['conversation']: ConversationIcon,
+  ['task']: TaskIcon,
+  ['dataQuality']: DataQualityIcon,
+  ['services']: ServicesIcon,
+  ['automator']: AutomatorBotIcon,
+  ['notification']: NotificationIcon,
+  [EntityType.API_ENDPOINT]: APIEndpointIcon,
+  [EntityType.METRIC]: MetricIcon,
+  [EntityType.API_SERVICE]: APIServiceIcon,
+  [EntityType.API_COLLECTION]: APICollectionIcon,
+  ['location']: LocationIcon,
+  [EntityType.QUERY]: QueryIcon,
+  [EntityType.DIRECTORY]: DirectoryIcon,
+  [EntityType.FILE]: FileIcon,
+  [EntityType.SPREADSHEET]: SpreadsheetIcon,
+  [EntityType.WORKSHEET]: WorksheetIcon,
+  [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+};
+
 export const getEntityIcon = (
   indexType: string,
   iconClass = '',
@@ -403,101 +510,6 @@ export const getEntityIcon = (
   let Icon;
   let className = iconClass;
   const style: CSSProperties = iconStyle;
-  const entityIconMapping: Record<string, SvgComponent> = {
-    [SearchIndex.DATABASE]: DatabaseIcon,
-    [EntityType.DATABASE]: DatabaseIcon,
-    [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
-    [EntityType.DATABASE_SERVICE]: DatabaseIcon,
-    [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
-    [EntityType.DATABASE_SCHEMA]: SchemaIcon,
-    [SearchIndex.TOPIC]: TopicIcon,
-    [EntityType.TOPIC]: TopicIcon,
-    [EntityType.MESSAGING_SERVICE]: TopicIcon,
-    [SearchIndex.MESSAGING_SERVICE]: TopicIcon,
-    [SearchIndex.DASHBOARD]: DashboardIcon,
-    [EntityType.DASHBOARD]: DashboardIcon,
-    [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
-    [SearchIndex.DASHBOARD_SERVICE]: DashboardIcon,
-    [SearchIndex.MLMODEL]: MlModelIcon,
-    [EntityType.MLMODEL]: MlModelIcon,
-    [EntityType.MLMODEL_SERVICE]: MlModelIcon,
-    [SearchIndex.ML_MODEL_SERVICE]: MlModelIcon,
-    [SearchIndex.PIPELINE]: PipelineIcon,
-    [EntityType.PIPELINE]: PipelineIcon,
-    [EntityType.PIPELINE_SERVICE]: PipelineIcon,
-    [SearchIndex.PIPELINE_SERVICE]: PipelineIcon,
-    [SearchIndex.CONTAINER]: ContainerIcon,
-    [EntityType.CONTAINER]: ContainerIcon,
-    [EntityType.STORAGE_SERVICE]: ContainerIcon,
-    [SearchIndex.STORAGE_SERVICE]: ContainerIcon,
-    [SearchIndex.DASHBOARD_DATA_MODEL]: IconDataModel,
-    [EntityType.DASHBOARD_DATA_MODEL]: IconDataModel,
-    [SearchIndex.STORED_PROCEDURE]: IconStoredProcedure,
-    [EntityType.STORED_PROCEDURE]: IconStoredProcedure,
-    [EntityType.CLASSIFICATION]: ClassificationIcon,
-    [SearchIndex.TAG]: TagIcon,
-    [EntityType.TAG]: TagIcon,
-    [SearchIndex.GLOSSARY]: GlossaryIcon,
-    [EntityType.GLOSSARY]: GlossaryIcon,
-    [SearchIndex.GLOSSARY_TERM]: GlossaryTermIcon,
-    [EntityType.GLOSSARY_TERM]: GlossaryTermIcon,
-    [SearchIndex.DOMAIN]: DomainIcon,
-    [EntityType.DOMAIN]: DomainIcon,
-    [SearchIndex.CHART]: ChartIcon,
-    [EntityType.CHART]: ChartIcon,
-    [SearchIndex.TABLE]: TableIcon,
-    [EntityType.TABLE]: TableIcon,
-    [SearchIndex.COLUMN]: ColumnIcon,
-    [EntityType.TABLE_COLUMN]: ColumnIcon,
-    [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
-    [SearchIndex.DATA_PRODUCT]: DataProductIcon,
-    [EntityType.DATA_PRODUCT]: DataProductIcon,
-    [EntityType.TEST_CASE]: IconTestCase,
-    [EntityType.TEST_SUITE]: IconTestSuite,
-    [EntityType.DATA_CONTRACT]: DataQualityIcon,
-    [EntityType.BOT]: BotIcon,
-    [EntityType.TEAM]: TeamIcon,
-    [EntityType.APPLICATION]: ApplicationIcon,
-    [EntityType.PERSONA]: PersonaIcon,
-    [EntityType.ROLE]: RoleIcon,
-    [EntityType.POLICY]: PolicyIcon,
-    [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
-    [EntityType.USER]: UserIcon,
-    [SearchIndex.USER]: UserIcon,
-    [EntityType.INGESTION_PIPELINE]: PipelineIcon,
-    [SearchIndex.INGESTION_PIPELINE]: PipelineIcon,
-    [EntityType.ALERT]: AlertIcon,
-    [EntityType.KPI]: KPIIcon,
-    ['tagCategory']: ClassificationIcon,
-    ['announcement']: AnnouncementIcon,
-    ['conversation']: ConversationIcon,
-    ['task']: TaskIcon,
-    ['dataQuality']: DataQualityIcon,
-    ['services']: ServicesIcon,
-    ['automator']: AutomatorBotIcon,
-    ['notification']: NotificationIcon,
-    [EntityType.API_ENDPOINT]: APIEndpointIcon,
-    [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
-    [EntityType.METRIC]: MetricIcon,
-    [SearchIndex.METRIC_SEARCH_INDEX]: MetricIcon,
-    [EntityType.API_SERVICE]: APIServiceIcon,
-    [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
-    [EntityType.API_COLLECTION]: APICollectionIcon,
-    [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
-    ['location']: LocationIcon,
-    [EntityType.QUERY]: QueryIcon,
-    [SearchIndex.QUERY]: QueryIcon,
-    [EntityType.DIRECTORY]: DirectoryIcon,
-    [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectoryIcon,
-    [EntityType.FILE]: FileIcon,
-    [SearchIndex.FILE_SEARCH_INDEX]: FileIcon,
-    [EntityType.SPREADSHEET]: SpreadsheetIcon,
-    [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetIcon,
-    [EntityType.WORKSHEET]: WorksheetIcon,
-    [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetIcon,
-    [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
-    [SearchIndex.DRIVE_SERVICE]: DriveServiceIcon,
-  };
 
   switch (indexType) {
     case EntityType.SEARCH_INDEX:
@@ -596,9 +608,9 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
 
     return EntityLink.getTableEntityLink(tableFqn, columnName);
-  } else {
-    return EntityLink.getTableEntityLink(fqn);
   }
+
+  return EntityLink.getTableEntityLink(fqn);
 };
 
 export function getTableExpandableConfig<T>(
@@ -993,6 +1005,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          isBeta
           id={EntityTabs.KNOWLEDGE_GRAPH}
           name={get(
             labelMap,
@@ -1003,20 +1016,20 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <KnowledgeGraph
-          depth={2}
-          entity={
-            tableDetails
-              ? {
-                  id: tableDetails.id,
-                  name: tableDetails.name,
-                  fullyQualifiedName: tableDetails.fullyQualifiedName,
-                  type: EntityType.TABLE,
-                }
-              : undefined
-          }
-          entityType={EntityType.TABLE}
-        />
+        <Suspense fallback={<Loader />}>
+          <KnowledgeGraph
+            depth={1}
+            entity={
+              tableDetails
+                ? {
+                    ...tableDetails,
+                    type: EntityType.TABLE,
+                  }
+                : undefined
+            }
+            entityType={EntityType.TABLE}
+          />
+        </Suspense>
       ),
       isHidden: !useApplicationStore.getState().rdfEnabled,
     },

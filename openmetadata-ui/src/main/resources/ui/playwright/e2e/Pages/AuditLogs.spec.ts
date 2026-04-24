@@ -20,7 +20,7 @@ const navigateToAuditLogsPage = async (page: Page) => {
   const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
   await logRequest;
-  await page.waitForSelector('.ant-skeleton', { state: 'detached' });
+  await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
   await page.getByTestId('audit-log-list').waitFor({ state: 'visible' });
 };
 
@@ -28,7 +28,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
+    const customPropertiesResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/metadata/types/customProperties')
+    );
     await redirectToHomePage(page);
+    const customPropertiesResponse = await customPropertiesResponsePromise;
+    expect(customPropertiesResponse.status()).toBe(200);
     await navigateToAuditLogsPage(page);
   });
 
@@ -113,7 +118,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Verify Time filter is active
       const timeFilterTag = page.getByTestId('filter-chip-time');
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
       await expect(timeFilterTag).toBeVisible();
@@ -279,7 +284,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const userSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user_search_index')
+          response.url().includes('index=user')
       );
       await searchInput.fill('admin');
       await userSearchResponse;
@@ -357,7 +362,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', { state: 'detached' });
+      await page
+        .locator('.ant-skeleton')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await expect(userFilterTag).not.toBeVisible();
 
@@ -380,7 +388,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
     });
@@ -397,7 +405,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const clearButton = page.getByTestId('clear-filters');
       await clearButton.click();
       await auditLogResponse;
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
 
@@ -420,7 +428,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
 
@@ -435,7 +443,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       // Search with uppercase term - should return similar results
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
       await searchInput.fill('ADMIN');
@@ -449,7 +457,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response2 = await auditLogResponse2;
       expect(response2.status()).toBe(200);
-      await page.waitForSelector('.ant-skeleton', {
+      await page.locator('.ant-skeleton').first().waitFor({
         state: 'detached',
       });
     });
@@ -468,6 +476,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const itemCount = await listItems.count();
 
       if (itemCount === 0) {
+        // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when no audit log items available
         test.skip();
         return;
       }
@@ -542,6 +551,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const itemCount = await listItems.count();
 
       if (itemCount === 0) {
+        // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when no audit log items available
         test.skip();
 
         return;
@@ -623,6 +633,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const itemCount = await listItems.count();
 
       if (itemCount === 0) {
+        // eslint-disable-next-line playwright/no-skipped-test -- conditional skip when no audit log items available
         test.skip();
 
         return;
@@ -672,7 +683,7 @@ test.describe(
         await searchInput.press('Enter');
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
-        await page.waitForSelector('.ant-skeleton', {
+        await page.locator('.ant-skeleton').first().waitFor({
           state: 'detached',
         });
         const responseData = await response.json();
@@ -714,7 +725,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.waitForSelector('.ant-modal-content', {
+        await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
       });
@@ -729,7 +740,7 @@ test.describe(
         const dateRangePicker = page.getByTestId('export-date-range-picker');
         await dateRangePicker.click();
 
-        await page.waitForSelector('.ant-picker-dropdown', {
+        await page.locator('.ant-picker-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -784,7 +795,7 @@ test.describe(
         );
         await searchInput.press('Enter');
         await auditResponse;
-        await page.waitForSelector('.ant-skeleton', {
+        await page.locator('.ant-skeleton').first().waitFor({
           state: 'detached',
         });
       });
@@ -793,7 +804,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.waitForSelector('.ant-modal-content', {
+        await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
       });
@@ -802,7 +813,7 @@ test.describe(
         const dateRangePicker = page.getByTestId('export-date-range-picker');
         await dateRangePicker.click();
 
-        await page.waitForSelector('.ant-picker-dropdown', {
+        await page.locator('.ant-picker-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -839,14 +850,14 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.waitForSelector('.ant-modal-content', {
+        await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
 
         const dateRangePicker = page.getByTestId('export-date-range-picker');
         await dateRangePicker.click();
 
-        await page.waitForSelector('.ant-picker-dropdown', {
+        await page.locator('.ant-picker-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -937,8 +948,7 @@ test.describe(
         expect(status).toBeLessThan(500);
 
         // Also verify the page has some content (didn't completely fail to load)
-        const bodyContent = await page.locator('body').textContent();
-        expect(bodyContent).toBeTruthy();
+        await expect(page.locator('body')).not.toHaveText('');
       });
     });
   }
@@ -954,38 +964,45 @@ test.describe(
   () => {
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
-    const POLL_TIMEOUT = 30000;
-    const POLL_INTERVAL = 1000;
+    const POLL_TIMEOUT = 120000;
 
     // Helper function to wait for an audit log entry to appear
     const waitForAuditLogEntry = async (
       apiContext: APIRequestContext,
-      page: Page,
+      _page: Page,
       entityFqn: string,
       entityType: string,
       eventType: string
     ): Promise<Record<string, unknown> | null> => {
-      const startTime = Date.now();
+      let auditEntry: Record<string, unknown> | null = null;
 
-      while (Date.now() - startTime < POLL_TIMEOUT) {
-        const response = await apiContext.get(
-          `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
-            entityFqn
-          )}&entityType=${entityType}&eventType=${eventType}&limit=1`
-        );
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(
+              `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
+                entityFqn
+              )}&entityType=${entityType}&eventType=${eventType}&limit=10`
+            );
 
-        if (response.ok()) {
-          const data = await response.json();
+            if (!response.ok()) {
+              return false;
+            }
 
-          if (data.data && data.data.length > 0) {
-            return data.data[0];
+            const data = await response.json();
+            auditEntry = data.data?.[0] ?? null;
+
+            return Boolean(auditEntry);
+          },
+          {
+            timeout: POLL_TIMEOUT,
+            intervals: [1000, 2000],
+            message: `Timed out waiting for ${eventType} audit entry for ${entityType}:${entityFqn}`,
           }
-        }
+        )
+        .toBe(true);
 
-        await page.waitForTimeout(POLL_INTERVAL);
-      }
-
-      return null;
+      return auditEntry;
     };
 
     // Helper to verify audit entry has valid UUIDs
@@ -1118,15 +1135,13 @@ test.describe(
             'entityUpdated'
           );
 
-          if (!auditEntry) {
-            auditEntry = await waitForAuditLogEntry(
-              apiContext,
-              page,
-              glossaryFqn,
-              'glossary',
-              'entityFieldsChanged'
-            );
-          }
+          auditEntry ??= await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityFieldsChanged'
+          );
 
           expect(auditEntry).not.toBeNull();
           expect(['entityUpdated', 'entityFieldsChanged']).toContain(
@@ -1420,15 +1435,13 @@ test.describe(
             'entityUpdated'
           );
 
-          if (!entry) {
-            entry = await waitForAuditLogEntry(
-              apiContext,
-              page,
-              glossaryFqn,
-              'glossary',
-              'entityFieldsChanged'
-            );
-          }
+          entry ??= await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityFieldsChanged'
+          );
 
           expect(entry).not.toBeNull();
           verifyAuditEntryHasValidUUIDs(
@@ -1575,7 +1588,7 @@ test.describe(
           await searchInput.press('Enter');
           const response = await searchResponse;
           expect(response.status()).toBe(200);
-          await page.waitForSelector('.ant-skeleton', {
+          await page.locator('.ant-skeleton').first().waitFor({
             state: 'detached',
           });
           const responseData = await response.json();

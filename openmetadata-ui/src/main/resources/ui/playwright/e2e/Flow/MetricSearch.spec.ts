@@ -13,9 +13,10 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
+const metricSuffix = uuid();
 const metric = new MetricClass();
 
 test.describe(
@@ -27,7 +28,7 @@ test.describe(
 
       // Override the metric entity with a long multi-word name
       metric.entity = {
-        name: 'AcceleratedConnection_WBA_Ethernet_ServiceLevel',
+        name: `AcceleratedConnection_WBA_Ethernet_${metricSuffix}`,
         description: 'Metric with a long multi-word name for search testing',
         metricExpression: {
           code: 'SUM(accelerated_connection)',
@@ -35,7 +36,7 @@ test.describe(
         },
         granularity: 'QUARTER',
         metricType: 'SUM',
-        displayName: 'AcceleratedConnection WBA Ethernet ServiceLevel',
+        displayName: `AcceleratedConnection WBA Ethernet ${metricSuffix}`,
         unitOfMeasurement: 'COUNT',
       };
 
@@ -44,7 +45,7 @@ test.describe(
       // Wait for the metric to be indexed in OpenSearch
       await expect(async () => {
         const response = await apiContext.get(
-          `/api/v1/search/query?q=${metric.entity.name}&index=metric_search_index&from=0&size=10`
+          `/api/v1/search/query?q=${metric.entity.name}&index=metric&from=0&size=10`
         );
         const data = await response.json();
 
@@ -71,18 +72,14 @@ test.describe(
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
 
       await test.step('Select Metric search index and search', async () => {
         await page.getByTestId('global-search-selector').click();
 
         // Wait for dropdown to be visible
-        await page.waitForSelector(
-          '[data-testid="global-search-select-dropdown"]',
-          {
-            state: 'visible',
-          }
-        );
+        await page.getByTestId('global-search-select-dropdown').waitFor({
+          state: 'visible',
+        });
 
         // Scroll within the dropdown to find Metric option
         const dropdownMenu = page.locator(
@@ -92,20 +89,18 @@ test.describe(
           el.scrollTop = el.scrollHeight;
         });
 
-        // Wait a moment for the virtualized list to render
-        await page.waitForTimeout(500);
-
         const metricOption = page.getByTestId(
           'global-search-select-option-Metric'
         );
+        await metricOption.waitFor({ state: 'visible' });
         await metricOption.click();
 
-        const searchQuery = 'AcceleratedConnection WBA Ethernet ServiceLevel';
+        const searchQuery = `AcceleratedConnection WBA Ethernet ${metricSuffix}`;
 
         const searchResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes('metric_search_index')
+            response.url().includes('metric')
         );
 
         await page
@@ -121,12 +116,12 @@ test.describe(
       });
 
       await test.step('Verify no error toast and results are shown', async () => {
-        await page.waitForSelector(
-          '[data-testid="search-container"] [data-testid="loader"]',
-          { state: 'detached', timeout: 30_000 }
-        );
+        await page
+          .getByTestId('search-container')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached', timeout: 30_000 });
 
-        await page.waitForSelector('[data-testid="search-results"]', {
+        await page.getByTestId('search-results').waitFor({
           state: 'visible',
         });
 

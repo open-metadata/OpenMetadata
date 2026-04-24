@@ -54,6 +54,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   // ===================================================================
@@ -162,6 +163,17 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().pipelines().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -392,6 +404,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     // List all pipelines
     ListParams params = new ListParams();
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Pipeline> response = listEntities(params);
     assertNotNull(response);
 

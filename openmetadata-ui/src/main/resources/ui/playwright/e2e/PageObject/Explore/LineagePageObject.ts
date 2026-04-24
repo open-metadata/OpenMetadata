@@ -76,7 +76,13 @@ export class LineagePageObject extends RightPanelBase {
    * @returns LineagePageObject for method chaining
    */
   async navigateToLineageTab(): Promise<LineagePageObject> {
+    const lineageResponse = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/lineage/getLineage') &&
+        resp.request().method() === 'GET'
+    );
     await this.rightPanel.navigateToTab('lineage');
+    await lineageResponse;
     await this.waitForLoadersToDisappear();
     return this;
   }
@@ -121,7 +127,6 @@ export class LineagePageObject extends RightPanelBase {
     const card = this.lineageItemCards.filter({ hasText: entityName });
     await card.waitFor({ state: 'visible' });
     await card.click();
-    await this.page.waitForLoadState('networkidle');
     return this;
   }
 

@@ -83,16 +83,19 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
@@ -115,6 +118,8 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -122,6 +127,7 @@ import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.monitoring.JettyMetricsIntegration;
+import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -131,8 +137,10 @@ import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.system.DiagnosticsResource;
+import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.opensearch.OpenSearchSearchManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
@@ -144,7 +152,9 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
+import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
+import org.openmetadata.service.security.ImpersonationCleanupFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -155,6 +165,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
@@ -203,6 +214,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   protected Limits limits;
+  private volatile boolean mcpServerRegistered = false;
 
   protected Jdbi jdbi;
   private Environment environment;
@@ -264,6 +276,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // as first step register all the repositories (now they can access SearchRepository)
     Entity.initializeRepositories(catalogConfig, jdbi);
+
+    // Rebuild caches with configured limits (cacheMemory section in openmetadata.yaml)
+    CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
+    EntityRepository.initCaches(cacheConfig);
+    SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
+    OpenSearchSearchManager.initRbacCache(cacheConfig.getRbacCacheMaxEntries());
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(
@@ -355,6 +373,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
 
+    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
+    // RequestEntityCache, impersonation context) after every response so state
+    // cannot leak across requests that share a Jetty worker thread.
+    environment.jersey().register(ImpersonationCleanupFilter.class);
+
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
@@ -365,8 +388,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
 
+    environment
+        .lifecycle()
+        .manage(
+            new SearchIndexRetryWorker(
+                jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
+
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
+    registerDistributedRdfJobParticipant(environment, jdbi);
 
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -386,14 +416,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
 
-    // Register MCP
+    // Register Auth Handlers (must be before MCP for SSO initialization)
+    registerAuthServlets(catalogConfig, environment);
+
+    // Register MCP (depends on Auth Handlers for SSO)
     registerMCPServer(catalogConfig, environment);
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
-
-    // Register Auth Handlers
-    registerAuthServlets(catalogConfig, environment);
 
     // Register User Metrics Servlet
     registerUserMetricsServlet(environment);
@@ -401,12 +431,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected void registerMCPServer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (mcpServerRegistered) {
+      LOG.info("MCP Server already registered, skipping");
+      return;
+    }
     try {
       if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
         Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+        mcpServerRegistered = true;
         LOG.info("MCP Server registered successfully");
       }
     } catch (ClassNotFoundException ex) {
@@ -573,6 +608,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("RDF knowledge graph support initialized");
     }
 
+    searchRepository.createMissingIndexes();
+    searchRepository.createOrUpdateIndexTemplates();
+
     LOG.info("Core search infrastructure initialization completed");
   }
 
@@ -605,7 +643,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new ConstraintViolationExceptionMapper());
     // Restore dropwizard default exception mappers
     environment.jersey().register(new LoggingExceptionMapper<>() {});
-    environment.jersey().register(new JsonProcessingExceptionMapper(true));
+    environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
   }
@@ -721,7 +759,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .getObjectMapper()
         .registerSubtypes(
             org.openmetadata.service.events.AuditOnlyFilterFactory.class,
-            org.openmetadata.service.events.AuditExcludeFilterFactory.class);
+            org.openmetadata.service.events.AuditExcludeFilterFactory.class,
+            SwitchableEventLayoutFactory.class,
+            SwitchableAccessLayoutFactory.class);
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {
@@ -750,8 +790,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     super.initialize(bootstrap);
   }
 
-  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
-      throws IOException {
+  private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf) {
     LOG.info("Validating native migrations");
     ConnectionType connectionType =
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
@@ -993,6 +1032,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
+
+    // Start the Quartz scheduler after all resources are initialized to avoid race conditions
+    // where stale triggers fire before entity repositories have seeded their data
+    try {
+      AppScheduler.getInstance().start();
+    } catch (SchedulerException e) {
+      LOG.error("Failed to start AppScheduler", e);
+    }
+
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new DiagnosticsResource(authorizer));
     environment.jersey().register(new JsonPatchProvider());
@@ -1000,6 +1048,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Jetty metrics for monitoring
     JettyMetricsIntegration.registerJettyMetrics(environment);
+
+    // MCP OAuth is handled by servlets registered in McpServer.initializeMcpServer()
+    // No JAX-RS resources needed for OAuth endpoints
+
+    // Register QoS handler for request concurrency limiting
+    JettyQoSIntegration.registerQoSHandler(environment, config.getQosConfiguration());
 
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null
@@ -1018,6 +1072,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
+
+    CspNonceHandler cspNonceHandler = new CspNonceHandler();
+    cspNonceHandler.setHandler(environment.getApplicationContext().getHandler());
+    environment.getApplicationContext().setHandler(cspNonceHandler);
   }
 
   private void initializeWebsockets(
@@ -1089,7 +1147,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           "Registered DistributedJobParticipant for distributed search indexing using {}",
           notifierType);
     } catch (Exception e) {
-      LOG.warn("Failed to register DistributedJobParticipant: {}", e.getMessage());
+      LOG.warn("Failed to register DistributedJobParticipant", e);
+    }
+  }
+
+  protected void registerDistributedRdfJobParticipant(Environment environment, Jdbi jdbi) {
+    try {
+      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+      RdfDistributedJobParticipant participant = new RdfDistributedJobParticipant(collectionDAO);
+      environment.lifecycle().manage(participant);
+      LOG.info("Registered RdfDistributedJobParticipant for distributed RDF indexing");
+    } catch (Exception e) {
+      LOG.warn("Failed to register RdfDistributedJobParticipant", e);
     }
   }
 
@@ -1112,6 +1181,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       EventPubSub.shutdown();
       EventSubscriptionScheduler.shutDown();
       AsyncService.getInstance().shutdown();
+      EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }

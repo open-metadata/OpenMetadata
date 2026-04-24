@@ -20,6 +20,7 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { createSubDomain, selectDomain } from '../../utils/domain';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -64,8 +65,7 @@ test.describe('SubDomain Pagination', () => {
   test.beforeEach('Navigate to domain page', async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
   });
 
   test('Verify subdomain count and pagination functionality', async ({
@@ -73,8 +73,7 @@ test.describe('SubDomain Pagination', () => {
   }) => {
     await selectDomain(page, domain.data);
 
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
 
     await test.step('Verify subdomain count in tab label', async () => {
       const subDomainsTab = page.getByTestId('subdomains');
@@ -86,13 +85,11 @@ test.describe('SubDomain Pagination', () => {
 
     await test.step('Navigate to subdomains tab and verify initial data load', async () => {
       const subDomainRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=9*'
       );
       await page.getByTestId('subdomains').click();
       await subDomainRes;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
 
       await expect(page.locator('table')).toBeVisible();
 
@@ -121,7 +118,6 @@ test.describe('SubDomain Pagination', () => {
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
 
       await selectDomain(page, domain.data);
 

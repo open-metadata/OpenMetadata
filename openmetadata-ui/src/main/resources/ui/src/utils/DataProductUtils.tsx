@@ -52,6 +52,7 @@ import {
 
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -83,14 +84,13 @@ export interface DataProductDetailPageTabProps {
  * @returns JSX element representing the icon
  */
 export const getDataProductIconByUrl = (iconURL?: string) => {
-  if (iconURL) {
-    return (
-      <img
-        alt="data product icon"
-        className="data-product-icon-url"
-        src={iconURL}
-      />
-    );
+  const iconElement = renderIcon(iconURL, {
+    size: 24,
+    className: 'tw:h-6 tw:w-6',
+  });
+
+  if (iconElement) {
+    return iconElement;
   }
 
   return <DefaultDataProductIcon className="data-product-default-icon" />;
@@ -191,7 +191,8 @@ export const getDataProductDetailTabs = ({
               <ResizablePanels
                 className="h-full domain-height-with-resizable-panel"
                 firstPanel={{
-                  className: 'domain-resizable-panel-container',
+                  className:
+                    'domain-resizable-panel-container tw:overflow-auto!',
                   wrapInCard: false,
                   children: (
                     <InputOutputPortsTab

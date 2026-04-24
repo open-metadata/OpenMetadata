@@ -14,6 +14,7 @@ for the metadata-server API. It is based on the generated pydantic
 models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
+
 import traceback
 from collections import OrderedDict
 from collections.abc import Generator
@@ -59,6 +60,7 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
@@ -68,6 +70,7 @@ from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContrac
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
+from metadata.ingestion.ometa.mixins.feed_mixin import OMetaFeedMixin
 from metadata.ingestion.ometa.mixins.file_mixin import OMetaFileMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
@@ -83,9 +86,9 @@ from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMix
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
-from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_glossary_mixin import OMetaTagGlossaryMixin
+from metadata.ingestion.ometa.mixins.task_mixin import OMetaTaskMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
@@ -283,7 +286,9 @@ class OpenMetadata(
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
-    OMetaSuggestionsMixin,
+    OMetaFeedMixin,
+    OMetaAnnouncementMixin,
+    OMetaTaskMixin,
     OMetaDomainMixin,
     OMetaProfileMixin,
     OMetaProgressMixin,
@@ -428,6 +433,13 @@ class OpenMetadata(
         """
         Update the filename for services and schemas
         """
+        explicit_file_name_map = {
+            "CreateTableProfileRequest": "table",
+            "CreateTestCaseResult": "basic",
+        }
+        if create.__name__ in explicit_file_name_map:
+            return explicit_file_name_map[create.__name__]
+
         if "service" in create.__name__.lower():
             return file_name.replace("service", "Service")
 
@@ -458,16 +470,19 @@ class OpenMetadata(
             .replace("datacontract", "dataContract")
             .replace("chatconversation", "chatConversation")
             .replace("eventsubscription", "eventSubscription")
+            .replace("mcpserver", "mcpServer")
         )
         class_path = ".".join(
             filter(
                 None,
                 [
                     self.class_root,
-                    self.entity_path
-                    if not file_name.startswith("test")
-                    and not file_name.startswith("eventSubscription")
-                    else None,
+                    (
+                        self.entity_path
+                        if not file_name.startswith("test")
+                        and not file_name.startswith("eventSubscription")
+                        else None
+                    ),
                     self.get_module_path(create),
                     self.update_file_name(create, file_name),
                 ],

@@ -17,6 +17,7 @@ import { AppRunRecord } from '../../../../generated/entity/applications/appRunRe
 
 export interface AppRunRecordWithId extends AppRunRecord {
   id: string;
+  isSynthetic?: boolean;
 }
 
 export interface AppRunsHistoryRef {
@@ -27,5 +28,5 @@ export interface AppRunsHistoryProps {
   maxRecords?: number;
   appData?: App;
   showPagination?: boolean;
-  jsonSchema: RJSFSchema;
+  jsonSchema?: RJSFSchema;
 }

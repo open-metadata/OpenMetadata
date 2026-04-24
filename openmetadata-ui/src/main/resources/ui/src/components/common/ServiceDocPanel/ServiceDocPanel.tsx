@@ -21,11 +21,14 @@ import {
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import {
+  getActiveFieldNameForAppDocs,
+  processDocMarkdown,
+} from '../../../utils/ServiceUtils';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
 interface ServiceDocPanelProp {
   serviceName: string;
@@ -103,20 +106,18 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),
         isEnglishLanguage
-          ? Promise.reject('')
+          ? Promise.reject(new Error('Fallback not needed for English locale'))
           : fetchMarkdownFile(fallbackFilePath),
       ]);
 
       if (translation.status === 'fulfilled') {
         response = translation.value;
-      } else {
-        if (fallbackTranslation.status === 'fulfilled') {
-          response = fallbackTranslation.value;
-        }
+      } else if (fallbackTranslation.status === 'fulfilled') {
+        response = fallbackTranslation.value;
       }
 
       setMarkdownContent(response);
-    } catch (error) {
+    } catch {
       setMarkdownContent('');
     } finally {
       setIsLoading(false);
@@ -146,21 +147,28 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           '[data-highlighted="true"]'
         );
         previousHighlighted.forEach((el) => {
-          el.removeAttribute('data-highlighted');
+          (el as HTMLElement).dataset.highlighted = 'false';
         });
 
-        const element = document.querySelector(`[data-id="${fieldName}"]`);
+        const element = document.querySelector(
+          `[data-id="${CSS.escape(fieldName)}"]`
+        );
         if (element) {
           element.scrollIntoView({
             block: fieldName === 'selected-entity' ? 'start' : 'center',
             behavior: 'smooth',
             inline: 'center',
           });
-          element.setAttribute('data-highlighted', 'true');
+          (element as HTMLElement).dataset.highlighted = 'true';
         }
       });
     }
   }, [activeField, serviceType, isMarkdownReady]);
+
+  const processedHtml = useMemo(
+    () => processDocMarkdown(markdownContent),
+    [markdownContent]
+  );
 
   const docsPanel = useMemo(() => {
     return (
@@ -175,14 +183,15 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
             />
           )}
         </div>
-
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
+          className="service-doc-content"
           enableSeeMoreVariant={false}
-          markdown={markdownContent}
+          extensionOptions={{ enableSectionNode: true }}
+          markdown={processedHtml}
         />
       </>
     );
-  }, [markdownContent, serviceName, selectedEntity]);
+  }, [processedHtml, serviceName, selectedEntity]);
 
   if (isLoading) {
     return <Loader />;

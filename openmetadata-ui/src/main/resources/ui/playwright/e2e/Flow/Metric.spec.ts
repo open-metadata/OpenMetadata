@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -28,7 +29,6 @@ import {
   updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const metric1 = new MetricClass();
 const metric2 = new MetricClass();
@@ -63,6 +63,17 @@ test.describe(
         metric3.create(apiContext),
       ]);
 
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        metric1.delete(apiContext),
+        metric2.delete(apiContext),
+        metric3.delete(apiContext),
+      ]);
+      await adminUser.delete(apiContext);
       await afterAction();
     });
 

@@ -50,6 +50,10 @@ export interface Table {
      */
     databaseSchema?: EntityReference;
     /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
      * This captures information about how the table is modeled. Currently only DBT model is
      * supported.
      */
@@ -320,6 +324,10 @@ export enum LabelType {
  * was applied.
  */
 export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
     /**
      * Metadata about the recognizer that automatically applied this tag
      */
@@ -745,6 +753,8 @@ export interface CustomMetric {
  *
  * Reference to database schema that contains this table.
  *
+ * Reference to the data contract for this entity.
+ *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this table.
@@ -1078,6 +1088,7 @@ export enum ModelType {
  */
 export enum EntityStatus {
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
@@ -1299,8 +1310,7 @@ export interface TableProfile {
     /**
      * No.of rows in the table. This is always executed on the whole table.
      */
-    rowCount?:           number;
-    samplingMethodType?: SamplingMethodType;
+    rowCount?: number;
     /**
      * Table size in GB
      */
@@ -1317,14 +1327,6 @@ export interface TableProfile {
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
 }
 
 /**
@@ -1374,9 +1376,11 @@ export enum DatabaseServiceType {
     Glue = "Glue",
     Greenplum = "Greenplum",
     Hive = "Hive",
-    Iceberg = "Iceberg",
     Impala = "Impala",
+    Informix = "Informix",
+    Iomete = "Iomete",
     MariaDB = "MariaDB",
+    MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
@@ -1506,13 +1510,8 @@ export interface TableProfilerConfig {
     /**
      * Users' raw SQL query to fetch sample data and profile the table
      */
-    profileQuery?: string;
-    /**
-     * Percentage of data or no. of rows used to compute the profiler metrics and run data
-     * quality tests
-     */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
+    profileQuery?:        string;
+    profileSampleConfig?: ProfileSampleConfig;
     /**
      * Whether to randomize the sample data or not.
      */
@@ -1520,8 +1519,7 @@ export interface TableProfilerConfig {
     /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
-    sampleDataCount?:    number;
-    samplingMethodType?: SamplingMethodType;
+    sampleDataCount?: number;
     /**
      * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
      * other engines.
@@ -1591,6 +1589,68 @@ export enum PartitionIntervalUnit {
     Hour = "HOUR",
     Month = "MONTH",
     Year = "YEAR",
+}
+
+/**
+ * Profile sample configuration supporting static and dynamic sampling strategies.
+ */
+export interface ProfileSampleConfig {
+    config?: ICSamplingConfig;
+    /**
+     * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
+     * runtime based on row count thresholds.
+     */
+    sampleConfigType?: SampleConfigType;
+}
+
+/**
+ * Configuration for dynamic sampling based on table row count.
+ *
+ * Configuration for static sampling based on table row count.
+ */
+export interface ICSamplingConfig {
+    /**
+     * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
+     * Tables below the lowest threshold are profiled at 100% (no sampling).
+     */
+    thresholds?: Threshold[];
+    /**
+     * Percentage of data or no. of rows used to compute the profiler metrics and run data
+     * quality tests
+     */
+    profileSample?:      number;
+    profileSampleType?:  ProfileSampleType;
+    samplingMethodType?: SamplingMethodType;
+}
+
+/**
+ * Type of Sampling Method (BERNOULLI or SYSTEM)
+ */
+export enum SamplingMethodType {
+    Bernoulli = "BERNOULLI",
+    System = "SYSTEM",
+}
+
+export interface Threshold {
+    /**
+     * Sample percentage or row count to use for tables at or above this threshold
+     */
+    profileSample:      number;
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Minimum row count for this tier to apply
+     */
+    rowCountThreshold:   number;
+    samplingMethodType?: SamplingMethodType;
+}
+
+/**
+ * Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at
+ * runtime based on row count thresholds.
+ */
+export enum SampleConfigType {
+    Dynamic = "DYNAMIC",
+    Static = "STATIC",
 }
 
 /**

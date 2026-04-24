@@ -14,7 +14,7 @@ import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -44,7 +44,7 @@ interface LineageNodeLabelProps {
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
-const EntityLabel = ({ node }: LineageNodeLabelProps) => {
+const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -175,13 +175,13 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelProps) => {
   );
 };
 
-const EntityTypeIcon = ({ entityType }: { entityType?: string }) => {
+const EntityTypeIcon = memo(({ entityType }: { entityType?: string }) => {
   return (
     <span style={{ width: '16px', height: '16px' }}>
       {getEntityTypeIcon(entityType)}
     </span>
   );
-};
+});
 
 const EntityFooter = ({
   isChildrenListExpanded,

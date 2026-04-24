@@ -397,6 +397,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude stored procedures that matches the pattern.
  *
+ * Regex to only fetch containers that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -414,6 +416,9 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
  *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+ *
  * Regex exclude or include charts that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
@@ -427,8 +432,6 @@ export enum AuthProvider {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex exclude pipelines.
- *
- * Regex to only fetch containers that matches the pattern.
  *
  * Regex to filter MuleSoft applications by name.
  *
@@ -536,6 +539,12 @@ export interface OpenMetadataJWTClientConfig {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -574,6 +583,9 @@ export enum OpenmetadataType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -636,6 +648,11 @@ export interface TestServiceConnectionRequest {
      * etc.). Used to determine which credential field to use from user config.
      */
     authType?: string;
+    /**
+     * Source type of the resolved credentials. Indicates whether the credentials come from a
+     * user-level config or a team-level config. Set by the backend during credential resolution.
+     */
+    credentialSourceType?: CredentialSourceType;
     /**
      * Optional database/dataset to use for query execution (selected by user in QueryRunner
      * Studio). Service-specific name (e.g., Snowflake database).
@@ -747,6 +764,8 @@ export interface RequestConnection {
  *
  * Mssql Database Connection Config
  *
+ * Microsoft Access Database Connection Config
+ *
  * Mysql Database Connection Config
  *
  * SQLite Database Connection Config
@@ -798,8 +817,6 @@ export interface RequestConnection {
  *
  * SAS Connection Config
  *
- * Iceberg Catalog Connection Config
- *
  * Teradata Database Connection Config
  *
  * Sap ERP Database Connection Config
@@ -822,6 +839,10 @@ export interface RequestConnection {
  * Microsoft Fabric Warehouse and Lakehouse Connection Config
  *
  * BurstIQ LifeGraph Database Connection Config
+ *
+ * IBM Informix Database Connection Config
+ *
+ * IOMETE Connection Config
  *
  * Looker Connection Config
  *
@@ -865,11 +886,15 @@ export interface RequestConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * SAP S/4HANA Connection Config for Embedded Analytics
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
  * OpenMetadata yet.
@@ -992,6 +1017,24 @@ export interface ConfigObject {
      */
     openAPISchemaConnection?: OpenAPISchemaConnection;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
+     * SSL Configuration details. Provide the CA certificate to validate the Informix server
+     * certificate. Paste the PEM content directly or upload the certificate file.
+     *
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
+     *
+     * SSL Configuration for OpenMetadata Server
+     */
+    sslConfig?: SSLConfigObject;
+    /**
      * Supports Metadata Extraction.
      */
     supportsMetadataExtraction?: boolean;
@@ -1036,6 +1079,22 @@ export interface ConfigObject {
      */
     type?: ConfigType;
     /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
+     *
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
+     *
+     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
+     * default.
+     *
+     * Flag to verify SSL Certificate for OpenMetadata Server.
+     */
+    verifySSL?: boolean | VerifySSL;
+    /**
      * Billing Project ID
      */
     billingProjectId?: string;
@@ -1055,7 +1114,7 @@ export interface ConfigObject {
      *
      * GCP Credentials for Google Drive API
      */
-    credentials?: GCPCredentials;
+    credentials?: PurpleGCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -1084,7 +1143,8 @@ export interface ConfigObject {
      *
      * Host and port of the MSSQL service.
      *
-     * Host and port of the MySQL service.
+     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
+     * the format 'project_id:region:instance_name'.
      *
      * Host and port of the SQLite service. Blank for in-memory database.
      *
@@ -1129,6 +1189,10 @@ export interface ConfigObject {
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
+     * Host and port of the Informix service.
+     *
+     * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -1162,6 +1226,10 @@ export interface ConfigObject {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Pipeline Service Management/UI URI.
      *
@@ -1211,6 +1279,9 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+     * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1353,6 +1424,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
      * use databaseFilterPattern on top of this.
+     *
+     * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -1409,6 +1483,10 @@ export interface ConfigObject {
      * Password to connect to ServiceNow.
      *
      * Password to connect to BurstIQ.
+     *
+     * Password to connect to Informix.
+     *
+     * Password to connect to IOMETE.
      *
      * Password to connect to Metabase. Required for basic authentication.
      *
@@ -1527,6 +1605,11 @@ export interface ConfigObject {
      * Username to connect to BurstIQ. This user should have privileges to read all the metadata
      * in BurstIQ LifeGraph.
      *
+     * Username to connect to Informix. This user should have privileges to read all the
+     * metadata in Informix.
+     *
+     * Username to connect to IOMETE.
+     *
      * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
@@ -1558,6 +1641,10 @@ export interface ConfigObject {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
+     *
+     * IOMETE database to restrict metadata ingestion to (e.g. default, finance_db). This is an
+     * optional parameter; if left blank, OpenMetadata attempts to scan all databases in the
+     * catalog.
      */
     databaseSchema?: string;
     /**
@@ -1587,6 +1674,9 @@ export interface ConfigObject {
      *
      * Types of methods used to authenticate to the tableau instance
      *
+     * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+     * SAP S/4HANA Cloud.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
@@ -1602,8 +1692,11 @@ export interface ConfigObject {
      * Presto catalog
      *
      * Catalog of the data source.
+     *
+     * Catalog of the data source (e.g. spark_catalog). This is an optional parameter; if left
+     * blank, OpenMetadata uses default catalog.
      */
-    catalog?: IcebergCatalog | string;
+    catalog?: string;
     /**
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
@@ -1633,17 +1726,10 @@ export interface ConfigObject {
      */
     licenseFileName?: string;
     /**
-     * SSL Configuration details for DB2 connection. Provide CA certificate for server
-     * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL Configuration details.
-     *
-     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
-     * client certificate, and private key for mutual TLS authentication.
-     *
-     * SSL Configuration for OpenMetadata Server
+     * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+     * without certificate verification, or 'verify-ca' to validate the server certificate
+     * against the provided CA certificate.
      */
-    sslConfig?:                     SSLConfigObject;
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
@@ -1697,6 +1783,22 @@ export interface ConfigObject {
      */
     trustServerCertificate?: boolean;
     /**
+     * Choose between local file system path (object) or S3 bucket location (object) for Access
+     * database files.
+     *
+     * Choose between Database connection or HDB User Store connection.
+     *
+     * Choose between API or database connection fetch metadata from superset.
+     *
+     * Choose between database connection or REST API connection to fetch metadata from
+     * Airflow.
+     *
+     * Matillion Auth Configuration
+     *
+     * Choose between mysql and postgres connection for alation database
+     */
+    connection?: ConfigConnection;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -1728,6 +1830,11 @@ export interface ConfigObject {
      * re-ingesting.
      */
     preserveIdentifierCase?: boolean;
+    /**
+     * Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA
+     * privileges.
+     */
+    useDBATable?: boolean;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
@@ -1913,20 +2020,6 @@ export interface ConfigObject {
      */
     sourcePythonClass?: string;
     /**
-     * Choose between Database connection or HDB User Store connection.
-     *
-     * Choose between API or database connection fetch metadata from superset.
-     *
-     * Underlying database connection. See
-     * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
-     * supported backends.
-     *
-     * Matillion Auth Configuration
-     *
-     * Choose between mysql and postgres connection for alation database
-     */
-    connection?: ConfigConnection;
-    /**
      * Couchbase connection Bucket options.
      */
     bucket?: string;
@@ -1962,10 +2055,6 @@ export interface ConfigObject {
      * Hostname of SAS Viya deployment.
      */
     serverHost?: string;
-    /**
-     * Table property to look for the Owner.
-     */
-    ownershipProperty?: string;
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
@@ -2009,17 +2098,6 @@ export interface ConfigObject {
      * Pagination limit used for Alation APIs pagination
      */
     paginationLimit?: number;
-    /**
-     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
-     *
-     * Client SSL verification.
-     *
-     * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
-     * default.
-     *
-     * Flag to verify SSL Certificate for OpenMetadata Server.
-     */
-    verifySSL?: boolean | VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
      *
@@ -2079,9 +2157,27 @@ export interface ConfigObject {
      */
     biqSdzName?: string;
     /**
+     * BurstIQ system wallet ID sent as the biq_system_wallet_id header. Required for profiler
+     * data access.
+     */
+    biqSystemWalletId?: string;
+    /**
      * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
      */
     realmName?: string;
+    /**
+     * Informix server name as defined in the sqlhosts file or INFORMIXSERVER environment
+     * variable.
+     */
+    serverName?: string;
+    /**
+     * IOMETE lakehouse cluster name to connect to.
+     */
+    cluster?: string;
+    /**
+     * IOMETE data plane name.
+     */
+    dataPlane?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      *
@@ -2100,7 +2196,7 @@ export interface ConfigObject {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: NoGitCredentialsClass | string;
+    gitCredentials?: Credentials | string;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
@@ -2262,6 +2358,10 @@ export interface ConfigObject {
      */
     tokenType?: TokenType;
     /**
+     * SAP client number (Mandant), typically a 3-digit string (e.g. '100').
+     */
+    clientNumber?: string;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -2327,6 +2427,31 @@ export interface ConfigObject {
      * Regex to only fetch topics that matches the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * GCP credentials configuration for authenticating with Pub/Sub.
+     */
+    gcpConfig?: GcpConfigClass;
+    /**
+     * Include dead letter topics in metadata extraction.
+     */
+    includeDeadLetterTopics?: boolean;
+    /**
+     * Include subscription metadata for each topic.
+     */
+    includeSubscriptions?: boolean;
+    /**
+     * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
+     * credentials.
+     */
+    projectId?: string;
+    /**
+     * Enable fetching schemas from Pub/Sub Schema Registry.
+     */
+    schemaRegistryEnabled?: boolean;
+    /**
+     * Connect to a Pub/Sub emulator rather than the production service.
+     */
+    useEmulator?: boolean;
     /**
      * Pipeline Service Number Of Status
      */
@@ -2403,6 +2528,12 @@ export interface ConfigObject {
      */
     brokerConfig?: BrokerConfiguration;
     /**
+     * Map OpenLineage dataset namespaces (or prefixes) to OpenMetadata database service names.
+     * Used when multiple services of the same type exist. Example: 'mysql://cluster-a:3306' ->
+     * 'mysql-cluster-a'.
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
+    /**
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
@@ -2430,6 +2561,11 @@ export interface ConfigObject {
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
     projectIds?: string[];
+    /**
+     * Number of days to look back when fetching lineage events from Matillion DPC OpenLineage
+     * API.
+     */
+    lineageLookbackDays?: number;
     /**
      * The name of your azure data factory.
      */
@@ -2844,6 +2980,8 @@ export enum AuthMechanismEnum {
  *
  * Azure Database Connection Config
  *
+ * GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.
+ *
  * Choose Auth Configuration Type.
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
@@ -2862,6 +3000,13 @@ export enum AuthMechanismEnum {
  *
  * Access Token Auth Credentials
  *
+ * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+ * SAP S/4HANA Cloud.
+ *
+ * Username and password credentials for SAP S/4HANA.
+ *
+ * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2870,9 +3015,13 @@ export enum AuthMechanismEnum {
  *
  * Basic Auth Configuration for ElasticSearch
  *
- * SSL Certificates By Path
+ * API Key Authentication for ElasticSearch
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials configs.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  *
@@ -2895,11 +3044,15 @@ export interface AuthenticationType {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * OAuth 2.0 client secret.
      */
     clientSecret?: string;
     /**
@@ -2917,9 +3070,13 @@ export interface AuthenticationType {
     /**
      * Password to connect to source.
      *
+     * Database user password. Leave empty if using IAM database authentication.
+     *
      * Password for the Dremio Software user account.
      *
      * Password to access the service.
+     *
+     * Password to authenticate with SAP S/4HANA.
      *
      * Elastic Search Password for Login
      *
@@ -2930,6 +3087,14 @@ export interface AuthenticationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+    /**
+     * Use GCP IAM for database authentication instead of a password.
+     */
+    enableIamAuth?: boolean;
+    /**
+     * GCP credentials to use. If not provided, Application Default Credentials will be used.
+     */
+    gcpConfig?: GcpConfigClass;
     /**
      * JWT to connect to source.
      */
@@ -2964,6 +3129,8 @@ export interface AuthenticationType {
      *
      * Username to access the service.
      *
+     * Username to authenticate with SAP S/4HANA.
+     *
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
@@ -2980,21 +3147,25 @@ export interface AuthenticationType {
      */
     personalAccessTokenSecret?: string;
     /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
+    /**
+     * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
+     */
+    tokenEndpoint?: string;
+    /**
      * Access Token for the API
      */
     accessToken?: string;
     /**
-     * CA Certificate Path
+     * Elastic Search API Key for API Authentication
      */
-    caCertPath?: string;
+    apiKey?: string;
     /**
-     * Client Certificate Path
+     * Elastic Search API Key ID for API Authentication
      */
-    clientCertPath?: string;
-    /**
-     * Private Key Path
-     */
-    privateKeyPath?: string;
+    apiKeyId?: string;
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -3052,7 +3223,19 @@ export interface AuthenticationType {
 }
 
 /**
+ * Authentication type identifier.
+ */
+export enum AuthType {
+    Basic = "basic",
+    Oauth2 = "oauth2",
+}
+
+/**
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configs.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */
@@ -3160,6 +3343,133 @@ export interface DataStaxAstraDBConfiguration {
      * The Astra DB application token used for authentication.
      */
     token?: string;
+    [property: string]: any;
+}
+
+/**
+ * GCP Credentials
+ *
+ * GCP credentials configs.
+ *
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP credentials configuration.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface GcpConfigClass {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+}
+
+/**
+ * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+ * Credentials Path
+ *
+ * Pass the raw credential values provided by GCP
+ *
+ * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
+ */
+export interface GCPCredentialsConfiguration {
+    /**
+     * Google Cloud auth provider certificate.
+     */
+    authProviderX509CertUrl?: string;
+    /**
+     * Google Cloud auth uri.
+     */
+    authUri?: string;
+    /**
+     * Google Cloud email.
+     */
+    clientEmail?: string;
+    /**
+     * Google Cloud Client ID.
+     */
+    clientId?: string;
+    /**
+     * Google Cloud client certificate uri.
+     */
+    clientX509CertUrl?: string;
+    /**
+     * Google Cloud private key.
+     */
+    privateKey?: string;
+    /**
+     * Google Cloud private key id.
+     */
+    privateKeyId?: string;
+    /**
+     * Project ID
+     *
+     * GCP Project ID to parse metadata from
+     */
+    projectId?: string[] | string;
+    /**
+     * Google Cloud token uri.
+     */
+    tokenUri?: string;
+    /**
+     * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
+     */
+    type?: string;
+    /**
+     * Path of the file containing the GCP credentials info
+     */
+    path?: string;
+    /**
+     * Google Security Token Service audience which contains the resource name for the workload
+     * identity pool and the provider identifier in that pool.
+     */
+    audience?: string;
+    /**
+     * This object defines the mechanism used to retrieve the external credential from the local
+     * environment so that it can be exchanged for a GCP access token via the STS endpoint
+     */
+    credentialSource?: { [key: string]: string };
+    /**
+     * Google Cloud Platform account type.
+     */
+    externalType?: string;
+    /**
+     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
+     * spec.
+     */
+    subjectTokenType?: string;
+    /**
+     * Google Security Token Service token exchange endpoint.
+     */
+    tokenURL?: string;
+    [property: string]: any;
+}
+
+/**
+ * we enable the authenticated service account to impersonate another service account
+ *
+ * Pass the values to impersonate a service account of Google Cloud
+ */
+export interface GCPImpersonateServiceAccountValues {
+    /**
+     * The impersonated service account email
+     */
+    impersonateServiceAccount?: string;
+    /**
+     * Number of seconds the delegated credential should be valid
+     */
+    lifetime?: number;
     [property: string]: any;
 }
 
@@ -3374,210 +3684,6 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
- * Iceberg Catalog configuration.
- */
-export interface IcebergCatalog {
-    /**
-     * Catalog connection configuration, depending on your catalog type.
-     */
-    connection: Connection;
-    /**
-     * Custom Database Name for your Iceberg Service. If not set it will be 'default'.
-     */
-    databaseName?: string;
-    /**
-     * Catalog Name.
-     */
-    name: string;
-    /**
-     * Warehouse Location. Used to specify a custom warehouse location if needed.
-     */
-    warehouseLocation?: string;
-}
-
-/**
- * Catalog connection configuration, depending on your catalog type.
- *
- * Iceberg Hive Catalog configuration.
- *
- * Iceberg REST Catalog configuration.
- *
- * Iceberg Glue Catalog configuration.
- *
- * Iceberg DynamoDB Catalog configuration.
- */
-export interface Connection {
-    fileSystem?: IcebergFileSystem;
-    /**
-     * Uri to the Hive Metastore. Example: 'thrift://localhost:9083'
-     *
-     * Uri to the REST catalog. Example: 'http://rest-catalog/ws/'
-     */
-    uri?: string;
-    /**
-     * OAuth2 credential to use when initializing the catalog.
-     */
-    credential?: OAuth2Credential;
-    /**
-     * Sign requests to the REST Server using AWS SigV4 protocol.
-     */
-    sigv4?: Sigv4;
-    /**
-     * SSL Configuration details.
-     */
-    ssl?: SSLCertificatesByPath;
-    /**
-     * Berarer token to use for the 'Authorization' header.
-     */
-    token?:     string;
-    awsConfig?: AWSCredentials;
-    /**
-     * DynamoDB table name.
-     */
-    tableName?: string;
-}
-
-/**
- * OAuth2 credential to use when initializing the catalog.
- */
-export interface OAuth2Credential {
-    /**
-     * OAuth2 Client ID.
-     */
-    clientId?: string;
-    /**
-     * OAuth2 Client Secret
-     */
-    clientSecret?: string;
-}
-
-/**
- * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
- */
-export interface IcebergFileSystem {
-    type?: AWSCredentialsClass | null;
-}
-
-/**
- * AWS credentials configs.
- *
- * AWS credentials configuration.
- *
- * Azure Cloud Credentials
- *
- * Available sources to fetch metadata.
- *
- * Azure Credentials
- */
-export interface AWSCredentialsClass {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-    /**
-     * Account Name of your storage account
-     */
-    accountName?: string;
-    /**
-     * Your Service Principal App ID (Client ID)
-     */
-    clientId?: string;
-    /**
-     * Your Service Principal Password (Client Secret)
-     */
-    clientSecret?: string;
-    /**
-     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
-     */
-    scopes?: string;
-    /**
-     * Tenant ID of your Azure Subscription
-     */
-    tenantId?: string;
-    /**
-     * Key Vault Name
-     */
-    vaultName?: string;
-}
-
-/**
- * Sign requests to the REST Server using AWS SigV4 protocol.
- */
-export interface Sigv4 {
-    /**
-     * The service signing name to use when SigV4 signs a request.
-     */
-    signingName?: string;
-    /**
-     * AWS Region to use when SigV4 signs a request.
-     */
-    signingRegion?: string;
-    [property: string]: any;
-}
-
-/**
- * SSL Configuration details.
- *
- * SSL Certificates By Path
- */
-export interface SSLCertificatesByPath {
-    /**
-     * CA Certificate Path
-     */
-    caCertPath?: string;
-    /**
-     * Client Certificate Path
-     */
-    clientCertPath?: string;
-    /**
-     * Private Key Path
-     */
-    privateKeyPath?: string;
-}
-
-/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
@@ -3641,7 +3747,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConfigSourceConnection;
+    connection?: Connection;
     /**
      * Bucket Name of the data source.
      */
@@ -3650,7 +3756,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: Credentials;
+    securityConfig?: SecurityConfigClass;
     /**
      * Account Name of your storage account
      */
@@ -3684,7 +3790,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConfigSourceConnection {
+export interface Connection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3732,13 +3838,23 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configs.
  *
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP credentials configuration.
+ *
  * GCP Credentials for Google Drive API
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials configs.
  *
+ * AWS credentials for generating MWAA CLI token.
+ *
  * AWS credentials configuration.
  */
-export interface Credentials {
+export interface SecurityConfigClass {
     /**
      * Account Name of your storage account
      */
@@ -3821,108 +3937,14 @@ export interface Credentials {
 }
 
 /**
- * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
- * Credentials Path
+ * Choose between local file system path (object) or S3 bucket location (object) for Access
+ * database files.
  *
- * Pass the raw credential values provided by GCP
+ * Local filesystem path to a single Access database file or a directory containing Access
+ * files.
  *
- * Pass the path of file containing the GCP credentials info
+ * S3 Connection.
  *
- * Use the application default credentials
- */
-export interface GCPCredentialsConfiguration {
-    /**
-     * Google Cloud auth provider certificate.
-     */
-    authProviderX509CertUrl?: string;
-    /**
-     * Google Cloud auth uri.
-     */
-    authUri?: string;
-    /**
-     * Google Cloud email.
-     */
-    clientEmail?: string;
-    /**
-     * Google Cloud Client ID.
-     */
-    clientId?: string;
-    /**
-     * Google Cloud client certificate uri.
-     */
-    clientX509CertUrl?: string;
-    /**
-     * Google Cloud private key.
-     */
-    privateKey?: string;
-    /**
-     * Google Cloud private key id.
-     */
-    privateKeyId?: string;
-    /**
-     * Project ID
-     *
-     * GCP Project ID to parse metadata from
-     */
-    projectId?: string[] | string;
-    /**
-     * Google Cloud token uri.
-     */
-    tokenUri?: string;
-    /**
-     * Google Cloud Platform account type.
-     *
-     * Google Cloud Platform ADC ( Application Default Credentials )
-     */
-    type?: string;
-    /**
-     * Path of the file containing the GCP credentials info
-     */
-    path?: string;
-    /**
-     * Google Security Token Service audience which contains the resource name for the workload
-     * identity pool and the provider identifier in that pool.
-     */
-    audience?: string;
-    /**
-     * This object defines the mechanism used to retrieve the external credential from the local
-     * environment so that it can be exchanged for a GCP access token via the STS endpoint
-     */
-    credentialSource?: { [key: string]: string };
-    /**
-     * Google Cloud Platform account type.
-     */
-    externalType?: string;
-    /**
-     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
-     * spec.
-     */
-    subjectTokenType?: string;
-    /**
-     * Google Security Token Service token exchange endpoint.
-     */
-    tokenURL?: string;
-    [property: string]: any;
-}
-
-/**
- * we enable the authenticated service account to impersonate another service account
- *
- * Pass the values to impersonate a service account of Google Cloud
- */
-export interface GCPImpersonateServiceAccountValues {
-    /**
-     * The impersonated service account email
-     */
-    impersonateServiceAccount?: string;
-    /**
-     * Number of seconds the delegated credential should be valid
-     */
-    lifetime?: number;
-    [property: string]: any;
-}
-
-/**
  * Choose between Database connection or HDB User Store connection.
  *
  * Sap Hana Database SQL Connection Config
@@ -3937,9 +3959,10 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Mysql Database Connection Config
  *
- * Underlying database connection. See
- * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
- * supported backends.
+ * Choose between database connection or REST API connection to fetch metadata from
+ * Airflow.
+ *
+ * Airflow REST API Connection Config for connecting via REST API.
  *
  * Lineage Backend Connection Config
  *
@@ -3949,9 +3972,37 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Matillion ETL Auth Config.
  *
+ * Matillion Data Productivity Cloud Auth Config.
+ *
  * Choose between mysql and postgres connection for alation database
  */
 export interface ConfigConnection {
+    /**
+     * Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g.
+     * ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be
+     * ingested.
+     */
+    localFilePath?: string;
+    awsConfig?:     AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: ConnectionType;
     /**
      * Database of the data source.
      *
@@ -3975,7 +4026,8 @@ export interface ConfigConnection {
      *
      * Host and port of the source service.
      *
-     * Host and port of the MySQL service.
+     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
+     * the format 'project_id:region:instance_name'.
      *
      * Host and port of the SQLite service. Blank for in-memory database.
      *
@@ -4024,17 +4076,18 @@ export interface ConfigConnection {
      * SSL Configuration details.
      */
     sslConfig?: ConnectionSSLConfig;
-    verifySSL?: VerifySSL;
+    /**
+     * Whether to verify SSL certificates when connecting to the Airflow API.
+     */
+    verifySSL?: boolean | VerifySSL;
     /**
      * Choose Auth Config Type.
      */
-    authType?: AuthConfigurationType;
+    authType?: AuthTypeClass;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
-    classificationName?:  string;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    classificationName?: string;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
@@ -4069,7 +4122,6 @@ export interface ConfigConnection {
     supportsDataDiff?:             boolean;
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
@@ -4077,10 +4129,6 @@ export interface ConfigConnection {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
-    /**
-     * Service Type
-     */
-    type?: ConnectionType;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -4091,6 +4139,15 @@ export interface ConfigConnection {
      */
     useSlowLogs?: boolean;
     /**
+     * Airflow REST API version.
+     */
+    apiVersion?: APIVersion;
+    /**
+     * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+     * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
+     */
+    authConfig?: AuthenticationConfiguration;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -4099,6 +4156,85 @@ export interface ConfigConnection {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * OAuth2 Client ID for Matillion DPC authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth2 Client Secret for Matillion DPC authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Personal Access Token for Matillion DPC. Alternative to OAuth2 Client Credentials.
+     */
+    personalAccessToken?: string;
+    /**
+     * Matillion DPC region. Determines the API base URL.
+     */
+    region?: Region;
+}
+
+/**
+ * Airflow REST API version.
+ *
+ * Airflow REST API version. Use v1 for Airflow 2.x and v2 for Airflow 3.x. Auto will detect
+ * the version automatically.
+ */
+export enum APIVersion {
+    Auto = "auto",
+    V1 = "v1",
+    V2 = "v2",
+}
+
+/**
+ * Choose an authentication method: Basic Auth (username/password), Access Token, GCP
+ * Service Account (for Cloud Composer), or AWS Credentials (for MWAA).
+ *
+ * Username and password for Airflow API authentication.
+ *
+ * Static access token for Airflow API authentication.
+ *
+ * GCP credentials for Google Cloud Composer. Supports service account values, credentials
+ * path, workload identity (external account), and ADC. Tokens are auto-refreshed at
+ * runtime.
+ *
+ * AWS MWAA (Managed Workflows for Apache Airflow) authentication configuration.
+ */
+export interface AuthenticationConfiguration {
+    /**
+     * Password for basic authentication to the Airflow API.
+     */
+    password?: string;
+    /**
+     * Username for basic authentication to the Airflow API.
+     */
+    username?: string;
+    /**
+     * Static access token for Airflow API authentication.
+     */
+    token?: string;
+    /**
+     * GCP credentials configuration.
+     */
+    credentials?: GcpConfigClass;
+    /**
+     * MWAA credentials and environment configuration.
+     */
+    mwaaConfig?: MWAAConfiguration;
+}
+
+/**
+ * MWAA credentials and environment configuration.
+ */
+export interface MWAAConfiguration {
+    /**
+     * AWS credentials for generating MWAA CLI token.
+     */
+    awsConfig: AWSCredentials;
+    /**
+     * The name of your MWAA environment.
+     */
+    mwaaEnvironmentName: string;
 }
 
 /**
@@ -4109,14 +4245,26 @@ export interface ConfigConnection {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.
  */
-export interface AuthConfigurationType {
+export interface AuthTypeClass {
     /**
      * Password to connect to source.
+     *
+     * Database user password. Leave empty if using IAM database authentication.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+    /**
+     * Use GCP IAM for database authentication instead of a password.
+     */
+    enableIamAuth?: boolean;
+    /**
+     * GCP credentials to use. If not provided, Application Default Credentials will be used.
+     */
+    gcpConfig?: GcpConfigClass;
 }
 
 /**
@@ -4127,6 +4275,14 @@ export interface AuthConfigurationType {
 export enum Provider {
     DB = "db",
     LDAP = "ldap",
+}
+
+/**
+ * Matillion DPC region. Determines the API base URL.
+ */
+export enum Region {
+    Eu1 = "eu1",
+    Us1 = "us1",
 }
 
 /**
@@ -4162,7 +4318,11 @@ export interface DataStorageConfig {
 }
 
 /**
+ * AWS credentials required to access the S3 file.
+ *
  * AWS credentials configs.
+ *
+ * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
  */
@@ -4240,6 +4400,12 @@ export enum ConnectionScheme {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -4263,6 +4429,10 @@ export interface ConnectionSSLConfig {
 
 /**
  * SSL Mode to connect to database.
+ *
+ * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+ * without certificate verification, or 'verify-ca' to validate the server certificate
+ * against the provided CA certificate.
  */
 export enum SSLMode {
     Allow = "allow",
@@ -4276,13 +4446,18 @@ export enum SSLMode {
 /**
  * Service Type
  *
+ * S3 service type
+ *
  * Service type.
  */
 export enum ConnectionType {
     Backend = "Backend",
+    MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
     Mysql = "Mysql",
     Postgres = "Postgres",
+    RESTAPI = "RestAPI",
+    S3 = "S3",
     SQLite = "SQLite",
 }
 
@@ -4290,6 +4465,12 @@ export enum ConnectionType {
  * GCP Credentials
  *
  * GCP credentials configs.
+ *
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP credentials configuration.
  *
  * GCP Credentials for Google Drive API
  *
@@ -4299,7 +4480,7 @@ export enum ConnectionType {
  *
  * Azure Credentials
  */
-export interface GCPCredentials {
+export interface PurpleGCPCredentials {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -4478,7 +4659,7 @@ export enum FHIRVersion {
  *
  * Credentials for a Gitlab repository
  */
-export interface NoGitCredentialsClass {
+export interface Credentials {
     /**
      * GitHub instance URL. For GitHub.com, use https://github.com
      *
@@ -4548,7 +4729,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: AuthConfigurationType;
+    authType?: AuthTypeClass;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -4568,7 +4749,8 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Host and port of the source service.
      *
-     * Host and port of the MySQL service.
+     * Host and port of the MySQL service. For GCP CloudSQL, use the instance connection name in
+     * the format 'project_id:region:instance_name'.
      */
     hostPort?: string;
     /**
@@ -4701,6 +4883,8 @@ export interface NifiCredentialsConfiguration {
  * Open API Schema URL Connection Config
  *
  * Open API Schema File Path Connection Config
+ *
+ * Open API Schema S3 Connection Config
  */
 export interface OpenAPISchemaConnection {
     /**
@@ -4711,6 +4895,15 @@ export interface OpenAPISchemaConnection {
      * Path to a local OpenAPI schema file.
      */
     openAPISchemaFilePath?: string;
+    /**
+     * AWS credentials required to access the S3 file.
+     */
+    awsCredentials?: AWSCredentials;
+    /**
+     * S3 URL of the OpenAPI schema file (JSON or YAML). Example:
+     * https://bucket-name.s3.amazonaws.com/path/to/openapi_schema.json
+     */
+    openAPISchemaS3URL?: string;
 }
 
 /**
@@ -4759,7 +4952,7 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: S3ConnectionType;
 }
 
 /**
@@ -4767,7 +4960,7 @@ export interface S3Connection {
  *
  * S3 service type
  */
-export enum S3Type {
+export enum S3ConnectionType {
     S3 = "S3",
 }
 
@@ -4797,7 +4990,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      Credentials;
+    securityConfig?:      SecurityConfigClass;
 }
 
 /**
@@ -4858,6 +5051,7 @@ export enum ConfigScheme {
     Ibmi = "ibmi",
     Impala = "impala",
     Impala4 = "impala4",
+    Informix = "informix",
     Mongodb = "mongodb",
     MongodbSrv = "mongodb+srv",
     MssqlPymssql = "mssql+pymssql",
@@ -4911,6 +5105,12 @@ export enum SpaceType {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -4943,8 +5143,6 @@ export interface SSLConfigObject {
 
 /**
  * SSL Certificates
- *
- * SSL Configuration details.
  *
  * SSL Certificates By Path
  *
@@ -5054,6 +5252,8 @@ export enum TokenType {
  *
  * Grafana service type
  *
+ * SAP S/4HANA service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -5154,8 +5354,9 @@ export enum ConfigType {
     Greenplum = "Greenplum",
     Hex = "Hex",
     Hive = "Hive",
-    Iceberg = "Iceberg",
     Impala = "Impala",
+    Informix = "Informix",
+    Iomete = "Iomete",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
@@ -5167,6 +5368,7 @@ export enum ConfigType {
     Metabase = "Metabase",
     MetadataES = "MetadataES",
     MicroStrategy = "MicroStrategy",
+    MicrosoftAccess = "MicrosoftAccess",
     MicrosoftFabric = "MicrosoftFabric",
     MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mlflow = "Mlflow",
@@ -5185,6 +5387,7 @@ export enum ConfigType {
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     Presto = "Presto",
+    PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
@@ -5201,6 +5404,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapS4Hana = "SapS4Hana",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",
@@ -5227,6 +5431,15 @@ export enum ConfigType {
     VertexAI = "VertexAI",
     Vertica = "Vertica",
     Wherescape = "Wherescape",
+}
+
+/**
+ * Source type of the resolved credentials. Indicates whether the credentials come from a
+ * user-level config or a team-level config. Set by the backend during credential resolution.
+ */
+export enum CredentialSourceType {
+    Team = "team",
+    User = "user",
 }
 
 /**
@@ -5374,6 +5587,10 @@ export enum LabelType {
  */
 export interface TagLabelMetadata {
     /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
      * Metadata about the recognizer that automatically applied this tag
      */
     recognizer?: TagLabelRecognizerMetadata;
@@ -5508,6 +5725,7 @@ export enum ServiceType {
     Database = "Database",
     Drive = "Drive",
     Llm = "LLM",
+    MCP = "Mcp",
     Messaging = "Messaging",
     Metadata = "Metadata",
     MlModel = "MlModel",

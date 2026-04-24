@@ -62,7 +62,8 @@ test.describe('Glossary Navigation', () => {
 
       // Wait for loader to disappear
       await page
-        .waitForSelector('[data-testid="loader"]', {
+        .getByTestId('loader')
+        .waitFor({
           state: 'detached',
           timeout: 5000,
         })
@@ -129,7 +130,8 @@ test.describe('Glossary Navigation', () => {
 
       // Wait for loader to disappear
       await page
-        .waitForSelector('[data-testid="loader"]', {
+        .getByTestId('loader')
+        .waitFor({
           state: 'detached',
           timeout: 5000,
         })
@@ -227,6 +229,7 @@ test.describe('Glossary Navigation', () => {
 
   // UI-01: Empty glossary state (no terms)
   // Skip: Test isolation issue - selectActiveGlossary not selecting the correct glossary
+  // eslint-disable-next-line playwright/no-skipped-test -- test isolation issue with selectActiveGlossary
   test.skip('should show empty state when glossary has no terms', async ({
     page,
   }) => {
@@ -239,7 +242,6 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
-      await page.waitForLoadState('networkidle');
 
       // Verify empty state is shown (with default status filter active)
       await expect(page.getByText('No Glossary Term found')).toBeVisible();

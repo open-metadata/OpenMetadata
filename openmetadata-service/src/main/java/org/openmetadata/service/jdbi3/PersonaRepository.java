@@ -17,8 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
-import com.google.gson.Gson;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -71,35 +69,18 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("users");
+  }
+
+  @Override
   public void storeEntity(Persona persona, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
-    List<EntityReference> users = persona.getUsers();
-    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    persona.withUsers(null);
-
     store(persona, update);
-
-    // Restore the relationships
-    persona.withUsers(users);
   }
 
   @Override
   public void storeEntities(List<Persona> entities) {
-    List<Persona> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Persona persona : entities) {
-      List<EntityReference> users = persona.getUsers();
-
-      persona.withUsers(null);
-
-      String jsonCopy = gson.toJson(persona);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Persona.class));
-
-      persona.withUsers(users);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -128,7 +109,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   @Transaction
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
+    // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
+    // bypassing invalidateCachesAfterStore — so every affected persona would keep stale
+    // "default=true" in both CACHE_WITH_ID and CACHE_WITH_NAME variants. Passing fqn lets
+    // invalidateCacheForEntity drop the by-name cache alongside the by-id one.
+    List<EntityDAO.EntityIdFqnPair> affected =
+        daoCollection.personaDAO().findOtherDefaultPersonaIdsWithFqn(newDefaultPersonaId);
     daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
+    for (EntityDAO.EntityIdFqnPair persona : affected) {
+      invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
+    }
   }
 
   public Persona getSystemDefaultPersona() {
@@ -160,6 +150,18 @@ public class PersonaRepository extends EntityRepository<Persona> {
     for (EntityReference team : listOrEmpty(teams)) {
       deleteRelationship(team.getId(), Entity.TEAM, persona.getId(), PERSONA, Relationship.HAS);
     }
+
+    // Users/teams that had this persona cached embed the persona reference in their serialized
+    // JSON. Drop their cached entries so the next read rebuilds without the now-deleted persona.
+    for (EntityReference user : listOrEmpty(users)) {
+      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    }
+    for (EntityReference user : listOrEmpty(defaultUsers)) {
+      invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    }
+    for (EntityReference team : listOrEmpty(teams)) {
+      invalidateCacheForEntity(Entity.TEAM, team.getId(), team.getFullyQualifiedName());
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -170,8 +172,8 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateUsers(original, updated);
-      updateDefault(original, updated);
+      compareAndUpdate("users", () -> updateUsers(original, updated));
+      compareAndUpdate("default", () -> updateDefault(original, updated));
     }
 
     @Transaction

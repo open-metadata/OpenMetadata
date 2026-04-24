@@ -220,7 +220,7 @@ const PortsLineageView = ({
           className="m-t-0"
           icon={
             <AddPlaceHolderIcon
-              className="tw:w-12 tw:h-12"
+              className="tw:w-16 tw:h-16"
               data-testid="no-ports-placeholder"
             />
           }

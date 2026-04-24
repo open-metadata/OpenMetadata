@@ -46,7 +46,7 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossaryName);
       await page
@@ -58,8 +58,6 @@ test.describe('Glossary CRUD Operations', () => {
       await createResponse;
 
       await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
-
-      await page.waitForLoadState('networkidle');
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
         glossaryName,
@@ -95,7 +93,7 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
       await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossaryName);
       await page.locator(descriptionBox).fill('Mutually exclusive glossary');
@@ -111,8 +109,6 @@ test.describe('Glossary CRUD Operations', () => {
       await createResponse;
 
       await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
-
-      await page.waitForLoadState('networkidle');
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
         glossaryName,
@@ -266,8 +262,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const ownerSection = page.locator(
         '[data-testid="glossary-right-panel-owner-link"]'
       );
@@ -277,7 +271,6 @@ test.describe('Glossary CRUD Operations', () => {
 
         if (await editBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editBtn.click();
-          await page.waitForTimeout(500);
 
           const removeBtn = page.getByTestId('remove-owner').first();
 
@@ -288,7 +281,6 @@ test.describe('Glossary CRUD Operations', () => {
 
             if (await saveBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
               await saveBtn.click();
-              await page.waitForLoadState('networkidle');
             }
           }
         }
@@ -333,8 +325,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const reviewerSection = page.getByTestId('glossary-reviewer');
 
       if (
@@ -346,7 +336,6 @@ test.describe('Glossary CRUD Operations', () => {
 
         if (await editBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editBtn.click();
-          await page.waitForTimeout(500);
 
           const removeBtn = page.getByTestId('remove-owner').first();
 
@@ -357,7 +346,6 @@ test.describe('Glossary CRUD Operations', () => {
 
             if (await saveBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
               await saveBtn.click();
-              await page.waitForLoadState('networkidle');
             }
           }
         }
@@ -398,8 +386,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const parentRow = page
         .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
         .first();
@@ -407,7 +393,6 @@ test.describe('Glossary CRUD Operations', () => {
       await expect(parentRow).toBeVisible();
 
       await parentRow.click();
-      await page.waitForLoadState('networkidle');
 
       const manageBtn = page.getByTestId('manage-button');
 
@@ -419,7 +404,7 @@ test.describe('Glossary CRUD Operations', () => {
         if (await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await deleteBtn.click();
 
-          await page.waitForSelector('[data-testid="delete-modal"]', {
+          await page.getByTestId('delete-modal').waitFor({
             state: 'visible',
           });
 
@@ -434,8 +419,6 @@ test.describe('Glossary CRUD Operations', () => {
 
             const confirmBtn = page.getByTestId('confirm-button');
             await confirmBtn.click();
-
-            await page.waitForLoadState('networkidle');
           }
         }
       }
@@ -478,8 +461,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const parentRow = page
         .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
         .first();
@@ -510,20 +491,16 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const termRow = page
         .locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
         .first();
 
       await termRow.click();
-      await page.waitForLoadState('networkidle');
 
       const assetsTab = page.getByTestId('assets');
 
       if (await assetsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
         await assetsTab.click();
-        await page.waitForLoadState('networkidle');
 
         await expect(assetsTab).toBeVisible();
       }
@@ -532,7 +509,6 @@ test.describe('Glossary CRUD Operations', () => {
 
       if (await overviewTab.isVisible({ timeout: 2000 }).catch(() => false)) {
         await overviewTab.click();
-        await page.waitForLoadState('networkidle');
       }
 
       await expect(
@@ -559,8 +535,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const parentRow = page
         .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
         .first();
@@ -572,7 +546,7 @@ test.describe('Glossary CRUD Operations', () => {
       if (await addChildBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await addChildBtn.click();
 
-        await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+        await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
         const termModal = page.locator('.edit-glossary-modal');
         await termModal.getByTestId('name').fill(childTermName);
@@ -624,9 +598,11 @@ test.describe('Glossary CRUD Operations', () => {
         await tagSelector.click();
         const tagInput = tagSelector.locator('input[type="search"]');
         await tagInput.fill('PII');
-        await page.waitForTimeout(500);
 
         const tagOption = page.getByTestId('tag-PII.Sensitive');
+        await tagOption
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .catch(() => {});
 
         if (await tagOption.isVisible({ timeout: 2000 }).catch(() => false)) {
           await tagOption.click();
@@ -684,20 +660,16 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const termRow = page
         .locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
         .first();
 
       await termRow.click();
-      await page.waitForLoadState('networkidle');
 
       const synonymAddBtn = page.getByTestId('synonym-add-button');
 
       if (await synonymAddBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await synonymAddBtn.click();
-        await page.waitForTimeout(500);
 
         const removeIcon = page
           .locator('.ant-select-selection-item-remove')
@@ -710,7 +682,6 @@ test.describe('Glossary CRUD Operations', () => {
 
           if (await saveBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
             await saveBtn.click();
-            await page.waitForLoadState('networkidle');
           }
         }
       }
@@ -752,8 +723,6 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.waitForLoadState('networkidle');
-
       const tagsSection = page.getByTestId('tags-container');
 
       if (await tagsSection.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -761,7 +730,6 @@ test.describe('Glossary CRUD Operations', () => {
 
         if (await editTagBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editTagBtn.click();
-          await page.waitForTimeout(500);
 
           const removeIcon = page
             .locator('.ant-select-selection-item-remove')
@@ -776,7 +744,6 @@ test.describe('Glossary CRUD Operations', () => {
 
             if (await saveBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
               await saveBtn.click();
-              await page.waitForLoadState('networkidle');
             }
           }
         }

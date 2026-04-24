@@ -12,12 +12,13 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { EntityClass } from '../../../support/entity/EntityClass';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
+import { DataQualityPageObject } from './DataQualityPageObject';
+import { LineagePageObject } from './LineagePageObject';
 import { OverviewPageObject } from './OverviewPageObject';
 import { SchemaPageObject } from './SchemaPageObject';
-import { LineagePageObject } from './LineagePageObject';
-import { DataQualityPageObject } from './DataQualityPageObject';
-import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
-import { EntityClass } from '../../../support/entity/EntityClass';
 
 /** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Property"). */
 export const RIGHT_PANEL_TAB = {
@@ -105,6 +106,7 @@ export class RightPanelPageObject {
   public readonly page: Page;
   private readonly summaryPanel = '.entity-summary-panel-container';
   private entityConfig?: DataAssetConfig;
+  private entityEndpoint?: string;
   private rolePermissions?: RolePermissions;
   private pageContext: PageContext = PageContext.EXPLORE;
 
@@ -379,6 +381,7 @@ export class RightPanelPageObject {
    * @param entity - EntityClass instance to configure for
    */
   public setEntityConfig(entity: EntityClass): void {
+    this.entityEndpoint = entity.endpoint;
     const entityType = entity.getType();
     this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
 
@@ -670,6 +673,10 @@ export class RightPanelPageObject {
     return this.entityConfig;
   }
 
+  public getEntityEndpoint(): string | undefined {
+    return this.entityEndpoint;
+  }
+
   /**
    * Check if a specific tab is available for the current entity type
    * @param tabName - Name of the tab to check
@@ -929,7 +936,7 @@ export class RightPanelPageObject {
     await expect(this.panelLoaders).toHaveCount(0, { timeout });
 
     // Step 3: Wait for any remaining loaders on the page (fallback)
-    await this.pageLoader.waitFor({ state: 'detached', timeout });
+    await this.waitForLoadersToDisappear(timeout);
 
     // Step 4: Ensure panel is still visible and stable
     await this.getSummaryPanel().waitFor({ state: 'visible' });
@@ -1015,16 +1022,14 @@ export class RightPanelPageObject {
   /**
    * Wait for all loaders to disappear
    */
-  async waitForLoadersToDisappear() {
-    await this.pageLoader.waitFor({ state: 'detached' });
+  async waitForLoadersToDisappear(timeout?: number) {
+    await waitForAllLoadersToDisappear(this.page, 'loader', timeout);
   }
 
   /**
    * Wait for network idle
    */
-  async waitForNetworkIdle() {
-    await this.page.waitForLoadState('networkidle');
-  }
+  async waitForNetworkIdle() {}
 
   /**
    * Verify text is visible in the panel

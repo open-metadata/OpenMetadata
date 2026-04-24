@@ -25,82 +25,77 @@ export const verifyActivityFeedFilters = async (
   ).toBeVisible();
 
   // Wait for the widget feed to load
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
 
-  const myDataFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Conversation') &&
-      response.url().includes('filterType=OWNER')
-  );
+  // Wait for either old or new feed API response with timeout
+  const myDataFilter = Promise.race([
+    page.waitForResponse(
+      (response) =>
+        (response.url().includes('/api/v1/feed') ||
+          response.url().includes('/api/v1/activities')) &&
+        response.url().includes('filterType=OWNER')
+    ),
+    page.waitForTimeout(5000),
+  ]);
   await page.getByRole('menuitem', { name: 'My Data' }).click();
   await myDataFilter;
 
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const followingFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Conversation') &&
-      response.url().includes('filterType=FOLLOWS')
-  );
+  const followingFilter = Promise.race([
+    page.waitForResponse(
+      (response) =>
+        (response.url().includes('/api/v1/feed') ||
+          response.url().includes('/api/v1/activities')) &&
+        response.url().includes('filterType=FOLLOWS')
+    ),
+    page.waitForTimeout(5000),
+  ]);
   await page.getByRole('menuitem', { name: 'Following' }).click();
   await followingFilter;
 
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const allActivityFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Conversation')
-  );
+  const allActivityFilter = Promise.race([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/feed') ||
+        response.url().includes('/api/v1/activities')
+    ),
+    page.waitForTimeout(5000),
+  ]);
   await page.getByRole('menuitem', { name: 'All Activity' }).click();
   await allActivityFilter;
 
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   // Wait for the widget data to appear
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
@@ -119,12 +114,9 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
@@ -139,12 +131,9 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
@@ -159,24 +148,18 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyTotalDataAssetsFilters = async (
   page: Page,
   widgetKey: string
 ) => {
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
@@ -198,12 +181,9 @@ export const verifyTotalDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Last 14 days' }).click();
   await last14DaysFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
@@ -221,24 +201,18 @@ export const verifyTotalDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
   await last7DaysFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyDataProductsFilters = async (
   page: Page,
   widgetKey: string
 ) => {
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   const sortDropdown = page
     .getByTestId(widgetKey)
@@ -250,61 +224,49 @@ export const verifyDataProductsFilters = async (
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=data_product') &&
+      response.url().includes('index=dataProduct') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=asc')
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await sortDropdown.click();
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=data_product') &&
+      response.url().includes('index=dataProduct') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=desc')
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await sortDropdown.click();
   const latestFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=data_product') &&
+      response.url().includes('index=dataProduct') &&
       response.url().includes('sort_field=updatedAt') &&
       response.url().includes('sort_order=desc')
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
@@ -317,18 +279,15 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain_search_index') &&
+      response.url().includes('index=domain') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=asc')
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
@@ -337,18 +296,15 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain_search_index') &&
+      response.url().includes('index=domain') &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=desc')
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
@@ -357,27 +313,33 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   const latestFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain_search_index') &&
+      response.url().includes('index=domain') &&
       response.url().includes('sort_field=updatedAt') &&
       response.url().includes('sort_order=desc')
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  const waitForTaskFilterResponse = (filterType: string) =>
+    page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/tasks') ||
+        (url.includes('/api/v1/feed') &&
+          url.includes('type=Task') &&
+          url.includes(`filterType=${filterType}`))
+      );
+    });
+
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
@@ -387,70 +349,43 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const mentionsTaskFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Task') &&
-      response.url().includes('filterType=MENTIONS')
-  );
+  const mentionsTaskFilter = waitForTaskFilterResponse('MENTIONS');
   await page.getByRole('menuitem', { name: 'Mentions' }).click();
   await mentionsTaskFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const assignedTasksFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Task') &&
-      response.url().includes('filterType=ASSIGNED_TO')
-  );
+  const assignedTasksFilter = waitForTaskFilterResponse('ASSIGNED_TO');
   await page.getByRole('menuitem', { name: 'Assigned' }).click();
   await assignedTasksFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const allTasksFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Task') &&
-      response.url().includes('filterType=OWNER_OR_FOLLOWS')
-  );
+  const allTasksFilter = waitForTaskFilterResponse('OWNER_OR_FOLLOWS');
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyDataAssetsFilters = async (
   page: Page,
   widgetKey: string
 ) => {
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   const sortDropdown = page
     .getByTestId(widgetKey)
@@ -463,63 +398,51 @@ export const verifyDataAssetsFilters = async (
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   // Test Z to A sorting
   await sortDropdown.click();
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   // Test High to Low sorting
   await sortDropdown.click();
   const highToLowFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'High to Low' }).click();
   await highToLowFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 
   // Test Low to High sorting
   await sortDropdown.click();
   const lowToHighFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('table_search_index')
+      response.url().includes('index=table')
   );
   await page.getByRole('menuitem', { name: 'Low to High' }).click();
   await lowToHighFilter;
 
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };

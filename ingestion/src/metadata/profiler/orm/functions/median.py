@@ -207,11 +207,11 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 {col},
                 ROW_NUMBER() OVER () AS row_num
             FROM
-                {table} AS median_inner,
+                `{table}` AS median_inner,
                 (SELECT @counter := COUNT(*)
-                 FROM {table} AS median_count
-                 WHERE median_count.{dimension_col} = {table}.{dimension_col}) t_count
-            WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+                 FROM `{table}` AS median_count
+                 WHERE median_count.{dimension_col} = `{table}`.{dimension_col}) t_count
+            WHERE median_inner.{dimension_col} = `{table}`.{dimension_col}
             ORDER BY {col}
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
@@ -229,8 +229,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 {col},
                 ROW_NUMBER() OVER () AS row_num
             FROM
-                {table},
-                (SELECT @counter := COUNT(*) FROM {table}) t_count
+                `{table}`,
+                (SELECT @counter := COUNT(*) FROM `{table}`) t_count
             ORDER BY {col}
             ) temp
         WHERE temp.row_num = ROUND({percentile} * @counter)
@@ -275,8 +275,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
            SELECT {col},
                   ROW_NUMBER() OVER (ORDER BY {col}) as rn,
                   COUNT(*) OVER () as cnt
-           FROM {table} AS median_inner
-           WHERE median_inner.{dimension_col} = {table}.{dimension_col}
+           FROM "{table}" AS median_inner
+           WHERE median_inner.{dimension_col} = "{table}".{dimension_col}
              AND {col} IS NOT NULL
          )
          WHERE rn IN (
@@ -292,13 +292,13 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         return """
         (SELECT
             {col}
-        FROM {table}
+        FROM "{table}"
         WHERE {col} IS NOT NULL
         ORDER BY {col}
         LIMIT 1
         OFFSET (
                 SELECT ROUND(COUNT(*) * {percentile} -1)
-                FROM {table}
+                FROM "{table}"
                 WHERE {col} IS NOT NULL
             )
         )
@@ -325,3 +325,46 @@ def _(elements, compiler, **kw):  # pylint: disable=unused-argument
     percentile = elements.clauses.clauses[2].value
     percentile_int = int(percentile * 100)
     return "PERCENTILE(%s, %d)" % (col, percentile_int)
+
+
+@compiles(MedianFn, Dialects.Informix)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    """Median/percentile computation for Informix.
+
+    Informix does not support PERCENTILE_CONT ... WITHIN GROUP (ORDER BY ...).
+    Uses ROW_NUMBER() OVER (ORDER BY col) + COUNT(*) OVER () in a subquery.
+
+    COUNT(*) OVER () returns DECIMAL in Informix, so row positions are wrapped
+    in CAST(... AS INTEGER) to truncate before comparison with integer rn.
+
+    For string columns, fn() wraps the column with LenFn before calling
+    _compute_sqa_fn, so compiler.process() already produces LENGTH("col")
+    here — no special-casing needed.
+    """
+    col_clause = elements.clauses.clauses[0]
+    col = compiler.process(col_clause)
+    table = elements.clauses.clauses[1].value
+    percentile = elements.clauses.clauses[2].value
+
+    if abs(percentile - 0.5) < 0.01:  # Median
+        pos1 = "CAST((cnt + 1) / 2 AS INTEGER)"
+        pos2 = "CAST((cnt + 2) / 2 AS INTEGER)"
+    elif abs(percentile - 0.25) < 0.01:  # Q1
+        pos1 = "CAST((cnt + 3) / 4 AS INTEGER)"
+        pos2 = "CAST((cnt + 4) / 4 AS INTEGER)"
+    elif abs(percentile - 0.75) < 0.01:  # Q3
+        pos1 = "CAST((3 * cnt + 3) / 4 AS INTEGER)"
+        pos2 = "CAST((3 * cnt + 4) / 4 AS INTEGER)"
+    else:
+        raise ValueError(
+            f"Unsupported percentile {percentile} for Informix — expected 0.25, 0.5, or 0.75"
+        )
+
+    return (
+        "(SELECT AVG(CASE WHEN rn = {pos1} OR rn = {pos2} "
+        "THEN CAST(_col_val_ AS DECIMAL(32,4)) END) "
+        "FROM (SELECT {col} AS _col_val_, "
+        "ROW_NUMBER() OVER (ORDER BY {col}) AS rn, "
+        "COUNT(*) OVER () AS cnt "
+        "FROM {table} WHERE {col} IS NOT NULL) sub)"
+    ).format(pos1=pos1, pos2=pos2, col=col, table=table)

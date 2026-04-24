@@ -35,6 +35,7 @@ import {
   visitAlertDetailsPage,
 } from '../../utils/alert';
 import { getApiContext } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
   checkAlertDetailsForWithPermissionUser,
@@ -170,6 +171,7 @@ test('Pipeline Alert', async ({ page }) => {
     );
     await diagnosticTab.click();
     await diagnosticInfoResponse;
+    await waitForAllLoadersToDisappear(page);
   });
 
   await test.step('Check created alert details', async () => {
@@ -261,12 +263,16 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
     });
   });
 }
-
 test('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
+  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
+  test.fixme(
+    process.env.PLAYWRIGHT_IS_OSS !== 'true',
+    'Skipping in AUT environment'
+  );
   test.slow();
 
   const ALERT_NAME = generateAlertName();
@@ -288,6 +294,9 @@ test('Alert operations for a user with and without permissions', async ({
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
     );
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Search and select filter input value
     const searchOptions = userWithPermissionsPage.waitForResponse(
@@ -297,7 +306,7 @@ test('Alert operations for a user with and without permissions', async ({
       `[data-testid="fqn-list-select"] [role="combobox"]`,
       table1.entity.name,
       {
-        force: true,
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
     );
 
@@ -316,27 +325,31 @@ test('Alert operations for a user with and without permissions', async ({
       )
       .toBeAttached();
 
+    // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
     await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+    // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
     // Select action
     await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
 
     // Adding the dropdown visibility check to avoid flakiness here
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'visible',
-      }
-    );
+      });
     await userWithPermissionsPage.click(
       '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
     );
-    await userWithPermissionsPage.waitForSelector(
-      `.ant-select-dropdown:visible`,
-      {
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
         state: 'hidden',
-      }
-    );
+      });
 
     await userWithPermissionsPage.click(
       '[data-testid="add-destination-button"]'

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,7 +27,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
-  ROUTES,
 } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -49,10 +48,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getObservabilityAlertDetailsPath,
-  getObservabilityAlertsEditPath,
-} from '../../utils/RouterUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -207,7 +203,7 @@ const ObservabilityAlertsPage = () => {
           return (
             <Link
               data-testid="alert-name"
-              to={getObservabilityAlertDetailsPath(
+              to={observabilityRouterClassBase.getObservabilityAlertDetailsPath(
                 record.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record)}
@@ -224,7 +220,7 @@ const ObservabilityAlertsPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EventSubscription>(),
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',
@@ -253,7 +249,10 @@ const ObservabilityAlertsPage = () => {
             <div className="d-flex items-center">
               {alertPermission.edit && (
                 <Tooltip placement="bottom" title={t('label.edit')}>
-                  <Link to={getObservabilityAlertsEditPath(fqn)}>
+                  <Link
+                    to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
+                      fqn
+                    )}>
                     <Button
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
@@ -285,34 +284,44 @@ const ObservabilityAlertsPage = () => {
 
   const pageHeaderData = useMemo(
     () => ({
-      header: t('label.observability'),
+      header: t('label.observability-alert'),
       subHeader: t('message.alerts-description'),
     }),
-    []
+    [t]
   );
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <div className="d-flex justify-between m-t-xs">
-            <PageHeader
-              data={pageHeaderData}
-              learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
-              title={t('label.observability-alert')}
-            />
-            {(alertResourcePermission?.Create ||
-              alertResourcePermission?.All) && (
-              <LimitWrapper resource="eventsubscription">
-                <Button
-                  data-testid="create-observability"
-                  type="primary"
-                  onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
-                  {t('label.add-entity', { entity: t('label.alert') })}
-                </Button>
-              </LimitWrapper>
-            )}
-          </div>
+          <Card>
+            <Row>
+              <Col span={16}>
+                <PageHeader
+                  data={pageHeaderData}
+                  learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
+                  title={t('label.observability-alert')}
+                />
+              </Col>
+              <Col className="d-flex justify-end" span={8}>
+                {(alertResourcePermission?.Create ||
+                  alertResourcePermission?.All) && (
+                  <LimitWrapper resource="eventsubscription">
+                    <Button
+                      data-testid="create-observability"
+                      type="primary"
+                      onClick={() =>
+                        navigate(
+                          observabilityRouterClassBase.getAddObservabilityAlertsPath()
+                        )
+                      }>
+                      {t('label.add-entity', { entity: t('label.alert') })}
+                    </Button>
+                  </LimitWrapper>
+                )}
+              </Col>
+            </Row>
+          </Card>
         </Col>
         <Col span={24}>
           <Table
@@ -339,7 +348,11 @@ const ObservabilityAlertsPage = () => {
                     entity: t('label.alert'),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}
+                  onClick={() =>
+                    navigate(
+                      observabilityRouterClassBase.getAddObservabilityAlertsPath()
+                    )
+                  }
                 />
               ),
             }}

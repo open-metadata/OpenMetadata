@@ -351,6 +351,69 @@ describe('testAPI tests', () => {
       });
     });
 
+    describe('addTestCasesToLogicalTestSuiteBulk', () => {
+      it('should PUT bulk ids mode to logicalTestCases/bulk', async () => {
+        const mockPut = jest.fn().mockResolvedValue({ data: mockTestSuite });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            put: mockPut,
+          },
+        }));
+
+        const { addTestCasesToLogicalTestSuiteBulk } = require('./testAPI');
+        const {
+          Mode,
+        } = require('../generated/api/tests/bundleSuiteBulkAddRequest');
+
+        const result = await addTestCasesToLogicalTestSuiteBulk('suite-id', {
+          selectAll: false,
+          includeIds: ['case-1', 'case-2'],
+          excludeIds: [],
+        });
+
+        expect(mockPut).toHaveBeenCalledWith(
+          '/dataQuality/testCases/logicalTestCases/bulk',
+          {
+            testSuiteId: 'suite-id',
+            mode: Mode.IDS,
+            selection: { ids: ['case-1', 'case-2'] },
+          }
+        );
+        expect(result).toEqual(mockTestSuite);
+      });
+
+      it('should PUT bulk all mode with excludeIds to logicalTestCases/bulk', async () => {
+        const mockPut = jest.fn().mockResolvedValue({ data: mockTestSuite });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            put: mockPut,
+          },
+        }));
+
+        const { addTestCasesToLogicalTestSuiteBulk } = require('./testAPI');
+        const {
+          Mode,
+        } = require('../generated/api/tests/bundleSuiteBulkAddRequest');
+
+        await addTestCasesToLogicalTestSuiteBulk('suite-id', {
+          selectAll: true,
+          includeIds: [],
+          excludeIds: ['case-1'],
+        });
+
+        expect(mockPut).toHaveBeenCalledWith(
+          '/dataQuality/testCases/logicalTestCases/bulk',
+          {
+            testSuiteId: 'suite-id',
+            mode: Mode.All,
+            selection: { filter: { excludeIds: ['case-1'] } },
+          }
+        );
+      });
+    });
+
     describe('removeTestCaseFromTestSuite', () => {
       it('should remove test case from test suite', async () => {
         const mockDelete = jest.fn().mockResolvedValue({ data: mockTestCase });
@@ -388,7 +451,8 @@ describe('testAPI tests', () => {
         const result = await getTestCaseVersionList('test-case-id');
 
         expect(mockGet).toHaveBeenCalledWith(
-          '/dataQuality/testCases/test-case-id/versions'
+          '/dataQuality/testCases/test-case-id/versions',
+          { params: undefined }
         );
         expect(result).toEqual(mockVersions);
       });

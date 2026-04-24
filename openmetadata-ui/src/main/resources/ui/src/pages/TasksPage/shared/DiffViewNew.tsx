@@ -44,14 +44,18 @@ export const DiffViewNew = ({
         const lineHeight = parseInt(computedStyle.lineHeight, 10);
 
         // Force the content to be unclamped temporarily for measurement
-        (contentRef.current.style as any)['-webkit-line-clamp'] = 'none';
+        (contentRef.current.style as unknown as Record<string, string>)[
+          '-webkit-line-clamp'
+        ] = 'none';
         contentRef.current.style.maxHeight = 'none';
 
         // Get the full height
         const fullHeight = contentRef.current.scrollHeight;
 
         // Reset the styles
-        (contentRef.current.style as any)['-webkit-line-clamp'] = '';
+        (contentRef.current.style as unknown as Record<string, string>)[
+          '-webkit-line-clamp'
+        ] = '';
         contentRef.current.style.maxHeight = '';
 
         // Calculate max height based on number of lines

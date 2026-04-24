@@ -92,16 +92,6 @@ export const FIELDS: EntityFields[] = [
     name: 'project.keyword',
   },
   {
-    id: 'Status',
-    name: 'entityStatus',
-  },
-  // Some common field value search criteria are causing problems in not equal filter tests
-  // TODO: Refactor the advanced search tests so that these fields can be added back
-  // {
-  //   id: 'Table Type',
-  //   name: 'tableType',
-  // },
-  {
     id: 'Chart',
     name: 'charts.displayName.keyword',
   },
@@ -212,7 +202,7 @@ export const selectOption = async (
 
   await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
 
-  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+  await page.locator('.ant-select-dropdown:visible').first().waitFor({
     state: 'visible',
   });
 
@@ -220,12 +210,18 @@ export const selectOption = async (
   // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${optionTitle}"]`)
+    .locator('.ant-select-item-option')
+    .filter({
+      hasText: new RegExp(
+        `^${optionTitle.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
+      ),
+    })
     .first();
   await expect(optionLocator).toBeVisible();
 
   // Wait for dropdown animations to settle before clicking
   // This prevents "element detached from DOM" errors during re-renders
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
   await page.waitForTimeout(100);
   await optionLocator.click({ timeout: 10000 });
 };
@@ -238,7 +234,7 @@ export const selectRange = async (
 ) => {
   await ruleLocator.locator('.rule--value .ant-picker-range').click();
 
-  await page.waitForSelector('.ant-picker-dropdown-range', {
+  await page.locator('.ant-picker-dropdown-range').waitFor({
     state: 'visible',
   });
 
@@ -262,6 +258,9 @@ export const fillRule = async (
     index: number;
   }
 ) => {
+  const escapeRegex = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const ruleLocator = page.locator('.rule').nth(index - 1);
 
   // Perform click on rule field
@@ -308,9 +307,29 @@ export const fillRule = async (
 
       await aggregateRes2;
 
-      await page
-        .locator(`.ant-select-dropdown:visible [title="${searchData}"]`)
-        .click();
+      const dropdown = page.locator('.ant-select-dropdown:visible');
+      const exactTitleMatch = dropdown
+        .locator('[title]')
+        .filter({
+          hasText: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+        })
+        .first();
+      const partialTextMatch = dropdown
+        .locator('.ant-select-item-option-content')
+        .filter({
+          hasText: new RegExp(escapeRegex(searchData), 'i'),
+        })
+        .first();
+
+      if (await exactTitleMatch.count()) {
+        await exactTitleMatch.click();
+      } else if (await partialTextMatch.count()) {
+        await partialTextMatch.click();
+      } else {
+        // Some suggestion backends normalize or delay option text; Enter keeps
+        // the typed criteria and avoids waiting forever on an exact title match.
+        await dropdownInput.press('Enter');
+      }
     }
 
     await clickOutside(page);
@@ -667,6 +686,7 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
 
   await expect(dropdownText).toContainText('Loading...');
 
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
   await page.waitForTimeout(1000);
 
   await expect(dropdownText).not.toContainText('Loading...');

@@ -264,9 +264,7 @@ test.describe(
 
         // Open domain selector to verify single-select mode (no checkboxes)
         await page.getByTestId('add-domain').click();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify checkboxes are NOT visible (single-select mode)
         await expect(
@@ -277,7 +275,7 @@ test.describe(
         await clickOutside(page);
 
         // Wait for domain selector to be fully closed
-        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+        await page.getByTestId('domain-selectable-tree').waitFor({
           state: 'detached',
         });
 

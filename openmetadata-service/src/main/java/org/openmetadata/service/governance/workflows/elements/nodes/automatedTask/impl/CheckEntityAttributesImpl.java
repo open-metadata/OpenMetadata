@@ -41,9 +41,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
       varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(entityLink, rules));
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
-          exc);
+          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }

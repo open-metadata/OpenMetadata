@@ -54,6 +54,7 @@ public class DashboardDataModelResourceIT
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
+    supportsDataContract = true;
   }
 
   @Override
@@ -185,6 +186,19 @@ public class DashboardDataModelResourceIT
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().dashboardDataModels().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().dashboardDataModels().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .dashboardDataModels()
+        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

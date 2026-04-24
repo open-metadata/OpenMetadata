@@ -13,7 +13,6 @@
 import { useTranslation } from 'react-i18next';
 import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import './ColumnBulkOperations.less';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const ColumnBulkOperations = () => {
