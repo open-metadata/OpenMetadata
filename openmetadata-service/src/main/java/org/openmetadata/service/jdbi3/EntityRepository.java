@@ -4381,8 +4381,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void processDeletionBatch(
       List<UUID> entityIds, String entityType, boolean hardDelete, String updatedBy) {
     if (Entity.isTimeSeriesEntity(entityType)) {
-      if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
-          || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
+      if (Entity.shouldSkipTimeSeriesDelete(entityType)) {
         LOG.debug(
             "Skipping batch delete for time-series entity {} (handled via cleanup)", entityType);
         return;

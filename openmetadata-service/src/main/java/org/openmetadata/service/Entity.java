@@ -744,11 +744,15 @@ public final class Entity {
     return ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
   }
 
+  public static boolean shouldSkipTimeSeriesDelete(String entityType) {
+    return entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
+        || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT);
+  }
+
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     if (isTimeSeriesEntity(entityType)) {
-      if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
-          || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
+      if (shouldSkipTimeSeriesDelete(entityType)) {
         LOG.debug(
             "Skipping delete for time-series entity {} with id {} (handled via cleanup)",
             entityType,

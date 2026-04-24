@@ -263,7 +263,9 @@ public class DataRetention extends AbstractNativeApplication {
             collectionDAO
                 .relationshipDAO()
                 .deleteOrphanedRelationships(
-                    Entity.TEST_CASE, Entity.TEST_CASE_RESOLUTION_STATUS, "test_case"));
+                    Entity.TEST_CASE,
+                    Entity.TEST_CASE_RESOLUTION_STATUS,
+                    collectionDAO.testCaseDAO().getTableName()));
     LOG.info("TestCaseResolutionStatus orphaned relationships cleanup complete.");
   }
 
