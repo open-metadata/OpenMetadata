@@ -12,7 +12,7 @@
  */
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
+import { Button, Card, Drawer, Form, Input, Select, Space, Switch, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
@@ -345,8 +345,19 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
         </Form.Item>
 
         <Form.Item
+          dependencies={['testPlatforms']}
           label={t('label.supported-data-type-plural')}
-          name="supportedDataTypes">
+          name="supportedDataTypes"
+          rules={[
+            ({ getFieldValue }: Pick<FormInstance, 'getFieldValue'>) => ({
+              required: (getFieldValue('testPlatforms') ?? []).includes(
+                TestPlatform.OpenMetadata
+              ),
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.supported-data-type-plural'),
+              }),
+            }),
+          ]}>
           <Select
             disabled={isReadOnlyField}
             mode="multiple"
