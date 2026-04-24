@@ -323,6 +323,16 @@ class ColumnTypeParser:
     except ImportError:
         pass
 
+    try:
+        # pylint: disable=import-outside-toplevel
+        from metadata.ingestion.source.database.pinotdb.custom_types import (
+            PinotJSONType,
+        )
+
+        _COLUMN_TYPE_MAPPING[PinotJSONType] = "JSON"
+    except ImportError:
+        pass
+
     @staticmethod
     def get_column_type(column_type: Any) -> str:
         for func in [
