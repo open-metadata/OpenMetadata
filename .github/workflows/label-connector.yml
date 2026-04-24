@@ -1,0 +1,25 @@
+name: Label connector bug
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  label:
+    if: contains(github.event.issue.labels.*.name, 'Ingestion')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python .github/scripts/label_connector.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
