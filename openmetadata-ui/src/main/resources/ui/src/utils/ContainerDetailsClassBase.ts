@@ -41,12 +41,14 @@ export interface ContainerDetailPageTabProps {
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   viewCustomPropertiesPermission: boolean;
+  viewSampleDataPermission: boolean;
   feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
   deleted: boolean;
   containerData?: Container;
+  containerPermissions: import('../context/PermissionProvider/PermissionProvider.interface').OperationPermission;
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
   childrenCount: number;
@@ -86,6 +88,7 @@ class ContainerDetailsClassBase {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.CHILDREN,
+      EntityTabs.SAMPLE_DATA,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CONTRACT,
