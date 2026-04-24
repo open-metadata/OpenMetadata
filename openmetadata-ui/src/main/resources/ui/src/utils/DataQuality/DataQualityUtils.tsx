@@ -26,7 +26,7 @@ import {
 import QueryString from 'qs';
 import { Surface } from 'recharts';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-icon.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
 import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
 import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';

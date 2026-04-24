@@ -18,7 +18,7 @@ import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-obser
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
-import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column-icon.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
