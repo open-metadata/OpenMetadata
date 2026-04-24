@@ -115,9 +115,15 @@ MOCK_S3_METADATA_FILE_RESPONSE = {
 }
 EXPECTED_S3_BUCKETS: List[S3BucketResponse] = [
     S3BucketResponse(
-        Name="test_transactions", CreationDate=datetime.datetime(2000, 1, 1)
+        Name="test_transactions",
+        CreationDate=datetime.datetime(2000, 1, 1),
+        BucketArn="arn:aws:s3:::test_transactions",
     ),
-    S3BucketResponse(Name="test_sales", CreationDate=datetime.datetime(2000, 2, 2)),
+    S3BucketResponse(
+        Name="test_sales",
+        CreationDate=datetime.datetime(2000, 2, 2),
+        BucketArn="arn:aws:s3:::test_sales",
+    ),
 ]
 MOCK_S3_OBJECT_FILE_PATHS = {
     "Contents": [
