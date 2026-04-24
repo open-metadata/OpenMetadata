@@ -21,7 +21,9 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     addTableColumnSearchSettings();
     migrateSuggestionsToTaskEntity(handle);
-    migrateThreadTasksToTaskEntity(handle);
+    // Causing issues with collate CI, needs to be fixed before enabling this migration
+    // @harshach
+    // migrateThreadTasksToTaskEntity(handle);
     migrateLegacyActivityThreadsToActivityStream(handle);
     backfillAnnouncementRelationships(handle);
   }
