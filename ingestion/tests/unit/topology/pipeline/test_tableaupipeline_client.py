@@ -471,20 +471,23 @@ class TestLifecycle:
 
         assert instance._runs_by_flow == {}
 
-    def test_default_number_of_status_when_missing_on_config(self):
+    def test_default_number_of_status_when_config_field_absent(self):
+        """Exercise the real __init__ with a config object that has no
+        `numberOfStatus` attribute at all — proves the `getattr(..., None)`
+        fallback in production actually fires."""
         from metadata.ingestion.source.pipeline.tableaupipeline import (
             client as client_mod,
         )
 
-        instance = client_mod.TableauPipelineClient.__new__(
-            client_mod.TableauPipelineClient
-        )
-        instance.tableau_server = MagicMock()
-        instance.config = SimpleNamespace(hostPort="https://x", apiVersion=None)
-        instance.ssl_manager = None
-        # Mimic __init__ branch that handles numberOfStatus absent
-        instance.number_of_status = (
-            getattr(instance.config, "numberOfStatus", None)
-            or client_mod.DEFAULT_NUMBER_OF_STATUS
-        )
+        # SimpleNamespace without numberOfStatus attribute
+        config = SimpleNamespace(hostPort="https://tab.example.com", apiVersion=None)
+        assert not hasattr(config, "numberOfStatus")
+
+        with patch.object(client_mod, "Server", return_value=MagicMock()):
+            instance = client_mod.TableauPipelineClient(
+                tableau_server_auth=MagicMock(),
+                config=config,
+                verify_ssl=False,
+            )
+
         assert instance.number_of_status == client_mod.DEFAULT_NUMBER_OF_STATUS
