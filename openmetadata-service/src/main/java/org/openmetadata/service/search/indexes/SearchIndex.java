@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
@@ -142,8 +141,11 @@ public interface SearchIndex {
     doc.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     doc.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     doc.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
-    Optional.ofNullable(entity.getEntityStatus())
-        .ifPresent(status -> doc.put("entityStatus", status.value()));
+    doc.put(
+        "entityStatus",
+        entity.getEntityStatus() != null
+            ? entity.getEntityStatus().value()
+            : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
       int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
       int downVotes =
