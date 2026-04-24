@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Card,
   Divider,
   Skeleton,
@@ -57,13 +58,22 @@ const OntologyExplorerPage: React.FC = () => {
         />
 
         <Card className="tw:p-5">
-          <Typography
-            as="span"
-            data-testid="heading"
-            size="text-md"
-            weight="semibold">
-            {t('label.ontology-explorer')}
-          </Typography>
+          <div className="tw:flex tw:items-center tw:gap-2">
+            <Typography
+              as="span"
+              data-testid="heading"
+              size="text-md"
+              weight="semibold">
+              {t('label.ontology-explorer')}
+            </Typography>
+            <Badge
+              color="blue-light"
+              data-testid="beta-badge"
+              size="sm"
+              type="pill-color">
+              {t('label.beta')}
+            </Badge>
+          </div>
           <div
             className="tw:mt-1 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
             data-testid="ontology-explorer-stats">

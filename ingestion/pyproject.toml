@@ -43,6 +43,7 @@ provider_info = "airflow_provider_openmetadata:get_provider_config"
 source = ["metadata"]
 relative_files = true
 branch = true
+parallel = true
 
 # Remap installed-package paths back to the source tree so that
 # ``coverage combine`` (in a lightweight CI job without the package

@@ -13,6 +13,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -38,6 +39,20 @@ function writeNodePositions(
   }
 }
 
+function writeSearchHighlightIds(
+  container: HTMLDivElement | null,
+  ids: readonly string[] | null
+) {
+  if (!container) {
+    return;
+  }
+  if (ids) {
+    container.dataset.searchHighlightIds = JSON.stringify(ids);
+  } else {
+    delete container.dataset.searchHighlightIds;
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -54,7 +69,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
-      onNodeContextMenu,
       onPaneClick,
       onScrollNearEdge,
       nodePositions,
@@ -111,7 +125,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       dataSignature,
       onNodeClick,
       onNodeDoubleClick,
-      onNodeContextMenu,
       onPaneClick,
       onScrollNearEdge,
       setClickedEdgeId,
@@ -194,6 +207,15 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       }),
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
+
+    useEffect(() => {
+      writeSearchHighlightIds(
+        containerRef.current,
+        graphSearchHighlight?.active
+          ? graphSearchHighlight.highlightedNodeIds
+          : null
+      );
+    }, [graphSearchHighlight]);
 
     return (
       <div
