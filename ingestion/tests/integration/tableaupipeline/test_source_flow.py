@@ -44,9 +44,7 @@ class TestIngestionFlow:
         source, _ = tableau_source
         from tests.integration.tableaupipeline.conftest import FLOW_SALES
 
-        reference = EntityReferenceList(
-            root=[EntityReference(id=uuid4(), type="user")]
-        )
+        reference = EntityReferenceList(root=[EntityReference(id=uuid4(), type="user")])
         _set_metadata_entity(source, None, reference=reference)
         results = list(source.yield_pipeline(FLOW_SALES))
         assert len(results) == 1, f"Expected 1 request, got {results}"
@@ -155,7 +153,8 @@ class TestLineage:
         flow_to_flow = [
             r
             for r in rights
-            if r.edge.fromEntity.type == "pipeline" and r.edge.toEntity.type == "pipeline"
+            if r.edge.fromEntity.type == "pipeline"
+            and r.edge.toEntity.type == "pipeline"
         ]
         assert len(flow_to_flow) == 1
         assert str(flow_to_flow[0].edge.toEntity.id.root) == str(downstream_uuid)

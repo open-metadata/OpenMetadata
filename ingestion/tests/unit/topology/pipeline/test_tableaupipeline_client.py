@@ -61,10 +61,9 @@ BASE_TIME = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
 class TestStreamingFlowRuns:
     def test_early_exit_when_flow_has_enough_runs(self):
-        runs = (
-            [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(5)]
-            + [_make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(5)]
-        )
+        runs = [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(5)] + [
+            _make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(5)
+        ]
         instance, client_mod = _make_client(runs, number_of_status=3)
 
         with patch.object(client_mod, "Pager", return_value=iter(runs)):
@@ -75,10 +74,9 @@ class TestStreamingFlowRuns:
         assert not instance._runs_iter_exhausted
 
     def test_subsequent_call_continues_stream_without_restart(self):
-        runs = (
-            [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(3)]
-            + [_make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(3)]
-        )
+        runs = [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(3)] + [
+            _make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(3)
+        ]
         instance, client_mod = _make_client(runs, number_of_status=3)
 
         with patch.object(client_mod, "Pager", return_value=iter(runs)):
@@ -152,6 +150,40 @@ class TestStreamingFlowRuns:
         with patch.object(client_mod, "Pager", return_value=iter(runs_2)):
             second = instance.get_flow_runs("flow-b")
         assert len(second) == 3
+
+    def test_normalizes_non_string_flow_id(self):
+        """Tableau's SDK occasionally surfaces UUID-like flow_id objects.
+        The cache must key on the string form so str-keyed get_flow_runs
+        calls hit the cache instead of missing silently."""
+
+        class FlowIdLike:
+            def __init__(self, value):
+                self.value = value
+
+            def __str__(self):
+                return self.value
+
+            def __bool__(self):
+                return bool(self.value)
+
+        runs = [
+            SimpleNamespace(
+                id="a-1",
+                flow_id=FlowIdLike("flow-a"),
+                status="Success",
+                started_at=BASE_TIME,
+                completed_at=BASE_TIME,
+                progress=None,
+            )
+        ]
+        instance, client_mod = _make_client(runs, number_of_status=5)
+        with patch.object(client_mod, "Pager", return_value=iter(runs)):
+            result = instance.get_flow_runs("flow-a")
+
+        assert len(result) == 1
+        assert result[0].flow_id == "flow-a"  # normalized to str
+        # Cache must be keyed on the string form, not the FlowIdLike object
+        assert "flow-a" in instance._runs_by_flow
 
     def test_runs_without_flow_id_are_skipped(self):
         runs = [
@@ -301,9 +333,10 @@ class TestConnectionTests:
         instance.test_metadata_api()
 
         mock_metadata.query.assert_called_once()
-        query = mock_metadata.query.call_args.kwargs.get(
-            "query"
-        ) or mock_metadata.query.call_args[0][0]
+        query = (
+            mock_metadata.query.call_args.kwargs.get("query")
+            or mock_metadata.query.call_args[0][0]
+        )
         assert "serverInfo" in query
 
 
@@ -405,9 +438,7 @@ class TestClientInit:
         # apiVersion explicitly set on the server
         assert fake_server_instance.version == "3.22"
         # SSL option passed through
-        fake_server_instance.add_http_options.assert_called_once_with(
-            {"verify": True}
-        )
+        fake_server_instance.add_http_options.assert_called_once_with({"verify": True})
         # Auth called with the provided credentials
         fake_server_instance.auth.sign_in.assert_called_once_with(auth)
         # Config and caches initialized

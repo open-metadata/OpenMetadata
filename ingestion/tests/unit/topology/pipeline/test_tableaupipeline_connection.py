@@ -40,6 +40,9 @@ class TestGetConnection:
 
     def test_raises_source_connection_exception_on_client_failure(self):
         connection = MagicMock()
+        connection.type.value = "TableauPipeline"
+        connection.hostPort = "https://tab.example.com"
+        original = RuntimeError("sign-in 401")
 
         with patch.object(
             conn_mod, "build_server_config", return_value=object()
@@ -48,12 +51,18 @@ class TestGetConnection:
         ), patch.object(
             conn_mod,
             "TableauPipelineClient",
-            side_effect=RuntimeError("sign-in 401"),
+            side_effect=original,
         ):
             with pytest.raises(SourceConnectionException) as excinfo:
                 conn_mod.get_connection(connection)
 
+        # Message should carry service type + host, not the whole connection
+        # object (which may include credentials in repr).
+        assert "TableauPipeline" in str(excinfo.value)
+        assert "https://tab.example.com" in str(excinfo.value)
         assert "sign-in 401" in str(excinfo.value)
+        # Exception chain must preserve the original traceback via __cause__
+        assert excinfo.value.__cause__ is original
 
 
 class TestTestConnection:

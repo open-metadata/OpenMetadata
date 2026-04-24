@@ -13,7 +13,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
     Task,
-    TaskStatus,
 )
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
@@ -25,7 +24,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
     TableaupipelineSource,
 )
@@ -204,9 +202,7 @@ def mock_conn(source):
 
 class TestPipelineName:
     def test_display_name_preferred(self, source):
-        assert (
-            source.get_pipeline_name(PIPELINE_DETAILS) == "Sales Data Prep Flow"
-        )
+        assert source.get_pipeline_name(PIPELINE_DETAILS) == "Sales Data Prep Flow"
 
     def test_falls_back_to_id(self, source):
         details = TableauPipelineDetails(
@@ -292,9 +288,7 @@ class TestNodeLevelTasks:
             ],
         )
         names = [t.name for t in source._get_tasks(PIPELINE_DETAILS)]
-        assert all(
-            c not in name for name in names for c in (":", "#", "/")
-        )
+        assert all(c not in name for name in names for c in (":", "#", "/"))
         assert len(set(names)) == len(names), f"Duplicate task names: {names}"
 
     def test_tasks_cached_for_status(self, source, mock_conn):
@@ -367,7 +361,9 @@ class TestYieldPipelineStatus:
 
     def test_timestamp_valid(self):
         dt = datetime(2025, 1, 15, 10, 0, 0, 500_000, tzinfo=timezone.utc)
-        assert TableaupipelineSource._to_timestamp(dt).root == int(dt.timestamp() * 1000)
+        assert TableaupipelineSource._to_timestamp(dt).root == int(
+            dt.timestamp() * 1000
+        )
 
 
 class TestSourceUrl:
@@ -457,9 +453,7 @@ class TestLineage:
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
             upstream_tables=[],
-            downstream_flows=[
-                TableauDownstreamFlow(luid="flow-xyz", name="Next Flow")
-            ],
+            downstream_flows=[TableauDownstreamFlow(luid="flow-xyz", name="Next Flow")],
         )
         pipeline_uuid, downstream_uuid = uuid4(), uuid4()
         this_pipeline = MagicMock()
@@ -561,9 +555,9 @@ class TestTags:
             for r in rights
             if r.classification_request is not None
         ]
-        assert "TableauTags" in classification_names, (
-            f"Expected TableauTags classification, got {classification_names}"
-        )
+        assert (
+            "TableauTags" in classification_names
+        ), f"Expected TableauTags classification, got {classification_names}"
 
         tag_names = [
             str(r.tag_request.name.root) for r in rights if r.tag_request is not None
@@ -577,14 +571,16 @@ class TestTags:
 
 class TestPipelineList:
     def test_get_pipelines_list(self, source, mock_conn):
-        mock_conn.get_pipelines.return_value = iter([
-            TableauPipelineDetails(
-                id="flow-mock",
-                name="flow-mock",
-                display_name="Mock Flow",
-                pipeline_type=TableauTaskType.FLOW_RUN,
-            )
-        ])
+        mock_conn.get_pipelines.return_value = iter(
+            [
+                TableauPipelineDetails(
+                    id="flow-mock",
+                    name="flow-mock",
+                    display_name="Mock Flow",
+                    pipeline_type=TableauTaskType.FLOW_RUN,
+                )
+            ]
+        )
         pipelines = list(source.get_pipelines_list())
         assert [p.id for p in pipelines] == ["flow-mock"]
 
@@ -633,12 +629,8 @@ class TestFlowEviction:
 class TestTaskHelpers:
     def test_unique_name_appends_suffix_on_collision(self):
         used = {"input_foo", "input_foo_2"}
-        assert (
-            TableaupipelineSource._unique_name("input_foo", used) == "input_foo_3"
-        )
-        assert (
-            TableaupipelineSource._unique_name("input_bar", set()) == "input_bar"
-        )
+        assert TableaupipelineSource._unique_name("input_foo", used) == "input_foo_3"
+        assert TableaupipelineSource._unique_name("input_bar", set()) == "input_bar"
 
     def test_input_task_description_includes_source_and_connection(self):
         from metadata.ingestion.source.pipeline.tableaupipeline.models import (
@@ -674,17 +666,13 @@ class TestTaskHelpers:
         from metadata.generated.schema.entity.data.pipeline import StatusType
 
         run = TableauFlowRunItem(id="r", status=None)
-        assert (
-            TableaupipelineSource._get_status(run) == StatusType.Pending
-        )
+        assert TableaupipelineSource._get_status(run) == StatusType.Pending
 
     def test_get_status_with_unknown_status(self):
         from metadata.generated.schema.entity.data.pipeline import StatusType
 
         run = TableauFlowRunItem(id="r", status="NeverSeenBefore")
-        assert (
-            TableaupipelineSource._get_status(run) == StatusType.Pending
-        )
+        assert TableaupipelineSource._get_status(run) == StatusType.Pending
 
 
 class TestLineageEdgeCases:
@@ -774,6 +762,27 @@ class TestLineageEdgeCases:
         result = source._resolve_tables_from_sql("not valid sql at all ;")
         assert isinstance(result, list)
 
+    def test_resolve_tables_from_sql_preserves_database_in_candidate(self, source):
+        """When the parser returns a three-part name like `db.schema.table`,
+        the candidate passed to _resolve_table_entity must carry the database
+        name — otherwise downstream FQN lookup falls back to a broad
+        `*.schema.table` search that can resolve the wrong table."""
+        captured: List[TableauLineageTable] = []
+
+        def fake_resolve(candidate):
+            captured.append(candidate)
+            return None
+
+        source._resolve_table_entity = fake_resolve
+        source._resolve_tables_from_sql("SELECT * FROM sales_db.public.orders")
+
+        assert captured, "Parser yielded no candidates"
+        candidate = captured[0]
+        assert candidate.full_name == "sales_db.public.orders"
+        assert candidate.schema_ == "public"
+        assert candidate.database is not None
+        assert candidate.database.name == "sales_db"
+
     def test_get_source_url_exception_returns_none(self, source):
         # Force service_connection.hostPort to raise via str()
         bad = MagicMock()
@@ -833,9 +842,7 @@ class TestExceptionPaths:
         source.metadata.get_reference_by_email.side_effect = RuntimeError("ES down")
         assert source.get_owners(PIPELINE_DETAILS) is None
 
-    def test_yield_pipeline_status_handles_runs_exception(
-        self, source, mock_conn
-    ):
+    def test_yield_pipeline_status_handles_runs_exception(self, source, mock_conn):
         mock_conn.get_flow_runs.side_effect = RuntimeError("network flap")
         results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
         assert len(results) == 1
@@ -846,7 +853,9 @@ class TestExceptionPaths:
         self, source, mock_conn
     ):
         mock_conn.get_flow_runs.return_value = [
-            TableauFlowRunItem(id="r", status="Success", started_at=None, completed_at=None)
+            TableauFlowRunItem(
+                id="r", status="Success", started_at=None, completed_at=None
+            )
         ]
         results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
         # All runs skipped — no statuses, but no errors either
@@ -868,9 +877,7 @@ class TestExceptionPaths:
                     name="out",
                     upstream_columns=[
                         TableauFlowUpstreamColumn(name=None),  # no col name
-                        TableauFlowUpstreamColumn(
-                            name="col", table=None  # no table
-                        ),
+                        TableauFlowUpstreamColumn(name="col", table=None),  # no table
                     ],
                 ),
                 TableauFlowOutputField(

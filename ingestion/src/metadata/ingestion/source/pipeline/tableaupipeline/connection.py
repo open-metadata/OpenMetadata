@@ -59,8 +59,9 @@ def get_connection(connection: TableauPipelineConnection) -> TableauPipelineClie
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise SourceConnectionException(
-            f"Unknown error connecting with {connection}: {exc}."
-        )
+            f"Unknown error connecting to {connection.type.value} at "
+            f"{connection.hostPort}: {exc}."
+        ) from exc
 
 
 def test_connection(

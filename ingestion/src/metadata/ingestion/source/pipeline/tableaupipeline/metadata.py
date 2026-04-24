@@ -20,6 +20,7 @@ from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -27,7 +28,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
@@ -67,6 +67,7 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
     TableauFlowOutputStep,
     TableauFlowRunItem,
+    TableauLineageDatabase,
     TableauLineageTable,
     TableauPipelineDetails,
 )
@@ -135,9 +136,7 @@ class TableaupipelineSource(PipelineServiceSource):
             self._current_flow_tasks = None
         self._current_flow_id = flow_id
 
-    def _get_flow_lineage(
-        self, flow_id: str
-    ) -> Optional[TableauFlowLineage]:
+    def _get_flow_lineage(self, flow_id: str) -> Optional[TableauFlowLineage]:
         """Fetch and cache flow lineage metadata, shared by task DAG
         construction and lineage emission to avoid duplicate GraphQL calls.
         Single-entry cache — evicted when the topology advances to a new flow."""
@@ -148,9 +147,7 @@ class TableaupipelineSource(PipelineServiceSource):
             lineage = self.connection.get_flow_lineage(flow_id)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to fetch Tableau flow lineage for {flow_id}: {exc}"
-            )
+            logger.warning(f"Failed to fetch Tableau flow lineage for {flow_id}: {exc}")
             lineage = None
         self._current_flow_lineage = lineage
         return lineage
@@ -159,8 +156,7 @@ class TableaupipelineSource(PipelineServiceSource):
         return pipeline_details.display_name or pipeline_details.name
 
     def get_pipelines_list(self) -> Iterable[TableauPipelineDetails]:
-        for pipeline in self.connection.get_pipelines():
-            yield pipeline
+        yield from self.connection.get_pipelines()
 
     def yield_pipeline(
         self, pipeline_details: TableauPipelineDetails
@@ -370,7 +366,9 @@ class TableaupipelineSource(PipelineServiceSource):
         base = upstream.id or upstream.luid or upstream.name
         if not base:
             return None
-        return cls._unique_name(f"{INPUT_TASK_PREFIX}{cls._sanitize_task_name(base)}", used)
+        return cls._unique_name(
+            f"{INPUT_TASK_PREFIX}{cls._sanitize_task_name(base)}", used
+        )
 
     @classmethod
     def _output_task_name(
@@ -379,7 +377,9 @@ class TableaupipelineSource(PipelineServiceSource):
         base = output_step.id or output_step.name
         if not base:
             return None
-        return cls._unique_name(f"{OUTPUT_TASK_PREFIX}{cls._sanitize_task_name(base)}", used)
+        return cls._unique_name(
+            f"{OUTPUT_TASK_PREFIX}{cls._sanitize_task_name(base)}", used
+        )
 
     @staticmethod
     def _unique_name(candidate: str, used: set) -> str:
@@ -402,23 +402,17 @@ class TableaupipelineSource(PipelineServiceSource):
         if upstream.database and upstream.database.name:
             parts.append(f"**Database:** `{upstream.database.name}`")
         if upstream.database and upstream.database.connection_type:
-            parts.append(
-                f"**Connection type:** `{upstream.database.connection_type}`"
-            )
+            parts.append(f"**Connection type:** `{upstream.database.connection_type}`")
         return "\n\n".join(parts) if parts else None
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: TableauPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
-        """Emit table → pipeline lineage edges sourced from the Tableau
-        Metadata API (GraphQL).
+        """Emit lineage edges sourced from the Tableau Metadata API.
 
-        For every upstream DatabaseTable referenced by the flow we resolve
-        the matching OpenMetadata Table entity (scoped to dbServiceNames
-        when provided, otherwise via search_in_any_service) and yield an
-        AddLineageRequest. Column-level edges are attached when the flow
-        exposes outputFields → upstreamColumns in the Metadata API response.
-        """
+        Decomposed into three helpers — upstream, downstream-flows, and
+        downstream-datasources — so each side has its own error boundary
+        and this orchestrator stays below the branch-count threshold."""
         flow_lineage = self._get_flow_lineage(pipeline_details.id)
         if flow_lineage is None:
             return
@@ -436,8 +430,21 @@ class TableaupipelineSource(PipelineServiceSource):
             )
             return
 
-        column_lineage_by_table_id = self._build_column_lineage_index(flow_lineage)
+        yield from self._yield_upstream_lineage(
+            pipeline_details, pipeline_entity, flow_lineage
+        )
+        yield from self._yield_downstream_flow_lineage(pipeline_entity, flow_lineage)
+        yield from self._yield_downstream_datasource_lineage(
+            pipeline_entity, flow_lineage
+        )
 
+    def _yield_upstream_lineage(
+        self,
+        pipeline_details: TableauPipelineDetails,
+        pipeline_entity: Pipeline,
+        flow_lineage: TableauFlowLineage,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        column_lineage_by_table_id = self._build_column_lineage_index(flow_lineage)
         for upstream in flow_lineage.upstream_tables:
             try:
                 resolved_tables = self._resolve_upstream_tables(upstream)
@@ -448,27 +455,11 @@ class TableaupipelineSource(PipelineServiceSource):
                         f"(flow={pipeline_details.name})"
                     )
                     continue
-
                 col_lineage = column_lineage_by_table_id.get(upstream.id) or None
-
                 for table_entity in resolved_tables:
                     yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=table_entity.id, type=ENTITY_TYPE_TABLE
-                                ),
-                                toEntity=EntityReference(
-                                    id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.PipelineLineage,
-                                    pipeline=EntityReference(
-                                        id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE
-                                    ),
-                                    columnsLineage=col_lineage,
-                                ),
-                            )
+                        right=self._upstream_lineage_request(
+                            table_entity, pipeline_entity, col_lineage
                         )
                     )
             except Exception as err:
@@ -483,6 +474,11 @@ class TableaupipelineSource(PipelineServiceSource):
                     )
                 )
 
+    def _yield_downstream_flow_lineage(
+        self,
+        pipeline_entity: Pipeline,
+        flow_lineage: TableauFlowLineage,
+    ) -> Iterable[Either[AddLineageRequest]]:
         for downstream_flow in flow_lineage.downstream_flows:
             try:
                 edge = self._build_downstream_flow_edge(
@@ -502,6 +498,11 @@ class TableaupipelineSource(PipelineServiceSource):
                     )
                 )
 
+    def _yield_downstream_datasource_lineage(
+        self,
+        pipeline_entity: Pipeline,
+        flow_lineage: TableauFlowLineage,
+    ) -> Iterable[Either[AddLineageRequest]]:
         for downstream_ds in flow_lineage.downstream_datasources:
             try:
                 edge = self._build_downstream_datasource_edge(
@@ -520,6 +521,28 @@ class TableaupipelineSource(PipelineServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    @staticmethod
+    def _upstream_lineage_request(
+        table_entity: Table,
+        pipeline_entity: Pipeline,
+        col_lineage: Optional[List[ColumnLineage]],
+    ) -> AddLineageRequest:
+        return AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=table_entity.id, type=ENTITY_TYPE_TABLE),
+                toEntity=EntityReference(
+                    id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE
+                ),
+                lineageDetails=LineageDetails(
+                    source=LineageSource.PipelineLineage,
+                    pipeline=EntityReference(
+                        id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE
+                    ),
+                    columnsLineage=col_lineage,
+                ),
+            )
+        )
 
     def _build_downstream_flow_edge(
         self,
@@ -549,8 +572,12 @@ class TableaupipelineSource(PipelineServiceSource):
             return None
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE),
-                toEntity=EntityReference(id=downstream_entity.id, type=ENTITY_TYPE_PIPELINE),
+                fromEntity=EntityReference(
+                    id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE
+                ),
+                toEntity=EntityReference(
+                    id=downstream_entity.id, type=ENTITY_TYPE_PIPELINE
+                ),
                 lineageDetails=LineageDetails(
                     source=LineageSource.PipelineLineage,
                 ),
@@ -582,7 +609,9 @@ class TableaupipelineSource(PipelineServiceSource):
             return None
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE),
+                fromEntity=EntityReference(
+                    id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE
+                ),
                 toEntity=EntityReference(
                     id=datamodel_entity.id, type=ENTITY_TYPE_DASHBOARD_DATA_MODEL
                 ),
@@ -608,9 +637,7 @@ class TableaupipelineSource(PipelineServiceSource):
                 fqn_search_string=f"*.{datamodel_id}",
             )
         except Exception as exc:
-            logger.debug(
-                f"DashboardDataModel lookup failed for {datamodel_id}: {exc}"
-            )
+            logger.debug(f"DashboardDataModel lookup failed for {datamodel_id}: {exc}")
             return None
         if not entities:
             return None
@@ -625,9 +652,7 @@ class TableaupipelineSource(PipelineServiceSource):
         )
         return self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
-    def _resolve_upstream_tables(
-        self, upstream: TableauLineageTable
-    ) -> List[Table]:
+    def _resolve_upstream_tables(self, upstream: TableauLineageTable) -> List[Table]:
         """Resolve a single Tableau upstream reference to one or more
         OpenMetadata Tables.
 
@@ -672,21 +697,25 @@ class TableaupipelineSource(PipelineServiceSource):
 
         results: List[Table] = []
         for source in parser.source_tables or []:
-            split = fqn.split_table_name(str(source))
+            source_fqn = str(source)
+            split = fqn.split_table_name(source_fqn)
+            parsed_database = split.get("database")
             candidate = TableauLineageTable(
-                name=split.get("table") or str(source),
-                full_name=str(source),
+                name=source_fqn,
+                full_name=source_fqn,
                 schema_=split.get("database_schema"),
-                database=None,
+                database=(
+                    TableauLineageDatabase(name=parsed_database)
+                    if parsed_database
+                    else None
+                ),
             )
             resolved = self._resolve_table_entity(candidate)
             if resolved is not None:
                 results.append(resolved)
         return results
 
-    def _resolve_table_entity(
-        self, upstream: TableauLineageTable
-    ) -> Optional[Table]:
+    def _resolve_table_entity(self, upstream: TableauLineageTable) -> Optional[Table]:
         """Resolve a Tableau upstream table to an OpenMetadata Table entity.
 
         Tries the configured dbServiceNames first with explicit fqn.build,
@@ -756,9 +785,7 @@ class TableaupipelineSource(PipelineServiceSource):
             to_column = output_field.name
             for upstream_col in output_field.upstream_columns or []:
                 if not (
-                    upstream_col.name
-                    and upstream_col.table
-                    and upstream_col.table.id
+                    upstream_col.name and upstream_col.table and upstream_col.table.id
                 ):
                     continue
                 table_id = upstream_col.table.id

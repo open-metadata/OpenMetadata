@@ -133,12 +133,13 @@ class TableauPipelineClient:
         for run in self._runs_iter:
             self._runs_scanned += 1
             if run.flow_id:
-                cached = self._runs_by_flow.setdefault(run.flow_id, [])
+                run_flow_id = str(run.flow_id)
+                cached = self._runs_by_flow.setdefault(run_flow_id, [])
                 if len(cached) < self.number_of_status:
                     cached.append(
                         TableauFlowRunItem(
                             id=str(run.id),
-                            flow_id=run.flow_id,
+                            flow_id=run_flow_id,
                             status=run.status,
                             started_at=run.started_at,
                             completed_at=run.completed_at,

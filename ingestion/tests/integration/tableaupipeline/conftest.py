@@ -126,7 +126,9 @@ SALES_LINEAGE = TableauFlowLineage(
                 TableauLineageColumn(id="order_id", name="order_id"),
                 TableauLineageColumn(id="customer_id", name="customer_id"),
             ],
-            database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
+            database=TableauLineageDatabase(
+                name="warehouse", connection_type="postgres"
+            ),
         ),
         TableauLineageTable(
             id="Table-customers",
