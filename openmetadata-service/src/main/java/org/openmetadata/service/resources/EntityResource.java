@@ -277,7 +277,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getInternal(
         uriInfo,
         securityContext,
@@ -380,7 +381,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getByNameInternal(
         uriInfo,
         securityContext,

@@ -1792,12 +1792,30 @@ public interface CollectionDAO {
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND fromEntity = :fromEntity "
-            + "AND relation IN (<relations>)")
+            + "AND relation IN (<relations>) "
+            + "<cond>")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findToBatchWithRelations(
+    List<EntityRelationshipObject> findToBatchWithRelationsAndCondition(
         @BindList("fromIds") List<String> fromIds,
         @Bind("fromEntity") String fromEntity,
-        @BindList("relations") List<Integer> relations);
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatchWithRelations(
+        List<String> fromIds, String fromEntity, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findToBatchWithRelationsAndCondition(fromIds, fromEntity, relations, condition);
+    }
+
+    default List<EntityRelationshipObject> findToBatchWithRelations(
+        List<String> fromIds, String fromEntity, List<Integer> relations) {
+      return findToBatchWithRelations(fromIds, fromEntity, relations, Include.ALL);
+    }
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
@@ -2058,6 +2076,36 @@ public interface CollectionDAO {
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFromPipeline(
         @BindUUID("toId") UUID toId, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND toEntity = :toEntityType "
+            + "AND relation IN (<relations>) "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatchWithRelationsAndCondition(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntityType") String toEntityType,
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findFromBatchWithRelations(
+        List<String> toIds, String toEntityType, List<Integer> relations, Include include) {
+      String condition = "";
+      if (include == null || include == Include.NON_DELETED) {
+        condition = "AND deleted = FALSE";
+      } else if (include == Include.DELETED) {
+        condition = "AND deleted = TRUE";
+      }
+      return findFromBatchWithRelationsAndCondition(toIds, toEntityType, relations, condition);
+    }
+
+    default List<EntityRelationshipObject> findFromBatchWithRelations(
+        List<String> toIds, String toEntityType, List<Integer> relations) {
+      return findFromBatchWithRelations(toIds, toEntityType, relations, Include.ALL);
+    }
 
     @ConnectionAwareSqlQuery(
         value =
