@@ -320,8 +320,23 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
       .check();
 
-    const removeRes = page.waitForResponse('**/assets/remove');
+    const dryRunRes = page.waitForResponse(
+      (r) =>
+        r.url().includes('/assets/remove') &&
+        r.request().postDataJSON()?.dryRun === true
+    );
     await page.getByTestId('delete-all-button').click();
+    await dryRunRes;
+
+    const removeRes = page.waitForResponse(
+      (r) =>
+        r.url().includes('/assets/remove') &&
+        !r.request().postDataJSON()?.dryRun
+    );
+    await page
+      .getByTestId('domain-dry-run-modal')
+      .getByTestId('save-button')
+      .click();
     await removeRes;
 
     await page.reload();
