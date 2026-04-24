@@ -8543,16 +8543,15 @@ public interface CollectionDAO {
       return TestDefinition.class;
     }
 
+    record SqlConditionPair(StringBuilder mysql, StringBuilder psql, ListFilter filter) {}
+
     default void applyJsonArrayFilter(
-        StringBuilder mysqlCondition,
-        StringBuilder psqlCondition,
-        ListFilter filter,
+        SqlConditionPair conditions,
         String queryParamName,
-        String jsonFieldName,
-        boolean allowEmpty) {
-      String paramValue = filter.getQueryParam(queryParamName);
+        String jsonFieldName) {
+      String paramValue = conditions.filter().getQueryParam(queryParamName);
       if (paramValue != null) {
-        filter.queryParams.put(queryParamName + "Exact", paramValue);
+        conditions.filter().queryParams.put(queryParamName + "Exact", paramValue);
 
         String mysqlBaseCondition =
             String.format(
@@ -8562,19 +8561,35 @@ public interface CollectionDAO {
             String.format(
                 "jsonb_exists(json::jsonb -> '%s', :%sExact)", jsonFieldName, queryParamName);
 
-        if (allowEmpty) {
-          mysqlCondition.append(
-              String.format(
-                  "AND (json_extract(json, '$.%s') = JSON_ARRAY() OR json_extract(json, '$.%s') IS NULL OR %s) ",
-                  jsonFieldName, jsonFieldName, mysqlBaseCondition));
-          psqlCondition.append(
-              String.format(
-                  "AND (json->>'%s' = '[]' OR json->>'%s' IS NULL OR %s) ",
-                  jsonFieldName, jsonFieldName, psqlBaseCondition));
-        } else {
-          mysqlCondition.append(String.format("AND %s ", mysqlBaseCondition));
-          psqlCondition.append(String.format("AND %s ", psqlBaseCondition));
-        }
+        conditions.mysql().append(String.format("AND %s ", mysqlBaseCondition));
+        conditions.psql().append(String.format("AND %s ", psqlBaseCondition));
+      }
+    }
+
+    default void applyJsonArrayFilterWithEmpty(
+        SqlConditionPair conditions,
+        String queryParamName,
+        String jsonFieldName) {
+      String paramValue = conditions.filter().getQueryParam(queryParamName);
+      if (paramValue != null) {
+        conditions.filter().queryParams.put(queryParamName + "Exact", paramValue);
+
+        String mysqlBaseCondition =
+            String.format(
+                "JSON_CONTAINS(json_extract(json, '$.%s'), JSON_ARRAY(:%sExact))",
+                jsonFieldName, queryParamName);
+        String psqlBaseCondition =
+            String.format(
+                "jsonb_exists(json::jsonb -> '%s', :%sExact)", jsonFieldName, queryParamName);
+
+        conditions.mysql().append(
+            String.format(
+                "AND (json_extract(json, '$.%s') = JSON_ARRAY() OR json_extract(json, '$.%s') IS NULL OR %s) ",
+                jsonFieldName, jsonFieldName, mysqlBaseCondition));
+        conditions.psql().append(
+            String.format(
+                "AND (json->>'%s' = '[]' OR json->>'%s' IS NULL OR %s) ",
+                jsonFieldName, jsonFieldName, psqlBaseCondition));
       }
     }
 
@@ -8602,19 +8617,18 @@ public interface CollectionDAO {
       mysqlCondition.append(String.format("%s ", condition));
       psqlCondition.append(String.format("%s ", condition));
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "testPlatform", "testPlatforms", false);
+      SqlConditionPair conditions = new SqlConditionPair(mysqlCondition, psqlCondition, filter);
+
+      applyJsonArrayFilter(conditions, "testPlatform", "testPlatforms");
 
       if (entityType != null) {
         mysqlCondition.append("AND entityType=:entityType ");
         psqlCondition.append("AND entityType=:entityType ");
       }
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "supportedDataType", "supportedDataTypes", true);
+      applyJsonArrayFilterWithEmpty(conditions, "supportedDataType", "supportedDataTypes");
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "supportedService", "supportedServices", true);
+      applyJsonArrayFilterWithEmpty(conditions, "supportedService", "supportedServices");
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
@@ -8655,19 +8669,18 @@ public interface CollectionDAO {
       mysqlCondition.append(String.format("%s ", condition));
       psqlCondition.append(String.format("%s ", condition));
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "testPlatform", "testPlatforms", false);
+      SqlConditionPair conditions = new SqlConditionPair(mysqlCondition, psqlCondition, filter);
+
+      applyJsonArrayFilter(conditions, "testPlatform", "testPlatforms");
 
       if (entityType != null) {
         mysqlCondition.append("AND entityType = :entityType ");
         psqlCondition.append("AND entityType = :entityType ");
       }
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "supportedDataType", "supportedDataTypes", true);
+      applyJsonArrayFilterWithEmpty(conditions, "supportedDataType", "supportedDataTypes");
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "supportedService", "supportedServices", true);
+      applyJsonArrayFilterWithEmpty(conditions, "supportedService", "supportedServices");
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
@@ -8708,19 +8721,18 @@ public interface CollectionDAO {
       mysqlCondition.append(String.format("%s ", condition));
       psqlCondition.append(String.format("%s ", condition));
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "testPlatform", "testPlatforms", false);
+      SqlConditionPair conditions = new SqlConditionPair(mysqlCondition, psqlCondition, filter);
+
+      applyJsonArrayFilter(conditions, "testPlatform", "testPlatforms");
 
       if (entityType != null) {
         mysqlCondition.append("AND entityType=:entityType ");
         psqlCondition.append("AND entityType=:entityType ");
       }
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "supportedDataType", "supportedDataTypes", true);
+      applyJsonArrayFilterWithEmpty(conditions, "supportedDataType", "supportedDataTypes");
 
-      applyJsonArrayFilter(
-          mysqlCondition, psqlCondition, filter, "supportedService", "supportedServices", true);
+      applyJsonArrayFilterWithEmpty(conditions, "supportedService", "supportedServices");
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
