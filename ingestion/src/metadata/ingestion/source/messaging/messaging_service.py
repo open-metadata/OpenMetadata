@@ -13,7 +13,7 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, cast
+from typing import Any, Iterable, Set, cast
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -189,6 +189,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Messaging Entity
         """
 
+    @abstractmethod
     def yield_topic_sample_data(
         self, topic_details: Any
     ) -> Iterable[Either[TopicSampleData]]:
@@ -196,6 +197,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Sample Data of Messaging Entity
         """
 
+    @abstractmethod
     def yield_topic_lineage(
         self, topic_details: Any
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -205,13 +207,13 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:
+    def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
         """
         Get List of all topics
         """
 
     @abstractmethod
-    def get_topic_name(self, topic_details: Any) -> str:
+    def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         """
         Get Topic Name
         """

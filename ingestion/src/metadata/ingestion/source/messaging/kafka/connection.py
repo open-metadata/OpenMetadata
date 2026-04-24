@@ -73,21 +73,18 @@ def get_connection(
     consumer_config = deepcopy(connection.consumerConfig) or {}
     schema_registry_config = deepcopy(connection.schemaRegistryConfig) or {}
 
-    if connection.saslUsername or connection.saslPassword or connection.saslMechanism:
-        if connection.saslUsername:
-            consumer_config["sasl.username"] = connection.saslUsername
-        if connection.saslPassword:
-            consumer_config[
-                "sasl.password"
-            ] = connection.saslPassword.get_secret_value()
-        if connection.saslMechanism:
-            consumer_config["sasl.mechanism"] = connection.saslMechanism.value
+    if connection.saslUsername:
+        consumer_config["sasl.username"] = connection.saslUsername
+    if connection.saslPassword:
+        consumer_config["sasl.password"] = connection.saslPassword.get_secret_value()
+    if connection.saslMechanism:
+        consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if (
-            connection.consumerConfig.get("security.protocol") is None
-            and connection.securityProtocol
-        ):
-            consumer_config["security.protocol"] = connection.securityProtocol.value
+    if (
+        connection.consumerConfig.get("security.protocol") is None
+        and connection.securityProtocol
+    ):
+        consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
         schema_registry_config[

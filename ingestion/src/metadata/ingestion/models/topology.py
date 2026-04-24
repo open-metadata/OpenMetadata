@@ -52,43 +52,46 @@ class NodeStage(BaseModel, Generic[T]):
     )
 
     # Topology behavior
-    nullable: bool = Field(False, description="Flags if the yielded value can be null")
+    nullable: bool = Field(
+        default=False, description="Flags if the yielded value can be null"
+    )
     must_return: bool = Field(
-        False,
+        default=False,
         description="The sink MUST return a value back after ack. Useful to validate if services are correct.",
     )
     overwrite: bool = Field(
-        True,
+        default=True,
         description="If we want to update existing data from OM. E.g., we don't want to overwrite services.",
     )
     consumer: Optional[List[str]] = Field(
-        None,
+        default=None,
         description="Stage dependency from parent nodes. Used to build the FQN of the processed Entity.",
     )
 
     # Context-related flags
     context: Optional[str] = Field(
-        None, description="Context key storing stage state, if needed"
+        default=None, description="Context key storing stage state, if needed"
     )
     store_all_in_context: bool = Field(
-        False, description="If we need to store all values being yielded in the context"
+        default=False,
+        description="If we need to store all values being yielded in the context",
     )
     clear_context: bool = Field(
-        False,
+        default=False,
         description="If we need to clean the values in the context for each produced element",
     )
     store_fqn: bool = Field(
-        False,
+        default=False,
         description="If true, store the entity FQN in the context instead of just the name",
     )
 
     # Used to compute the fingerprint
     cache_entities: bool = Field(
-        False,
+        default=False,
         description="Cache all the entities which have use_cache set as True. Used for fingerprint comparison.",
     )
     use_cache: bool = Field(
-        False,
+        default=False,
         description="Enable this to get the entity from cached state in the context",
     )
 
@@ -116,12 +119,15 @@ class TopologyNode(BaseModel):
             "Each stage accepts the producer results as an argument"
         ),
     )
-    children: Optional[List[str]] = Field(None, description="Nodes to execute next")
+    children: Optional[List[str]] = Field(
+        default=None, description="Nodes to execute next"
+    )
     post_process: Optional[List[str]] = Field(
-        None, description="Method to be run after the node has been fully processed"
+        default=None,
+        description="Method to be run after the node has been fully processed",
     )
     threads: bool = Field(
-        False,
+        default=False,
         description="Flag that defines if a node is open to MultiThreading processing.",
     )
 

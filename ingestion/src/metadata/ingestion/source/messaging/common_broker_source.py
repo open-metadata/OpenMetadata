@@ -21,7 +21,7 @@ from typing import Iterable, Optional
 
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
-from confluent_kafka.admin import ConfigResource
+from confluent_kafka.admin import AdminClient, ConfigResource
 from confluent_kafka.error import (
     ConsumeError,
     KeyDeserializationError,
@@ -87,7 +87,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         ):
             self.generate_sample_data = False
         self.service_connection = self.config.serviceConnection.root.config
-        self.admin_client = self.connection.admin_client
+        self.admin_client: AdminClient = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
         if self.generate_sample_data:
