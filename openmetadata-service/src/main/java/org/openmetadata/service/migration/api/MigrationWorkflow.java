@@ -252,13 +252,6 @@ public class MigrationWorkflow {
     return numbers;
   }
 
-  static boolean sameOrHigherMajorMinor(String version, String maxVersion) {
-    int[] v = parseVersion(version);
-    int[] max = parseVersion(maxVersion);
-    if (v[0] != max[0]) return v[0] > max[0];
-    return v[1] >= max[1];
-  }
-
   // Package-private for testing
   List<MigrationFile> resolveApplyMigrations(List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
@@ -310,8 +303,7 @@ public class MigrationWorkflow {
     for (MigrationFile migration : nativeMigrations) {
       if (migration.version.equals(maxVer)) {
         result.add(migration.copyWithReprocessing(true));
-      } else if (!executedMigrations.contains(migration.version)
-          && sameOrHigherMajorMinor(migration.version, maxVer)) {
+      } else if (!executedMigrations.contains(migration.version)) {
         result.add(migration.copyWithReprocessing(false));
       }
     }
