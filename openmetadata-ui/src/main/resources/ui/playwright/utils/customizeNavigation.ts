@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { SIDEBAR_LIST_ITEMS, SidebarItem } from '../constant/sidebar';
+import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 import { PersonaClass } from '../support/persona/PersonaClass';
 
 const NAV_ITEMS = [
