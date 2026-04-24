@@ -132,17 +132,22 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
     }
   });
 
-  test('should silently refresh the access token on reload', async () => {
+  test('should silently refresh the access token after expiry', async () => {
     const page = userPage!;
+    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+
     const initialAccessToken = await getToken(page);
     const initialExp = decodeJwtExp(initialAccessToken);
+
+    await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
     const refreshResponsePromise = page.waitForResponse(
       (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
       { timeout: 15_000 }
     );
 
-    await page.reload();
+    await page.getByTestId('app-bar-item-explore').click();
+
     const refreshResponse = await refreshResponsePromise;
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
@@ -157,6 +162,9 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
 
   test('should queue concurrent 401s behind a single refresh call', async () => {
     const page = userPage!;
+    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+
+    await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
     const refreshCalls: string[] = [];
     const trackRefresh = (response: Response): void => {
@@ -173,7 +181,7 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
         { timeout: 15_000 }
       );
 
-      await page.reload();
+      await page.getByTestId('app-bar-item-explore').click();
       await refreshResponsePromise;
       await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     } finally {
