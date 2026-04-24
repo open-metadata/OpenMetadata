@@ -12,6 +12,7 @@
 """
 Source connection handler for OpenSearch
 """
+
 from pathlib import Path
 from typing import Optional
 
@@ -134,9 +135,11 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
     ):
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+            (
+                connection.authType.password.get_secret_value()
+                if connection.authType.password
+                else None
+            ),
         )
 
     # Check for AWS IAM Authentication
@@ -148,12 +151,9 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
             else None
         )
         aws_region = connection.authType.awsRegion  # Region as a plain string
-        aws_session_token = (
-            connection.authType.awsSessionToken.get_secret_value()
-            if hasattr(connection.authType, "awsSessionToken")
-            and connection.authType.awsSessionToken
-            else None
-        )
+        # awsSessionToken is a plain str in the schema (no "format": "password"),
+        # so we use it directly without calling .get_secret_value()
+        aws_session_token = connection.authType.awsSessionToken or None
         aws_auth = AWS4Auth(
             aws_access_key,
             aws_secret_key,

@@ -614,13 +614,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     MessageParser.EntityLink newAbout = new MessageParser.EntityLink(entityType, newFqn);
 
-    daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+    Entity.getFeedRepository()
+        .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
     for (GlossaryTerm child : childTerms) {
       newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
-      daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), child.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
   }
 
@@ -672,6 +674,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
+      // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
+      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
