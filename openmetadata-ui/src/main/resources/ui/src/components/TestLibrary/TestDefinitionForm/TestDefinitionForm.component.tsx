@@ -12,7 +12,17 @@
  */
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Drawer, Form, Input, Select, Space, Switch, FormInstance } from 'antd';
+import {
+  Button,
+  Card,
+  Drawer,
+  Form,
+  FormInstance,
+  Input,
+  Select,
+  Space,
+  Switch,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';

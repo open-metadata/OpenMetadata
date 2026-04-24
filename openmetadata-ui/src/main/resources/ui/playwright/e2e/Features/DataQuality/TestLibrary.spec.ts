@@ -111,6 +111,15 @@ test.describe(
           .first()
           .click();
 
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.locator('#supportedDataTypes').click();
+        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('NUMBER')
+          .click();
+        await page.keyboard.press('Escape');
+
         // Select test platform
         await page.locator('#testPlatforms').click();
         await page
@@ -340,6 +349,14 @@ test.describe(
 
         // Close dropdown
         await page.keyboard.press('Escape');
+
+        // Wait for the validation error to clear after removing OpenMetadata
+        const supportedDataTypesItem = page
+          .locator('.ant-form-item')
+          .filter({ hasText: 'Supported Data Types' });
+        await expect(
+          supportedDataTypesItem.locator('.ant-form-item-explain-error')
+        ).not.toBeVisible();
 
         // Submit the form — supportedDataTypes should no longer block submission
         const testDefinitionResponse = page.waitForResponse(
@@ -738,6 +755,15 @@ test.describe(
           page.locator('.ant-select-dropdown:visible')
         ).not.toBeVisible();
 
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.locator('#supportedDataTypes').click();
+        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('NUMBER')
+          .click();
+        await page.keyboard.press('Escape');
+
         await page.locator('#supportedServices').click();
         await page.locator('#supportedServices').fill('Mysql');
         const mysqlOption = page
@@ -1036,6 +1062,15 @@ test.describe(
         await expect(
           page.locator('.ant-select-dropdown:visible')
         ).not.toBeVisible();
+
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.locator('#supportedDataTypes').click();
+        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('NUMBER')
+          .click();
+        await page.keyboard.press('Escape');
 
         const createResponse = page.waitForResponse(
           (response) =>
