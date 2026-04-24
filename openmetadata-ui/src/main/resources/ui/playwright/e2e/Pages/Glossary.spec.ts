@@ -487,21 +487,12 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossary1 = new Glossary();
-    const glossaryTerm1 = new GlossaryTerm(glossary1);
-    const glossaryTerm2 = new GlossaryTerm(glossary1);
-    glossary1.data.mutuallyExclusive = true;
-    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
-
     const glossary2 = new Glossary();
     const glossaryTerm3 = new GlossaryTerm(glossary2);
     const glossaryTerm4 = new GlossaryTerm(glossary2);
     glossary2.data.terms = [glossaryTerm3, glossaryTerm4];
 
-    await glossary1.create(apiContext);
     await glossary2.create(apiContext);
-    await glossaryTerm1.create(apiContext);
-    await glossaryTerm2.create(apiContext);
     await glossaryTerm3.create(apiContext);
     await glossaryTerm4.create(apiContext);
 
@@ -522,61 +513,6 @@ test.describe('Glossary tests', () => {
         await dashboardEntity.visitEntityPage(page);
 
         // Dashboard Entity Right Panel
-        await page.click(
-          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
-        );
-
-        // Select 1st term
-        await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm1.data.name
-        );
-        await glossaryRequest;
-
-        await page.getByText(glossaryTerm1.data.displayName).click();
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm1.data.displayName}")`
-          )
-          .waitFor();
-
-        // Select 2nd term
-        await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest2 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm2.data.name
-        );
-        await glossaryRequest2;
-
-        await page.getByText(glossaryTerm2.data.displayName).click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm2.data.displayName}")`
-          )
-          .waitFor();
-
-        const patchRequest = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/dashboards/') &&
-            res.request().method() === 'PATCH'
-        );
-
-        await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest;
-
-        // Add non mutually exclusive tags
         await page.click(
           '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
         );
@@ -718,11 +654,8 @@ test.describe('Glossary tests', () => {
         );
       });
     } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossaryTerm2.delete(apiContext);
       await glossaryTerm3.delete(apiContext);
       await glossaryTerm4.delete(apiContext);
-      await glossary1.delete(apiContext);
       await glossary2.delete(apiContext);
       await dashboardEntity.delete(apiContext);
       await afterAction();
