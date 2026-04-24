@@ -1121,10 +1121,14 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const PERFORMANCE_TABLE_FQN =
       'sample_data.ecommerce_db.shopify.performance_test_table';
 
-    const getTableVersion = async (page: Parameters<typeof testPaginationNavigation>[0]) => {
+    const getTableVersion = async (
+      page: Parameters<typeof testPaginationNavigation>[0]
+    ) => {
       const { apiContext, afterAction } = await getApiContext(page);
       const tableResponse = await apiContext.get(
-        `/api/v1/tables/name/${encodeURIComponent(PERFORMANCE_TABLE_FQN)}?fields=version`
+        `/api/v1/tables/name/${encodeURIComponent(
+          PERFORMANCE_TABLE_FQN
+        )}?fields=version`
       );
       const tableData = await tableResponse.json();
       await afterAction();
