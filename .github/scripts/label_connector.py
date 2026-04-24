@@ -41,7 +41,7 @@ TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 
 
-def gh(method, path, body=None):
+def gh(method, path, body=None, ok=(200, 201, 204)):
     data = json.dumps(body).encode() if body else None
     req = Request(
         f"https://api.github.com/repos/{REPO}{path}",
@@ -54,9 +54,12 @@ def gh(method, path, body=None):
     )
     try:
         with urlopen(req) as r:
-            return r.status
+            status = r.status
     except HTTPError as e:
-        return e.code
+        status = e.code
+    if status not in ok:
+        raise RuntimeError(f"{method} {path} returned HTTP {status}")
+    return status
 
 
 def classify(field_value):
@@ -77,13 +80,13 @@ def main():
 
     target = classify(field)
     current = {label["name"] for label in issue.get("labels", [])}
-    print(f'Connector="{field}" → "{target}"')
+    print(f'Resolved to "{target}"')
 
-    if gh("GET", f"/labels/{quote(target, safe='')}") == 404:
+    if gh("GET", f"/labels/{quote(target, safe='')}", ok=(200, 404)) == 404:
         gh("POST", "/labels", {"name": target, "color": "aaaaaa", "description": "Connector"})
 
     for label in current & MANAGED - {target}:
-        gh("DELETE", f"/issues/{issue['number']}/labels/{quote(label, safe='')}")
+        gh("DELETE", f"/issues/{issue['number']}/labels/{quote(label, safe='')}", ok=(200, 404))
         print(f'Removed "{label}"')
 
     if target not in current:
