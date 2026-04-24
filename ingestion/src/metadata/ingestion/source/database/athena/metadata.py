@@ -11,11 +11,13 @@
 
 """Athena source module"""
 
-import threading
+import hashlib
+import re
 import traceback
 from typing import Dict, Iterable, Optional, Set, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.clients.aws_client import AWSClient
@@ -81,7 +83,10 @@ logger = ingestion_logger()
 ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
-ATHENA_TABLE_PROPS_CONTEXT_KEY = "_athena_current_tbl_props"
+ICEBERG_TABLE_TYPE = "ICEBERG"
+PROPERTY_NAME_INVALID_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9_]")
+PROPERTY_NAME_REPLACEMENT = "__"
+PROPERTY_NAME_MAX_LENGTH = 256
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -125,10 +130,8 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         )
         self.external_location_map = {}
         self.schema_description_map = {}
-        self._thread_local = threading.local()
         self.glue_client = None
         self._processed_prop: Set[str] = set()
-        self._processed_prop_lock = threading.Lock()
         self._string_property_type_ref = None
 
     def prepare(self):
@@ -178,7 +181,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                         params = table.get("Parameters", {})
                         table_type = (
                             TableType.Iceberg
-                            if params.get("table_type") == "ICEBERG"
+                            if params.get("table_type") == ICEBERG_TABLE_TYPE
                             else TableType.External
                         )
                         results.append(
@@ -340,24 +343,12 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
-        setattr(self._thread_local, ATHENA_TABLE_PROPS_CONTEXT_KEY, {})
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
             table_option = inspector.get_table_options(table_name, schema_name)
             self.external_location_map[
                 (self.context.get().database, schema_name, table_name)
             ] = table_option.get("awsathena_location")
-            setattr(
-                self._thread_local,
-                ATHENA_TABLE_PROPS_CONTEXT_KEY,
-                {
-                    prop_name: str(prop_value)
-                    for prop_name, prop_value in (
-                        table_option.get("awsathena_tblproperties") or {}
-                    ).items()
-                    if prop_value is not None
-                },
-            )
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -389,35 +380,69 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             catalog_id=self.service_connection.catalogId,
         )
 
-    def get_table_extensions(self, table_name: str) -> Optional[Dict[str, str]]:
+    def get_table_extensions(
+        self, table_name: str, table_type: Optional[TableType] = None
+    ) -> Optional[Dict[str, str]]:
         if not self._string_property_type_ref:
             return None
-        tbl_properties = getattr(self._thread_local, ATHENA_TABLE_PROPS_CONTEXT_KEY, {})
+        if table_type != TableType.Iceberg:
+            return None
+        schema_name = self.context.get().database_schema
+        tbl_properties = self._fetch_iceberg_properties(schema_name, table_name)
         if not tbl_properties:
             return None
         registered_properties = {}
         for prop_name, prop_value in tbl_properties.items():
-            with self._processed_prop_lock:
-                prop_already_registered = prop_name in self._processed_prop
-            if not prop_already_registered:
+            if prop_value is None or prop_value == "":
+                continue
+            sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(
+                PROPERTY_NAME_REPLACEMENT, prop_name
+            )
+            if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
+                sanitized_name = hashlib.md5(
+                    prop_name.encode("utf-8"), usedforsecurity=False
+                ).hexdigest()
+            if sanitized_name not in self._processed_prop:
                 try:
                     self.metadata.create_or_update_custom_property(
                         OMetaCustomProperties(
                             entity_type=Table,
                             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                                name=prop_name,
+                                name=sanitized_name,
+                                displayName=prop_name,
                                 description=prop_name,
                                 propertyType=self._string_property_type_ref,
                             ),
                         )
                     )
-                    with self._processed_prop_lock:
-                        self._processed_prop.add(prop_name)
+                    self._processed_prop.add(sanitized_name)
                 except Exception as exc:
                     logger.warning(
                         f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"
                     )
                     logger.debug(traceback.format_exc())
                     continue
-            registered_properties[prop_name] = prop_value
+            registered_properties[sanitized_name] = prop_value
         return registered_properties or None
+
+    def _fetch_iceberg_properties(
+        self, schema_name: str, table_name: str
+    ) -> Dict[str, str]:
+        """Read Iceberg native properties from Athena's `<table>$properties` metatable."""
+        query = text(
+            f'SELECT key, value FROM "{schema_name}"."{table_name}$properties"'
+        )
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(query)
+                return {
+                    str(row[0]): str(row[1])
+                    for row in result
+                    if row[0] is not None and row[1] is not None
+                }
+        except Exception as exc:
+            logger.debug(
+                f"Unable to read Iceberg $properties for [{schema_name}.{table_name}]: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+            return {}

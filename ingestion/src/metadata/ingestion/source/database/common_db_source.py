@@ -559,7 +559,9 @@ class CommonDbSourceService(
         by default there will be no location path
         """
 
-    def get_table_extensions(self, table_name: str):
+    def get_table_extensions(
+        self, table_name: str, table_type: Optional[TableType] = None
+    ):
         """
         Method to fetch the extensions of the table
         """
@@ -647,7 +649,9 @@ class CommonDbSourceService(
                 locationPath=self.get_location_path(
                     table_name=table_name, schema_name=schema_name
                 ),
-                extension=self.get_table_extensions(table_name=table_name),
+                extension=self.get_table_extensions(
+                    table_name=table_name, table_type=table_type
+                ),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
