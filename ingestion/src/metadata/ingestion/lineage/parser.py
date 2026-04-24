@@ -11,7 +11,9 @@
 """
 Lineage Parser configuration
 """
+
 import hashlib
+import re
 import time
 import traceback
 from collections import defaultdict
@@ -63,6 +65,31 @@ logger = ingestion_logger()
 LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
+
+# Pre-compiled regex to rewrite ClickHouse MATERIALIZED VIEW ... TO <target> queries
+# into CREATE TABLE <target> AS SELECT ... so that sqllineage can correctly identify
+# the downstream target table instead of the view name itself.
+#
+# Handles all documented ClickHouse CREATE MATERIALIZED VIEW forms:
+#   1. CREATE MATERIALIZED VIEW [IF NOT EXISTS] mv_name [ON CLUSTER c] TO target AS SELECT ...
+#   2. CREATE MATERIALIZED VIEW mv_name REFRESH EVERY n HOUR [OFFSET m MINUTE] TO target (col1, col2)
+#      [DEFINER = user] [SQL SECURITY ...] AS SELECT ...
+#      Also: REFRESH AFTER n SECOND form (alternative ClickHouse refresh syntax)
+#   3. ENGINE = ... clauses between TO target and AS SELECT are skipped.
+#
+    # The character class for <target> handles backtick-quoted segments with spaces
+    # and stops at the first whitespace / opening paren NOT inside backticks.
+    _CLICKHOUSE_MV_TO_RE = re.compile(
+        r"^\s*CREATE\s+MATERIALIZED\s+VIEW\s+"
+        r"(?:IF\s+NOT\s+EXISTS\s+)?"  # optional IF NOT EXISTS
+        r"(?:`[^`]+`|\S+)\s+"  # skip MV name (handles quoted names with spaces)
+        r"(?:ON\s+CLUSTER\s+\S+\s+)?"  # optional ON CLUSTER <cluster_name>
+        r"(?:REFRESH\s+(?:EVERY|AFTER)\s+(?:(?!\bTO\b)[\s\S])*?)?"  # optional REFRESH
+        r"TO\s+((?:`[^`]+`|[\w`\.\[\]\"])+)"  # capture target table
+        r"(?:\s*\([^)]*\))?"  # optional column list (col1, col2, ...)
+        r".*?AS\s+(SELECT.*)",  # skip ENGINE/DEFINER/SETTINGS, capture SELECT body
+        re.IGNORECASE | re.DOTALL,
+    )
 
 
 class LineageParser:
@@ -234,7 +261,7 @@ class LineageParser:
         # Check if involved_tables is present
         if not self.involved_tables:
             logger.debug(
-                f"[{self.query_hash}] [UsageSink] No involved tables found — alias map will be empty."
+                f"[{self.query_hash}] [UsageSink] No involved tables found -- alias map will be empty."
             )
             return {}
 
@@ -511,6 +538,22 @@ class LineageParser:
         )
 
         clean_query = clean_query.replace("\\n", "\n")
+
+        # Rewrite ClickHouse MATERIALIZED VIEW ... TO <target> AS SELECT ...
+        # into CREATE TABLE <target> AS SELECT ... so that sqllineage correctly
+        # identifies the downstream target table instead of the view name.
+        #
+        # Without this rewrite, sqllineage treats the MV name as the CREATE target
+        # and never registers the table named after TO as a downstream node.
+        # We handle it at this layer (query normalisation) so all three parsers
+        # (SqlGlot, SqlFluff, SqlParse) benefit automatically and no synthetic
+        # queries are written to query history.
+        if insensitive_match(clean_query, r"^\s*CREATE\s+MATERIALIZED\s+VIEW\s+"):
+            mv_to_match = _CLICKHOUSE_MV_TO_RE.search(clean_query)
+            if mv_to_match:
+                target_table = mv_to_match.group(1).strip()
+                select_body = mv_to_match.group(2)
+                clean_query = f"CREATE TABLE {target_table} AS {select_body}"
 
         if insensitive_match(
             clean_query, r"\s*/\*.*?\*/\s*merge.*into.*?when matched.*?"
