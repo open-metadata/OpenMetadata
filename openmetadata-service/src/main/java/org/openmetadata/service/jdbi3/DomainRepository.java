@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -474,6 +475,12 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       LOG.info("Domain FQN changed from {} to {}", oldFqn, newFqn);
 
+      // Drop cache entries for every descendant before we rewrite the DB: child domains and any
+      // data product under this domain. Must happen BEFORE updateFqn so the descendant lookup
+      // matches the old FQN prefix. The publish() fan-out handles peer instances.
+      invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+      invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
 
@@ -484,6 +491,28 @@ public class DomainRepository extends EntityRepository<Domain> {
       updateEntityLinks(oldFqn, newFqn, updated);
       updateSearchIndexes(oldFqn, newFqn, updated);
       updateTagUsage(oldFqn, newFqn);
+
+      // Any asset (table/dashboard/...) that carries this domain in its `domains` reference
+      // now has a stale FQN embedded in its cache. Invalidate them so next read rebuilds with
+      // the new FQN. Covers both the renamed domain and every descendant domain we just bulk-
+      // updated above.
+      invalidateDomainReferencers(updated.getId());
+      for (Domain child : getNestedDomains(updated)) {
+        invalidateDomainReferencers(child.getId());
+      }
+    }
+
+    private void invalidateDomainReferencers(UUID domainId) {
+      // Pull the referencer FQN from the relationship record JSON so the by-name cache variant
+      // is evicted alongside the by-id one. Without it, GET-by-name for assets that embed this
+      // domain would keep returning the stale domain reference until TTL.
+      List<CollectionDAO.EntityRelationshipRecord> referencers =
+          daoCollection
+              .relationshipDAO()
+              .findTo(domainId, Entity.DOMAIN, Relationship.HAS.ordinal());
+      for (CollectionDAO.EntityRelationshipRecord record : referencers) {
+        invalidateCacheForReferencedEntity(record);
+      }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Domain updated) {
@@ -492,17 +521,15 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       // Update feed entity links for the domain
       EntityLink newAbout = new EntityLink(DOMAIN, newFqn);
-      daoCollection
-          .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getFeedRepository()
+          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
 
       // Update feed entity links for all child domains
       List<Domain> childDomains = getNestedDomains(updated);
       for (Domain child : childDomains) {
         EntityLink childAbout = new EntityLink(DOMAIN, child.getFullyQualifiedName());
-        daoCollection
-            .feedDAO()
-            .updateByEntityId(childAbout.getLinkString(), child.getId().toString());
+        Entity.getFeedRepository()
+            .updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
       }
     }
 
@@ -580,22 +607,26 @@ public class DomainRepository extends EntityRepository<Domain> {
       return expertsMap;
     }
 
-    // Initialize empty lists for all domains
     domains.forEach(domain -> expertsMap.put(domain.getId(), new ArrayList<>()));
 
-    // Single batch query to get all expert relationships
     var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityListToStrings(domains), Relationship.EXPERT.ordinal(), Entity.USER);
 
-    // Group experts by domain ID
+    List<UUID> expertIds =
+        records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
+    Map<UUID, EntityReference> expertRefsById =
+        Entity.getEntityReferencesByIds(Entity.USER, expertIds, Include.NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
+
     records.forEach(
         record -> {
           var domainId = UUID.fromString(record.getFromId());
-          var expertRef =
-              getEntityReferenceById(Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
-          expertsMap.get(domainId).add(expertRef);
+          var expertRef = expertRefsById.get(UUID.fromString(record.getToId()));
+          if (expertRef != null) {
+            expertsMap.get(domainId).add(expertRef);
+          }
         });
 
     return expertsMap;

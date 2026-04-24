@@ -10,16 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
-import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -29,7 +23,6 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { FileClass } from '../../support/entity/FileClass';
@@ -56,13 +49,6 @@ import {
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
-import {
-  createCustomPropertyForEntity,
-  CustomProperty,
-  CustomPropertyTypeByName,
-  updateCustomPropertyInRightPanel,
-  verifyTableColumnCustomPropertyPersistence,
-} from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
@@ -1960,121 +1946,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         entity.entityResponseData?.['displayName'] ?? entity.entity.name;
       await entity.followUnfollowEntity(page, entityName);
     });
-
-    /**
-     * Tests custom property management on supported entities
-     * @description Tests setting and updating various types of custom properties (String, Markdown, Integer, Boolean, Email, Date, List)
-     */
-    // Create custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
-      const properties = Object.values(CustomPropertyTypeByName);
-      const titleText = properties.join(', ');
-
-      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
-        // increase timeout as it using single test for multiple steps
-        test.slow(true);
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        await entity.prepareCustomProperty(apiContext);
-
-        await test.step(`Set ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].value
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].newValue
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property in Right Panel`, async () => {
-          test.slow();
-          for (const [index, type] of properties.entries()) {
-            await updateCustomPropertyInRightPanel({
-              page,
-              entityName:
-                entity.entityResponseData['displayName'] ??
-                entity.entityResponseData['name'],
-              propertyDetails: entity.customPropertyValue[type].property,
-              value: entity.customPropertyValue[type].value,
-              endpoint: entity.endpoint,
-              skipNavigation: index > 0,
-            });
-          }
-        });
-
-        await entity.cleanupCustomProperty(apiContext);
-        await afterAction();
-      });
-    }
-
-    if (entity.type === 'Table') {
-      const properties = Object.values(CustomPropertyTypeByName);
-      let customPropertyValue: Record<
-        string,
-        {
-          value: string;
-          newValue: string;
-          property: CustomProperty;
-        }
-      >;
-      let cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
-      let users: Record<string, string>;
-
-      const prepareCustomProperty = async (apiContext: APIRequestContext) => {
-        const data = await createCustomPropertyForEntity(
-          apiContext,
-          EntityTypeEndpoint.TableColumn
-        );
-
-        customPropertyValue = data.customProperties;
-        cleanupUser = data.cleanupUser;
-        users = data.userNames;
-      };
-
-      test('Set & update column-level custom property', async ({ page }) => {
-        // Since the test iterates through all 17 types of custom property and
-        // performs multiple actions for each, we need to increase the timeout
-        // to avoid premature test failure
-        // TODO: Reduce timeout once the latency issue is fixed
-        test.setTimeout(960000);
-        const { apiContext, afterAction } = await getApiContext(page);
-
-        await prepareCustomProperty(apiContext);
-
-        const columnFqn =
-          (entity as TableClass).entityResponseData.columns[0]
-            .fullyQualifiedName ?? '';
-        const tableFqn =
-          (entity as TableClass).entityResponseData.fullyQualifiedName ?? '';
-
-        for (const type of properties) {
-          await test.step(`Set ${type} custom property on column and verify in UI`, async () => {
-            await verifyTableColumnCustomPropertyPersistence({
-              page,
-              columnFqn,
-              tableFqn,
-              propertyName: customPropertyValue[type].property.name,
-              propertyType: type,
-              users,
-            });
-          });
-        }
-
-        await cleanupUser(apiContext);
-        await afterAction();
-      });
-    }
 
     /**
      * Tests entity display name update

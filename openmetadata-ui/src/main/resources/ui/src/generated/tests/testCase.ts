@@ -16,6 +16,10 @@
  */
 export interface TestCase {
     /**
+     * Automatically resolve an open incident when a subsequent test result succeeds.
+     */
+    autoCloseIncident?: boolean;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;

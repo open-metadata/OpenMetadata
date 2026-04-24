@@ -38,9 +38,9 @@ import {
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
-import { Thread } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { Task } from '../rest/tasksAPI';
 import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
@@ -473,24 +473,27 @@ export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
 export const permissionForApproveOrReject = (
   record: ModifiedGlossaryTerm,
   currentUser: User,
-  termTaskThreads: Record<string, Thread[]>
+  termTaskThreads: Record<string, Task[]>
 ) => {
   const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
-  const taskThread = termTaskThreads[entityLink]?.find(
-    (thread) => thread.about === entityLink
-  );
+  const task = termTaskThreads[entityLink]?.[0];
   const currentUserId = currentUser?.id;
 
   const isReviewer = record.reviewers?.some(
     (reviewer) => reviewer.id === currentUserId
   );
-  const isTaskAssignee = taskThread?.task?.assignees?.some(
+  const isTaskAssignee = task?.assignees?.some(
     (assignee) => assignee.id === currentUserId
   );
+  const hasTaskAssignees = Boolean(task?.assignees?.length);
+
+  const permission = hasTaskAssignees
+    ? Boolean(isTaskAssignee)
+    : Boolean(task && (isTaskAssignee || isReviewer));
 
   return {
-    permission: Boolean(taskThread && (isTaskAssignee || isReviewer)),
-    taskId: taskThread?.task?.id ?? '',
+    permission,
+    taskId: task?.id ?? '',
   };
 };
 
