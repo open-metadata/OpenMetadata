@@ -112,6 +112,34 @@ class TestRedpandaAdminClient:
         transforms = client.list_transforms()
         assert len(transforms) == 0
 
+    @patch("metadata.ingestion.source.messaging.redpanda.client.requests.Session")
+    def test_default_verify_true(self, mock_session_cls):
+        """By default the client verifies server certs against system CAs."""
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+        RedpandaAdminClient("http://localhost:9644")
+        assert mock_session.verify is True
+
+    @patch("metadata.ingestion.source.messaging.redpanda.client.requests.Session")
+    def test_verify_custom_ca_path(self, mock_session_cls):
+        """A CA bundle path is propagated to session.verify."""
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+        RedpandaAdminClient("https://admin.example:9644", verify="/tmp/ca.pem")
+        assert mock_session.verify == "/tmp/ca.pem"
+
+    @patch("metadata.ingestion.source.messaging.redpanda.client.requests.Session")
+    def test_client_cert_tuple(self, mock_session_cls):
+        """Mutual TLS client cert/key tuple is applied to the session."""
+        mock_session = MagicMock()
+        mock_session_cls.return_value = mock_session
+        RedpandaAdminClient(
+            "https://admin.example:9644",
+            verify="/tmp/ca.pem",
+            client_cert=("/tmp/client.crt", "/tmp/client.key"),
+        )
+        assert mock_session.cert == ("/tmp/client.crt", "/tmp/client.key")
+
 
 class TestRedpandaTopicLineage:
     """Test Redpanda data transform lineage"""

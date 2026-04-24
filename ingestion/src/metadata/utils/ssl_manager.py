@@ -464,6 +464,9 @@ def _(connection, *args, **kwargs):
     ssl_schema_registry: Optional[
         verifySSLConfig.SslConfig
     ] = service_connection.schemaRegistrySSL
+    ssl_admin_api: Optional[verifySSLConfig.SslConfig] = getattr(
+        service_connection, "adminApiSSL", None
+    )
 
     ssl_consumer_config_dict = {}
 
@@ -481,8 +484,19 @@ def _(connection, *args, **kwargs):
             "cert_schema_registry": ssl_schema_registry.root.sslCertificate,
             "key_schema_registry": ssl_schema_registry.root.sslKey,
         }
-    if ssl_consumer_config_dict or ssl_schema_registry_dict:
-        return SSLManager(**ssl_consumer_config_dict, **ssl_schema_registry_dict)
+    ssl_admin_api_dict = {}
+    if ssl_admin_api:
+        ssl_admin_api_dict = {
+            "ca_admin_api": ssl_admin_api.root.caCertificate,
+            "cert_admin_api": ssl_admin_api.root.sslCertificate,
+            "key_admin_api": ssl_admin_api.root.sslKey,
+        }
+    if ssl_consumer_config_dict or ssl_schema_registry_dict or ssl_admin_api_dict:
+        return SSLManager(
+            **ssl_consumer_config_dict,
+            **ssl_schema_registry_dict,
+            **ssl_admin_api_dict,
+        )
     return None
 
 

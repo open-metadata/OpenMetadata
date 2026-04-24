@@ -12,7 +12,7 @@
 Redpanda Admin API client for data transforms
 """
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import requests
 from pydantic import BaseModel
@@ -34,11 +34,25 @@ class RedpandaTransform(BaseModel):
 
 
 class RedpandaAdminClient:
-    """HTTP client for Redpanda Admin API (port 9644)"""
+    """HTTP client for Redpanda Admin API (port 9644).
 
-    def __init__(self, admin_api_url: str):
+    The admin API is accessed over HTTP(S) via ``requests.Session``. For HTTPS
+    endpoints with a custom CA or mutual TLS, pass ``verify`` (CA bundle path
+    or ``False`` to disable verification) and ``client_cert``
+    (``(cert_path, key_path)`` tuple).
+    """
+
+    def __init__(
+        self,
+        admin_api_url: str,
+        verify: Union[str, bool] = True,
+        client_cert: Optional[Tuple[str, str]] = None,
+    ):
         self.base_url = admin_api_url.rstrip("/")
         self.session = requests.Session()
+        self.session.verify = verify
+        if client_cert:
+            self.session.cert = client_cert
 
     def list_transforms(self) -> List[RedpandaTransform]:
         """

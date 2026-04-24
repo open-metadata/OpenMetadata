@@ -95,9 +95,26 @@ def test_connection(
         from metadata.ingestion.source.messaging.redpanda.client import (
             RedpandaAdminClient,
         )
+        from metadata.utils.ssl_manager import check_ssl_and_init
 
-        admin_client = RedpandaAdminClient(str(service_connection.redpandaAdminApiUrl))
-        admin_client.check_connectivity()
+        ssl_manager = check_ssl_and_init(service_connection)
+        client_kwargs: dict = {}
+        if ssl_manager:
+            ca_path = getattr(ssl_manager, "ca_admin_api", None)
+            cert_path = getattr(ssl_manager, "cert_admin_api", None)
+            key_path = getattr(ssl_manager, "key_admin_api", None)
+            if ca_path:
+                client_kwargs["verify"] = ca_path
+            if cert_path and key_path:
+                client_kwargs["client_cert"] = (cert_path, key_path)
+        try:
+            admin_client = RedpandaAdminClient(
+                str(service_connection.redpandaAdminApiUrl), **client_kwargs
+            )
+            admin_client.check_connectivity()
+        finally:
+            if ssl_manager:
+                ssl_manager.cleanup_temp_files()
 
     test_fn = {
         "GetTopics": custom_executor,

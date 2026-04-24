@@ -97,6 +97,11 @@
       "type": "string",
       "format": "uri"
     },
+    "adminApiSSL": {
+      "title": "Admin API SSL",
+      "description": "Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API connection.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",

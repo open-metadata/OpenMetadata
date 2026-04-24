@@ -85,18 +85,27 @@ def test_consumer_group_extraction(
         nullable=False,
     )
     assert topic is not None
-    if topic.consumerGroups is None:
-        pytest.skip("Consumer groups not populated — server may need schema rebuild")
+    assert (
+        topic.consumerGroups is not None
+    ), "consumerGroups must be populated when extractConsumerGroups=True"
     group_ids = [cg.groupId for cg in topic.consumerGroups]
     assert "om-redpanda-test-group" in group_ids
     test_group = next(
         cg for cg in topic.consumerGroups if cg.groupId == "om-redpanda-test-group"
     )
-    assert test_group.memberCount >= 0
-    if test_group.partitionOffsets:
-        assert len(test_group.partitionOffsets) >= 1
-        assert test_group.partitionOffsets[0].currentOffset is not None
-        assert test_group.totalLag is not None
+    assert test_group.state is not None
+    assert test_group.memberCount >= 1
+    assert test_group.members is not None
+    assert len(test_group.members) == test_group.memberCount
+    assert test_group.partitionOffsets is not None
+    assert len(test_group.partitionOffsets) >= 1
+    first_partition = test_group.partitionOffsets[0]
+    assert first_partition.currentOffset is not None
+    assert first_partition.currentOffset >= 0
+    assert first_partition.endOffset is not None
+    assert first_partition.lag is not None
+    assert first_partition.lag >= 0
+    assert test_group.totalLag is not None
 
 
 def test_sample_data_ingestion(

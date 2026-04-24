@@ -248,6 +248,55 @@ class RedpandaSourceSSLTest(TestCase):
         )
         redpanda_source_with_ssl.ssl_manager.cleanup_temp_files()
 
+    @patch(
+        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
+    )
+    def test_init_with_admin_api_ssl_wires_client(self, test_connection):
+        test_connection.return_value = True
+        config_with_admin_ssl = WorkflowSource(
+            **{
+                "type": "redpanda",
+                "serviceName": "local_redpanda",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Redpanda",
+                        "bootstrapServers": "localhost:9092",
+                        "redpandaAdminApiUrl": "https://admin.example:9644",
+                        "adminApiSSL": {
+                            "caCertificate": "caCertificateData",
+                            "sslKey": "sslKeyData",
+                            "sslCertificate": "sslCertificateData",
+                        },
+                    },
+                },
+                "sourceConfig": {"config": {"type": "MessagingMetadata"}},
+            }
+        )
+        metadata = OpenMetadata(
+            OpenMetadataConnection(
+                hostPort="http://localhost:8585/api",
+                authProvider="openmetadata",
+                securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
+            )
+        )
+        source = RedpandaSource(config_with_admin_ssl, metadata)
+
+        self.assertIsNotNone(source.ssl_manager)
+        self.assertIsNotNone(source.admin_client_rp)
+        # verify resolves to a CA bundle path; client cert tuple is set
+        self.assertEqual(
+            source.admin_client_rp.session.verify,
+            source.ssl_manager.ca_admin_api,
+        )
+        self.assertEqual(
+            source.admin_client_rp.session.cert,
+            (
+                source.ssl_manager.cert_admin_api,
+                source.ssl_manager.key_admin_api,
+            ),
+        )
+        source.ssl_manager.cleanup_temp_files()
+
 
 class CassandraSourceSSLTest(TestCase):
     @patch("metadata.utils.ssl_manager.SSLManager.setup_ssl")

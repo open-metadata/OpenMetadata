@@ -58,8 +58,23 @@ class RedpandaSource(CommonBrokerSource):
         self._transforms_cache = None
         if self.service_connection.redpandaAdminApiUrl:
             self.admin_client_rp = RedpandaAdminClient(
-                str(self.service_connection.redpandaAdminApiUrl)
+                str(self.service_connection.redpandaAdminApiUrl),
+                **self._admin_api_ssl_kwargs(),
             )
+
+    def _admin_api_ssl_kwargs(self) -> dict:
+        """Extract admin-API SSL params from the SSL manager, if configured."""
+        if not self.ssl_manager:
+            return {}
+        ca_path = getattr(self.ssl_manager, "ca_admin_api", None)
+        cert_path = getattr(self.ssl_manager, "cert_admin_api", None)
+        key_path = getattr(self.ssl_manager, "key_admin_api", None)
+        kwargs: dict = {}
+        if ca_path:
+            kwargs["verify"] = ca_path
+        if cert_path and key_path:
+            kwargs["client_cert"] = (cert_path, key_path)
+        return kwargs
 
     @classmethod
     def create(
