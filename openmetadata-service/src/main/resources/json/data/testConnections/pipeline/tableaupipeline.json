@@ -9,6 +9,12 @@
            "errorMessage": "Failed to fetch pipelines, please validate the credentials or validate if user has access to fetch Tableau Prep flows",
            "shortCircuit": true,
            "mandatory": true
+       },
+       {
+           "name": "GetLineage",
+           "description": "Query the Tableau Metadata API to verify lineage extraction will work",
+           "errorMessage": "Failed to reach the Tableau Metadata API. Lineage extraction requires the Metadata API to be enabled: https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html",
+           "mandatory": false
        }
    ]
 }

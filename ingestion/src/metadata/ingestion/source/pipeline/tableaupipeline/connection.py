@@ -46,8 +46,6 @@ logger = ingestion_logger()
 def get_connection(connection: TableauPipelineConnection) -> TableauPipelineClient:
     """
     Create connection to Tableau for pipeline extraction.
-    Reuses build_server_config and set_verify_ssl from the dashboard
-    Tableau connector since both share the same auth and SSL fields.
     """
     tableau_server_auth = build_server_config(connection)
     verify_ssl, ssl_manager = set_verify_ssl(connection)
@@ -77,7 +75,10 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetPipelines": client.test_get_flows}
+    test_fn = {
+        "GetPipelines": client.test_get_flows,
+        "GetLineage": client.test_metadata_api,
+    }
 
     return test_connection_steps(
         metadata=metadata,

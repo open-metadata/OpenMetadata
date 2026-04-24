@@ -23,6 +23,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+    TableauPipelineConnection,
+)
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -65,7 +68,7 @@ def get_connection(connection: TableauConnection) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: TableauConnection,
+    connection: Union[TableauConnection, TableauPipelineConnection],
 ) -> tuple[Union[bool, str], Optional[SSLManager]]:
     """
     Set verify ssl based on connection configuration
@@ -78,27 +81,19 @@ def set_verify_ssl(
         return False, None
 
     if connection.verifySSL.value == "validate":
-        # Use SSLManager to create temporary certificate files
         if not connection.sslConfig:
             raise ValueError(
                 "SSL Config is required when verifySSL is set to 'validate'. "
                 "Please provide CA certificate, SSL certificate, or SSL key."
             )
-
-        # Create SSLManager to handle certificate files
         ssl_manager = SSLManager(
             ca=connection.sslConfig.root.caCertificate,
             cert=connection.sslConfig.root.sslCertificate,
             key=connection.sslConfig.root.sslKey,
         )
-
-        # Return the CA certificate file path for verification
-        # If no CA certificate is provided, use default verification
         if ssl_manager.ca_file_path:
             return ssl_manager.ca_file_path, ssl_manager
-        else:
-            # If no CA certificate is provided but SSL is enabled, use default verification
-            return True, ssl_manager
+        return True, ssl_manager
 
     raise ValueError(
         f"Unsupported verifySSL value: {connection.verifySSL.value}. "
@@ -137,7 +132,9 @@ def test_connection(
     )
 
 
-def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, Any]]:
+def build_server_config(
+    connection: Union[TableauConnection, TableauPipelineConnection],
+) -> Dict[str, Dict[str, Any]]:
     """
     Build client configuration
     Args:

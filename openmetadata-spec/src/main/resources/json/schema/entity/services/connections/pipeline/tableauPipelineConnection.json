@@ -64,11 +64,19 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default Pipeline Filter Pattern"
     },
+    "numberOfStatus": {
+      "description": "Number of recent flow runs to fetch per flow.",
+      "type": "integer",
+      "default": 10
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort"]
+  "required": ["hostPort", "authType"]
 }
