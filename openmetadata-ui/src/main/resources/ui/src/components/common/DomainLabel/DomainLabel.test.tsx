@@ -12,6 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
+import { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -47,12 +48,30 @@ jest.mock('../../../utils/DomainUtils', () => ({
     )),
 }));
 
+jest.mock('../../../utils/DomainStyleUtils', () => ({
+  getDomainReferenceBadgeStyle: jest
+    .fn()
+    .mockImplementation((domain) =>
+      domain?.style?.color ? { borderColor: domain.style.color } : undefined
+    ),
+  getDomainReferenceIconColor: jest
+    .fn()
+    .mockImplementation((domain, fallbackColor) =>
+      domain?.style?.color ?? fallbackColor
+    ),
+  useDomainsWithStyle: jest.fn().mockImplementation((domains) => domains),
+}));
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../../assets/svg/ic-domain.svg', () => ({
-  ReactComponent: () => <div data-testid="domain-icon">Domain Icon</div>,
+  ReactComponent: ({ color }: { color?: string }) => (
+    <div data-color={color} data-testid="domain-icon">
+      Domain Icon
+    </div>
+  ),
 }));
 
 jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
@@ -61,10 +80,16 @@ jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
 
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   __esModule: true,
-  default: ({ onUpdate, selectedDomain }: any) => (
+  default: ({
+    onUpdate,
+    selectedDomain,
+  }: {
+    onUpdate?: (domain: EntityReference | EntityReference[]) => void;
+    selectedDomain?: EntityReference | EntityReference[];
+  }) => (
     <button
       data-testid="domain-selectable-list"
-      onClick={() => onUpdate && onUpdate(selectedDomain)}>
+      onClick={() => selectedDomain && onUpdate?.(selectedDomain)}>
       Select Domain
     </button>
   ),
@@ -100,10 +125,21 @@ const defaultProps = {
   entityId: 'test-id',
 };
 
-const renderDomainLabel = (props: any = {}) =>
+type DomainLabelTestProps = Partial<
+  Omit<ComponentProps<typeof DomainLabel>, 'domains'>
+> & {
+  domains?: EntityReference[] | EntityReference;
+};
+
+const renderDomainLabel = (
+  props: DomainLabelTestProps = {}
+) =>
   render(
     <MemoryRouter>
-      <DomainLabel {...defaultProps} {...props} />
+      <DomainLabel
+        {...defaultProps}
+        {...(props as ComponentProps<typeof DomainLabel>)}
+      />
     </MemoryRouter>
   );
 
@@ -269,5 +305,26 @@ describe('DomainLabel Component', () => {
     renderDomainLabel({ domains: [] });
 
     expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
+  });
+
+  it('should apply domain color to the badge and icon when style is available', () => {
+    const styledDomain = {
+      ...mockDomain1,
+      style: {
+        color: '#7c3aed',
+      },
+    } as EntityReference & {
+      style: {
+        color: string;
+      };
+    };
+
+    renderDomainLabel({ domains: [styledDomain] });
+
+    expect(screen.getByText('Domain One').closest('.domain-link-container')).toHaveStyle(
+      {
+        borderColor: '#7c3aed',
+      }
+    );
   });
 });

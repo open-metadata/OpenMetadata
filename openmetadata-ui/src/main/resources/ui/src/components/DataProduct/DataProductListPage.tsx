@@ -17,7 +17,6 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useSnackbar } from 'notistack';
@@ -54,6 +53,7 @@ import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveS
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
+import { DomainDisplay } from '../common/DomainDisplay/DomainDisplay.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
@@ -217,16 +217,8 @@ const DataProductListPage = () => {
           if (!domains?.length) {
             return <Typography size="text-sm">{NO_DATA}</Typography>;
           }
-          const domain = domains[0];
 
-          return (
-            <Box align="center" direction="row" gap={1}>
-              <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography size="text-sm">
-                {domain.displayName || domain.name}
-              </Typography>
-            </Box>
-          );
+          return <DomainDisplay domains={domains} />;
         }
         case 'tags':
           return (

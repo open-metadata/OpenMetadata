@@ -25,6 +25,11 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import {
+  getDomainReferenceBadgeStyle,
+  getDomainReferenceIconColor,
+  useDomainsWithStyle,
+} from '../../../utils/DomainStyleUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -49,6 +54,7 @@ export const DomainLabelV2 = <
   const { id: entityId, fullyQualifiedName: entityFqn, domains } = data;
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
+  const resolvedDomains = useDomainsWithStyle(activeDomain);
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
@@ -111,16 +117,18 @@ export const DomainLabelV2 = <
       } else {
         setActiveDomain([domains]);
       }
+    } else {
+      setActiveDomain([]);
     }
   }, [domains]);
 
   const domainLink = useMemo(() => {
     if (
-      activeDomain &&
-      Array.isArray(activeDomain) &&
-      activeDomain.length > 0
+      resolvedDomains &&
+      Array.isArray(resolvedDomains) &&
+      resolvedDomains.length > 0
     ) {
-      return activeDomain.map((domain) => {
+      return resolvedDomains.map((domain, index) => {
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
@@ -131,11 +139,19 @@ export const DomainLabelV2 = <
         ) : null;
 
         return (
-          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
+          <div
+            className="d-flex w-max-full items-center gap-1"
+            key={
+              domain.id ??
+              domain.fullyQualifiedName ??
+              domain.name ??
+              `domain-${index}`
+            }
+            style={getDomainReferenceBadgeStyle(domain)}>
             <Typography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
-                color={DE_ACTIVE_COLOR}
+                color={getDomainReferenceIconColor(domain, DE_ACTIVE_COLOR)}
                 height={16}
                 name="folder"
                 width={16}
@@ -164,7 +180,7 @@ export const DomainLabelV2 = <
         </Typography.Text>
       );
     }
-  }, [activeDomain]);
+  }, [resolvedDomains, props.showDomainHeading, props.textClassName, t]);
 
   const hasPermission = useMemo(() => {
     return props?.hasPermission ?? (permissions?.EditAll && !data?.deleted);
@@ -214,7 +230,7 @@ export const DomainLabelV2 = <
         {selectableList}
       </Card>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [domainLink, props.showDomainHeading, selectableList, t]);
 
   return label;
 };

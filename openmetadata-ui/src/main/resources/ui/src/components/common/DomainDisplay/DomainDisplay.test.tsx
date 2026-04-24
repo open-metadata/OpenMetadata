@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
+import { getDomainByName } from '../../../rest/domainAPI';
+import { clearDomainStyleCache } from '../../../utils/DomainStyleUtils';
 import { DomainDisplay } from './DomainDisplay.component';
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -28,41 +31,72 @@ jest.mock('../../../utils/RouterUtils', () => ({
     .mockImplementation((fqn: string) => `/domain/${fqn}`),
 }));
 
-jest.mock('../../../assets/svg/ic-domain.svg', () => ({
-  ReactComponent: () => <div data-testid="domain-icon">Domain Icon</div>,
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainByName: jest.fn(),
 }));
+
+jest.mock('../../../assets/svg/ic-domain.svg', () => ({
+  ReactComponent: ({ color }: { color?: string }) => (
+    <div data-color={color} data-testid="domain-icon">
+      Domain Icon
+    </div>
+  ),
+}));
+
+const mockGetDomainByName = getDomainByName as jest.MockedFunction<
+  typeof getDomainByName
+>;
 
 const mockDomain1: EntityReference = {
   id: 'domain-1',
   fullyQualifiedName: 'domain.one',
   name: 'Domain One',
   type: 'domain',
-};
+  style: {
+    color: '#dc2626',
+  },
+} as EntityReference;
 
 const mockDomain2: EntityReference = {
   id: 'domain-2',
   fullyQualifiedName: 'domain.two',
   name: 'Domain Two',
   type: 'domain',
-};
+  style: {
+    color: '#2563eb',
+  },
+} as EntityReference;
 
 const mockDomain3: EntityReference = {
   id: 'domain-3',
   fullyQualifiedName: 'domain.three',
   name: 'Domain Three',
   type: 'domain',
+  style: {
+    color: '#16a34a',
+  },
+} as EntityReference;
+
+type DomainDisplayTestProps = Omit<ComponentProps<typeof DomainDisplay>, 'domains'> & {
+  domains?: EntityReference[] | null;
 };
 
-const renderDomainDisplay = (props: any) =>
+const renderDomainDisplay = (
+  props: DomainDisplayTestProps
+) =>
   render(
     <MemoryRouter>
-      <DomainDisplay {...props} />
+      <DomainDisplay {...(props as ComponentProps<typeof DomainDisplay>)} />
     </MemoryRouter>
   );
 
 describe('DomainDisplay Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearDomainStyleCache();
+    mockGetDomainByName.mockResolvedValue(
+      {} as Awaited<ReturnType<typeof getDomainByName>>
+    );
   });
 
   it('should render nothing when domains array is empty', () => {
@@ -265,5 +299,37 @@ describe('DomainDisplay Component', () => {
     expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
     expect(screen.getByText('+2')).toBeInTheDocument();
     expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
+  });
+
+  it('should fetch the domain style and apply the matching icon color', async () => {
+    const unresolvedDomain = {
+      id: 'domain-unresolved',
+      fullyQualifiedName: 'domain.one',
+      name: 'Domain One',
+      type: 'domain',
+    } as EntityReference;
+
+    mockGetDomainByName.mockResolvedValue(
+      {
+        style: {
+          color: '#0891b2',
+        },
+      } as Awaited<ReturnType<typeof getDomainByName>>
+    );
+
+    renderDomainDisplay({ domains: [unresolvedDomain] });
+
+    await waitFor(() =>
+      expect(mockGetDomainByName).toHaveBeenCalledWith('domain.one', {
+        fields: 'style',
+      })
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('domain-icon')).toHaveAttribute(
+        'data-color',
+        '#0891b2'
+      )
+    );
   });
 });

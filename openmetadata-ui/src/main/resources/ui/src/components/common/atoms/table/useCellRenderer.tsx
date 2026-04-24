@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { AvatarGroup, Box, Typography, useTheme } from '@mui/material';
+import { AvatarGroup, Box, Typography } from '@mui/material';
 import { Avatar } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
+import { DomainDisplay } from '../../DomainDisplay/DomainDisplay.component';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityAvatarProps } from '../../../../utils/IconUtils';
 import { ProfilePicture } from '../ProfilePicture';
@@ -37,7 +37,6 @@ export const useCellRenderer = <
   props: UseCellRendererProps<T>
 ) => {
   const { renderers = {}, chipSize = 'large' } = props;
-  const theme = useTheme();
 
   const defaultRenderers: CellRenderer<T> = useMemo(
     () => ({
@@ -173,22 +172,10 @@ export const useCellRenderer = <
           );
         }
 
-        const domain = domains[0];
-
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Globe01 size={16} style={{ flexShrink: 0 }} />
-            <Typography
-              sx={{
-                fontSize: '0.875rem',
-              }}>
-              {domain.displayName || domain.name}
-            </Typography>
-          </Box>
-        );
+        return <DomainDisplay domains={domains as EntityReference[]} />;
       },
     }),
-    [renderers, theme, chipSize]
+    [renderers, chipSize]
   );
 
   const renderCell = useMemo(
