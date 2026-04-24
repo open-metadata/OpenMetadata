@@ -15,6 +15,7 @@ Entity Fetcher
 from typing import Iterator, Optional
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -25,6 +26,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.source.fetcher.fetcher_strategy import (
     DatabaseFetcherStrategy,
     FetcherStrategy,
+    StorageFetcherStrategy,
 )
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.entity_utils import service_class
@@ -48,13 +50,20 @@ class EntityFetcher:
 
     def _get_strategy(self) -> FetcherStrategy:
         """Get strategy for entity fetcher"""
-        if service_class(self.config.source.type) is DatabaseService:
+        service_type = service_class(self.config.source.type)
+
+        if service_type is DatabaseService:
             return DatabaseFetcherStrategy(
                 self.config, self.metadata, self.global_profiler_config, self.status
             )
 
+        if service_type is StorageService:
+            return StorageFetcherStrategy(
+                self.config, self.metadata, self.global_profiler_config, self.status
+            )
+
         raise NotImplementedError(
-            "Fetcher strategy not implemented for this connection type"
+            f"Fetcher strategy not implemented for service type {service_type}"
         )
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:

@@ -222,6 +222,8 @@ export interface TestServiceConnectionConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * SAP S/4HANA Connection Config for Embedded Analytics
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -360,6 +362,9 @@ export interface ConfigObject {
      * SSL Configuration details. Provide the CA certificate to validate the Informix server
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
+     * CA certificate, client certificate, and private key for SSL validation. Required when
+     * verifySSL is 'validate'.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -413,6 +418,9 @@ export interface ConfigObject {
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+     * validation, 'validate' to verify against a CA certificate.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
@@ -552,6 +560,8 @@ export interface ConfigObject {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
@@ -995,6 +1005,9 @@ export interface ConfigObject {
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the tableau instance
+     *
+     * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+     * SAP S/4HANA Cloud.
      *
      * Types of methods used to authenticate to the alation instance
      *
@@ -1677,6 +1690,10 @@ export interface ConfigObject {
      */
     tokenType?: TokenType;
     /**
+     * SAP client number (Mandant), typically a 3-digit string (e.g. '100').
+     */
+    clientNumber?: string;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1698,7 +1715,7 @@ export interface ConfigObject {
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
      */
-    consumerConfigSSL?: AdminAPISSLClass;
+    consumerConfigSSL?: ConsumerConfigSSLClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -1722,7 +1739,7 @@ export interface ConfigObject {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: AdminAPISSLClass;
+    schemaRegistrySSL?: ConsumerConfigSSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -1742,16 +1759,6 @@ export interface ConfigObject {
      * Regex to only fetch topics that matches the pattern.
      */
     topicFilterPattern?: FilterPattern;
-    /**
-     * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
-     * connection.
-     */
-    adminApiSSL?: AdminAPISSLClass;
-    /**
-     * URL of the Redpanda Admin API (typically port 9644). Required for extracting data
-     * transform lineage. E.g., http://localhost:9644
-     */
-    redpandaAdminApiUrl?: string;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2232,48 +2239,6 @@ export interface UsernamePasswordAuthentication {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL Configuration details.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
- * connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface AdminAPISSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Regex to only fetch api collections with names matching the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
@@ -2470,6 +2435,13 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
+ * SAP S/4HANA Cloud.
+ *
+ * Username and password credentials for SAP S/4HANA.
+ *
+ * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2507,11 +2479,15 @@ export interface AuthenticationType {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * OAuth 2.0 client secret.
      */
     clientSecret?: string;
     /**
@@ -2534,6 +2510,8 @@ export interface AuthenticationType {
      * Password for the Dremio Software user account.
      *
      * Password to access the service.
+     *
+     * Password to authenticate with SAP S/4HANA.
      *
      * Elastic Search Password for Login
      *
@@ -2586,6 +2564,8 @@ export interface AuthenticationType {
      *
      * Username to access the service.
      *
+     * Username to authenticate with SAP S/4HANA.
+     *
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
@@ -2601,6 +2581,14 @@ export interface AuthenticationType {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
+    /**
+     * OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).
+     */
+    tokenEndpoint?: string;
     /**
      * Access Token for the API
      */
@@ -2667,6 +2655,14 @@ export interface AuthenticationType {
      * Passphrase for the private key (if encrypted)
      */
     privateKeyPassphrase?: string;
+}
+
+/**
+ * Authentication type identifier.
+ */
+export enum AuthType {
+    Basic = "basic",
+    Oauth2 = "oauth2",
 }
 
 /**
@@ -3048,7 +3044,7 @@ export interface BrokerConfiguration {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: AdminAPISSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Topic from where OpenLineage events will be pulled.
      */
@@ -3123,12 +3119,54 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * SSL Configuration for OpenMetadata Server
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface ConsumerConfigSSLClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: AdminAPISSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
      */
@@ -3438,6 +3476,7 @@ export interface ConfigConnection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */
@@ -3561,7 +3600,6 @@ export interface ConfigConnection {
     supportsDataDiff?:             boolean;
     supportsDBTExtraction?:        boolean;
     supportsLineageExtraction?:    boolean;
-    supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
     supportsUsageExtraction?:      boolean;
     /**
@@ -3840,13 +3878,13 @@ export enum ConnectionScheme {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -3904,6 +3942,9 @@ export enum ConnectionType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
@@ -4020,7 +4061,7 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: AdminAPISSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -4229,7 +4270,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: AdminAPISSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
@@ -4401,6 +4442,7 @@ export interface S3Connection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */
@@ -4603,13 +4645,13 @@ export enum SpaceType {
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * Admin API SSL Config. Configuration for enabling SSL for the Redpanda Admin API
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -4748,6 +4790,8 @@ export enum TokenType {
  * ThoughtSpot service type
  *
  * Grafana service type
+ *
+ * SAP S/4HANA service type
  *
  * Kafka service type
  *
@@ -4899,6 +4943,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SapS4Hana = "SapS4Hana",
     ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",

@@ -17,47 +17,69 @@ import React, { useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 
-export interface ExportGraphPanelProps {
-  onExportPng: () => Promise<void>;
-  onExportSvg: () => Promise<void>;
-  onExportTurtle?: () => Promise<void>;
-  onExportRdfXml?: () => Promise<void>;
+export enum ExportFormat {
+  PNG = 'png',
+  SVG = 'svg',
+  JSONLD = 'jsonld',
+  TURTLE = 'turtle',
+  RDFXML = 'rdfxml',
 }
 
-const EXPORT_PNG = 'png';
-const EXPORT_SVG = 'svg';
-const EXPORT_TURTLE = 'turtle';
-const EXPORT_RDF_XML = 'rdfxml';
+export interface ExportGraphPanelProps {
+  supportedExports?: ExportFormat[];
+  onExportPng: () => Promise<void>;
+  onExportSvg?: () => Promise<void>;
+  onExportJsonLd?: () => Promise<void>;
+  onExportTurtle?: () => Promise<void>;
+  onExportRdfXml?: () => Promise<void>;
+  'data-testid'?: string;
+}
 
 const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   onExportPng,
   onExportSvg,
+  onExportJsonLd,
   onExportTurtle,
   onExportRdfXml,
+  supportedExports,
+  'data-testid': testId = 'ontology-export-graph',
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const items = [
-    { id: EXPORT_PNG, label: t('label.png-uppercase') },
-    { id: EXPORT_SVG, label: t('label.svg-uppercase') },
+    { id: ExportFormat.PNG, label: t('label.png-uppercase') },
+    ...(onExportSvg
+      ? [{ id: ExportFormat.SVG, label: t('label.svg-uppercase') }]
+      : []),
+    ...(onExportJsonLd
+      ? [{ id: ExportFormat.JSONLD, label: t('label.json-ld') }]
+      : []),
     ...(onExportTurtle
-      ? [{ id: EXPORT_TURTLE, label: t('label.turtle-ttl') }]
+      ? [{ id: ExportFormat.TURTLE, label: t('label.turtle-ttl') }]
       : []),
     ...(onExportRdfXml
-      ? [{ id: EXPORT_RDF_XML, label: t('label.rdf-xml-rdf') }]
+      ? [{ id: ExportFormat.RDFXML, label: t('label.rdf-xml-rdf') }]
       : []),
   ];
 
+  const menuItems =
+    supportedExports === undefined
+      ? items
+      : items.filter((item) => supportedExports.includes(item.id));
+
   const handleAction = async (key: Key) => {
     setOpen(false);
-    if (key === EXPORT_PNG) {
+
+    if (key === ExportFormat.PNG) {
       await onExportPng();
-    } else if (key === EXPORT_SVG) {
-      await onExportSvg();
-    } else if (key === EXPORT_TURTLE) {
+    } else if (key === ExportFormat.SVG) {
+      await onExportSvg?.();
+    } else if (key === ExportFormat.JSONLD) {
+      await onExportJsonLd?.();
+    } else if (key === ExportFormat.TURTLE) {
       await onExportTurtle?.();
-    } else if (key === EXPORT_RDF_XML) {
+    } else if (key === ExportFormat.RDFXML) {
       await onExportRdfXml?.();
     }
   };
@@ -66,13 +88,13 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
     <Dropdown.Root isOpen={open} onOpenChange={setOpen}>
       <Button
         color="secondary"
-        data-testid="ontology-export-graph"
+        data-testid={testId}
         iconLeading={<Download01 height={20} width={20} />}
         size="sm">
         {t('label.export-graph')}
       </Button>
-      <Dropdown.Popover aria-label={t('label.export-graph')}>
-        <Dropdown.Menu items={items} onAction={handleAction}>
+      <Dropdown.Popover aria-label={t('label.export-graph')} placement="top">
+        <Dropdown.Menu items={menuItems} onAction={handleAction}>
           {(item) => <Dropdown.Item id={item.id} label={item.label} />}
         </Dropdown.Menu>
       </Dropdown.Popover>

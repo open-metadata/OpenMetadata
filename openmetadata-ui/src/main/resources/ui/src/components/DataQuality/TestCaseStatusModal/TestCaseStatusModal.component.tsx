@@ -21,11 +21,18 @@ import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../../pages/TasksPage/TasksPage.interface';
-import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import {
-  getEntityReferenceFromEntity,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+  getListTestCaseIncidentByStateId,
+  transitionIncident,
+} from '../../../rest/incidentManagerAPI';
+import {
+  createTask,
+  ResolveTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskResolutionType,
+} from '../../../rest/tasksAPI';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -35,7 +42,6 @@ import {
 } from '../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../constants/TestSuite.constant';
 import { EntityReference } from '../../../generated/tests/testCase';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getUsers } from '../../../rest/userAPI';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -44,12 +50,11 @@ import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 export const TestCaseStatusModal = ({
   open,
   data,
-  testCaseFqn,
+  testCaseFqn: _testCaseFqn,
   onSubmit,
   onCancel,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
@@ -89,44 +94,150 @@ export const TestCaseStatusModal = ({
     }));
   }, [data]);
 
-  const handleFormSubmit = async (data: CreateTestCaseResolutionStatus) => {
-    setIsLoading(true);
-    const updatedData: CreateTestCaseResolutionStatus = {
-      ...data,
-      testCaseReference: testCaseFqn,
-    };
-
-    switch (data.testCaseResolutionStatusType) {
-      case TestCaseResolutionStatusTypes.Resolved:
-        updatedData.testCaseResolutionStatusDetails = {
-          ...data.testCaseResolutionStatusDetails,
-          resolvedBy: currentUser
-            ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
-            : undefined,
-        };
-
-        break;
-
-      case TestCaseResolutionStatusTypes.Assigned:
-        if (updatedAssignees.length > 0) {
-          updatedData.testCaseResolutionStatusDetails = {
-            ...data.testCaseResolutionStatusDetails,
-            assignee: {
-              name: updatedAssignees[0].name,
-              displayName: updatedAssignees[0].displayName,
-              id: updatedAssignees[0].value,
-              type: EntityType.USER,
-            },
-          };
-        }
-
-        break;
-      default:
-        break;
+  // The outer `data` prop is the current TCRS record. In task-first mode
+  // its stateId equals the Task UUID, so we use it as the task id for
+  // POST /tasks/{id}/resolve. The form parameter is named `formData` to
+  // avoid shadowing the prop.
+  const handleReopenFromResolved = async (
+    targetStatus: TestCaseResolutionStatusTypes
+  ) => {
+    const testCaseFqn = data?.testCaseReference?.fullyQualifiedName;
+    const testCaseName = data?.testCaseReference?.name;
+    if (!testCaseFqn || !testCaseName) {
+      return;
     }
+
+    const newTask = await createTask({
+      name: `Incident: ${testCaseName}`,
+      category: TaskCategory.Incident,
+      type: TaskEntityType.TestCaseResolution,
+      about: testCaseFqn,
+      aboutType: 'testCase',
+    });
+
+    if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
+      const transitionMap: Partial<
+        Record<TestCaseResolutionStatusTypes, string>
+      > = {
+        [TestCaseResolutionStatusTypes.ACK]: 'ack',
+        [TestCaseResolutionStatusTypes.Assigned]: 'assign',
+      };
+      const transitionId = transitionMap[targetStatus];
+      if (transitionId) {
+        const assignee =
+          updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
+        await transitionIncident(newTask.id, {
+          transitionId,
+          payload: assignee
+            ? {
+                assignees: [
+                  {
+                    id: assignee.value ?? assignee.id,
+                    type: EntityType.USER,
+                    name: assignee.name,
+                    fullyQualifiedName:
+                      assignee.fullyQualifiedName ?? assignee.name,
+                    displayName: assignee.displayName,
+                  },
+                ],
+              }
+            : undefined,
+        });
+      }
+    }
+
+    const refreshed = await getListTestCaseIncidentByStateId(newTask.id);
+    const latest = refreshed?.data?.[0];
+    if (latest) {
+      onSubmit(latest);
+    }
+    onCancel();
+  };
+
+  const buildResolveRequest = (
+    status: TestCaseResolutionStatusTypes,
+    formData: CreateTestCaseResolutionStatus
+  ): ResolveTask | null => {
+    if (status === TestCaseResolutionStatusTypes.New) {
+      return { transitionId: 'new' };
+    }
+    if (status === TestCaseResolutionStatusTypes.ACK) {
+      return { transitionId: 'ack' };
+    }
+    if (status === TestCaseResolutionStatusTypes.Assigned) {
+      const transitionId =
+        data?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned
+          ? 'reassign'
+          : 'assign';
+      const assignee =
+        updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
+
+      return {
+        transitionId,
+        payload: assignee
+          ? {
+              assignees: [
+                {
+                  id: assignee.value ?? assignee.id,
+                  type: EntityType.USER,
+                  name: assignee.name,
+                  fullyQualifiedName:
+                    assignee.fullyQualifiedName ?? assignee.name,
+                  displayName: assignee.displayName,
+                },
+              ],
+            }
+          : undefined,
+      };
+    }
+    if (status === TestCaseResolutionStatusTypes.Resolved) {
+      return {
+        transitionId: 'resolve',
+        resolutionType: TaskResolutionType.Completed,
+        comment:
+          formData.testCaseResolutionStatusDetails?.testCaseFailureComment,
+        payload: formData.testCaseResolutionStatusDetails?.testCaseFailureReason
+          ? {
+              testCaseFailureReason:
+                formData.testCaseResolutionStatusDetails.testCaseFailureReason,
+            }
+          : undefined,
+      };
+    }
+
+    return null;
+  };
+
+  const handleFormSubmit = async (formData: CreateTestCaseResolutionStatus) => {
+    const currentStatus = data?.testCaseResolutionStatusType;
+    const status = formData.testCaseResolutionStatusType;
+
+    setIsLoading(true);
+
     try {
-      const data = await postTestCaseIncidentStatus(updatedData);
-      onSubmit(data);
+      if (currentStatus === TestCaseResolutionStatusTypes.Resolved) {
+        await handleReopenFromResolved(status);
+
+        return;
+      }
+
+      const taskId = data?.stateId;
+      if (!taskId) {
+        return;
+      }
+
+      const resolveRequest = buildResolveRequest(status, formData);
+      if (!resolveRequest) {
+        return;
+      }
+
+      await transitionIncident(taskId, resolveRequest);
+      const refreshed = await getListTestCaseIncidentByStateId(taskId);
+      const latest = refreshed?.data?.[0];
+      if (latest) {
+        onSubmit(latest);
+      }
       onCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);

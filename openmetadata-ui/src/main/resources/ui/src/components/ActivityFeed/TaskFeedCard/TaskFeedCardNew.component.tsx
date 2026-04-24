@@ -33,10 +33,12 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import {
+  getEntityFQNFromAbout,
+  getEntityTypeFromAbout,
+} from '../../../utils/FeedUtils';
 
 import { AxiosError } from 'axios';
-import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
@@ -45,7 +47,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
-import { updateTask } from '../../../rest/feedsAPI';
+import {
+  resolveTask as resolveTaskAPI,
+  TaskResolutionType,
+} from '../../../rest/tasksAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
@@ -53,6 +58,7 @@ import {
   getTaskDetailPath,
   isDescriptionTask,
   isTagsTask,
+  isTaskPendingFurtherApproval,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -97,19 +103,27 @@ const TaskFeedCard = ({
 
   const { entityType, entityFQN } = useMemo(
     () => ({
-      entityType: getEntityType(feed.about) ?? '',
-      entityFQN: getEntityFQN(feed.about) ?? '',
+      // Use getEntityTypeFromAbout/getEntityFQNFromAbout to handle both:
+      // - Thread about: string entity link like "<#E::table::fqn>"
+      // - Task about: EntityReference object like { type, fullyQualifiedName }
+      entityType: getEntityTypeFromAbout(feed.about) ?? '',
+      entityFQN: getEntityFQNFromAbout(feed.about) ?? '',
     }),
     [feed.about]
   );
 
   const isEntityDetailsAvailable = useMemo(
-    () => !isUndefined(entityFQN) && !isUndefined(entityType),
+    () => Boolean(entityFQN) && Boolean(entityType),
     [entityFQN, entityType]
   );
 
   const taskColumnName = useMemo(() => {
-    const columnName = EntityLink.getTableColumnName(feed.about) ?? '';
+    // EntityLink.getTableColumnName expects a string entity link
+    // For EntityReference about (Task), there's no column info in the about field
+    const columnName =
+      typeof feed.about === 'string'
+        ? EntityLink.getTableColumnName(feed.about) ?? ''
+        : '';
 
     if (columnName) {
       return (
@@ -173,19 +187,51 @@ const TaskFeedCard = ({
   const isTaskRecognizerFeedbackApproval =
     taskDetails?.type === TaskType.RecognizerFeedbackApproval;
 
-  const updateTaskData = (data: TaskDetails | ResolveTask) => {
-    if (!taskDetails?.id) {
+  const getResolutionPayload = (resolutionType: TaskResolutionType) => {
+    if (resolutionType === TaskResolutionType.Rejected) {
+      if (isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval) {
+        return { newValue: 'Rejected' };
+      }
+
+      return { newValue: '' };
+    }
+
+    if (isTaskTags) {
+      return { newValue: taskDetails?.suggestion || '[]' };
+    }
+
+    return {
+      newValue:
+        isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval
+          ? 'approved'
+          : taskDetails?.suggestion,
+    };
+  };
+
+  const updateTaskData = async (
+    data: TaskDetails | ResolveTask,
+    resolutionType: TaskResolutionType = TaskResolutionType.Approved
+  ) => {
+    if (!feed?.id) {
       return;
     }
-    updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
-      .then(() => {
-        showSuccessToast(t('server.task-resolved-successfully'));
-        onAfterClose?.();
-        onUpdateEntityDetails?.();
-      })
-      .catch((err: AxiosError) =>
-        showErrorToast(getErrorText(err, t('server.unexpected-error')))
+    try {
+      const updatedTask = await resolveTaskAPI(feed.id, {
+        resolutionType,
+        newValue: (data as ResolveTask).newValue,
+      });
+      showSuccessToast(
+        isTaskPendingFurtherApproval(updatedTask)
+          ? 'Vote recorded.'
+          : t('server.task-resolved-successfully')
       );
+      onAfterClose?.();
+      onUpdateEntityDetails?.();
+    } catch (err) {
+      showErrorToast(
+        getErrorText(err as AxiosError, t('server.unexpected-error'))
+      );
+    }
   };
   const onTaskResolve = () => {
     if (
@@ -203,38 +249,16 @@ const TaskFeedCard = ({
 
       return;
     }
-    if (isTaskTags) {
-      const tagsData = {
-        newValue: taskDetails?.suggestion || '[]',
-      };
-
-      updateTaskData(tagsData as TaskDetails);
-    } else {
-      const newValue =
-        isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval
-          ? 'approved'
-          : taskDetails?.suggestion;
-      const data = { newValue: newValue };
-      updateTaskData(data as TaskDetails);
-    }
+    updateTaskData(
+      getResolutionPayload(TaskResolutionType.Approved) as TaskDetails,
+      TaskResolutionType.Approved
+    );
   };
-  const onTaskReject = () => {
-    const updatedComment = 'Rejected';
-    if (isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval) {
-      const data = { newValue: 'Rejected' };
-      updateTaskData(data as TaskDetails);
-
-      return;
-    }
-    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
-      comment: updatedComment,
-    } as unknown as TaskDetails)
-      .then(() => {
-        showSuccessToast(t('server.task-closed-successfully'));
-        onAfterClose?.();
-        onUpdateEntityDetails?.();
-      })
-      .catch((err: AxiosError) => showErrorToast(err));
+  const onTaskReject = async () => {
+    updateTaskData(
+      getResolutionPayload(TaskResolutionType.Rejected) as TaskDetails,
+      TaskResolutionType.Rejected
+    );
   };
   const isCreator = isEqual(feed.createdBy, currentUser?.name);
   const checkIfUserPartOfTeam = useCallback(

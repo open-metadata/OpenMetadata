@@ -21,7 +21,7 @@ import { isEmpty, toLower, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -49,7 +49,6 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
@@ -60,9 +59,12 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
   getEntityDeleteMessage,
@@ -136,6 +138,10 @@ const DataProductsDetailsPage = ({
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
+  const location = useLocation();
+  const fromMarketplace =
+    (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
+    false;
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
@@ -162,7 +168,8 @@ const DataProductsDetailsPage = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [activeAnnouncement, setActiveAnnouncement] =
+    useState<AnnouncementEntity>();
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
@@ -189,7 +196,7 @@ const DataProductsDetailsPage = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const announcements = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncements(
         getEntityFeedLink(
           EntityType.DATA_PRODUCT,
           dataProduct.fullyQualifiedName ?? ''
@@ -240,10 +247,17 @@ const DataProductsDetailsPage = ({
       });
     }
 
-    items.push({
-      name: t('label.data-product-plural'),
-      url: dataProductBasePath,
-    });
+    items.push(
+      fromMarketplace
+        ? {
+            name: t('label.data-marketplace'),
+            url: ROUTES.DATA_MARKETPLACE,
+          }
+        : {
+            name: t('label.data-product-plural'),
+            url: dataProductBasePath,
+          }
+    );
 
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
@@ -253,7 +267,13 @@ const DataProductsDetailsPage = ({
     }
 
     return items;
-  }, [dataProduct.domains, isMarketplace, dataProductBasePath, t]);
+  }, [
+    dataProduct.domains,
+    isMarketplace,
+    fromMarketplace,
+    dataProductBasePath,
+    t,
+  ]);
 
   const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 

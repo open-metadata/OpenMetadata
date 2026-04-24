@@ -770,7 +770,7 @@ class DatalakeYieldTableNameTest(TestCase):
             ),
         ):
             results = list(
-                self.source.yield_table((table_name, TableType.Regular, None))
+                self.source.yield_table((table_name, TableType.Regular, None, None))
             )
 
         rights = [r.right for r in results if r.right is not None]
