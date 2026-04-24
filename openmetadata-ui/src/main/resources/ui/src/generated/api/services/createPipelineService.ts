@@ -146,6 +146,8 @@ export interface ConfigObject {
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of recent flow runs to fetch per flow.
      */
     numberOfStatus?: number;
     /**
@@ -406,7 +408,8 @@ export interface ConfigObject {
     /**
      * Tableau Site Name.
      */
-    siteName?: string;
+    siteName?:                  string;
+    supportsLineageExtraction?: boolean;
     [property: string]: any;
 }
 

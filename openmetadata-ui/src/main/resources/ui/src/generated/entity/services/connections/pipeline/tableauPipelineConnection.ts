@@ -21,11 +21,15 @@ export interface TableauPipelineConnection {
     /**
      * Types of methods used to authenticate to the tableau instance
      */
-    authType?: AuthenticationTypeForTableau;
+    authType: AuthenticationTypeForTableau;
     /**
      * Tableau Server URL.
      */
     hostPort: string;
+    /**
+     * Number of recent flow runs to fetch per flow.
+     */
+    numberOfStatus?: number;
     /**
      * Regex exclude or include pipelines that match the pattern.
      */
@@ -35,6 +39,7 @@ export interface TableauPipelineConnection {
      */
     siteName?:                   string;
     sslConfig?:                  Config;
+    supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type

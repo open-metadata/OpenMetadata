@@ -1970,6 +1970,8 @@ export interface ConfigObject {
     glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of recent flow runs to fetch per flow.
      */
     numberOfStatus?: number;
     /**

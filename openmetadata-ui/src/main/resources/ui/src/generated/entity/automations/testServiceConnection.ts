@@ -1790,6 +1790,8 @@ export interface ConfigObject {
     useEmulator?: boolean;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of recent flow runs to fetch per flow.
      */
     numberOfStatus?: number;
     /**
