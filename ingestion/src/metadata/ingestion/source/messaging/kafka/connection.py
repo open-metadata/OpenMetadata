@@ -159,7 +159,8 @@ def test_connection(
     def get_consumer_groups():
         future = client.admin_client.list_consumer_groups()
         result = future.result(timeout=10)
-        _ = [g.group_id for g in result.valid]
+        for error in result.errors or []:
+            logger.warning(f"Consumer group listing partial failure: {error}")
 
     test_fn = {
         "GetTopics": custom_executor,

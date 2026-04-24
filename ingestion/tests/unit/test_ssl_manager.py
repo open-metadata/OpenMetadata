@@ -65,8 +65,7 @@ class KafkaSourceSSLTest(TestCase):
     @patch(
         "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
     )
-    @patch("metadata.ingestion.source.messaging.kafka.metadata.SSLManager")
-    def test_init(self, mock_ssl_manager, test_connection):
+    def test_init_without_ssl_does_not_instantiate_ssl_manager(self, test_connection):
         test_connection.return_value = True
         config = WorkflowSource(
             **{
@@ -88,11 +87,16 @@ class KafkaSourceSSLTest(TestCase):
                 securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
             )
         )
-        kafka_source = KafkaSource(config, metadata)
+        with patch("metadata.utils.ssl_manager.SSLManager") as ssl_manager_cls:
+            kafka_source = KafkaSource(config, metadata)
+            self.assertIsNone(kafka_source.ssl_manager)
+            ssl_manager_cls.assert_not_called()
 
-        self.assertIsNone(kafka_source.ssl_manager)
-        mock_ssl_manager.assert_not_called()
-
+    @patch(
+        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
+    )
+    def test_init_with_ssl_configures_schema_registry(self, test_connection):
+        test_connection.return_value = True
         config_with_ssl = WorkflowSource(
             **{
                 "type": "kafka",
@@ -110,6 +114,13 @@ class KafkaSourceSSLTest(TestCase):
                 },
                 "sourceConfig": {"config": {"type": "MessagingMetadata"}},
             }
+        )
+        metadata = OpenMetadata(
+            OpenMetadataConnection(
+                hostPort="http://localhost:8585/api",
+                authProvider="openmetadata",
+                securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
+            )
         )
         kafka_source_with_ssl = KafkaSource(config_with_ssl, metadata)
 
@@ -141,14 +152,14 @@ class KafkaSourceSSLTest(TestCase):
                 "ssl.certificate.location"
             ),
         )
+        kafka_source_with_ssl.ssl_manager.cleanup_temp_files()
 
 
 class RedpandaSourceSSLTest(TestCase):
     @patch(
         "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
     )
-    @patch("metadata.ingestion.source.messaging.redpanda.metadata.SSLManager")
-    def test_init(self, mock_ssl_manager, test_connection):
+    def test_init_without_ssl_does_not_instantiate_ssl_manager(self, test_connection):
         test_connection.return_value = True
         config = WorkflowSource(
             **{
@@ -170,11 +181,16 @@ class RedpandaSourceSSLTest(TestCase):
                 securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
             )
         )
-        redpanda_source = RedpandaSource(config, metadata)
+        with patch("metadata.utils.ssl_manager.SSLManager") as ssl_manager_cls:
+            redpanda_source = RedpandaSource(config, metadata)
+            self.assertIsNone(redpanda_source.ssl_manager)
+            ssl_manager_cls.assert_not_called()
 
-        self.assertIsNone(redpanda_source.ssl_manager)
-        mock_ssl_manager.assert_not_called()
-
+    @patch(
+        "metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection"
+    )
+    def test_init_with_ssl_configures_schema_registry(self, test_connection):
+        test_connection.return_value = True
         config_with_ssl = WorkflowSource(
             **{
                 "type": "redpanda",
@@ -192,6 +208,13 @@ class RedpandaSourceSSLTest(TestCase):
                 },
                 "sourceConfig": {"config": {"type": "MessagingMetadata"}},
             }
+        )
+        metadata = OpenMetadata(
+            OpenMetadataConnection(
+                hostPort="http://localhost:8585/api",
+                authProvider="openmetadata",
+                securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
+            )
         )
         redpanda_source_with_ssl = RedpandaSource(config_with_ssl, metadata)
 
@@ -223,6 +246,7 @@ class RedpandaSourceSSLTest(TestCase):
                 "ssl.certificate.location"
             ),
         )
+        redpanda_source_with_ssl.ssl_manager.cleanup_temp_files()
 
 
 class CassandraSourceSSLTest(TestCase):

@@ -362,6 +362,9 @@ class TestConsumerGroupExtraction:
                 source, CommonBrokerSource
             )
         )
+        source._index_group_by_topic = CommonBrokerSource._index_group_by_topic.__get__(
+            source, CommonBrokerSource
+        )
         source._map_consumer_group_state = CommonBrokerSource._map_consumer_group_state
 
         mock_group_listing = MagicMock()
@@ -428,6 +431,53 @@ class TestConsumerGroupExtraction:
         mock_list_future.result.return_value = mock_list_result
         source.admin_client = MagicMock()
         source.admin_client.list_consumer_groups.return_value = mock_list_future
+
+        result = source._build_topic_consumer_groups_map()
+        assert result == {}
+
+    def test_build_topic_consumer_groups_map_skips_members_without_assignment(self):
+        """Members with no assignment or empty topic_partitions must not produce entries."""
+        from metadata.ingestion.source.messaging.common_broker_source import (
+            CommonBrokerSource,
+        )
+
+        source = MagicMock(spec=CommonBrokerSource)
+        source._build_topic_consumer_groups_map = (
+            CommonBrokerSource._build_topic_consumer_groups_map.__get__(
+                source, CommonBrokerSource
+            )
+        )
+        source._index_group_by_topic = CommonBrokerSource._index_group_by_topic.__get__(
+            source, CommonBrokerSource
+        )
+        source._map_consumer_group_state = CommonBrokerSource._map_consumer_group_state
+
+        mock_list_result = MagicMock()
+        mock_list_result.valid = [MagicMock(group_id="empty-group")]
+        mock_list_result.errors = []
+        mock_list_future = MagicMock()
+        mock_list_future.result.return_value = mock_list_result
+
+        source.admin_client = MagicMock()
+        source.admin_client.list_consumer_groups.return_value = mock_list_future
+
+        member_no_assignment = MagicMock()
+        member_no_assignment.assignment = None
+
+        member_empty_partitions = MagicMock()
+        member_empty_partitions.assignment.topic_partitions = []
+
+        mock_group_desc = MagicMock()
+        mock_group_desc.state = MagicMock(name="EMPTY")
+        mock_group_desc.state.name = "EMPTY"
+        mock_group_desc.partition_assignor = ""
+        mock_group_desc.members = [member_no_assignment, member_empty_partitions]
+
+        mock_future = MagicMock()
+        mock_future.result.return_value = mock_group_desc
+        source.admin_client.describe_consumer_groups.return_value = {
+            "empty-group": mock_future
+        }
 
         result = source._build_topic_consumer_groups_map()
         assert result == {}
@@ -515,6 +565,11 @@ class TestBatchEndOffsets:
         )
         source._collect_committed_offsets = (
             CommonBrokerSource._collect_committed_offsets.__get__(
+                source, CommonBrokerSource
+            )
+        )
+        source._fetch_group_committed_offsets = (
+            CommonBrokerSource._fetch_group_committed_offsets.__get__(
                 source, CommonBrokerSource
             )
         )

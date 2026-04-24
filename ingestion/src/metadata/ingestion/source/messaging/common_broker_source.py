@@ -17,6 +17,7 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
+from collections import defaultdict
 from typing import Iterable, Optional
 
 import confluent_kafka
@@ -63,13 +64,19 @@ from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 logger = ingestion_logger()
 
+ADMIN_CLIENT_TIMEOUT_SECONDS = 10
+END_OFFSET_BATCH_SIZE = 500
+SAMPLE_DATA_MESSAGE_LOOKBACK = 50
 
-def on_partitions_assignment_to_consumer(consumer, partitions):
-    # get offset tuple from the first partition
+
+def on_partitions_assignment_to_consumer(consumer, partitions) -> None:
     for partition in partitions:
         last_offset = consumer.get_watermark_offsets(partition)
-        # get latest 50 messages, if there are no more than 50 messages we try to fetch from beginning of the queue
-        partition.offset = last_offset[1] - 50 if last_offset[1] > 50 else 0
+        partition.offset = (
+            last_offset[1] - SAMPLE_DATA_MESSAGE_LOOKBACK
+            if last_offset[1] > SAMPLE_DATA_MESSAGE_LOOKBACK
+            else 0
+        )
     consumer.assign(partitions)
 
 
@@ -196,7 +203,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             for resource_value in concurrent.futures.as_completed(
                 iter(topic_config_resource.values())
             ):
-                config_response = resource_value.result(timeout=10)
+                config_response = resource_value.result(
+                    timeout=ADMIN_CLIENT_TIMEOUT_SECONDS
+                )
                 if "max.message.bytes" in config_response:
                     topic.maximumMessageSize = config_response.get(
                         "max.message.bytes", {}
@@ -402,13 +411,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def _build_topic_consumer_groups_map(self) -> dict:
         """
         Build a mapping of topic_name -> {group_id -> group_info} with
-        members, state, and committed offsets. Calls list_consumer_groups,
-        describe_consumer_groups, and list_consumer_group_offsets once per run.
+        members, state, and committed offsets. Calls list_consumer_groups
+        and describe_consumer_groups once per run, then fetches committed
+        offsets per group (confluent_kafka's list_consumer_group_offsets
+        accepts only one group per request).
         """
         topic_cg_map = {}
         try:
             list_future = self.admin_client.list_consumer_groups()
-            list_result = list_future.result(timeout=10)
+            list_result = list_future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
+            for error in list_result.errors or []:
+                logger.warning(f"Failed to list some consumer groups: {error}")
             group_ids = [g.group_id for g in list_result.valid]
             if not group_ids:
                 return topic_cg_map
@@ -416,40 +429,11 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             describe_futures = self.admin_client.describe_consumer_groups(group_ids)
             for group_id, future in describe_futures.items():
                 try:
-                    group_desc = future.result(timeout=10)
-                    for member in group_desc.members:
-                        if (
-                            not member.assignment
-                            or not member.assignment.topic_partitions
-                        ):
-                            continue
-                        for tp in member.assignment.topic_partitions:
-                            if tp.topic not in topic_cg_map:
-                                topic_cg_map[tp.topic] = {}
-                            cg_entry = topic_cg_map[tp.topic]
-                            if group_id not in cg_entry:
-                                cg_entry[group_id] = {
-                                    "state": self._map_consumer_group_state(
-                                        group_desc.state
-                                    ),
-                                    "partition_assignor": group_desc.partition_assignor,
-                                    "members": {},
-                                    "offsets": {},
-                                }
-                            cg_entry[group_id]["members"][member.member_id] = {
-                                "client_id": member.client_id,
-                                "host": member.host,
-                                "group_instance_id": getattr(
-                                    member, "group_instance_id", None
-                                ),
-                                "partitions": [
-                                    p.partition
-                                    for p in member.assignment.topic_partitions
-                                    if p.topic == tp.topic
-                                ],
-                            }
+                    group_desc = future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
                 except Exception as exc:
                     logger.debug(f"Failed to describe consumer group {group_id}: {exc}")
+                    continue
+                self._index_group_by_topic(group_id, group_desc, topic_cg_map)
 
             self._fetch_consumer_group_offsets(group_ids, topic_cg_map)
 
@@ -457,6 +441,34 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to extract consumer groups: {exc}")
         return topic_cg_map
+
+    def _index_group_by_topic(
+        self, group_id: str, group_desc, topic_cg_map: dict
+    ) -> None:
+        """Index a described consumer group into topic_cg_map by topic."""
+        state = self._map_consumer_group_state(group_desc.state)
+        assignor = group_desc.partition_assignor
+        for member in group_desc.members:
+            if not member.assignment or not member.assignment.topic_partitions:
+                continue
+            partitions_by_topic = defaultdict(list)
+            for tp in member.assignment.topic_partitions:
+                partitions_by_topic[tp.topic].append(tp.partition)
+            for topic, partitions in partitions_by_topic.items():
+                cg_entry = topic_cg_map.setdefault(topic, {})
+                if group_id not in cg_entry:
+                    cg_entry[group_id] = {
+                        "state": state,
+                        "partition_assignor": assignor,
+                        "members": {},
+                        "offsets": {},
+                    }
+                cg_entry[group_id]["members"][member.member_id] = {
+                    "client_id": member.client_id,
+                    "host": member.host,
+                    "group_instance_id": getattr(member, "group_instance_id", None),
+                    "partitions": partitions,
+                }
 
     def _fetch_consumer_group_offsets(
         self, group_ids: list, topic_cg_map: dict
@@ -483,27 +495,41 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         committed = {}
         for group_id in group_ids:
             try:
-                request = [ConsumerGroupTopicPartitions(group_id)]
-                offset_futures = self.admin_client.list_consumer_group_offsets(request)
-                for _, future in offset_futures.items():
-                    result = future.result(timeout=10)
-                    for tp in result.topic_partitions:
-                        if tp.topic not in topic_cg_map:
-                            continue
-                        if group_id not in topic_cg_map[tp.topic]:
-                            continue
-                        if tp.offset < 0:
-                            continue
-                        committed.setdefault(group_id, {})[
-                            (tp.topic, tp.partition)
-                        ] = tp.offset
+                offsets = self._fetch_group_committed_offsets(group_id, topic_cg_map)
             except Exception as exc:
                 logger.debug(
                     f"Failed to fetch offsets for consumer group {group_id}: {exc}"
                 )
+                continue
+            if offsets:
+                committed[group_id] = offsets
         return committed
 
-    def _batch_get_end_offsets(self, committed: dict, batch_size: int = 500) -> dict:
+    def _fetch_group_committed_offsets(self, group_id: str, topic_cg_map: dict) -> dict:
+        """Fetch committed offsets for a single group.
+
+        confluent_kafka's list_consumer_group_offsets accepts only one
+        ConsumerGroupTopicPartitions per call, and returns a dict of
+        futures keyed by group_id with exactly one entry.
+        """
+        request = [ConsumerGroupTopicPartitions(group_id)]
+        offset_futures = self.admin_client.list_consumer_group_offsets(request)
+        future = next(iter(offset_futures.values()))
+        result = future.result(timeout=ADMIN_CLIENT_TIMEOUT_SECONDS)
+        group_offsets = {}
+        for tp in result.topic_partitions:
+            if tp.offset < 0:
+                continue
+            if tp.topic not in topic_cg_map:
+                continue
+            if group_id not in topic_cg_map[tp.topic]:
+                continue
+            group_offsets[(tp.topic, tp.partition)] = tp.offset
+        return group_offsets
+
+    def _batch_get_end_offsets(
+        self, committed: dict, batch_size: int = END_OFFSET_BATCH_SIZE
+    ) -> dict:
         """Fetch end offsets for all unique topic-partitions in batched RPCs."""
         from confluent_kafka.admin import OffsetSpec
 
@@ -526,7 +552,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 result = self.admin_client.list_offsets(tp_spec)
                 for tp, future in result.items():
                     try:
-                        offset_info = future.result(timeout=10)
+                        offset_info = future.result(
+                            timeout=ADMIN_CLIENT_TIMEOUT_SECONDS
+                        )
                         end_offsets[(tp.topic, tp.partition)] = offset_info.offset
                     except Exception:
                         end_offsets[(tp.topic, tp.partition)] = -1
