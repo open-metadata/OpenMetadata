@@ -289,71 +289,86 @@ test.describe(
       page,
     }) => {
       test.slow();
+      let createdTestDefinitionId: string | undefined;
 
-      await test.step('Open create form', async () => {
-        await page.goto('/test-library');
-        await page.getByTestId('add-test-definition-button').click();
-        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
-      });
+      try {
+        await test.step('Open create form', async () => {
+          await page.goto('/test-library');
+          await page.getByTestId('add-test-definition-button').click();
+          await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+        });
 
-      await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
-        // Fill required fields except supportedDataTypes
-        await page.locator('#name').fill(`validation-test-${uuid()}`);
-        await page.locator('#entityType').click();
-        await page
-          .locator('.ant-select-dropdown:visible')
-          .locator('.ant-select-item-option-content:has-text("TABLE")')
-          .first()
-          .click();
+        await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
+          // Fill required fields except supportedDataTypes
+          await page.locator('#name').fill(`validation-test-${uuid()}`);
+          await page.locator('#entityType').click();
+          await page
+            .locator('.ant-select-dropdown:visible')
+            .locator('.ant-select-item-option-content:has-text("TABLE")')
+            .first()
+            .click();
 
-        // Submit the form
-        await page.getByTestId('save-test-definition').click();
+          // Submit the form
+          await page.getByTestId('save-test-definition').click();
 
-        // Expect validation error on supportedDataTypes
-        const supportedDataTypesItem = page
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Supported Data Types' });
+          // Expect validation error on supportedDataTypes
+          const supportedDataTypesItem = page
+            .locator('.ant-form-item')
+            .filter({ hasText: 'Supported Data Types' });
 
-        await expect(
-          supportedDataTypesItem.locator('.ant-form-item-explain-error')
-        ).toBeVisible();
-      });
+          await expect(
+            supportedDataTypesItem.locator('.ant-form-item-explain-error')
+          ).toBeVisible();
+        });
 
-      await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
-        // Remove OpenMetadata from testPlatforms
-        const testPlatformsSelector = page
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Test Platforms' })
-          .locator('.ant-select');
-        const openMetadataTag = testPlatformsSelector.locator(
-          '.ant-select-selection-item[title="OpenMetadata"] .ant-select-selection-item-remove'
-        );
-        await openMetadataTag.click();
+        await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
+          // Remove OpenMetadata from testPlatforms
+          const testPlatformsSelector = page
+            .locator('.ant-form-item')
+            .filter({ hasText: 'Test Platforms' })
+            .locator('.ant-select');
+          const openMetadataTag = testPlatformsSelector.locator(
+            '.ant-select-selection-item[title="OpenMetadata"] .ant-select-selection-item-remove'
+          );
+          await openMetadataTag.click();
 
-        // Add dbt
-        await page.locator('#testPlatforms').click();
-        await page
-          .locator('.ant-select-dropdown:visible')
-          .locator('.ant-select-item-option-content:has-text("dbt")')
-          .first()
-          .click();
+          // Add dbt
+          await page.locator('#testPlatforms').click();
+          await page
+            .locator('.ant-select-dropdown:visible')
+            .locator('.ant-select-item-option-content:has-text("dbt")')
+            .first()
+            .click();
 
-        // Close dropdown
-        await page.keyboard.press('Escape');
+          // Close dropdown
+          await page.keyboard.press('Escape');
 
-        // Submit the form — supportedDataTypes should no longer block submission
-        const testDefinitionResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('save-test-definition').click();
+          // Submit the form — supportedDataTypes should no longer block submission
+          const testDefinitionResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'POST'
+          );
+          await page.getByTestId('save-test-definition').click();
 
-        const responseData = await testDefinitionResponse;
-        expect(responseData.status()).toBe(201);
+          const responseData = await testDefinitionResponse;
+          expect(responseData.status()).toBe(201);
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
-      });
+          const responseBody = await responseData.json();
+          createdTestDefinitionId = responseBody.id;
+
+          await expect(page.getByText(/created successfully/i)).toBeVisible();
+        });
+      } finally {
+        if (createdTestDefinitionId) {
+          const apiContext = await getApiContext(page);
+          const deleteResponse = await apiContext.delete(
+            `/api/v1/dataQuality/testDefinitions/${createdTestDefinitionId}`
+          );
+
+          expect(deleteResponse.ok()).toBeTruthy();
+        }
+      }
     });
 
     test('should cancel form and close drawer', async ({ page }) => {
