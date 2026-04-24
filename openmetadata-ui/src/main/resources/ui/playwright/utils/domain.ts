@@ -1839,3 +1839,87 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
 };
+
+const parseRequestBody = (postData: string | null | undefined) => {
+  if (!postData) {
+    return {};
+  }
+  try {
+    return JSON.parse(postData) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
+const matchesDomainBulkCall = (
+  url: string,
+  method: string,
+  action: 'add' | 'remove'
+) =>
+  method === 'PUT' &&
+  /\/api\/v1\/domains\/[^/]+\/assets\/(add|remove)$/.test(url) &&
+  url.endsWith(`/assets/${action}`);
+
+export const waitForDomainAssetsAddDryRun = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'add')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun === true;
+  });
+
+export const waitForDomainAssetsAddCommit = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'add')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun !== true;
+  });
+
+export const waitForDomainAssetsRemoveDryRun = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'remove')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun === true;
+  });
+
+export const waitForDomainAssetsRemoveCommit = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'remove')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun !== true;
+  });
+
+export const addAssetToDomainViaApi = async (
+  apiContext: APIRequestContext,
+  domain: Domain,
+  asset: { id: string; type: string }
+) => {
+  const fqn =
+    domain.responseData?.fullyQualifiedName ?? domain.data.fullyQualifiedName;
+  const response = await apiContext.put(
+    `/api/v1/domains/${encodeURIComponent(fqn ?? '')}/assets/add`,
+    {
+      data: { assets: [asset] },
+    }
+  );
+
+  if (!response.ok()) {
+    const text = await response.text();
+    throw new Error(
+      `addAssetToDomainViaApi failed (${response.status()}): ${text}`
+    );
+  }
+
+  return response.json();
+};
