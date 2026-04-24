@@ -940,23 +940,24 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.GLOSSARY_TERM_RELATIONS}`,
             icon: GlossaryIcon,
           },
-          {
-            label: 'Task Forms',
-            description:
-              'Manage the payload schemas and UI schemas used to create tasks.',
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.TASK_FORMS}`,
-            icon: GovernanceIcon,
-          },
-          {
-            label: t('label.workflow-plural'),
-            description: t(
-              'message.governance-workflow-definitions-description'
-            ),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
-            icon: WorkflowsSettingsIcon,
-          },
+          // TODO: Re-enable Task Forms and Workflows once the feature is ready
+          // {
+          //   label: 'Task Forms',
+          //   description:
+          //     'Manage the payload schemas and UI schemas used to create tasks.',
+          //   isProtected: Boolean(isAdminUser),
+          //   key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.TASK_FORMS}`,
+          //   icon: GovernanceIcon,
+          // },
+          // {
+          //   label: t('label.workflow-plural'),
+          //   description: t(
+          //     'message.governance-workflow-definitions-description'
+          //   ),
+          //   isProtected: Boolean(isAdminUser),
+          //   key: `${GlobalSettingsMenuCategory.GOVERNANCE}.${GlobalSettingOptions.WORKFLOW_DEFINITIONS}`,
+          //   icon: WorkflowsSettingsIcon,
+          // },
         ],
       },
     ];
