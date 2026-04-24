@@ -13,27 +13,13 @@
 
 import { Check } from '@untitledui/icons';
 import { normalizeHexColor } from '@/colors/colorValidation';
+import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
 import { Box } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
 import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 
-export const DEFAULT_COLOR_OPTIONS = [
-  '#1470EF',
-  '#7D81E9',
-  '#F14C75',
-  '#F689A6',
-  '#05C4EA',
-  '#05A580',
-  '#FFB01A',
-  '#BF4CF1',
-  '#99AADF',
-  '#C0B3F2',
-  '#EDB3B3',
-  '#ECB892',
-  '#90DAE3',
-  '#82E6C4',
-];
+export const DEFAULT_COLOR_OPTIONS = ENTITY_PALETTE_HEX;
 
 export interface ColorPickerFieldProps {
   ariaLabel?: string;
