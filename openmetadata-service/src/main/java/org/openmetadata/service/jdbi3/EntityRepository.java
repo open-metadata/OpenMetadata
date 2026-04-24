@@ -4380,6 +4380,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   private void processDeletionBatch(
       List<UUID> entityIds, String entityType, boolean hardDelete, String updatedBy) {
+    if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
+        || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
+      LOG.debug(
+          "Skipping batch delete for time-series entity {} (handled via cleanup)", entityType);
+      return;
+    }
 
     LOG.debug("Processing batch of {} {} entities", entityIds.size(), entityType);
 

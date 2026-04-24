@@ -4516,7 +4516,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         "There should be exactly 3 relationships to resolution statuses before delete");
 
     // 4. Hard delete the test case
-    java.util.Map<String, String> params = new java.util.HashMap<>();
+    Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
     client.testCases().delete(testCase.getId().toString(), params);

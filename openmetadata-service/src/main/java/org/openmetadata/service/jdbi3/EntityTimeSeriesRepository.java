@@ -388,6 +388,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  @Transaction
   public void deleteById(UUID id, boolean hardDelete) {
     if (!hardDelete) {
       // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
