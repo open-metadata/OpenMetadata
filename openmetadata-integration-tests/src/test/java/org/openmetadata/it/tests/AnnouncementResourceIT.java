@@ -50,7 +50,8 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     supportsPatch = true;
     supportsOwners = true;
     supportsSearchIndex = false;
-    supportsVersionHistory = true;
+    supportsVersionHistory = false;
+    supportsGetByVersion = false;
   }
 
   @Override
