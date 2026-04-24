@@ -208,6 +208,40 @@ export const updateSearchInputAndWait = async (
   await waitForAllLoadersToDisappear(page);
 };
 
+interface SearchInputOptions {
+  waitForSearchApi?: boolean;
+  searchApiPattern?: string;
+}
+
+export const searchFromSearchInput = async (
+  page: Page,
+  searchInput: Locator,
+  searchTerm: string,
+  options: SearchInputOptions = {}
+) => {
+  const {
+    waitForSearchApi = false,
+    searchApiPattern = '/api/v1/search/query',
+  } = options;
+
+  const searchResponsePromise =
+    waitForSearchApi && searchTerm
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes(searchApiPattern) &&
+            response.request().method() === 'GET' &&
+            response.url().includes(encodeURIComponent(searchTerm))
+        )
+      : undefined;
+
+  await updateSearchInputAndWait(page, searchInput, searchTerm);
+
+  if (searchResponsePromise) {
+    const searchResponse = await searchResponsePromise;
+    expect(searchResponse.status()).toBe(200);
+  }
+};
+
 export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.locator('[role="menu"].profile-dropdown').waitFor({

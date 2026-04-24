@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../constant/settings';
 import {
   descriptionBox,
   redirectToHomePage,
+  searchFromSearchInput,
   toastNotification,
   updateSearchInputAndWait,
   uuid,
@@ -170,25 +171,24 @@ export const verifyBotSearch = async (page: Page) => {
     `bot-link-${BOT_DETAILS.updatedBotName}`
   );
 
-  const searchBot = async (searchTerm: string) => {
-    const searchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.request().method() === 'GET' &&
-        response.url().includes(encodeURIComponent(searchTerm))
-    );
-
-    await updateSearchInputAndWait(page, searchInput, searchTerm);
-    await searchResponse;
-  };
-
-  await searchBot(BOT_DETAILS.updatedBotName);
+  await searchFromSearchInput(page, searchInput, BOT_DETAILS.updatedBotName, {
+    waitForSearchApi: true,
+  });
   await expect(createdBotLink).toBeVisible();
 
-  await searchBot(BOT_DETAILS.botEmail);
+  await searchFromSearchInput(page, searchInput, BOT_DETAILS.botEmail, {
+    waitForSearchApi: true,
+  });
   await expect(createdBotLink).toBeVisible();
 
-  await searchBot(`${BOT_DETAILS.updatedBotName}-no-match`);
+  await searchFromSearchInput(
+    page,
+    searchInput,
+    `${BOT_DETAILS.updatedBotName}-no-match`,
+    {
+      waitForSearchApi: true,
+    }
+  );
   await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
   await updateSearchInputAndWait(page, searchInput, '');
