@@ -35,7 +35,7 @@ class PinotJSONType(TypeDecorator):
 
     @property
     def python_type(self):
-        return dict
+        return Any
 
     def process_result_value(self, value: Optional[Any], dialect) -> Optional[Any]:
         if value is None or value is False or value == "":
