@@ -126,6 +126,23 @@ class SSLManager:
                 pass
         self.temp_files = []
 
+    def admin_api_http_kwargs(self) -> dict:
+        """Build requests.Session-compatible kwargs from admin-API SSL paths.
+
+        Returns a dict with ``verify`` set to the CA bundle path (when
+        configured) and ``client_cert`` as a ``(cert, key)`` tuple for mutual
+        TLS. Empty dict if no admin-API SSL material was registered.
+        """
+        ca_path = getattr(self, "ca_admin_api", None)
+        cert_path = getattr(self, "cert_admin_api", None)
+        key_path = getattr(self, "key_admin_api", None)
+        kwargs: dict = {}
+        if ca_path:
+            kwargs["verify"] = ca_path
+        if cert_path and key_path:
+            kwargs["client_cert"] = (cert_path, key_path)
+        return kwargs
+
     @singledispatchmethod
     def setup_ssl(self, connection):
         raise NotImplementedError(f"Connection {type(connection)} type not supported")

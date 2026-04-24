@@ -588,7 +588,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             partition_offsets = []
             total_lag = 0
-            for partition, offset_info in info.get("offsets", {}).items():
+            for partition, offset_info in sorted(info.get("offsets", {}).items()):
                 lag = offset_info.get("lag")
                 partition_offsets.append(
                     ConsumerGroupPartitionOffset(
@@ -616,3 +616,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def close(self):
         if self.generate_sample_data and self.consumer_client:
             self.consumer_client.close()
+        ssl_manager = getattr(self, "ssl_manager", None)
+        if ssl_manager:
+            ssl_manager.cleanup_temp_files()

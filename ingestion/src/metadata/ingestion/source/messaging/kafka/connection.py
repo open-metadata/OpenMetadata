@@ -158,7 +158,7 @@ def test_connection(
 
     def get_consumer_groups():
         future = client.admin_client.list_consumer_groups()
-        result = future.result(timeout=10)
+        result = future.result(timeout=TIMEOUT_SECONDS)
         for error in result.errors or []:
             logger.warning(f"Consumer group listing partial failure: {error}")
 

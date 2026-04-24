@@ -31,7 +31,9 @@ class KafkaSource(CommonBrokerSource):
         self.service_connection = cast(
             KafkaConnection, config.serviceConnection.root.config
         )
-        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        self.ssl_manager: Optional[SSLManager] = check_ssl_and_init(
+            self.service_connection
+        )
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(
                 self.service_connection

@@ -575,6 +575,40 @@ class TestConsumerGroupExtraction:
         groups = source._get_consumer_groups_for_topic("unknown-topic")
         assert groups is None
 
+    def test_partition_offsets_are_sorted(self):
+        """partitionOffsets must be emitted in ascending partition order."""
+        from metadata.ingestion.source.messaging.common_broker_source import (
+            CommonBrokerSource,
+        )
+
+        source = MagicMock(spec=CommonBrokerSource)
+        source._get_consumer_groups_for_topic = (
+            CommonBrokerSource._get_consumer_groups_for_topic.__get__(
+                source, CommonBrokerSource
+            )
+        )
+        source._topic_consumer_groups = {
+            "my-topic": {
+                "group-1": {
+                    "state": "Stable",
+                    "partition_assignor": "range",
+                    "members": {},
+                    # Intentionally unordered: 3, 0, 2, 1
+                    "offsets": {
+                        3: {"current_offset": 30, "end_offset": 100, "lag": 70},
+                        0: {"current_offset": 10, "end_offset": 100, "lag": 90},
+                        2: {"current_offset": 20, "end_offset": 100, "lag": 80},
+                        1: {"current_offset": 15, "end_offset": 100, "lag": 85},
+                    },
+                }
+            }
+        }
+
+        groups = source._get_consumer_groups_for_topic("my-topic")
+        assert groups is not None
+        partition_numbers = [po.partition for po in groups[0].partitionOffsets]
+        assert partition_numbers == [0, 1, 2, 3]
+
 
 class TestBatchEndOffsets:
     """Test batched end-offset fetching in _fetch_consumer_group_offsets"""
@@ -734,3 +768,37 @@ class TestBatchEndOffsets:
         assert len(end_offsets) == 3
         for offset in end_offsets.values():
             assert offset == -1
+
+
+class TestCloseCleanup:
+    """CommonBrokerSource.close() must clean up SSL temp files."""
+
+    def test_close_cleans_up_ssl_manager(self):
+        from metadata.ingestion.source.messaging.common_broker_source import (
+            CommonBrokerSource,
+        )
+
+        source = MagicMock(spec=CommonBrokerSource)
+        source.close = CommonBrokerSource.close.__get__(source, CommonBrokerSource)
+        source.generate_sample_data = False
+        source.consumer_client = None
+        mock_ssl_manager = MagicMock()
+        source.ssl_manager = mock_ssl_manager
+
+        source.close()
+
+        mock_ssl_manager.cleanup_temp_files.assert_called_once()
+
+    def test_close_without_ssl_manager_is_a_noop(self):
+        from metadata.ingestion.source.messaging.common_broker_source import (
+            CommonBrokerSource,
+        )
+
+        source = MagicMock(spec=CommonBrokerSource)
+        source.close = CommonBrokerSource.close.__get__(source, CommonBrokerSource)
+        source.generate_sample_data = False
+        source.consumer_client = None
+        source.ssl_manager = None
+
+        # Should not raise
+        source.close()

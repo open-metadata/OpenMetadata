@@ -81,7 +81,7 @@ def test_connection(
 
     def get_consumer_groups():
         future = client.admin_client.list_consumer_groups()
-        result = future.result(timeout=10)
+        result = future.result(timeout=TIMEOUT_SECONDS)
         for error in result.errors or []:
             logger.warning(f"Consumer group listing partial failure: {error}")
 
@@ -98,15 +98,7 @@ def test_connection(
         from metadata.utils.ssl_manager import check_ssl_and_init
 
         ssl_manager = check_ssl_and_init(service_connection)
-        client_kwargs: dict = {}
-        if ssl_manager:
-            ca_path = getattr(ssl_manager, "ca_admin_api", None)
-            cert_path = getattr(ssl_manager, "cert_admin_api", None)
-            key_path = getattr(ssl_manager, "key_admin_api", None)
-            if ca_path:
-                client_kwargs["verify"] = ca_path
-            if cert_path and key_path:
-                client_kwargs["client_cert"] = (cert_path, key_path)
+        client_kwargs = ssl_manager.admin_api_http_kwargs() if ssl_manager else {}
         try:
             admin_client = RedpandaAdminClient(
                 str(service_connection.redpandaAdminApiUrl), **client_kwargs
