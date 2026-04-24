@@ -32,21 +32,6 @@ body:
         - Other
     validations:
       required: true
-  - type: dropdown
-    id: pipeline_type
-    attributes:
-      label: Ingestion pipeline type
-      description: Which pipeline was running when the bug occurred?
-      options:
-        - Metadata
-        - Lineage
-        - Profiler
-        - Usage
-        - dbt
-        - Test Suite
-        - Not applicable
-    validations:
-      required: true
   - type: textarea
     id: describe
     attributes:
