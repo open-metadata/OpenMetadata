@@ -248,22 +248,22 @@ export const getUpdatedStateFromFormState = <T,>(
     // min, hour values in a state should be a string
     // which can be parsed to number to be a valid values for the
     // respective cron select fields.
-    min = isNaN(toNumber(min)) ? '0' : min;
-    hour = isNaN(toNumber(hour)) ? '0' : hour;
+    min = Number.isNaN(toNumber(min)) ? '0' : min;
+    hour = Number.isNaN(toNumber(hour)) ? '0' : hour;
     const cronValue = newState.cron?.split(' ');
 
     switch (newState.selectedPeriod) {
       case 'week':
         // For selected period week, dow should be a valid value i.e. a number string
         // and the dom should be '*'
-        dow = isNaN(toNumber(dow)) ? '1' : dow;
+        dow = Number.isNaN(toNumber(dow)) ? '1' : dow;
         dom = '*';
 
         break;
       case 'month':
         // For selected period month, dom should be a valid value i.e. a number string
         // and the dow should be '*'
-        dom = isNaN(toNumber(dom)) ? '1' : dom;
+        dom = Number.isNaN(toNumber(dom)) ? '1' : dom;
         dow = '*';
 
         break;

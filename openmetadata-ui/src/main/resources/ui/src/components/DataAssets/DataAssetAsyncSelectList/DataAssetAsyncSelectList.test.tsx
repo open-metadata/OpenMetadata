@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
@@ -143,10 +144,7 @@ describe('DataAssetAsyncSelectList', () => {
     });
 
     const { container } = render(
-      <DataAssetAsyncSelectList
-        mode="multiple"
-        searchIndex={SearchIndex.USER}
-      />
+      <DataAssetAsyncSelectList multiple searchIndex={SearchIndex.USER} />
     );
 
     await act(async () => {
@@ -162,6 +160,7 @@ describe('DataAssetAsyncSelectList', () => {
 
     const mockOptions: DataAssetOption[] = [
       {
+        id: 'test-1',
         displayName: 'Test',
         label: 'Test',
         reference: {
@@ -182,7 +181,7 @@ describe('DataAssetAsyncSelectList', () => {
     );
 
     const { container } = render(
-      <DataAssetAsyncSelectList mode="multiple" onChange={mockOnChange} />
+      <DataAssetAsyncSelectList multiple onChange={mockOnChange} />
     );
 
     await act(async () => {
@@ -211,9 +210,7 @@ describe('DataAssetAsyncSelectList', () => {
     const placeholder = 'test placeholder';
 
     await act(async () => {
-      render(
-        <DataAssetAsyncSelectList mode="multiple" placeholder={placeholder} />
-      );
+      render(<DataAssetAsyncSelectList multiple placeholder={placeholder} />);
     });
 
     expect(screen.getByText(placeholder)).toBeInTheDocument();
@@ -223,6 +220,7 @@ describe('DataAssetAsyncSelectList', () => {
     const defaultValue = ['1'];
     const initialOptions: DataAssetOption[] = [
       {
+        id: '1',
         displayName: 'Test',
         label: 'Test',
         reference: { id: '1', type: 'table' },
@@ -233,9 +231,9 @@ describe('DataAssetAsyncSelectList', () => {
     await act(async () => {
       render(
         <DataAssetAsyncSelectList
+          multiple
           defaultValue={defaultValue}
           initialOptions={initialOptions}
-          mode="multiple"
         />
       );
     });
@@ -247,6 +245,7 @@ describe('DataAssetAsyncSelectList', () => {
     const defaultValue = ['1'];
     const initialOptions: DataAssetOption[] = [
       {
+        id: '1',
         displayName: 'Test',
         label: 'Test',
         reference: { id: '1', type: 'table' },
@@ -257,9 +256,9 @@ describe('DataAssetAsyncSelectList', () => {
     await act(async () => {
       render(
         <DataAssetAsyncSelectList
+          multiple
           defaultValue={defaultValue}
           initialOptions={initialOptions}
-          mode="multiple"
         />
       );
     });
@@ -282,10 +281,7 @@ describe('DataAssetAsyncSelectList', () => {
     });
 
     const { container } = render(
-      <DataAssetAsyncSelectList
-        mode="multiple"
-        searchIndex={SearchIndex.USER}
-      />
+      <DataAssetAsyncSelectList multiple searchIndex={SearchIndex.USER} />
     );
 
     await act(async () => {

@@ -40,7 +40,7 @@ import { StateValue } from './ScheduleInterval.interface';
 
 export interface ScheduleIntervalV1Props {
   value?: string;
-  onChange?: (value: string | undefined) => void;
+  onChange?: (value: string | null) => void;
   disabled?: boolean;
   includePeriodOptions?: string[];
   defaultSchedule?: string;
@@ -135,8 +135,8 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       setSelectedSchedular(schedularValue);
 
       if (schedularValue === SchedularOptions.ON_DEMAND) {
-        setState((prev) => ({ ...prev, cron: undefined }));
-        onChange?.(undefined);
+        setState((prev) => ({ ...prev, cron: null }));
+        onChange?.(null);
       } else {
         // When switching to schedule, use default schedule
         const nonEmptyScheduleValue = getDefaultScheduleValue({
@@ -145,7 +145,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
         });
         const newState = getStateValue(nonEmptyScheduleValue);
         setState(newState);
-        onChange?.(newState.cron);
+        onChange?.(newState.cron ?? null);
       }
     },
     [includePeriodOptions, defaultSchedule, onChange]
@@ -208,7 +208,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     if (value !== cronString) {
       if (isEmpty(value)) {
         setSelectedSchedular(SchedularOptions.ON_DEMAND);
-        setState((prev) => ({ ...prev, cron: undefined }));
+        setState((prev) => ({ ...prev, cron: null }));
       } else {
         setSelectedSchedular(SchedularOptions.SCHEDULE);
         const newState = getStateValue(value, initialDefaultSchedule);
@@ -261,7 +261,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                     placeholder={t('label.please-enter-value', {
                       name: t('label.cron'),
                     })}
-                    value={state.cron}
+                    value={state.cron ?? ''}
                     onChange={(e) => {
                       const cronValue = e.target.value;
                       setState((prev) => ({ ...prev, cron: cronValue }));

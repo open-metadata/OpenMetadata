@@ -43,7 +43,7 @@ export type ScheduleIntervalProps<T> = {
 };
 
 export interface WorkflowExtraConfig {
-  cron?: string;
+  cron: string | null;
   enableDebugLog?: boolean;
 }
 
@@ -64,7 +64,7 @@ export interface StateValue {
   min: string;
   dow: string;
   dom: string;
-  cron?: string;
+  cron: string | null;
 }
 
 export interface CronOption {

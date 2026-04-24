@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType } from 'antd/lib/select';
+import type { SelectItemType } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 
-export interface DataAssetOption extends DefaultOptionType {
+export interface DataAssetOption extends SelectItemType {
   reference: EntityReference;
   displayName: string;
+  name?: string;
+  value: string;
 }
 
 export interface FetchOptionsResponse {
@@ -26,11 +29,12 @@ export interface FetchOptionsResponse {
 }
 
 export interface DataAssetAsyncSelectListProps {
-  mode?: 'multiple';
+  multiple?: boolean;
   autoFocus?: boolean;
   id?: string;
   className?: string;
   placeholder?: string;
+  popoverClassName?: string;
   value?: DataAssetOption | DataAssetOption[] | string | string[];
   debounceTimeout?: number;
   defaultValue?: string[];
@@ -39,4 +43,5 @@ export interface DataAssetAsyncSelectListProps {
   onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
   filterFqns?: string[];
   queryFilter?: Record<string, unknown>;
+  renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
 }
