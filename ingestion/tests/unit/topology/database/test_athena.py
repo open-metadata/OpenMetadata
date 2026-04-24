@@ -351,6 +351,7 @@ class TestAthenaService(unittest.TestCase):
         )
         assert column_lineage == EXPECTED_COLUMN_LINEAGE
 
+
 SUBMISSION_DT = datetime(2024, 1, 2, 10, 0, 0)
 COMPLETION_DT = datetime(2024, 1, 2, 10, 5, 0)
 
@@ -417,17 +418,11 @@ def athena_source():
             config.workflowConfig.openMetadataServerConfig,
         )
 
-    source.context.get().__dict__[
-        "database_schema"
-    ] = MOCK_DATABASE_SCHEMA.name.root
-    source.context.get().__dict__[
-        "database_service"
-    ] = MOCK_DATABASE_SERVICE.name.root
+    source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
     source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
     source._string_property_type_ref = PropertyType(
-        EntityReference(
-            id=UUID("00000000-0000-0000-0000-000000000001"), type="type"
-        )
+        EntityReference(id=UUID("00000000-0000-0000-0000-000000000001"), type="type")
     )
     return source
 
@@ -475,13 +470,9 @@ class TestGetTableExtensionsEarlyExits:
         assert athena_source.get_table_extensions(MOCK_TABLE_NAME) is None
 
     def test_returns_none_when_query_yields_no_properties(self, athena_source):
-        with patch.object(
-            athena_source, "_fetch_iceberg_properties", return_value={}
-        ):
+        with patch.object(athena_source, "_fetch_iceberg_properties", return_value={}):
             assert (
-                athena_source.get_table_extensions(
-                    MOCK_TABLE_NAME, TableType.Iceberg
-                )
+                athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
                 is None
             )
 
@@ -491,9 +482,7 @@ class TestGetTableExtensionsEarlyExits:
             athena_source, "_fetch_iceberg_properties", return_value=props
         ), patch.object(athena_source, "metadata"):
             assert (
-                athena_source.get_table_extensions(
-                    MOCK_TABLE_NAME, TableType.Iceberg
-                )
+                athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
                 is None
             )
 
@@ -605,12 +594,8 @@ class TestGetTableExtensionsSanitization:
             "_fetch_iceberg_properties",
             side_effect=[props_first, props_second],
         ), patch.object(athena_source, "metadata"):
-            r1 = athena_source.get_table_extensions(
-                "t1", TableType.Iceberg
-            )
-            r2 = athena_source.get_table_extensions(
-                "t2", TableType.Iceberg
-            )
+            r1 = athena_source.get_table_extensions("t1", TableType.Iceberg)
+            r2 = athena_source.get_table_extensions("t2", TableType.Iceberg)
 
         assert list(r1.keys()) == list(r2.keys())
 
@@ -688,9 +673,7 @@ class TestGetTableExtensionsDedup:
 
         assert mock_metadata.create_or_update_custom_property.call_count == 2
 
-    def test_registration_failure_does_not_mark_prop_processed(
-        self, athena_source
-    ):
+    def test_registration_failure_does_not_mark_prop_processed(self, athena_source):
         """A failed registration must not be cached — so a retry on the next table can succeed."""
         props = {"k1": "v1"}
         with patch.object(
@@ -775,9 +758,7 @@ class TestFetchIcebergProperties:
 
         athena_source._fetch_iceberg_properties("my_schema", "my_table")
 
-        execute_call = (
-            mock_engine.connect.return_value.__enter__.return_value.execute
-        )
+        execute_call = mock_engine.connect.return_value.__enter__.return_value.execute
         executed_sql = str(execute_call.call_args.args[0])
         assert "my_schema" in executed_sql
         assert "my_table$properties" in executed_sql
