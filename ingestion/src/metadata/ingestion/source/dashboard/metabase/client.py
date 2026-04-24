@@ -36,7 +36,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
 )
 from metadata.utils.constants import (
     AUTHORIZATION_HEADER,
-    DEFAULT_DASHBAORD,
+    DEFAULT_DASHBOARD,
     NO_ACCESS_TOKEN,
 )
 from metadata.utils.helpers import clean_uri
@@ -196,7 +196,7 @@ class MetabaseClient:
             MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
         """
         return MetabaseDashboardDetails(
-            id=DEFAULT_DASHBAORD,
+            id=DEFAULT_DASHBOARD,
             card_ids=orphan_charts_id,
         )
 
@@ -234,7 +234,7 @@ class MetabaseClient:
         """
         if not dashboard_id:
             return None  # don't call api if dashboard_id is None
-        if dashboard_id == DEFAULT_DASHBAORD:
+        if dashboard_id == DEFAULT_DASHBOARD:
             return self._create_default_dashboard_details(orphan_charts_id)
         try:
             resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
