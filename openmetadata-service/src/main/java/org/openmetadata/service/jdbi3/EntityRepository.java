@@ -4380,10 +4380,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   private void processDeletionBatch(
       List<UUID> entityIds, String entityType, boolean hardDelete, String updatedBy) {
-    if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
-        || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
-      LOG.debug(
-          "Skipping batch delete for time-series entity {} (handled via cleanup)", entityType);
+    if (Entity.isTimeSeriesEntity(entityType)) {
+      if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
+          || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
+        LOG.debug(
+            "Skipping batch delete for time-series entity {} (handled via cleanup)", entityType);
+        return;
+      }
+      for (UUID entityId : entityIds) {
+        Entity.getEntityTimeSeriesRepository(entityType).deleteById(entityId, hardDelete);
+      }
       return;
     }
 

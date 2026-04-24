@@ -740,14 +740,22 @@ public final class Entity {
     return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
+  public static boolean isTimeSeriesEntity(String entityType) {
+    return ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
+  }
+
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
-    if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
-        || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
-      LOG.debug(
-          "Skipping delete for time-series entity {} with id {} (handled via cleanup)",
-          entityType,
-          entityId);
+    if (isTimeSeriesEntity(entityType)) {
+      if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
+          || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
+        LOG.debug(
+            "Skipping delete for time-series entity {} with id {} (handled via cleanup)",
+            entityType,
+            entityId);
+        return;
+      }
+      getEntityTimeSeriesRepository(entityType).deleteById(entityId, hardDelete);
       return;
     }
     EntityRepository<?> dao = getEntityRepository(entityType);
