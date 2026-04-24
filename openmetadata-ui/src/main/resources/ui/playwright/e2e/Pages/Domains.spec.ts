@@ -42,6 +42,7 @@ import {
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
+  addAssetToDomainViaApi,
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
@@ -63,6 +64,8 @@ import {
   verifyDataProductsCount,
   verifyDomain,
   verifyDomainOnAssetPages,
+  waitForDomainAssetsAddCommit,
+  waitForDomainAssetsAddDryRun,
 } from '../../utils/domain';
 import {
   assignGlossaryTerm,
@@ -3316,6 +3319,267 @@ test.describe('Domain Tree View Functionality', () => {
       await testDomain.delete(apiContext);
       await testTag.delete(apiContext);
       await testClassification.delete(apiContext);
+      await afterAction();
+    }
+  });
+});
+
+test.describe('Domain asset dryRun — add confirmation', () => {
+  test.slow(true);
+
+  const openDomainAssetsAddModal = async (page: Page, domain: Domain) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.data);
+    await page.getByTestId('assets').click();
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('domain-details-add-button').click();
+    const assetRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=all&*'
+    );
+    await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+    await assetRes;
+  };
+
+  const pickAssetInModal = async (page: Page, table: TableClass) => {
+    const name = table.entityResponseData.name ?? '';
+    const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        name
+      )}&index=all&from=0&size=25&*`
+    );
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
+    await searchRes;
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  };
+
+  test('shows preview modal on cross-domain move and commits on Move Anyway', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domainA = new Domain();
+    const domainB = new Domain();
+    const table = new TableClass();
+
+    try {
+      await Promise.all([
+        domainA.create(apiContext),
+        domainB.create(apiContext),
+        table.create(apiContext),
+      ]);
+      await addAssetToDomainViaApi(apiContext, domainA, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+
+      await openDomainAssetsAddModal(page, domainB);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      await page.getByTestId('save-btn').click();
+      const dryRunResponse = await dryRunPromise;
+
+      const dryRunBody = JSON.parse(
+        dryRunResponse.request().postData() ?? '{}'
+      );
+
+      expect(dryRunBody.dryRun).toBe(true);
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).toBeVisible();
+
+      const warnings = warningModal.getByTestId('add-dry-run-warnings');
+
+      await expect(warnings).toContainText('will be moved from');
+      await expect(warnings).toContainText(
+        domainA.data.fullyQualifiedName ?? ''
+      );
+
+      const commitPromise = waitForDomainAssetsAddCommit(page);
+      await warningModal.getByTestId('save-button').click();
+      const commitResponse = await commitPromise;
+      const commitBody = JSON.parse(
+        commitResponse.request().postData() ?? '{}'
+      );
+
+      expect(commitBody.dryRun).not.toBe(true);
+
+      await expect(warningModal).not.toBeVisible();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 1);
+    } finally {
+      await table.delete(apiContext);
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('cancel on preview modal aborts the move', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domainA = new Domain();
+    const domainB = new Domain();
+    const table = new TableClass();
+
+    try {
+      await Promise.all([
+        domainA.create(apiContext),
+        domainB.create(apiContext),
+        table.create(apiContext),
+      ]);
+      await addAssetToDomainViaApi(apiContext, domainA, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+
+      await openDomainAssetsAddModal(page, domainB);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      const commitOnCancel = page
+        .waitForRequest(
+          (req) => {
+            if (
+              req.method() !== 'PUT' ||
+              !/\/api\/v1\/domains\/[^/]+\/assets\/add$/.test(req.url())
+            ) {
+              return false;
+            }
+            const body = JSON.parse(req.postData() ?? '{}');
+
+            return body.dryRun !== true;
+          },
+          { timeout: 2000 }
+        )
+        .catch(() => null);
+
+      await page.getByTestId('save-btn').click();
+      await dryRunPromise;
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).toBeVisible();
+      await warningModal.getByTestId('cancel').click();
+      await expect(warningModal).not.toBeVisible();
+
+      expect(await commitOnCancel).toBeNull();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 0);
+    } finally {
+      await table.delete(apiContext);
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('preview names affected data products when moving across domains', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domainA = new Domain();
+    const domainB = new Domain();
+    const table = new TableClass();
+    const dataProduct = new DataProduct([domainA]);
+
+    try {
+      await Promise.all([
+        domainA.create(apiContext),
+        domainB.create(apiContext),
+        table.create(apiContext),
+      ]);
+      await addAssetToDomainViaApi(apiContext, domainA, {
+        id: table.entityResponseData.id ?? '',
+        type: 'table',
+      });
+      await dataProduct.create(apiContext);
+      await dataProduct.addAssets(apiContext, [
+        {
+          id: table.entityResponseData.id ?? '',
+          type: 'table',
+        },
+      ]);
+
+      await openDomainAssetsAddModal(page, domainB);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      await page.getByTestId('save-btn').click();
+      await dryRunPromise;
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+      const warnings = warningModal.getByTestId('add-dry-run-warnings');
+
+      await expect(warnings).toContainText(
+        'data product relationships will be removed'
+      );
+      await expect(warnings).toContainText(
+        dataProduct.responseData.fullyQualifiedName ?? ''
+      );
+
+      const commitPromise = waitForDomainAssetsAddCommit(page);
+      await warningModal.getByTestId('save-button').click();
+      await commitPromise;
+    } finally {
+      await dataProduct.delete(apiContext);
+      await table.delete(apiContext);
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('first-time add (no current domain) commits without showing the warning modal', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const domain = new Domain();
+    const table = new TableClass();
+
+    try {
+      await Promise.all([domain.create(apiContext), table.create(apiContext)]);
+
+      await openDomainAssetsAddModal(page, domain);
+      await pickAssetInModal(page, table);
+
+      const dryRunPromise = waitForDomainAssetsAddDryRun(page);
+      const commitPromise = waitForDomainAssetsAddCommit(page);
+      await page.getByTestId('save-btn').click();
+
+      const dryRunResponse = await dryRunPromise;
+      const dryRunBody = JSON.parse(
+        dryRunResponse.request().postData() ?? '{}'
+      );
+
+      expect(dryRunBody.dryRun).toBe(true);
+
+      const commitResponse = await commitPromise;
+      const commitBody = JSON.parse(
+        commitResponse.request().postData() ?? '{}'
+      );
+
+      expect(commitBody.dryRun).not.toBe(true);
+
+      const warningModal = page.getByTestId('domain-dry-run-modal');
+
+      await expect(warningModal).not.toBeVisible();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, 1);
+    } finally {
+      await table.delete(apiContext);
+      await domain.delete(apiContext);
       await afterAction();
     }
   });
