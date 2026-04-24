@@ -1402,7 +1402,9 @@ const announcementForm = async (
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
-    '/api/v1/feed?entityLink=*type=Announcement*'
+    (response) =>
+      response.url().includes('/api/v1/announcements') &&
+      response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
@@ -1496,28 +1498,26 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
-  await page
-    .locator(
-      '[data-testid="announcement-thread-body"] [data-testid="announcement-card"]'
-    )
-    .isVisible();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  const drawerAnnouncementCard = page.locator(
+    '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
   );
 
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await page.click('[data-testid="delete-message"]');
+  await expect(drawerAnnouncementCard).toBeVisible();
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-delete-action').click();
   const modalText = await page.textContent('.ant-modal-body');
 
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
   );
 
-  const getFeed = page.waitForResponse('/api/v1/feed/*');
+  const deleteAnnouncementResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements/') &&
+      response.request().method() === 'DELETE'
+  );
   await page.click('[data-testid="save-button"]');
-  await getFeed;
+  await deleteAnnouncementResponse;
 
   await page.reload();
   await page.getByTestId('manage-button').click();
@@ -1546,14 +1546,9 @@ export const editAnnouncement = async (
 
   await expect(drawerAnnouncementCard).toBeVisible();
 
-  // Hover over the announcement card inside the drawer to show the edit options popover
-  await drawerAnnouncementCard.hover();
-
-  // Wait for the popover to become visible
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  // Click the edit message button in the popover
-  await page.click('[data-testid="edit-message"]');
+  // Open the announcement actions menu and choose edit
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-edit-action').click();
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
@@ -1575,7 +1570,11 @@ export const editAnnouncement = async (
     .fill(data.description);
 
   // Save the changes and wait for the API response
-  const updateResponse = page.waitForResponse('/api/v1/feed/*');
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements/') &&
+      response.request().method() === 'PATCH'
+  );
   await page
     .locator(
       '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
