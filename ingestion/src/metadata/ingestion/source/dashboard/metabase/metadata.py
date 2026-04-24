@@ -54,7 +54,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboardDetails,
 )
 from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DASHBAORD
+from metadata.utils.constants import DEFAULT_DASHBOARD
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
@@ -144,8 +144,8 @@ class MetabaseSource(DashboardServiceSource):
             if self.orphan_charts_id:
                 # add the default dashboard to the dashboards list
                 default_dashboard = MetabaseDashboard(
-                    name=DEFAULT_DASHBAORD,
-                    id=DEFAULT_DASHBAORD,
+                    name=DEFAULT_DASHBOARD,
+                    id=DEFAULT_DASHBOARD,
                 )
                 self.dashboards_list.append(default_dashboard)
                 self._default_dashboard_added = True
@@ -157,8 +157,8 @@ class MetabaseSource(DashboardServiceSource):
         """
         try:
             # Return default for the default dashboard containing orphaned charts
-            if dashboard_details.id == DEFAULT_DASHBAORD:
-                return DEFAULT_DASHBAORD
+            if dashboard_details.id == DEFAULT_DASHBOARD:
+                return DEFAULT_DASHBOARD
             if dashboard_details.collection_id:
                 collection_name = next(
                     (
@@ -206,7 +206,7 @@ class MetabaseSource(DashboardServiceSource):
             # dashboard_url to be empty for default dashboard
             dashboard_url = (
                 ""
-                if dashboard_details.id == DEFAULT_DASHBAORD
+                if dashboard_details.id == DEFAULT_DASHBOARD
                 else f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
