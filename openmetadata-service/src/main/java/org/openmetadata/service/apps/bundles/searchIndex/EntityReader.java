@@ -326,7 +326,11 @@ public class EntityReader implements AutoCloseable {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return List.of();
     }
-    return List.of("*");
+    Set<String> required =
+        org.openmetadata.service.Entity.getSearchRepository()
+            .getSearchIndexFactory()
+            .getReindexFieldsFor(entityType);
+    return new ArrayList<>(required);
   }
 
   static int calculateNumberOfReaders(int totalEntityRecords, int batchSize) {

@@ -35,6 +35,13 @@ public record ContainerIndex(Container container) implements ColumnIndex, DataAs
     return Set.of("children");
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("dataModel");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
