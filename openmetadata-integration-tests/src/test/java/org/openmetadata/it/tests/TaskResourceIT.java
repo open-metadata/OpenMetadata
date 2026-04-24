@@ -125,6 +125,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     supportsPatch = true;
     supportsOwners = false;
     supportsSearchIndex = true;
+    supportsVersionHistory = false;
+    supportsGetByVersion = false;
   }
 
   @Override
