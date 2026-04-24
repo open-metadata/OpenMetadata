@@ -23,6 +23,8 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+.claude/*
+.claude
 .maestro
 catalog-services/catalog-services.iml
 
