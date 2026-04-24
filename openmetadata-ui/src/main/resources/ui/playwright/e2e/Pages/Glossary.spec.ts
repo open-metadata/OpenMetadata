@@ -490,7 +490,6 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
-    glossary1.data.mutuallyExclusive = true;
     glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
 
     const glossary2 = new Glossary();
@@ -576,9 +575,8 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('saveAssociatedTag').click();
         await patchRequest;
 
-        // Add non mutually exclusive tags
         await page.click(
-          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="edit-button"]'
         );
 
         // Select 1st term
@@ -648,7 +646,7 @@ test.describe('Glossary tests', () => {
           '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
-        expect(await icons.count()).toBe(2);
+        expect(await icons.count()).toBe(4);
 
         // Add Glossary to Dashboard Charts
         await page.click(
