@@ -63,8 +63,7 @@ class TestLdapHandlerTest {
 
     server = new InMemoryDirectoryServer(config);
     server.add(
-        new Entry(
-            "dn: " + BASE_DN, "objectClass: top", "objectClass: domain", "dc: company"));
+        new Entry("dn: " + BASE_DN, "objectClass: top", "objectClass: domain", "dc: company"));
     server.add(
         new Entry(
             "dn: " + USER_BASE_DN,
@@ -202,8 +201,7 @@ class TestLdapHandlerTest {
   @Test
   void handleLdapTestLogin_wrongUserPassword_returnsInvalidCredentialsError() {
     Map<String, Object> result =
-        TestLdapHandler.handleLdapTestLogin(
-            buildLdapConfig(), ALICE_EMAIL, "wrong-alice-password");
+        TestLdapHandler.handleLdapTestLogin(buildLdapConfig(), ALICE_EMAIL, "wrong-alice-password");
 
     assertEquals(false, result.get("success"));
     assertEquals("Invalid username or password", result.get("error"));
@@ -211,8 +209,7 @@ class TestLdapHandlerTest {
 
   @Test
   void handleLdapTestLogin_wrongUserBaseDN_userNotFound() {
-    LdapConfiguration config =
-        buildLdapConfig().withUserBaseDN("ou=nonexistent," + BASE_DN);
+    LdapConfiguration config = buildLdapConfig().withUserBaseDN("ou=nonexistent," + BASE_DN);
 
     Map<String, Object> result =
         TestLdapHandler.handleLdapTestLogin(config, ALICE_EMAIL, ALICE_PASSWORD);

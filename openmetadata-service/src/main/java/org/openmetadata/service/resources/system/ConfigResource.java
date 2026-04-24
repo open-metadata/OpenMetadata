@@ -21,9 +21,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.FormParam;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -254,8 +254,18 @@ public class ConfigResource {
       @FormParam("useNonce") String useNonce,
       @FormParam("customParams") String customParams) {
     return TestLoginHandler.handleInitiate(
-        request, discoveryUri, clientId, clientSecret, scope, callbackUrl,
-        prompt, maxAge, clientAuthMethod, disablePkce, useNonce, customParams);
+        request,
+        discoveryUri,
+        clientId,
+        clientSecret,
+        scope,
+        callbackUrl,
+        prompt,
+        maxAge,
+        clientAuthMethod,
+        disablePkce,
+        useNonce,
+        customParams);
   }
 
   @POST

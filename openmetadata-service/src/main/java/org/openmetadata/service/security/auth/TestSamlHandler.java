@@ -52,8 +52,7 @@ public final class TestSamlHandler {
 
   private static final ConcurrentHashMap<String, PendingTestLogin> PENDING =
       new ConcurrentHashMap<>();
-  private static final String HTTP_POST_BINDING =
-      "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
+  private static final String HTTP_POST_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
   private static final String HTTP_REDIRECT_BINDING =
       "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect";
   private static final String DEFAULT_NAMEID_FORMAT =
@@ -96,8 +95,8 @@ public final class TestSamlHandler {
       }
 
       Saml2Settings settings =
-          buildSamlSettings(idpEntityId, idpSsoLoginUrl, idpX509Certificate, spEntityId, spAcsUrl,
-              nameIdFormat);
+          buildSamlSettings(
+              idpEntityId, idpSsoLoginUrl, idpX509Certificate, spEntityId, spAcsUrl, nameIdFormat);
 
       cleanupStale();
       String relayState = RELAY_STATE_PREFIX + UUID.randomUUID();
@@ -146,15 +145,13 @@ public final class TestSamlHandler {
         List<String> errors = auth.getErrors();
         return TestLoginResponses.buildPostMessageResponse(
             false,
-            "SAML authentication failed: "
-                + (reason != null ? reason : String.join("; ", errors)),
+            "SAML authentication failed: " + (reason != null ? reason : String.join("; ", errors)),
             null);
       }
 
       Map<String, Object> claims = buildClaimsFromAuth(auth);
 
-      return TestLoginResponses.buildPostMessageResponse(
-          true, null, Map.of("claims", claims));
+      return TestLoginResponses.buildPostMessageResponse(true, null, Map.of("claims", claims));
     } catch (Exception e) {
       LOG.error("[SAML Test Login] Callback failed", e);
       return TestLoginResponses.buildPostMessageResponse(
@@ -236,10 +233,7 @@ public final class TestSamlHandler {
   private static String buildServerUrl(HttpServletRequest req) {
     int port = req.getServerPort();
     boolean defaultPort = (port == 80 || port == 443);
-    return req.getScheme()
-        + "://"
-        + req.getServerName()
-        + (defaultPort ? "" : ":" + port);
+    return req.getScheme() + "://" + req.getServerName() + (defaultPort ? "" : ":" + port);
   }
 
   /**
