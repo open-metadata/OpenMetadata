@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -606,22 +607,26 @@ public class DomainRepository extends EntityRepository<Domain> {
       return expertsMap;
     }
 
-    // Initialize empty lists for all domains
     domains.forEach(domain -> expertsMap.put(domain.getId(), new ArrayList<>()));
 
-    // Single batch query to get all expert relationships
     var records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityListToStrings(domains), Relationship.EXPERT.ordinal(), Entity.USER);
 
-    // Group experts by domain ID
+    List<UUID> expertIds =
+        records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
+    Map<UUID, EntityReference> expertRefsById =
+        Entity.getEntityReferencesByIds(Entity.USER, expertIds, Include.NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
+
     records.forEach(
         record -> {
           var domainId = UUID.fromString(record.getFromId());
-          var expertRef =
-              getEntityReferenceById(Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
-          expertsMap.get(domainId).add(expertRef);
+          var expertRef = expertRefsById.get(UUID.fromString(record.getToId()));
+          if (expertRef != null) {
+            expertsMap.get(domainId).add(expertRef);
+          }
         });
 
     return expertsMap;

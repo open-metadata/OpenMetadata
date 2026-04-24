@@ -504,7 +504,7 @@ public final class Entity {
 
     // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    include = repository.supportsSoftDelete ? Include.ALL : include;
+    include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReference(id, include);
   }
 
@@ -525,7 +525,7 @@ public final class Entity {
 
     // For regular entities, use the standard repository
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    include = repository.supportsSoftDelete ? Include.ALL : include;
+    include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReferences(ids, include);
   }
 
@@ -536,48 +536,6 @@ public final class Entity {
     }
     EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     return repository.getReferenceByName(fqn, include);
-  }
-
-  /**
-   * Get entity reference by ID, respecting the include parameter for soft-delete filtering. Unlike
-   * {@link #getEntityReferenceById}, this method does NOT override the include parameter to ALL for
-   * repositories that support soft delete.
-   */
-  public static EntityReference getEntityReferenceByIdRespectingInclude(
-      @NonNull String entityType, @NonNull UUID id, Include include) {
-    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
-      return new EntityReference()
-          .withId(id)
-          .withType(entityType)
-          .withFullyQualifiedName(entityType + "." + id);
-    }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    // If repository doesn't support soft delete, use ALL since there's no deleted column
-    include = repository.supportsSoftDelete ? include : Include.ALL;
-    return repository.getReference(id, include);
-  }
-
-  /**
-   * Get entity references by IDs, respecting the include parameter for soft-delete filtering.
-   * Unlike {@link #getEntityReferencesByIds}, this method does NOT override the include parameter
-   * to ALL for repositories that support soft delete.
-   */
-  public static List<EntityReference> getEntityReferencesByIdsRespectingInclude(
-      @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
-    if (ENTITY_TS_REPOSITORY_MAP.containsKey(entityType)) {
-      return ids.stream()
-          .map(
-              id ->
-                  new EntityReference()
-                      .withId(id)
-                      .withType(entityType)
-                      .withFullyQualifiedName(entityType + "." + id))
-          .collect(Collectors.toList());
-    }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    // If repository doesn't support soft delete, use ALL since there's no deleted column
-    include = repository.supportsSoftDelete ? include : Include.ALL;
-    return repository.getReferences(ids, include);
   }
 
   public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
