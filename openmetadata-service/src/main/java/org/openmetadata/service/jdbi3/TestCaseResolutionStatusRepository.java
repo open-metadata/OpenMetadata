@@ -228,16 +228,6 @@ public class TestCaseResolutionStatusRepository
     recordEntity.withTestCaseReference(testCaseReference);
   }
 
-  public void deleteAllRelationshipsByTestCase(UUID testCaseId) {
-    daoCollection
-        .relationshipDAO()
-        .deleteFrom(
-            testCaseId,
-            Entity.TEST_CASE,
-            Relationship.PARENT_OF.ordinal(),
-            Entity.TEST_CASE_RESOLUTION_STATUS);
-  }
-
   @Override
   protected void storeRelationship(TestCaseResolutionStatus recordEntity) {
     addRelationship(

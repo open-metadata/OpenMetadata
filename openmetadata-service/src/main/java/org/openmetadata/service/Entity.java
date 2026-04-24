@@ -744,8 +744,10 @@ public final class Entity {
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     if (entityType.equalsIgnoreCase(Entity.TEST_CASE_RESOLUTION_STATUS)
         || entityType.equalsIgnoreCase(Entity.TEST_CASE_RESULT)) {
-      // TimeSeries entities are cleaned up via entitySpecificCleanup,
-      // not through the standard repository delete flow.
+      LOG.debug(
+          "Skipping delete for time-series entity {} with id {} (handled via cleanup)",
+          entityType,
+          entityId);
       return;
     }
     EntityRepository<?> dao = getEntityRepository(entityType);

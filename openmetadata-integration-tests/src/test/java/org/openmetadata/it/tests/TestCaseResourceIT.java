@@ -4510,9 +4510,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         relationships.stream()
             .filter(r -> r.getType().equals(Entity.TEST_CASE_RESOLUTION_STATUS))
             .count();
-    assertTrue(
-        statusCount >= 3,
-        "There should be at least 3 relationships to resolution statuses before delete");
+    assertEquals(
+        3,
+        statusCount,
+        "There should be exactly 3 relationships to resolution statuses before delete");
 
     // 4. Hard delete the test case
     java.util.Map<String, String> params = new java.util.HashMap<>();
