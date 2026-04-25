@@ -96,7 +96,7 @@ public final class DescriptionSanitizer {
           // Common safe attributes
           .allowAttributes("class", "id", "data-id", "data-highlighted", "data-testid")
           .globally()
-          // Entity mention/hashtag/link attributes on anchor tags (BlockEditor)
+          // Entity mention attributes on anchor tags (hashtag/mention nodes in BlockEditor)
           .allowAttributes("data-type", "data-label", "data-fqn", "data-entitytype")
           .onElements("a")
           // File attachment and callout node attributes (BlockEditor div-based nodes)

@@ -262,7 +262,7 @@ class DescriptionSanitizerTest {
     String input =
         "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""
             + " href=\"https://open-metadata.example.org/users/admin\""
-            + " data-entitytype=\"user\" data-fqn=\"admin\""
+            + " data-entitytype=\"user\" data-fqn=\"admin\">"
             + "<#E::user::admin|[@admin](https://open-metadata.example.org/users/admin)>"
             + "</a>";
     String result = DescriptionSanitizer.sanitize(input);
