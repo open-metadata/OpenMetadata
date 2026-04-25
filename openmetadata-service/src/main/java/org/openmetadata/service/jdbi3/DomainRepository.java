@@ -279,14 +279,21 @@ public class DomainRepository extends EntityRepository<Domain> {
       BulkAssets request,
       boolean isAdd,
       String userName) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      if (dryRun) {
+        success.add(buildDryRunImpactResponse(entityId, ref, relationship, isAdd));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+        continue;
+      }
 
       cleanupOldDomain(ref, fromEntity, relationship);
       cleanupDataProducts(entityId, ref, relationship, isAdd);
@@ -305,8 +312,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     result.withSuccessRequest(success);
 
-    // Create a Change Event on successful addition/removal of assets
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
@@ -321,6 +327,90 @@ public class DomainRepository extends EntityRepository<Domain> {
     return result;
   }
 
+  private BulkResponse buildDryRunImpactResponse(
+      UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
+    EntityReference currentDomain =
+        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+    List<EntityReference> affectedDataProducts =
+        getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
+    boolean isMove =
+        isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
+    boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
+    String message =
+        buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
+    return new BulkResponse()
+        .withRequest(ref)
+        .withMessage(message)
+        .withHasSideEffects(hasSideEffects);
+  }
+
+  private List<EntityReference> getAffectedDataProductsForDryRun(
+      UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
+    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+    if (dataProducts.isEmpty()) {
+      return dataProducts;
+    }
+    if (!isAdd) {
+      return dataProducts;
+    }
+    return filterDataProductsByDomain(dataProducts, targetDomainId, relationship);
+  }
+
+  private String buildDryRunImpactMessage(
+      EntityReference ref,
+      EntityReference currentDomain,
+      UUID targetDomainId,
+      List<EntityReference> affectedDataProducts,
+      boolean isAdd) {
+    StringBuilder message = new StringBuilder();
+    if (isAdd) {
+      if (currentDomain == null) {
+        message
+            .append(ref.getType())
+            .append(" '")
+            .append(ref.getFullyQualifiedName())
+            .append("' will be added to the domain.");
+      } else if (currentDomain.getId().equals(targetDomainId)) {
+        message
+            .append(ref.getType())
+            .append(" '")
+            .append(ref.getFullyQualifiedName())
+            .append("' is already in this domain.");
+      } else {
+        message
+            .append(ref.getType())
+            .append(" '")
+            .append(ref.getFullyQualifiedName())
+            .append("' will be moved from domain '")
+            .append(currentDomain.getFullyQualifiedName())
+            .append("'.");
+      }
+      if (!affectedDataProducts.isEmpty()) {
+        message.append(" The following data product relationships will be removed: ");
+        message.append(
+            affectedDataProducts.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(", ")));
+        message.append(".");
+      }
+    } else {
+      message
+          .append(ref.getType())
+          .append(" '")
+          .append(ref.getFullyQualifiedName())
+          .append("' will be removed from the domain.");
+      if (!affectedDataProducts.isEmpty()) {
+        message.append(" The following data product relationships will also be removed: ");
+        message.append(
+            affectedDataProducts.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(", ")));
+        message.append(".");
+      }
+    }
+    return message.toString();
+  }
+
   private void cleanupOldDomain(EntityReference ref, String fromEntity, Relationship relationship) {
     EntityReference oldDomain =
         getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
@@ -333,32 +423,8 @@ public class DomainRepository extends EntityRepository<Domain> {
     List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
     if (dataProducts.isEmpty()) return;
 
-    // Map dataProduct -> domain
-    Map<UUID, UUID> associatedDomains =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                dataProducts.stream().map(dp -> dp.getId().toString()).collect(Collectors.toList()),
-                relationship.ordinal(),
-                DOMAIN)
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    rec -> UUID.fromString(rec.getToId()),
-                    rec -> UUID.fromString(rec.getFromId())));
-
-    // For isAdd, filter only those data products linked to a different domain.
-    // For isRemove, delete all data products.
     List<EntityReference> dataProductsToDelete =
-        isAdd
-            ? dataProducts.stream()
-                .filter(
-                    dp -> {
-                      UUID domainId = associatedDomains.get(dp.getId());
-                      return domainId != null && !domainId.equals(entityId);
-                    })
-                .collect(Collectors.toList())
-            : dataProducts;
+        isAdd ? filterDataProductsByDomain(dataProducts, entityId, relationship) : dataProducts;
 
     if (!dataProductsToDelete.isEmpty()) {
       daoCollection
@@ -373,6 +439,29 @@ public class DomainRepository extends EntityRepository<Domain> {
               relationship.ordinal());
       LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
     }
+  }
+
+  private List<EntityReference> filterDataProductsByDomain(
+      List<EntityReference> dataProducts, UUID targetDomainId, Relationship relationship) {
+    Map<UUID, UUID> associatedDomains =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                dataProducts.stream().map(dp -> dp.getId().toString()).collect(Collectors.toList()),
+                relationship.ordinal(),
+                DOMAIN)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    rec -> UUID.fromString(rec.getToId()),
+                    rec -> UUID.fromString(rec.getFromId())));
+    return dataProducts.stream()
+        .filter(
+            dp -> {
+              UUID domainId = associatedDomains.get(dp.getId());
+              return domainId != null && !domainId.equals(targetDomainId);
+            })
+        .collect(Collectors.toList());
   }
 
   @Override
