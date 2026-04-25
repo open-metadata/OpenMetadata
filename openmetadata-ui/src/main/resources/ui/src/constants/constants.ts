@@ -61,7 +61,6 @@ export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
 export const EXPORT_ALL_ASSETS_LIMIT = 200000;
-export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -82,19 +81,10 @@ export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
 export const VERSION = 'VERSION';
-export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const DISABLED = 'disabled';
-export const imageTypes = {
-  image: 's96-c',
-  image192: 's192-c',
-  image24: 's24-c',
-  image32: 's32-c',
-  image48: 's48-c',
-  image512: 's512-c',
-  image72: 's72-c',
-};
+
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
@@ -155,6 +145,7 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   ONTOLOGY_EXPLORER: '/governance/ontology',
   WORKFLOWS: '/workflows',
+  WORKFLOWS_WITH_FQN_TAB: `/workflows/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
   KNOWLEDGE_CENTER_PAGE: '/knowledge-center',

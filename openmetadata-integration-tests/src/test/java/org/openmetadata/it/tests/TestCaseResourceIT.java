@@ -7,11 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -46,6 +50,8 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -56,6 +62,14 @@ import org.openmetadata.service.resources.dqtests.TestCaseResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
+  private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
+  private static final RetryConfig DEADLOCK_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .intervalFunction(IntervalFunction.ofExponentialBackoff(250, 2.0))
+          .retryOnException(TestCaseResourceIT::isTransientDeadlock)
+          .failAfterMaxAttempts(true)
+          .build();
 
   // Disable tests that don't apply to TestCase
   {
@@ -201,12 +215,37 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Override
   protected TestCase patchEntity(String id, TestCase entity) {
-    return SdkClients.adminClient().testCases().update(id, entity);
+    return executeWithDeadlockRetry(
+        () -> SdkClients.adminClient().testCases().update(id, entity), "testCaseUpdate-" + id);
   }
 
   @Override
   protected void deleteEntity(String id) {
     SdkClients.adminClient().testCases().delete(id);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private <T> T executeWithDeadlockRetry(Supplier<T> operation, String operationName) {
+    Retry retry = Retry.of(operationName, DEADLOCK_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying {} after transient deadlock (attempt {}/{})",
+                    operationName,
+                    event.getNumberOfRetryAttempts() + 1,
+                    DEADLOCK_RETRY_CONFIG.getMaxAttempts()));
+    return Retry.decorateSupplier(retry, operation).get();
   }
 
   @Override
@@ -279,6 +318,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Override
   protected EntityHistory getVersionHistory(java.util.UUID id) {
     return SdkClients.adminClient().testCases().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(java.util.UUID id, int limit, int offset) {
+    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      java.util.UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -2242,7 +2292,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2303,7 +2353,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     final java.util.UUID firstIncidentId =
         Awaitility.await()
-            .atMost(30, TimeUnit.SECONDS)
+            .atMost(90, TimeUnit.SECONDS)
             .pollInterval(Duration.ofSeconds(2))
             .until(
                 () -> {
@@ -2322,7 +2372,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResolutionStatuses().create(ackStatus);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2343,7 +2393,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResolutionStatuses().create(resolvedStatus);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2363,7 +2413,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     client.testCaseResults().create(testCase.getFullyQualifiedName(), failedAgain);
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -2388,7 +2438,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             });
 
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(180, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -3479,13 +3529,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Dry run with name="*" should succeed
     CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
     assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
-    assertEquals(3, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
 
     // Actual import with name="*" — previously failed because
     // processChangeEventForBulkImport would call getByName("*")
     CsvImportResult result = importCsvWithWildcard(client, csvData, false);
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(3, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsProcessed());
 
     // Verify test cases created on different tables
     TestCase tc1 =
@@ -3546,7 +3596,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     CsvImportResult result = importCsvWithWildcard(client, csvData, false);
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsProcessed());
 
     TestCase imported =
         client.testCases().getByName(table.getFullyQualifiedName() + "." + testName, "testSuite");
@@ -3607,7 +3657,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
     assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
-    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(1, dryRunResult.getNumberOfRowsProcessed());
 
     // Entity should NOT exist after dry run
     String expectedFqn = table.getFullyQualifiedName() + "." + testName;

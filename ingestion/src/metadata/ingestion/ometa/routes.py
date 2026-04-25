@@ -73,7 +73,6 @@ from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
-from metadata.generated.schema.api.feed.createSuggestion import CreateSuggestionRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.services.createApiService import (
@@ -171,7 +170,6 @@ from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
-from metadata.generated.schema.entity.feed.suggestion import Suggestion
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
@@ -327,9 +325,6 @@ ROUTES = {
     CreateDomainRequest.__name__: "/domains",
     DataProduct.__name__: "/dataProducts",
     CreateDataProductRequest.__name__: "/dataProducts",
-    # Suggestions
-    Suggestion.__name__: "/suggestions",
-    CreateSuggestionRequest.__name__: "/suggestions",
     # Event Subscriptions
     EventSubscription.__name__: "/events/subscriptions",
     CreateEventSubscription.__name__: "/events/subscriptions",

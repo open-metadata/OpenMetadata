@@ -17,6 +17,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -144,6 +145,8 @@ import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSche
 import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
 
+const VERSION_PAGE_SIZE = 20;
+
 export type VersionData =
   | Table
   | Topic
@@ -186,6 +189,18 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as EntityHistory
   );
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
+  const [hasMoreVersions, setHasMoreVersions] = useState<boolean>(false);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const isLoadingMoreRef = useRef<boolean>(false);
+  const versionListRef = useRef<EntityHistory>({} as EntityHistory);
+  const versionFetcherRef =
+    useRef<
+      (params?: { limit?: number; offset?: number }) => Promise<EntityHistory>
+    >();
+
+  useEffect(() => {
+    versionListRef.current = versionList;
+  }, [versionList]);
 
   const backHandler = useCallback(
     () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
@@ -239,8 +254,20 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityPermissions]
   );
 
+  const updateVersionState = useCallback((versions: EntityHistory) => {
+    setVersionList(versions);
+    if (versions.paging) {
+      const loaded =
+        (versions.paging.offset ?? 0) + (versions.versions?.length ?? 0);
+      setHasMoreVersions(loaded < versions.paging.total);
+    } else {
+      setHasMoreVersions(false);
+    }
+  }, []);
+
   const fetchEntityVersions = useCallback(async () => {
     setIsLoading(true);
+    const paginationParams = { limit: VERSION_PAGE_SIZE, offset: 0 };
     try {
       switch (entityType) {
         case EntityType.TABLE: {
@@ -249,10 +276,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getTableVersions(id, p);
 
-          const versions = await getTableVersions(id);
+          const versions = await getTableVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -263,10 +291,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getTopicVersions(id, p);
 
-          const versions = await getTopicVersions(id);
+          const versions = await getTopicVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -277,10 +306,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getDashboardVersions(id, p);
 
-          const versions = await getDashboardVersions(id);
+          const versions = await getDashboardVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -291,10 +321,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getPipelineVersions(id, p);
 
-          const versions = await getPipelineVersions(id);
+          const versions = await getPipelineVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -305,10 +336,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getMlModelVersions(id, p);
 
-          const versions = await getMlModelVersions(id);
+          const versions = await getMlModelVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -319,10 +351,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getContainerVersions(id, p);
 
-          const versions = await getContainerVersions(id);
+          const versions = await getContainerVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -333,10 +366,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
+          versionFetcherRef.current = (p) => getSearchIndexVersions(id, p);
 
-          const versions = await getSearchIndexVersions(id);
+          const versions = await getSearchIndexVersions(id, paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -347,10 +381,15 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
+          versionFetcherRef.current = (p) =>
+            getDataModelVersionsList(id ?? '', p);
 
-          const versions = await getDataModelVersionsList(id ?? '');
+          const versions = await getDataModelVersionsList(
+            id ?? '',
+            paginationParams
+          );
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -361,10 +400,15 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
+          versionFetcherRef.current = (p) =>
+            getStoredProceduresVersionsList(id ?? '', p);
 
-          const versions = await getStoredProceduresVersionsList(id ?? '');
+          const versions = await getStoredProceduresVersionsList(
+            id ?? '',
+            paginationParams
+          );
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -374,10 +418,15 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
+          versionFetcherRef.current = (p) =>
+            getApiEndPointVersions(id ?? '', p);
 
-          const versions = await getApiEndPointVersions(id ?? '');
+          const versions = await getApiEndPointVersions(
+            id ?? '',
+            paginationParams
+          );
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -387,10 +436,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
+          versionFetcherRef.current = (p) => getMetricVersions(id ?? '', p);
 
-          const versions = await getMetricVersions(id ?? '');
+          const versions = await getMetricVersions(id ?? '', paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -400,10 +450,11 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
+          versionFetcherRef.current = (p) => getChartVersions(id ?? '', p);
 
-          const versions = await getChartVersions(id ?? '');
+          const versions = await getChartVersions(id ?? '', paginationParams);
 
-          setVersionList(versions);
+          updateVersionState(versions);
 
           break;
         }
@@ -413,10 +464,20 @@ const EntityVersionPage: FunctionComponent = () => {
         case EntityType.WORKSHEET: {
           const { id } = await getDriveAssetByFqn(decodedEntityFQN, entityType);
           setEntityId(id ?? '');
+          versionFetcherRef.current = (p) =>
+            getDriveAssetsVersions(
+              id ?? '',
+              entityType,
+              p
+            ) as unknown as Promise<EntityHistory>;
 
-          const versions = await getDriveAssetsVersions(id ?? '', entityType);
+          const versions = await getDriveAssetsVersions(
+            id ?? '',
+            entityType,
+            paginationParams
+          );
 
-          setVersionList(versions as unknown as EntityHistory);
+          updateVersionState(versions as unknown as EntityHistory);
 
           break;
         }
@@ -428,6 +489,39 @@ const EntityVersionPage: FunctionComponent = () => {
       setIsLoading(false);
     }
   }, [entityType, decodedEntityFQN, viewVersionPermission]);
+
+  const fetchMoreVersions = useCallback(async () => {
+    if (
+      !versionFetcherRef.current ||
+      isLoadingMoreRef.current ||
+      !hasMoreVersions
+    ) {
+      return;
+    }
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const currentOffset = versionListRef.current.versions?.length ?? 0;
+      const moreVersions = await versionFetcherRef.current({
+        limit: VERSION_PAGE_SIZE,
+        offset: currentOffset,
+      });
+      const appendedVersions = moreVersions.versions ?? [];
+      const totalLoaded = currentOffset + appendedVersions.length;
+
+      setHasMoreVersions(
+        moreVersions.paging ? totalLoaded < moreVersions.paging.total : false
+      );
+
+      setVersionList((prev) => ({
+        ...moreVersions,
+        versions: [...(prev.versions ?? []), ...appendedVersions],
+      }));
+    } finally {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [hasMoreVersions]);
 
   const fetchCurrentVersion = useCallback(
     async (id: string) => {
@@ -622,6 +716,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedTableName={slashedEntityName}
@@ -629,6 +725,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -641,6 +738,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedTopicName={slashedEntityName}
@@ -648,6 +747,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -661,6 +761,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedDashboardName={slashedEntityName}
@@ -668,6 +770,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -681,6 +784,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedPipelineName={slashedEntityName}
@@ -688,6 +793,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -701,6 +807,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedMlModelName={slashedEntityName}
@@ -708,6 +816,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -721,12 +830,15 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -740,12 +852,15 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -759,6 +874,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedDataModelName={slashedEntityName}
@@ -766,6 +883,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -779,6 +897,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedTableName={slashedEntityName}
@@ -786,6 +906,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -797,6 +918,8 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as APIEndpoint}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedApiEndpointName={slashedEntityName}
@@ -804,6 +927,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -814,6 +938,8 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Metric}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedMetricName={slashedEntityName}
@@ -821,6 +947,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -833,6 +960,8 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedChartName={slashedEntityName as unknown as string[]}
@@ -840,6 +969,7 @@ const EntityVersionPage: FunctionComponent = () => {
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -853,12 +983,15 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -872,12 +1005,15 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -891,12 +1027,15 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
@@ -910,12 +1049,15 @@ const EntityVersionPage: FunctionComponent = () => {
             deleted={currentVersionData.deleted}
             domains={domains}
             entityPermissions={entityPermissions}
+            hasMore={hasMoreVersions}
+            isLoadingMore={isLoadingMore}
             isVersionLoading={isVersionLoading}
             owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
+            onLoadMore={fetchMoreVersions}
           />
         );
       }
