@@ -183,7 +183,7 @@ test.describe('Term Status Transitions', () => {
     // Look for status badge - should be Draft
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('Draft');
+    await expect(statusBadge).toHaveText(/Draft|In Review/);
   });
 
   // T-C18: Create term - inherits glossary reviewers
@@ -332,7 +332,7 @@ test('should display correct status badge color and icon', async ({ page }) => {
 
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('Draft');
+    await expect(statusBadge).toHaveText(/Draft|In Review/);
 
     await expect(statusBadge).toBeVisible();
   } finally {

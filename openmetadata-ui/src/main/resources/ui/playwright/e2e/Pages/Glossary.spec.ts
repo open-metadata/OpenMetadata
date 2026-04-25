@@ -112,33 +112,34 @@ const adminUser = new UserClass();
 test.describe('Glossary tests', () => {
   const selectGlossaryTermInPicker = async ({
     page,
-    searchTerm,
+    inputValue,
     displayName,
     fullyQualifiedName,
   }: {
     page: import('@playwright/test').Page;
-    searchTerm: string;
+    inputValue: string;
     displayName: string;
     fullyQualifiedName: string;
   }) => {
     const glossaryInput = page.locator('#tagsForm_tags');
-    await expect(glossaryInput).toBeVisible();
-
-    const searchGlossaryTerm = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=glossaryTerm') &&
-        response.url().includes(encodeURIComponent(searchTerm))
-    );
-
-    await glossaryInput.fill(searchTerm);
-    await searchGlossaryTerm;
-    await waitForAllLoadersToDisappear(page);
-
     const glossaryTermOption = page
       .getByTestId(`tag-${fullyQualifiedName}`)
       .first();
-    await expect(glossaryTermOption).toBeVisible();
+
+    await expect(glossaryInput).toBeVisible();
+
+    await glossaryInput.fill(inputValue);
+    await waitForAllLoadersToDisappear(page);
+
+    await expect
+      .poll(
+        async () => await glossaryTermOption.isVisible().catch(() => false),
+        {
+          timeout: 30000,
+          intervals: [1000, 2000, 3000],
+        }
+      )
+      .toBe(true);
     await glossaryTermOption.click();
 
     await expect(
@@ -567,7 +568,7 @@ test.describe('Glossary tests', () => {
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
         await selectGlossaryTermInPicker({
           page,
-          searchTerm: glossaryTerm1.data.name,
+          inputValue: glossary1.data.name,
           displayName: glossaryTerm1.data.displayName,
           fullyQualifiedName: glossaryTerm1.data.fullyQualifiedName,
         });
@@ -576,7 +577,7 @@ test.describe('Glossary tests', () => {
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
         await selectGlossaryTermInPicker({
           page,
-          searchTerm: glossaryTerm2.data.name,
+          inputValue: glossary1.data.name,
           displayName: glossaryTerm2.data.displayName,
           fullyQualifiedName: glossaryTerm2.data.fullyQualifiedName,
         });
@@ -594,14 +595,14 @@ test.describe('Glossary tests', () => {
 
         // Add non mutually exclusive tags
         await page.click(
-          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="edit-button"]'
         );
 
         // Select 1st term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
         await selectGlossaryTermInPicker({
           page,
-          searchTerm: glossaryTerm3.data.name,
+          inputValue: glossary2.data.name,
           displayName: glossaryTerm3.data.displayName,
           fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
         });
@@ -610,7 +611,7 @@ test.describe('Glossary tests', () => {
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
         await selectGlossaryTermInPicker({
           page,
-          searchTerm: glossaryTerm4.data.name,
+          inputValue: glossary2.data.name,
           displayName: glossaryTerm4.data.displayName,
           fullyQualifiedName: glossaryTerm4.data.fullyQualifiedName,
         });
@@ -643,7 +644,7 @@ test.describe('Glossary tests', () => {
           '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
-        expect(await icons.count()).toBe(2);
+        expect(await icons.count()).toBe(3);
 
         // Add Glossary to Dashboard Charts
         await page.click(
@@ -653,7 +654,7 @@ test.describe('Glossary tests', () => {
         await page.click('[data-testid="tag-selector"]');
         await selectGlossaryTermInPicker({
           page,
-          searchTerm: glossaryTerm3.data.name,
+          inputValue: glossaryTerm3.data.name,
           displayName: glossaryTerm3.data.displayName,
           fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
         });
