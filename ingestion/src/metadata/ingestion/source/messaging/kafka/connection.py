@@ -58,14 +58,19 @@ TIMEOUT_SECONDS = 10
 
 @dataclass
 class KafkaClient:
-    def __init__(self, admin_client, schema_registry_client, consumer_client) -> None:
+    def __init__(
+        self,
+        admin_client: AdminClient,
+        schema_registry_client: SchemaRegistryClient | None,
+        consumer_client: DeserializingConsumer | None,
+    ) -> None:
         self.admin_client = admin_client
         self.schema_registry_client = schema_registry_client  # Optional
         self.consumer_client = consumer_client
 
 
 def get_connection(
-    connection: Union[KafkaConnection, RedpandaConnection]
+    connection: Union[KafkaConnection, RedpandaConnection],
 ) -> KafkaClient:
     """
     Create connection

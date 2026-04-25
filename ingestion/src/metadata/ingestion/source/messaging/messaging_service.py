@@ -40,6 +40,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -192,7 +193,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     @abstractmethod
     def yield_topic_sample_data(
         self, topic_details: Any
-    ) -> Iterable[Either[TopicSampleData]]:
+    ) -> Iterable[Either[OMetaTopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
