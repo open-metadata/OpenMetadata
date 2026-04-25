@@ -398,10 +398,10 @@ def test_lineage_ingestion(kestra_container, metadata_client):
         lineage_flow_payload = {
             "id": KESTRA_LINEAGE_FLOW_ID,
             "namespace": KESTRA_NAMESPACE,
-            "labels": {
-                "openmetadata.table.input": source_fqn,
-                "openmetadata.table.output": dest_fqn,
-            },
+            "labels": [
+                {"key": "openmetadata.table.input", "value": source_fqn},
+                {"key": "openmetadata.table.output", "value": dest_fqn},
+            ],
             "tasks": [
                 {
                     "id": "task-1",

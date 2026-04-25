@@ -48,10 +48,10 @@ class KestraClient:
 
         client_config = ClientConfig(
             base_url=base_url,
-            api_version=None,  # We build full paths ourselves
+            api_version=None,
+            timeout=30,
         )
 
-        # Attach Basic Auth when credentials are provided
         if config.username and config.password:
             client_config.auth_header = AUTHORIZATION_HEADER
             client_config.auth_token_mode = "Basic"
@@ -60,7 +60,7 @@ class KestraClient:
                     config.username,
                     config.password.get_secret_value(),
                 ),
-                0,
+                3600,
             )
 
         self.client = TrackedREST(client_config, source_name="kestra")

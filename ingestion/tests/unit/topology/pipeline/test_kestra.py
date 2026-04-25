@@ -19,8 +19,9 @@ Tests cover:
   - round-trip name consistency
 """
 import uuid
-from unittest import TestCase
-from unittest.mock import MagicMock, patch
+
+import pytest
+from unittest.mock import MagicMock
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -35,9 +36,6 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -51,50 +49,6 @@ from metadata.ingestion.source.pipeline.kestra.models import (
     KestraFlow,
     KestraLabel,
     KestraTask,
-)
-
-# ---------------------------------------------------------------------------
-# Shared mock config
-# ---------------------------------------------------------------------------
-
-MOCK_KESTRA_CONFIG = {
-    "source": {
-        "type": "kestra",
-        "serviceName": "kestra_test",
-        "serviceConnection": {
-            "config": {
-                "type": "Kestra",
-                "hostPort": "http://localhost:8080",
-            }
-        },
-        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
-    },
-    "sink": {"type": "metadata-rest", "config": {}},
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test"
-            },
-        }
-    },
-}
-
-MOCK_PIPELINE_SERVICE = PipelineService(
-    id=str(uuid.uuid4()),
-    name="kestra_test",
-    fullyQualifiedName=FullyQualifiedEntityName("kestra_test"),
-    connection=PipelineConnection(),
-    serviceType=PipelineServiceType.Kestra,
-)
-
-MOCK_PIPELINE = Pipeline(
-    id=str(uuid.uuid4()),
-    name="company.team.my-flow",
-    fullyQualifiedName="kestra_test.company.team.my-flow",
-    displayName="my-flow",
-    service=EntityReference(id=str(uuid.uuid4()), type="pipelineService"),
 )
 
 # ---------------------------------------------------------------------------
@@ -127,75 +81,53 @@ MOCK_FLOW_NO_LABELS = KestraFlow(
 
 
 # ---------------------------------------------------------------------------
-# Test class
+# Fixtures
 # ---------------------------------------------------------------------------
 
 
-class TestKestraSource(TestCase):
-    """Unit tests for KestraSource."""
+@pytest.fixture
+def source():
+    s = KestraSource.__new__(KestraSource)
+    s.client = MagicMock()
+    s.metadata = MagicMock()
+    s.service_connection = MagicMock()
+    s.service_connection.hostPort = "http://localhost:8080"
+    s.source_config = MagicMock()
+    s.source_config.markDeletedPipelines = False
+    s.pipeline_source_state = set()
+    s.context = MagicMock()
+    ctx = MagicMock()
+    ctx.pipeline_service = "kestra_test"
+    ctx.pipeline = "company.team.my-flow"
+    s.context.get.return_value = ctx
+    return s
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
-    @patch(
-        "metadata.ingestion.source.pipeline.kestra.metadata.KestraSource.__init__",
-        lambda self, config, metadata: None,
-    )
-    def setUp(self, _test_connection):
-        """
-        Build a KestraSource with all external calls mocked out.
-        We bypass __init__ entirely and set attributes manually so we can
-        test individual methods in isolation.
-        """
-        _test_connection.return_value = None
 
-        with patch(
-            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-        ):
-            config = OpenMetadataWorkflowConfig.model_validate(MOCK_KESTRA_CONFIG)
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
 
-            with patch(
-                "metadata.ingestion.source.pipeline.kestra.connection.get_connection"
-            ):
-                with patch(
-                    "metadata.ingestion.source.pipeline.kestra.metadata.KestraSource.test_connection"
-                ):
-                    self.source = KestraSource.__new__(KestraSource)
-                    # Manually wire the attributes the methods depend on
-                    self.source.client = MagicMock()
-                    self.source.metadata = MagicMock()
-                    self.source.service_connection = MagicMock()
-                    self.source.service_connection.hostPort = "http://localhost:8080"
-                    self.source.source_config = MagicMock()
-                    self.source.source_config.markDeletedPipelines = False
-                    self.source.pipeline_source_state = set()
-                    self.source.context = MagicMock()
-                    ctx = MagicMock()
-                    ctx.pipeline_service = "kestra_test"
-                    ctx.pipeline = "company.team.my-flow"
-                    self.source.context.get.return_value = ctx
+
+class TestKestraSource:
 
     # -----------------------------------------------------------------------
-    # 9.2 — get_pipeline_name
+    # get_pipeline_name
     # -----------------------------------------------------------------------
 
-    def test_get_pipeline_name(self):
-        """get_pipeline_name returns '{namespace}.{flow_id}'."""
+    def test_get_pipeline_name(self, source):
         flow = KestraFlow(id="my-flow", namespace="company.team")
-        assert self.source.get_pipeline_name(flow) == "company.team.my-flow"
+        assert source.get_pipeline_name(flow) == "company.team.my-flow"
 
-    def test_get_pipeline_name_nested_namespace(self):
-        """Works with deeply nested namespaces."""
+    def test_get_pipeline_name_nested_namespace(self, source):
         flow = KestraFlow(id="etl", namespace="org.data.team.project")
-        assert self.source.get_pipeline_name(flow) == "org.data.team.project.etl"
+        assert source.get_pipeline_name(flow) == "org.data.team.project.etl"
 
     # -----------------------------------------------------------------------
-    # 9.3 — yield_pipeline field mapping
+    # yield_pipeline field mapping
     # -----------------------------------------------------------------------
 
-    def test_yield_pipeline_fields(self):
-        """yield_pipeline produces a CreatePipelineRequest with correct fields."""
-        results = list(self.source.yield_pipeline(MOCK_FLOW))
+    def test_yield_pipeline_fields(self, source):
+        results = list(source.yield_pipeline(MOCK_FLOW))
         assert len(results) == 1
         req: CreatePipelineRequest = results[0].right
         assert req is not None, f"yield_pipeline error: {results[0].left}"
@@ -206,9 +138,8 @@ class TestKestraSource(TestCase):
             "http://localhost:8080/ui/company.team/flows/edit/my-flow"
         )
 
-    def test_yield_pipeline_tasks(self):
-        """yield_pipeline maps KestraTask list to Task list correctly."""
-        results = list(self.source.yield_pipeline(MOCK_FLOW))
+    def test_yield_pipeline_tasks(self, source):
+        results = list(source.yield_pipeline(MOCK_FLOW))
         req: CreatePipelineRequest = results[0].right
         assert req.tasks is not None
         assert len(req.tasks) == 2
@@ -216,15 +147,24 @@ class TestKestraSource(TestCase):
         assert "task-1" in task_names
         assert "task-2" in task_names
 
-    def test_yield_pipeline_no_tasks(self):
-        """yield_pipeline handles flows with no tasks gracefully."""
+    def test_yield_pipeline_task_type(self, source):
+        results = list(source.yield_pipeline(MOCK_FLOW))
+        req: CreatePipelineRequest = results[0].right
+        task_map = {
+            (t.name if isinstance(t.name, str) else t.name.root): t
+            for t in req.tasks
+        }
+        assert task_map["task-1"].taskType == "io.kestra.core.tasks.log.Log"
+        assert task_map["task-2"].taskType == "io.kestra.core.tasks.scripts.Python"
+
+    def test_yield_pipeline_no_tasks(self, source):
         flow = KestraFlow(id="empty-flow", namespace="ns")
-        results = list(self.source.yield_pipeline(flow))
+        results = list(source.yield_pipeline(flow))
         req: CreatePipelineRequest = results[0].right
         assert req.tasks is None
 
     # -----------------------------------------------------------------------
-    # 9.4 — yield_pipeline_status state mapping
+    # yield_pipeline_status state mapping
     # -----------------------------------------------------------------------
 
     def _make_execution(self, state: str) -> KestraExecution:
@@ -236,52 +176,75 @@ class TestKestraSource(TestCase):
             startDate="2024-01-15T10:00:00+00:00",
         )
 
-    def _assert_status(self, state: str, expected: StatusType):
-        """Helper: run yield_pipeline_status for a single execution and check status."""
-        self.source.client.get_executions.return_value = [self._make_execution(state)]
-        results = list(self.source.yield_pipeline_status(MOCK_FLOW))
+    def _assert_status(self, source, state: str, expected: StatusType):
+        source.client.get_executions.return_value = [self._make_execution(state)]
+        results = list(source.yield_pipeline_status(MOCK_FLOW))
         assert results, f"No results yielded for state '{state}'"
         actual = results[0].right.pipeline_status.executionStatus
-        # executionStatus may be the enum instance or its string value depending on
-        # the Pydantic model version — normalise both sides to string for comparison.
         actual_val = actual.value if isinstance(actual, StatusType) else actual
         assert actual_val == expected.value, (
             f"State '{state}': expected {expected.value!r}, got {actual_val!r}"
         )
 
-    def test_status_map_success(self):
-        self._assert_status("SUCCESS", StatusType.Successful)
+    def test_status_map_success(self, source):
+        self._assert_status(source, "SUCCESS", StatusType.Successful)
 
-    def test_status_map_failed(self):
-        self._assert_status("FAILED", StatusType.Failed)
+    def test_status_map_failed(self, source):
+        self._assert_status(source, "FAILED", StatusType.Failed)
 
-    def test_status_map_killed(self):
-        self._assert_status("KILLED", StatusType.Failed)
+    def test_status_map_killed(self, source):
+        self._assert_status(source, "KILLED", StatusType.Failed)
 
-    def test_status_map_running(self):
-        self._assert_status("RUNNING", StatusType.Pending)
+    def test_status_map_running(self, source):
+        self._assert_status(source, "RUNNING", StatusType.Pending)
 
-    def test_status_map_created(self):
-        self._assert_status("CREATED", StatusType.Pending)
+    def test_status_map_created(self, source):
+        self._assert_status(source, "CREATED", StatusType.Pending)
 
-    def test_status_map_unknown_defaults_to_pending(self):
-        """Any unknown state defaults to Pending."""
-        self._assert_status("SOME_FUTURE_STATE", StatusType.Pending)
+    def test_status_map_unknown_defaults_to_pending(self, source):
+        self._assert_status(source, "SOME_FUTURE_STATE", StatusType.Pending)
 
-    def test_status_map_warning_is_successful(self):
-        """WARNING is a terminal state (completed with warnings) → Successful."""
-        self._assert_status("WARNING", StatusType.Successful)
+    def test_status_map_warning_is_successful(self, source):
+        self._assert_status(source, "WARNING", StatusType.Successful)
 
-    def test_status_map_all_defined_states(self):
-        """All 10 defined states are present in KESTRA_STATUS_MAP."""
+    def test_status_map_all_defined_states(self, source):
         expected_states = {
             "SUCCESS", "FAILED", "KILLED", "RUNNING", "CREATED",
             "PAUSED", "QUEUED", "RESTARTED", "KILLING", "WARNING",
         }
         assert expected_states == set(KESTRA_STATUS_MAP.keys())
 
+    def test_yield_pipeline_status_includes_end_time(self, source):
+        execution = KestraExecution(
+            id="exec-1",
+            namespace="company.team",
+            flowId="my-flow",
+            state=KestraExecutionState(current="SUCCESS"),
+            startDate="2024-01-15T10:00:00+00:00",
+            endDate="2024-01-15T10:05:00+00:00",
+        )
+        source.client.get_executions.return_value = [execution]
+        results = list(source.yield_pipeline_status(MOCK_FLOW))
+        assert len(results) == 1
+        status = results[0].right.pipeline_status
+        assert status.taskStatus[0].endTime is not None
+        assert status.endTime is not None
+
+    def test_yield_pipeline_status_no_end_date(self, source):
+        execution = KestraExecution(
+            id="exec-1",
+            namespace="company.team",
+            flowId="my-flow",
+            state=KestraExecutionState(current="RUNNING"),
+            startDate="2024-01-15T10:00:00+00:00",
+            endDate=None,
+        )
+        source.client.get_executions.return_value = [execution]
+        results = list(source.yield_pipeline_status(MOCK_FLOW))
+        assert results[0].right.pipeline_status.taskStatus[0].endTime is None
+
     # -----------------------------------------------------------------------
-    # 9.5 — yield_pipeline_lineage_details — valid labels
+    # yield_pipeline_lineage_details — valid labels
     # -----------------------------------------------------------------------
 
     def _make_table_entity(self, fqn_str: str) -> Table:
@@ -292,8 +255,7 @@ class TestKestraSource(TestCase):
         t.fullyQualifiedName.root = fqn_str
         return t
 
-    def test_lineage_input_label(self):
-        """Input label produces a table→pipeline lineage edge."""
+    def test_lineage_input_label(self, source):
         flow = KestraFlow(
             id="flow-in",
             namespace="ns",
@@ -304,18 +266,17 @@ class TestKestraSource(TestCase):
         mock_pipeline.id = MagicMock()
         mock_pipeline.id.root = str(uuid.uuid4())
 
-        self.source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+        source.metadata.get_by_name.side_effect = lambda entity, fqn: (
             mock_pipeline if entity == Pipeline else mock_table
         )
 
-        results = [r for r in self.source.yield_pipeline_lineage_details(flow) if r.right]
+        results = [r for r in source.yield_pipeline_lineage_details(flow) if r.right]
         assert len(results) == 1
         edge = results[0].right.edge
         assert edge.fromEntity.type == "table"
         assert edge.toEntity.type == "pipeline"
 
-    def test_lineage_output_label(self):
-        """Output label produces a pipeline→table lineage edge."""
+    def test_lineage_output_label(self, source):
         flow = KestraFlow(
             id="flow-out",
             namespace="ns",
@@ -326,22 +287,33 @@ class TestKestraSource(TestCase):
         mock_pipeline.id = MagicMock()
         mock_pipeline.id.root = str(uuid.uuid4())
 
-        self.source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+        source.metadata.get_by_name.side_effect = lambda entity, fqn: (
             mock_pipeline if entity == Pipeline else mock_table
         )
 
-        results = [r for r in self.source.yield_pipeline_lineage_details(flow) if r.right]
+        results = [r for r in source.yield_pipeline_lineage_details(flow) if r.right]
         assert len(results) == 1
         edge = results[0].right.edge
         assert edge.fromEntity.type == "pipeline"
         assert edge.toEntity.type == "table"
 
+    def test_lineage_exception_yields_error(self, source):
+        flow = KestraFlow(
+            id="flow",
+            namespace="ns",
+            labels=[KestraLabel(key="openmetadata.table.input", value="svc.db.schema.tbl")],
+        )
+        source.metadata.get_by_name.side_effect = RuntimeError("API down")
+        results = list(source.yield_pipeline_lineage_details(flow))
+        assert len(results) == 1
+        assert results[0].left is not None
+        assert "API down" in results[0].left.error
+
     # -----------------------------------------------------------------------
-    # 9.6 — yield_pipeline_lineage_details — unresolvable labels
+    # yield_pipeline_lineage_details — unresolvable labels
     # -----------------------------------------------------------------------
 
-    def test_lineage_unresolvable_input(self):
-        """Unresolvable input FQN yields no lineage edge."""
+    def test_lineage_unresolvable_input(self, source):
         flow = KestraFlow(
             id="flow-bad",
             namespace="ns",
@@ -351,25 +323,22 @@ class TestKestraSource(TestCase):
         mock_pipeline.id = MagicMock()
         mock_pipeline.id.root = str(uuid.uuid4())
 
-        # Pipeline resolves, table does not
-        self.source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+        source.metadata.get_by_name.side_effect = lambda entity, fqn: (
             mock_pipeline if entity == Pipeline else None
         )
 
-        results = [r for r in self.source.yield_pipeline_lineage_details(flow) if r.right]
+        results = [r for r in source.yield_pipeline_lineage_details(flow) if r.right]
         assert len(results) == 0
 
-    def test_lineage_no_labels(self):
-        """Flow with no labels yields nothing."""
-        results = list(self.source.yield_pipeline_lineage_details(MOCK_FLOW_NO_LABELS))
+    def test_lineage_no_labels(self, source):
+        results = list(source.yield_pipeline_lineage_details(MOCK_FLOW_NO_LABELS))
         assert len(results) == 0
 
     # -----------------------------------------------------------------------
-    # 9.7 — round-trip name consistency
+    # round-trip name consistency
     # -----------------------------------------------------------------------
 
-    def test_round_trip_name_consistency(self):
-        """get_pipeline_name is always '{namespace}.{id}' for any flow."""
+    def test_round_trip_name_consistency(self, source):
         test_cases = [
             KestraFlow(id="flow-a", namespace="ns1"),
             KestraFlow(id="etl-job", namespace="company.data.team"),
@@ -378,6 +347,6 @@ class TestKestraSource(TestCase):
         ]
         for flow in test_cases:
             expected = f"{flow.namespace}.{flow.id}"
-            assert self.source.get_pipeline_name(flow) == expected, (
+            assert source.get_pipeline_name(flow) == expected, (
                 f"Mismatch for flow {flow.namespace}/{flow.id}"
             )

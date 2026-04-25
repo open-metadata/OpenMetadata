@@ -126,8 +126,7 @@ class KestraSource(PipelineServiceSource):
         """
         namespaces: List[str] = self.client.get_namespaces()
         if not namespaces:
-            # Fall back to a global search when no namespaces are returned
-            logger.debug(
+            logger.warning(
                 "No namespaces returned; falling back to global flow search."
             )
             yield from self.client.get_flows()
@@ -135,11 +134,14 @@ class KestraSource(PipelineServiceSource):
 
         for namespace in namespaces:
             try:
-                for flow in self.client.get_flows(namespace=namespace):
+                flows = self.client.get_flows(namespace=namespace)
+                logger.info(f"Fetched {len(flows)} flows for namespace '{namespace}'")
+                for flow in flows:
                     yield flow
             except Exception as exc:
                 logger.warning(
-                    f"Error fetching flows for namespace '{namespace}': {exc}"
+                    f"Error fetching flows for namespace '{namespace}': {exc}\n"
+                    f"{traceback.format_exc()}"
                 )
 
     def get_pipeline_name(self, pipeline_details: KestraFlow) -> str:
@@ -161,6 +163,7 @@ class KestraSource(PipelineServiceSource):
                     Task(
                         name=t.id,
                         displayName=t.id,
+                        taskType=t.type,
                     )
                     for t in pipeline_details.tasks
                 ]
@@ -233,16 +236,19 @@ class KestraSource(PipelineServiceSource):
                 status_value = KESTRA_STATUS_MAP.get(
                     execution.state.current, StatusType.Pending.value
                 )
-                timestamp_ms = _parse_iso_to_ms(execution.startDate)
+                start_ms = _parse_iso_to_ms(execution.startDate)
+                end_ms = _parse_iso_to_ms(execution.endDate)
 
                 task_status = TaskStatus(
                     name=execution.id,
                     executionStatus=status_value,
-                    startTime=Timestamp(timestamp_ms) if timestamp_ms else None,
+                    startTime=Timestamp(start_ms) if start_ms else None,
+                    endTime=Timestamp(end_ms) if end_ms else None,
                 )
                 pipeline_status = PipelineStatus(
                     executionStatus=status_value,
-                    timestamp=Timestamp(timestamp_ms) if timestamp_ms else None,
+                    timestamp=Timestamp(start_ms) if start_ms else None,
+                    endTime=Timestamp(end_ms) if end_ms else None,
                     taskStatus=[task_status],
                 )
                 yield Either(
@@ -275,73 +281,82 @@ class KestraSource(PipelineServiceSource):
           - openmetadata.table.input  → source table FQN (table → pipeline)
           - openmetadata.table.output → destination table FQN (pipeline → table)
         """
-        labels = pipeline_details.get_labels_dict()
-        input_fqn = labels.get(LINEAGE_LABEL_INPUT)
-        output_fqn = labels.get(LINEAGE_LABEL_OUTPUT)
+        try:
+            labels = pipeline_details.get_labels_dict()
+            input_fqn = labels.get(LINEAGE_LABEL_INPUT)
+            output_fqn = labels.get(LINEAGE_LABEL_OUTPUT)
 
-        if not input_fqn and not output_fqn:
-            return
+            if not input_fqn and not output_fqn:
+                return
 
-        # Resolve the pipeline entity
-        pipeline_fqn = fqn.build(
-            metadata=self.metadata,
-            entity_type=Pipeline,
-            service_name=self.context.get().pipeline_service,
-            pipeline_name=self.context.get().pipeline,
-        )
-        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
-        if not pipeline_entity:
-            logger.debug(
-                f"Pipeline entity not found for FQN '{pipeline_fqn}'; skipping lineage."
+            # Resolve the pipeline entity
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
             )
-            return
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+            if not pipeline_entity:
+                logger.warning(
+                    f"Pipeline entity not found for FQN '{pipeline_fqn}'; skipping lineage."
+                )
+                return
 
-        pipeline_ref = EntityReference(
-            id=pipeline_entity.id.root, type="pipeline"
-        )
-        lineage_details = LineageDetails(
-            pipeline=pipeline_ref,
-            source=LineageSource.PipelineLineage,
-        )
+            pipeline_ref = EntityReference(
+                id=pipeline_entity.id.root, type="pipeline"
+            )
+            lineage_details = LineageDetails(
+                pipeline=pipeline_ref,
+                source=LineageSource.PipelineLineage,
+            )
 
-        # Input label: table → pipeline
-        if input_fqn:
-            table = self.metadata.get_by_name(entity=Table, fqn=input_fqn)
-            if table:
-                yield Either(
-                    right=AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=table.id.root, type="table"
-                            ),
-                            toEntity=pipeline_ref,
-                            lineageDetails=lineage_details,
+            # Input label: table → pipeline
+            if input_fqn:
+                table = self.metadata.get_by_name(entity=Table, fqn=input_fqn)
+                if table:
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=table.id.root, type="table"
+                                ),
+                                toEntity=pipeline_ref,
+                                lineageDetails=lineage_details,
+                            )
                         )
                     )
-                )
-            else:
-                logger.debug(
-                    f"Could not resolve input table FQN '{input_fqn}' for flow "
-                    f"'{pipeline_details.namespace}.{pipeline_details.id}'; skipping."
-                )
+                else:
+                    logger.warning(
+                        f"Could not resolve input table FQN '{input_fqn}' for flow "
+                        f"'{pipeline_details.namespace}.{pipeline_details.id}'; skipping."
+                    )
 
-        # Output label: pipeline → table
-        if output_fqn:
-            table = self.metadata.get_by_name(entity=Table, fqn=output_fqn)
-            if table:
-                yield Either(
-                    right=AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=pipeline_ref,
-                            toEntity=EntityReference(
-                                id=table.id.root, type="table"
-                            ),
-                            lineageDetails=lineage_details,
+            # Output label: pipeline → table
+            if output_fqn:
+                table = self.metadata.get_by_name(entity=Table, fqn=output_fqn)
+                if table:
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=pipeline_ref,
+                                toEntity=EntityReference(
+                                    id=table.id.root, type="table"
+                                ),
+                                lineageDetails=lineage_details,
+                            )
                         )
                     )
+                else:
+                    logger.warning(
+                        f"Could not resolve output table FQN '{output_fqn}' for flow "
+                        f"'{pipeline_details.namespace}.{pipeline_details.id}'; skipping."
+                    )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.get_pipeline_name(pipeline_details),
+                    error=f"Error yielding lineage for {pipeline_details.namespace}.{pipeline_details.id}: {exc}",
+                    stackTrace=traceback.format_exc(),
                 )
-            else:
-                logger.debug(
-                    f"Could not resolve output table FQN '{output_fqn}' for flow "
-                    f"'{pipeline_details.namespace}.{pipeline_details.id}'; skipping."
-                )
+            )
