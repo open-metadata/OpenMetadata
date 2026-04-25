@@ -18,11 +18,15 @@ These exercise the full source surface the topology runner invokes:
 Using a fake TSC-backed client with realistic data shapes.
 """
 
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 from metadata.generated.schema.entity.data.pipeline import PipelineStatus
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+
+from ._fixtures import FLOW_MARKETING, FLOW_SALES
 
 
 def _set_metadata_entity(source, entity, reference=None):
@@ -34,6 +38,12 @@ def _set_metadata_entity(source, entity, reference=None):
         source.metadata.get_reference_by_email.return_value = reference
 
 
+def _mock_entity(uuid):
+    entity = MagicMock()
+    entity.id = Uuid(root=uuid)
+    return entity
+
+
 class TestIngestionFlow:
     def test_pipeline_list_includes_sales_and_marketing(self, tableau_source):
         source, _ = tableau_source
@@ -42,8 +52,6 @@ class TestIngestionFlow:
 
     def test_yield_pipeline_sales_has_full_node_dag(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_SALES
-
         reference = EntityReferenceList(root=[EntityReference(id=uuid4(), type="user")])
         _set_metadata_entity(source, None, reference=reference)
         results = list(source.yield_pipeline(FLOW_SALES))
@@ -65,8 +73,6 @@ class TestIngestionFlow:
 
     def test_yield_pipeline_marketing_without_owner_or_tags(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_MARKETING
-
         results = list(source.yield_pipeline(FLOW_MARKETING))
         request = results[0].right
         assert request.owners is None
@@ -74,11 +80,6 @@ class TestIngestionFlow:
 
     def test_yield_tag_emits_classification_only_when_tags_exist(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import (
-            FLOW_MARKETING,
-            FLOW_SALES,
-        )
-
         sales_tags = list(source.yield_tag(FLOW_SALES))
         marketing_tags = list(source.yield_tag(FLOW_MARKETING))
         assert len(sales_tags) > 0
@@ -88,8 +89,6 @@ class TestIngestionFlow:
 class TestPipelineStatus:
     def test_status_per_task_for_multi_node_flow(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_SALES
-
         source.context.get().__dict__["pipeline"] = FLOW_SALES.name
         source._get_tasks(FLOW_SALES)
 
@@ -106,8 +105,6 @@ class TestPipelineStatus:
 
     def test_empty_runs_yields_nothing(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_MARKETING
-
         source.context.get().__dict__["pipeline"] = FLOW_MARKETING.name
         results = list(source.yield_pipeline_status(FLOW_MARKETING))
         assert results == []
@@ -116,8 +113,6 @@ class TestPipelineStatus:
 class TestLineage:
     def test_upstream_tables_emit_lineage_edges(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_SALES
-
         table_uuid, pipeline_uuid = uuid4(), uuid4()
         table_entity = _mock_entity(table_uuid)
         pipeline_entity = _mock_entity(pipeline_uuid)
@@ -133,8 +128,6 @@ class TestLineage:
 
     def test_downstream_flow_edge(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_SALES
-
         pipeline_uuid, downstream_uuid = uuid4(), uuid4()
         this_entity = _mock_entity(pipeline_uuid)
         downstream_entity = _mock_entity(downstream_uuid)
@@ -161,8 +154,6 @@ class TestLineage:
 
     def test_downstream_datasource_edge(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_SALES
-
         pipeline_uuid, dm_uuid = uuid4(), uuid4()
         this_entity = _mock_entity(pipeline_uuid)
         dm_entity = _mock_entity(dm_uuid)
@@ -178,8 +169,6 @@ class TestLineage:
 
     def test_custom_sql_on_marketing_flow(self, tableau_source):
         source, _ = tableau_source
-        from tests.integration.tableaupipeline.conftest import FLOW_MARKETING
-
         table_uuid, pipeline_uuid = uuid4(), uuid4()
         this_entity = _mock_entity(pipeline_uuid)
         table_entity = _mock_entity(table_uuid)
@@ -190,13 +179,3 @@ class TestLineage:
         rights = [r.right for r in results if r.right is not None]
         assert len(rights) >= 1
         assert rights[0].edge.fromEntity.type == "table"
-
-
-def _mock_entity(uuid):
-    from unittest.mock import MagicMock
-
-    from metadata.generated.schema.type.basic import Uuid
-
-    entity = MagicMock()
-    entity.id = Uuid(root=uuid)
-    return entity

@@ -5,11 +5,10 @@ source:
     config:
       type: TableauPipeline
       # For Tableau, choose one of basic or access token authentication
-      # # For basic authentication
-      # authType:
-      #   username: username
-      #   password: password
-      # # For access token authentication
+      authType:
+        username: username
+        password: password
+      # # For access token authentication, swap the authType block above with:
       # authType:
       #   personalAccessTokenName: personal_access_token_name
       #   personalAccessTokenSecret: personal_access_token_secret
