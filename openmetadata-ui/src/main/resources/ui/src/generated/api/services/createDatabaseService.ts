@@ -1731,6 +1731,7 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */

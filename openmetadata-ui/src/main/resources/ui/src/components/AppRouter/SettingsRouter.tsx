@@ -59,9 +59,12 @@ import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPa
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
 import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
+import TaskFormSettingsPage from '../../pages/TaskFormSettingsPage/TaskFormSettingsPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
+import WorkflowBuilderPage from '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder';
+import WorkflowsListPage from '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -681,6 +684,40 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.GLOSSARY_TERM_RELATIONS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.WORKFLOW_DEFINITIONS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.WORKFLOW_DEFINITIONS,
+          true
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <TaskFormSettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.TASK_FORMS
         )}
       />
     </Routes>

@@ -25,15 +25,19 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
-    ProfileSampleType,
     Table,
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
     BurstIQConnection,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import (
+    ProfileSampleConfig,
+    SampleConfig,
+    StaticSamplingConfig,
+)
 from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -98,8 +102,12 @@ class TestBurstIQSamplerGetClient:
 class TestBurstIQSamplerRawDataset:
     def test_rows_sample_type_limits_to_exact_count(self, sampler, mock_client):
         sampler.sample_config = SampleConfig(
-            profileSample=3,
-            profileSampleType=ProfileSampleType.ROWS,
+            profileSampleConfig=ProfileSampleConfig(
+                config=StaticSamplingConfig(
+                    profileSample=3,
+                    profileSampleType=ProfileSampleType.ROWS,
+                )
+            )
         )
         mock_client.get_records_by_tql.return_value = [
             {"score": 1.0, "age": i} for i in range(3)
@@ -115,8 +123,12 @@ class TestBurstIQSamplerRawDataset:
 
     def test_percentage_sample_type_queries_chain_metrics(self, sampler, mock_client):
         sampler.sample_config = SampleConfig(
-            profileSample=50,
-            profileSampleType=ProfileSampleType.PERCENTAGE,
+            profileSampleConfig=ProfileSampleConfig(
+                config=StaticSamplingConfig(
+                    profileSample=50,
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                )
+            )
         )
         mock_client.get_chain_metrics.return_value = {"TestChain": 100}
         mock_client.get_records_by_tql.return_value = [

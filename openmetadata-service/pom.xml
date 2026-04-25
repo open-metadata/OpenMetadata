@@ -21,12 +21,12 @@
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.5.0-rc2</quartz.version>
-    <pac4j.version>5.7.0</pac4j.version>
+    <pac4j.version>5.7.10</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
-    <jetty.version>12.1.6</jetty.version>
+    <jetty.version>12.1.7</jetty.version>
     <logback-core.version>1.5.25</logback-core.version>
     <logback-classic.version>1.5.25</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>

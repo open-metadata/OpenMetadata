@@ -17,14 +17,17 @@ import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
@@ -132,12 +135,14 @@ export const getContainerDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewCustomPropertiesPermission,
+  viewSampleDataPermission,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
   tab,
   deleted,
   containerData,
+  containerPermissions,
   fetchContainerDetail,
   labelMap,
   childrenCount,
@@ -187,6 +192,41 @@ export const getContainerDetailPageTabs = ({
             ),
           },
         ]),
+
+    ...(!isDataModelEmpty
+      ? [
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.SAMPLE_DATA}
+                name={get(
+                  labelMap,
+                  EntityTabs.SAMPLE_DATA,
+                  t('label.sample-data')
+                )}
+              />
+            ),
+            key: EntityTabs.SAMPLE_DATA,
+            children: !viewSampleDataPermission ? (
+              <ErrorPlaceHolder
+                className="border-none"
+                permissionValue={t('label.view-entity', {
+                  entity: t('label.sample-data'),
+                })}
+                type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+              />
+            ) : (
+              <SampleDataTableComponent
+                entityType={EntityType.CONTAINER}
+                isTableDeleted={deleted}
+                owners={containerData?.owners ?? []}
+                permissions={containerPermissions}
+                tableId={containerData?.id ?? ''}
+              />
+            ),
+          },
+        ]
+      : []),
 
     {
       label: (
