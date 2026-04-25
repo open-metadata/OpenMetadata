@@ -107,7 +107,8 @@
       "properties": {
         "name": {
           "description": "Name that identifies this task instance uniquely.",
-          "type": "string"
+          "type": "string",
+          "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
         },
         "displayName": {
           "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
