@@ -578,7 +578,7 @@ class HiveUnitTest(TestCase):
                 ("id", "int", None),
                 ("name", "string", None),
             ],
-            [],
+            Exception("Table is not partitioned"),
         ]
         self.hive._connection_map[self.thread_id] = mock_connection
 

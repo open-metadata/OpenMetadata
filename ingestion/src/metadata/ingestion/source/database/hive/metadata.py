@@ -220,9 +220,12 @@ class HiveSource(CommonDbSourceService):
         if partition_keys:
             return partition_keys
 
-        partitions = self.connection.execute(
-            text(f"SHOW PARTITIONS {quoted_schema_name}.{quoted_table_name}")
-        )
+        try:
+            partitions = self.connection.execute(
+                text(f"SHOW PARTITIONS {quoted_schema_name}.{quoted_table_name}")
+            )
+        except Exception:
+            return []
         first_partition = next((row[0] for row in partitions if row and row[0]), None)
         if not first_partition:
             return []
