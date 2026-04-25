@@ -386,9 +386,6 @@ class ServiceUtilClassBase {
     if (entityType === EntityType.CHART) {
       return ChartIcon;
     }
-    // else if (entityType === EntityType.TABLE_COLUMN) {
-    //   return ColumnIcon;
-    // }
 
     return this.getServiceLogo(type);
   }

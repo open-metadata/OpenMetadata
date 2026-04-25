@@ -258,12 +258,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const serviceIcon = useMemo(() => {
       if (!entityIcon && source.entityType === EntityType.TABLE_COLUMN) {
         return (
-          <ColumnIcon style={{ color: '#2263D4', width: 42, height: 40 }} />
+          <ColumnIcon
+            className="text-link-color"
+            style={{ width: 42, height: 40 }}
+          />
         );
       }
 
       return searchClassBase.getServiceIcon(source);
-    }, [source]);
+    }, [source, entityIcon]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
