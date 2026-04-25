@@ -437,6 +437,45 @@ class ElasticSearchVectorServiceTest {
             inv -> new ByteArrayInputStream(responseJson.getBytes(StandardCharsets.UTF_8)));
   }
 
+  @Test
+  void testNumCandidatesMultiplierFromConfigIsApplied() throws Exception {
+    int configuredMultiplier = 5;
+    int k = 50;
+    // num_candidates = max(50 * 5, 100) = 250
+    int expectedNumCandidates = 250;
+
+    ElasticSearchVectorService svc =
+        new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient, "en", configuredMultiplier);
+
+    List<String> capturedBodies = new java.util.ArrayList<>();
+    Response mockResponse = mock(Response.class);
+    HttpEntity mockEntity = mock(HttpEntity.class);
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            inv -> {
+              Request req = inv.getArgument(0);
+              org.apache.hc.core5.http.HttpEntity entity = req.getEntity();
+              if (entity != null) {
+                try (java.io.InputStream is = entity.getContent()) {
+                  capturedBodies.add(new String(is.readAllBytes(), StandardCharsets.UTF_8));
+                }
+              }
+              return mockResponse;
+            });
+    when(mockResponse.getEntity()).thenReturn(mockEntity);
+    when(mockEntity.getContent())
+        .thenAnswer(
+            inv -> new ByteArrayInputStream(EMPTY_HITS_RESPONSE.getBytes(StandardCharsets.UTF_8)));
+
+    svc.search("test query", Map.of(), 10, 0, k, 0.0);
+
+    assertFalse(capturedBodies.isEmpty(), "Expected at least one request to be captured");
+    String requestBody = capturedBodies.get(0);
+    assertTrue(
+        requestBody.contains("\"num_candidates\":" + expectedNumCandidates),
+        "Expected num_candidates=" + expectedNumCandidates + " in: " + requestBody);
+  }
+
   /** Returns each response in sequence; repeats the last one if more calls are made. */
   private void mockRestClientResponseSequence(String... responses) throws Exception {
     Response mockResponse = mock(Response.class);

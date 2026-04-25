@@ -14,7 +14,7 @@ public class VectorSearchQueryBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(VectorSearchQueryBuilder.class);
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
-  static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
+  public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
 
   /** Build a full search request body (size + _source + query) for standalone vector search. */
   public static String build(

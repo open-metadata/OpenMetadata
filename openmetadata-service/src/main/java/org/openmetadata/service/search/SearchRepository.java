@@ -137,6 +137,7 @@ import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
@@ -419,7 +420,8 @@ public class SearchRepository {
       } else {
         es.co.elastic.clients.elasticsearch.ElasticsearchClient esClient =
             ((ElasticSearchClient) getSearchClient()).getNewClient();
-        ElasticSearchVectorService.init(esClient, embeddingClient, language);
+        int knnMultiplier = resolveKnnNumCandidatesMultiplier(cfg);
+        ElasticSearchVectorService.init(esClient, embeddingClient, language, knnMultiplier);
         this.vectorIndexService = ElasticSearchVectorService.getInstance();
       }
 
@@ -438,6 +440,15 @@ public class SearchRepository {
       this.vectorServiceInitError = e.toString();
       LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
     }
+  }
+
+  private static int resolveKnnNumCandidatesMultiplier(ElasticSearchConfiguration cfg) {
+    NaturalLanguageSearchConfiguration nlCfg = cfg.getNaturalLanguageSearch();
+    if (nlCfg != null && nlCfg.getKnnNumCandidatesMultiplier() != null
+        && nlCfg.getKnnNumCandidatesMultiplier() >= 1) {
+      return nlCfg.getKnnNumCandidatesMultiplier();
+    }
+    return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
   }
 
   public void ensureHybridSearchPipeline() {
