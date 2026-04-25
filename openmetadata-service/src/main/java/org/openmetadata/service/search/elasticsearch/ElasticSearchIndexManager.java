@@ -86,7 +86,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
-      String mappingsJson = extractMappingsJson(indexMappingContent);
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              : indexMappingContent;
+      String mappingsJson = extractMappingsJson(transformedContent);
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
@@ -165,12 +169,16 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
+    String enrichedContent =
+        (indexMappingContent != null && !indexMappingContent.isEmpty())
+            ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+            : indexMappingContent;
     CreateIndexRequest request =
         CreateIndexRequest.of(
             builder -> {
               builder.index(indexName);
-              if (indexMappingContent != null) {
-                builder.withJson(new StringReader(indexMappingContent));
+              if (enrichedContent != null) {
+                builder.withJson(new StringReader(enrichedContent));
               }
               return builder;
             });

@@ -591,11 +591,6 @@ public class SearchRepository {
 
   private String getIndexMapping(IndexMapping indexMapping) {
     String mappingFile = indexMapping.getIndexMappingFile();
-    boolean isOpenSearch = getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH;
-    if (!isOpenSearch && mappingFile != null && mappingFile.contains("vector_search_index.json")) {
-      mappingFile =
-          mappingFile.replace("vector_search_index.json", "vector_search_index_es_native.json");
-    }
     try (InputStream in =
         getClass().getResourceAsStream(String.format(mappingFile, language.toLowerCase()))) {
       assert in != null;
@@ -607,11 +602,7 @@ public class SearchRepository {
   }
 
   public String readIndexMapping(IndexMapping indexMapping) {
-    String mapping = getIndexMapping(indexMapping);
-    if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
-      mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
-    }
-    return mapping;
+    return getIndexMapping(indexMapping);
   }
 
   /**
@@ -3039,46 +3030,6 @@ public class SearchRepository {
         JsonUtils.deepCopyList(references, EntityReference.class);
     inheritedReferences.forEach(ref -> ref.setInherited(true));
     return inheritedReferences;
-  }
-
-  private String reformatVectorIndexWithDimension(String mapping, int dimension) {
-    try {
-      com.fasterxml.jackson.databind.ObjectMapper mapper =
-          new com.fasterxml.jackson.databind.ObjectMapper();
-      JsonNode root = mapper.readTree(mapping);
-      if (root.has("mappings")) {
-        JsonNode mappings = root.get("mappings");
-        if (mappings.has("properties")) {
-          JsonNode properties = mappings.get("properties");
-          if (properties.has("embedding")) {
-            com.fasterxml.jackson.databind.node.ObjectNode embeddingNode =
-                (com.fasterxml.jackson.databind.node.ObjectNode) properties.get("embedding");
-            if (embeddingNode.has("dims")) {
-              embeddingNode.put("dims", dimension);
-            } else {
-              embeddingNode.put("dimension", dimension);
-            }
-          }
-        }
-        com.fasterxml.jackson.databind.node.ObjectNode meta =
-            ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
-        meta.put(
-                "embedding_model",
-                embeddingClient != null ? embeddingClient.getModelId() : "unknown")
-            .put("embedding_dimension", dimension);
-      }
-      return mapper.writeValueAsString(root);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to parse mapping JSON for dimension patching, falling back to string replace");
-      return mapping
-          .replace("\"dimension\": 768", "\"dimension\": " + dimension)
-          .replace("\"dimension\":768", "\"dimension\":" + dimension)
-          .replace("\"dimension\": 512", "\"dimension\": " + dimension)
-          .replace("\"dimension\":512", "\"dimension\":" + dimension)
-          .replace("\"dims\": 512", "\"dims\": " + dimension)
-          .replace("\"dims\":512", "\"dims\":" + dimension);
-    }
   }
 
   protected EmbeddingClient createEmbeddingClient(ElasticSearchConfiguration esConfig) {

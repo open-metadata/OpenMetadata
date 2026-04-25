@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,9 +88,4 @@ class ElasticSearchBulkSinkSimpleTest {
     assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
   }
 
-  @Test
-  void testAddEntitiesToVectorIndexBatch() {
-    elasticSearchBulkSink.addEntitiesToVectorIndexBatch(
-        null, Collections.emptyList(), true, null, null);
-  }
 }

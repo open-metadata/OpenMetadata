@@ -15,22 +15,19 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -57,7 +54,6 @@ import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
-import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
@@ -65,7 +61,6 @@ import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
  */
 @Slf4j
 public class ElasticSearchBulkSink implements BulkSink {
-  private static final int MAX_VECTOR_THREADS = 10;
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
@@ -134,10 +129,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
 
-  // Vector embedding fields
-  private final ExecutorService vectorExecutor;
-  private final Phaser phaser;
-  private final CopyOnWriteArrayList<Thread> pendingThreads;
+  // Vector embedding stats (incremented inline during addEntity)
   private final AtomicLong vectorSuccess = new AtomicLong(0);
   private final AtomicLong vectorFailed = new AtomicLong(0);
 
@@ -152,10 +144,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     this.batchSize = batchSize;
     this.maxConcurrentRequests = maxConcurrentRequests;
     this.maxPayloadSizeBytes = maxPayloadSizeBytes;
-    this.vectorExecutor =
-        Executors.newFixedThreadPool(MAX_VECTOR_THREADS, Thread.ofVirtual().factory());
-    this.phaser = new Phaser(1);
-    this.pendingThreads = new CopyOnWriteArrayList<>();
 
     // Initialize stats
     stats.withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
@@ -263,13 +251,28 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
-        // Add entities to search index in parallel
+        boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
+
+        Map<String, String> existingFingerprints = Collections.emptyMap();
+        if (embeddingsEnabled && !recreateIndex) {
+          existingFingerprints = fetchExistingFingerprints(entityInterfaces, indexName);
+        }
+
+        Map<String, String> finalFingerprints = existingFingerprints;
         List<CompletableFuture<Void>> futures =
             entityInterfaces.stream()
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> addEntity(entity, indexName, recreateIndex, tracker),
+                            () ->
+                                addEntity(
+                                    entity,
+                                    indexName,
+                                    recreateIndex,
+                                    reindexContext,
+                                    tracker,
+                                    embeddingsEnabled,
+                                    finalFingerprints),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -289,11 +292,6 @@ public class ElasticSearchBulkSink implements BulkSink {
             pendingColumnFutures.add(future);
           }
           pendingColumnFutures.removeIf(CompletableFuture::isDone);
-        }
-
-        if (isVectorEmbeddingEnabledForEntity(entityType)) {
-          addEntitiesToVectorIndexBatch(
-              bulkProcessor, entityInterfaces, recreateIndex, reindexContext, tracker);
         }
       }
     } catch (Exception e) {
@@ -325,11 +323,22 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
+      EntityInterface entity,
+      String indexName,
+      boolean recreateIndex,
+      ReindexContext reindexContext,
+      StageStatsTracker tracker,
+      boolean embeddingsEnabled,
+      Map<String, String> existingFingerprints) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
+
+      if (embeddingsEnabled) {
+        json = enrichWithEmbedding(entity, json, recreateIndex, existingFingerprints, tracker);
+      }
+
       String docId = entity.getId().toString();
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
@@ -667,8 +676,6 @@ public class ElasticSearchBulkSink implements BulkSink {
   @Override
   public void close() {
     try {
-      awaitVectorCompletion(60);
-
       bulkProcessor.flush();
 
       // Wait for in-flight column doc-build tasks before flushing the column processor
@@ -684,8 +691,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (!columnTerminated) {
         LOG.warn("Column bulk processor did not terminate within timeout");
       }
-
-      vectorExecutor.shutdown();
 
       updateStats();
 
@@ -780,154 +785,71 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return searchRepository.isVectorEmbeddingEnabled()
-        && searchRepository.getVectorIndexService() != null
+        && ElasticSearchVectorService.getInstance() != null
         && AvailableEntityTypes.isVectorIndexable(entityType);
   }
 
-  void addEntitiesToVectorIndexBatch(
-      CustomBulkProcessor bulkProcessor,
-      List<EntityInterface> entities,
+  @SuppressWarnings("unchecked")
+  private String enrichWithEmbedding(
+      EntityInterface entity,
+      String json,
       boolean recreateIndex,
-      ReindexContext reindexContext,
-      StageStatsTracker tracker) {
-    if (entities.isEmpty()) {
-      return;
-    }
-
-    VectorIndexService vectorService = searchRepository.getVectorIndexService();
-    if (vectorService == null) {
-      return;
-    }
-
-    String entityType = entities.getFirst().getEntityReference().getType();
-    if (!AvailableEntityTypes.isVectorIndexable(entityType)) {
-      return;
-    }
-
-    String canonicalIndex = vectorService.getIndexAlias();
-    String finalTargetIndex = canonicalIndex;
-    String finalSourceIndex = null;
-
-    if (reindexContext != null) {
-      String stagedIndex =
-          reindexContext.getStagedIndex(VectorIndexService.VECTOR_INDEX_KEY).orElse(null);
-      if (stagedIndex != null) {
-        finalSourceIndex = canonicalIndex;
-        finalTargetIndex = stagedIndex;
-      }
-    }
-
-    String srcIdx = finalSourceIndex;
-    String tgtIdx = finalTargetIndex;
-
-    Map<String, String> existingFingerprints = Map.of();
-    if (srcIdx != null) {
-      List<String> parentIds = new ArrayList<>(entities.size());
-      for (EntityInterface entity : entities) {
-        parentIds.add(entity.getId().toString());
-      }
-      existingFingerprints = vectorService.getExistingFingerprintsBatch(srcIdx, parentIds);
-    }
-
-    for (EntityInterface entity : entities) {
-      String parentId = entity.getId().toString();
-      String existingFp = existingFingerprints.get(parentId);
-      String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
-
-      if (existingFp != null && existingFp.equals(currentFp) && srcIdx != null) {
-        submitVectorTask(
-            () ->
-                processMigration(
-                    vectorService, srcIdx, tgtIdx, parentId, currentFp, entity, tracker));
-      } else {
-        submitVectorTask(() -> processEmbedding(vectorService, entity, tgtIdx, tracker));
-      }
-    }
-  }
-
-  private void processMigration(
-      VectorIndexService vectorService,
-      String sourceIndex,
-      String targetIndex,
-      String parentId,
-      String fingerprint,
-      EntityInterface entity,
+      Map<String, String> existingFingerprints,
       StageStatsTracker tracker) {
     try {
-      boolean copied =
-          vectorService instanceof ElasticSearchVectorService esService
-              && esService.copyExistingVectorDocuments(
-                  sourceIndex, targetIndex, parentId, fingerprint);
-      if (copied) {
-        vectorSuccess.incrementAndGet();
-        if (tracker != null) {
-          tracker.recordVector(StatsResult.SUCCESS);
+      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return json;
+      }
+
+      if (!recreateIndex) {
+        String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
+        String existingFp = existingFingerprints.get(entity.getId().toString());
+        if (existingFp != null && existingFp.equals(currentFp)) {
+          vectorSuccess.incrementAndGet();
+          if (tracker != null) {
+            tracker.recordVector(StatsResult.SUCCESS);
+          }
+          return json;
         }
-      } else {
-        processEmbedding(vectorService, entity, targetIndex, tracker);
       }
-    } catch (Exception e) {
-      LOG.warn(
-          "Vector migration failed for parent_id={}, falling back to recomputation: {}",
-          parentId,
-          e.getMessage());
-      processEmbedding(vectorService, entity, targetIndex, tracker);
-    }
-  }
 
-  private void processEmbedding(
-      VectorIndexService vectorService,
-      EntityInterface entity,
-      String targetIndex,
-      StageStatsTracker tracker) {
-    try {
-      vectorService.updateEntityEmbedding(entity, targetIndex);
+      Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
+      Map<String, Object> docMap = OBJECT_MAPPER.readValue(json, Map.class);
+      docMap.putAll(embeddingFields);
+
       vectorSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.SUCCESS);
       }
+      return OBJECT_MAPPER.writeValueAsString(docMap);
     } catch (Exception e) {
+      LOG.warn(
+          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
       vectorFailed.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.FAILED);
       }
-      LOG.error("Vector embedding failed for entity {}: {}", entity.getId(), e.getMessage(), e);
+      return json;
     }
   }
 
-  private void submitVectorTask(Runnable task) {
-    phaser.register();
-    vectorExecutor.submit(
-        () -> {
-          Thread current = Thread.currentThread();
-          pendingThreads.add(current);
-          try {
-            task.run();
-          } finally {
-            pendingThreads.remove(current);
-            phaser.arriveAndDeregister();
-          }
-        });
-  }
-
-  @Override
-  public boolean awaitVectorCompletion(int timeoutSeconds) {
+  private Map<String, String> fetchExistingFingerprints(
+      List<EntityInterface> entities, String indexName) {
     try {
-      int phase = phaser.arrive();
-      phaser.awaitAdvanceInterruptibly(phase, timeoutSeconds, TimeUnit.SECONDS);
-      return true;
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return false;
-    } catch (TimeoutException e) {
-      LOG.warn("Timeout waiting for vector completion after {}s", timeoutSeconds);
-      return false;
+      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return Collections.emptyMap();
+      }
+      List<String> entityIds = new ArrayList<>(entities.size());
+      for (EntityInterface entity : entities) {
+        entityIds.add(entity.getId().toString());
+      }
+      return vectorService.getExistingFingerprintsBatch(indexName, entityIds);
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch existing fingerprints: {}", e.getMessage());
+      return Collections.emptyMap();
     }
-  }
-
-  @Override
-  public int getPendingVectorTaskCount() {
-    return Math.max(0, phaser.getUnarrivedParties() - 1);
   }
 
   @Override

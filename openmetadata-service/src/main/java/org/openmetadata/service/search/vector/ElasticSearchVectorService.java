@@ -2,24 +2,12 @@ package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
-import es.co.elastic.clients.elasticsearch._types.Refresh;
-import es.co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
-import es.co.elastic.clients.elasticsearch.core.BulkRequest;
-import es.co.elastic.clients.elasticsearch.core.BulkResponse;
-import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
-import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
-import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
-import es.co.elastic.clients.elasticsearch.indices.IndexSettings;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
-import jakarta.json.stream.JsonParser;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,7 +18,6 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
@@ -52,7 +39,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
     this.client = client;
     this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
-    this.language = language != null ? language.toLowerCase() : "en";
+    this.language = language != null ? language.toLowerCase(java.util.Locale.ROOT) : "en";
   }
 
   public ElasticSearchVectorService(ElasticsearchClient client, EmbeddingClient embeddingClient) {
@@ -68,6 +55,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
+      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     ElasticSearchVectorService svc = new ElasticSearchVectorService(client, embeddingClient, language);
     svc.registerVectorEmbeddingHandler();
@@ -108,7 +96,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       int rawOffset = 0;
       long totalHits = -1L;
       boolean exhausted = false;
-      int requestedParents = from + size + 1; // one extra to determine hasMore
+      int requestedParents = from + size + 1;
       int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
       if (threshold <= 0.0) {
         overFetchSize = Math.min(overFetchSize, k);
@@ -214,73 +202,30 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
-    updateVectorEmbeddings(entity, entityIndexName);
-  }
-
-  public void updateVectorEmbeddings(EntityInterface entity, String targetIndex) {
     try {
-      String parentId = entity.getId().toString();
-      String existingFingerprint = getExistingFingerprint(targetIndex, parentId);
+      String entityId = entity.getId().toString();
+      String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
 
       if (currentFingerprint.equals(existingFingerprint)) {
-        LOG.debug("Skipping entity {} - fingerprint unchanged", parentId);
+        LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
         return;
       }
 
-      List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(entity, embeddingClient);
-      deleteByParentId(targetIndex, parentId);
-      bulkIndex(docs, targetIndex);
+      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
+      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
     } catch (Exception e) {
-      LOG.error(
-          "Failed to update vector embeddings for entity {}: {}",
-          entity.getId(),
-          e.getMessage(),
-          e);
-    }
-  }
-
-  public void updateVectorEmbeddingsWithMigration(
-      EntityInterface entity, String targetIndex, String sourceIndex) {
-    try {
-      String parentId = entity.getId().toString();
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-
-      if (sourceIndex != null) {
-        try {
-          String existingFingerprint = getExistingFingerprint(sourceIndex, parentId);
-          if (currentFingerprint.equals(existingFingerprint)) {
-            if (copyExistingVectorDocuments(
-                sourceIndex, targetIndex, parentId, currentFingerprint)) {
-              return;
-            }
-          }
-        } catch (Exception ex) {
-          LOG.warn(
-              "Migration copy failed for entity {}, falling back to recomputation: {}",
-              parentId,
-              ex.getMessage());
-        }
-      }
-
-      List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(entity, embeddingClient);
-      bulkIndex(docs, targetIndex);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to update vector embeddings with migration for entity {}: {}",
-          entity.getId(),
-          e.getMessage(),
-          e);
+      LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
   }
 
   @Override
-  public String getExistingFingerprint(String indexName, String parentId) {
+  public String getExistingFingerprint(String indexName, String entityId) {
     try {
       String query =
           "{\"size\":1,\"_source\":[\"fingerprint\"],"
-              + "\"query\":{\"term\":{\"parent_id\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
+              + "\"query\":{\"term\":{\"_id\":\""
+              + VectorSearchQueryBuilder.escape(entityId)
               + "\"}}}";
       String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
       JsonNode root = MAPPER.readTree(response);
@@ -290,8 +235,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
       }
     } catch (Exception e) {
       LOG.debug(
-          "Failed to get fingerprint for parent_id={} in index={}: {}",
-          parentId,
+          "Failed to get fingerprint for entityId={} in index={}: {}",
+          entityId,
           indexName,
           e.getMessage());
     }
@@ -300,29 +245,28 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public Map<String, String> getExistingFingerprintsBatch(
-      String indexName, List<String> parentIds) {
-    if (parentIds == null || parentIds.isEmpty()) {
+      String indexName, List<String> entityIds) {
+    if (entityIds == null || entityIds.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      StringBuilder termsArray = new StringBuilder("[");
-      for (int i = 0; i < parentIds.size(); i++) {
-        if (i > 0) termsArray.append(',');
-        termsArray
+      StringBuilder idsArray = new StringBuilder("[");
+      for (int i = 0; i < entityIds.size(); i++) {
+        if (i > 0) idsArray.append(',');
+        idsArray
             .append("\"")
-            .append(VectorSearchQueryBuilder.escape(parentIds.get(i)))
+            .append(VectorSearchQueryBuilder.escape(entityIds.get(i)))
             .append("\"");
       }
-      termsArray.append("]");
+      idsArray.append("]");
 
       String query =
           "{\"size\":"
-              + parentIds.size()
-              + ",\"_source\":[\"parent_id\",\"fingerprint\"]"
-              + ",\"query\":{\"terms\":{\"parent_id\":"
-              + termsArray
-              + "}}"
-              + ",\"collapse\":{\"field\":\"parent_id\"}}";
+              + entityIds.size()
+              + ",\"_source\":[\"fingerprint\"]"
+              + ",\"query\":{\"ids\":{\"values\":"
+              + idsArray
+              + "}}}";
 
       String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
       JsonNode root = MAPPER.readTree(response);
@@ -330,10 +274,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
       Map<String, String> result = new HashMap<>();
       for (JsonNode hit : hits) {
-        String pid = hit.path("_source").path("parent_id").asText();
+        String id = hit.path("_id").asText();
         String fp = hit.path("_source").path("fingerprint").asText(null);
-        if (pid != null && fp != null) {
-          result.put(pid, fp);
+        if (id != null && fp != null) {
+          result.put(id, fp);
         }
       }
       return result;
@@ -343,251 +287,16 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public boolean copyExistingVectorDocuments(
-      String sourceIndex, String targetIndex, String parentId, String fingerprint) {
+  public void partialUpdateEntity(
+      String indexName, String entityId, Map<String, Object> embeddingFields) {
     try {
-      String searchQuery =
-          "{\"size\":1000,\"query\":{\"term\":{\"parent_id\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
-              + "\"}}}";
-      String response = executeGenericRequest("POST", "/" + sourceIndex + "/_search", searchQuery);
-      JsonNode root = MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      if (!hits.isArray() || hits.isEmpty()) {
-        return false;
-      }
-
-      List<Map<String, Object>> docs = new ArrayList<>();
-      for (JsonNode hit : hits) {
-        Map<String, Object> source = MAPPER.convertValue(hit.path("_source"), Map.class);
-        source.put("fingerprint", fingerprint);
-        docs.add(source);
-      }
-      bulkIndex(docs, targetIndex);
-      return true;
+      String docJson = MAPPER.writeValueAsString(embeddingFields);
+      String updateBody = "{\"doc\":" + docJson + "}";
+      executeGenericRequest(
+          "POST", "/" + indexName + "/_update/" + entityId + "?retry_on_conflict=3", updateBody);
     } catch (Exception e) {
       LOG.error(
-          "Failed to copy vector documents from {} to {} for parent_id={}: {}",
-          sourceIndex,
-          targetIndex,
-          parentId,
-          e.getMessage(),
-          e);
-      return false;
-    }
-  }
-
-  public void softDeleteEmbeddings(EntityInterface entity) {
-    try {
-      String parentId = entity.getId().toString();
-      String indexName = getIndexAlias();
-      String script =
-          "{\"script\":{\"source\":\"ctx._source.deleted = true\"},"
-              + "\"query\":{\"term\":{\"parent_id\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
-              + "\"}}}";
-      executeGenericRequest("POST", "/" + indexName + "/_update_by_query", script);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to soft delete embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-    }
-  }
-
-  public void hardDeleteEmbeddings(EntityInterface entity) {
-    try {
-      String parentId = entity.getId().toString();
-      String indexName = getIndexAlias();
-      deleteByParentId(indexName, parentId);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to hard delete embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-    }
-  }
-
-  public void restoreEmbeddings(EntityInterface entity) {
-    try {
-      String parentId = entity.getId().toString();
-      String indexName = getIndexAlias();
-      String script =
-          "{\"script\":{\"source\":\"ctx._source.deleted = false\"},"
-              + "\"query\":{\"term\":{\"parent_id\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
-              + "\"}}}";
-      executeGenericRequest("POST", "/" + indexName + "/_update_by_query", script);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to restore embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-    }
-  }
-
-  private void deleteByParentId(String indexName, String parentId) {
-    try {
-      String query =
-          "{\"query\":{\"term\":{\"parent_id\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
-              + "\"}}}";
-      executeGenericRequest("POST", "/" + indexName + "/_delete_by_query", query);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to delete by parent_id={} in index={}: {}",
-          parentId,
-          indexName,
-          e.getMessage(),
-          e);
-    }
-  }
-
-
-  public void createOrUpdateIndex(int dimension) {
-    try {
-      if (indexExists()) {
-        LOG.info("Vector index {} already exists", getIndexAlias());
-        return;
-      }
-
-      String mappingJson = loadIndexMapping(dimension);
-      JsonNode rootNode = MAPPER.readTree(mappingJson);
-      JsonNode mappingsNode = rootNode.get("mappings");
-      JsonNode settingsNode = rootNode.get("settings");
-
-      CreateIndexRequest request =
-          CreateIndexRequest.of(
-              builder -> {
-                builder.index(getIndexAlias());
-
-                if (mappingsNode != null && !mappingsNode.isNull()) {
-                  TypeMapping typeMapping = parseTypeMapping(mappingsNode);
-                  builder.mappings(typeMapping);
-                }
-
-                if (settingsNode != null && !settingsNode.isNull()) {
-                  IndexSettings settings = parseIndexSettings(settingsNode);
-                  builder.settings(settings);
-                }
-
-                return builder;
-              });
-      client.indices().create(request);
-
-      LOG.info("Created vector index {} with dimension {}", getIndexAlias(), dimension);
-    } catch (Exception e) {
-      LOG.error("Failed to create vector index: {}", e.getMessage(), e);
-    }
-  }
-
-  public boolean indexExists() {
-    try {
-      ExistsRequest request = ExistsRequest.of(b -> b.index(getIndexAlias()));
-      return client.indices().exists(request).value();
-    } catch (Exception e) {
-      LOG.error("Failed to check if vector index exists: {}", e.getMessage(), e);
-      return false;
-    }
-  }
-
-  public String getIndexName() {
-    return getIndexAlias();
-  }
-
-  @SuppressWarnings("unchecked")
-  public void bulkIndex(List<Map<String, Object>> documents, String targetIndex) {
-    if (documents == null || documents.isEmpty()) {
-      return;
-    }
-
-    try {
-      List<BulkOperation> operations = new ArrayList<>();
-      for (int i = 0; i < documents.size(); i++) {
-        Map<String, Object> doc = documents.get(i);
-        String parentId = (String) doc.get("parentId");
-        int chunkIndex = doc.containsKey("chunkIndex") ? (int) doc.get("chunkIndex") : i;
-        String docId = parentId + "-" + chunkIndex;
-
-        operations.add(
-            BulkOperation.of(
-                op -> op.index(idx -> idx.index(targetIndex).id(docId).document(doc))));
-      }
-
-      BulkRequest bulkRequest =
-          BulkRequest.of(b -> b.operations(operations).refresh(Refresh.False));
-      BulkResponse response = client.bulk(bulkRequest);
-
-      if (response.errors()) {
-        long errorCount = 0;
-        for (BulkResponseItem item : response.items()) {
-          if (item.error() != null) {
-            errorCount++;
-            LOG.warn(
-                "Bulk vector indexing error for document [{}] in [{}]: type={}, reason={}",
-                item.id(),
-                targetIndex,
-                item.error().type(),
-                item.error().reason());
-          }
-        }
-        LOG.warn(
-            "Bulk vector indexing completed with {}/{} errors in {}",
-            errorCount,
-            documents.size(),
-            targetIndex);
-      } else {
-        LOG.debug(
-            "Successfully bulk indexed {} vector documents in {}", documents.size(), targetIndex);
-      }
-    } catch (Exception e) {
-      LOG.error("Bulk vector indexing failed in {}: {}", targetIndex, e.getMessage(), e);
-    }
-  }
-
-  private TypeMapping parseTypeMapping(JsonNode mappingsNode) {
-    JsonParser parser =
-        client
-            ._transport()
-            .jsonpMapper()
-            .jsonProvider()
-            .createParser(new StringReader(mappingsNode.toString()));
-    return TypeMapping._DESERIALIZER.deserialize(parser, client._transport().jsonpMapper());
-  }
-
-  private IndexSettings parseIndexSettings(JsonNode settingsNode) {
-    JsonParser parser =
-        client
-            ._transport()
-            .jsonpMapper()
-            .jsonProvider()
-            .createParser(new StringReader(settingsNode.toString()));
-    return IndexSettings._DESERIALIZER.deserialize(parser, client._transport().jsonpMapper());
-  }
-
-  private String loadIndexMapping(int dimension) {
-    String resourcePath = "elasticsearch/" + language + "/vector_search_index_es_native.json";
-    try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
-      if (inputStream == null) {
-        throw new IllegalStateException("Could not find " + resourcePath + " in classpath");
-      }
-      String template = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-      return patchDimension(template, dimension);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to load vector search index mapping", e);
-    }
-  }
-
-  static String patchDimension(String mappingJson, int dimension) {
-    try {
-      JsonNode root = MAPPER.readTree(mappingJson);
-      JsonNode properties = root.path("mappings").path("properties");
-      if (!properties.isMissingNode() && properties.has("embedding")) {
-        ObjectNode embeddingNode = (ObjectNode) properties.get("embedding");
-        if (embeddingNode.has("dims")) {
-          embeddingNode.put("dims", dimension);
-        }
-      }
-      return MAPPER.writeValueAsString(root);
-    } catch (Exception e) {
-      throw new IllegalStateException(
-          "Failed to patch dimension in vector index mapping template", e);
+          "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
     }
   }
 

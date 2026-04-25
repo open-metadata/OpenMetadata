@@ -524,4 +524,56 @@ public class EsUtils {
       }
     }
   }
+
+  /**
+   * Enriches an Elasticsearch index mapping with vector search support. When the mapping contains
+   * a {@code fingerprint} field (the signal that this index stores embedded entity docs), injects a
+   * {@code dense_vector} embedding field and records {@code _meta} with the model ID and dimension.
+   *
+   * <p>The embedding dimension is resolved from the active {@link
+   * org.openmetadata.service.search.vector.client.EmbeddingClient}. If embeddings are disabled or
+   * the client is unavailable the mapping is returned unchanged.
+   */
+  public static String enrichIndexMappingForElasticsearch(String indexMappingContent) {
+    if (nullOrEmpty(indexMappingContent)) {
+      throw new IllegalArgumentException("Empty Index Mapping Content.");
+    }
+    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+    addDenseVectorSettings(rootNode);
+    return rootNode.toString();
+  }
+
+  static void addDenseVectorSettings(JsonNode rootNode) {
+    JsonNode properties = rootNode.path("mappings").path("properties");
+    if (properties.isMissingNode() || !properties.has("fingerprint")) {
+      return;
+    }
+
+    org.openmetadata.service.search.SearchRepository searchRepository =
+        org.openmetadata.service.Entity.getSearchRepository();
+    if (searchRepository == null
+        || !searchRepository.isVectorEmbeddingEnabled()
+        || searchRepository.getEmbeddingClient() == null) {
+      return;
+    }
+
+    int dimension = searchRepository.getEmbeddingClient().getDimension();
+
+    com.fasterxml.jackson.databind.node.ObjectNode embeddingNode = mapper.createObjectNode();
+    embeddingNode.put("type", "dense_vector");
+    embeddingNode.put("dims", dimension);
+    embeddingNode.put("index", true);
+    embeddingNode.put("similarity", "cosine");
+    ((com.fasterxml.jackson.databind.node.ObjectNode) properties).set("embedding", embeddingNode);
+
+    JsonNode mappings = rootNode.path("mappings");
+    if (!mappings.isMissingNode()) {
+      com.fasterxml.jackson.databind.node.ObjectNode meta =
+          ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
+      meta.put(
+              "embedding_model",
+              searchRepository.getEmbeddingClient().getModelId())
+          .put("embedding_dimension", dimension);
+    }
+  }
 }

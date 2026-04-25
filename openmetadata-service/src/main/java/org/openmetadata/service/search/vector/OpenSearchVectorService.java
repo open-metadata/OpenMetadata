@@ -42,9 +42,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
+      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
-    instance = new OpenSearchVectorService(client, embeddingClient);
-    instance.registerVectorEmbeddingHandler();
+    OpenSearchVectorService svc = new OpenSearchVectorService(client, embeddingClient);
+    svc.registerVectorEmbeddingHandler();
+    instance = svc;
     LOG.info(
         "OpenSearchVectorService initialized with model={}, dimension={}",
         embeddingClient.getModelId(),

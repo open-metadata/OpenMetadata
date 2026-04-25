@@ -9,11 +9,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import es.co.elastic.clients.elasticsearch.core.BulkRequest;
-import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import java.util.HashMap;
 import java.util.List;
-import org.mockito.ArgumentCaptor;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
@@ -384,27 +381,6 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void testBulkIndexUsesParentIdAndChunkIndexForDocumentId() throws Exception {
-    BulkResponse mockBulkResponse = mock(BulkResponse.class);
-    when(mockBulkResponse.errors()).thenReturn(false);
-    when(mockBulkResponse.items()).thenReturn(List.of());
-    ArgumentCaptor<BulkRequest> captor = ArgumentCaptor.forClass(BulkRequest.class);
-    when(mockEsClient.bulk(captor.capture())).thenReturn(mockBulkResponse);
-
-    Map<String, Object> doc = new HashMap<>();
-    doc.put("parentId", "entity-abc");
-    doc.put("chunkIndex", 3);
-    doc.put("embedding", new float[] {0.1f, 0.2f});
-
-    vectorService.bulkIndex(List.of(doc), "test-index");
-
-    BulkRequest captured = captor.getValue();
-    assertEquals(1, captured.operations().size());
-    assertEquals("entity-abc-3", captured.operations().get(0).index().id(),
-        "Doc ID must be parentId-chunkIndex using camelCase field names from VectorDocBuilder");
-  }
-
-  @Test
   void testGetExistingFingerprintReturnsNullWhenNotFound() throws Exception {
     String esResponse = "{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}";
 
@@ -448,48 +424,6 @@ class ElasticSearchVectorServiceTest {
     Map<String, String> result =
         vectorService.getExistingFingerprintsBatch("index", java.util.List.of());
     assertTrue(result.isEmpty());
-  }
-
-  @Test
-  void testPatchDimensionReplacesDims() throws Exception {
-    String mapping =
-        """
-        {"mappings":{"properties":{"embedding":{"type":"dense_vector","dims":512}}}}
-        """;
-    String patched = ElasticSearchVectorService.patchDimension(mapping, 1536);
-    com.fasterxml.jackson.databind.JsonNode root =
-        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patched);
-    int dims = root.path("mappings").path("properties").path("embedding").path("dims").asInt();
-    assertEquals(1536, dims);
-  }
-
-  @Test
-  void testPatchDimensionLeavesOtherFieldsUntouched() throws Exception {
-    String mapping =
-        """
-        {"mappings":{"properties":{"embedding":{"type":"dense_vector","dims":512,"similarity":"cosine"}}}}
-        """;
-    String patched = ElasticSearchVectorService.patchDimension(mapping, 768);
-    com.fasterxml.jackson.databind.JsonNode root =
-        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patched);
-    com.fasterxml.jackson.databind.JsonNode embedding =
-        root.path("mappings").path("properties").path("embedding");
-    assertEquals(768, embedding.path("dims").asInt());
-    assertEquals("dense_vector", embedding.path("type").asText());
-    assertEquals("cosine", embedding.path("similarity").asText());
-  }
-
-  @Test
-  void testPatchDimensionHandlesNoSpaceVariant() throws Exception {
-    String mapping =
-        """
-        {"mappings":{"properties":{"embedding":{"type":"dense_vector","dims":512}}}}
-        """;
-    String patched = ElasticSearchVectorService.patchDimension(mapping, 384);
-    com.fasterxml.jackson.databind.JsonNode root =
-        new com.fasterxml.jackson.databind.ObjectMapper().readTree(patched);
-    assertEquals(
-        384, root.path("mappings").path("properties").path("embedding").path("dims").asInt());
   }
 
   /** Returns a fresh stream on every call — safe for multi-iteration loops. */
