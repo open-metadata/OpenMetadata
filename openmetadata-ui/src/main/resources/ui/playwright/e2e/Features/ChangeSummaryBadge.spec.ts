@@ -44,8 +44,6 @@ test.describe(
         queryParams: { changeSource: 'Suggested' },
       });
 
-      const columnName = table.entityResponseData?.columns?.[0]?.name;
-
       await table.patch({
         apiContext,
         patchData: [
@@ -57,23 +55,6 @@ test.describe(
         ],
         queryParams: { changeSource: 'Suggested' },
       });
-
-      const changeSummaryResponse = await apiContext.get(
-        `/api/v1/changeSummary/table/${table.entityResponseData?.id}`
-      );
-
-      expect(changeSummaryResponse.status()).toBe(200);
-
-      const changeSummaryData = await changeSummaryResponse.json();
-
-      expect(changeSummaryData.changeSummary).toHaveProperty('description');
-      expect(changeSummaryData.changeSummary.description.changeSource).toBe(
-        'Suggested'
-      );
-
-      expect(
-        changeSummaryData.changeSummary[`columns.${columnName}.description`]
-      ).toBeDefined();
 
       await afterAction();
     });

@@ -106,7 +106,7 @@ class DomainClassBase {
       key: EntityTabs.DATA_OBSERVABILITY,
       children: createElement(DataQualityDashboard, {
         isGovernanceView: true,
-        className: 'data-quality-governance-tab-wrapper tw:mt-2',
+        className: 'data-quality-governance-tab-wrapper',
         initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
           ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
           : undefined,
