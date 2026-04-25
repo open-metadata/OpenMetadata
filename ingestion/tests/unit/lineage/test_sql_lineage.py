@@ -471,7 +471,7 @@ class ClickhouseMaterializedViewLineageTest(TestCase):
     def test_simple_materialized_view_to(self):
         """
         Basic MATERIALIZED VIEW ... TO target AS SELECT is rewritten so
-        the target table ΓÇö not the MV ΓÇö appears as the write table.
+        the target table - not the MV - appears as the write table.
         """
         query = (
             "CREATE MATERIALIZED VIEW default.my_mv "
@@ -527,7 +527,7 @@ class ClickhouseMaterializedViewLineageTest(TestCase):
 
     def test_materialized_view_without_to_clause_unchanged(self):
         """
-        A MATERIALIZED VIEW without a TO clause should not be transformed ΓÇö
+        A MATERIALIZED VIEW without a TO clause should not be transformed -
         the query is returned as-is (or filtered by the caller).
         """
         query = "CREATE MATERIALIZED VIEW my_mv AS SELECT * FROM source_table"
@@ -563,7 +563,7 @@ class ClickhouseMaterializedViewLineageTest(TestCase):
     def test_materialized_view_refresh_every_with_definer(self):
         """
         REFRESH EVERY ... TO <target> (col_list) DEFINER = <user> SQL SECURITY DEFINER
-        AS SELECT ... ΓÇö the second exact variant from issue #26265.
+        AS SELECT ... - the second exact variant from issue #26265.
 
         The REFRESH EVERY clause, the column list between TO and AS, and the
         DEFINER / SQL SECURITY tokens must all be swallowed without polluting
@@ -592,7 +592,7 @@ class ClickhouseMaterializedViewLineageTest(TestCase):
     def test_materialized_view_with_column_list(self):
         """
         Column list (col1, col2) between the TO target and AS SELECT must be
-        discarded ΓÇö it must not be captured as part of the target table name.
+        discarded - it must not be captured as part of the target table name.
         Covers the first exact query from issue #26265:
 
             CREATE MATERIALIZED VIEW <schema-01>.samples_mv
@@ -610,3 +610,18 @@ class ClickhouseMaterializedViewLineageTest(TestCase):
         self.assertIn("CREATE TABLE schema02.samples_e", cleaned)
         # Column list must not bleed into the table name
         self.assertNotIn("(column_01", cleaned.split("AS SELECT")[0])
+
+    def test_materialized_view_refresh_every(self):
+        """
+        REFRESH EVERY clause should be handled and the target table correctly identified.
+        """
+        query = (
+            "CREATE MATERIALIZED VIEW default.mv_refresh "
+            "REFRESH EVERY INTERVAL 1 MINUTE "
+            "TO default.target_refresh "
+            "AS SELECT * FROM default.source_refresh"
+        )
+        cleaned = LineageParser.clean_raw_query(query)
+        self.assertIsNotNone(cleaned)
+        self.assertIn("CREATE TABLE default.target_refresh", cleaned)
+        self.assertIn("AS SELECT * FROM default.source_refresh", cleaned)

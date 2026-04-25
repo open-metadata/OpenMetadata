@@ -260,7 +260,7 @@ class LineageParser:
         # Check if involved_tables is present
         if not self.involved_tables:
             logger.debug(
-                f"[{self.query_hash}] [UsageSink] No involved tables found -- alias map will be empty."
+                f"[{self.query_hash}] [UsageSink] No involved tables found - alias map will be empty."
             )
             return {}
 
