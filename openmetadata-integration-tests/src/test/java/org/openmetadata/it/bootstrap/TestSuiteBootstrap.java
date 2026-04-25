@@ -500,7 +500,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     String projectRoot = System.getProperty("user.dir");
     Path projectRootPath = Paths.get(projectRoot);
-    if (projectRootPath.endsWith("openmetadata-integration-tests") && projectRootPath.getParent() != null) {
+    if (projectRootPath.endsWith("openmetadata-integration-tests")
+        && projectRootPath.getParent() != null) {
       projectRoot = projectRootPath.getParent().toString();
     }
     String flyWayMigrationScriptsLocation =

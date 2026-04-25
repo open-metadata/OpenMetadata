@@ -108,6 +108,7 @@
         "name": {
           "description": "Name that identifies this task instance uniquely.",
           "type": "string",
+          "minLength": 1,
           "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
         },
         "displayName": {
