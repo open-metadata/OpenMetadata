@@ -22,7 +22,8 @@ const AdmonitionNode = Node.create({
     return {
       type: {
         default: 'note',
-        parseHTML: (element) => element.getAttribute('data-admonition') ?? 'note',
+        parseHTML: (element) =>
+          element.getAttribute('data-admonition') ?? 'note',
         renderHTML: (attributes) => ({
           'data-admonition': attributes.type,
         }),

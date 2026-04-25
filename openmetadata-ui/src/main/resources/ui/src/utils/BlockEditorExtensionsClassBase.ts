@@ -27,8 +27,10 @@ import {
   ExtensionOptions,
   FileType,
 } from '../components/BlockEditor/BlockEditor.interface';
+import AdmonitionNode from '../components/BlockEditor/Extensions/AdmonitionNode';
 import BlockAndDragDrop from '../components/BlockEditor/Extensions/BlockAndDragDrop/BlockAndDragDrop';
 import { Callout } from '../components/BlockEditor/Extensions/Callout/Callout';
+import CodeBlockWithCopy from '../components/BlockEditor/Extensions/CodeBlock/CodeBlockWithCopy';
 import DiffView from '../components/BlockEditor/Extensions/diff-view';
 import FileNode from '../components/BlockEditor/Extensions/File/FileNode';
 import { Focus } from '../components/BlockEditor/Extensions/focus';
@@ -38,8 +40,6 @@ import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import MathEquation from '../components/BlockEditor/Extensions/MathEquation/MathEquation';
 import { Mention } from '../components/BlockEditor/Extensions/mention';
 import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/mentionSuggestions';
-import AdmonitionNode from '../components/BlockEditor/Extensions/AdmonitionNode';
-import CodeBlockWithCopy from '../components/BlockEditor/Extensions/CodeBlock/CodeBlockWithCopy';
 import SectionNode from '../components/BlockEditor/Extensions/SectionNode';
 import slashCommand from '../components/BlockEditor/Extensions/slash-command';
 import { getSuggestionItems } from '../components/BlockEditor/Extensions/slash-command/items';
@@ -235,9 +235,7 @@ export class BlockEditorExtensionsClassBase {
       Document,
       Paragraph,
       Text,
-      ...(coreExtensions
-        ? this.getCoreExtensions(enableCodeBlockCopy)
-        : []),
+      ...(coreExtensions ? this.getCoreExtensions(enableCodeBlockCopy) : []),
       ...(enableHandlebars ? this.getHandlebarsExtensions() : []),
       ...(utilityExtensions ? this.getUtilityExtensions() : []),
       ...(tableExtensions ? this.getTableExtensions() : []),

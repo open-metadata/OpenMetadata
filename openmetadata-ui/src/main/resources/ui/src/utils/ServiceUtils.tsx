@@ -21,6 +21,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import {
+  ADMONITION_BLOCK_REGEX,
   MARKDOWN_MATCH_ID,
   SECTION_BLOCK_REGEX,
 } from '../constants/regex.constants';
@@ -678,12 +679,6 @@ export const validateServiceName = async (
   return null;
 };
 
-const ADMONITION_TYPES = ['note', 'warning', 'danger', 'info', 'tip', 'caution'] as const;
-
-const ADMONITION_BLOCK_REGEX = new RegExp(
-  `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
-  'gm'
-);
 
 const convertAdmonitionsToHtml = (markdown: string): string => {
   ADMONITION_BLOCK_REGEX.lastIndex = 0;
@@ -732,7 +727,9 @@ export const processDocMarkdown = (markdown: string): string => {
   }
 
   if (lastIndex < withAdmonitions.length) {
-    parts.push(MarkdownToHTMLConverter.makeHtml(withAdmonitions.slice(lastIndex)));
+    parts.push(
+      MarkdownToHTMLConverter.makeHtml(withAdmonitions.slice(lastIndex))
+    );
   }
 
   return parts.join('\n');
