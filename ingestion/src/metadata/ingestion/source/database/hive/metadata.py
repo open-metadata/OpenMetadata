@@ -172,16 +172,16 @@ class HiveSource(CommonDbSourceService):
         return None
 
     def _build_metastore_partition_query(self, drivername: str) -> str:
-        q = (
-            lambda name: f'"{name}"' if drivername == "hive+postgres" else name
-        )  # noqa: E731
+        def quote_identifier(name: str) -> str:
+            return f'"{name}"' if drivername == "hive+postgres" else name
+
         return (
-            f"SELECT pk.{q('PKEY_NAME')}"
-            f" FROM {q('PARTITION_KEYS')} pk"
-            f" JOIN {q('TBLS')} tbl ON pk.{q('TBL_ID')} = tbl.{q('TBL_ID')}"
-            f" JOIN {q('DBS')} db ON tbl.{q('DB_ID')} = db.{q('DB_ID')}"
-            f" WHERE db.{q('NAME')} = :schema AND tbl.{q('TBL_NAME')} = :table_name"
-            f" ORDER BY pk.{q('INTEGER_IDX')}"
+            f"SELECT pk.{quote_identifier('PKEY_NAME')}"
+            f" FROM {quote_identifier('PARTITION_KEYS')} pk"
+            f" JOIN {quote_identifier('TBLS')} tbl ON pk.{quote_identifier('TBL_ID')} = tbl.{quote_identifier('TBL_ID')}"
+            f" JOIN {quote_identifier('DBS')} db ON tbl.{quote_identifier('DB_ID')} = db.{quote_identifier('DB_ID')}"
+            f" WHERE db.{quote_identifier('NAME')} = :schema AND tbl.{quote_identifier('TBL_NAME')} = :table_name"
+            f" ORDER BY pk.{quote_identifier('INTEGER_IDX')}"
         )
 
     def _get_partition_keys_from_metastore(
@@ -216,7 +216,25 @@ class HiveSource(CommonDbSourceService):
                 if col_name.startswith("#"):
                     continue
                 partition_keys.append(col_name)
-        return partition_keys
+
+        if partition_keys:
+            return partition_keys
+
+        partitions = self.connection.execute(
+            text(f"SHOW PARTITIONS {quoted_schema_name}.{quoted_table_name}")
+        )
+        first_partition = next((row[0] for row in partitions if row and row[0]), None)
+        if not first_partition:
+            return []
+
+        # Example: dt=2024-01-01/region=us -> ["dt", "region"]
+        keys: List[str] = []
+        for part in str(first_partition).split("/"):
+            if "=" in part:
+                key, _ = part.split("=", 1)
+                if key:
+                    keys.append(key)
+        return keys
 
     def get_table_partition_details(  # pylint: disable=unused-argument
         self,

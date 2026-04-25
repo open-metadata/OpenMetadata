@@ -566,13 +566,19 @@ class HiveUnitTest(TestCase):
         self.assertIsNone(partition)
 
     def test_get_table_partition_details_non_partitioned_describe(self):
+        mock_identifier_preparer = Mock()
+        mock_identifier_preparer.quote_identifier.side_effect = lambda s: f"`{s}`"
         self.hive.engine = types.SimpleNamespace(
-            url=types.SimpleNamespace(drivername="hive")
+            url=types.SimpleNamespace(drivername="hive"),
+            dialect=types.SimpleNamespace(identifier_preparer=mock_identifier_preparer),
         )
         mock_connection = Mock()
-        mock_connection.execute.return_value = [
-            ("id", "int", None),
-            ("name", "string", None),
+        mock_connection.execute.side_effect = [
+            [
+                ("id", "int", None),
+                ("name", "string", None),
+            ],
+            [],
         ]
         self.hive._connection_map[self.thread_id] = mock_connection
 
@@ -584,19 +590,24 @@ class HiveUnitTest(TestCase):
         self.assertIsNone(partition)
 
     def test_get_table_partition_details_from_describe_formatted(self):
+        mock_identifier_preparer = Mock()
+        mock_identifier_preparer.quote_identifier.side_effect = lambda s: f"`{s}`"
         self.hive.engine = types.SimpleNamespace(
-            url=types.SimpleNamespace(drivername="hive")
+            url=types.SimpleNamespace(drivername="hive"),
+            dialect=types.SimpleNamespace(identifier_preparer=mock_identifier_preparer),
         )
         mock_connection = Mock()
-        mock_connection.execute.return_value = [
-            ("id", "int", None),
-            ("name", "string", None),
-            ("# Partition Information", None, None),
-            ("# col_name", "data_type", "comment"),
-            ("dt", "string", None),
-            ("region", "string", None),
-            ("# Detailed Table Information", None, None),
-            ("Database:", "default", None),
+        mock_connection.execute.side_effect = [
+            [
+                ("id", "int", None),
+                ("name", "string", None),
+                ("# Partition Information", None, None),
+                ("# col_name", "data_type", "comment"),
+                ("dt", "string", None),
+                ("region", "string", None),
+                ("# Detailed Table Information", None, None),
+                ("Database:", "default", None),
+            ],
         ]
         self.hive._connection_map[self.thread_id] = mock_connection
 
@@ -607,6 +618,37 @@ class HiveUnitTest(TestCase):
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition)
         self.assertEqual([c.columnName for c in partition.columns], ["dt", "region"])
+        assert "DESCRIBE FORMATTED `sample_schema`.`sample_table`" in str(
+            mock_connection.execute.call_args_list[0][0][0]
+        )
+
+    def test_get_table_partition_details_from_show_partitions_no_sentinel(self):
+        mock_identifier_preparer = Mock()
+        mock_identifier_preparer.quote_identifier.side_effect = lambda s: f"`{s}`"
+        self.hive.engine = types.SimpleNamespace(
+            url=types.SimpleNamespace(drivername="hive"),
+            dialect=types.SimpleNamespace(identifier_preparer=mock_identifier_preparer),
+        )
+        mock_connection = Mock()
+        mock_connection.execute.side_effect = [
+            [
+                ("id", "int", None),
+                ("name", "string", None),
+            ],
+            [("dt=2024-01-01/region=us",)],
+        ]
+        self.hive._connection_map[self.thread_id] = mock_connection
+
+        is_partitioned, partition = self.hive.get_table_partition_details(
+            table_name="sample_table", schema_name="sample_schema", inspector=Mock()
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition)
+        self.assertEqual([c.columnName for c in partition.columns], ["dt", "region"])
+        assert "SHOW PARTITIONS `sample_schema`.`sample_table`" in str(
+            mock_connection.execute.call_args_list[1][0][0]
+        )
 
     def test_ssl_connection_configuration(self):
         """
