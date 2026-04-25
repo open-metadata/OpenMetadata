@@ -28,6 +28,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  getApiContext,
   testClientSidePaginationNavigation,
   testCompletePaginationWithSearch,
   testPaginationNavigation,
@@ -1113,6 +1114,68 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .count();
       expect(page2RowCount).toBeLessThanOrEqual(15);
       expect(page1RowCount + page2RowCount).toBe(20);
+    });
+  });
+
+  test.describe('Table version page column pagination', () => {
+    const PERFORMANCE_TABLE_FQN =
+      'sample_data.ecommerce_db.shopify.performance_test_table';
+
+    const getTableVersion = async (
+      page: Parameters<typeof testPaginationNavigation>[0]
+    ) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const tableResponse = await apiContext.get(
+        `/api/v1/tables/name/${encodeURIComponent(
+          PERFORMANCE_TABLE_FQN
+        )}?fields=version`
+      );
+      const tableData = await tableResponse.json();
+      await afterAction();
+
+      return Number.parseFloat(String(tableData.version)).toFixed(1);
+    };
+
+    test('should test pagination on Table version page columns', async ({
+      page,
+    }) => {
+      const version = await getTableVersion(page);
+      await page.goto(
+        `/table/${PERFORMANCE_TABLE_FQN}/versions/${version}?pageSize=15`
+      );
+      await testPaginationNavigation(
+        page,
+        '/columns',
+        '[data-testid="entity-table"]',
+        false
+      );
+    });
+
+    test('should test search on Table version page columns', async ({
+      page,
+    }) => {
+      const version = await getTableVersion(page);
+      await page.goto(
+        `/table/${PERFORMANCE_TABLE_FQN}/versions/${version}?pageSize=15`
+      );
+      await page.locator('[data-testid="entity-table"]').waitFor({
+        state: 'visible',
+      });
+      await waitForAllLoadersToDisappear(page);
+
+      const searchResponse = page.waitForResponse((response) =>
+        response.url().includes('/columns/search')
+      );
+      await page.getByTestId('searchbar').fill('test_col_0001');
+      await searchResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('entity-table').getByRole('row')
+      ).toHaveCount(2);
+      await expect(
+        page.getByTestId('entity-table').getByText('test_col_0001')
+      ).toBeVisible();
     });
   });
 
