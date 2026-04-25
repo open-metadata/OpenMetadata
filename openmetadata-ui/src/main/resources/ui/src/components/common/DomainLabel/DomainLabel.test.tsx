@@ -56,8 +56,8 @@ jest.mock('../../../utils/DomainStyleUtils', () => ({
     ),
   getDomainReferenceIconColor: jest
     .fn()
-    .mockImplementation((domain, fallbackColor) =>
-      domain?.style?.color ?? fallbackColor
+    .mockImplementation(
+      (domain, fallbackColor) => domain?.style?.color ?? fallbackColor
     ),
   useDomainsWithStyle: jest.fn().mockImplementation((domains) => domains),
 }));
@@ -131,9 +131,7 @@ type DomainLabelTestProps = Partial<
   domains?: EntityReference[] | EntityReference;
 };
 
-const renderDomainLabel = (
-  props: DomainLabelTestProps = {}
-) =>
+const renderDomainLabel = (props: DomainLabelTestProps = {}) =>
   render(
     <MemoryRouter>
       <DomainLabel
@@ -321,10 +319,10 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [styledDomain] });
 
-    expect(screen.getByText('Domain One').closest('.domain-link-container')).toHaveStyle(
-      {
-        borderColor: '#7c3aed',
-      }
-    );
+    expect(
+      screen.getByText('Domain One').closest('.domain-link-container')
+    ).toHaveStyle({
+      borderColor: '#7c3aed',
+    });
   });
 });
