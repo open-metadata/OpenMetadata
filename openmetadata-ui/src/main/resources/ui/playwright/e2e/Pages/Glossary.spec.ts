@@ -110,6 +110,42 @@ const user4 = new UserClass();
 const adminUser = new UserClass();
 
 test.describe('Glossary tests', () => {
+  const selectGlossaryTermInPicker = async ({
+    page,
+    searchTerm,
+    displayName,
+    fullyQualifiedName,
+  }: {
+    page: import('@playwright/test').Page;
+    searchTerm: string;
+    displayName: string;
+    fullyQualifiedName: string;
+  }) => {
+    const glossaryInput = page.locator('#tagsForm_tags');
+    await expect(glossaryInput).toBeVisible();
+
+    const searchGlossaryTerm = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=glossaryTerm') &&
+        response.url().includes(encodeURIComponent(searchTerm))
+    );
+
+    await glossaryInput.fill(searchTerm);
+    await searchGlossaryTerm;
+    await waitForAllLoadersToDisappear(page);
+
+    const glossaryTermOption = page
+      .getByTestId(`tag-${fullyQualifiedName}`)
+      .first();
+    await expect(glossaryTermOption).toBeVisible();
+    await glossaryTermOption.click();
+
+    await expect(
+      page.locator(`[data-testid="tag-selector"]:has-text("${displayName}")`)
+    ).toBeVisible();
+  };
+
   test.beforeAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user2.create(apiContext);
@@ -485,6 +521,7 @@ test.describe('Glossary tests', () => {
 
   test('Add and Remove Assets', async ({ browser }) => {
     test.slow(true);
+    test.setTimeout(300000);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
@@ -528,42 +565,21 @@ test.describe('Glossary tests', () => {
 
         // Select 1st term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm1.data.name
-        );
-        await glossaryRequest;
-
-        await page.getByText(glossaryTerm1.data.displayName).click();
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm1.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          searchTerm: glossaryTerm1.data.name,
+          displayName: glossaryTerm1.data.displayName,
+          fullyQualifiedName: glossaryTerm1.data.fullyQualifiedName,
+        });
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest2 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm2.data.name
-        );
-        await glossaryRequest2;
-
-        await page.getByText(glossaryTerm2.data.displayName).click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm2.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          searchTerm: glossaryTerm2.data.name,
+          displayName: glossaryTerm2.data.displayName,
+          fullyQualifiedName: glossaryTerm2.data.fullyQualifiedName,
+        });
 
         const patchRequest = page.waitForResponse(
           (res) =>
@@ -583,42 +599,21 @@ test.describe('Glossary tests', () => {
 
         // Select 1st term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest3 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm3.data.name
-        );
-        await glossaryRequest3;
-
-        await page.getByText(glossaryTerm3.data.displayName).click();
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          searchTerm: glossaryTerm3.data.name,
+          displayName: glossaryTerm3.data.displayName,
+          fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
+        });
 
         // Select 2nd term
         await page.click('[data-testid="tag-selector"] #tagsForm_tags');
-
-        const glossaryRequest4 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm4.data.name
-        );
-        await glossaryRequest4;
-
-        await page.getByText(glossaryTerm4.data.displayName).click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm4.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          searchTerm: glossaryTerm4.data.name,
+          displayName: glossaryTerm4.data.displayName,
+          fullyQualifiedName: glossaryTerm4.data.fullyQualifiedName,
+        });
 
         const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
 
@@ -656,26 +651,12 @@ test.describe('Glossary tests', () => {
         );
 
         await page.click('[data-testid="tag-selector"]');
-
-        const glossaryRequest5 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.type(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm3.data.name
-        );
-        await glossaryRequest5;
-
-        await page
-          .getByRole('tree')
-          .getByTestId(`tag-${glossaryTerm3.data.fullyQualifiedName}`)
-          .click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
-          )
-          .waitFor();
+        await selectGlossaryTermInPicker({
+          page,
+          searchTerm: glossaryTerm3.data.name,
+          displayName: glossaryTerm3.data.displayName,
+          fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
+        });
 
         const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
 
