@@ -14,10 +14,9 @@ Kinesis source ingestion
 import binascii
 import traceback
 from base64 import b64decode
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
@@ -124,11 +123,6 @@ class KinesisSource(MessagingServiceSource):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Failed to yield kinesis topic - {err}")
-
-    def yield_topic_lineage(
-        self, topic_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
-        raise NotImplementedError("Topic Lineage not implemented for KinesisSource")
 
     def yield_topic(
         self, topic_details: BrokerTopicDetails

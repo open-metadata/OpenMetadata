@@ -17,7 +17,7 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
-from typing import Any, Iterable, Optional
+from typing import Iterable, Optional
 
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
@@ -31,7 +31,6 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -108,13 +107,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         Get Topic Name
         """
         return topic_details.topic_name
-
-    def yield_topic_lineage(
-        self, topic_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
-        raise NotImplementedError(
-            "Topic Lineage not implemented for Kafka/Redpanda sources"
-        )
 
     def yield_topic(
         self, topic_details: BrokerTopicDetails

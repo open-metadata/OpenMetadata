@@ -190,15 +190,14 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Messaging Entity
         """
 
-    @abstractmethod
     def yield_topic_sample_data(
         self, topic_details: Any
     ) -> Iterable[Either[OMetaTopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
+        ...
 
-    @abstractmethod
     def yield_topic_lineage(
         self, topic_details: Any
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -206,6 +205,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to Get Lineage for Messaging Entity.
         Override this method in subclasses to provide lineage information.
         """
+        ...
 
     @abstractmethod
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
