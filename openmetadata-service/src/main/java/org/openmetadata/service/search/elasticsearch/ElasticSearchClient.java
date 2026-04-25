@@ -426,6 +426,14 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void invalidateLineageCache(String fqn) {
+    if (lineageGraphBuilder == null) {
+      return;
+    }
+    lineageGraphBuilder.invalidateLineageCacheForFqn(fqn);
+  }
+
+  @Override
   public Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {

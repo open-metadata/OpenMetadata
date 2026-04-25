@@ -853,3 +853,49 @@ class SnowflakeUnitTest(TestCase):
                 source.schema_tags_map["TEST_SCHEMA"][0],
                 {"tag_name": "TEST_TAG", "tag_value": "123"},
             )
+
+
+class TestSnowflakeGetDatabaseNamesRawEagerFetch:
+    """
+    Option B Part 2 applied to Snowflake: get_database_names_raw must call
+    .fetchall() so that a subsequent engine.dispose() / set_inspector does
+    not invalidate the cursor mid-iteration.
+    """
+
+    @staticmethod
+    def _build_mock_rows():
+        return [
+            ["row_meta", "DB_A"],
+            ["row_meta", "DB_B"],
+            ["row_meta", "DB_C"],
+        ]
+
+    def test_fetchall_invoked_exactly_once(self):
+        source = SnowflakeSource.__new__(SnowflakeSource)
+        result = MagicMock()
+        result.fetchall.return_value = self._build_mock_rows()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = result
+
+        with patch.object(
+            SnowflakeSource, "connection", new_callable=PropertyMock
+        ) as mocked_conn_prop:
+            mocked_conn_prop.return_value = mock_conn
+            list(source.get_database_names_raw())
+
+        assert result.fetchall.call_count == 1
+
+    def test_yields_database_names_in_order(self):
+        source = SnowflakeSource.__new__(SnowflakeSource)
+        result = MagicMock()
+        result.fetchall.return_value = self._build_mock_rows()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = result
+
+        with patch.object(
+            SnowflakeSource, "connection", new_callable=PropertyMock
+        ) as mocked_conn_prop:
+            mocked_conn_prop.return_value = mock_conn
+            names = list(source.get_database_names_raw())
+
+        assert names == ["DB_A", "DB_B", "DB_C"]

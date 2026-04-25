@@ -17,10 +17,11 @@ import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Post } from '../../../../generated/entity/feed/thread';
-import { postFeedById } from '../../../../rest/feedsAPI';
+import {
+  deleteAnnouncement,
+  patchAnnouncement,
+} from '../../../../rest/announcementsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
@@ -60,37 +61,27 @@ const AnnouncementDrawer: FC<Props> = ({
     </Space>
   );
 
-  const deletePostHandler = async (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ): Promise<void> => {
-    await deletePost(threadId, postId, isThread);
-  };
-
-  const postFeedHandler = async (value: string, id: string): Promise<void> => {
-    const data = {
-      message: value,
-    } as Post;
-
+  const deletePostHandler = async (announcementId: string): Promise<void> => {
     try {
-      await postFeedById(id, data);
+      await deleteAnnouncement(announcementId, true);
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
   };
 
   const updateThreadHandler = async (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
+    announcementId: string,
     data: Operation[]
   ): Promise<void> => {
-    const callback = () => {
-      return;
-    };
+    try {
+      if (data.length === 0) {
+        return;
+      }
 
-    await updateThreadData(threadId, postId, isThread, data, callback);
+      await patchAnnouncement(announcementId, data);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   };
 
   const handleCloseAnnouncementModal = useCallback(
@@ -130,12 +121,11 @@ const AnnouncementDrawer: FC<Props> = ({
       </div>
 
       <AnnouncementThreadBody
-        deletePostHandler={deletePostHandler}
+        deleteAnnouncementHandler={deletePostHandler}
         editPermission={createPermission}
-        postFeedHandler={postFeedHandler}
         refetchThread={refetchThread}
         threadLink={getEntityFeedLink(entityType, entityFQN)}
-        updateThreadHandler={updateThreadHandler}
+        updateAnnouncementHandler={updateThreadHandler}
       />
 
       {isAddAnnouncementOpen && (
