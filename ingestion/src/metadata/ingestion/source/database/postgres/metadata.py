@@ -81,6 +81,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
+from metadata.utils.db_retry import db_retry
 from metadata.utils.filters import filter_by_database
 from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
@@ -151,11 +152,13 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         """
         return self.schema_desc_map.get(schema_name)
 
+    @db_retry
     def set_schema_description_map(self) -> None:
         self.schema_desc_map = get_schema_descriptions(
             self.engine, POSTGRES_SCHEMA_COMMENTS
         )
 
+    @db_retry
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
@@ -219,6 +222,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
+    @db_retry
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
@@ -285,6 +289,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
+    @db_retry
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[PostgresStoredProcedure]:

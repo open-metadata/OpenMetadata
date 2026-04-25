@@ -58,6 +58,7 @@ from metadata.ingestion.source.database.greenplum.utils import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
+from metadata.utils.db_retry import db_retry
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -106,6 +107,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
+    @db_retry
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
@@ -165,6 +167,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
+    @db_retry
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:

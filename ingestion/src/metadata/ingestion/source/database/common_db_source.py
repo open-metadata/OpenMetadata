@@ -68,6 +68,7 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
+from metadata.utils.db_retry import db_retry
 from metadata.utils.execution_time_tracker import (
     calculate_execution_time,
     calculate_execution_time_generator,
@@ -397,6 +398,7 @@ class CommonDbSourceService(
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
 
+    @db_retry
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Handle table and views.
@@ -471,6 +473,7 @@ class CommonDbSourceService(
             )
             logger.debug(traceback.format_exc())
 
+    @db_retry
     @calculate_execution_time()
     def get_schema_definition(
         self,

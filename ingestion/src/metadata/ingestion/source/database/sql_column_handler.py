@@ -30,6 +30,7 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.ingestion.source.database.json_schema_extractor import (
     infer_json_schema_from_sample,
 )
+from metadata.utils.db_retry import db_retry
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
@@ -265,6 +266,7 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
+    @db_retry
     def _get_columns_internal(
         self,
         schema_name: str,
@@ -582,6 +584,7 @@ class SqlColumnHandlerMixin:
                 f"Continuing without JSON schema information."
             )
 
+    @db_retry
     def _sample_json_column_data(
         self,
         schema_name: str,
