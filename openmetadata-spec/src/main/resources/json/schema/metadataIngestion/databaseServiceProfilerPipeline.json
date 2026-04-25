@@ -86,19 +86,8 @@
       "default": false,
       "title": "Use System Table Statistics"
     },
-    "profileSampleType": {
-      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
-      "title": "Profile Sample Type"
-    },
-    "profileSample": {
-      "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
-      "type": "number",
-      "default": null,
-      "title": "Profile Sample"
-    },
-    "samplingMethodType": {
-      "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
-      "title": "Sampling Method Type"
+    "profileSampleConfig": {
+      "$ref": "../type/samplingConfig.json#/definitions/profileSampleConfig"
     },
     "randomizedSample": {
       "description": "Whether to randomize the sample data or not.",

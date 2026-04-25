@@ -22,12 +22,13 @@ import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTaskDefinition;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CheckFeedbackSubmitterIsReviewerImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateRecognizerFeedbackApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -83,6 +84,18 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
             .fieldValue(String.valueOf(nodeDefinition.getConfig().getRejectionThreshold()))
             .build();
 
+    FieldExtension taskTypeExpr =
+        new FieldExtensionBuilder()
+            .fieldName("taskTypeExpr")
+            .fieldValue(TaskEntityType.DataQualityReview.value())
+            .build();
+
+    FieldExtension taskCategoryExpr =
+        new FieldExtensionBuilder()
+            .fieldName("taskCategoryExpr")
+            .fieldValue(TaskCategory.Review.value())
+            .build();
+
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
     StartEvent startEvent =
@@ -90,12 +103,7 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
 
     ServiceTask setAssigneesVariable =
         getSetAssigneesVariableServiceTask(
-            subProcessId,
-            assigneesExpr,
-            assigneesVarNameExpr,
-            inputNamespaceMapExpr,
-            approvalThresholdExpr,
-            rejectionThresholdExpr);
+            subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
 
     ServiceTask checkSubmitterIsReviewerTask =
         new ServiceTaskBuilder()
@@ -123,7 +131,9 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
             assigneesVarNameExpr,
             inputNamespaceMapExpr,
             approvalThresholdExpr,
-            rejectionThresholdExpr);
+            rejectionThresholdExpr,
+            taskTypeExpr,
+            taskCategoryExpr);
 
     ServiceTask autoApproveTask =
         new ServiceTaskBuilder()
@@ -217,9 +227,7 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
       String subProcessId,
       FieldExtension assigneesExpr,
       FieldExtension assigneesVarNameExpr,
-      FieldExtension inputNamespaceMapExpr,
-      FieldExtension approvalThresholdExpr,
-      FieldExtension rejectionThresholdExpr) {
+      FieldExtension inputNamespaceMapExpr) {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
         .implementation(SetApprovalAssigneesImpl.class.getName())
@@ -234,7 +242,9 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
       FieldExtension assigneesVarNameExpr,
       FieldExtension inputNamespaceMapExpr,
       FieldExtension approvalThresholdExpr,
-      FieldExtension rejectionThresholdExpr) {
+      FieldExtension rejectionThresholdExpr,
+      FieldExtension taskTypeExpr,
+      FieldExtension taskCategoryExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -245,10 +255,12 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
     FlowableListener createRecognizerFeedbackTaskListener =
         new FlowableListenerBuilder()
             .event("create")
-            .implementation(CreateRecognizerFeedbackApprovalTaskImpl.class.getName())
+            .implementation(CreateTask.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
             .addFieldExtension(approvalThresholdExpr)
             .addFieldExtension(rejectionThresholdExpr)
+            .addFieldExtension(taskTypeExpr)
+            .addFieldExtension(taskCategoryExpr)
             .build();
 
     FlowableListener completionValidatorListener =

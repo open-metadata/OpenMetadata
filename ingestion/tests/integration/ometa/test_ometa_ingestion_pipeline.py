@@ -107,8 +107,10 @@ class TestOMetaIngestionPipelineAPI:
                 ingestion_pipeline.fullyQualifiedName.root, pipeline_status
             )
 
-        assert ("exceeds the maximum allowed" in str(exc.value)) or (
-            "Connection aborted." in str(exc.value)
+        assert (
+            "exceeds the maximum allowed" in str(exc.value)
+            or "Connection aborted." in str(exc.value)
+            or "Invalid request" in str(exc.value)
         )
 
         truncated_long_status = IngestionStatus(

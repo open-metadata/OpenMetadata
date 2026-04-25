@@ -147,22 +147,23 @@ class PandasInterfaceMixin:
 
         def yield_sampled_dfs():
             dfs = raw_dataset
-            if sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+            static = sample_config.get_static_config()
+            if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 # Sampling based on percentage of rows will be applied to each dataframe chunk
                 # to ensure consistent efficiency across large dataset. Other option would be to
                 # either concatenate all dataframes (may cause OOM) or perform 2 passes (one to count rows,
                 # another to sample) which would be less efficient.
                 try:
-                    percentage = sample_config.profileSample or 100
+                    percentage = static.profileSample or 100
                     for df in dfs():
                         yield df.sample(frac=percentage / 100)
                 except Exception as exc:
                     logger.error(
-                        f"Error sampling dataframes based on percentage {sample_config.profileSample}: {exc}"
+                        f"Error sampling dataframes based on percentage {static.profileSample}: {exc}"
                     )
-            elif sample_config.profileSampleType == ProfileSampleType.ROWS:
+            elif static and static.profileSampleType == ProfileSampleType.ROWS:
                 try:
-                    rows = sample_config.profileSample or 0
+                    rows = static.profileSample or 0
                     streamed_rows = 0
                     for df in dfs():
                         n = len(df)
@@ -174,7 +175,7 @@ class PandasInterfaceMixin:
                             break
                 except Exception as exc:
                     logger.error(
-                        f"Error sampling dataframes based on rows {sample_config.profileSample}: {exc}"
+                        f"Error sampling dataframes based on rows {static.profileSample}: {exc}"
                     )
             else:
                 logger.warning(

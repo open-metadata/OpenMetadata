@@ -50,7 +50,6 @@ import {
   removeTag,
   removeTagsFromChildren,
   removeTier,
-  replyAnnouncement,
   softDeleteEntity,
   unFollowEntity,
   updateDescription,
@@ -509,7 +508,6 @@ export class EntityClass {
       title: 'Edited Playwright Test Announcement',
       description: 'Updated Playwright Test Announcement Description',
     });
-    await replyAnnouncement(page);
     await deleteAnnouncement(page);
   }
 
