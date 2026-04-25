@@ -11,7 +11,7 @@
 """
 Pydantic models for Kestra REST API responses.
 """
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -31,23 +31,40 @@ class KestraExecutionState(BaseModel):
     current: str
 
 
+class KestraLabel(BaseModel):
+    """
+    Represents a single Kestra flow label.
+
+    The Kestra REST API returns labels as a list of {"key": ..., "value": ...}
+    objects, NOT as a flat dict. This model captures that structure.
+    Use KestraFlow.get_labels_dict() to convert to a key→value mapping.
+    """
+
+    key: str
+    value: str
+
+
 class KestraFlow(BaseModel):
     """Represents a Kestra Flow (pipeline definition)."""
 
     id: str
     namespace: str
     description: Optional[str] = None
-    # Labels are key-value pairs; lineage uses:
-    #   "openmetadata.table.input"  -> source table FQN
-    #   "openmetadata.table.output" -> destination table FQN
-    labels: Optional[Dict[str, str]] = None
+    # Kestra API returns labels as a list of {key, value} objects.
+    # Use get_labels_dict() to access them as a flat mapping.
+    labels: Optional[List[KestraLabel]] = None
     tasks: Optional[List[KestraTask]] = None
+
+    def get_labels_dict(self) -> dict:
+        """Return labels as a flat {key: value} dict for easy lookup."""
+        return {lbl.key: lbl.value for lbl in (self.labels or [])}
 
 
 class KestraFlowList(BaseModel):
     """Wraps a paginated /flows/search API response."""
 
     results: List[KestraFlow] = []
+    total: Optional[int] = None
 
 
 class KestraExecution(BaseModel):
@@ -59,3 +76,10 @@ class KestraExecution(BaseModel):
     state: KestraExecutionState
     startDate: Optional[str] = None  # ISO 8601 string
     endDate: Optional[str] = None  # ISO 8601 string
+
+
+class KestraExecutionList(BaseModel):
+    """Wraps a paginated /executions API response."""
+
+    results: List[KestraExecution] = []
+    total: Optional[int] = None

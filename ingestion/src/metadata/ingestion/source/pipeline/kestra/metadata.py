@@ -67,7 +67,7 @@ KESTRA_STATUS_MAP = {
     "QUEUED": StatusType.Pending.value,
     "RESTARTED": StatusType.Pending.value,
     "KILLING": StatusType.Pending.value,
-    "WARNING": StatusType.Pending.value,
+    "WARNING": StatusType.Successful.value,  # Terminal state: completed with warnings
 }
 
 # Label keys used on Kestra flows to declare lineage
@@ -270,11 +270,12 @@ class KestraSource(PipelineServiceSource):
         """
         Derive lineage from Kestra flow labels.
 
-        Expected label keys:
+        Kestra returns labels as a list of {key, value} objects.
+        We look for two well-known keys:
           - openmetadata.table.input  → source table FQN (table → pipeline)
           - openmetadata.table.output → destination table FQN (pipeline → table)
         """
-        labels = pipeline_details.labels or {}
+        labels = pipeline_details.get_labels_dict()
         input_fqn = labels.get(LINEAGE_LABEL_INPUT)
         output_fqn = labels.get(LINEAGE_LABEL_OUTPUT)
 

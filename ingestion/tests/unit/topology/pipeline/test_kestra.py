@@ -49,6 +49,7 @@ from metadata.ingestion.source.pipeline.kestra.models import (
     KestraExecution,
     KestraExecutionState,
     KestraFlow,
+    KestraLabel,
     KestraTask,
 )
 
@@ -113,10 +114,10 @@ MOCK_FLOW = KestraFlow(
 MOCK_FLOW_WITH_LINEAGE = KestraFlow(
     id="lineage-flow",
     namespace="company.team",
-    labels={
-        "openmetadata.table.input": "mysql_service.db.schema.source_table",
-        "openmetadata.table.output": "postgres_service.db.schema.dest_table",
-    },
+    labels=[
+        KestraLabel(key="openmetadata.table.input", value="mysql_service.db.schema.source_table"),
+        KestraLabel(key="openmetadata.table.output", value="postgres_service.db.schema.dest_table"),
+    ],
 )
 
 MOCK_FLOW_NO_LABELS = KestraFlow(
@@ -267,6 +268,10 @@ class TestKestraSource(TestCase):
         """Any unknown state defaults to Pending."""
         self._assert_status("SOME_FUTURE_STATE", StatusType.Pending)
 
+    def test_status_map_warning_is_successful(self):
+        """WARNING is a terminal state (completed with warnings) → Successful."""
+        self._assert_status("WARNING", StatusType.Successful)
+
     def test_status_map_all_defined_states(self):
         """All 10 defined states are present in KESTRA_STATUS_MAP."""
         expected_states = {
@@ -292,7 +297,7 @@ class TestKestraSource(TestCase):
         flow = KestraFlow(
             id="flow-in",
             namespace="ns",
-            labels={"openmetadata.table.input": "svc.db.schema.tbl"},
+            labels=[KestraLabel(key="openmetadata.table.input", value="svc.db.schema.tbl")],
         )
         mock_table = self._make_table_entity("svc.db.schema.tbl")
         mock_pipeline = MagicMock(spec=Pipeline)
@@ -314,7 +319,7 @@ class TestKestraSource(TestCase):
         flow = KestraFlow(
             id="flow-out",
             namespace="ns",
-            labels={"openmetadata.table.output": "svc.db.schema.tbl"},
+            labels=[KestraLabel(key="openmetadata.table.output", value="svc.db.schema.tbl")],
         )
         mock_table = self._make_table_entity("svc.db.schema.tbl")
         mock_pipeline = MagicMock(spec=Pipeline)
@@ -340,7 +345,7 @@ class TestKestraSource(TestCase):
         flow = KestraFlow(
             id="flow-bad",
             namespace="ns",
-            labels={"openmetadata.table.input": "nonexistent.table"},
+            labels=[KestraLabel(key="openmetadata.table.input", value="nonexistent.table")],
         )
         mock_pipeline = MagicMock(spec=Pipeline)
         mock_pipeline.id = MagicMock()

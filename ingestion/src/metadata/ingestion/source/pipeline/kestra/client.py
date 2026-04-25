@@ -21,6 +21,7 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.pipeline.kestra.models import (
     KestraExecution,
+    KestraExecutionList,
     KestraFlow,
     KestraFlowList,
 )
@@ -85,11 +86,12 @@ class KestraClient:
 
     def get_flows(self, namespace: Optional[str] = None) -> List[KestraFlow]:
         """
-        Return a list of KestraFlow objects.
+        Return a list of KestraFlow objects, fetching all pages.
 
-        If namespace is provided, calls GET /api/v1/flows/{namespace}.
-        Otherwise falls back to GET /api/v1/flows/search?q=* which returns
-        a paginated response wrapped in a KestraFlowList.
+        If namespace is provided, calls GET /api/v1/flows/{namespace}
+        (returns a plain list — no pagination needed).
+        Otherwise uses GET /api/v1/flows/search with page-based pagination
+        (page size 100, iterates until all results are fetched).
         """
         try:
             if namespace:
@@ -100,12 +102,23 @@ class KestraClient:
                     return [KestraFlow.model_validate(f) for f in response]
                 return []
             else:
-                response = self.client.get("/api/v1/flows/search?q=*")
-                if not response:
-                    return []
-                # /flows/search returns {"results": [...], "total": N}
-                flow_list = KestraFlowList.model_validate(response)
-                return flow_list.results
+                # Paginate through all results from the search endpoint
+                page = 1
+                size = 100
+                all_flows: List[KestraFlow] = []
+                while True:
+                    response = self.client.get(
+                        f"/api/v1/flows/search?q=*&page={page}&size={size}"
+                    )
+                    if not response:
+                        break
+                    flow_list = KestraFlowList.model_validate(response)
+                    all_flows.extend(flow_list.results)
+                    # Stop when we've received fewer results than requested
+                    if len(flow_list.results) < size:
+                        break
+                    page += 1
+                return all_flows
         except Exception as exc:
             logger.warning(
                 f"Failed to fetch Kestra flows (namespace={namespace}): {exc}\n"
@@ -115,21 +128,36 @@ class KestraClient:
 
     def get_executions(self, namespace: str, flow_id: str) -> List[KestraExecution]:
         """
-        Return a list of KestraExecution objects for the given flow.
-        Calls GET /api/v1/executions/{namespace}/{flow_id}.
+        Return all executions for the given flow, fetching all pages.
+        Uses GET /api/v1/executions/{namespace}/{flow_id} with page-based
+        pagination (page size 100).
         """
         try:
-            response = self.client.get(f"/api/v1/executions/{namespace}/{flow_id}")
-            if not response:
-                return []
-            # Response is a paginated object with a "results" key
-            if isinstance(response, dict):
-                results = response.get("results", [])
-            elif isinstance(response, list):
-                results = response
-            else:
-                return []
-            return [KestraExecution.model_validate(e) for e in results]
+            page = 1
+            size = 100
+            all_executions: List[KestraExecution] = []
+            while True:
+                response = self.client.get(
+                    f"/api/v1/executions/{namespace}/{flow_id}"
+                    f"?page={page}&size={size}"
+                )
+                if not response:
+                    break
+                if isinstance(response, dict):
+                    exec_list = KestraExecutionList.model_validate(response)
+                    all_executions.extend(exec_list.results)
+                    if len(exec_list.results) < size:
+                        break
+                elif isinstance(response, list):
+                    # Some Kestra versions return a plain list
+                    batch = [KestraExecution.model_validate(e) for e in response]
+                    all_executions.extend(batch)
+                    if len(batch) < size:
+                        break
+                else:
+                    break
+                page += 1
+            return all_executions
         except Exception as exc:
             logger.warning(
                 f"Failed to fetch executions for {namespace}/{flow_id}: {exc}\n"
