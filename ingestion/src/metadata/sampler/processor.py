@@ -93,7 +93,12 @@ class SamplerProcessor(Processor):
         self.sampler_class = import_sampler_class(self.service_type, source_type=self._interface_type)
 
         self._sample_data_config = None
-        settings = self.metadata.get_profiler_config_settings()
+        try:
+            settings = self.metadata.get_profiler_config_settings()
+        except Exception as exc:
+            logger.debug(f"Could not fetch global profiler config: {exc}")
+            settings = None
+
         if settings:
             profiler_cfg = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006
             self._sample_data_config = profiler_cfg.sampleDataConfig
