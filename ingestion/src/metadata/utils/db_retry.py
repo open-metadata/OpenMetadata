@@ -15,8 +15,11 @@ Provides a @db_retry decorator for wrapping methods that execute SQL queries
 against source databases during metadata ingestion. Retries only on transient
 errors (e.g., statement_timeout, deadlocks) identified via SQLSTATE codes and
 exception class names — no DB-driver imports required.
+
+Handles both regular functions and generator functions transparently.
 """
 import functools
+import inspect
 import random
 import time
 from typing import Any, FrozenSet, Optional
@@ -92,6 +95,80 @@ def _get_retry_config(source: Any) -> Optional[Any]:
     return retry_config
 
 
+def _sanitize_exc(exc: Exception) -> str:
+    """Return a log-safe representation of a DB exception.
+
+    Avoids leaking SQL statements or bound parameters that SQLAlchemy
+    exceptions commonly include in their string representation.
+    """
+    orig = getattr(exc, "orig", None)
+    pgcode = getattr(orig, "pgcode", None) if orig else None
+    exc_class = type(exc).__name__
+    orig_class = type(orig).__name__ if orig else None
+    parts = [exc_class]
+    if orig_class:
+        parts.append(f"orig={orig_class}")
+    if pgcode:
+        parts.append(f"pgcode={pgcode}")
+    return ", ".join(parts)
+
+
+def _normalize_config(config: Any):
+    """Extract and clamp retry config values to safe ranges."""
+    max_retries = max(int(getattr(config, "maxRetries", 3)), 1)
+    initial_backoff = max(float(getattr(config, "initialBackoffSeconds", 2.0)), 0.1)
+    max_backoff = max(
+        float(getattr(config, "maxBackoffSeconds", 30.0)), initial_backoff
+    )
+    return max_retries, initial_backoff, max_backoff
+
+
+def _retry_loop(func, self, args, kwargs, config):
+    """Execute func with retry logic, materializing the result.
+
+    For regular functions, returns the result directly.
+    For generator functions, materializes output into a list so that
+    any DB errors raised during iteration are caught by the retry loop.
+    """
+    max_retries, initial_backoff, max_backoff = _normalize_config(config)
+    is_gen = inspect.isgeneratorfunction(func)
+
+    last_exc: Optional[Exception] = None
+    for attempt in range(max_retries + 1):
+        try:
+            if is_gen:
+                return list(func(self, *args, **kwargs))
+            return func(self, *args, **kwargs)
+        except (OperationalError, DatabaseError, DBAPIError) as exc:
+            if not is_transient_error(exc):
+                raise
+            last_exc = exc
+            if attempt < max_retries:
+                backoff = min(
+                    initial_backoff * (2**attempt),
+                    max_backoff,
+                )
+                jitter = random.uniform(0, backoff * 0.1)
+                wait = backoff + jitter
+                logger.warning(
+                    "Transient DB error in %s (retry %d/%d), " "retrying in %.2fs: %s",
+                    func.__name__,
+                    attempt + 1,
+                    max_retries,
+                    wait,
+                    _sanitize_exc(exc),
+                )
+                time.sleep(wait)
+            else:
+                logger.error(
+                    "Max retries (%d) exhausted for %s: %s",
+                    max_retries,
+                    func.__name__,
+                    _sanitize_exc(exc),
+                )
+    raise last_exc  # type: ignore[misc]
+
+
 def db_retry(func):
     """Decorator to retry database queries on transient errors.
 
@@ -100,53 +177,30 @@ def db_retry(func):
     ``queryRetryConfig`` with ``enabled``, ``maxRetries``,
     ``initialBackoffSeconds``, and ``maxBackoffSeconds`` fields.
 
+    Transparently handles both regular functions and generator functions.
+    Generator functions are materialized to a list during retry to ensure
+    DB errors raised during iteration are caught by the retry loop.
+
     When retry is disabled or the config is absent, the decorated function
     executes exactly once with zero overhead.
     """
+    if inspect.isgeneratorfunction(func):
+
+        @functools.wraps(func)
+        def gen_wrapper(self, *args, **kwargs):
+            config = _get_retry_config(self)
+            if config is None:
+                yield from func(self, *args, **kwargs)
+                return
+            yield from _retry_loop(func, self, args, kwargs, config)
+
+        return gen_wrapper
 
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         config = _get_retry_config(self)
         if config is None:
             return func(self, *args, **kwargs)
-
-        max_retries = getattr(config, "maxRetries", 3)
-        initial_backoff = getattr(config, "initialBackoffSeconds", 2.0)
-        max_backoff = getattr(config, "maxBackoffSeconds", 30.0)
-        max_attempts = max_retries + 1
-
-        last_exc: Optional[Exception] = None
-        for attempt in range(max_attempts):
-            try:
-                return func(self, *args, **kwargs)
-            except (OperationalError, DatabaseError, DBAPIError) as exc:
-                if not is_transient_error(exc):
-                    raise
-                last_exc = exc
-                if attempt < max_retries:
-                    backoff = min(
-                        initial_backoff * (2**attempt),
-                        max_backoff,
-                    )
-                    jitter = random.uniform(0, backoff * 0.1)
-                    wait = backoff + jitter
-                    logger.warning(
-                        "Transient DB error in %s (attempt %d/%d), "
-                        "retrying in %.2fs: %s",
-                        func.__name__,
-                        attempt + 1,
-                        max_retries,
-                        wait,
-                        exc,
-                    )
-                    time.sleep(wait)
-                else:
-                    logger.error(
-                        "Max retries (%d) exhausted for %s: %s",
-                        max_retries,
-                        func.__name__,
-                        exc,
-                    )
-        raise last_exc  # type: ignore[misc]
+        return _retry_loop(func, self, args, kwargs, config)
 
     return wrapper

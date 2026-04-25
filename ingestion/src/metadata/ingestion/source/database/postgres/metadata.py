@@ -289,7 +289,6 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
-    @db_retry
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[PostgresStoredProcedure]:

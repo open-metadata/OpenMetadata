@@ -473,8 +473,8 @@ class CommonDbSourceService(
             )
             logger.debug(traceback.format_exc())
 
-    @db_retry
     @calculate_execution_time()
+    @db_retry
     def get_schema_definition(
         self,
         table_type: TableType,

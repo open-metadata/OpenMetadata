@@ -20,6 +20,8 @@ from metadata.utils.db_retry import (
     TRANSIENT_EXCEPTION_NAMES,
     TRANSIENT_SQLSTATES,
     _get_retry_config,
+    _normalize_config,
+    _sanitize_exc,
     db_retry,
     is_transient_error,
 )
@@ -138,7 +140,82 @@ class TestGetRetryConfig:
 
 
 # ---------------------------------------------------------------------------
-# @db_retry decorator
+# _sanitize_exc
+# ---------------------------------------------------------------------------
+
+
+class TestSanitizeExc:
+    def test_operational_error_with_pgcode(self):
+        exc = _make_operational_error(pgcode="57014")
+        result = _sanitize_exc(exc)
+        assert "OperationalError" in result
+        assert "pgcode=57014" in result
+        assert "transient failure" not in result
+
+    def test_operational_error_with_class_name(self):
+        exc = _make_operational_error(cls_name="QueryCanceled")
+        result = _sanitize_exc(exc)
+        assert "orig=QueryCanceled" in result
+
+    def test_plain_exception(self):
+        result = _sanitize_exc(ValueError("secret SQL here"))
+        assert "ValueError" in result
+        assert "secret SQL here" not in result
+
+
+# ---------------------------------------------------------------------------
+# _normalize_config
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeConfig:
+    def test_valid_config_passthrough(self):
+        config = MagicMock()
+        config.maxRetries = 5
+        config.initialBackoffSeconds = 2.0
+        config.maxBackoffSeconds = 30.0
+        retries, initial, maximum = _normalize_config(config)
+        assert retries == 5
+        assert initial == 2.0
+        assert maximum == 30.0
+
+    def test_negative_retries_clamped(self):
+        config = MagicMock()
+        config.maxRetries = -1
+        config.initialBackoffSeconds = 2.0
+        config.maxBackoffSeconds = 30.0
+        retries, _, _ = _normalize_config(config)
+        assert retries == 1
+
+    def test_zero_retries_clamped(self):
+        config = MagicMock()
+        config.maxRetries = 0
+        config.initialBackoffSeconds = 2.0
+        config.maxBackoffSeconds = 30.0
+        retries, _, _ = _normalize_config(config)
+        assert retries == 1
+
+    def test_negative_backoff_clamped(self):
+        config = MagicMock()
+        config.maxRetries = 3
+        config.initialBackoffSeconds = -5.0
+        config.maxBackoffSeconds = 30.0
+        _, initial, maximum = _normalize_config(config)
+        assert initial == 0.1
+        assert maximum >= initial
+
+    def test_max_backoff_below_initial_clamped(self):
+        config = MagicMock()
+        config.maxRetries = 3
+        config.initialBackoffSeconds = 10.0
+        config.maxBackoffSeconds = 2.0
+        _, initial, maximum = _normalize_config(config)
+        assert initial == 10.0
+        assert maximum == 10.0
+
+
+# ---------------------------------------------------------------------------
+# @db_retry decorator — regular functions
 # ---------------------------------------------------------------------------
 
 
@@ -354,4 +431,152 @@ class TestDbRetryDecorator:
 
         result = Service().fetch_data("public", "users", limit=50)
         assert result == ("public", "users", 50)
+        assert call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# @db_retry decorator — generator functions
+# ---------------------------------------------------------------------------
+
+
+class TestDbRetryGenerator:
+    def test_generator_no_retry_when_disabled(self):
+        source = _make_source(enabled=False)
+        call_count = 0
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self):
+                nonlocal call_count
+                call_count += 1
+                yield "table_a"
+                yield "table_b"
+
+        result = list(Service().list_tables())
+        assert result == ["table_a", "table_b"]
+        assert call_count == 1
+
+    def test_generator_no_retry_when_config_missing(self):
+        class Service:
+            source_config = None
+
+            @db_retry
+            def list_tables(self):
+                yield "table_a"
+
+        result = list(Service().list_tables())
+        assert result == ["table_a"]
+
+    @patch("metadata.utils.db_retry.time.sleep")
+    def test_generator_retries_on_transient_error(self, mock_sleep):
+        source = _make_source(max_retries=3, initial_backoff=0.01, max_backoff=0.05)
+        call_count = 0
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self):
+                nonlocal call_count
+                call_count += 1
+                if call_count == 1:
+                    raise _make_operational_error(pgcode="57014")
+                yield "table_a"
+                yield "table_b"
+
+        result = list(Service().list_tables())
+        assert result == ["table_a", "table_b"]
+        assert call_count == 2
+        assert mock_sleep.call_count == 1
+
+    @patch("metadata.utils.db_retry.time.sleep")
+    def test_generator_catches_mid_iteration_error(self, mock_sleep):
+        source = _make_source(max_retries=3, initial_backoff=0.01, max_backoff=0.05)
+        call_count = 0
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self):
+                nonlocal call_count
+                call_count += 1
+                yield "table_a"
+                if call_count == 1:
+                    raise _make_operational_error(pgcode="57014")
+                yield "table_b"
+
+        result = list(Service().list_tables())
+        assert result == ["table_a", "table_b"]
+        assert call_count == 2
+
+    @patch("metadata.utils.db_retry.time.sleep")
+    def test_generator_max_retries_exhausted(self, mock_sleep):
+        source = _make_source(max_retries=2, initial_backoff=0.01, max_backoff=0.05)
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self):
+                raise _make_operational_error(pgcode="57014")
+                yield  # noqa: unreachable — makes this a generator
+
+        with pytest.raises(OperationalError):
+            list(Service().list_tables())
+        assert mock_sleep.call_count == 2
+
+    def test_generator_non_transient_not_retried(self):
+        source = _make_source(max_retries=3)
+        call_count = 0
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self):
+                nonlocal call_count
+                call_count += 1
+                raise _make_operational_error(pgcode="42P01")
+                yield  # noqa: unreachable
+
+        with pytest.raises(OperationalError):
+            list(Service().list_tables())
+        assert call_count == 1
+
+    def test_generator_preserves_function_metadata(self):
+        source = _make_source()
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self):
+                """Lists all tables."""
+                yield "t"
+
+        svc = Service()
+        assert svc.list_tables.__name__ == "list_tables"
+        assert svc.list_tables.__doc__ == "Lists all tables."
+
+    @patch("metadata.utils.db_retry.time.sleep")
+    def test_generator_passes_args(self, mock_sleep):
+        source = _make_source(max_retries=1, initial_backoff=0.01, max_backoff=0.05)
+        call_count = 0
+
+        class Service:
+            source_config = source.source_config
+
+            @db_retry
+            def list_tables(self, schema):
+                nonlocal call_count
+                call_count += 1
+                if call_count == 1:
+                    raise _make_operational_error(pgcode="57014")
+                yield f"{schema}.table_a"
+
+        result = list(Service().list_tables("public"))
+        assert result == ["public.table_a"]
         assert call_count == 2
