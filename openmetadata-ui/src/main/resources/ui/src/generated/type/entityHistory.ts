@@ -19,11 +19,16 @@ export interface EntityHistory {
      * produced.
      */
     entityType: string;
-    paging?:    Paging;
-    versions:   any[];
+    /**
+     * Pagination information
+     */
+    paging?:  Paging;
+    versions: any[];
 }
 
 /**
+ * Pagination information
+ *
  * Type used for cursor based pagination information in GET list responses.
  */
 export interface Paging {
