@@ -200,6 +200,8 @@ export function buildGraphFromAllTerms(
       (term.children && term.children.length > 0) ||
       term.parent;
 
+    const glossary = glossaryList.find((g) => g.id === term.glossary?.id);
+
     nodesMap.set(term.id, {
       id: term.id,
       label: term.displayName || term.name,
@@ -207,7 +209,7 @@ export function buildGraphFromAllTerms(
       fullyQualifiedName: term.fullyQualifiedName,
       description: term.description,
       glossaryId: term.glossary?.id,
-      group: glossaryList.find((g) => g.id === term.glossary?.id)?.name,
+      group: glossary ? glossary.displayName || glossary.name : undefined,
       owners: term.owners,
     });
 
