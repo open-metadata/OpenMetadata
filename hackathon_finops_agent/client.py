@@ -17,6 +17,15 @@ def request_with_retry(method, url, **kwargs):
             res = requests.request(method, url, **kwargs)
             res.raise_for_status()
             return res
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 412:
+                # Do not retry blindly on 412 version conflict
+                raise e
+            if attempt == max_retries - 1:
+                raise e
+            logger.warning(f"Request failed ({e}), retrying in {backoff}s...")
+            time.sleep(backoff)
+            backoff *= 2
         except requests.exceptions.RequestException as e:
             if attempt == max_retries - 1:
                 raise e
@@ -29,7 +38,7 @@ def fetch_all_tables():
     tables = []
     after = None
     while True:
-        params = {"fields": "usageSummary,tags,description,owners,version,profile", "limit": 100}
+        params = {"fields": "usageSummary,tags,description,owners,version,profile,extension", "limit": 100}
         if after: params["after"] = after
         try:
             res = request_with_retry("GET", f"{OM_URL}/tables", headers=get_headers(), params=params, timeout=10)
@@ -80,35 +89,50 @@ def notify_slack(table_name, state, message, waste_usd):
         pass
 
 def ensure_custom_property():
-    """Flex: Dynamically injects a FinOps Custom Property to the OM Schema if it doesn't exist"""
+    """Flex: Dynamically injects FinOps Custom Properties to the OM Schema if they don't exist"""
     try:
         res = request_with_retry("GET", f"{OM_URL}/metadata/types/name/table", headers=get_headers(), timeout=5)
         table_type = res.json()
         custom_props = table_type.get("customProperties", [])
-        if any(p.get("name") == "monthlyWasteUSD" for p in custom_props):
+        has_waste = any(p.get("name") == "monthlyWasteUSD" for p in custom_props)
+        has_flagged = any(p.get("name") == "finopsFlaggedAt" for p in custom_props)
+        
+        if has_waste and has_flagged:
             return True
             
-        logger.info("Creating Custom Property 'monthlyWasteUSD'...")
         types_res = request_with_retry("GET", f"{OM_URL}/metadata/types?category=field", headers=get_headers(), timeout=5)
-        number_type_id = next((t["id"] for t in types_res.json().get("data", []) if t["name"] == "number"), None)
+        type_data = types_res.json().get("data", [])
+        number_type_id = next((t["id"] for t in type_data if t["name"] == "number"), None)
+        timestamp_type_id = next((t["id"] for t in type_data if t["name"] == "timestamp"), None)
         
-        if not number_type_id:
-            logger.warning("Could not find 'number' property type.")
+        if not number_type_id or not timestamp_type_id:
+            logger.warning("Could not find 'number' or 'timestamp' property types.")
             return False
             
-        payload = {
-            "name": "monthlyWasteUSD",
-            "description": "Estimated monthly waste in USD computed by the FinOps Agent",
-            "propertyType": {"id": number_type_id, "type": "type"}
-        }
-        # In OpenMetadata, you add custom properties via PUT to /metadata/types/{id}
-        request_with_retry("PUT", f"{OM_URL}/metadata/types/{table_type['id']}", headers=get_headers(), json=payload, timeout=5)
+        if not has_waste:
+            logger.info("Creating Custom Property 'monthlyWasteUSD'...")
+            payload = {
+                "name": "monthlyWasteUSD",
+                "description": "Estimated monthly waste in USD computed by the FinOps Agent",
+                "propertyType": {"id": number_type_id, "type": "type"}
+            }
+            request_with_retry("PUT", f"{OM_URL}/metadata/types/{table_type['id']}", headers=get_headers(), json=payload, timeout=5)
+            
+        if not has_flagged:
+            logger.info("Creating Custom Property 'finopsFlaggedAt'...")
+            payload2 = {
+                "name": "finopsFlaggedAt",
+                "description": "Timestamp when the table was first flagged by FinOps Agent",
+                "propertyType": {"id": timestamp_type_id, "type": "type"}
+            }
+            request_with_retry("PUT", f"{OM_URL}/metadata/types/{table_type['id']}", headers=get_headers(), json=payload2, timeout=5)
+            
         return True
     except Exception as e:
         logger.debug(f"Failed to ensure custom property (might lack admin rights or already exists): {e}")
         return False
 
-def apply_state(table_id, table_name, current_tags, state, current_version, has_description, fqn, waste_usd=0.0, ai_insight=""):
+def apply_state(table_id, table_name, current_tags, state, current_version, current_description, fqn, waste_usd=0.0, ai_insight="", base_time=0, has_base_time=False):
     """Applies tags, descriptions, custom properties, feed posts, and slack notifications using Optimistic Locking"""
     if DRY_RUN:
         logger.info(f"[DRY-RUN] Skipping patch for {table_name}")
@@ -133,12 +157,21 @@ def apply_state(table_id, table_name, current_tags, state, current_version, has_
     
     patch_ops.append({"op": "replace" if current_tags else "add", "path": "/tags", "value": new_tags})
         
-    if has_description:
-        patch_ops.append({"op": "replace", "path": "/description", "value": desc_msg})
+    full_desc = current_description or ""
+    if "FINOPS STATUS:" in full_desc:
+        full_desc = full_desc.split("FINOPS STATUS:")[0].strip()
+        
+    new_desc = full_desc + f"\n\nFINOPS STATUS:\n{desc_msg}" if full_desc else desc_msg
+
+    if current_description:
+        patch_ops.append({"op": "replace", "path": "/description", "value": new_desc.strip()})
     else:
-        patch_ops.append({"op": "add", "path": "/description", "value": desc_msg})
+        patch_ops.append({"op": "add", "path": "/description", "value": new_desc.strip()})
         
     patch_ops.append({"op": "add", "path": "/extension/monthlyWasteUSD", "value": waste_usd})
+    
+    if not has_base_time and base_time > 0:
+        patch_ops.append({"op": "add", "path": "/extension/finopsFlaggedAt", "value": base_time})
     
     headers = get_headers()
     headers["Content-Type"] = "application/json-patch+json"
@@ -153,7 +186,7 @@ def apply_state(table_id, table_name, current_tags, state, current_version, has_
             
         return True
     except requests.exceptions.HTTPError as e:
-        if e.response and e.response.status_code == 412:
+        if e.response is not None and e.response.status_code == 412:
             logger.warning(f"Concurrency conflict (412 Precondition Failed) for {table_name}. Another user updated this. Skipping.")
         else:
             logger.error(f"API HTTP Error patching {table_name}: {e}")

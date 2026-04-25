@@ -51,7 +51,7 @@ def run():
         fqn = table.get("fullyQualifiedName")
         table_id = table.get("id")
         version = table.get("version")
-        has_description = "description" in table and table.get("description") is not None
+        current_description = table.get("description", "")
         
         if not table_id: 
             continue
@@ -59,13 +59,25 @@ def run():
         downstream_edges = fetch_downstream_lineage(table_id)
         has_downstream = isinstance(downstream_edges, list) and len(downstream_edges) > 0
         
-        # Calculate age purely
+        # Calculate age robustly to avoid the state progression bug
         updated_at = table.get("updatedAt")
-        if not updated_at:
-            logger.info(f"[SKIP] {name} (Missing updatedAt)")
+        ext = table.get("extension", {})
+        
+        has_base_time = False
+        if ext and "finopsFlaggedAt" in ext:
+            try:
+                base_time = int(ext["finopsFlaggedAt"])
+                has_base_time = True
+            except ValueError:
+                base_time = updated_at
+        else:
+            base_time = updated_at
+
+        if not base_time:
+            logger.info(f"[SKIP] {name} (Missing timing metadata)")
             continue
             
-        age_days = int((now_ms - updated_at) / 86400000)
+        age_days = int((now_ms - base_time) / 86400000)
         
         # Extract usage safely
         usage_count = None
@@ -102,7 +114,11 @@ def run():
             ai_insight = get_ai_deprecation_insight(name, waste_usd, age_days)
             
         if not DRY_RUN:
-            success = apply_state(table_id, name, table.get("tags"), state, version, has_description, fqn, waste_usd, ai_insight)
+            success = apply_state(
+                table_id, name, table.get("tags"), state, version, 
+                current_description, fqn, waste_usd, ai_insight, 
+                base_time, has_base_time
+            )
             if success:
                 actions += 1
                 logger.info(f"  └─> [SUCCESS] Applied {state} state to {name}")

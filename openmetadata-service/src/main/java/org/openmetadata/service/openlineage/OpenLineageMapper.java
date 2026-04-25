@@ -158,7 +158,7 @@ public class OpenLineageMapper {
       return allowedEventTypes.contains("COMPLETE");
     }
     
-    // For streaming lineage (Grand Prize Feature), allow START events if requested or if it's a known streaming engine
+    // For streaming lineage, allow START/RUNNING events if requested or if it's a known streaming engine
     if (eventType == EventType.START || eventType == EventType.RUNNING) {
        if (allowedEventTypes.contains(eventType.value()) || isStreamingJob(event)) {
            return true;
@@ -169,9 +169,13 @@ public class OpenLineageMapper {
   }
 
   private boolean isStreamingJob(OpenLineageRunEvent event) {
-      // Logic to detect streaming jobs (e.g., from producer or facets)
-      if (event.getProducer() != null && event.getProducer().toString().contains("flink")) {
-          return true;
+      if (event == null || event.getJob() == null || event.getJob().getFacets() == null) {
+          return false;
+      }
+      Object jobType = event.getJob().getFacets().getAdditionalProperties().get("jobType");
+      if (jobType instanceof Map) {
+          Object processingType = ((Map<?, ?>) jobType).get("processingType");
+          return "STREAMING".equalsIgnoreCase(String.valueOf(processingType));
       }
       return false;
   }
@@ -322,6 +326,10 @@ public class OpenLineageMapper {
         || event.getEventType() == null
         || event.getRun() == null
         || event.getRun().getRunId() == null) {
+      return null;
+    }
+
+    if (!shouldProcessEvent(event)) {
       return null;
     }
 

@@ -1,5 +1,8 @@
 import unittest
+from unittest.mock import patch, MagicMock
 from evaluator import evaluate_table
+import requests
+from client import apply_state
 
 class TestFinOpsEvaluator(unittest.TestCase):
 
@@ -61,6 +64,30 @@ class TestFinOpsEvaluator(unittest.TestCase):
         
         state, reason = evaluate_table(usage_count=0, age_days=15, has_downstream=False, current_tags=["FinOps.Zombie"])
         self.assertIsNone(state)
+
+class TestFinOpsClient(unittest.TestCase):
+    @patch('client.DRY_RUN', False)
+    @patch('client.request_with_retry')
+    def test_patch_failure_412(self, mock_request):
+        # The reviewer complained that MagicMock wasn't raising correctly.
+        # We need to simulate a proper requests.exceptions.HTTPError being raised with a 412 status code.
+        mock_response = MagicMock()
+        mock_response.status_code = 412
+        http_error = requests.exceptions.HTTPError(response=mock_response)
+        
+        mock_request.side_effect = http_error
+        
+        # apply_state should catch the 412 error and return False
+        success = apply_state(
+            table_id="test_id", 
+            table_name="test_table", 
+            current_tags=[], 
+            state="ZOMBIE", 
+            current_version="1.0", 
+            current_description="", 
+            fqn="test_db.test_schema.test_table"
+        )
+        self.assertFalse(success)
 
 if __name__ == "__main__":
     unittest.main()
