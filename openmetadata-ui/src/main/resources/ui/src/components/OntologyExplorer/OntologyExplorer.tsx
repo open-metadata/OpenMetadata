@@ -243,6 +243,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 ? selectedNode?.id ?? entityId
                 : entityId
             }
+            glossaries={glossaries}
             glossaryColorMap={glossaryColorMap}
             graphSearchHighlight={graphSearchHighlight}
             hierarchyCombos={
