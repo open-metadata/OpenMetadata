@@ -679,7 +679,6 @@ export const validateServiceName = async (
   return null;
 };
 
-
 const convertAdmonitionsToHtml = (markdown: string): string => {
   ADMONITION_BLOCK_REGEX.lastIndex = 0;
 
