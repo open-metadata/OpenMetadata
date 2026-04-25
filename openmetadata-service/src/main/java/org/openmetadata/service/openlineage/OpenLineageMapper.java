@@ -172,10 +172,13 @@ public class OpenLineageMapper {
       if (event == null || event.getJob() == null || event.getJob().getFacets() == null) {
           return false;
       }
-      Object jobType = event.getJob().getFacets().getAdditionalProperties().get("jobType");
-      if (jobType instanceof Map) {
-          Object processingType = ((Map<?, ?>) jobType).get("processingType");
-          return "STREAMING".equalsIgnoreCase(String.valueOf(processingType));
+      Map<String, Object> additionalProperties = event.getJob().getFacets().getAdditionalProperties();
+      if (additionalProperties != null) {
+          Object jobType = additionalProperties.get("jobType");
+          if (jobType instanceof Map) {
+              Object processingType = ((Map<?, ?>) jobType).get("processingType");
+              return "STREAMING".equalsIgnoreCase(String.valueOf(processingType));
+          }
       }
       return false;
   }
