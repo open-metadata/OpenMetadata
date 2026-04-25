@@ -66,7 +66,8 @@
       "description": "Local name (not fully qualified name) of the field. ",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
     },
     "field": {
       "type": "object",
