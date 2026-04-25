@@ -115,11 +115,22 @@ def _sanitize_exc(exc: Exception) -> str:
 
 def _normalize_config(config: Any):
     """Extract and clamp retry config values to safe ranges."""
-    max_retries = max(int(getattr(config, "maxRetries", 3)), 1)
-    initial_backoff = max(float(getattr(config, "initialBackoffSeconds", 2.0)), 0.1)
-    max_backoff = max(
-        float(getattr(config, "maxBackoffSeconds", 30.0)), initial_backoff
-    )
+    raw_retries = getattr(config, "maxRetries", 3)
+    max_retries = max(int(raw_retries), 1)
+    
+    raw_initial = getattr(config, "initialBackoffSeconds", 2.0)
+    initial_backoff = max(float(raw_initial), 0.1)
+    
+    raw_max = getattr(config, "maxBackoffSeconds", 30.0)
+    max_backoff = max(float(raw_max), initial_backoff)
+
+    if raw_retries != max_retries or raw_initial != initial_backoff or raw_max != max_backoff:
+        logger.warning(
+            "Invalid queryRetryConfig values detected. Clamped to safe ranges: "
+            "maxRetries=%d, initialBackoffSeconds=%.2f, maxBackoffSeconds=%.2f",
+            max_retries, initial_backoff, max_backoff
+        )
+
     return max_retries, initial_backoff, max_backoff
 
 
