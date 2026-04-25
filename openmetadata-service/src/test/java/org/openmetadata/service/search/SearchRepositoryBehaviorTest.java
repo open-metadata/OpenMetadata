@@ -2136,30 +2136,10 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void reformatVectorIndexWithDimensionAddsMetaAndPreservesInvalidJson() throws Exception {
-    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-    when(embeddingClient.getModelId()).thenReturn("test-model");
-    setPrivateField(repository, "embeddingClient", embeddingClient);
-
-    String updated =
-        (String)
-            invokePrivateMethod(
-                repository,
-                "reformatVectorIndexWithDimension",
-                new Class<?>[] {String.class, int.class},
-                "{\"mappings\":{}}",
-                768);
-
-    assertTrue(updated.contains("\"embedding_model\":\"test-model\""));
-    assertTrue(updated.contains("\"embedding_dimension\":768"));
-    assertEquals(
-        "not-json",
-        invokePrivateMethod(
-            repository,
-            "reformatVectorIndexWithDimension",
-            new Class<?>[] {String.class, int.class},
-            "not-json",
-            384));
+  void readIndexMappingReturnsMappingForKnownIndex() {
+    String mapping = repository.readIndexMapping(TABLE_MAPPING);
+    assertNotNull(mapping);
+    assertFalse(mapping.isBlank());
   }
 
   @Test

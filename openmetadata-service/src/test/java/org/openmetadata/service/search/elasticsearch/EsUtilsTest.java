@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -500,6 +501,42 @@ class EsUtilsTest {
                   "fromEntity",
                   com.nimbusds.jose.util.Pair.of("sample.dashboard", "sample.orders"),
                   List.of()));
+    }
+  }
+
+  @Test
+  void enrichIndexMappingThrowsOnNullOrEmptyInput() {
+    assertThrows(IllegalArgumentException.class, () -> EsUtils.enrichIndexMappingForElasticsearch(null));
+    assertThrows(IllegalArgumentException.class, () -> EsUtils.enrichIndexMappingForElasticsearch(""));
+  }
+
+  @Test
+  void enrichIndexMappingSkipsEmbeddingWhenFingerprintFieldAbsent() {
+    String mapping = "{\"mappings\":{\"properties\":{\"name\":{\"type\":\"keyword\"}}}}";
+    String result = EsUtils.enrichIndexMappingForElasticsearch(mapping);
+    assertFalse(result.contains("dense_vector"), "Should not add embedding when fingerprint field is absent");
+  }
+
+  @Test
+  void enrichIndexMappingInjectsEmbeddingWhenFingerprintPresentAndVectorEnabled() {
+    String mapping = "{\"mappings\":{\"properties\":{\"name\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"}}}}";
+
+    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
+        org.mockito.Mockito.mock(org.openmetadata.service.search.vector.client.EmbeddingClient.class);
+    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(768);
+    org.mockito.Mockito.when(mockEmbeddingClient.getModelId()).thenReturn("test-model");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+      org.mockito.Mockito.when(searchRepository.getEmbeddingClient()).thenReturn(mockEmbeddingClient);
+
+      String result = EsUtils.enrichIndexMappingForElasticsearch(mapping);
+
+      assertTrue(result.contains("\"dense_vector\""), "Should add dense_vector field");
+      assertTrue(result.contains("\"dims\":768"), "Should set correct dimension");
+      assertTrue(result.contains("\"embedding_model\":\"test-model\""), "Should add _meta.embedding_model");
+      assertTrue(result.contains("\"embedding_dimension\":768"), "Should add _meta.embedding_dimension");
     }
   }
 
