@@ -246,6 +246,22 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Test
+  void post_searchIndexWithInvalidFieldName_4xx(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+
+    CreateSearchIndex request = new CreateSearchIndex();
+    request.setName(ns.prefix("searchindex_invalid_field"));
+    request.setService(service.getFullyQualifiedName());
+    request.setFields(
+        List.of(new SearchIndexField().withName("title<invalid").withDataType(SearchIndexDataType.TEXT)));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating search index with invalid field name should fail");
+  }
+
+  @Test
   void put_searchIndexFields_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     SearchService service = SearchServiceTestFactory.createElasticSearch(ns);

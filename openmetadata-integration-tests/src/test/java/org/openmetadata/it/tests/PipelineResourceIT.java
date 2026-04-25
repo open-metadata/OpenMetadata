@@ -225,6 +225,21 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void post_pipelineWithInvalidTaskName_4xx(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_invalid_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task<invalid")));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating pipeline with invalid task name should fail");
+  }
+
+  @Test
   void post_pipelineWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
