@@ -33,7 +33,7 @@ const SsoRolesSelectField = (props: FieldProps) => {
     searchRoles('')
       .then((roles) => {
         setRoleOptions(
-          roles.map((role) => ({
+          (roles ?? []).map((role) => ({
             label: role.displayName || role.name,
             value: role.name,
           }))
@@ -99,12 +99,17 @@ const SsoRolesSelectField = (props: FieldProps) => {
           onSearch={async (val) => {
             try {
               const results = await searchRoles(val);
-              setRoleOptions(
-                results.map((r) => ({
-                  label: r.displayName || r.name,
-                  value: r.name,
-                }))
-              );
+              const searchOpts = (results ?? []).map((r) => ({
+                label: r.displayName || r.name,
+                value: r.name,
+              }));
+              // Preserve options for currently selected values
+              const selectedSet = new Set(value || []);
+              const kept = roleOptions.filter((o) => selectedSet.has(o.value));
+              setRoleOptions([
+                ...kept,
+                ...searchOpts.filter((o) => !selectedSet.has(o.value)),
+              ]);
             } catch (err) {
               showErrorToast(err as AxiosError);
             }

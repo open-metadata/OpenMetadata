@@ -248,8 +248,17 @@ const UserProfileRoles = ({
                     onChange={setSelectedRoles}
                     onDropdownVisibleChange={handleDropdownChange}
                     onSearch={async (val) => {
-                      const results = await searchRoles(val);
-                      setRoles(results);
+                      try {
+                        const results = await searchRoles(val);
+                        setRoles(results);
+                      } catch (err) {
+                        showErrorToast(
+                          err as AxiosError,
+                          t('server.entity-fetch-error', {
+                            entity: t('label.role-plural'),
+                          })
+                        );
+                      }
                     }}
                   />
                 </div>
