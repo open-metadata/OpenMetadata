@@ -261,6 +261,86 @@ class TestJSONReader(unittest.TestCase):
         total_rows = sum(len(chunk) for chunk in chunks)
         self.assertEqual(total_rows, 2)
 
+    def test_raw_data_set_for_iceberg_metadata(self):
+        iceberg_metadata = json.dumps(
+            {
+                "format-version": 2,
+                "table-uuid": "abc-123",
+                "location": "gs://bucket/warehouse/orders",
+                "schema": {
+                    "type": "struct",
+                    "schema-id": 0,
+                    "fields": [
+                        {"id": 1, "name": "id", "type": "long", "required": True},
+                        {"id": 2, "name": "name", "type": "string", "required": False},
+                    ],
+                },
+            }
+        ).encode("utf-8")
+
+        _, raw_data = JSONDataFrameReader._read_json_object(iceberg_metadata)
+
+        assert raw_data is not None
+
+    def test_iceberg_columns_parsed_correctly(self):
+        from metadata.utils.datalake.datalake_utils import JsonDataFrameColumnParser
+
+        iceberg_metadata = json.dumps(
+            {
+                "format-version": 2,
+                "table-uuid": "abc-123",
+                "location": "gs://bucket/warehouse/orders",
+                "schema": {
+                    "type": "struct",
+                    "schema-id": 0,
+                    "fields": [
+                        {"id": 1, "name": "id", "type": "long", "required": True},
+                        {"id": 2, "name": "name", "type": "string", "required": False},
+                    ],
+                },
+            }
+        ).encode("utf-8")
+
+        _, raw_data = JSONDataFrameReader._read_json_object(iceberg_metadata)
+        assert raw_data is not None
+
+        import pandas as pd
+
+        from metadata.generated.schema.entity.data.table import DataType
+
+        empty_df = pd.DataFrame()
+        parser = JsonDataFrameColumnParser(data_frame=empty_df, raw_data=raw_data)
+        columns = parser.get_columns()
+
+        assert len(columns) == 2
+        column_names = [col.name.root for col in columns]
+        assert "id" in column_names
+        assert "name" in column_names
+
+        id_col = next(col for col in columns if col.name.root == "id")
+        name_col = next(col for col in columns if col.name.root == "name")
+        assert id_col.dataType in {DataType.INT, DataType.BIGINT, DataType.LONG}
+        assert name_col.dataType in {DataType.STRING, DataType.VARCHAR, DataType.TEXT}
+
+    def test_raw_data_none_for_regular_json(self):
+        regular_json = json.dumps([{"col1": "val1", "col2": 42}]).encode("utf-8")
+
+        _, raw_data = JSONDataFrameReader._read_json_object(regular_json)
+
+        assert raw_data is None
+
+    def test_raw_data_set_for_json_schema(self):
+        json_schema = json.dumps(
+            {
+                "$schema": "http://json-schema.org/draft-07/schema",
+                "properties": {"id": {"type": "integer"}},
+            }
+        ).encode("utf-8")
+
+        _, raw_data = JSONDataFrameReader._read_json_object(json_schema)
+
+        assert raw_data is not None
+
 
 if __name__ == "__main__":
     unittest.main()

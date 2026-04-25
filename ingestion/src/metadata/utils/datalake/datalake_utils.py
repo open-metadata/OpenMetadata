@@ -17,6 +17,7 @@ from different auths and different file systems.
 import ast
 import json
 import random
+import re
 import traceback
 from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 
@@ -147,6 +148,25 @@ def fetch_dataframe_first_chunk(
     if fetch_raw_data:
         return None, None
     return None
+
+
+_ICEBERG_METADATA_PATH_RE = re.compile(r"([^/]+)/metadata/v\d+\.metadata\.json$")
+
+
+def get_iceberg_table_name_from_metadata_path(metadata_path: str) -> Optional[str]:
+    """
+    Extracts the Iceberg table directory name from a metadata file path.
+
+    Examples:
+      "warehouse/orders/metadata/v2.metadata.json"  -> "orders"
+      "my_prefix/sales/metadata/v1.metadata.json"   -> "sales"
+      "simple/metadata/v3.metadata.json"            -> "simple"
+      "data/orders.json"                            -> None
+
+    Returns None if the path does not match the Iceberg metadata pattern.
+    """
+    match = _ICEBERG_METADATA_PATH_RE.search(metadata_path)
+    return match.group(1) if match else None
 
 
 def get_file_format_type(key_name, metadata_entry=None):

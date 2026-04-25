@@ -67,6 +67,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe_first_chunk,
     get_file_format_type,
+    get_iceberg_table_name_from_metadata_path,
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -201,7 +202,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int], str]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -238,18 +239,29 @@ class DatalakeSource(DatabaseServiceSource):
                     logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
-                yield table_name, TableType.Regular, file_extension, file_size
+                table_type = (
+                    TableType.Iceberg
+                    if get_iceberg_table_name_from_metadata_path(key_name) is not None
+                    else TableType.Regular
+                )
+                yield table_name, table_type, file_extension, file_size, key_name
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int], str],  # noqa: UP006, UP045
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        table_name, table_type, table_extension, file_size = table_name_and_type
+        (
+            table_name,
+            table_type,
+            table_extension,
+            file_size,
+            fetch_key,
+        ) = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
@@ -257,7 +269,7 @@ class DatalakeSource(DatabaseServiceSource):
                 config_source=self.config_source,
                 client=self.client.client,
                 file_fqn=DatalakeTableSchemaWrapper(
-                    key=table_name,
+                    key=fetch_key,
                     bucket_name=schema_name,
                     file_extension=table_extension,
                     file_size=file_size,
@@ -326,7 +338,8 @@ class DatalakeSource(DatabaseServiceSource):
         schema: str,
         table: str,  # pylint: disable=unused-argument
     ) -> str:
-        return table
+        iceberg_name = get_iceberg_table_name_from_metadata_path(table)
+        return iceberg_name if iceberg_name is not None else table
 
     def filter_dl_table(self, table_name: str):
         """Filters Datalake Tables based on filterPattern"""

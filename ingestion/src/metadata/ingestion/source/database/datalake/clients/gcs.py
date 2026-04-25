@@ -14,9 +14,10 @@ Datalake GCS Client
 """
 
 import os
+import re
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from google.cloud import storage
 
@@ -107,21 +108,61 @@ class DatalakeGcsClient(DatalakeBaseClient):
             for bucket in self._client.list_buckets():
                 yield bucket.name
 
+    _ICEBERG_METADATA_RE = re.compile(r"^(.*)/metadata/v(\d+)\.metadata\.json$")
+
+    @staticmethod
+    def _should_skip_gcs_cold_storage(blob) -> bool:
+        storage_class = getattr(blob, "storage_class", None)
+        return bool(storage_class and storage_class in GCS_COLD_STORAGE_CLASSES)
+
+    def _classify_gcs_blob(
+        self,
+        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]],  # noqa: UP006, UP045
+        regular_files: List[Tuple[str, Optional[int]]],  # noqa: UP006, UP045
+        blob,
+    ) -> None:
+        match = self._ICEBERG_METADATA_RE.match(blob.name)
+        if match:
+            table_dir, version = match.group(1), int(match.group(2))
+            existing = iceberg_tables.get(table_dir)
+            if existing is None or version > existing[0]:
+                iceberg_tables[table_dir] = (version, blob.name, blob.size)
+        else:
+            regular_files.append((blob.name, blob.size))
+
     def get_table_names(
         self,
         bucket_name: str,
         prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool = False,
     ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
-        bucket = self._client.get_bucket(bucket_name)
+        """
+        Lists tables in a GCS bucket using a single pass.
 
-        for key in bucket.list_blobs(prefix=prefix):
-            if skip_cold_storage:
-                storage_class = getattr(key, "storage_class", None)
-                if storage_class and storage_class in GCS_COLD_STORAGE_CLASSES:
-                    logger.debug(f"Skipping cold storage object: {key.name} (storage_class: {storage_class})")
-                    continue
-            yield key.name, key.size
+        Iceberg table directories are identified by blobs matching
+        ``<table_dir>/metadata/v<N>.metadata.json``. Only the blob with the
+        highest integer version is yielded per table directory. Regular files
+        not under any Iceberg table directory are also yielded.
+        """
+        bucket = self._client.get_bucket(bucket_name)
+        iceberg_tables: Dict[str, Tuple[int, str, Optional[int]]] = {}  # noqa: UP006
+        regular_files: List[Tuple[str, Optional[int]]] = []  # noqa: UP006
+
+        for blob in bucket.list_blobs(prefix=prefix):
+            if skip_cold_storage and self._should_skip_gcs_cold_storage(blob):
+                logger.debug(
+                    f"Skipping cold storage object: {blob.name} "
+                    f"(storage_class: {getattr(blob, 'storage_class', None)})"
+                )
+                continue
+            self._classify_gcs_blob(iceberg_tables, regular_files, blob)
+
+        iceberg_dirs = set(iceberg_tables.keys())
+        for _, metadata_blob_path, size in iceberg_tables.values():
+            yield metadata_blob_path, size
+        for file_path, size in regular_files:
+            if not any(file_path.startswith(d + "/") for d in iceberg_dirs):
+                yield file_path, size
 
     def close(self, service_connection):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")

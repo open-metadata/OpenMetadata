@@ -120,7 +120,20 @@ class JSONDataFrameReader(DataFrameReader):
 
         content = content.decode(UTF_8, errors="ignore") if isinstance(content, bytes) else content
         data = json.loads(content)
-        raw_data = content if isinstance(data, dict) and data.get("$schema") else None
+        raw_data = (
+            content
+            if isinstance(data, dict)
+            and (
+                data.get("$schema") is not None  # JSON Schema files
+                or data.get("format-version")
+                is not None  # Apache Iceberg table metadata
+                or (  # Delta Lake / Iceberg schema structure
+                    isinstance(data.get("schema"), dict)
+                    and isinstance(data.get("schema", {}).get("fields"), list)
+                )
+            )
+            else None
+        )
         data = [data] if isinstance(data, dict) else data
 
         def chunk_generator():
