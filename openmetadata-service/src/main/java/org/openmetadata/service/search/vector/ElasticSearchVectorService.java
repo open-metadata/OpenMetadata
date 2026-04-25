@@ -18,10 +18,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 
@@ -36,13 +33,30 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private final Rest5Client restClient;
   @Getter private final EmbeddingClient embeddingClient;
   private final String language;
+  private final int knnNumCandidatesMultiplier;
 
   public ElasticSearchVectorService(
-      ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
+      ElasticsearchClient client,
+      EmbeddingClient embeddingClient,
+      String language,
+      int knnNumCandidatesMultiplier) {
     this.client = client;
     this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
     this.language = language != null ? language.toLowerCase(java.util.Locale.ROOT) : "en";
+    this.knnNumCandidatesMultiplier =
+        knnNumCandidatesMultiplier > 0
+            ? knnNumCandidatesMultiplier
+            : VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
+  }
+
+  public ElasticSearchVectorService(
+      ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
+    this(
+        client,
+        embeddingClient,
+        language,
+        VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
   }
 
   public ElasticSearchVectorService(ElasticsearchClient client, EmbeddingClient embeddingClient) {
@@ -55,18 +69,27 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   public static synchronized void init(
-      ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
+      ElasticsearchClient client,
+      EmbeddingClient embeddingClient,
+      String language,
+      int knnNumCandidatesMultiplier) {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
       EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
-    ElasticSearchVectorService svc = new ElasticSearchVectorService(client, embeddingClient, language);
+    ElasticSearchVectorService svc =
+        new ElasticSearchVectorService(client, embeddingClient, language, knnNumCandidatesMultiplier);
     svc.registerVectorEmbeddingHandler();
     instance = svc;
     LOG.info(
         "ElasticSearchVectorService initialized with model={}, dimension={}",
         embeddingClient.getModelId(),
         embeddingClient.getDimension());
+  }
+
+  public static synchronized void init(
+      ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
+    init(client, embeddingClient, language, VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
   }
 
   public static ElasticSearchVectorService getInstance() {
@@ -105,12 +128,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
-      int numCandidatesMultiplier = resolveNumCandidatesMultiplier();
       String indexName = getIndexAlias();
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
-                queryVector, overFetchSize, rawOffset, k, filters, numCandidatesMultiplier);
+                queryVector, overFetchSize, rawOffset, k, filters, knnNumCandidatesMultiplier);
         String responseBody = executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
@@ -302,18 +324,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
       LOG.error(
           "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
     }
-  }
-
-  private static int resolveNumCandidatesMultiplier() {
-    SearchRepository repo = Entity.getSearchRepository();
-    if (repo == null) {
-      return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
-    }
-    NaturalLanguageSearchConfiguration cfg = repo.getSearchConfiguration().getNaturalLanguageSearch();
-    if (cfg == null || cfg.getKnnNumCandidatesMultiplier() == null) {
-      return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
-    }
-    return cfg.getKnnNumCandidatesMultiplier();
   }
 
   public void close() {
