@@ -52,6 +52,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
@@ -874,6 +875,19 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return True
         return False
 
+    @_ingest_entity_sample_data.register
+    def _(self, entity: Container, sample_data: TableData) -> bool:
+        """Container-specific sample data ingestion implementation"""
+        container_data = self.metadata.ingest_container_sample_data(
+            container=entity, sample_data=sample_data
+        )
+        if container_data:
+            logger.debug(
+                f"Successfully ingested sample data for {entity.fullyQualifiedName.root}"
+            )
+            return True
+        return False
+
     @singledispatchmethod
     def _patch_entity_column_tags(self, entity, column_tags: List[ColumnTag]):
         """
@@ -897,6 +911,17 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_patch_entity_column_tags.register
     def _(self, entity: Table, column_tags: List[ColumnTag]) -> bool:
         """Table-specific column tag patching implementation"""
+        patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
+        if patched:
+            logger.debug(
+                f"Successfully patched tags for {entity.fullyQualifiedName.root}"
+            )
+            return True
+        return False
+
+    @_patch_entity_column_tags.register
+    def _(self, entity: Container, column_tags: List[ColumnTag]) -> bool:
+        """Container-specific column tag patching implementation"""
         patched = self.metadata.patch_column_tags(table=entity, column_tags=column_tags)
         if patched:
             logger.debug(
