@@ -360,15 +360,15 @@ class HiveUnitTest(TestCase):
         self.thread_id = self.hive.context.get_current_thread_id()
         self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-        self.hive._inspector_map[self.thread_id].get_pk_constraint = (
-            lambda table_name, schema_name: []
-        )
-        self.hive._inspector_map[self.thread_id].get_unique_constraints = (
-            lambda table_name, schema_name: []
-        )
-        self.hive._inspector_map[self.thread_id].get_foreign_keys = (
-            lambda table_name, schema_name: []
-        )
+        self.hive._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema_name: []
+        self.hive._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.hive._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [

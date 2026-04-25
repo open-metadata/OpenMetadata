@@ -172,7 +172,9 @@ class HiveSource(CommonDbSourceService):
         return None
 
     def _build_metastore_partition_query(self, drivername: str) -> str:
-        q = lambda name: f'"{name}"' if drivername == "hive+postgres" else name  # noqa: E731
+        q = (
+            lambda name: f'"{name}"' if drivername == "hive+postgres" else name
+        )  # noqa: E731
         return (
             f"SELECT pk.{q('PKEY_NAME')}"
             f" FROM {q('PARTITION_KEYS')} pk"
@@ -197,8 +199,11 @@ class HiveSource(CommonDbSourceService):
     ) -> List[str]:
         partition_keys: List[str] = []
         in_partition_section = False
+        identifier_preparer = self.engine.dialect.identifier_preparer
+        quoted_schema_name = identifier_preparer.quote_identifier(schema_name)
+        quoted_table_name = identifier_preparer.quote_identifier(table_name)
         rows = self.connection.execute(
-            text(f"DESCRIBE FORMATTED `{schema_name}`.`{table_name}`")
+            text(f"DESCRIBE FORMATTED {quoted_schema_name}.{quoted_table_name}")
         )
         for row in rows:
             col_name = row[0].strip() if row[0] else ""
