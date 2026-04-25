@@ -60,6 +60,7 @@ def _make_gcs_client(blobs: list) -> DatalakeGcsClient:
 
 class TestGcsIcebergDiscovery:
     def test_gcs_iceberg_table_detected(self):
+        """Latest version of Iceberg metadata is yielded; data/ blobs are suppressed."""
         blobs = [
             _make_blob("warehouse/orders/metadata/v1.metadata.json", size=500),
             _make_blob("warehouse/orders/metadata/v2.metadata.json", size=600),
@@ -67,13 +68,13 @@ class TestGcsIcebergDiscovery:
             _make_blob("warehouse/orders/data/00001-0-def.parquet", size=9216),
         ]
         client = _make_gcs_client(blobs)
-        mock_bucket = client._client.get_bucket("bucket")
 
-        result = client._get_iceberg_tables(mock_bucket, prefix="warehouse")
+        results = list(client.get_table_names("my-bucket", prefix="warehouse"))
 
-        assert result == {
-            "warehouse/orders": "warehouse/orders/metadata/v2.metadata.json"
-        }
+        assert len(results) == 1
+        name, size = results[0]
+        assert name == "warehouse/orders/metadata/v2.metadata.json"
+        assert size == 600
 
     def test_gcs_iceberg_yields_one_table_per_directory(self):
         blobs = [
@@ -126,12 +127,9 @@ class TestGcsIcebergDiscovery:
 
     def test_gcs_mixed_iceberg_and_regular_files(self):
         """
-        If ANY Iceberg table is detected, the client switches to Iceberg mode
-        and yields only Iceberg tables. Regular files in the same bucket are
-        not yielded in this scan — they are assumed to be data files belonging
-        to Iceberg tables or unrelated objects outside the warehouse prefix.
-        This is intentional: mixing Iceberg and non-Iceberg tables in the same
-        prefix should be avoided in practice.
+        Regular files NOT under any Iceberg table directory are yielded
+        alongside the Iceberg metadata entries. Only blobs that fall under
+        an Iceberg table's own subdirectory (data/, metadata/) are suppressed.
         """
         blobs = [
             _make_blob("warehouse/orders/metadata/v1.metadata.json", size=400),
@@ -141,41 +139,63 @@ class TestGcsIcebergDiscovery:
 
         results = list(client.get_table_names("my-bucket", prefix=None))
 
+        assert len(results) == 2
+        names = {r[0] for r in results}
+        assert "warehouse/orders/metadata/v1.metadata.json" in names
+        assert "regular_files/data.csv" in names
+
+    def test_gcs_iceberg_version_comparison_v10(self):
+        """v10 must beat v9 — lexicographic comparison would fail here."""
+        blobs = [
+            _make_blob("warehouse/orders/metadata/v9.metadata.json", size=500),
+            _make_blob("warehouse/orders/metadata/v10.metadata.json", size=600),
+        ]
+        client = _make_gcs_client(blobs)
+
+        results = list(client.get_table_names("my-bucket", prefix="warehouse"))
+
         assert len(results) == 1
-        name, _ = results[0]
-        assert name == "warehouse/orders/metadata/v1.metadata.json"
+        name, size = results[0]
+        assert name == "warehouse/orders/metadata/v10.metadata.json"
+        assert size == 600
 
 
 class TestS3IcebergDiscovery:
-    def _make_s3_client(self, keys: list) -> DatalakeS3Client:
+    def _make_s3_client(self, keys: list, sizes: dict = None) -> DatalakeS3Client:
+        """Helper: create a DatalakeS3Client backed by a mocked boto3 client."""
         mock_boto_client = MagicMock()
         client = DatalakeS3Client.__new__(DatalakeS3Client)
         client._client = mock_boto_client
         client._session = None
-
-        s3_objects = [{"Key": k, "Size": 1024} for k in keys]
-
-        with patch(
-            "metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects",
-            return_value=s3_objects,
-        ):
-            result = client._get_iceberg_tables("my-bucket", prefix="warehouse")
-
         self._mock_boto_client = mock_boto_client
-        self._s3_objects = s3_objects
-        return client, result
+        sizes = sizes or {}
+        self._s3_objects = [
+            {"Key": k, "Size": sizes.get(k, 1024)} for k in keys
+        ]
+        return client
 
     def test_s3_iceberg_table_detected(self):
+        """Latest version of Iceberg metadata is yielded; data/ blobs are suppressed."""
         keys = [
             "warehouse/orders/metadata/v1.metadata.json",
             "warehouse/orders/metadata/v2.metadata.json",
             "warehouse/orders/data/00000-0-abc.parquet",
         ]
-        _, result = self._make_s3_client(keys)
+        client = self._make_s3_client(
+            keys,
+            sizes={"warehouse/orders/metadata/v2.metadata.json": 600},
+        )
 
-        assert result == {
-            "warehouse/orders": "warehouse/orders/metadata/v2.metadata.json"
-        }
+        with patch(
+            "metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects",
+            return_value=self._s3_objects,
+        ):
+            results = list(client.get_table_names("my-bucket", prefix="warehouse"))
+
+        assert len(results) == 1
+        name, size = results[0]
+        assert name == "warehouse/orders/metadata/v2.metadata.json"
+        assert size == 600
 
     def test_s3_iceberg_yields_one_table_per_directory(self):
         keys = [
@@ -183,18 +203,14 @@ class TestS3IcebergDiscovery:
             "warehouse/orders/metadata/v2.metadata.json",
             "warehouse/orders/data/00000-0-abc.parquet",
         ]
-        mock_boto_client = MagicMock()
-        mock_boto_client.head_object.return_value = {"ContentLength": 600}
-
-        client = DatalakeS3Client.__new__(DatalakeS3Client)
-        client._client = mock_boto_client
-        client._session = None
-
-        s3_objects = [{"Key": k, "Size": 1024} for k in keys]
+        client = self._make_s3_client(
+            keys,
+            sizes={"warehouse/orders/metadata/v2.metadata.json": 600},
+        )
 
         with patch(
             "metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects",
-            return_value=s3_objects,
+            return_value=self._s3_objects,
         ):
             results = list(client.get_table_names("my-bucket", prefix="warehouse"))
 
@@ -209,16 +225,11 @@ class TestS3IcebergDiscovery:
             "data/products.parquet",
             "data/users.json",
         ]
-        mock_boto_client = MagicMock()
-        client = DatalakeS3Client.__new__(DatalakeS3Client)
-        client._client = mock_boto_client
-        client._session = None
-
-        s3_objects = [{"Key": k, "Size": 512} for k in keys]
+        client = self._make_s3_client(keys)
 
         with patch(
             "metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects",
-            return_value=s3_objects,
+            return_value=self._s3_objects,
         ):
             results = list(client.get_table_names("my-bucket", prefix="data"))
 
@@ -227,6 +238,28 @@ class TestS3IcebergDiscovery:
         assert "data/orders.csv" in names
         assert "data/products.parquet" in names
         assert "data/users.json" in names
+
+    def test_s3_iceberg_version_comparison_v10(self):
+        """v10 must beat v9 — lexicographic comparison would fail here."""
+        keys = [
+            "warehouse/orders/metadata/v9.metadata.json",
+            "warehouse/orders/metadata/v10.metadata.json",
+        ]
+        client = self._make_s3_client(
+            keys,
+            sizes={"warehouse/orders/metadata/v10.metadata.json": 600},
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects",
+            return_value=self._s3_objects,
+        ):
+            results = list(client.get_table_names("my-bucket", prefix="warehouse"))
+
+        assert len(results) == 1
+        name, size = results[0]
+        assert name == "warehouse/orders/metadata/v10.metadata.json"
+        assert size == 600
 
 
 class TestIcebergTableNameHelper:
