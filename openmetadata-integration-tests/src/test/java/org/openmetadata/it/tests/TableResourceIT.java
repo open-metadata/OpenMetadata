@@ -221,6 +221,38 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     return SdkClients.adminClient().tables().create(createRequest);
   }
 
+  @Test
+  void post_tableWithInvalidConstraintOrPartitionColumnName_4xx(TestNamespace ns) {
+    CreateTable invalidConstraintRequest = createMinimalRequest(ns);
+    invalidConstraintRequest.setName(ns.prefix("table_invalid_constraint_column"));
+    invalidConstraintRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("name<invalid"))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(invalidConstraintRequest),
+        "Creating table with invalid constraint column name should fail");
+
+    CreateTable invalidPartitionRequest = createMinimalRequest(ns);
+    invalidPartitionRequest.setName(ns.prefix("table_invalid_partition_column"));
+    invalidPartitionRequest.setTablePartition(
+        new TablePartition()
+            .withColumns(
+                List.of(
+                    new PartitionColumnDetails()
+                        .withColumnName("name|invalid")
+                        .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
+                        .withInterval("daily"))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(invalidPartitionRequest),
+        "Creating table with invalid partition column name should fail");
+  }
+
   @Override
   protected Table getEntity(String id) {
     return SdkClients.adminClient().tables().get(id);

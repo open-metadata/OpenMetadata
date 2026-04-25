@@ -258,6 +258,28 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Test
+  void post_topicWithInvalidSchemaFieldName_4xx(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaType(SchemaType.JSON)
+            .withSchemaFields(
+                List.of(new Field().withName("field|invalid").withDataType(FieldDataType.STRING)));
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_invalid_schema_field"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating topic with invalid schema field name should fail");
+  }
+
+  @Test
   void post_topicWithCleanupPolicies_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     MessagingService service = MessagingServiceTestFactory.createKafka(ns);
