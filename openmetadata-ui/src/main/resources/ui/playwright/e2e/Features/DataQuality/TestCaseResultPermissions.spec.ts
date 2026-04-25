@@ -227,14 +227,15 @@ test.describe(
         await viewResultsPage.route(
           '**/api/v1/dataQuality/testDefinitions/*',
           async (route) => {
-            const response = await route.fetch();
-            const responseBody = await response.json();
             testDefinitionRequestUrl = route.request().url();
 
             await route.fulfill({
-              response,
+              status: 200,
+              contentType: 'application/json',
               json: {
-                ...responseBody,
+                id: 'test-definition-id',
+                name: 'tableRowCountToBeBetween',
+                parameterDefinition: [],
                 sqlExpression,
               },
             });
