@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
@@ -77,20 +78,27 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   private Map<UUID, EntityReference> batchFetchBotUsers(List<Bot> bots) {
-    Map<UUID, EntityReference> botUserMap = new HashMap<>();
     if (bots == null || bots.isEmpty()) {
-      return botUserMap;
+      return Map.of();
     }
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
             .findToBatch(entityListToStrings(bots), Relationship.CONTAINS.ordinal(), Entity.USER);
+    if (records.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> userIds =
+        records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
+    Map<String, EntityReference> userRefById =
+        Entity.getEntityReferencesByIds(Entity.USER, userIds, Include.NON_DELETED).stream()
+            .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
+    Map<UUID, EntityReference> botUserMap = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID botId = UUID.fromString(record.getFromId());
-      EntityReference userRef =
-          Entity.getEntityReferenceById(
-              Entity.USER, UUID.fromString(record.getToId()), Include.NON_DELETED);
-      botUserMap.put(botId, userRef);
+      EntityReference userRef = userRefById.get(record.getToId());
+      if (userRef != null) {
+        botUserMap.put(UUID.fromString(record.getFromId()), userRef);
+      }
     }
     return botUserMap;
   }
