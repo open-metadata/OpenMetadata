@@ -7,6 +7,7 @@ import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -212,8 +213,14 @@ public class ElasticSearchVectorService implements VectorIndexService {
         request.setJsonEntity(body);
       }
       Response response = restClient.performRequest(request);
+      int statusCode = response.getStatusCode();
       try (InputStream is = response.getEntity().getContent()) {
-        return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        String responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        if (statusCode >= 400) {
+          throw new IOException(
+              "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
+        }
+        return responseBody;
       }
     } catch (Exception e) {
       LOG.error("Generic request failed: {} {}", method, endpoint, e);
