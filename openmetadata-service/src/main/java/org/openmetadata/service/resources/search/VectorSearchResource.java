@@ -113,7 +113,7 @@ public class VectorSearchResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Parent entity ID", required = true) @QueryParam("parentId")
           String parentId) {
-    DefaultAuthorizer.getSubjectContext(securityContext);
+    authorizer.authorizeAdmin(securityContext);
 
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
