@@ -157,7 +157,7 @@ class SnowflakeQueryLogEntry(BaseModel):
             )
         )
         return TypeAdapter(List[SnowflakeQueryLogEntry]).validate_python(
-            [ExtendedDict(r).lower_case_keys() for r in rows]
+            [ExtendedDict(r._asdict()).lower_case_keys() for r in rows]
         )
 
 

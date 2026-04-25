@@ -45,15 +45,17 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addMultiOwner,
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
-import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
-
-type TaskEntity = {
-  entityRef: {
-    name: string;
-  };
-};
+import {
+  TaskDetails,
+  waitForTaskListResponse,
+  waitForTaskResolveResponse,
+} from './task';
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
@@ -95,7 +97,15 @@ export const selectActiveGlossaryTerm = async (
   page: Page,
   glossaryTermName: string
 ) => {
-  await page.getByTestId(glossaryTermName).click();
+  const glossaryTermEntry = page.getByTestId(glossaryTermName).first();
+
+  await expect(glossaryTermEntry).toBeVisible();
+  await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
+  await glossaryTermEntry.click({ force: true }).catch(async () =>
+    glossaryTermEntry.evaluate((node) => {
+      (node as HTMLElement).click();
+    })
+  );
 
   await waitForAllLoadersToDisappear(page);
 
@@ -331,10 +341,11 @@ export const verifyGlossaryDetails = async (
   page: Page,
   glossaryDetails: GlossaryData
 ) => {
-  await page
-    .getByRole('menuitem', { name: glossaryDetails.displayName, exact: true })
-    .locator('span')
-    .click();
+  await selectActiveGlossary(
+    page,
+    getEntityDisplayName(glossaryDetails),
+    false
+  );
 
   await checkName(page, glossaryDetails.name);
 
@@ -374,10 +385,7 @@ export const verifyGlossaryDetails = async (
 };
 
 export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
-  await page
-    .getByRole('menuitem', { name: glossary.displayName })
-    .locator('span')
-    .click();
+  await selectActiveGlossary(page, getEntityDisplayName(glossary), false);
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -512,29 +520,29 @@ export const fillGlossaryTermDetails = async (
 
 export const verifyTaskCreated = async (
   page: Page,
-  glossaryFqn: string,
+  glossaryTermFqn: string,
   glossaryTermData: string
 ) => {
   const { apiContext } = await getApiContext(page);
-  const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
 
   await expect
     .poll(
       async () => {
         const response = await apiContext
           .get(
-            `/api/v1/feed?entityLink=${entityLink}&type=Task&taskStatus=Open`
+            `/api/v1/tasks?aboutEntity=${encodeURIComponent(
+              glossaryTermFqn
+            )}&status=Open&category=Approval&limit=100&fields=about,assignees`
           )
           .then((res) => res.json());
 
-        const arr = response.data.map(
-          (item: TaskEntity) => item.entityRef.name
-        );
+        const arr = (response.data ?? [])
+          .map((item: { about?: { name?: string } }) => item.about?.name)
+          .filter(Boolean);
 
         return arr;
       },
       {
-        // Custom expect message for reporting, optional.
         message: 'To get the last run execution status as success',
         timeout: 350_000,
         intervals: [40_000, 30_000],
@@ -623,43 +631,22 @@ export const verifyGlossaryWorkflowReviewerCase = async (
     .toEqual('Auto-Approved by Reviewer');
 };
 
-export const validateGlossaryTermTask = async (
-  page: Page,
-  term: GlossaryTermData
-) => {
-  await page.click('[data-testid="activity_feed"]');
-
-  const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
-  await page
-    .getByTestId('global-setting-left-panel')
-    .getByText('Tasks')
-    .click();
-
-  await taskFeeds;
-
-  const taskFeedCards = page.locator('[data-testid="task-feed-card"]');
-
-  // Filter to find the specific card that contains the text
-  const cardWithText = taskFeedCards.filter({
-    has: page.locator('[data-testid="entity-link"]', {
-      hasText: term.name,
-    }),
-  });
-
-  await expect(cardWithText).toHaveCount(1);
-};
-
 export const approveGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  await validateGlossaryTermTask(page, term);
-  const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.getByTestId('approve-button').click();
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
+
+  const approveButton = page.getByTestId(`${term.name}-approve-btn`);
+  await expect(approveButton).toBeVisible();
+
+  const taskResolve = waitForTaskResolveResponse(page);
+  await approveButton.click();
   await taskResolve;
 
   // Display toast notification
-  await toastNotification(page, /Task resolved successfully/);
+  await toastNotification(page, /Task resolved successfully|Vote recorded/);
 };
 
 // Show the glossary term edit modal from glossary page tree.
@@ -771,7 +758,7 @@ export const createGlossaryTerms = async (
   page: Page,
   glossary: GlossaryData
 ) => {
-  await selectActiveGlossary(page, glossary.displayName ?? glossary.name);
+  await selectActiveGlossary(page, getEntityDisplayName(glossary));
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
 
@@ -1399,11 +1386,11 @@ export const approveTagsTask = async (
   const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
-  await selectActiveGlossary(page, entity.data.displayName);
+  await selectActiveGlossary(page, getEntityDisplayName(entity.data));
 
   await page.click('[data-testid="activity_feed"]');
 
-  const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
+  const taskFeeds = waitForTaskListResponse(page);
   await page
     .getByTestId('global-setting-left-panel')
     .getByText('Tasks')
@@ -1411,15 +1398,15 @@ export const approveTagsTask = async (
 
   await taskFeeds;
 
-  const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.click('.ant-btn-compact-first-item:has-text("Accept Suggestion")');
+  const taskResolve = waitForTaskResolveResponse(page);
+  await page.getByTestId('approve-button').first().click();
   await taskResolve;
 
   await redirectToHomePage(page);
   const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryTermsResponse;
-  await selectActiveGlossary(page, entity.data.displayName);
+  await selectActiveGlossary(page, getEntityDisplayName(entity.data));
 
   const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
   await tagVisibility.scrollIntoViewIfNeeded();

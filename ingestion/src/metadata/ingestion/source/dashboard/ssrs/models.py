@@ -26,6 +26,7 @@ class SsrsReport(BaseModel):
     type: Optional[str] = Field(None, alias="Type")
     hidden: bool = Field(False, alias="Hidden")
     has_data_sources: Optional[bool] = Field(None, alias="HasDataSources")
+    created_by: Optional[str] = Field(None, alias="CreatedBy")
 
 
 class SsrsFolder(BaseModel):

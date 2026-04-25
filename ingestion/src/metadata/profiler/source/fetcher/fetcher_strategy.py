@@ -18,6 +18,7 @@ from typing import Dict, Iterable, Iterator, List, Optional, cast
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -40,12 +41,15 @@ from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
     filter_by_classification,
+    filter_by_container,
     filter_by_schema,
     filter_by_table,
     validate_regex,
 )
+from metadata.utils.fqn import split
 
 FIELDS = ["tableProfilerConfig", "columns", "customMetrics", "tags"]
+CONTAINER_FIELDS = ["dataModel", "tags"]
 
 
 class RegexFilter(BaseModel):
@@ -342,3 +346,147 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                     ),
                     right=None,
                 )
+
+
+class StorageFetcherStrategy(FetcherStrategy):
+    """Storage fetcher strategy for Container entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Optional[Settings],
+        status: Status,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status)
+
+    def _filter_buckets(self, container: Container) -> bool:
+        """Filter buckets (top-level containers) based on the bucket filter pattern
+
+        Args:
+            container (Container): Container to filter
+
+        Returns:
+            bool: True if the container should be filtered out
+        """
+        bucket_filter_pattern = getattr(self.source_config, "bucketFilterPattern", None)
+
+        if not bucket_filter_pattern:
+            return False
+
+        fqn_parts = split(container.fullyQualifiedName.root)
+        if len(fqn_parts) >= 2:
+            bucket_name = fqn_parts[1]
+        else:
+            bucket_name = container.name.root
+
+        if filter_by_container(bucket_filter_pattern, bucket_name):
+            self.status.filter(bucket_name, "Bucket pattern not allowed")
+            return True
+
+        return False
+
+    def _filter_containers(self, container: Container) -> bool:
+        """Filter containers based on the filter pattern
+
+        Args:
+            container (Container): Container to filter
+
+        Returns:
+            bool: True if the container should be filtered out
+        """
+        container_filter_pattern = getattr(
+            self.source_config, "containerFilterPattern", None
+        )
+        use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
+
+        if not container_filter_pattern:
+            return False
+
+        container_name = (
+            container.fullyQualifiedName.root
+            if use_fqn_for_filtering
+            else container.name.root
+        )
+
+        if filter_by_container(container_filter_pattern, container_name):
+            self.status.filter(container_name, "Container pattern not allowed")
+            return True
+
+        return False
+
+    def _filter_entities(self, containers: Iterable[Container]) -> Iterable[Container]:
+        """Filter container entities based on the filter pattern
+
+        Args:
+            containers (Iterable[Container]): Containers to filter
+
+        Returns:
+            Iterable[Container]: Filtered containers
+        """
+        containers = [
+            container
+            for container in containers
+            if (
+                not self.source_config.bucketFilterPattern
+                or not self._filter_buckets(container)
+            )
+            and (
+                not self.source_config.containerFilterPattern
+                or not self._filter_containers(container)
+            )
+            and (
+                not self.source_config.classificationFilterPattern
+                or not self.filter_classifications(container)
+            )
+            and container.dataModel is not None
+        ]
+
+        return containers
+
+    def _get_container_entities(self) -> Iterable[Container]:
+        """Get all container entities from the storage service
+
+        Returns:
+            Iterable[Container]: Container entities
+        """
+        containers = self.metadata.list_all_entities(
+            entity=Container,
+            fields=CONTAINER_FIELDS,
+            params={
+                "service": self.config.source.serviceName,
+            },
+        )
+        containers = cast(Iterable[Container], containers)
+        containers = self._filter_entities(containers)
+
+        return cast(Iterable[Container], containers)
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch container entities from storage service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            for container in self._get_container_entities():
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=container,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName,
+                    error=f"Error listing source and entities for storage service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
