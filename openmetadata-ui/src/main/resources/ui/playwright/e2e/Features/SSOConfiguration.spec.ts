@@ -760,8 +760,15 @@ test.describe('SSO Configuration Tests', () => {
       // Opening the dropdown shows API-fetched role options
       await field.click();
       await expect(dropdown).toBeVisible();
+      await field.locator('input').fill('');
+      await page.waitForResponse(
+        '/api/v1/search/query?*index=role_search_index*'
+      );
       await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
-        0
+        0,
+        {
+          timeout: 15000,
+        }
       );
 
       // Select the first available role — it appears as a selection tag
@@ -780,11 +787,14 @@ test.describe('SSO Configuration Tests', () => {
       // Typing filters the visible options
       await field.click();
       await field.locator('input').fill('Data');
+      await page.waitForResponse(
+        '/api/v1/search/query?*index=role_search_index*'
+      );
       await expect(
         dropdown.locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'
         )
-      ).not.toHaveCount(0);
+      ).not.toHaveCount(0, { timeout: 15000 });
 
       // Pressing Enter on a non-existent value does not create an arbitrary tag
       await field.locator('input').clear();

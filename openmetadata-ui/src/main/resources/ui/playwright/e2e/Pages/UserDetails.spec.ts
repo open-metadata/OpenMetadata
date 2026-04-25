@@ -512,6 +512,17 @@ test.describe('User with different Roles', () => {
     });
 
     await adminPage
+      .getByTestId('profile-edit-roles-select')
+      .locator('input')
+      .fill('Application');
+    await adminPage.waitForResponse(
+      '/api/v1/search/query?*index=role_search_index*'
+    );
+    await adminPage
+      .locator('.ant-select-item-option-content')
+      .getByText('Application bot role', { exact: true })
+      .waitFor({ state: 'visible' });
+    await adminPage
       .locator('.ant-select-item-option-content')
       .getByText('Application bot role', { exact: true })
       .click();
