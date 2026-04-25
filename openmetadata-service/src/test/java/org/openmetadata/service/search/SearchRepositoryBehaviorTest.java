@@ -75,6 +75,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -2140,6 +2141,48 @@ class SearchRepositoryBehaviorTest {
     String mapping = repository.readIndexMapping(TABLE_MAPPING);
     assertNotNull(mapping);
     assertFalse(mapping.isBlank());
+  }
+
+  @Test
+  void createOrUpdateIndexTemplatesEnrichesContentForElasticsearch() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+
+    ArgumentCaptor<String> mappingCaptor = ArgumentCaptor.forClass(String.class);
+    doNothing()
+        .when(searchClient)
+        .createOrUpdateIndexTemplate(any(), any(), mappingCaptor.capture());
+
+    try (var esUtils = mockStatic(EsUtils.class)) {
+      esUtils
+          .when(() -> EsUtils.enrichIndexMappingForElasticsearch(any()))
+          .thenAnswer(invocation -> invocation.getArgument(0) + "_enriched");
+
+      repository.createOrUpdateIndexTemplates();
+
+      esUtils.verify(
+          () -> EsUtils.enrichIndexMappingForElasticsearch(any()),
+          org.mockito.Mockito.atLeastOnce());
+    }
+  }
+
+  @Test
+  void createOrUpdateIndexTemplatesSkipsEnrichmentForOpenSearch() throws Exception {
+    SearchRepository openSearchRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.OPENSEARCH,
+            null);
+    when(searchClient.getSearchType()).thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+
+    doNothing().when(searchClient).createOrUpdateIndexTemplate(any(), any(), any());
+
+    try (var esUtils = mockStatic(EsUtils.class)) {
+      openSearchRepository.createOrUpdateIndexTemplates();
+
+      esUtils.verify(() -> EsUtils.enrichIndexMappingForElasticsearch(any()), never());
+    }
   }
 
   @Test

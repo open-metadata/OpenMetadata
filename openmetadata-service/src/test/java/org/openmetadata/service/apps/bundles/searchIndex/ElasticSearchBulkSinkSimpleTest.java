@@ -87,5 +87,4 @@ class ElasticSearchBulkSinkSimpleTest {
     assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
     assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
   }
-
 }

@@ -570,9 +570,7 @@ public class EsUtils {
     if (!mappings.isMissingNode()) {
       com.fasterxml.jackson.databind.node.ObjectNode meta =
           ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
-      meta.put(
-              "embedding_model",
-              searchRepository.getEmbeddingClient().getModelId())
+      meta.put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
           .put("embedding_dimension", dimension);
     }
   }

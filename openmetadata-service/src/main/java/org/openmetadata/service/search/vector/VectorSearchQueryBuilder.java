@@ -75,7 +75,8 @@ public class VectorSearchQueryBuilder {
 
   public static String buildNativeESQuery(
       float[] vector, int size, int from, int k, Map<String, List<String>> filters) {
-    return buildNativeESQuery(vector, size, from, k, filters, DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+    return buildNativeESQuery(
+        vector, size, from, k, filters, DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
   }
 
   public static String buildNativeESQuery(
@@ -110,8 +111,7 @@ public class VectorSearchQueryBuilder {
     return sb.toString();
   }
 
-  private static void appendFilterMustClauses(
-      StringBuilder sb, Map<String, List<String>> filters) {
+  private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
     sb.append("{\"term\":{\"deleted\":false}}");
     for (var e : filters.entrySet()) {
       String field = e.getKey();

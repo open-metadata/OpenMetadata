@@ -19,8 +19,8 @@ import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.VectorIndexService;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
 
 class VectorSearchResourceTest {
 

@@ -14,7 +14,6 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
@@ -389,5 +388,4 @@ public class OpenSearchVectorService implements VectorIndexService {
       throw new RuntimeException("OpenSearch generic request failed", e);
     }
   }
-
 }

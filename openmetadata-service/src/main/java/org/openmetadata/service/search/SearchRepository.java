@@ -129,6 +129,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -137,9 +138,9 @@ import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
-import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -358,7 +359,7 @@ public class SearchRepository {
         String indexName = indexMapping.getIndexName(clusterAlias);
         String templateName = "om_" + indexName;
         String indexPattern = indexName + "*";
-        String mappingContent = readIndexMapping(indexMapping);
+        String mappingContent = enrichForElasticsearch(readIndexMapping(indexMapping));
         if (mappingContent != null) {
           searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
           success++;
@@ -386,7 +387,7 @@ public class SearchRepository {
     String indexName = indexMapping.getIndexName(clusterAlias);
     String templateName = "om_" + indexName;
     String indexPattern = indexName + "*";
-    String mappingContent = readIndexMapping(indexMapping);
+    String mappingContent = enrichForElasticsearch(readIndexMapping(indexMapping));
     if (mappingContent == null) {
       throw new IllegalArgumentException("No mapping content found for entity type: " + entityType);
     }
@@ -444,7 +445,8 @@ public class SearchRepository {
 
   private static int resolveKnnNumCandidatesMultiplier(ElasticSearchConfiguration cfg) {
     NaturalLanguageSearchConfiguration nlCfg = cfg.getNaturalLanguageSearch();
-    if (nlCfg != null && nlCfg.getKnnNumCandidatesMultiplier() != null
+    if (nlCfg != null
+        && nlCfg.getKnnNumCandidatesMultiplier() != null
         && nlCfg.getKnnNumCandidatesMultiplier() >= 1) {
       return nlCfg.getKnnNumCandidatesMultiplier();
     }
@@ -614,6 +616,15 @@ public class SearchRepository {
 
   public String readIndexMapping(IndexMapping indexMapping) {
     return getIndexMapping(indexMapping);
+  }
+
+  private String enrichForElasticsearch(String mappingContent) {
+    if (getSearchType() != ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
+      return mappingContent;
+    }
+    return mappingContent != null
+        ? EsUtils.enrichIndexMappingForElasticsearch(mappingContent)
+        : null;
   }
 
   /**

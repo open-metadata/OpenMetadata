@@ -79,7 +79,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
       EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     ElasticSearchVectorService svc =
-        new ElasticSearchVectorService(client, embeddingClient, language, knnNumCandidatesMultiplier);
+        new ElasticSearchVectorService(
+            client, embeddingClient, language, knnNumCandidatesMultiplier);
     svc.registerVectorEmbeddingHandler();
     instance = svc;
     LOG.info(
@@ -90,7 +91,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   public static synchronized void init(
       ElasticsearchClient client, EmbeddingClient embeddingClient, String language) {
-    init(client, embeddingClient, language, VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+    init(
+        client,
+        embeddingClient,
+        language,
+        VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
   }
 
   public static ElasticSearchVectorService getInstance() {
@@ -134,7 +139,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
                 queryVector, overFetchSize, rawOffset, k, filters, knnNumCandidatesMultiplier);
-        String responseBody = executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
+        String responseBody =
+            executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
         JsonNode hitsNode = root.path("hits").path("hits");

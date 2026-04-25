@@ -698,7 +698,7 @@ class VectorSearchQueryBuilderTest {
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
         root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
-        
+
     // Should have only 1 filter: deleted=false
     assertEquals(1, mustFilters.size());
     assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
@@ -713,7 +713,6 @@ class VectorSearchQueryBuilderTest {
     float[] vector = {0.1f, 0.2f, 0.3f};
     int size = 10;
     int k = 100;
-
 
     String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, size, 0, k, Map.of());
 
