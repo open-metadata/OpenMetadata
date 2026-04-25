@@ -1635,25 +1635,48 @@ export const selectDomainFromNavbar = async (
   page: Page,
   domain: Domain['responseData']
 ) => {
-  await page.getByTestId('domain-dropdown').click();
-  await page.getByTestId('domain-selectable-tree').waitFor({
-    state: 'visible',
-  });
+  const domainDropdown = page.getByTestId('domain-dropdown');
+  const domainTree = page.getByTestId('domain-selectable-tree');
+  const searchTerm = domain.displayName ?? domain.name;
+  const domainOption = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
 
-  const searchDomainRes = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=domain')
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.displayName);
-  await searchDomainRes;
+  const openDropdown = async () => {
+    await domainDropdown.click();
+    await domainTree.waitFor({ state: 'visible' });
+  };
 
-  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
+  await openDropdown();
+
+  const searchBar = domainTree.locator('input[placeholder]').first();
+
+  await expect
+    .poll(
+      async () => {
+        if (!(await domainTree.isVisible().catch(() => false))) {
+          await openDropdown();
+        }
+
+        const isSearchBarVisible = await searchBar
+          .isVisible()
+          .catch(() => false);
+
+        if (isSearchBarVisible) {
+          await searchBar.focus();
+          await searchBar.press('Control+a');
+          await searchBar.pressSequentially(searchTerm);
+        }
+
+        return await domainOption.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60000,
+        intervals: [1000, 2000, 5000],
+        message: `Timed out waiting for domain ${searchTerm} to appear in navbar selector`,
+      }
+    )
+    .toBe(true);
+
+  await domainOption.click();
   await waitForAllLoadersToDisappear(page);
 };
 
