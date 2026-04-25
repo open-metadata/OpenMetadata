@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { FC, useCallback, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CopyIcon from '../../../../assets/svg/icon-copy.svg';
 
 const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
-  const contentRef = useRef<HTMLElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = useCallback(async () => {
-    const text = contentRef.current?.textContent ?? node.textContent;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(node.textContent);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       // clipboard write failed silently
     }
@@ -33,23 +40,21 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
 
   return (
     <NodeViewWrapper as="pre" className="relative code-block">
-      <NodeViewContent as="code" ref={contentRef} />
+      <NodeViewContent as="code" />
       <span
         className="code-copy-message"
         data-copied={copied}
         data-testid="copied-message">
         {t('label.copied')}
       </span>
-      <img
-        alt="copy"
+      <button
         className="code-copy-button"
         data-copied={copied}
         data-testid="code-block-copy-icon"
-        height={24}
-        src={CopyIcon}
-        width={24}
-        onClick={handleCopy}
-      />
+        type="button"
+        onClick={handleCopy}>
+        <img alt="copy" height={24} src={CopyIcon} width={24} />
+      </button>
     </NodeViewWrapper>
   );
 };

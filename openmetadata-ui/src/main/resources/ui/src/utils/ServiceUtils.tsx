@@ -678,29 +678,20 @@ export const validateServiceName = async (
   return null;
 };
 
-const ADMONITION_TYPES = new Set([
-  'note',
-  'warning',
-  'danger',
-  'info',
-  'tip',
-  'caution',
-]);
+const ADMONITION_TYPES = ['note', 'warning', 'danger', 'info', 'tip', 'caution'] as const;
 
-const ADMONITION_BLOCK_REGEX =
-  /^\$\$(note|warning|danger|info|tip|caution)\n([\s\S]*?)\n\$\$/gm;
+const ADMONITION_BLOCK_REGEX = new RegExp(
+  `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
+  'gm'
+);
 
 const convertAdmonitionsToHtml = (markdown: string): string => {
   ADMONITION_BLOCK_REGEX.lastIndex = 0;
 
   return markdown.replace(
     ADMONITION_BLOCK_REGEX,
-    (_match, type: string, content: string) => {
-      const admonitionType = ADMONITION_TYPES.has(type) ? type : 'note';
-      const innerHtml = MarkdownToHTMLConverter.makeHtml(content.trim());
-
-      return `<div data-admonition="${admonitionType}">${innerHtml}</div>`;
-    }
+    (_match, type: string, content: string) =>
+      `<div data-admonition="${type}">${content.trim()}</div>`
   );
 };
 
