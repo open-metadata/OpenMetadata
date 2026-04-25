@@ -38,6 +38,8 @@ import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import MathEquation from '../components/BlockEditor/Extensions/MathEquation/MathEquation';
 import { Mention } from '../components/BlockEditor/Extensions/mention';
 import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/mentionSuggestions';
+import AdmonitionNode from '../components/BlockEditor/Extensions/AdmonitionNode';
+import CodeBlockWithCopy from '../components/BlockEditor/Extensions/CodeBlock/CodeBlockWithCopy';
 import SectionNode from '../components/BlockEditor/Extensions/SectionNode';
 import slashCommand from '../components/BlockEditor/Extensions/slash-command';
 import { getSuggestionItems } from '../components/BlockEditor/Extensions/slash-command/items';
@@ -56,9 +58,10 @@ export class BlockEditorExtensionsClassBase {
    * Get the core extensions for the BlockEditor
    * These are the base extensions that are always included
    */
-  protected getCoreExtensions(): Extensions {
+  protected getCoreExtensions(disableCodeBlock = false): Extensions {
     return [
       StarterKit.configure({
+        codeBlock: disableCodeBlock ? false : undefined,
         heading: {
           levels: [1, 2, 3],
         },
@@ -224,18 +227,24 @@ export class BlockEditorExtensionsClassBase {
       tableExtensions = true,
       advancedContextExtensions = true,
       enableSectionNode = false,
+      enableAdmonitionNode = false,
+      enableCodeBlockCopy = false,
     } = options ?? {};
 
     return [
       Document,
       Paragraph,
       Text,
-      ...(coreExtensions ? this.getCoreExtensions() : []),
+      ...(coreExtensions
+        ? this.getCoreExtensions(enableCodeBlockCopy)
+        : []),
       ...(enableHandlebars ? this.getHandlebarsExtensions() : []),
       ...(utilityExtensions ? this.getUtilityExtensions() : []),
       ...(tableExtensions ? this.getTableExtensions() : []),
       ...(advancedContextExtensions ? this.getAdvancedContentExtensions() : []),
       ...(enableSectionNode ? [SectionNode] : []),
+      ...(enableAdmonitionNode ? [AdmonitionNode] : []),
+      ...(enableCodeBlockCopy ? [CodeBlockWithCopy] : []),
     ];
   }
 

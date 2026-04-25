@@ -678,21 +678,51 @@ export const validateServiceName = async (
   return null;
 };
 
+const ADMONITION_TYPES = new Set([
+  'note',
+  'warning',
+  'danger',
+  'info',
+  'tip',
+  'caution',
+]);
+
+const ADMONITION_BLOCK_REGEX =
+  /^\$\$(note|warning|danger|info|tip|caution)\n([\s\S]*?)\n\$\$/gm;
+
+const convertAdmonitionsToHtml = (markdown: string): string => {
+  ADMONITION_BLOCK_REGEX.lastIndex = 0;
+
+  return markdown.replace(
+    ADMONITION_BLOCK_REGEX,
+    (_match, type: string, content: string) => {
+      const admonitionType = ADMONITION_TYPES.has(type) ? type : 'note';
+      const innerHtml = MarkdownToHTMLConverter.makeHtml(content.trim());
+
+      return `<div data-admonition="${admonitionType}">${innerHtml}</div>`;
+    }
+  );
+};
+
 /**
- * Converts markdown that uses $$section blocks into sanitizable HTML with
- * <section data-id="..."> wrappers. Used by both ServiceDocPanel and SSODocPanel.
+ * Converts markdown with $$section and $$note/warning/etc. admonition blocks into
+ * sanitizable HTML. Used by both ServiceDocPanel and SSODocPanel.
  */
 export const processDocMarkdown = (markdown: string): string => {
+  const withAdmonitions = convertAdmonitionsToHtml(markdown);
+
   const parts: string[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
   SECTION_BLOCK_REGEX.lastIndex = 0;
 
-  while ((match = SECTION_BLOCK_REGEX.exec(markdown)) !== null) {
+  while ((match = SECTION_BLOCK_REGEX.exec(withAdmonitions)) !== null) {
     if (match.index > lastIndex) {
       parts.push(
-        MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex, match.index))
+        MarkdownToHTMLConverter.makeHtml(
+          withAdmonitions.slice(lastIndex, match.index)
+        )
       );
     }
 
@@ -710,8 +740,8 @@ export const processDocMarkdown = (markdown: string): string => {
     lastIndex = match.index + match[0].length;
   }
 
-  if (lastIndex < markdown.length) {
-    parts.push(MarkdownToHTMLConverter.makeHtml(markdown.slice(lastIndex)));
+  if (lastIndex < withAdmonitions.length) {
+    parts.push(MarkdownToHTMLConverter.makeHtml(withAdmonitions.slice(lastIndex)));
   }
 
   return parts.join('\n');

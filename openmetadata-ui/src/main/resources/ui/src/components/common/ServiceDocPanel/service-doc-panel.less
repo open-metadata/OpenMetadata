@@ -98,17 +98,55 @@
     }
 
     pre {
+      position: relative;
       margin: 8px 0;
       padding: 0;
       background: transparent;
 
       code {
         display: block;
-        padding: 15px;
+        padding: 15px 40px 15px 15px;
         overflow: auto;
         border-radius: 8px;
         border-bottom: 2px solid @border-color;
         background: @markdown-bg-color;
+      }
+
+      .code-copy-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+
+        &[data-copied='true'] {
+          opacity: 0.4;
+        }
+      }
+
+      .code-copy-message {
+        position: absolute;
+        top: 10px;
+        right: 38px;
+        font-size: 12px;
+        color: @text-color;
+        background: @markdown-bg-color;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: none;
+
+        &[data-copied='true'] {
+          display: inline;
+        }
+      }
+
+      &:hover .code-copy-button {
+        opacity: 0.6;
+
+        &:hover {
+          opacity: 1;
+        }
       }
     }
 
@@ -145,6 +183,62 @@
       padding-bottom: 12px;
       margin-top: 12px;
       transition: ease-in-out;
+    }
+
+    .admonition {
+      border-radius: 8px;
+      border-left: 8px solid #afafc1;
+      padding: 16px 16px 16px 48px !important;
+      background-color: @markdown-bg-color;
+      position: relative;
+      margin: 10px 24px;
+      margin-bottom: 0;
+
+      &::before {
+        position: absolute;
+        left: 12px;
+        font-size: 18px;
+        content: 'ℹ️';
+      }
+
+      &.admonition-note {
+        &::before {
+          content: '📝';
+        }
+      }
+
+      &.admonition-warning,
+      &.admonition-caution {
+        border-left-color: @warning-color;
+        background: #fff3dc;
+
+        &::before {
+          content: '⚠️';
+        }
+      }
+
+      &.admonition-danger {
+        border-left-color: @error-color;
+        background: #ff4c3b1a;
+
+        &::before {
+          content: '🚨';
+        }
+      }
+
+      &.admonition-tip {
+        border-left-color: @success-color;
+        background: #f6ffed;
+
+        &::before {
+          content: '💡';
+        }
+      }
+
+      &.admonition-info {
+        border-left-color: @info-color;
+        background: @primary-1;
+      }
     }
   }
 
