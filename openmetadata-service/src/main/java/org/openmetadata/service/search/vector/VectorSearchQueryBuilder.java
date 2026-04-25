@@ -14,6 +14,7 @@ public class VectorSearchQueryBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(VectorSearchQueryBuilder.class);
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
+  static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
 
   /** Build a full search request body (size + _source + query) for standalone vector search. */
   public static String build(
@@ -74,7 +75,17 @@ public class VectorSearchQueryBuilder {
 
   public static String buildNativeESQuery(
       float[] vector, int size, int from, int k, Map<String, List<String>> filters) {
-    int numCandidates = Math.max(k, 100);
+    return buildNativeESQuery(vector, size, from, k, filters, DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+  }
+
+  public static String buildNativeESQuery(
+      float[] vector,
+      int size,
+      int from,
+      int k,
+      Map<String, List<String>> filters,
+      int numCandidatesMultiplier) {
+    int numCandidates = Math.max(k * numCandidatesMultiplier, 100);
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
@@ -92,24 +103,15 @@ public class VectorSearchQueryBuilder {
             .append(numCandidates);
 
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
-    appendFilterMustClauses(sb, filters, true);
+    appendFilterMustClauses(sb, filters);
     sb.append("]}}"); // close must array and bool
 
     sb.append("}}"); // close knn object
     return sb.toString();
   }
 
-  private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
-    appendFilterMustClauses(sb, filters, false);
-  }
-
-  /**
-   * @param nestedTags when true, emits a nested query for "tags" (required by the ES-native vector
-   *     index where tags is mapped as nested); when false, emits a flat terms query (used by
-   *     OpenSearch, which queries the regular entity indices where tags is a plain object).
-   */
   private static void appendFilterMustClauses(
-      StringBuilder sb, Map<String, List<String>> filters, boolean nestedTags) {
+      StringBuilder sb, Map<String, List<String>> filters) {
     sb.append("{\"term\":{\"deleted\":false}}");
     for (var e : filters.entrySet()) {
       String field = e.getKey();
@@ -126,11 +128,7 @@ public class VectorSearchQueryBuilder {
           }
           case "tags" -> {
             sb.append(',');
-            if (nestedTags) {
-              appendNested(sb, "tags", "tags.tagFQN", values);
-            } else {
-              appendFlat(sb, "tags.tagFQN", values);
-            }
+            appendFlat(sb, "tags.tagFQN", values);
           }
           case "domains" -> {
             sb.append(',');
@@ -167,35 +165,6 @@ public class VectorSearchQueryBuilder {
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }
-    }
-  }
-
-  private static void appendNested(StringBuilder sb, String path, String field, List<String> vals) {
-    sb.append("{\"nested\":{\"path\":\"").append(path).append("\",\"query\":");
-    if (vals.size() == 1) {
-      appendOneNestedQuery(sb, field, vals.get(0));
-    } else {
-      sb.append("{\"bool\":{\"should\":[");
-      for (int i = 0; i < vals.size(); i++) {
-        if (i > 0) sb.append(',');
-        appendOneNestedQuery(sb, field, vals.get(i));
-      }
-      sb.append("]}}");
-    }
-    sb.append("}}");
-  }
-
-  private static void appendOneNestedQuery(StringBuilder sb, String field, String val) {
-    switch (val) {
-      case ANY -> sb.append("{\"exists\":{\"field\":\"").append(field).append("\"}}");
-      case NONE -> sb.append("{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"")
-          .append(field)
-          .append("\"}}}}");
-      default -> sb.append("{\"term\":{\"")
-          .append(field)
-          .append("\":\"")
-          .append(escape(val))
-          .append("\"}}");
     }
   }
 

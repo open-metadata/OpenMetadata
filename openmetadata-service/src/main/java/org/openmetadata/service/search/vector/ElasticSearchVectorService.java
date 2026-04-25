@@ -18,7 +18,10 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 
@@ -102,11 +105,12 @@ public class ElasticSearchVectorService implements VectorIndexService {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
+      int numCandidatesMultiplier = resolveNumCandidatesMultiplier();
       String indexName = getIndexAlias();
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
-                queryVector, overFetchSize, rawOffset, k, filters);
+                queryVector, overFetchSize, rawOffset, k, filters, numCandidatesMultiplier);
         String responseBody = executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
@@ -298,6 +302,18 @@ public class ElasticSearchVectorService implements VectorIndexService {
       LOG.error(
           "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
     }
+  }
+
+  private static int resolveNumCandidatesMultiplier() {
+    SearchRepository repo = Entity.getSearchRepository();
+    if (repo == null) {
+      return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
+    }
+    NaturalLanguageSearchConfiguration cfg = repo.getSearchConfiguration().getNaturalLanguageSearch();
+    if (cfg == null || cfg.getKnnNumCandidatesMultiplier() == null) {
+      return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
+    }
+    return cfg.getKnnNumCandidatesMultiplier();
   }
 
   public void close() {

@@ -736,15 +736,20 @@ class VectorSearchQueryBuilderTest {
   void testNativeESQueryNumCandidates() throws Exception {
     float[] vector = {0.1f};
 
-    // k < 100 → num_candidates should be 100
-    String query1 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 50, Map.of());
+    // default multiplier (2): k * 2 < 100 → num_candidates should be 100
+    String query1 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 30, Map.of());
     JsonNode root1 = MAPPER.readTree(query1);
     assertEquals(100, root1.get("knn").get("num_candidates").asInt());
 
-    // k > 100 → num_candidates should equal k
+    // default multiplier (2): k * 2 > 100 → num_candidates should be k * 2
     String query2 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 200, Map.of());
     JsonNode root2 = MAPPER.readTree(query2);
-    assertEquals(200, root2.get("knn").get("num_candidates").asInt());
+    assertEquals(400, root2.get("knn").get("num_candidates").asInt());
+
+    // custom multiplier (5): num_candidates = max(k * 5, 100)
+    String query3 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of(), 5);
+    JsonNode root3 = MAPPER.readTree(query3);
+    assertEquals(500, root3.get("knn").get("num_candidates").asInt());
   }
 
   @Test
@@ -815,8 +820,8 @@ class VectorSearchQueryBuilderTest {
 
     assertEquals(2, mustFilters.size());
     JsonNode tagsFilter = mustFilters.get(1);
-    assertTrue(tagsFilter.has("nested"));
-    assertEquals("tags", tagsFilter.get("nested").get("path").asText());
+    assertTrue(tagsFilter.has("term"));
+    assertEquals("PII.Sensitive", tagsFilter.get("term").get("tags.tagFQN").asText());
   }
 
   @Test
