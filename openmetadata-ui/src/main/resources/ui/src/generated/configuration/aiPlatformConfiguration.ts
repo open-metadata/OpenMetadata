@@ -88,5 +88,13 @@ export interface GrpcConfiguration {
      * Host for the gRPC server
      */
     port: number;
+    /**
+     * Deadline (minutes) Collate enforces on an AI Platform streaming response. Carried on the
+     * gRPC call, so the AI Platform reads it from context and wraps up gracefully. The chat
+     * lock sweeper uses streamDeadlineMinutes + 2 as its default stale-lock ceiling (override
+     * via COLLATE_CHAT_LOCK_MAX_DURATION_MINUTES). Capped at 60 minutes; for longer tasks
+     * prefer async job + polling over a single long-lived stream.
+     */
+    streamDeadlineMinutes?: number;
     [property: string]: any;
 }
