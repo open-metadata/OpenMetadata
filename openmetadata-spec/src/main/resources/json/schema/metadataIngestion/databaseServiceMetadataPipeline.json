@@ -40,6 +40,43 @@
       "required": [
         "enabled"
       ]
+    },
+    "queryRetryConfig": {
+      "type": "object",
+      "title": "Query Retry Configuration",
+      "description": "Configuration for retrying transient database query failures (e.g., statement_timeout, deadlocks).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "title": "Enable Query Retry",
+          "description": "If enabled, transient DB errors will be automatically retried."
+        },
+        "maxRetries": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Maximum Retries",
+          "description": "Max number of retry attempts."
+        },
+        "initialBackoffSeconds": {
+          "type": "number",
+          "default": 2.0,
+          "minimum": 0.5,
+          "title": "Initial Backoff (seconds)",
+          "description": "Wait time before the first retry. Doubles each attempt using exponential backoff."
+        },
+        "maxBackoffSeconds": {
+          "type": "number",
+          "default": 30.0,
+          "minimum": 1.0,
+          "maximum": 300.0,
+          "title": "Maximum Backoff (seconds)",
+          "description": "Maximum wait time between retries."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -181,6 +218,11 @@
       "default": 10,
       "minimum": 1,
       "maximum": 1000
+    },
+    "queryRetryConfig": {
+      "title": "Query Retry Configuration",
+      "description": "Configuration for database query retries.",
+      "$ref": "#/definitions/queryRetryConfig"
     }
   },
   "additionalProperties": false

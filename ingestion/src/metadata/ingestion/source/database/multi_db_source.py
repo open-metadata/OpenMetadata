@@ -18,6 +18,8 @@ from typing import Iterable, Optional
 
 from sqlalchemy import text
 
+from metadata.utils.db_retry import db_retry
+
 
 class MultiDBSource(ABC):
     @abstractmethod
@@ -32,6 +34,7 @@ class MultiDBSource(ABC):
         Method to return the name of all databases.
         """
 
+    @db_retry
     def _execute_database_query(self, query: str) -> Iterable[str]:
         results = self.connection.execute(
             text(query)
