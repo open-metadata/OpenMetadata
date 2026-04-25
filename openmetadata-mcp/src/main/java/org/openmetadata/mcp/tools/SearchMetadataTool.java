@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
@@ -475,7 +474,9 @@ public class SearchMetadataTool implements McpTool {
           "script_score",
           "percolator",
           "wrapper",
-          "scripted_metric");
+          "scripted_metric",
+          "function_score",
+          "runtime_mappings");
 
   /**
    * Recursively validates that a parsed JSON query tree does not contain any blocked

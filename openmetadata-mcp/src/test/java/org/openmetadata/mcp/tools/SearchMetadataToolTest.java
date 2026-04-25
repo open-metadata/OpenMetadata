@@ -212,4 +212,24 @@ class SearchMetadataToolTest {
     IOException ex = assertThrows(IOException.class, () -> SearchMetadataTool.validateQuerySafety(node));
     assertTrue(ex.getMessage().contains("scripted_metric"));
   }
+
+  @Test
+  void testValidateQuerySafety_blocksFunctionScore() throws Exception {
+    String maliciousQuery =
+        "{\"query\":{\"function_score\":{\"query\":{\"match_all\":{}},\"functions\":[{\"script_score\":{\"script\":{\"source\":\"1\"}}}]}}}";
+    JsonNode node = JsonUtils.getObjectMapper().readTree(maliciousQuery);
+
+    IOException ex = assertThrows(IOException.class, () -> SearchMetadataTool.validateQuerySafety(node));
+    assertTrue(ex.getMessage().contains("function_score"));
+  }
+
+  @Test
+  void testValidateQuerySafety_blocksRuntimeMappings() throws Exception {
+    String maliciousQuery =
+        "{\"runtime_mappings\":{\"evil\":{\"type\":\"long\",\"script\":{\"source\":\"emit(doc['field'].value * 2)\"}}}}";
+    JsonNode node = JsonUtils.getObjectMapper().readTree(maliciousQuery);
+
+    IOException ex = assertThrows(IOException.class, () -> SearchMetadataTool.validateQuerySafety(node));
+    assertTrue(ex.getMessage().contains("runtime_mappings"));
+  }
 }
