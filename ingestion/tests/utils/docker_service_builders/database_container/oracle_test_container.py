@@ -13,9 +13,13 @@ import json
 import sys
 
 import docker
+from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.oracle import OracleDbContainer
 
 from .database_test_container import DataBaseTestContainer
+
+ORACLE_READY_LOG = "DATABASE IS READY TO USE!"
+ORACLE_STARTUP_TIMEOUT_SECONDS = 600
 
 
 class OracleTestContainer(DataBaseTestContainer):
@@ -38,6 +42,7 @@ class OracleTestContainer(DataBaseTestContainer):
             dbname=self.dbname,
         )
         self.oracle_container.with_bind_ports(self.port, self.exposed_port)
+        self.oracle_container._connect = self._wait_until_ready
         self.start()
 
         self.connection_url = self.get_connection_url()
@@ -45,6 +50,13 @@ class OracleTestContainer(DataBaseTestContainer):
 
     def start(self):
         self.oracle_container.start()
+
+    def _wait_until_ready(self):
+        wait_for_logs(
+            self.oracle_container,
+            ORACLE_READY_LOG,
+            timeout=ORACLE_STARTUP_TIMEOUT_SECONDS,
+        )
 
     def stop(self):
         self.oracle_container.stop()
@@ -98,6 +110,22 @@ class OracleTestContainer(DataBaseTestContainer):
 
         return oracledb.connect(
             user=self.username,
+            password=self.password,
+            host=self.host,
+            port=self.exposed_port,
+            service_name=self.dbname,
+        )
+
+    def admin_connection(self):
+        """Get direct oracledb connection as the SYSTEM admin user.
+
+        gvenzl/oracle-free seeds a SYSTEM user with the password supplied via
+        oracle_password — used here for grants the test user can't perform.
+        """
+        import oracledb
+
+        return oracledb.connect(
+            user="system",
             password=self.password,
             host=self.host,
             port=self.exposed_port,
