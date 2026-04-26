@@ -29,6 +29,8 @@ const RolesCard = ({
   updateUserDetails,
   selectedRoles,
   setSelectedRoles,
+  searchRolesOptions,
+  isRolesLoading,
 }: RolesComponentProps) => {
   const [isRolesEdit, setIsRolesEdit] = useState(false);
 
@@ -105,11 +107,15 @@ const RolesCard = ({
                 aria-label="Select roles"
                 className="w-full"
                 defaultValue={selectedRoles}
+                filterOption={false}
                 id="select-role"
+                loading={isRolesLoading}
                 mode="multiple"
                 options={userRolesOption}
                 placeholder={`${t('label.role-plural')}...`}
+                showSearch
                 onChange={handleOnRolesChange}
+                onSearch={searchRolesOptions}
               />
               <div className="flex justify-end" data-testid="buttons">
                 <Button

@@ -14,16 +14,16 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { toLower } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { debounce, toLower, uniqBy } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
-import { getAllRoles } from '../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -48,6 +48,7 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const [isRolesLoading, setIsRolesLoading] = useState(false);
   const { getResourceLimit, config } = useLimitStore();
 
   const [disableFields, setDisableFields] = useState<string[]>(['token']);
@@ -74,15 +75,29 @@ const BotDetails: FC<BotsDetailProps> = ({
     }
   };
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async (query = '') => {
+    setIsRolesLoading(true);
+
     try {
-      const data = await getAllRoles('', false, PAGE_SIZE_LARGE);
-      setRoles(data);
+      const data = await searchRoles(query);
+      setRoles((prevRoles) => {
+        const selectedRoleOptions = prevRoles.filter((role) =>
+          selectedRoles.includes(role.id)
+        );
+
+        return uniqBy([...selectedRoleOptions, ...data], 'id');
+      });
     } catch (err) {
-      setRoles([]);
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsRolesLoading(false);
     }
-  };
+  }, [selectedRoles]);
+
+  const debouncedFetchRoles = useMemo(
+    () => debounce(fetchRoles, 300),
+    [fetchRoles]
+  );
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -190,7 +205,9 @@ const BotDetails: FC<BotsDetailProps> = ({
         </Col>
         <Col span={24}>
           <RolesCard
+            isRolesLoading={isRolesLoading}
             roles={roles}
+            searchRolesOptions={debouncedFetchRoles}
             selectedRoles={selectedRoles}
             setSelectedRoles={(selectedRoles) =>
               setSelectedRoles(selectedRoles)
@@ -212,7 +229,26 @@ const BotDetails: FC<BotsDetailProps> = ({
   }, []);
 
   useEffect(() => {
+    return () => {
+      debouncedFetchRoles.cancel();
+    };
+  }, [debouncedFetchRoles]);
+
+  useEffect(() => {
     prepareSelectedRoles();
+    setRoles((prevRoles) =>
+      uniqBy(
+        [
+          ...prevRoles,
+          ...((botUserData.roles ?? []).map((role) => ({
+            id: role.id,
+            name: role.name ?? '',
+            displayName: role.displayName,
+          })) as Role[]),
+        ],
+        'id'
+      )
+    );
   }, [botUserData]);
 
   return (
