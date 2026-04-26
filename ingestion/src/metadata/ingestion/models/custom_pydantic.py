@@ -39,14 +39,15 @@ def strip_hostport_scheme(raw: str) -> str:
     """
     Strip an accidental URL scheme from a hostPort string.
 
-    Self-contained helper that depends only on the standard library so
-    ``model_post_init`` never drags heavy ``metadata.*`` imports into the
-    bootstrap path of every generated Connection class.
+    Self-contained helper that depends only on the standard library so it
+    can be imported from ``builders.py`` and ``db_utils.py`` without circular
+    imports.
 
-    Raises ValueError if the scheme carries a non-numeric port so the user
-    gets a clear error instead of a silently broken hostPort. This applies to
-    both standard URLs handled by ``urlparse`` and to JDBC-style URLs handled
-    by the fallback branch (e.g. ``jdbc:postgresql://host:abc/db``).
+    Raises ValueError if the value cannot be resolved to a valid
+    ``hostname[:port]`` string — e.g. when the port is non-numeric or when
+    the hostname is empty after stripping the scheme.  This applies to both
+    standard URLs handled by ``urlparse`` and to JDBC-style URLs handled by
+    the fallback branch (e.g. ``jdbc:postgresql://host:abc/db``).
     """
     value = raw.strip()
     if "://" not in value:
@@ -54,11 +55,19 @@ def strip_hostport_scheme(raw: str) -> str:
 
     parsed = urlparse(value)
     hostname = parsed.hostname or ""
-    safe_label = (
-        f"{parsed.scheme}://{hostname}"
-        if parsed.scheme and hostname
-        else "URL with scheme"
-    )
+
+    # Build a sanitised label for log/error messages that identifies the
+    # problematic input without leaking credentials or a full path.
+    if parsed.scheme and hostname:
+        safe_label = f"{parsed.scheme}://{hostname}"
+    else:
+        # urlparse couldn't extract a hostname (e.g. jdbc:postgresql://…).
+        # Construct the label from the raw tail so messages remain actionable.
+        tail_for_label = value.rsplit("://", 1)[-1].split("/", 1)[0]
+        if "@" in tail_for_label:
+            tail_for_label = tail_for_label.rsplit("@", 1)[-1]
+        safe_label = tail_for_label or value
+
     logger.warning(
         "The hostPort '%s' contains a URL scheme. Expected format is "
         "'hostname[:port]' (e.g. 'localhost:3306'). Stripping the scheme prefix.",
@@ -73,24 +82,32 @@ def strip_hostport_scheme(raw: str) -> str:
         ) from exc
 
     if not hostname:
-        # urlparse couldn't extract a hostname (e.g. 'jdbc:postgresql://host:5432/db')
-        # Fall back to stripping scheme and any trailing path/query/fragment/userinfo.
+        # urlparse couldn't extract a hostname (e.g. 'jdbc:postgresql://host:5432/db').
+        # Fall back to stripping the scheme and any trailing path/query/fragment/userinfo.
         tail = value.rsplit("://", 1)[-1]
         for sep in ("/", "?", "#"):
             tail = tail.split(sep, 1)[0]
         if "@" in tail:
             tail = tail.rsplit("@", 1)[-1]
 
+        if not tail:
+            raise ValueError(
+                f"Invalid hostPort '{safe_label}'. Expected format is "
+                "'hostname[:port]' (e.g. 'localhost:3306')."
+            )
+
         # Validate the port in the fallback path so the same ValueError
-        # contract holds for JDBC-style URLs (e.g. 'jdbc:postgresql://host:abc').
-        fallback_port: Optional[str] = None
-        if tail.startswith("["):
-            closing = tail.find("]")
-            if closing != -1 and len(tail) > closing + 1 and tail[closing + 1] == ":":
-                fallback_port = tail[closing + 2 :]
-        elif ":" in tail:
-            fallback_port = tail.rsplit(":", 1)[1]
-        if fallback_port and not fallback_port.isdigit():
+        # contract holds for JDBC-style URLs and other malformed inputs.
+        fallback_parsed = urlparse(f"//{tail}")
+        try:
+            fallback_hostname = fallback_parsed.hostname or ""
+            _ = fallback_parsed.port  # raises ValueError for non-numeric ports
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid hostPort '{safe_label}'. Expected format is "
+                "'hostname[:port]' (e.g. 'localhost:3306')."
+            ) from exc
+        if not fallback_hostname:
             raise ValueError(
                 f"Invalid hostPort '{safe_label}'. Expected format is "
                 "'hostname[:port]' (e.g. 'localhost:3306')."
@@ -114,25 +131,17 @@ class BaseModel(PydanticBaseModel):
 
     def model_post_init(self, context: Any, /):
         """
-        Post-init hook for Connection classes:
-        - Sanitises ``hostPort`` by stripping accidental URL scheme prefixes.
-        - Converts raw ``dict`` values into ``FilterPattern`` objects.
+        This function is used to parse the FilterPattern fields for the Connection classes.
+        This is needed because dict is defined in the JSON schema for the FilterPattern field,
+        but a FilterPattern object is required in the generated code.
         """
         # pylint: disable=import-outside-toplevel
-        if not self.__class__.__name__.endswith("Connection"):
-            return
-        if not hasattr(self, "__pydantic_fields__"):
-            return
-
-        if "hostPort" in self.__pydantic_fields__:
-            raw = getattr(self, "hostPort", None)
-            if isinstance(raw, str) and "://" in raw:
-                # Let ValueError propagate: if the hostPort cannot be parsed
-                # (e.g. non-numeric port), the user must fix their config
-                # rather than silently getting a broken hostPort.
-                object.__setattr__(self, "hostPort", strip_hostport_scheme(raw))
-
         try:
+            if not self.__class__.__name__.endswith("Connection"):
+                # Only parse FilterPattern for Connection classes
+                return
+            if not hasattr(self, "__pydantic_fields__"):
+                return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
                     from metadata.generated.schema.type.filterPattern import (

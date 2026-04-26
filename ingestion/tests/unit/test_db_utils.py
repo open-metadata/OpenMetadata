@@ -201,6 +201,10 @@ class TestDbUtils(TestCase):
         with self.assertRaises(ValueError):
             clean_host_port("http://localhost:abc")
 
+        # Empty host after scheme strip raises ValueError
+        with self.assertRaises(ValueError):
+            clean_host_port("http://")
+
         # Non-numeric port in JDBC-style fallback also raises ValueError
         with self.assertRaises(ValueError):
             clean_host_port("jdbc:postgresql://host:abc/db")
