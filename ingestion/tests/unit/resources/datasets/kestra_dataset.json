@@ -1,0 +1,1340 @@
+{
+  "flows": {
+    "results": [
+      {
+        "id": "dwh-and-analytics",
+        "namespace": "tutorial",
+        "revision": 1,
+        "disabled": false,
+        "deleted": false,
+        "description": "Data Warehouse and Analytics",
+        "tasks": [
+          {
+            "id": "dbt",
+            "type": "io.kestra.plugin.core.flow.WorkingDirectory",
+            "tasks": [
+              {
+                "id": "clone_repository",
+                "type": "io.kestra.plugin.git.Clone",
+                "url": "https://github.com/kestra-io/dbt-demo",
+                "branch": "main"
+              },
+              {
+                "id": "dbt_build",
+                "type": "io.kestra.plugin.dbt.cli.DbtCLI",
+                "taskRunner": {
+                  "type": "io.kestra.plugin.scripts.runner.docker.Docker"
+                },
+                "commands": [
+                  "dbt deps",
+                  "dbt build"
+                ],
+                "profiles": "jaffle_shop:\n  outputs:\n    dev:\n      type: duckdb\n      path: dbt.duckdb\n      extensions: \n        - parquet\n      fixed_retries: 1\n      threads: 16\n      timeout_seconds: 300\n  target: dev      \n",
+                "containerImage": "ghcr.io/kestra-io/dbt-duckdb:latest"
+              },
+              {
+                "id": "python",
+                "type": "io.kestra.plugin.scripts.python.Script",
+                "taskRunner": {
+                  "type": "io.kestra.plugin.scripts.runner.docker.Docker"
+                },
+                "outputFiles": [
+                  "*.csv"
+                ],
+                "containerImage": "ghcr.io/kestra-io/duckdb:latest",
+                "script": "import duckdb\nimport pandas as pd\n\nconn = duckdb.connect(database='dbt.duckdb', read_only=False)\n\ntables_query = \"SELECT table_name FROM information_schema.tables WHERE table_schema = 'main';\"\n\ntables = conn.execute(tables_query).fetchall()\n\n# Export each table to CSV, excluding tables that start with 'raw' or\n'stg'\n\nfor table_name in tables:\n    table_name = table_name[0]\n    # Skip tables with names starting with 'raw' or 'stg'\n    if not table_name.startswith('raw') and not table_name.startswith('stg'):\n        query = f\"SELECT * FROM {table_name}\"\n        df = conn.execute(query).fetchdf()\n        df.to_csv(f\"{table_name}.csv\", index=False)\n\nconn.close()\n"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "file-processing",
+        "namespace": "tutorial",
+        "revision": 1,
+        "disabled": false,
+        "deleted": false,
+        "description": "File Processing",
+        "variables": {
+          "file_id": 202403
+        },
+        "tasks": [
+          {
+            "id": "get_zipfile",
+            "type": "io.kestra.plugin.core.http.Download",
+            "uri": "https://divvy-tripdata.s3.amazonaws.com/{{ render(vars.file_id) }}-divvy-tripdata.zip"
+          },
+          {
+            "id": "unzip",
+            "type": "io.kestra.plugin.compress.ArchiveDecompress",
+            "algorithm": "ZIP",
+            "from": "{{ outputs.get_zipfile.uri }}"
+          },
+          {
+            "id": "csv_to_ion",
+            "type": "io.kestra.plugin.serdes.csv.CsvToIon",
+            "from": "{{outputs.unzip.files[render(vars.file_id) ~ '-divvy-tripdata.csv']}}"
+          },
+          {
+            "id": "to_parquet",
+            "type": "io.kestra.plugin.serdes.avro.IonToAvro",
+            "schema": "{\n  \"type\": \"record\",\n  \"name\": \"Ride\",\n  \"namespace\": \"com.example.bikeshare\",\n  \"fields\": [\n    {\"name\": \"ride_id\", \"type\": \"string\"},\n    {\"name\": \"rideable_type\", \"type\": \"string\"},\n    {\"name\": \"started_at\", \"type\": {\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}},\n    {\"name\": \"ended_at\", \"type\": {\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}},\n    {\"name\": \"start_station_name\", \"type\": \"string\"},\n    {\"name\": \"start_station_id\", \"type\": \"string\"},\n    {\"name\": \"end_station_name\", \"type\": \"string\"},\n    {\"name\": \"end_station_id\", \"type\": \"string\"},\n    {\"name\": \"start_lat\", \"type\": \"double\"},\n    {\"name\": \"start_lng\", \"type\": \"double\"},\n    {\n      \"name\": \"end_lat\", \n      \"type\": [\"null\", \"double\"],\n      \"default\": null\n    },\n    {\n      \"name\": \"end_lng\",\n      \"type\": [\"null\", \"double\"],\n      \"default\": null\n    },\n    {\"name\": \"member_casual\", \"type\": \"string\"}\n  ]\n}\n",
+            "datetimeFormat": "yyyy-MM-dd' 'HH:mm:ss",
+            "from": "{{ outputs.csv_to_ion.uri }}"
+          }
+        ]
+      },
+      {
+        "id": "hello-world",
+        "namespace": "tutorial",
+        "revision": 1,
+        "inputs": [
+          {
+            "id": "user",
+            "type": "STRING",
+            "required": true,
+            "defaults": "Rick Astley"
+          }
+        ],
+        "disabled": false,
+        "deleted": false,
+        "description": "Hello World",
+        "tasks": [
+          {
+            "id": "first_task",
+            "type": "io.kestra.plugin.core.debug.Return",
+            "format": "thrilled"
+          },
+          {
+            "id": "second_task",
+            "type": "io.kestra.plugin.scripts.shell.Commands",
+            "taskRunner": {
+              "type": "io.kestra.plugin.scripts.runner.docker.Docker"
+            },
+            "commands": [
+              "sleep 0.42",
+              "echo '::{\"outputs\":{\"returned_data\":\"mydata\"}}::'"
+            ]
+          },
+          {
+            "id": "hello_world",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "Welcome to Kestra, {{ inputs.user }}! \nWe are {{ outputs.first_task.value}} to have You here!\n"
+          }
+        ],
+        "triggers": [
+          {
+            "id": "daily",
+            "type": "io.kestra.plugin.core.trigger.Schedule",
+            "disabled": true,
+            "cron": "0 9 * * *"
+          }
+        ]
+      },
+      {
+        "id": "infrastructure-automation",
+        "namespace": "tutorial",
+        "revision": 1,
+        "inputs": [
+          {
+            "id": "docker_image",
+            "type": "STRING",
+            "required": true,
+            "defaults": "kestra/myimage:latest"
+          }
+        ],
+        "disabled": false,
+        "deleted": false,
+        "description": "Infrastructure Automation",
+        "tasks": [
+          {
+            "id": "build_image",
+            "type": "io.kestra.plugin.docker.Build",
+            "credentials": {
+              "registry": "https://index.docker.io/v1/",
+              "username": "{{ secret('DOCKERHUB_USERNAME') }}",
+              "password": "{{ secret('DOCKERHUB_PASSWORD') }}"
+            },
+            "dockerfile": "FROM python:3.11-alpine\nRUN pip install --no-cache-dir kestra\n",
+            "tags": [
+              "{{ inputs.docker_image }}"
+            ]
+          },
+          {
+            "id": "run_container",
+            "type": "io.kestra.plugin.docker.Run",
+            "containerImage": "{{ inputs.docker_image }}",
+            "pullPolicy": "NEVER",
+            "commands": [
+              "pip",
+              "show",
+              "kestra"
+            ]
+          },
+          {
+            "id": "run_terraform",
+            "type": "io.kestra.plugin.terraform.cli.TerraformCLI",
+            "beforeCommands": [
+              "terraform init"
+            ],
+            "commands": [
+              "terraform plan 2>&1 | tee plan_output.txt",
+              "terraform apply -auto-approve 2>&1 | tee apply_output.txt"
+            ],
+            "taskRunner": {
+              "type": "io.kestra.plugin.scripts.runner.docker.Docker"
+            },
+            "inputFiles": {
+              "main.tf": "terraform {\n  required_providers {\n    http = {\n      source = \"hashicorp/http\"\n    }\n    local = {\n      source = \"hashicorp/local\"\n    }\n  }\n}\n\nprovider \"http\" {}\nprovider \"local\" {}\n\nvariable \"pokemon_names\" {\n  type    = list(string)\n  default = [\"pikachu\", \"psyduck\", \"charmander\", \"bulbasaur\"]\n}\n\ndata \"http\" \"pokemon\" {\n  count = length(var.pokemon_names)\n  url   = \"https://pokeapi.co/api/v2/pokemon/${var.pokemon_names[count.index]}\"\n}\n\nlocals {\n  pokemon_details = [for i in range(length(var.pokemon_names)) : {\n    name  = jsondecode(data.http.pokemon[i].response_body)[\"name\"]\n    types = join(\", \", [for type in jsondecode(data.http.pokemon[i].response_body)[\"types\"] : type[\"type\"][\"name\"]])\n  }]\n\n  file_content = join(\"\\n\\n\", [for detail in local.pokemon_details : \"Name: ${detail.name}\\nTypes: ${detail.types}\"])\n}\n\nresource \"local_file\" \"pokemon_details_file\" {\n  filename = \"${path.module}/pokemon.txt\"\n  content  = local.file_content\n}\n\noutput \"file_path\" {\n  value = local_file.pokemon_details_file.filename\n}\n"
+            },
+            "outputFiles": [
+              "*.txt"
+            ]
+          },
+          {
+            "id": "log_pokemon",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "{{ read(outputs.run_terraform.outputFiles['pokemon.txt']) }}"
+          }
+        ]
+      },
+      {
+        "id": "microservices-and-apis",
+        "namespace": "tutorial",
+        "revision": 1,
+        "inputs": [
+          {
+            "id": "server_uri",
+            "type": "URI",
+            "required": true,
+            "defaults": "https://kestra.io"
+          },
+          {
+            "id": "slack_webhook_uri",
+            "type": "URI",
+            "required": true,
+            "defaults": "https://reqres.in/api/slack"
+          }
+        ],
+        "disabled": false,
+        "deleted": false,
+        "description": "Microservices and APIs",
+        "tasks": [
+          {
+            "id": "http_status_check",
+            "type": "io.kestra.plugin.core.flow.AllowFailure",
+            "errors": [
+              {
+                "id": "server_unreachable",
+                "type": "io.kestra.plugin.notifications.slack.SlackIncomingWebhook",
+                "url": "{{ inputs.slack_webhook_uri }}",
+                "payload": "{\n  \"channel\": \"#alerts\",\n  \"text\": \"The server {{ inputs.server_uri }} is unreachable!\"\n}\n"
+              }
+            ],
+            "tasks": [
+              {
+                "id": "http_request",
+                "type": "io.kestra.plugin.core.http.Request",
+                "uri": "{{ inputs.server_uri }}"
+              },
+              {
+                "id": "check_status",
+                "type": "io.kestra.plugin.core.flow.If",
+                "condition": "{{ outputs.http_request.code != 200 }}",
+                "then": [
+                  {
+                    "id": "unhealthy",
+                    "type": "io.kestra.plugin.core.log.Log",
+                    "message": "Server is unhealthy! Response {{ outputs.http_request.body }}"
+                  },
+                  {
+                    "id": "send_slack_alert",
+                    "type": "io.kestra.plugin.notifications.slack.SlackIncomingWebhook",
+                    "url": "{{ inputs.slack_webhook_uri }}",
+                    "payload": "{\n  \"channel\": \"#alerts\",\n  \"text\": \"The server {{ inputs.server_uri }} is down!\"\n}\n"
+                  }
+                ],
+                "else": [
+                  {
+                    "id": "healthy",
+                    "type": "io.kestra.plugin.core.log.Log",
+                    "message": "Everything is fine!"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "triggers": [
+          {
+            "id": "daily",
+            "type": "io.kestra.plugin.core.trigger.Schedule",
+            "disabled": true,
+            "cron": "0 9 * * *"
+          }
+        ]
+      },
+      {
+        "id": "business-automation",
+        "namespace": "tutorial",
+        "revision": 1,
+        "disabled": false,
+        "deleted": false,
+        "description": "Business Automation",
+        "tasks": [
+          {
+            "id": "working_directory",
+            "type": "io.kestra.plugin.core.flow.WorkingDirectory",
+            "tasks": [
+              {
+                "id": "query",
+                "type": "io.kestra.plugin.jdbc.sqlite.Queries",
+                "url": "jdbc:sqlite:kestra.db",
+                "sql": "CREATE TABLE IF NOT EXISTS features (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    description TEXT NOT NULL,\n    release_version TEXT NOT NULL,\n    edition TEXT NOT NULL\n);\n\nDELETE FROM features;\n\nINSERT INTO features (name, description, release_version, edition)\nVALUES \n    ('Worker Groups', 'Allows targeting specific tasks or triggers to run on specific remote workers for better scalability and resource management.', '0.10', 'Enterprise'),\n    ('Realtime Triggers', 'Supports triggering event-driven workflows in real-time.', '0.17', 'Open-Source'),\n    ('Task Runners', 'Provides on-demand remote execution environments for running tasks.', '0.16', 'Open-Source'),\n    ('KV Store', 'Adds key-value storage for persisting data across workflow executions.', '0.18', 'Open-Source'),\n    ('SCIM Directory Sync', 'Allows synchronization of users and groups from Identity Providers.', '0.18', 'Enterprise');  \n    \nSELECT * FROM features\nORDER BY release_version;\n",
+                "store": true,
+                "fetchType": "STORE"
+              },
+              {
+                "id": "to_csv",
+                "type": "io.kestra.plugin.serdes.csv.IonToCsv",
+                "from": "{{ outputs.query.outputs[0].uri }}"
+              },
+              {
+                "id": "to_excel",
+                "type": "io.kestra.plugin.serdes.excel.IonToExcel",
+                "from": "{{ outputs.query.outputs[0].uri }}"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "business-processes",
+        "namespace": "tutorial",
+        "revision": 1,
+        "inputs": [
+          {
+            "id": "request.name",
+            "type": "STRING",
+            "required": true,
+            "defaults": "Rick Astley"
+          },
+          {
+            "id": "request.start_date",
+            "type": "DATE",
+            "required": true,
+            "defaults": "2024-07-01"
+          },
+          {
+            "id": "request.end_date",
+            "type": "DATE",
+            "required": true,
+            "defaults": "2024-07-07"
+          },
+          {
+            "id": "slack_webhook_uri",
+            "type": "URI",
+            "required": true,
+            "defaults": "https://reqres.in/api/slack"
+          }
+        ],
+        "disabled": false,
+        "deleted": false,
+        "description": "Business Processes",
+        "tasks": [
+          {
+            "id": "send_approval_request",
+            "type": "io.kestra.plugin.notifications.slack.SlackIncomingWebhook",
+            "url": "{{ inputs.slack_webhook_uri }}",
+            "payload": "{\n  \"channel\": \"#vacation\",\n  \"text\": \"Validate holiday request for {{ inputs.request.name }}. To approve the request, click on the `Resume` button here http://localhost:8080/ui/executions/{{flow.namespace}}/{{flow.id}}/{{execution.id}}\"\n}\n"
+          },
+          {
+            "id": "wait_for_approval",
+            "type": "io.kestra.plugin.core.flow.Pause"
+          },
+          {
+            "id": "process_request",
+            "type": "io.kestra.plugin.core.http.Request",
+            "uri": "https://reqres.in/api/products",
+            "method": "POST",
+            "body": "{{ inputs.request }}",
+            "contentType": "application/json"
+          }
+        ]
+      },
+      {
+        "id": "data-engineering-pipeline",
+        "namespace": "tutorial",
+        "revision": 1,
+        "inputs": [
+          {
+            "id": "columns_to_keep",
+            "type": "ARRAY",
+            "required": true,
+            "defaults": [
+              "brand",
+              "price"
+            ],
+            "itemType": "STRING"
+          }
+        ],
+        "disabled": false,
+        "deleted": false,
+        "description": "Data Engineering Pipelines",
+        "tasks": [
+          {
+            "id": "extract",
+            "type": "io.kestra.plugin.core.http.Download",
+            "uri": "https://dummyjson.com/products"
+          },
+          {
+            "id": "transform",
+            "type": "io.kestra.plugin.scripts.python.Script",
+            "taskRunner": {
+              "type": "io.kestra.plugin.scripts.runner.docker.Docker"
+            },
+            "env": {
+              "COLUMNS_TO_KEEP": "{{ inputs.columns_to_keep }}"
+            },
+            "inputFiles": {
+              "data.json": "{{ outputs.extract.uri }}"
+            },
+            "outputFiles": [
+              "*.json"
+            ],
+            "containerImage": "python:3.11-alpine",
+            "script": "import json\nimport os\n\ncolumns_to_keep_str = os.getenv(\"COLUMNS_TO_KEEP\")\ncolumns_to_keep = json.loads(columns_to_keep_str)\n\nwith open(\"data.json\", \"r\") as file:\n    data = json.load(file)\n\nfiltered_data = [\n    {column: product.get(column, \"N/A\") for column in columns_to_keep}\n    for product in data[\"products\"]\n]\n\nwith open(\"products.json\", \"w\") as file:\n    json.dump(filtered_data, file, indent=4)\n"
+          },
+          {
+            "id": "query",
+            "type": "io.kestra.plugin.jdbc.duckdb.Query",
+            "sql": "INSTALL json;\nLOAD json;\nSELECT brand, round(avg(price), 2) as avg_price\nFROM read_json_auto('{{ workingDir }}/products.json')\nGROUP BY brand\nORDER BY avg_price DESC;\n",
+            "store": true,
+            "fetchType": "STORE",
+            "inputFiles": {
+              "products.json": "{{ outputs.transform.outputFiles['products.json'] }}"
+            }
+          }
+        ]
+      },
+      {
+        "id": "cron_etl",
+        "namespace": "hackathon.demo",
+        "revision": 1,
+        "disabled": false,
+        "deleted": false,
+        "description": "Daily ETL pipeline — extract, transform, load.",
+        "labels": [
+          {
+            "key": "team",
+            "value": "data-engineering"
+          },
+          {
+            "key": "owner",
+            "value": "aditya"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "extract",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "extracting source data"
+          },
+          {
+            "id": "transform",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "transforming {{ outputs.extract }}"
+          },
+          {
+            "id": "load",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "loading into warehouse"
+          }
+        ],
+        "triggers": [
+          {
+            "id": "nightly",
+            "type": "io.kestra.plugin.core.trigger.Schedule",
+            "cron": "0 2 * * *"
+          }
+        ]
+      },
+      {
+        "id": "downstream_consumer",
+        "namespace": "hackathon.demo",
+        "revision": 1,
+        "disabled": false,
+        "deleted": false,
+        "description": "Fires when cron_etl completes.",
+        "tasks": [
+          {
+            "id": "consume",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "consuming upstream outputs"
+          }
+        ],
+        "triggers": [
+          {
+            "id": "on_cron_etl",
+            "type": "io.kestra.plugin.core.trigger.Flow",
+            "conditions": [
+              {
+                "type": "io.kestra.plugin.core.condition.ExecutionFlowCondition",
+                "namespace": "hackathon.demo",
+                "flowId": "cron_etl"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "parallel_job",
+        "namespace": "hackathon.demo",
+        "revision": 1,
+        "disabled": false,
+        "deleted": false,
+        "description": "Parallel fan-out with a join.",
+        "tasks": [
+          {
+            "id": "fanout",
+            "type": "io.kestra.plugin.core.flow.Parallel",
+            "tasks": [
+              {
+                "id": "branch_a",
+                "type": "io.kestra.plugin.core.log.Log",
+                "message": "A"
+              },
+              {
+                "id": "branch_b",
+                "type": "io.kestra.plugin.core.log.Log",
+                "message": "B"
+              }
+            ]
+          },
+          {
+            "id": "join",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "joined"
+          }
+        ]
+      }
+    ],
+    "total": 11
+  },
+  "cronFlow": {
+    "id": "cron_etl",
+    "namespace": "hackathon.demo",
+    "revision": 1,
+    "disabled": false,
+    "deleted": false,
+    "description": "Daily ETL pipeline — extract, transform, load.",
+    "labels": [
+      {
+        "key": "team",
+        "value": "data-engineering"
+      },
+      {
+        "key": "owner",
+        "value": "aditya"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "extract",
+        "type": "io.kestra.plugin.core.log.Log",
+        "message": "extracting source data"
+      },
+      {
+        "id": "transform",
+        "type": "io.kestra.plugin.core.log.Log",
+        "message": "transforming {{ outputs.extract }}"
+      },
+      {
+        "id": "load",
+        "type": "io.kestra.plugin.core.log.Log",
+        "message": "loading into warehouse"
+      }
+    ],
+    "triggers": [
+      {
+        "id": "nightly",
+        "type": "io.kestra.plugin.core.trigger.Schedule",
+        "cron": "0 2 * * *"
+      }
+    ]
+  },
+  "cronGraph": {
+    "nodes": [
+      {
+        "uid": "root.6zX0LWlBipcXmEDq83HJdx",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterRoot",
+        "error": false
+      },
+      {
+        "uid": "root.33a6F4AiFKHXyCfJwQI1ma",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterEnd",
+        "error": false
+      },
+      {
+        "uid": "root.Triggers.2OxiYbMlFkWZHXu7PjCmBO",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterRoot",
+        "error": false
+      },
+      {
+        "uid": "root.Triggers.Thrplyd7njcovWr2Qwmqi",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterEnd",
+        "error": false
+      },
+      {
+        "triggerDeclaration": {
+          "id": "nightly",
+          "type": "io.kestra.plugin.core.trigger.Schedule",
+          "cron": "0 2 * * *"
+        },
+        "trigger": {
+          "namespace": "hackathon.demo",
+          "flowId": "cron_etl",
+          "triggerId": "nightly",
+          "date": "2026-04-26T07:20:11Z",
+          "nextExecutionDate": "2026-04-27T02:00:00Z",
+          "disabled": false
+        },
+        "uid": "root.Triggers.nightly",
+        "type": "io.kestra.core.models.hierarchies.GraphTrigger",
+        "error": false
+      },
+      {
+        "uid": "root.extract",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "extract",
+          "type": "io.kestra.plugin.core.log.Log",
+          "message": "extracting source data"
+        },
+        "relationType": "SEQUENTIAL"
+      },
+      {
+        "uid": "root.transform",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "transform",
+          "type": "io.kestra.plugin.core.log.Log",
+          "message": "transforming {{ outputs.extract }}"
+        },
+        "relationType": "SEQUENTIAL"
+      },
+      {
+        "uid": "root.load",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "load",
+          "type": "io.kestra.plugin.core.log.Log",
+          "message": "loading into warehouse"
+        },
+        "relationType": "SEQUENTIAL"
+      }
+    ],
+    "edges": [
+      {
+        "source": "root.Triggers.Thrplyd7njcovWr2Qwmqi",
+        "target": "root.6zX0LWlBipcXmEDq83HJdx",
+        "relation": {}
+      },
+      {
+        "source": "root.6zX0LWlBipcXmEDq83HJdx",
+        "target": "root.extract",
+        "relation": {}
+      },
+      {
+        "source": "root.extract",
+        "target": "root.transform",
+        "relation": {
+          "relationType": "SEQUENTIAL"
+        }
+      },
+      {
+        "source": "root.transform",
+        "target": "root.load",
+        "relation": {
+          "relationType": "SEQUENTIAL"
+        }
+      },
+      {
+        "source": "root.load",
+        "target": "root.33a6F4AiFKHXyCfJwQI1ma",
+        "relation": {}
+      },
+      {
+        "source": "root.Triggers.nightly",
+        "target": "root.Triggers.Thrplyd7njcovWr2Qwmqi",
+        "relation": {}
+      },
+      {
+        "source": "root.Triggers.2OxiYbMlFkWZHXu7PjCmBO",
+        "target": "root.Triggers.nightly",
+        "relation": {}
+      }
+    ],
+    "clusters": [
+      {
+        "cluster": {
+          "uid": "cluster_root.Triggers",
+          "type": "io.kestra.core.models.hierarchies.GraphCluster",
+          "error": false
+        },
+        "nodes": [
+          "root.Triggers.2OxiYbMlFkWZHXu7PjCmBO",
+          "root.Triggers.Thrplyd7njcovWr2Qwmqi",
+          "root.Triggers.nightly"
+        ],
+        "parents": [],
+        "start": "root.Triggers.2OxiYbMlFkWZHXu7PjCmBO",
+        "end": "root.Triggers.Thrplyd7njcovWr2Qwmqi"
+      }
+    ]
+  },
+  "downstreamFlow": {
+    "id": "downstream_consumer",
+    "namespace": "hackathon.demo",
+    "revision": 1,
+    "disabled": false,
+    "deleted": false,
+    "description": "Fires when cron_etl completes.",
+    "tasks": [
+      {
+        "id": "consume",
+        "type": "io.kestra.plugin.core.log.Log",
+        "message": "consuming upstream outputs"
+      }
+    ],
+    "triggers": [
+      {
+        "id": "on_cron_etl",
+        "type": "io.kestra.plugin.core.trigger.Flow",
+        "conditions": [
+          {
+            "type": "io.kestra.plugin.core.condition.ExecutionFlowCondition",
+            "namespace": "hackathon.demo",
+            "flowId": "cron_etl"
+          }
+        ]
+      }
+    ]
+  },
+  "parallelFlow": {
+    "id": "parallel_job",
+    "namespace": "hackathon.demo",
+    "revision": 1,
+    "disabled": false,
+    "deleted": false,
+    "description": "Parallel fan-out with a join.",
+    "tasks": [
+      {
+        "id": "fanout",
+        "type": "io.kestra.plugin.core.flow.Parallel",
+        "tasks": [
+          {
+            "id": "branch_a",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "A"
+          },
+          {
+            "id": "branch_b",
+            "type": "io.kestra.plugin.core.log.Log",
+            "message": "B"
+          }
+        ]
+      },
+      {
+        "id": "join",
+        "type": "io.kestra.plugin.core.log.Log",
+        "message": "joined"
+      }
+    ]
+  },
+  "parallelGraph": {
+    "nodes": [
+      {
+        "uid": "root.7Uud90FKuEhOL10OZAVtLQ",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterRoot",
+        "error": false
+      },
+      {
+        "uid": "root.QMnkadDYJa8LndEbplQYT",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterEnd",
+        "error": false
+      },
+      {
+        "uid": "root.fanout.4teE0rNdXtiQO9XIpl0yE0",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterRoot",
+        "error": false
+      },
+      {
+        "uid": "root.fanout.466kvIRI982XkOwqJ2KZrD",
+        "type": "io.kestra.core.models.hierarchies.GraphClusterEnd",
+        "error": false
+      },
+      {
+        "uid": "root.fanout",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "fanout",
+          "type": "io.kestra.plugin.core.flow.Parallel",
+          "tasks": [
+            {
+              "id": "branch_a",
+              "type": "io.kestra.plugin.core.log.Log",
+              "message": "A"
+            },
+            {
+              "id": "branch_b",
+              "type": "io.kestra.plugin.core.log.Log",
+              "message": "B"
+            }
+          ]
+        },
+        "relationType": "PARALLEL"
+      },
+      {
+        "uid": "root.fanout.branch_a",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "branch_a",
+          "type": "io.kestra.plugin.core.log.Log",
+          "message": "A"
+        },
+        "relationType": "PARALLEL"
+      },
+      {
+        "uid": "root.fanout.branch_b",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "branch_b",
+          "type": "io.kestra.plugin.core.log.Log",
+          "message": "B"
+        },
+        "relationType": "PARALLEL"
+      },
+      {
+        "uid": "root.join",
+        "type": "io.kestra.core.models.hierarchies.GraphTask",
+        "error": false,
+        "task": {
+          "id": "join",
+          "type": "io.kestra.plugin.core.log.Log",
+          "message": "joined"
+        },
+        "relationType": "SEQUENTIAL"
+      }
+    ],
+    "edges": [
+      {
+        "source": "root.7Uud90FKuEhOL10OZAVtLQ",
+        "target": "root.fanout.4teE0rNdXtiQO9XIpl0yE0",
+        "relation": {}
+      },
+      {
+        "source": "root.join",
+        "target": "root.QMnkadDYJa8LndEbplQYT",
+        "relation": {}
+      },
+      {
+        "source": "root.fanout.466kvIRI982XkOwqJ2KZrD",
+        "target": "root.join",
+        "relation": {
+          "relationType": "SEQUENTIAL"
+        }
+      },
+      {
+        "source": "root.fanout",
+        "target": "root.fanout.branch_a",
+        "relation": {
+          "relationType": "PARALLEL"
+        }
+      },
+      {
+        "source": "root.fanout",
+        "target": "root.fanout.branch_b",
+        "relation": {
+          "relationType": "PARALLEL"
+        }
+      },
+      {
+        "source": "root.fanout.branch_b",
+        "target": "root.fanout.466kvIRI982XkOwqJ2KZrD",
+        "relation": {}
+      },
+      {
+        "source": "root.fanout.branch_a",
+        "target": "root.fanout.466kvIRI982XkOwqJ2KZrD",
+        "relation": {}
+      },
+      {
+        "source": "root.fanout.4teE0rNdXtiQO9XIpl0yE0",
+        "target": "root.fanout",
+        "relation": {}
+      }
+    ],
+    "clusters": [
+      {
+        "cluster": {
+          "uid": "cluster_root.fanout",
+          "type": "io.kestra.core.models.hierarchies.GraphCluster",
+          "error": false,
+          "relationType": "PARALLEL",
+          "taskNode": {
+            "uid": "root.fanout",
+            "type": "io.kestra.core.models.hierarchies.GraphTask",
+            "error": false,
+            "task": {
+              "id": "fanout",
+              "type": "io.kestra.plugin.core.flow.Parallel",
+              "tasks": [
+                {
+                  "id": "branch_a",
+                  "type": "io.kestra.plugin.core.log.Log",
+                  "message": "A"
+                },
+                {
+                  "id": "branch_b",
+                  "type": "io.kestra.plugin.core.log.Log",
+                  "message": "B"
+                }
+              ]
+            },
+            "relationType": "PARALLEL"
+          }
+        },
+        "nodes": [
+          "root.fanout.4teE0rNdXtiQO9XIpl0yE0",
+          "root.fanout.466kvIRI982XkOwqJ2KZrD",
+          "root.fanout",
+          "root.fanout.branch_a",
+          "root.fanout.branch_b"
+        ],
+        "parents": [],
+        "start": "root.fanout.4teE0rNdXtiQO9XIpl0yE0",
+        "end": "root.fanout.466kvIRI982XkOwqJ2KZrD"
+      }
+    ]
+  },
+  "executions": {
+    "results": [
+      {
+        "id": "BQlmx4ZF2Ii253ulgTACv",
+        "namespace": "hackathon.demo",
+        "flowId": "cron_etl",
+        "flowRevision": 1,
+        "taskRunList": [
+          {
+            "id": "6bicjOJGrqXWoXNM7VhAOB",
+            "executionId": "BQlmx4ZF2Ii253ulgTACv",
+            "namespace": "hackathon.demo",
+            "flowId": "cron_etl",
+            "taskId": "extract",
+            "attempts": [
+              {
+                "state": {
+                  "current": "SUCCESS",
+                  "histories": [
+                    {
+                      "state": "CREATED",
+                      "date": "2026-04-26T07:25:05.373Z"
+                    },
+                    {
+                      "state": "RUNNING",
+                      "date": "2026-04-26T07:25:05.373Z"
+                    },
+                    {
+                      "state": "SUCCESS",
+                      "date": "2026-04-26T07:25:05.384Z"
+                    }
+                  ],
+                  "endDate": "2026-04-26T07:25:05.384Z",
+                  "startDate": "2026-04-26T07:25:05.373Z",
+                  "duration": "PT0.011S"
+                }
+              }
+            ],
+            "outputs": {},
+            "state": {
+              "current": "SUCCESS",
+              "histories": [
+                {
+                  "state": "CREATED",
+                  "date": "2026-04-26T07:25:04.403Z"
+                },
+                {
+                  "state": "RUNNING",
+                  "date": "2026-04-26T07:25:05.366Z"
+                },
+                {
+                  "state": "SUCCESS",
+                  "date": "2026-04-26T07:25:05.385Z"
+                }
+              ],
+              "endDate": "2026-04-26T07:25:05.385Z",
+              "startDate": "2026-04-26T07:25:04.403Z",
+              "duration": "PT0.982S"
+            }
+          },
+          {
+            "id": "71DFQHHfxufTxU38wrlIhN",
+            "executionId": "BQlmx4ZF2Ii253ulgTACv",
+            "namespace": "hackathon.demo",
+            "flowId": "cron_etl",
+            "taskId": "transform",
+            "attempts": [
+              {
+                "state": {
+                  "current": "SUCCESS",
+                  "histories": [
+                    {
+                      "state": "CREATED",
+                      "date": "2026-04-26T07:25:06.423Z"
+                    },
+                    {
+                      "state": "RUNNING",
+                      "date": "2026-04-26T07:25:06.423Z"
+                    },
+                    {
+                      "state": "SUCCESS",
+                      "date": "2026-04-26T07:25:06.455Z"
+                    }
+                  ],
+                  "endDate": "2026-04-26T07:25:06.455Z",
+                  "startDate": "2026-04-26T07:25:06.423Z",
+                  "duration": "PT0.032S"
+                }
+              }
+            ],
+            "outputs": {},
+            "state": {
+              "current": "SUCCESS",
+              "histories": [
+                {
+                  "state": "CREATED",
+                  "date": "2026-04-26T07:25:06.397Z"
+                },
+                {
+                  "state": "RUNNING",
+                  "date": "2026-04-26T07:25:06.421Z"
+                },
+                {
+                  "state": "SUCCESS",
+                  "date": "2026-04-26T07:25:06.455Z"
+                }
+              ],
+              "endDate": "2026-04-26T07:25:06.455Z",
+              "startDate": "2026-04-26T07:25:06.397Z",
+              "duration": "PT0.058S"
+            }
+          },
+          {
+            "id": "2RAgoFUAgoXfEZPBLgXiYA",
+            "executionId": "BQlmx4ZF2Ii253ulgTACv",
+            "namespace": "hackathon.demo",
+            "flowId": "cron_etl",
+            "taskId": "load",
+            "attempts": [
+              {
+                "state": {
+                  "current": "SUCCESS",
+                  "histories": [
+                    {
+                      "state": "CREATED",
+                      "date": "2026-04-26T07:25:06.580Z"
+                    },
+                    {
+                      "state": "RUNNING",
+                      "date": "2026-04-26T07:25:06.580Z"
+                    },
+                    {
+                      "state": "SUCCESS",
+                      "date": "2026-04-26T07:25:06.582Z"
+                    }
+                  ],
+                  "endDate": "2026-04-26T07:25:06.582Z",
+                  "startDate": "2026-04-26T07:25:06.580Z",
+                  "duration": "PT0.002S"
+                }
+              }
+            ],
+            "outputs": {},
+            "state": {
+              "current": "SUCCESS",
+              "histories": [
+                {
+                  "state": "CREATED",
+                  "date": "2026-04-26T07:25:06.527Z"
+                },
+                {
+                  "state": "RUNNING",
+                  "date": "2026-04-26T07:25:06.578Z"
+                },
+                {
+                  "state": "SUCCESS",
+                  "date": "2026-04-26T07:25:06.582Z"
+                }
+              ],
+              "endDate": "2026-04-26T07:25:06.582Z",
+              "startDate": "2026-04-26T07:25:06.527Z",
+              "duration": "PT0.055S"
+            }
+          }
+        ],
+        "labels": [
+          {
+            "key": "team",
+            "value": "data-engineering"
+          },
+          {
+            "key": "owner",
+            "value": "aditya"
+          },
+          {
+            "key": "system.correlationId",
+            "value": "BQlmx4ZF2Ii253ulgTACv"
+          }
+        ],
+        "state": {
+          "current": "SUCCESS",
+          "histories": [
+            {
+              "state": "CREATED",
+              "date": "2026-04-26T07:25:03.372Z"
+            },
+            {
+              "state": "RUNNING",
+              "date": "2026-04-26T07:25:04.414Z"
+            },
+            {
+              "state": "SUCCESS",
+              "date": "2026-04-26T07:25:06.621Z"
+            }
+          ],
+          "endDate": "2026-04-26T07:25:06.621Z",
+          "startDate": "2026-04-26T07:25:03.372Z",
+          "duration": "PT3.249S"
+        },
+        "originalId": "BQlmx4ZF2Ii253ulgTACv",
+        "deleted": false,
+        "metadata": {
+          "attemptNumber": 1,
+          "originalCreatedDate": "2026-04-26T07:25:03.372Z"
+        }
+      }
+    ],
+    "total": 1
+  },
+  "executionDetail": {
+    "id": "BQlmx4ZF2Ii253ulgTACv",
+    "namespace": "hackathon.demo",
+    "flowId": "cron_etl",
+    "flowRevision": 1,
+    "taskRunList": [
+      {
+        "id": "6bicjOJGrqXWoXNM7VhAOB",
+        "executionId": "BQlmx4ZF2Ii253ulgTACv",
+        "namespace": "hackathon.demo",
+        "flowId": "cron_etl",
+        "taskId": "extract",
+        "attempts": [
+          {
+            "state": {
+              "current": "SUCCESS",
+              "histories": [
+                {
+                  "state": "CREATED",
+                  "date": "2026-04-26T07:25:05.373Z"
+                },
+                {
+                  "state": "RUNNING",
+                  "date": "2026-04-26T07:25:05.373Z"
+                },
+                {
+                  "state": "SUCCESS",
+                  "date": "2026-04-26T07:25:05.384Z"
+                }
+              ],
+              "endDate": "2026-04-26T07:25:05.384Z",
+              "startDate": "2026-04-26T07:25:05.373Z",
+              "duration": "PT0.011S"
+            }
+          }
+        ],
+        "outputs": {},
+        "state": {
+          "current": "SUCCESS",
+          "histories": [
+            {
+              "state": "CREATED",
+              "date": "2026-04-26T07:25:04.403Z"
+            },
+            {
+              "state": "RUNNING",
+              "date": "2026-04-26T07:25:05.366Z"
+            },
+            {
+              "state": "SUCCESS",
+              "date": "2026-04-26T07:25:05.385Z"
+            }
+          ],
+          "endDate": "2026-04-26T07:25:05.385Z",
+          "startDate": "2026-04-26T07:25:04.403Z",
+          "duration": "PT0.982S"
+        }
+      },
+      {
+        "id": "71DFQHHfxufTxU38wrlIhN",
+        "executionId": "BQlmx4ZF2Ii253ulgTACv",
+        "namespace": "hackathon.demo",
+        "flowId": "cron_etl",
+        "taskId": "transform",
+        "attempts": [
+          {
+            "state": {
+              "current": "SUCCESS",
+              "histories": [
+                {
+                  "state": "CREATED",
+                  "date": "2026-04-26T07:25:06.423Z"
+                },
+                {
+                  "state": "RUNNING",
+                  "date": "2026-04-26T07:25:06.423Z"
+                },
+                {
+                  "state": "SUCCESS",
+                  "date": "2026-04-26T07:25:06.455Z"
+                }
+              ],
+              "endDate": "2026-04-26T07:25:06.455Z",
+              "startDate": "2026-04-26T07:25:06.423Z",
+              "duration": "PT0.032S"
+            }
+          }
+        ],
+        "outputs": {},
+        "state": {
+          "current": "SUCCESS",
+          "histories": [
+            {
+              "state": "CREATED",
+              "date": "2026-04-26T07:25:06.397Z"
+            },
+            {
+              "state": "RUNNING",
+              "date": "2026-04-26T07:25:06.421Z"
+            },
+            {
+              "state": "SUCCESS",
+              "date": "2026-04-26T07:25:06.455Z"
+            }
+          ],
+          "endDate": "2026-04-26T07:25:06.455Z",
+          "startDate": "2026-04-26T07:25:06.397Z",
+          "duration": "PT0.058S"
+        }
+      },
+      {
+        "id": "2RAgoFUAgoXfEZPBLgXiYA",
+        "executionId": "BQlmx4ZF2Ii253ulgTACv",
+        "namespace": "hackathon.demo",
+        "flowId": "cron_etl",
+        "taskId": "load",
+        "attempts": [
+          {
+            "state": {
+              "current": "SUCCESS",
+              "histories": [
+                {
+                  "state": "CREATED",
+                  "date": "2026-04-26T07:25:06.580Z"
+                },
+                {
+                  "state": "RUNNING",
+                  "date": "2026-04-26T07:25:06.580Z"
+                },
+                {
+                  "state": "SUCCESS",
+                  "date": "2026-04-26T07:25:06.582Z"
+                }
+              ],
+              "endDate": "2026-04-26T07:25:06.582Z",
+              "startDate": "2026-04-26T07:25:06.580Z",
+              "duration": "PT0.002S"
+            }
+          }
+        ],
+        "outputs": {},
+        "state": {
+          "current": "SUCCESS",
+          "histories": [
+            {
+              "state": "CREATED",
+              "date": "2026-04-26T07:25:06.527Z"
+            },
+            {
+              "state": "RUNNING",
+              "date": "2026-04-26T07:25:06.578Z"
+            },
+            {
+              "state": "SUCCESS",
+              "date": "2026-04-26T07:25:06.582Z"
+            }
+          ],
+          "endDate": "2026-04-26T07:25:06.582Z",
+          "startDate": "2026-04-26T07:25:06.527Z",
+          "duration": "PT0.055S"
+        }
+      }
+    ],
+    "labels": [
+      {
+        "key": "team",
+        "value": "data-engineering"
+      },
+      {
+        "key": "owner",
+        "value": "aditya"
+      },
+      {
+        "key": "system.correlationId",
+        "value": "BQlmx4ZF2Ii253ulgTACv"
+      }
+    ],
+    "state": {
+      "current": "SUCCESS",
+      "histories": [
+        {
+          "state": "CREATED",
+          "date": "2026-04-26T07:25:03.372Z"
+        },
+        {
+          "state": "RUNNING",
+          "date": "2026-04-26T07:25:04.414Z"
+        },
+        {
+          "state": "SUCCESS",
+          "date": "2026-04-26T07:25:06.621Z"
+        }
+      ],
+      "endDate": "2026-04-26T07:25:06.621Z",
+      "startDate": "2026-04-26T07:25:03.372Z",
+      "duration": "PT3.249S"
+    },
+    "originalId": "BQlmx4ZF2Ii253ulgTACv",
+    "deleted": false,
+    "metadata": {
+      "attemptNumber": 1,
+      "originalCreatedDate": "2026-04-26T07:25:03.372Z"
+    }
+  }
+}
