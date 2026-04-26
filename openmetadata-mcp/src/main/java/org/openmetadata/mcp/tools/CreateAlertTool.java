@@ -144,9 +144,12 @@ public class CreateAlertTool implements McpTool {
     dest.setId(UUID.randomUUID());
     dest.setCategory(SubscriptionCategory.EXTERNAL);
     dest.setType(SubscriptionType.WEBHOOK);
+    // secretKey must be null (not "") so the mapper's Fernet encryption step
+    // skips it. Encrypting an empty string would silently break later webhook
+    // signature verification.
     Map<String, Object> config = new HashMap<>();
     config.put("endpoint", webhookUrl);
-    config.put("secretKey", "");
+    config.put("secretKey", null);
     config.put("headers", new HashMap<>());
     dest.setConfig(JsonUtils.convertValue(config, Object.class));
 
