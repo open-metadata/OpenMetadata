@@ -1908,6 +1908,126 @@ public class ColumnGridResourceIT {
             });
   }
 
+  @Test
+  void test_getColumnGrid_patternSearchAcrossEntityTypesDedupesNames(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
+
+    String sharedName = ns.prefix("multi_type_col");
+
+    Column tableCol =
+        Columns.build(sharedName).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    Tables.create()
+        .name(ns.prefix("multi_type_table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(tableCol))
+        .execute();
+
+    DashboardService dashService = DashboardServiceTestFactory.createMetabase(ns);
+    Column dashCol =
+        Columns.build(sharedName).withType(ColumnDataType.VARCHAR).withLength(255).create();
+    DashboardDataModels.create()
+        .name(ns.prefix("multi_type_datamodel"))
+        .in(dashService.getFullyQualifiedName())
+        .withColumns(List.of(dashCol))
+        .withDataModelType(DataModelType.MetabaseDataModel)
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    await("Wait for both entities to be indexed and dedupe correctly")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table,dashboardDataModel&columnNamePattern=multi_type_col");
+
+              assertNotNull(response);
+
+              long matches =
+                  response.getColumns().stream()
+                      .filter(c -> c.getColumnName().equals(sharedName))
+                      .count();
+
+              assertEquals(
+                  1, matches, "Same column name in two entity types must dedupe to one grid entry");
+
+              ColumnGridItem item =
+                  response.getColumns().stream()
+                      .filter(c -> c.getColumnName().equals(sharedName))
+                      .findFirst()
+                      .orElseThrow();
+
+              assertEquals(
+                  2,
+                  item.getTotalOccurrences(),
+                  "Per-column occurrences must include both entity types");
+              assertTrue(
+                  response.getTotalOccurrences() >= 2,
+                  "Response totalOccurrences must include both entity-type buckets");
+            });
+  }
+
+  @Test
+  void test_getColumnGrid_patternSearchFindsAlphabeticallyLateColumn(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    int columnCount = 200;
+    String matchPattern = ns.prefix("zzz_target");
+    String matchedColumn = matchPattern;
+
+    java.util.List<Column> columns = new java.util.ArrayList<>();
+    for (int i = 0; i < columnCount - 1; i++) {
+      columns.add(
+          Columns.build(ns.prefix(String.format("aaa_filler_%04d", i)))
+              .withType(ColumnDataType.VARCHAR)
+              .withLength(255)
+              .create());
+    }
+    columns.add(
+        Columns.build(matchedColumn).withType(ColumnDataType.VARCHAR).withLength(255).create());
+
+    Tables.create()
+        .name(ns.prefix("scale_search_table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(columns)
+        .execute();
+
+    waitForSearchIndexRefresh();
+
+    await("Wait for first-page search to surface alphabetically-late match (size=25)")
+        .atMost(Duration.ofSeconds(45))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table&columnNamePattern=zzz_target&size=25&serviceName="
+                          + service.getName());
+
+              assertNotNull(response);
+              assertTrue(
+                  response.getColumns().stream()
+                      .anyMatch(c -> c.getColumnName().equals(matchedColumn)),
+                  "First page must contain the alphabetically-late matching column "
+                      + "(this exercises the original bug fix — composite agg would have hidden it)");
+              assertEquals(
+                  1,
+                  response.getTotalUniqueColumns(),
+                  "Only one unique column matches the pattern");
+            });
+  }
+
   private void waitForColumnToBeIndexed(
       OpenMetadataClient client, String columnName, String serviceName) {
     await()
