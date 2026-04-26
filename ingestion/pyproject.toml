@@ -222,11 +222,21 @@ max-line-length = 120
 [tool.ruff]
 line-length = 120
 target-version = "py310"
+# Each excluded path is listed twice: once relative to the pyproject root
+# (for invocations with cwd = ingestion/) and once with the `ingestion/` or
+# `openmetadata-airflow-apis/` prefix (for invocations from the repo root,
+# e.g. `make py_format_check`). Without the prefixed form, ruff's
+# multi-root crawler races on extend-exclude matching and intermittently
+# scans the generated/ tree.
 extend-exclude = [
     "src/metadata/generated",
+    "ingestion/src/metadata/generated",
     "build",
+    "ingestion/build",
     "env",
+    "ingestion/env",
     "../openmetadata-airflow-apis/build",
+    "openmetadata-airflow-apis/build",
 ]
 
 [tool.ruff.format]
