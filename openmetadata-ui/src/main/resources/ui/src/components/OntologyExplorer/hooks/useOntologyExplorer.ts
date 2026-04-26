@@ -268,10 +268,6 @@ export function useOntologyExplorer({
   const [filters, setFilters] = useState<GraphFilters>(DEFAULT_FILTERS);
   const [explorationMode, setExplorationMode] =
     useState<ExplorationMode>('model');
-  const [contextMenu, setContextMenu] = useState<{
-    node: OntologyNode;
-    position: { x: number; y: number };
-  } | null>(null);
   const [termAssetCounts, setTermAssetCounts] = useState<
     Record<string, number>
   >({});
@@ -1194,8 +1190,7 @@ export function useOntologyExplorer({
       if (mode === 'data') {
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
-          ...dataFiltersRef.current,
-          glossaryIds: filters.glossaryIds,
+          ...filters,
           viewMode: 'overview' satisfies GraphViewMode,
         };
         if (graphData) {
@@ -1209,25 +1204,15 @@ export function useOntologyExplorer({
         setSelectedNode(null);
         setExpandedTermIds(new Set());
         setExplorationMode(mode);
-        setFilters(modelFiltersRef.current);
+        setFilters({
+          ...filters,
+          viewMode: modelFiltersRef.current.viewMode,
+        });
         setTermAssetCounts({});
       }
     },
     [filters, graphData]
   );
-
-  const handleContextMenuClose = useCallback(() => {
-    setContextMenu(null);
-  }, []);
-
-  const handleContextMenuFocus = useCallback((node: OntologyNode) => {
-    setSelectedNode(node);
-    graphRef.current?.focusNode(node.id);
-  }, []);
-
-  const handleContextMenuViewDetails = useCallback((node: OntologyNode) => {
-    setSelectedNode(node);
-  }, []);
 
   const getNodePath = useCallback((node: OntologyNode) => {
     if (node.entityRef?.type && node.entityRef?.fullyQualifiedName) {
@@ -1250,17 +1235,6 @@ export function useOntologyExplorer({
 
     return '';
   }, []);
-
-  const handleContextMenuOpenInNewTab = useCallback(
-    (node: OntologyNode) => {
-      const path = getNodePath(node);
-      if (!path) {
-        return;
-      }
-      window.open(path, '_blank');
-    },
-    [getNodePath]
-  );
 
   const handleRefresh = useCallback(() => {
     if (explorationMode === 'data') {
@@ -1375,7 +1349,6 @@ export function useOntologyExplorer({
         dataModeLoadMoreBadgeClick?: boolean;
       }
     ) => {
-      setContextMenu(null);
       if (explorationMode === 'data' && isTermNode(node)) {
         if (meta?.dataModeLoadMoreBadgeClick) {
           const loaded = node.loadedAssetCount ?? 0;
@@ -1429,15 +1402,7 @@ export function useOntologyExplorer({
     [getNodePath]
   );
 
-  const handleGraphNodeContextMenu = useCallback(
-    (node: OntologyNode, position: { x: number; y: number }) => {
-      setContextMenu({ node, position });
-    },
-    []
-  );
-
   const handleGraphPaneClick = useCallback(() => {
-    setContextMenu(null);
     setSelectedNode(null);
   }, []);
 
@@ -1451,7 +1416,6 @@ export function useOntologyExplorer({
     filters,
     explorationMode,
     selectedNode,
-    contextMenu,
     expandedTermIds,
     rdfEnabled,
     graphDataToShow,
@@ -1477,13 +1441,8 @@ export function useOntologyExplorer({
     handleScrollNearEdge,
     handleSettingsChange,
     handleFiltersChange,
-    handleContextMenuClose,
-    handleContextMenuFocus,
-    handleContextMenuViewDetails,
-    handleContextMenuOpenInNewTab,
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
-    handleGraphNodeContextMenu,
     handleGraphPaneClick,
   };
 }

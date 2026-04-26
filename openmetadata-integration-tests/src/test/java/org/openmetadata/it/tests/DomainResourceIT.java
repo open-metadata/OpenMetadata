@@ -29,14 +29,20 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Domain entity operations.
@@ -428,6 +434,17 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().domains().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().domains().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().domains().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -1152,5 +1169,205 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     // Verify old child FQN no longer works
     assertThrows(Exception.class, () -> getEntityByName(oldChildFqn));
+  }
+
+  @Test
+  void softDeletedExpert_notReturnedInSingleGet(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for soft-delete expert test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain byId = client.domains().get(domain.getId().toString(), "experts");
+    assertTrue(
+        byId.getExperts() == null || byId.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear in single GET by ID");
+
+    Domain byName = client.domains().getByName(domain.getFullyQualifiedName(), "experts");
+    assertTrue(
+        byName.getExperts() == null || byName.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear in single GET by name");
+  }
+
+  @Test
+  void softDeletedExpert_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert_list");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain list soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel_list"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for soft-delete expert list test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain listed = null;
+    ListParams params = new ListParams().setFields("experts").withLimit(100);
+    while (listed == null) {
+      ListResponse<Domain> page = listEntities(params);
+      listed =
+          page.getData().stream()
+              .filter(d -> d.getId().equals(domain.getId()))
+              .findFirst()
+              .orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (listed != null || after == null) break;
+      params = new ListParams().setFields("experts").withLimit(100).setAfter(after);
+    }
+    assertNotNull(listed, "Domain not found in list");
+    assertTrue(
+        listed.getExperts() == null || listed.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear in list endpoint");
+  }
+
+  @Test
+  void softDeletedExpert_notReturnedInListWithIncludeAll(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert_all");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain include-all soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel_all"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for include-all soft-delete expert test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain listed = null;
+    ListParams params =
+        new ListParams().setFields("experts").withLimit(100).addFilter("include", "all");
+    while (listed == null) {
+      ListResponse<Domain> page = listEntities(params);
+      listed =
+          page.getData().stream()
+              .filter(d -> d.getId().equals(domain.getId()))
+              .findFirst()
+              .orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (listed != null || after == null) break;
+      params =
+          new ListParams()
+              .setFields("experts")
+              .withLimit(100)
+              .addFilter("include", "all")
+              .setAfter(after);
+    }
+    assertNotNull(listed, "Domain not found in list with include=all");
+    assertTrue(
+        listed.getExperts() == null || listed.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear even when include=all (applies to top-level only)");
+  }
+
+  @Test
+  void softDeletedFollower_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("follower_list");
+    User follower =
+        client
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    Domain domain = createEntity(createRequest(ns.prefix("dom_follower"), ns));
+
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getId() + "/followers",
+            follower.getId(),
+            ChangeEvent.class);
+
+    client.users().delete(follower.getId().toString());
+
+    ListParams params = new ListParams().setFields("followers").withLimit(1000000);
+    ListResponse<Domain> list = listEntities(params);
+    Domain listed =
+        list.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Domain not found in list"));
+    assertTrue(
+        listed.getFollowers() == null || listed.getFollowers().isEmpty(),
+        "Soft-deleted follower must not appear in list endpoint");
+  }
+
+  @Test
+  void softDeletedVoter_notReturnedInListEndpoint(TestNamespace ns) {
+    String userName = ns.shortPrefix("voter_list");
+    String userEmail = userName + "@test.openmetadata.org";
+
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    User voter =
+        adminClient.users().create(new CreateUser().withName(userName).withEmail(userEmail));
+
+    Domain domain = createEntity(createRequest(ns.prefix("dom_voter"), ns));
+
+    OpenMetadataClient voterClient = SdkClients.createClient(userEmail, userEmail, new String[] {});
+    voterClient
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getId() + "/vote",
+            new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP),
+            ChangeEvent.class);
+
+    adminClient.users().delete(voter.getId().toString());
+
+    ListParams params = new ListParams().setFields("votes").withLimit(1000000);
+    ListResponse<Domain> list = listEntities(params);
+    Domain listed =
+        list.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Domain not found in list"));
+    Votes votes = listed.getVotes();
+    boolean voterInUpVotes =
+        votes != null
+            && votes.getUpVoters() != null
+            && votes.getUpVoters().stream()
+                .anyMatch(ref -> ref != null && voter.getId().equals(ref.getId()));
+    assertFalse(voterInUpVotes, "Soft-deleted voter must not appear in list endpoint votes");
   }
 }

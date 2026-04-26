@@ -11,7 +11,7 @@
     "config": {
       "entityTypes": ["recognizerFeedback"],
       "events": ["Created", "Updated"],
-      "exclude": [],
+      "exclude": ["reviewers"],
       "include": [],
       "filter": {}
     },
@@ -32,8 +32,7 @@
       "config": {
         "assignees": {
           "addReviewers": true,
-          "addOwners": false,
-          "candidates": []
+          "addOwners": false
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1

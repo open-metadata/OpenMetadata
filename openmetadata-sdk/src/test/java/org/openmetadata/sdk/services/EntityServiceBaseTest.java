@@ -12,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -194,6 +195,40 @@ class EntityServiceBaseTest {
 
     assertNotNull(result);
     assertEquals(2, result.getData().size());
+  }
+
+  @Test
+  void testGetEntityHistory() {
+    String jsonResponse =
+        "{\"data\":["
+            + "{\"id\":\"550e8400-e29b-41d4-a716-446655440001\",\"name\":\"table1\",\"fullyQualifiedName\":\"service.database.schema.table1\"}"
+            + "],\"paging\":{\"total\":1,\"offset\":0,\"limit\":5},\"warningsCount\":2}";
+
+    ArgumentCaptor<RequestOptions> paramsCaptor = ArgumentCaptor.forClass(RequestOptions.class);
+
+    when(mockHttpClient.executeForString(
+            eq(HttpMethod.GET), eq("/v1/tables/history"), isNull(), paramsCaptor.capture()))
+        .thenReturn(jsonResponse);
+
+    ResultList<Table> result =
+        tableService.getEntityHistory(100L, 200L, 5, "before-cursor", "after-cursor");
+
+    assertNotNull(result);
+    assertEquals(1, result.getData().size());
+    assertInstanceOf(Table.class, result.getData().get(0));
+    assertEquals("table1", result.getData().get(0).getName());
+    assertNotNull(result.getPaging());
+    assertEquals(1, result.getPaging().getTotal());
+    assertEquals(0, result.getPaging().getOffset());
+    assertEquals(5, result.getPaging().getLimit());
+    assertEquals(2, result.getWarningsCount());
+
+    RequestOptions capturedOptions = paramsCaptor.getValue();
+    assertEquals("100", capturedOptions.getQueryParams().get("startTs"));
+    assertEquals("200", capturedOptions.getQueryParams().get("endTs"));
+    assertEquals("5", capturedOptions.getQueryParams().get("limit"));
+    assertEquals("before-cursor", capturedOptions.getQueryParams().get("before"));
+    assertEquals("after-cursor", capturedOptions.getQueryParams().get("after"));
   }
 
   @Test

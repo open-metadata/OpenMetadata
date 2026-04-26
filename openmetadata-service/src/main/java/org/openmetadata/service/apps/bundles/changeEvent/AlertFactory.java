@@ -4,7 +4,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.feed.ActivityFeedPublisher;
+import org.openmetadata.service.apps.bundles.changeEvent.feed.ActivityStreamPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.MSTeamsPublisher;
@@ -20,7 +20,7 @@ public class AlertFactory {
       case G_CHAT -> new GChatPublisher(subscription, config);
       case WEBHOOK -> new GenericPublisher(subscription, config);
       case EMAIL -> new EmailPublisher(subscription, config);
-      case ACTIVITY_FEED -> new ActivityFeedPublisher(subscription, config);
+      case ACTIVITY_FEED -> new ActivityStreamPublisher(subscription, config);
       case GOVERNANCE_WORKFLOW_CHANGE_EVENT -> new WorkflowEventConsumer(subscription, config);
     };
   }

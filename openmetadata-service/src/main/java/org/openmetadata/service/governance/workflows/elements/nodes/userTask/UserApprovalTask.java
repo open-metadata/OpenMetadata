@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -26,11 +25,13 @@ import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -42,13 +43,20 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
 
-@Slf4j
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
   private final List<Message> messages = new ArrayList<>();
 
   public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+    this(nodeDefinition, config, TaskEntityType.GlossaryApproval, TaskCategory.Approval);
+  }
+
+  public UserApprovalTask(
+      UserApprovalTaskDefinition nodeDefinition,
+      WorkflowConfiguration config,
+      TaskEntityType taskType,
+      TaskCategory taskCategory) {
     String subProcessId = nodeDefinition.getName();
     String assigneesVarName = getFlowableElementId(subProcessId, "assignees");
 
@@ -88,25 +96,67 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(String.valueOf(nodeDefinition.getConfig().getRejectionThreshold()))
             .build();
 
-    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
+    FieldExtension taskTypeExpr =
+        new FieldExtensionBuilder().fieldName("taskTypeExpr").fieldValue(taskType.value()).build();
+
+    FieldExtension taskCategoryExpr =
+        new FieldExtensionBuilder()
+            .fieldName("taskCategoryExpr")
+            .fieldValue(taskCategory.value())
+            .build();
+
+    FieldExtension stageIdExpr =
+        new FieldExtensionBuilder(false)
+            .fieldName("stageIdExpr")
+            .fieldValue(nodeDefinition.getConfig().getStageId())
+            .build();
+
+    FieldExtension stageDisplayNameExpr =
+        new FieldExtensionBuilder(false)
+            .fieldName("stageDisplayNameExpr")
+            .fieldValue(nodeDefinition.getConfig().getStageDisplayName())
+            .build();
+
+    FieldExtension taskStatusExpr =
+        new FieldExtensionBuilder()
+            .fieldName("taskStatusExpr")
+            .fieldValue(
+                nodeDefinition.getConfig().getTaskStatus() != null
+                    ? nodeDefinition.getConfig().getTaskStatus().value()
+                    : TaskEntityStatus.Open.value())
+            .build();
+
+    FieldExtension transitionMetadataExpr =
+        new FieldExtensionBuilder(false)
+            .fieldName("transitionMetadataExpr")
+            .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getTransitionMetadata()))
+            .build();
+
+    // Force sync execution on the approval subprocess so the entry path
+    // (SetApprovalAssigneesImpl → user task creation → CreateTask listener)
+    // runs on the caller's thread inside the current transaction. Without this
+    // the async job executor picks up the continuation after POST /resolve
+    // returns, which races with client reads and subsequent writes.
+    SubProcess subProcess =
+        new SubProcessBuilder().id(subProcessId).setAsync(false).exclusive(true).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
     ServiceTask setAssigneesVariable =
         getSetAssigneesVariableServiceTask(
-            subProcessId,
-            assigneesExpr,
-            assigneesVarNameExpr,
-            inputNamespaceMapExpr,
-            approvalThresholdExpr,
-            rejectionThresholdExpr);
+            subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
 
-    // Exclusive Gateway to check if there are assignees
+    // ExclusiveGatewayBuilder defaults to async=true, which pushes the rest of
+    // the user task subprocess (including the CreateTask task listener)
+    // onto Flowable's async executor. For the incident workflow we want the
+    // whole entry path to run on the caller's thread so the POST /resolve
+    // response reflects the new stage and assignees. Explicitly turn async off.
     ExclusiveGateway hasAssigneesGateway =
         new ExclusiveGatewayBuilder()
             .id(getFlowableElementId(subProcessId, "hasAssigneesGateway"))
             .name("Check if has assignees")
+            .setAsync(false)
             .build();
 
     UserTask userTask =
@@ -115,9 +165,14 @@ public class UserApprovalTask implements NodeInterface {
             assigneesVarNameExpr,
             inputNamespaceMapExpr,
             approvalThresholdExpr,
-            rejectionThresholdExpr);
+            rejectionThresholdExpr,
+            taskTypeExpr,
+            taskCategoryExpr,
+            stageIdExpr,
+            stageDisplayNameExpr,
+            taskStatusExpr,
+            transitionMetadataExpr);
 
-    // Auto-approve service task for when there are no assignees
     ServiceTask autoApproveTask =
         new ServiceTaskBuilder()
             .id(getFlowableElementId(subProcessId, "autoApproveUserTask"))
@@ -128,7 +183,6 @@ public class UserApprovalTask implements NodeInterface {
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
-    // NOTE: If the Task is killed instead of Resolved, the Workflow is Finished.
     BoundaryEvent terminationEvent = getTerminationEvent(subProcessId);
     terminationEvent.setAttachedToRef(userTask);
 
@@ -170,7 +224,6 @@ public class UserApprovalTask implements NodeInterface {
     toAutoApprove.setName("No assignees");
     subProcess.addFlowElement(toAutoApprove);
 
-    // Set default flow for safety
     hasAssigneesGateway.setDefaultFlow(toAutoApprove.getId());
 
     // UserTask -> EndEvent
@@ -200,15 +253,14 @@ public class UserApprovalTask implements NodeInterface {
       String subProcessId,
       FieldExtension assigneesExpr,
       FieldExtension assigneesVarNameExpr,
-      FieldExtension inputNamespaceMapExpr,
-      FieldExtension approvalThresholdExpr,
-      FieldExtension rejectionThresholdExpr) {
+      FieldExtension inputNamespaceMapExpr) {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
         .implementation(SetApprovalAssigneesImpl.class.getName())
         .addFieldExtension(assigneesExpr)
         .addFieldExtension(assigneesVarNameExpr)
         .addFieldExtension(inputNamespaceMapExpr)
+        .setAsync(false)
         .build();
   }
 
@@ -217,7 +269,13 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension assigneesVarNameExpr,
       FieldExtension inputNamespaceMapExpr,
       FieldExtension approvalThresholdExpr,
-      FieldExtension rejectionThresholdExpr) {
+      FieldExtension rejectionThresholdExpr,
+      FieldExtension taskTypeExpr,
+      FieldExtension taskCategoryExpr,
+      FieldExtension stageIdExpr,
+      FieldExtension stageDisplayNameExpr,
+      FieldExtension taskStatusExpr,
+      FieldExtension transitionMetadataExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -225,13 +283,20 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(assigneesVarNameExpr)
             .build();
 
-    FlowableListener createOpenMetadataTaskListener =
+    FlowableListener createTaskListener =
         new FlowableListenerBuilder()
             .event("create")
-            .implementation(CreateApprovalTaskImpl.class.getName())
+            .implementation(CreateTask.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
+            .addFieldExtension(assigneesVarNameExpr)
             .addFieldExtension(approvalThresholdExpr)
             .addFieldExtension(rejectionThresholdExpr)
+            .addFieldExtension(taskTypeExpr)
+            .addFieldExtension(taskCategoryExpr)
+            .addFieldExtension(stageIdExpr)
+            .addFieldExtension(stageDisplayNameExpr)
+            .addFieldExtension(taskStatusExpr)
+            .addFieldExtension(transitionMetadataExpr)
             .build();
 
     FlowableListener completionValidatorListener =
@@ -243,7 +308,7 @@ public class UserApprovalTask implements NodeInterface {
     return new UserTaskBuilder()
         .id(getFlowableElementId(subProcessId, "approvalTask"))
         .addListener(setCandidateUsersListener)
-        .addListener(createOpenMetadataTaskListener)
+        .addListener(createTaskListener)
         .addListener(completionValidatorListener)
         .build();
   }
@@ -273,22 +338,14 @@ public class UserApprovalTask implements NodeInterface {
     }
   }
 
-  /**
-   * Transform assignees configuration from EntityReference format to simplified format for Flowable.
-   * Separates candidates into users and teams arrays with FQNs only, avoiding NPEs and simplifying processing.
-   */
+  @SuppressWarnings("unchecked")
   private Map<String, Object> transformAssigneesForFlowable(Object assigneesConfig) {
     Map<String, Object> result = new HashMap<>();
-
-    // First convert the object to a Map using JsonUtils
     Map<String, Object> config = JsonUtils.readOrConvertValue(assigneesConfig, Map.class);
     if (config != null) {
-
-      // Copy boolean flags as-is
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
 
-      // Transform candidates from EntityReference to separate users and teams arrays
       Set<String> users = new HashSet<>();
       Set<String> teams = new HashSet<>();
 
@@ -297,10 +354,11 @@ public class UserApprovalTask implements NodeInterface {
         for (Object candidate : candidates) {
           if (candidate instanceof Map) {
             Map<String, Object> candidateMap = (Map<String, Object>) candidate;
-            String type = (String) candidateMap.get("type");
-            String fqn = (String) candidateMap.get("fullyQualifiedName");
-
-            if (fqn != null) {
+            Object typeObj = candidateMap.get("type");
+            Object fqnObj = candidateMap.get("fullyQualifiedName");
+            String type = typeObj instanceof String value ? value : null;
+            String fqn = fqnObj instanceof String value ? value : null;
+            if (fqn != null && type != null) {
               if ("user".equals(type)) {
                 users.add(fqn);
               } else if ("team".equals(type)) {
@@ -314,7 +372,6 @@ public class UserApprovalTask implements NodeInterface {
       result.put("users", new ArrayList<>(users));
       result.put("teams", new ArrayList<>(teams));
     }
-
     return result;
   }
 }
