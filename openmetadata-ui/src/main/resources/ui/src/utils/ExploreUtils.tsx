@@ -382,7 +382,8 @@ export const getAggregationOptions = async (
         undefined,
         deleted,
         isNLPEnabled,
-        queryText
+        queryText,
+        size
       );
 };
 

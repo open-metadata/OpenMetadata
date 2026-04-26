@@ -24,6 +24,8 @@ export const TAG_FQN_KEY = 'tags.tagFQN';
 
 export const MAX_RESULT_HITS = 10000;
 
+export const EXPLORE_QUICK_FILTER_PAGE_SIZE = 50;
+
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.OWNERS,
   EntityFields.DOMAINS,

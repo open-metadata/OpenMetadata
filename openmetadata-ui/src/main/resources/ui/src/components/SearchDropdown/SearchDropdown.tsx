@@ -29,7 +29,7 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import {
+import React, {
   FC,
   ReactNode,
   useCallback,
@@ -75,6 +75,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   hideSearchBar = false,
   singleSelect = false,
   getPopupContainer,
+  isPaginated = false,
+  onScrollEnd,
+  isLoadingMore = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -238,6 +241,19 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     );
   }, [isDropDownOpen, selectedKeys]);
 
+  const handleMenuScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (!isPaginated || !onScrollEnd || isLoadingMore) {
+        return;
+      }
+      const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+      if (scrollHeight - (scrollTop + clientHeight) <= 10) {
+        onScrollEnd();
+      }
+    },
+    [isPaginated, onScrollEnd, isLoadingMore]
+  );
+
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
       const entityLabel = index && tabsInfo[index]?.label;
@@ -252,9 +268,30 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         );
       }
 
-      return options.length > 0 || selectedOptions.length > 0 ? (
-        menuNode
-      ) : (
+      if (options.length > 0 || selectedOptions.length > 0) {
+        return isPaginated ? (
+          <div
+            className="search-dropdown-scroll-container"
+            data-testid="search-dropdown-scroll-container"
+            onScroll={handleMenuScroll}>
+            {menuNode}
+            {isLoadingMore && (
+              <Row
+                align="middle"
+                className="p-y-xss"
+                justify="center">
+                <Col>
+                  <Loader size="small" />
+                </Col>
+              </Row>
+            )}
+          </div>
+        ) : (
+          menuNode
+        );
+      }
+
+      return (
         <Row align="middle" className="m-y-sm" justify="center">
           <Col>
             <Typography.Text className="m-x-sm">
@@ -268,7 +305,16 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         </Row>
       );
     },
-    [isSuggestionsLoading, options, selectedOptions, index, searchKey]
+    [
+      isSuggestionsLoading,
+      options,
+      selectedOptions,
+      index,
+      searchKey,
+      isPaginated,
+      handleMenuScroll,
+      isLoadingMore,
+    ]
   );
 
   const dropdownCardComponent = useCallback(

@@ -426,4 +426,70 @@ test.describe('Metric search result highlight', () => {
       expect(fullText?.trim()).toBe(metric.entity.name);
     });
   });
+
+  test.afterAll('Cleanup metric entity', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await metric.delete(apiContext);
+    await afterAction();
+  });
 });
+
+test.describe(
+  'Quick filter dropdown infinite scroll',
+  { tag: ['@Features', '@Discovery'] },
+  () => {
+    test('should progressively load more options on scroll to bottom', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await test.step('Open the Tag quick filter and capture initial aggregate request with size=50', async () => {
+        const initialAggregateResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/aggregate') &&
+            response.url().includes('field=tags.tagFQN') &&
+            response.url().includes('size=50') &&
+            response.status() === 200
+        );
+
+        await page.getByTestId('search-dropdown-Tag').click();
+        await initialAggregateResponse;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Scroll to the bottom of the dropdown and verify a second request with size=100', async () => {
+        const scrollContainer = page.getByTestId(
+          'search-dropdown-scroll-container'
+        );
+        await expect(scrollContainer).toBeVisible();
+
+        const nextAggregateResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/aggregate') &&
+            response.url().includes('field=tags.tagFQN') &&
+            response.url().includes('size=100') &&
+            response.status() === 200
+        );
+
+        await scrollContainer.evaluate((el) => {
+          el.scrollTop = el.scrollHeight;
+        });
+
+        await nextAggregateResponse;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await clickOutside(page);
+    });
+  }
+);
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await table.delete(apiContext);
+  await domain.delete(apiContext);
+  await tier.delete(apiContext);
+  await tierWithoutAsset.delete(apiContext);
+  await afterAction();
+});
+

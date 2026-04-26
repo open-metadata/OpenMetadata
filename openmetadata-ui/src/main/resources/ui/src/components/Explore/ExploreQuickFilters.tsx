@@ -15,7 +15,8 @@ import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { EXPLORE_QUICK_FILTER_PAGE_SIZE } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -38,7 +39,6 @@ import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   index,
-  aggregations,
   independent = false,
   onFieldValueSelect,
   fieldsWithNullValues = [],
@@ -50,8 +50,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(false);
   const { queryFilter } = useAdvanceSearch();
   const { isNLPEnabled } = useSearchStore();
+
+  const currentSizeRef = useRef<number>(EXPLORE_QUICK_FILTER_PAGE_SIZE);
+  const activeFieldRef = useRef<{
+    key: string;
+    searchIndex?: SearchIndex;
+    searchKey?: string;
+  } | null>(null);
+  const searchTextRef = useRef<string>('');
+
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
@@ -88,43 +99,45 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     defaultQueryFilter as unknown as QueryFilterInterface
   );
 
-  const fetchDefaultOptions = async (
-    index: SearchIndex | SearchIndex[],
-    key: string,
-    fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
-  ) => {
-    const staticOptions = getStaticOptions(key);
-    if (staticOptions) {
-      setOptions(staticOptions);
+  const pageSize = optionPageSize ?? EXPLORE_QUICK_FILTER_PAGE_SIZE;
 
-      return;
-    }
+  const fetchAggregationBuckets = useCallback(
+    async (
+      key: string,
+      value: string,
+      size: number,
+      fieldSearchIndex?: SearchIndex,
+      fieldSearchKey?: string
+    ) => {
+      const searchIndexToUse = fieldSearchIndex ?? index;
+      const searchKeyToUse = fieldSearchKey ?? key;
 
-    // Use field-specific searchIndex if provided, otherwise use the default index
-    const searchIndexToUse = fieldSearchIndex ?? index;
-    // Use field-specific searchKey if provided, otherwise use the key
-    const searchKeyToUse = fieldSearchKey ?? key;
-
-    let buckets = aggregations?.[key]?.buckets;
-    if (!buckets) {
       const res = await getAggregationOptions(
         searchIndexToUse,
         searchKeyToUse,
-        '',
+        value,
         JSON.stringify(combinedQueryFilter),
         independent,
         showDeleted,
-        optionPageSize,
+        size,
         isNLPEnabled,
         searchText
       );
 
-      buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-    }
+      const buckets =
+        res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
+      const newOptions = uniqWith(
+        getOptionsFromAggregationBucket(buckets),
+        isEqual
+      );
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
-  };
+      setOptions(newOptions);
+      setHasMore(buckets.length >= size);
+
+      return newOptions;
+    },
+    [index, combinedQueryFilter, independent, showDeleted, isNLPEnabled, searchText]
+  );
 
   const getInitialOptions = async (
     key: string,
@@ -134,14 +147,30 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
       setOptions(staticOptions);
+      setHasMore(false);
 
       return;
     }
 
+    currentSizeRef.current = pageSize;
+    searchTextRef.current = '';
+    activeFieldRef.current = {
+      key,
+      searchIndex: fieldSearchIndex,
+      searchKey: fieldSearchKey,
+    };
+
     setIsOptionsLoading(true);
     setOptions([]);
+    setHasMore(false);
     try {
-      await fetchDefaultOptions(index, key, fieldSearchIndex, fieldSearchKey);
+      await fetchAggregationBuckets(
+        key,
+        '',
+        pageSize,
+        fieldSearchIndex,
+        fieldSearchKey
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -163,12 +192,22 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           )
         : staticOptions;
       setOptions(filteredOptions);
+      setHasMore(false);
 
       return;
     }
 
+    currentSizeRef.current = pageSize;
+    searchTextRef.current = value;
+    activeFieldRef.current = {
+      key,
+      searchIndex: fieldSearchIndex,
+      searchKey: fieldSearchKey,
+    };
+
     setIsOptionsLoading(true);
     setOptions([]);
+    setHasMore(false);
     try {
       if (!value) {
         getInitialOptions(key, fieldSearchIndex, fieldSearchKey);
@@ -176,29 +215,43 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return;
       }
 
-      const searchIndexToUse = fieldSearchIndex ?? index;
-      const searchKeyToUse = fieldSearchKey ?? key;
-
-      const res = await getAggregationOptions(
-        searchIndexToUse,
-        searchKeyToUse,
+      await fetchAggregationBuckets(
+        key,
         value,
-        JSON.stringify(combinedQueryFilter),
-        independent,
-        showDeleted,
-        undefined,
-        isNLPEnabled,
-        searchText
+        pageSize,
+        fieldSearchIndex,
+        fieldSearchKey
       );
-
-      const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsOptionsLoading(false);
     }
   };
+
+  const handleScrollEnd = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !activeFieldRef.current) {
+      return;
+    }
+
+    const nextSize = currentSizeRef.current + pageSize;
+    currentSizeRef.current = nextSize;
+
+    setIsLoadingMore(true);
+    try {
+      await fetchAggregationBuckets(
+        activeFieldRef.current.key,
+        searchTextRef.current,
+        nextSize,
+        activeFieldRef.current.searchIndex,
+        activeFieldRef.current.searchKey
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, pageSize, fetchAggregationBuckets]);
 
   return (
     <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
@@ -211,12 +264,14 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return (
           <SearchDropdown
             highlight
+            isPaginated
             dropdownClassName={field.dropdownClassName}
             hasNullOption={hasNullOption}
             hideCounts={field.hideCounts ?? false}
             hideSearchBar={field.hideSearchBar ?? false}
             independent={independent}
             index={displayIndex as ExploreSearchIndex}
+            isLoadingMore={isLoadingMore}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
             label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
@@ -232,6 +287,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             onGetInitialOptions={(key) =>
               getInitialOptions(key, field.searchIndex, field.searchKey)
             }
+            onScrollEnd={handleScrollEnd}
             onSearch={(value, key) =>
               getFilterOptions(value, key, field.searchIndex, field.searchKey)
             }
@@ -244,3 +300,4 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 };
 
 export default ExploreQuickFilters;
+

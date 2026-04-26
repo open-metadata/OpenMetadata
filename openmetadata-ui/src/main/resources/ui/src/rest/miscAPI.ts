@@ -221,7 +221,8 @@ export const getAggregateFieldOptions = (
   sourceFields?: string,
   deleted = false,
   isNLPEnabled = false,
-  queryText?: string
+  queryText?: string,
+  size?: number
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -234,6 +235,7 @@ export const getAggregateFieldOptions = (
     sourceFields,
     deleted,
     ...(queryText ? { queryText } : {}),
+    ...(size !== undefined ? { size } : {}),
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(

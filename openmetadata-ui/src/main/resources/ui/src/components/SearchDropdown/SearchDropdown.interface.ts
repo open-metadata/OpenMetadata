@@ -35,6 +35,9 @@ export interface SearchDropdownProps {
   hideSearchBar?: boolean; // Determines if the search bar should be hidden. Default is false
   singleSelect?: boolean; // Enable single-select mode with radio buttons instead of checkboxes
   getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
+  isPaginated?: boolean; // Enable infinite scroll with progressive loading
+  onScrollEnd?: () => void; // Callback fired when the user scrolls to the bottom of the options list
+  isLoadingMore?: boolean; // When true, a spinner is rendered at the bottom of the options list
 }
 
 export interface SearchDropdownOption {
