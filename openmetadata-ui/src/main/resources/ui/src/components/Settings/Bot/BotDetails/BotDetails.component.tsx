@@ -23,7 +23,7 @@ import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.const
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
-import { getAllRoles } from '../../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -76,7 +76,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchRoles = async () => {
     try {
-      const data = await getAllRoles('', false, PAGE_SIZE_LARGE);
+      const data = await searchRoles('*', 1000);
       setRoles(data);
     } catch (err) {
       setRoles([]);

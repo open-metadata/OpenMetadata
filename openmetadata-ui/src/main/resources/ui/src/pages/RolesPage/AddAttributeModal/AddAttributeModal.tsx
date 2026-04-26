@@ -26,7 +26,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
+import { getPolicies, searchRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -72,10 +72,12 @@ const AddAttributeModal: FC<Props> = ({
           datalist = await getPolicies('', undefined, undefined, 100);
 
           break;
-        case EntityType.ROLE:
-          datalist = await getRoles('', undefined, undefined, false, 100);
+        case EntityType.ROLE: {
+          const roles = await searchRoles('*', 1000);
+          datalist = { data: roles };
 
           break;
+        }
 
         default:
           break;

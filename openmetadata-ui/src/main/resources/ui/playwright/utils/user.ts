@@ -710,7 +710,9 @@ export const addUser = async (
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles?default=false&limit=100&fields=');
+  await page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query') && response.url().includes('index=role')
+  );
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);

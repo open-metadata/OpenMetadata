@@ -22,9 +22,28 @@ import { Function } from '../generated/type/function';
 import { Paging } from '../generated/type/paging';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
+import { SearchIndex } from '../enums/search.enum';
+import { searchData } from './miscAPI';
 
 const patchConfig = {
   headers: { 'Content-type': 'application/json-patch+json' },
+};
+
+export const searchRoles = async (
+  query: string,
+  limit = 1000
+): Promise<Role[]> => {
+  const response = await searchData<SearchIndex.ROLE>(
+    query,
+    1,
+    limit,
+    '',
+    '',
+    '',
+    SearchIndex.ROLE
+  );
+
+  return response.data.hits.hits.map((hit) => hit._source) as unknown as Role[];
 };
 
 export const getRoles = async (
