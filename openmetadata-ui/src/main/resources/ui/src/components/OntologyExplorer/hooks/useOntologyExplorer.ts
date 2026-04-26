@@ -1190,8 +1190,7 @@ export function useOntologyExplorer({
       if (mode === 'data') {
         modelFiltersRef.current = filters;
         const nextFilters: GraphFilters = {
-          ...dataFiltersRef.current,
-          glossaryIds: filters.glossaryIds,
+          ...filters,
           viewMode: 'overview' satisfies GraphViewMode,
         };
         if (graphData) {
@@ -1205,7 +1204,10 @@ export function useOntologyExplorer({
         setSelectedNode(null);
         setExpandedTermIds(new Set());
         setExplorationMode(mode);
-        setFilters(modelFiltersRef.current);
+        setFilters({
+          ...filters,
+          viewMode: modelFiltersRef.current.viewMode,
+        });
         setTermAssetCounts({});
       }
     },
