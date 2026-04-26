@@ -40,18 +40,27 @@ public class TriggerIngestionPipelineTool implements McpTool {
     if (pipelineServiceClient == null) {
       return Map.of(
           "error",
-          "Pipeline service client is not configured. Ensure the ingestion infrastructure is set up.",
+          "Pipeline service client is not configured. Ensure the ingestion infrastructure is"
+              + " set up.",
           "fqn",
           fqn);
     }
 
+    IngestionPipeline pipeline =
+        (IngestionPipeline) Entity.getEntityByName(Entity.INGESTION_PIPELINE, fqn, "*", null);
+
+    if (!Boolean.TRUE.equals(pipeline.getDeployed())) {
+      return Map.of(
+          "error",
+          "Pipeline '" + fqn + "' is not deployed. Deploy it first before triggering a run.",
+          "fqn",
+          fqn,
+          "deployed",
+          false);
+    }
+
     LOG.info("Triggering ingestion pipeline: {}", fqn);
 
-    IngestionPipeline pipeline =
-        (IngestionPipeline)
-            Entity.getEntityByName(Entity.INGESTION_PIPELINE, fqn, "*", null);
-
-    // Set the OpenMetadata server connection so the pipeline can call back home
     if (McpApplicationContext.getConfig() != null) {
       pipeline.setOpenMetadataServerConnection(
           new OpenMetadataConnectionBuilder(McpApplicationContext.getConfig()).build());
@@ -61,7 +70,6 @@ public class TriggerIngestionPipelineTool implements McpTool {
     Object service = Entity.getEntity(serviceRef, "ingestionRunner", null);
 
     var response = pipelineServiceClient.runPipeline(pipeline, service);
-
     LOG.info("Trigger response for pipeline {}: {}", fqn, response);
     return JsonUtils.getMap(response);
   }

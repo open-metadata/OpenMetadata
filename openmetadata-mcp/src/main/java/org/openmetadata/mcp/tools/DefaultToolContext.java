@@ -17,8 +17,8 @@ public class DefaultToolContext {
   public DefaultToolContext() {}
 
   /**
-   * Loads tool definitions from a JSON file located at the specified path.
-   * The JSON file should contain an array of tool definitions under the "tools" key.
+   * Loads tool definitions from a JSON file located at the specified path. The JSON file should
+   * contain an array of tool definitions under the "tools" key.
    *
    * @return List of McpSchema.Tool objects loaded from the JSON file.
    */

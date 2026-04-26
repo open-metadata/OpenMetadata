@@ -1,7 +1,6 @@
 package org.openmetadata.mcp.tools;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -34,23 +33,10 @@ public class ListIngestionPipelinesTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String service = params.containsKey("service") ? (String) params.get("service") : null;
-    String pipelineType =
-        params.containsKey("pipelineType") ? (String) params.get("pipelineType") : null;
-    String after = params.containsKey("after") ? (String) params.get("after") : null;
-    int limit = 10;
-    if (params.containsKey("limit")) {
-      Object limitObj = params.get("limit");
-      if (limitObj instanceof Number number) {
-        limit = number.intValue();
-      } else if (limitObj instanceof String s) {
-        try {
-          limit = Integer.parseInt(s);
-        } catch (NumberFormatException ignored) {
-          limit = 10;
-        }
-      }
-    }
+    String service = (String) params.get("service");
+    String pipelineType = (String) params.get("pipelineType");
+    String after = (String) params.get("after");
+    int limit = CommonUtils.parseLimit(params, "limit", 10);
 
     authorizer.authorize(
         securityContext,
@@ -75,10 +61,10 @@ public class ListIngestionPipelinesTool implements McpTool {
     }
 
     var resultList =
-        repository.listAfter(null, repository.getFields("sourceConfig,pipelineType"), filter, limit, after);
+        repository.listAfter(
+            null, repository.getFields("sourceConfig,pipelineType"), filter, limit, after);
 
     Map<String, Object> response = JsonUtils.getMap(resultList);
-    // Strip verbose nested fields from each pipeline entry
     if (response.get("data") instanceof List<?> pipelines) {
       pipelines.forEach(
           p -> {

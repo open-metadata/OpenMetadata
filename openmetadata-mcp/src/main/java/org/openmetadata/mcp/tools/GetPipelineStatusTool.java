@@ -26,20 +26,7 @@ public class GetPipelineStatusTool implements McpTool {
     if (fqn == null || fqn.isBlank()) {
       throw new IllegalArgumentException("Parameter 'fqn' is required");
     }
-
-    int limit = 5;
-    if (params.containsKey("limit")) {
-      Object limitObj = params.get("limit");
-      if (limitObj instanceof Number number) {
-        limit = number.intValue();
-      } else if (limitObj instanceof String s) {
-        try {
-          limit = Integer.parseInt(s);
-        } catch (NumberFormatException ignored) {
-          limit = 5;
-        }
-      }
-    }
+    int limit = CommonUtils.parseLimit(params, "limit", 5);
 
     authorizer.authorize(
         securityContext,
