@@ -269,7 +269,9 @@ export class TableClass extends EntityClass {
       );
       if (!databaseResponseByName.ok()) {
         throw new Error(
-          `TableClass: failed to fetch existing database "${this.database.name}" (${databaseResponseByName.status()}): ${await databaseResponseByName.text()}`
+          `TableClass: failed to fetch existing database "${
+            this.database.name
+          }" (${databaseResponseByName.status()}): ${await databaseResponseByName.text()}`
         );
       }
       database = await databaseResponseByName.json();
@@ -293,7 +295,9 @@ export class TableClass extends EntityClass {
       );
       if (!schemaResponseByName.ok()) {
         throw new Error(
-          `TableClass: failed to fetch existing schema "${this.schema.name}" (${schemaResponseByName.status()}): ${await schemaResponseByName.text()}`
+          `TableClass: failed to fetch existing schema "${
+            this.schema.name
+          }" (${schemaResponseByName.status()}): ${await schemaResponseByName.text()}`
         );
       }
       schema = await schemaResponseByName.json();
@@ -320,7 +324,9 @@ export class TableClass extends EntityClass {
       );
       if (!entityResponseByName.ok()) {
         throw new Error(
-          `TableClass: failed to fetch existing table "${this.entity.name}" (${entityResponseByName.status()}): ${await entityResponseByName.text()}`
+          `TableClass: failed to fetch existing table "${
+            this.entity.name
+          }" (${entityResponseByName.status()}): ${await entityResponseByName.text()}`
         );
       }
       entity = await entityResponseByName.json();

@@ -80,9 +80,7 @@ const activityEventMatches = (
     return false;
   }
 
-  return expectedText
-    ? JSON.stringify(event).includes(expectedText)
-    : true;
+  return expectedText ? JSON.stringify(event).includes(expectedText) : true;
 };
 
 const waitForActivityEvent = async (
@@ -239,9 +237,8 @@ test.describe('Activity API - Entity Changes', () => {
     const feedContainer = page.locator(
       '#center-container [data-testid="message-container"]'
     );
-    const renderedDescriptionEvent = activityResponse.data?.find(
-      (event) =>
-        activityEventMatches(event, 'DescriptionUpdated', newDescription)
+    const renderedDescriptionEvent = activityResponse.data?.find((event) =>
+      activityEventMatches(event, 'DescriptionUpdated', newDescription)
     );
 
     expect(descriptionEvent).toBeDefined();
