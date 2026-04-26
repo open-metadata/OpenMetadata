@@ -13,7 +13,6 @@
 Python Dependencies
 """
 
-import sys
 from typing import Dict, List, Set
 
 from setuptools import setup
@@ -174,8 +173,7 @@ base_requirements = {
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
-    "mysql-connector-python>=8.0.29;python_version<'3.9'",
-    "mysql-connector-python>=9.1;python_version>='3.9'",
+    "mysql-connector-python>=9.1",
     "httpx~=0.28.0",
 }
 
@@ -462,8 +460,7 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
-    "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers~=4.8.0;python_version>='3.9'",
+    "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
@@ -489,14 +486,12 @@ test = {
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
+    "locust~=2.32.0",
 }
 
 docs = {
     VERSIONS["griffe2md"],
 }
-
-if sys.version_info >= (3, 9):
-    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies

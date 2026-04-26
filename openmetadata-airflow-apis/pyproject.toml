@@ -47,11 +47,19 @@ openmetadata_managed_apis = "openmetadata_managed_apis.plugin:RestApiPlugin"
 
 
 [tool.coverage.run]
-source = [
-    "env/lib/python3.9/site-packages/openmetadata_managed_apis"
-]
+source = ["openmetadata_managed_apis"]
 relative_files = true
 branch = true
+parallel = true
+
+# Remap installed-package paths back to the source tree so that
+# ``coverage combine`` (in a lightweight CI job without the package
+# installed) produces paths that resolve to the checkout.
+[tool.coverage.paths]
+openmetadata_managed_apis = [
+    "openmetadata_managed_apis",
+    "*/site-packages/openmetadata_managed_apis",
+]
 
 [tool.coverage.report]
 omit = [

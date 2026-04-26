@@ -95,7 +95,12 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     # This will be initialized in the run method
     ometa_conn: Optional[OpenMetadata] = None
 
-    # pylint: disable=signature-differs
+    # The parent ValidationAction.run signature differs between
+    # great_expectations 0.18.x (7 args + variadics) and 1.x (3 args).
+    # Pylint detects either arguments-differ or signature-differs depending
+    # on which GE version is installed; cover both. unused-argument covers
+    # action_context which we do not consume here.
+    # pylint: disable=arguments-differ, signature-differs, unused-argument
     def run(
         self,
         checkpoint_result: CheckpointResult,
