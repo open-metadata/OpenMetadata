@@ -1057,6 +1057,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    // Non-admin users can only patch their own profile; patching another user requires admin
+    String loggedInUserName = securityContext.getUserPrincipal().getName();
+    User loggedInUser = repository.getByName(uriInfo, loggedInUserName, new Fields(Set.of("id")));
+    if (!loggedInUser.getId().equals(id)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
@@ -1067,10 +1073,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
         // Check if updating personaPreferences - users can only update their own
         if (path.startsWith("/personaPreferences")) {
-          String authenticatedUserName = securityContext.getUserPrincipal().getName();
-          User authenticatedUser =
-              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
-          if (!authenticatedUser.getId().equals(id)) {
+          if (!loggedInUser.getId().equals(id)) {
             throw new AuthorizationException("Users can only update their own persona preferences");
           }
         }
@@ -1116,6 +1119,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
@@ -1140,6 +1144,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -1163,6 +1168,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    authorizer.authorizeAdmin(securityContext);
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
