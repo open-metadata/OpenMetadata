@@ -13,14 +13,19 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -135,6 +140,50 @@ class HiveSource(CommonDbSourceService):
             self.engine = get_metastore_connection(metastore_conn)
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
+
+    def get_table_partition_details(
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> Tuple[bool, Optional[TablePartition]]:
+        """Return partition details for a Hive table.
+
+        The Hive connector patches ``HiveDialect.get_columns`` to include an
+        ``is_partition_column`` flag on each column dict (see utils.py).  Here
+        we consume that flag to build the standard ``TablePartition`` object
+        that the OpenMetadata topology expects.
+
+        Returns:
+            (True, TablePartition) when the table has at least one partition
+            column, otherwise (False, None).
+        """
+        try:
+            columns: List[Dict] = inspector.get_columns(table_name, schema_name)
+            partition_cols = [
+                col for col in columns if col.get("is_partition_column", False)
+            ]
+            if not partition_cols:
+                return False, None
+
+            return True, TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=col["name"],
+                        # Hive partition columns are logical folder-path segments;
+                        # there is no built-in time/integer interval — use OTHER.
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                    for col in partition_cols
+                ]
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to get partition details for {schema_name}.{table_name}: {exc}"
+            )
+            return False, None
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector

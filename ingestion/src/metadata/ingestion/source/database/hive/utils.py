@@ -12,6 +12,7 @@
 Hive source methods.
 """
 import re
+from typing import List, Set
 
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import text, types, util
@@ -20,6 +21,10 @@ from sqlalchemy.engine import reflection
 from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
 
 complex_data_types = ["struct", "map", "array", "union"]
+
+# Sentinel header names that appear in DESCRIBE FORMATTED output; these rows
+# are metadata rows, not real columns.
+_DESCRIBE_SECTION_HEADERS = {"# Partition Information", "# col_name"}
 
 _type_map.update(
     {
@@ -31,20 +36,72 @@ _type_map.update(
 )
 
 
+def _get_partition_column_names(rows: List) -> Set[str]:
+    """Parse DESCRIBE FORMATTED rows and return the set of partition column names.
+
+    DESCRIBE FORMATTED output looks like::
+
+        col_name    data_type   comment
+        id          int         None
+        name        string      None
+        # Partition Information
+        # col_name  data_type   comment
+        year        int         None
+        country     string      None
+
+    This function uses a strict state-machine to enter the partition section on
+    ``# Partition Information`` and exits on any subsequent ``#``-prefixed header
+    row that is not ``# col_name`` (which is a sub-header inside the section).
+    """
+    partition_names: Set[str] = set()
+    in_partition_section = False
+
+    for row in rows:
+        col_name = row[0]
+        if not col_name:
+            continue
+
+        if col_name == "# Partition Information":
+            in_partition_section = True
+            continue
+
+        if in_partition_section:
+            # ``# col_name`` is the sub-header row inside the section — skip it.
+            if col_name == "# col_name":
+                continue
+            # Any other ``#``-prefixed header marks the end of the section.
+            if col_name.startswith("#"):
+                break
+            partition_names.add(col_name)
+
+    return partition_names
+
+
 def get_columns(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument,too-many-locals
     """
-    Method to handle table columns
+    Method to handle table columns.
+
+    Partition columns are included in the result and flagged with
+    ``is_partition_column=True`` so that downstream consumers (e.g. the
+    OpenMetadata ingestion topology) can build ``TablePartition`` details
+    and display partition keys distinctly from regular data columns.
     """
     rows = self._get_table_columns(  # pylint: disable=protected-access
         connection, table_name, schema
     )
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
+
+    # Identify partition column names before the main loop so we can flag them.
+    partition_col_names = _get_partition_column_names(rows)
+
     result = []
     seen_columns = set()
     for col_name, col_type, comment in rows:
+        # Stop at the partition-section header — partition columns are already
+        # captured above and will be appended with the is_partition_column flag.
         if col_name == "# Partition Information":
             break
 
@@ -82,6 +139,7 @@ def get_columns(
                 "default": None,
                 "system_data_type": col_raw_type,
                 "is_complex": col_type in complex_data_types,
+                "is_partition_column": col_name in partition_col_names,
             }
         )
         seen_columns.add(col_name)
