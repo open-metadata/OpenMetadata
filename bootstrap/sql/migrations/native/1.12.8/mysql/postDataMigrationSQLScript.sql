@@ -1,0 +1,1 @@
+-- Placeholder for 1.12.8 MySQL post-data migration script

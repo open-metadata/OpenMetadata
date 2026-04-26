@@ -1,0 +1,4 @@
+-- Placeholder for 1.12.8 MySQL schema changes
+-- The Postgres-side fix for #27158 has no MySQL counterpart: MySQL's
+-- 1.11.0 indexes were already non-partial (no partial-index syntax in
+-- MySQL), so the regression that hit Postgres did not affect MySQL.
