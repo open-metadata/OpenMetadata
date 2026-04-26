@@ -41,30 +41,30 @@ class NoSQLAdaptor(ABC):
     ) -> Dict[str, Union[int, float]]:
         raise NotImplementedError
 
-    def sum(
+    def sum(  # pylint: disable=unused-argument
         self,
         table: Table,
-        column: Column,  # pylint: disable=unused-argument
+        column: Column,
     ) -> any:
         return None
 
-    def mean(
+    def mean(  # pylint: disable=unused-argument
         self,
         table: Table,
-        column: Column,  # pylint: disable=unused-argument
+        column: Column,
     ) -> any:
         return None
 
-    def max(
+    def max(  # pylint: disable=unused-argument
         self,
         table: Table,
-        column: Column,  # pylint: disable=unused-argument
+        column: Column,
     ) -> any:
         return None
 
-    def min(
+    def min(  # pylint: disable=unused-argument
         self,
         table: Table,
-        column: Column,  # pylint: disable=unused-argument
+        column: Column,
     ) -> any:
         return None

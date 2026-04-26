@@ -63,15 +63,15 @@ def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> boo
     validate_regex(filter_pattern.excludes)
 
     if filter_pattern.includes and filter_pattern.excludes:
-        return not any(name for regex in filter_pattern.includes if (re.match(regex, name, re.IGNORECASE))) or any(
-            name for regex in filter_pattern.excludes if (re.match(regex, name, re.IGNORECASE))
+        return not any(name for regex in filter_pattern.includes if re.match(regex, name, re.IGNORECASE)) or any(
+            name for regex in filter_pattern.excludes if re.match(regex, name, re.IGNORECASE)
         )
 
     if filter_pattern.includes:
-        return not any(name for regex in filter_pattern.includes if (re.match(regex, name, re.IGNORECASE)))
+        return not any(name for regex in filter_pattern.includes if re.match(regex, name, re.IGNORECASE))
 
     if filter_pattern.excludes:
-        return any(name for regex in filter_pattern.excludes if (re.match(regex, name, re.IGNORECASE)))
+        return any(name for regex in filter_pattern.excludes if re.match(regex, name, re.IGNORECASE))
 
     return False
 
