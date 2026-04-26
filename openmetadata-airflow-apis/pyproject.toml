@@ -13,7 +13,7 @@ authors = [
 ]
 license = {file = "LICENSE"}
 description = "Airflow REST APIs to create and manage DAGS"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "pendulum~=3.0",
     "apache-airflow>=2.2.2",
@@ -24,12 +24,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black==22.3.0",
+    "ruff~=0.15.12",
     "pytest",
     "pylint",
     "pytest-cov",
-    "isort",
-    "pycln",
 ]
 
 [project.urls]
