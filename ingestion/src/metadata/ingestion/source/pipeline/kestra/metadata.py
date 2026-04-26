@@ -148,7 +148,7 @@ class KestraSource(PipelineServiceSource):
             )
 
             request = CreatePipelineRequest(
-                name=EntityName(pipeline_details.id),
+                name=EntityName(_flow_fqn(pipeline_details)),
                 displayName=pipeline_details.id,
                 description=(
                     Markdown(pipeline_details.description)
@@ -226,10 +226,9 @@ class KestraSource(PipelineServiceSource):
 
         service_name = self.context.get().pipeline_service
         for trig in triggers:
-            t = trig.model_dump(by_alias=True) if hasattr(trig, "model_dump") else dict(trig)
-            if not str(t.get("type", "")).endswith("trigger.Flow"):
+            if not trig.type.endswith("trigger.Flow"):
                 continue
-            for cond in t.get("conditions") or []:
+            for cond in trig.conditions or []:
                 ctype = str(cond.get("type", ""))
                 if not ctype.endswith("ExecutionFlowCondition"):
                     continue
@@ -255,7 +254,7 @@ class KestraSource(PipelineServiceSource):
                                 ),
                                 lineageDetails=LineageDetails(
                                     source=LineageSource.PipelineLineage,
-                                    description=f"Kestra Flow trigger: {t.get('id')}",
+                                    description=f"Kestra Flow trigger: {trig.id}",
                                 ),
                             )
                         )
@@ -332,9 +331,8 @@ class KestraSource(PipelineServiceSource):
         if not triggers:
             return None
         for trig in triggers:
-            t = trig.model_dump(by_alias=True) if hasattr(trig, "model_dump") else dict(trig)
-            if str(t.get("type", "")).endswith("Schedule") and t.get("cron"):
-                return str(t["cron"])
+            if trig.type.endswith("Schedule") and trig.cron:
+                return str(trig.cron)
         return None
 
     def _task_statuses(self, detail: KestraExecution) -> List[TaskStatus]:

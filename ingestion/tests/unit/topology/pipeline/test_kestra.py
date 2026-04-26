@@ -104,6 +104,9 @@ def test_yield_pipeline_builds_tasks_from_graph(source):
     assert {"extract", "transform", "load"}.issubset(task_names)
     # Cron schedule preserved
     assert req.scheduleInterval == "0 2 * * *"
+    # FQN preserves Kestra namespace so metadata.get_by_name works
+    # at lineage emission time
+    assert model_str(req.name) == "hackathon.demo.cron_etl"
 
 
 def test_yield_pipeline_status_emits_successful_runs(source):

@@ -148,3 +148,13 @@ class KestraClient:
         )
         resp.raise_for_status()
         return True
+
+    def close(self) -> None:
+        """Release the underlying HTTP session."""
+        self._session.close()
+
+    def __enter__(self) -> "KestraClient":
+        return self
+
+    def __exit__(self, *_args) -> None:
+        self.close()
