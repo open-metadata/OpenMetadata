@@ -29,6 +29,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickhouse.utils import (
     _get_column_info,
     _get_column_type,
+    get_dictionary_names,
+    get_dictionary_names_dialect,
     get_mview_names,
     get_mview_names_dialect,
     get_pk_constraint,
@@ -96,6 +98,9 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
 )
 Inspector.get_mview_names = get_mview_names
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
+# Dictionary engine tables (ingested as TableType.External)
+Inspector.get_dictionary_names = get_dictionary_names
+ClickHouseDialect.get_dictionary_names = get_dictionary_names_dialect
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
@@ -128,11 +133,17 @@ class ClickhouseSource(CommonDbSourceService):
 
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
+
+        Clickhouse dictionaries are exposed as ``TableType.External`` so
+        that the lineage workflow can build upstream edges from the
+        dictionary's ``SOURCE()`` clause.
         """
 
         regular_tables = [
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(schema_name) or []
+            if table_name
+            not in (self.inspector.get_dictionary_names(schema_name) or [])
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)
@@ -142,5 +153,13 @@ class ClickhouseSource(CommonDbSourceService):
             TableNameAndType(name=table_name, type_=TableType.View)
             for table_name in self.inspector.get_view_names(schema_name) or []
         ]
+        # Dictionaries are first-class objects in Clickhouse that expose a
+        # backing data source via their SOURCE() clause.  We model them as
+        # External tables so the lineage workflow can link them to their
+        # upstream source tables.
+        dictionary_tables = [
+            TableNameAndType(name=table_name, type_=TableType.External)
+            for table_name in self.inspector.get_dictionary_names(schema_name) or []
+        ]
 
-        return regular_tables + material_tables + view_tables
+        return regular_tables + material_tables + view_tables + dictionary_tables
