@@ -211,6 +211,16 @@ export function useOntologyGraphDerived({
 
     if (relationTypeFilterIds.length > 0) {
       const nodeTypeMap = new Map(filteredNodes.map((n) => [n.id, n.type]));
+
+      // Snapshot which nodes have any edge before relation-type filtering.
+      // This distinguishes truly isolated nodes (never had an edge) from nodes
+      // that are connected but whose edge type doesn't match the active filter.
+      const nodesWithAnyEdge = new Set<string>();
+      filteredEdges.forEach((e) => {
+        nodesWithAnyEdge.add(e.from);
+        nodesWithAnyEdge.add(e.to);
+      });
+
       filteredEdges = filteredEdges.filter((e) => {
         const fromType = nodeTypeMap.get(e.from);
         const toType = nodeTypeMap.get(e.to);
@@ -226,6 +236,25 @@ export function useOntologyGraphDerived({
 
         return relationTypeFilterIds.includes(e.relationType);
       });
+
+      const connectedByRelationType = new Set<string>();
+      filteredEdges.forEach((e) => {
+        connectedByRelationType.add(e.from);
+        connectedByRelationType.add(e.to);
+      });
+      // Keep a node when:
+      //   - it has a matching-type edge, OR
+      //   - showIsolatedNodes is on AND it had no edges at all before this filter
+      //     (a truly isolated term, not a term whose edges were just filtered away)
+      // Glossary root nodes are never kept here — they are structural labels with
+      // no edges; the glossary filter block already controls their visibility.
+      filteredNodes = filteredNodes.filter(
+        (n) =>
+          connectedByRelationType.has(n.id) ||
+          (filters.showIsolatedNodes &&
+            n.type !== 'glossary' &&
+            !nodesWithAnyEdge.has(n.id))
+      );
     }
 
     if (filters.showCrossGlossaryOnly) {

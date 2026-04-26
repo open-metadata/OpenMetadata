@@ -18,11 +18,25 @@ import { mockTableData } from '../mocks/TableVersion.mock';
 import { MOCK_ASSIGNEE_DATA } from '../mocks/Task.mock';
 import { getUserAndTeamSearch } from '../rest/miscAPI';
 import {
+  TaskCategory,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskPriority,
+} from '../rest/tasksAPI';
+import {
   fetchOptions,
+  getDescriptionTaskFieldPath,
   getEntityTableName,
+  getFormattedTaskFieldValue,
+  getNormalizedTaskFieldContainer,
+  getNormalizedTaskPayload,
+  getTagTaskFieldPath,
   getTaskAssignee,
+  getTaskDisplayId,
   getTaskEntityFQN,
   getTaskMessage,
+  isTaskPendingFurtherApproval,
+  isTaskTerminalStatus,
 } from './TasksUtils';
 
 jest.mock('../rest/miscAPI', () => ({
@@ -297,6 +311,206 @@ describe('Tests for getTaskAssignee', () => {
         value: 'aa1eee18-5468-40f8-9ddc-e73f6fb9917f',
       },
     ]);
+  });
+});
+
+describe('Tests for getNormalizedTaskPayload', () => {
+  it('should normalize description payload fields', () => {
+    const payload = getNormalizedTaskPayload({
+      id: 'description-task',
+      taskId: 'TASK-00010',
+      name: 'Update description',
+      category: TaskCategory.MetadataUpdate,
+      type: TaskEntityType.DescriptionUpdate,
+      status: TaskEntityStatus.Open,
+      priority: TaskPriority.Medium,
+      payload: {
+        fieldPath: 'description',
+        currentDescription: 'Current description',
+        newDescription: 'Updated description',
+      },
+    });
+
+    expect(payload).toEqual(
+      expect.objectContaining({
+        fieldPath: 'description',
+        currentDescription: 'Current description',
+        newDescription: 'Updated description',
+        suggestedValue: 'Updated description',
+        isSuggestionEmpty: false,
+      })
+    );
+  });
+
+  it('should normalize tag update payload fields and legacy suggested value', () => {
+    const payload = getNormalizedTaskPayload({
+      id: 'tag-task',
+      taskId: 'TASK-00011',
+      name: 'Update tags',
+      category: TaskCategory.MetadataUpdate,
+      type: TaskEntityType.TagUpdate,
+      status: TaskEntityStatus.Open,
+      priority: TaskPriority.Medium,
+      payload: {
+        fieldPath: 'columns::email::tags',
+        currentTags: [
+          {
+            tagFQN: 'PII.Sensitive',
+            source: 'Classification',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        ],
+        tagsToAdd: [
+          {
+            tagFQN: 'PersonalData.Personal',
+            source: 'Classification',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        ],
+        tagsToRemove: [
+          {
+            tagFQN: 'PII.Sensitive',
+            source: 'Classification',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        ],
+      },
+    });
+
+    expect(payload.currentTags).toHaveLength(1);
+    expect(payload.suggestedTags).toEqual([
+      expect.objectContaining({
+        tagFQN: 'PersonalData.Personal',
+      }),
+    ]);
+    expect(payload.suggestedValue).toContain('PersonalData.Personal');
+    expect(payload.isSuggestionEmpty).toBe(false);
+  });
+});
+
+describe('Tests for task field path helpers', () => {
+  it('should normalize nested task field containers for schema-backed assets', () => {
+    expect(getNormalizedTaskFieldContainer('messageSchema.schemaFields')).toBe(
+      'messageSchema'
+    );
+    expect(getNormalizedTaskFieldContainer('dataModel.columns')).toBe(
+      'dataModel'
+    );
+    expect(getNormalizedTaskFieldContainer('requestSchema.schemaFields')).toBe(
+      'requestSchema'
+    );
+    expect(getNormalizedTaskFieldContainer('responseSchema.schemaFields')).toBe(
+      'responseSchema'
+    );
+  });
+
+  it('should preserve simple values and quote nested field paths', () => {
+    expect(getFormattedTaskFieldValue('shop_id')).toBe('shop_id');
+    expect(getFormattedTaskFieldValue('default.name.last_name')).toBe(
+      '"default.name.last_name"'
+    );
+  });
+
+  it('should build description task field paths for tables, topics, containers, and api endpoints', () => {
+    expect(getDescriptionTaskFieldPath('columns', 'address.street_name')).toBe(
+      'columns::"address.street_name"::description'
+    );
+    expect(
+      getDescriptionTaskFieldPath(
+        'messageSchema.schemaFields',
+        'default.name.last_name'
+      )
+    ).toBe('messageSchema::"default.name.last_name"::description');
+    expect(
+      getDescriptionTaskFieldPath('dataModel.columns', 'department.id')
+    ).toBe('dataModel::"department.id"::description');
+    expect(
+      getDescriptionTaskFieldPath(
+        'requestSchema.schemaFields',
+        'default.name.first_name'
+      )
+    ).toBe('requestSchema::"default.name.first_name"::description');
+    expect(
+      getDescriptionTaskFieldPath(
+        'responseSchema.schemaFields',
+        'default.name.first_name'
+      )
+    ).toBe('responseSchema::"default.name.first_name"::description');
+  });
+
+  it('should build tag task field paths for tables, topics, containers, and api endpoints', () => {
+    expect(getTagTaskFieldPath('columns', 'address.street_name')).toBe(
+      'columns."address.street_name"'
+    );
+    expect(
+      getTagTaskFieldPath(
+        'messageSchema.schemaFields',
+        'default.name.first_name'
+      )
+    ).toBe('messageSchema."default.name.first_name"');
+    expect(getTagTaskFieldPath('dataModel.columns', 'department.id')).toBe(
+      'dataModel."department.id"'
+    );
+    expect(
+      getTagTaskFieldPath(
+        'requestSchema.schemaFields',
+        'default.name.first_name'
+      )
+    ).toBe('requestSchema."default.name.first_name"');
+    expect(
+      getTagTaskFieldPath(
+        'responseSchema.schemaFields',
+        'default.name.first_name'
+      )
+    ).toBe('responseSchema."default.name.first_name"');
+  });
+});
+
+describe('Tests for task approval status helpers', () => {
+  it('should treat only terminal task states as terminal', () => {
+    expect(isTaskTerminalStatus(TaskEntityStatus.Approved)).toBe(true);
+    expect(isTaskTerminalStatus(TaskEntityStatus.Completed)).toBe(true);
+    expect(isTaskTerminalStatus(TaskEntityStatus.Open)).toBe(false);
+  });
+
+  it('should mark open task responses as pending further approval', () => {
+    expect(
+      isTaskPendingFurtherApproval({
+        id: 'pending-task',
+        taskId: 'TASK-00012',
+        name: 'Pending approval',
+        category: TaskCategory.Approval,
+        type: TaskEntityType.GlossaryApproval,
+        status: TaskEntityStatus.Open,
+        priority: TaskPriority.Medium,
+      })
+    ).toBe(true);
+    expect(
+      isTaskPendingFurtherApproval({
+        id: 'approved-task',
+        taskId: 'TASK-00013',
+        name: 'Approved task',
+        category: TaskCategory.Approval,
+        type: TaskEntityType.GlossaryApproval,
+        status: TaskEntityStatus.Approved,
+        priority: TaskPriority.Medium,
+      })
+    ).toBe(false);
+  });
+});
+
+describe('Tests for getTaskDisplayId', () => {
+  it('should strip the TASK prefix and leading zeroes to match main UI numbering', () => {
+    expect(getTaskDisplayId('TASK-00012')).toBe('12');
+    expect(getTaskDisplayId('TASK-00000')).toBe('0');
+  });
+
+  it('should fall back to the original identifier when the format is not standard', () => {
+    expect(getTaskDisplayId('custom-task-id')).toBe('custom-task-id');
+    expect(getTaskDisplayId(undefined)).toBe('');
   });
 });
 

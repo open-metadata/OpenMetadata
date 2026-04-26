@@ -172,6 +172,17 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return getWorksheetService().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return getWorksheetService().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Worksheet getVersion(UUID id, Double version) {
     return getWorksheetService().getVersion(id.toString(), version);
   }

@@ -66,9 +66,7 @@ const ActivityFeedActions = ({
   };
 
   const editCheck = useMemo(() => {
-    if (feed.type === ThreadType.Announcement && !isPost) {
-      return false;
-    } else if (feed.type === ThreadType.Task && !isPost) {
+    if (feed.type === ThreadType.Task && !isPost) {
       return false;
     } else if (isAuthor) {
       return true;

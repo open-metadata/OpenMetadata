@@ -13,7 +13,7 @@ Interface for sampler
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Union
+from typing import Any, List, Optional, Set
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     SampleDataIngestionConfig,
@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
-    Table,
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
@@ -33,10 +32,12 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.storageService import StorageConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     ProcessingEngine,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.sampler.config import (
@@ -69,9 +70,11 @@ class SamplerInterface(ABC):
     # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: DatabaseConnection
+        | DatalakeConnection
+        | StorageConnection,
         ometa_client: OpenMetadata,
-        entity: Table,
+        entity: ClassifiableEntityType,
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
         sample_config: SampleConfig = SampleConfig(),
@@ -103,9 +106,11 @@ class SamplerInterface(ABC):
     @classmethod
     def create(
         cls,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: DatabaseConnection
+        | DatalakeConnection
+        | StorageConnection,
         ometa_client: OpenMetadata,
-        entity: Table,
+        entity: ClassifiableEntityType,
         schema_entity: DatabaseSchema,
         database_entity: Database,
         table_config: Optional[TableConfig] = None,
