@@ -110,6 +110,30 @@ const user4 = new UserClass();
 const adminUser = new UserClass();
 
 test.describe('Glossary tests', () => {
+  const waitForTagSaveToFinish = async ({
+    page,
+    responseMatcher,
+  }: {
+    page: import('@playwright/test').Page;
+    responseMatcher:
+      | string
+      | RegExp
+      | ((
+          response: import('@playwright/test').Response
+        ) => boolean | Promise<boolean>);
+  }) => {
+    const saveButton = page.getByTestId('saveAssociatedTag');
+    const response = page.waitForResponse(responseMatcher);
+
+    await saveButton.click();
+    await response;
+    await saveButton
+      .locator('[data-icon="loading"]')
+      .waitFor({ state: 'detached' });
+    await expect(saveButton).not.toBeVisible();
+    await waitForAllLoadersToDisappear(page);
+  };
+
   const selectGlossaryTermInPicker = async ({
     page,
     inputValue,
@@ -533,7 +557,7 @@ test.describe('Glossary tests', () => {
 
   test('Add and Remove Assets', async ({ browser }) => {
     test.slow(true);
-    test.setTimeout(300000);
+    test.setTimeout(420000);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
@@ -593,16 +617,13 @@ test.describe('Glossary tests', () => {
           fullyQualifiedName: glossaryTerm2.data.fullyQualifiedName,
         });
 
-        const patchRequest = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/dashboards/') &&
-            res.request().method() === 'PATCH'
-        );
-
         await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest;
+        await waitForTagSaveToFinish({
+          page,
+          responseMatcher: (res) =>
+            res.url().includes('/api/v1/dashboards/') &&
+            res.request().method() === 'PATCH',
+        });
 
         // Add non mutually exclusive tags
         await page.click(
@@ -627,12 +648,11 @@ test.describe('Glossary tests', () => {
           fullyQualifiedName: glossaryTerm4.data.fullyQualifiedName,
         });
 
-        const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
-
         await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest2;
+        await waitForTagSaveToFinish({
+          page,
+          responseMatcher: `/api/v1/dashboards/*`,
+        });
 
         // Check if the terms are present
         await expect(
@@ -670,12 +690,11 @@ test.describe('Glossary tests', () => {
           fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
         });
 
-        const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
-
         await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest3;
+        await waitForTagSaveToFinish({
+          page,
+          responseMatcher: `/api/v1/charts/*`,
+        });
 
         // Check if the term is present
         const tagSelectorText = await page

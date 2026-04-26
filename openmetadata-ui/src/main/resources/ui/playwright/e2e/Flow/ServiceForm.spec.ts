@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
@@ -37,6 +37,18 @@ const SERVICE_NAMES = {
 };
 
 const adminUser = new UserClass();
+
+const openDashboardServiceForm = async (page: Page, serviceTestId: string) => {
+  await page.goto('/dashboardServices/add-service', {
+    timeout: 120000,
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForURL('**/dashboardServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
+  await waitForAllLoadersToDisappear(page, 'loader', 120000);
+  await expect(page.getByTestId(serviceTestId)).toBeVisible();
+};
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -83,8 +95,7 @@ test.describe(
       test('Verify form selects are working properly', async ({ page }) => {
         test.slow();
 
-        await page.goto('/dashboardServices/add-service');
-        await waitForAllLoadersToDisappear(page);
+        await openDashboardServiceForm(page, 'Superset');
         await page.click(`[data-testid="Superset"]`);
         await page.click('[data-testid="next-button"]');
 
@@ -243,8 +254,7 @@ test.describe(
       test('Verify SSL cert upload with long filename and UI overflow handling', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
-        await waitForAllLoadersToDisappear(page);
+        await openDashboardServiceForm(page, 'Superset');
         await page.click(`[data-testid="Superset"]`);
         await page.click('[data-testid="next-button"]');
 
@@ -387,8 +397,7 @@ test.describe(
       test('Verify if string input inside oneOf config works properly', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
-        await waitForAllLoadersToDisappear(page);
+        await openDashboardServiceForm(page, 'Looker');
 
         await page.getByTestId('Looker').click();
         await page.getByTestId('next-button').click();

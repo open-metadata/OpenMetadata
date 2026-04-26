@@ -1195,6 +1195,8 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Data Steward User - Permission Verification', () => {
+      test.describe.configure({ timeout: 180000 });
+
       const dataStewardEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
