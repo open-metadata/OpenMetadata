@@ -75,7 +75,19 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   }>();
 
   const { domains, dataProducts, id: entityId } = data ?? {};
-
+ const hasClassificationTags = selectedTags.some(
+    (tag) => tag.source === TagSource.Classification
+  );
+  const hasGlossaryTags = selectedTags.some(
+    (tag) => tag.source === TagSource.Glossary
+  );
+ 
+  const shouldShowTags = editTagPermission || hasClassificationTags;
+  const shouldShowGlossaryTerms =
+    editGlossaryTermsPermission || hasGlossaryTags;
+  const shouldShowDataProducts =
+    showDataProductContainer &&
+    (editDataProductPermission || Boolean(dataProducts?.length));
   return (
     <>
       {beforeSlot}
