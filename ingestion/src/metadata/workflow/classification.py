@@ -11,6 +11,7 @@
 """
 Workflow definition for the profiler
 """
+
 from typing import cast
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
@@ -51,9 +52,7 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
             self.steps = (sampler_processor, sink)
 
     def _get_pii_processor(self) -> Processor:
-        return create_pii_processor(
-            self.metadata, self.config, classification_filter=[PII]
-        )
+        return create_pii_processor(self.metadata, self.config, classification_filter=[PII])
 
     def _get_sampler_processor(self) -> Processor:
         return SamplerProcessor.create(self.config.model_dump(), self.metadata)

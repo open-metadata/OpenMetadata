@@ -12,6 +12,7 @@
 """
 Deltalake Base Client
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Iterable, List, Optional
@@ -42,27 +43,19 @@ class TableInfo:
 class DeltalakeBaseClient(ABC):
     @classmethod
     @abstractmethod
-    def from_config(
-        cls, service_connection: DeltaLakeConnection
-    ) -> "DeltalakeBaseClient":
+    def from_config(cls, service_connection: DeltaLakeConnection) -> "DeltalakeBaseClient":
         """Returns a Deltalake Client based on the DatalakeConfig passed."""
 
     @abstractmethod
-    def get_database_names(
-        self, service_connection: DeltaLakeConnection
-    ) -> Iterable[str]:
+    def get_database_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
         """Returns the Database Names, based on the underlying client."""
 
     @abstractmethod
-    def get_database_schema_names(
-        self, service_connection: DeltaLakeConnection
-    ) -> Iterable[str]:
+    def get_database_schema_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
         """Returns the RAW database schema names, based on the underlying client."""
 
     @abstractmethod
-    def get_table_info(
-        self, service_connection: DeltaLakeConnection, schema_name: str
-    ) -> Iterable[TableInfo]:
+    def get_table_info(self, service_connection: DeltaLakeConnection, schema_name: str) -> Iterable[TableInfo]:
         """Returns the TableInfo, based on the underlying client."""
 
     @abstractmethod

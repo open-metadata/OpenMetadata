@@ -11,6 +11,7 @@
 """
 Topology Patch Integration Test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -73,9 +74,7 @@ def topology_users(metadata):
     """Create users for topology patch tests."""
     user = _safe_create_or_update(
         metadata,
-        CreateUserRequest(
-            name="topology-patch-user", email="topologypatchuser@user.com"
-        ),
+        CreateUserRequest(name="topology-patch-user", email="topologypatchuser@user.com"),
     )
     override_user = _safe_create_or_update(
         metadata,
@@ -135,9 +134,7 @@ def topology_schema(metadata, topology_database):
 
     yield schema
 
-    metadata.delete(
-        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -276,9 +273,7 @@ class TestOMetaTopologyPatchAPI:
     - database_service: DatabaseService (module scope)
     """
 
-    def test_topology_patch_table_columns_with_random_order(
-        self, metadata, table_entity_one, topology_users
-    ):
+    def test_topology_patch_table_columns_with_random_order(self, metadata, table_entity_one, topology_users):
         """Check if the table columns are patched with random order."""
         new_columns_list = [
             Column(
@@ -318,9 +313,7 @@ class TestOMetaTopologyPatchAPI:
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
-        table_entity = metadata.get_by_id(
-            entity=Table, entity_id=table_entity_one.id.root, fields=["*"]
-        )
+        table_entity = metadata.get_by_id(entity=Table, entity_id=table_entity_one.id.root, fields=["*"])
         # Table tests - should NOT override (default behavior)
         assert table_entity.owners.root[0].id == topology_users["owner"].root[0].id
         assert table_entity.description.root == "TABLE ONE DESCRIPTION"
@@ -350,9 +343,7 @@ class TestOMetaTopologyPatchAPI:
         assert table_entity.columns[4].description.root == "test column2"
         assert table_entity.columns[4].displayName == "COLUMN TWO"
 
-    def test_topology_patch_table_columns_with_add_del(
-        self, metadata, table_entity_two
-    ):
+    def test_topology_patch_table_columns_with_add_del(self, metadata, table_entity_two):
         """Check if the table columns are patched with add/delete."""
         new_columns_list = [
             Column(
@@ -379,9 +370,7 @@ class TestOMetaTopologyPatchAPI:
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
-        table_entity = metadata.get_by_id(
-            entity=Table, entity_id=table_entity_two.id.root
-        )
+        table_entity = metadata.get_by_id(entity=Table, entity_id=table_entity_two.id.root)
         # Order follows destination: [col7, col3, col5, col1, col6]
         assert table_entity.columns[0].name.root == "column7"
         assert table_entity.columns[0].description.root == "test column7"
@@ -394,9 +383,7 @@ class TestOMetaTopologyPatchAPI:
         assert table_entity.columns[4].name.root == "column6"
         assert table_entity.columns[4].description.root == "test column6"
 
-    def test_topology_patch_with_override_enabled(
-        self, metadata, table_entity_three, topology_users
-    ):
+    def test_topology_patch_with_override_enabled(self, metadata, table_entity_three, topology_users):
         """Check if the table columns are patched with override enabled."""
         new_columns_list = [
             Column(
@@ -443,14 +430,9 @@ class TestOMetaTopologyPatchAPI:
             array_entity_fields=ARRAY_ENTITY_FIELDS,
             override_metadata=True,
         )
-        table_entity = metadata.get_by_id(
-            entity=Table, entity_id=table_entity_three.id.root, fields=["*"]
-        )
+        table_entity = metadata.get_by_id(entity=Table, entity_id=table_entity_three.id.root, fields=["*"])
         # Table tests - SHOULD override (override_metadata=True)
-        assert (
-            table_entity.owners.root[0].id
-            == topology_users["override_owner"].root[0].id
-        )
+        assert table_entity.owners.root[0].id == topology_users["override_owner"].root[0].id
         assert table_entity.description.root == "TABLE THREE DESCRIPTION OVERRIDEN"
         assert table_entity.displayName == "TABLE THREE OVERRIDEN"
         assert table_entity.tags[0].tagFQN.root == "PII.Sensitive"
@@ -481,9 +463,7 @@ class TestOMetaTopologyPatchAPI:
         assert table_entity.columns[5].name.root == "column4"
         assert table_entity.columns[5].description.root == "test column4 overriden"
 
-    def test_topology_patch_column_order_with_new_column_in_middle(
-        self, metadata, table_entity_column_order
-    ):
+    def test_topology_patch_column_order_with_new_column_in_middle(self, metadata, table_entity_column_order):
         """
         Reproduce issue #18246: a new column added in the middle should appear
         at its correct position, not appended at the end.
@@ -525,9 +505,7 @@ class TestOMetaTopologyPatchAPI:
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
-        table_entity = metadata.get_by_id(
-            entity=Table, entity_id=table_entity_column_order.id.root
-        )
+        table_entity = metadata.get_by_id(entity=Table, entity_id=table_entity_column_order.id.root)
         assert len(table_entity.columns) == 4
         assert table_entity.columns[0].name.root == "id"
         assert table_entity.columns[1].name.root == "name"

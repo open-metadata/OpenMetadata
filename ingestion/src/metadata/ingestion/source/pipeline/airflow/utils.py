@@ -29,9 +29,7 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
     Fetch Schedule Intervals from Airflow Dags
     """
     try:
-        timetable, schedule = pipeline_data.get("timetable", {}), pipeline_data.get(
-            "schedule_interval", {}
-        )
+        timetable, schedule = pipeline_data.get("timetable", {}), pipeline_data.get("schedule_interval", {})
 
         if timetable:
             # Fetch Cron as String
@@ -69,20 +67,14 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
                                 # If instantiation fails, return the class name
                                 return f"Custom Timetable ({expression_class.split('.')[-1]})"
                 except ImportError as import_error:
-                    logger.debug(
-                        f"Could not import timetable class {expression_class}: {import_error}"
-                    )
+                    logger.debug(f"Could not import timetable class {expression_class}: {import_error}")
                     return f"Custom Timetable ({expression_class.split('.')[-1]})"
                 except TypeError as type_error:
                     # If instantiation fails due to missing arguments, log and continue
-                    logger.debug(
-                        f"Could not instantiate timetable class {expression_class}: {type_error}"
-                    )
+                    logger.debug(f"Could not instantiate timetable class {expression_class}: {type_error}")
                     return f"Custom Timetable ({expression_class.split('.')[-1]})"
                 except Exception as inst_error:
-                    logger.debug(
-                        f"Error instantiating timetable class {expression_class}: {inst_error}"
-                    )
+                    logger.debug(f"Error instantiating timetable class {expression_class}: {inst_error}")
                     return f"Custom Timetable ({expression_class.split('.')[-1]})"
 
         if schedule:

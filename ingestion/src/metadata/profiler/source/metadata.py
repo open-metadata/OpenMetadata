@@ -11,6 +11,7 @@
 """
 OpenMetadata source for the profiler
 """
+
 from typing import Iterable, List, Optional, cast
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -73,23 +74,17 @@ class OpenMetadataSource(Source):
                 "and that your ingestion token (settings > bots) is still valid."
             )
 
-        logger.info(
-            f"Starting profiler for service {self.config.source.serviceName}"
-            f":{self.config.source.type.lower()}"
-        )
+        logger.info(f"Starting profiler for service {self.config.source.serviceName}:{self.config.source.type.lower()}")
 
     def _get_fields(self) -> List[str]:
         """Get the fields required to process the tables"""
-        return (
-            TABLE_FIELDS
-            if not self.source_config.processPiiSensitive
-            else TABLE_FIELDS + TAGS_FIELD
-        )
+        return TABLE_FIELDS if not self.source_config.processPiiSensitive else TABLE_FIELDS + TAGS_FIELD
 
     def _validate_service_name(self):
         """Validate service name exists in OpenMetadata"""
         return self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.source.serviceName  # type: ignore
+            entity=DatabaseService,
+            fqn=self.config.source.serviceName,  # type: ignore
         )
 
     def prepare(self):
@@ -104,9 +99,7 @@ class OpenMetadataSource(Source):
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
         global_profiler_config = self.metadata.get_profiler_config_settings()
-        entity_fetcher = EntityFetcher(
-            self.config, self.metadata, global_profiler_config, self.status
-        )
+        entity_fetcher = EntityFetcher(self.config, self.metadata, global_profiler_config, self.status)
         yield from entity_fetcher.fetch()
 
     @classmethod

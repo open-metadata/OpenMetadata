@@ -14,6 +14,7 @@ Unit tests for BurstIQSampler.
 Covers: get_client, raw_dataset pagination/sampling, fetch_sample_data,
 _cast_dataframe type coercion, and fallback methods.
 """
+
 import math
 from unittest.mock import Mock, PropertyMock, patch
 from uuid import uuid4
@@ -48,10 +49,7 @@ class _ConcreteBurstIQSampler(BurstIQSampler):
     leaves abstract (it is normally supplied by the profiler interface layer)."""
 
     def get_columns(self):
-        return [
-            SQALikeColumn(name=col.name.root, type=col.dataType)
-            for col in (self.entity.columns or [])
-        ]
+        return [SQALikeColumn(name=col.name.root, type=col.dataType) for col in (self.entity.columns or [])]
 
 
 BURSTIQ_CONNECTION = BurstIQConnection(
@@ -109,15 +107,11 @@ class TestBurstIQSamplerRawDataset:
                 )
             )
         )
-        mock_client.get_records_by_tql.return_value = [
-            {"score": 1.0, "age": i} for i in range(3)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": 1.0, "age": i} for i in range(3)]
 
         dfs = list(sampler.raw_dataset())
 
-        mock_client.get_records_by_tql.assert_called_once_with(
-            "TestChain", limit=3, skip=0
-        )
+        mock_client.get_records_by_tql.assert_called_once_with("TestChain", limit=3, skip=0)
         assert len(dfs) == 1
         assert len(dfs[0]) == 3
 
@@ -131,23 +125,17 @@ class TestBurstIQSamplerRawDataset:
             )
         )
         mock_client.get_chain_metrics.return_value = {"TestChain": 100}
-        mock_client.get_records_by_tql.return_value = [
-            {"score": float(i)} for i in range(50)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": float(i)} for i in range(50)]
 
         dfs = list(sampler.raw_dataset())
 
         mock_client.get_chain_metrics.assert_called_once()
-        mock_client.get_records_by_tql.assert_called_once_with(
-            "TestChain", limit=50, skip=0
-        )
+        mock_client.get_records_by_tql.assert_called_once_with("TestChain", limit=50, skip=0)
         assert sum(len(df) for df in dfs) == 50
 
     def test_no_sample_fetches_all_via_pagination(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_records_by_tql.return_value = [
-            {"score": float(i)} for i in range(10)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": float(i)} for i in range(10)]
 
         dfs = list(sampler.raw_dataset())
 
@@ -168,10 +156,7 @@ class TestBurstIQSamplerRawDataset:
         sampler.sample_config = SampleConfig()
         page1 = [{"score": float(i)} for i in range(_PAGE_SIZE)]
         page2 = [{"score": float(i)} for i in range(_PAGE_SIZE, _PAGE_SIZE * 2)]
-        page3 = [
-            {"score": float(i)}
-            for i in range(_PAGE_SIZE * 2, _PAGE_SIZE * 2 + _PAGE_SIZE // 2)
-        ]
+        page3 = [{"score": float(i)} for i in range(_PAGE_SIZE * 2, _PAGE_SIZE * 2 + _PAGE_SIZE // 2)]
         mock_client.get_records_by_tql.side_effect = [page1, page2, page3]
 
         dfs = list(sampler.raw_dataset())
@@ -184,9 +169,7 @@ class TestBurstIQSamplerRawDataset:
 
     def test_stops_early_on_short_page(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
-        mock_client.get_records_by_tql.return_value = [
-            {"score": float(i)} for i in range(5)
-        ]
+        mock_client.get_records_by_tql.return_value = [{"score": float(i)} for i in range(5)]
 
         dfs = list(sampler.raw_dataset())
 
@@ -333,9 +316,7 @@ class TestBurstIQSamplerFallbacks:
 
         assert result is sentinel
 
-    def test_fetch_sample_data_from_user_query_delegates_to_fetch_sample_data(
-        self, sampler
-    ):
+    def test_fetch_sample_data_from_user_query_delegates_to_fetch_sample_data(self, sampler):
         sampler._columns = [SQALikeColumn(name="score", type=DataType.DOUBLE)]
         df = pd.DataFrame({"score": [1.0, 2.0]})
         with patch.object(

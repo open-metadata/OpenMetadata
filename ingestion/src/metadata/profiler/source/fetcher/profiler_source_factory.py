@@ -34,17 +34,13 @@ class ProfilerSourceFactory:
     """Creational factory for profiler source objects"""
 
     def __init__(self):
-        self._source_type: Dict[str, Callable[[], Type[ProfilerSourceInterface]]] = {
-            "base": self.base
-        }
+        self._source_type: Dict[str, Callable[[], Type[ProfilerSourceInterface]]] = {"base": self.base}
 
     def register_source(self, type_: str, source_fn):
         """Register a new source type"""
         self._source_type[type_] = source_fn
 
-    def register_many_sources(
-        self, source_dict: Dict[str, Callable[[], Type[ProfilerSourceInterface]]]
-    ):
+    def register_many_sources(self, source_dict: Dict[str, Callable[[], Type[ProfilerSourceInterface]]]):
         """Register multiple source types at once"""
         for type_, source_fn in source_dict.items():
             self.register_source(type_, source_fn)

@@ -12,6 +12,7 @@
 """
 Datalake Azure Blob Client
 """
+
 from functools import partial
 from typing import Callable, Iterable, Optional, Set, Tuple
 
@@ -40,9 +41,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
             client = AzureClient(config.securityConfig).create_blob_client()
             return cls(client=client)
         except Exception as exc:
-            raise RuntimeError(
-                f"Unknown error connecting with {config.securityConfig}: {exc}."
-            )
+            raise RuntimeError(f"Unknown error connecting with {config.securityConfig}: {exc}.")
 
     def update_client_database(self, config, database_name):
         # For the AzureBlob Client we don't need to do anything when changing the database
@@ -69,10 +68,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
             if skip_cold_storage:
                 blob_tier = getattr(file, "blob_tier", None)
                 if blob_tier and blob_tier in AZURE_COLD_TIERS:
-                    logger.debug(
-                        f"Skipping cold storage object: {file.name} "
-                        f"(blob_tier: {blob_tier})"
-                    )
+                    logger.debug(f"Skipping cold storage object: {file.name} (blob_tier: {blob_tier})")
                     continue
             yield file.name, getattr(file, "size", None)
 

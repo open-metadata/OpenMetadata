@@ -51,10 +51,7 @@ def _create_lineage_runner_with_timeout_for_table_lineage(
     elapsed = time.time() - start
 
     # Clean, informative logging
-    print(
-        f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: "
-        f"{source_count} sources, {target_count} targets"
-    )
+    print(f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: {source_count} sources, {target_count} targets")
 
     return lr
 
@@ -109,25 +106,19 @@ def assert_table_lineage(
         [source_tables, target_tables],
     ):
         actual = set(actual)
-        expected = (
-            set()
-            if expected is None
-            else {Table(t) if isinstance(t, str) else t for t in expected}
-        )
+        expected = set() if expected is None else {Table(t) if isinstance(t, str) else t for t in expected}
         assert actual == expected, (
             f"\n\t{parser_prefix}Expected Lineage: {expected}"
             f"\n\t{parser_prefix}Actual Lineage:   {actual}"
             f"\n\t{parser_prefix}Differences:"
-            f"\n\t - Missing: {expected-actual}"
-            f"\n\t - Extra:   {actual-expected}"
+            f"\n\t - Missing: {expected - actual}"
+            f"\n\t - Extra:   {actual - expected}"
         )
 
 
 def assert_column_lineage(
     lr: LineageRunner,
-    column_lineages: Optional[
-        List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]
-    ] = None,
+    column_lineages: Optional[List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]] = None,
     parser_name: str = None,
 ):
     """
@@ -168,8 +159,8 @@ def assert_column_lineage(
         f"\n\t{parser_prefix}Expected Lineage: {expected}"
         f"\n\t{parser_prefix}Actual Lineage:   {actual}"
         f"\n\t{parser_prefix}Differences:"
-        f"\n\t - Missing: {expected-actual}"
-        f"\n\t - Extra:   {actual-expected}"
+        f"\n\t - Missing: {expected - actual}"
+        f"\n\t - Extra:   {actual - expected}"
     )
 
 
@@ -193,12 +184,8 @@ def assert_table_lineage_graphs_match(
     graph1 = lr1._sql_holder.graph
     graph2 = lr2._sql_holder.graph
 
-    table_graph1 = graph1.subgraph(
-        [n for n in graph1.nodes() if not isinstance(n, Column)]
-    )
-    table_graph2 = graph2.subgraph(
-        [n for n in graph2.nodes() if not isinstance(n, Column)]
-    )
+    table_graph1 = graph1.subgraph([n for n in graph1.nodes() if not isinstance(n, Column)])
+    table_graph2 = graph2.subgraph([n for n in graph2.nodes() if not isinstance(n, Column)])
 
     nodes1, edges1 = len(table_graph1.nodes()), len(table_graph1.edges())
     nodes2, edges2 = len(table_graph2.nodes()), len(table_graph2.edges())
@@ -209,8 +196,7 @@ def assert_table_lineage_graphs_match(
         flush=True,
     )
     assert nx.is_isomorphic(table_graph1, table_graph2), (
-        f"\n\tTable-level graph with {name1}: {table_graph1}\n\t"
-        f"Table-level graph with {name2}: {table_graph2}"
+        f"\n\tTable-level graph with {name1}: {table_graph1}\n\tTable-level graph with {name2}: {table_graph2}"
     )
     print("✓")
 
@@ -241,9 +227,7 @@ def assert_column_lineage_graphs_match(
         end=" ",
         flush=True,
     )
-    assert nx.is_isomorphic(graph1, graph2), (
-        f"\n\tGraph with {name1}: {graph1}\n\t" f"Graph with {name2}: {graph2}"
-    )
+    assert nx.is_isomorphic(graph1, graph2), f"\n\tGraph with {name1}: {graph1}\n\tGraph with {name2}: {graph2}"
     print("✓")
 
 
@@ -281,9 +265,7 @@ def assert_table_lineage_equal(
             lr_sqlglot = _create_lineage_runner_with_timeout_for_table_lineage(
                 sql, dialect, SqlGlotLineageAnalyzer, "SqlGlot"
             )
-            assert_table_lineage(
-                lr_sqlglot, source_tables, target_tables, parser_name="SqlGlot"
-            )
+            assert_table_lineage(lr_sqlglot, source_tables, target_tables, parser_name="SqlGlot")
             runners.append(("sqlglot", lr_sqlglot))
             print("[SqlGlot] ✅ Table lineage assertion passed.")
         except TimeoutError:
@@ -311,9 +293,7 @@ def assert_table_lineage_equal(
             lr_sqlfluff = _create_lineage_runner_with_timeout_for_table_lineage(
                 sql, dialect, SqlFluffLineageAnalyzer, "SqlFluff"
             )
-            assert_table_lineage(
-                lr_sqlfluff, source_tables, target_tables, parser_name="SqlFluff"
-            )
+            assert_table_lineage(lr_sqlfluff, source_tables, target_tables, parser_name="SqlFluff")
             runners.append(("sqlfluff", lr_sqlfluff))
             print("[SqlFluff] ✅ Table lineage assertion passed.")
         except TimeoutError:
@@ -341,9 +321,7 @@ def assert_table_lineage_equal(
             lr_sqlparse = _create_lineage_runner_with_timeout_for_table_lineage(
                 sql, dialect, SqlParseLineageAnalyzer, "SqlParse"
             )
-            assert_table_lineage(
-                lr_sqlparse, source_tables, target_tables, parser_name="SqlParse"
-            )
+            assert_table_lineage(lr_sqlparse, source_tables, target_tables, parser_name="SqlParse")
             runners.append(("sqlparse", lr_sqlparse))
             print("[SqlParse] ✅ Table lineage assertion passed.")
         except TimeoutError:
@@ -366,9 +344,7 @@ def assert_table_lineage_equal(
             print(message)
 
     if len(runners) > 1 and not skip_graph_check:
-        print(
-            f"\n[Graph Check] Comparing table lineage graphs across {len(runners)} parsers..."
-        )
+        print(f"\n[Graph Check] Comparing table lineage graphs across {len(runners)} parsers...")
         for i in range(len(runners) - 1):
             for j in range(i + 1, len(runners)):
                 name1, runner1 = runners[i]
@@ -377,12 +353,8 @@ def assert_table_lineage_equal(
                 # Get graph stats for error reporting
                 graph1 = runner1._sql_holder.graph
                 graph2 = runner2._sql_holder.graph
-                table_graph1 = graph1.subgraph(
-                    [n for n in graph1.nodes() if not isinstance(n, Column)]
-                )
-                table_graph2 = graph2.subgraph(
-                    [n for n in graph2.nodes() if not isinstance(n, Column)]
-                )
+                table_graph1 = graph1.subgraph([n for n in graph1.nodes() if not isinstance(n, Column)])
+                table_graph2 = graph2.subgraph([n for n in graph2.nodes() if not isinstance(n, Column)])
                 nodes1, edges1 = len(table_graph1.nodes()), len(table_graph1.edges())
                 nodes2, edges2 = len(table_graph2.nodes()), len(table_graph2.edges())
 
@@ -408,8 +380,7 @@ def assert_table_lineage_equal(
                     print(message)
                 except AssertionError as ae:
                     message = (
-                        f"[Graph Check] ❌ Table lineage graph comparison failed"
-                        f" between {name1} and {name2}: {str(ae)}"
+                        f"[Graph Check] ❌ Table lineage graph comparison failed between {name1} and {name2}: {str(ae)}"
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
@@ -429,9 +400,7 @@ def assert_table_lineage_equal(
 
 def assert_column_lineage_equal(
     sql: str,
-    column_lineages: Optional[
-        List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]
-    ] = None,
+    column_lineages: Optional[List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]] = None,
     dialect: str = "ansi",
     test_sqlglot: bool = True,
     test_sqlfluff: bool = True,
@@ -541,9 +510,7 @@ def assert_column_lineage_equal(
 
     # Compare graphs between all enabled parsers - ALL must match
     if not skip_graph_check:
-        print(
-            f"\n[Graph Check] Comparing column lineage graphs across {len(runners)} parsers..."
-        )
+        print(f"\n[Graph Check] Comparing column lineage graphs across {len(runners)} parsers...")
         for i in range(len(runners) - 1):
             for j in range(i + 1, len(runners)):
                 name1, runner1 = runners[i]
@@ -611,6 +578,5 @@ def assert_lr_graphs_match(
     :param name2: Name of second parser (for error messages)
     """
     assert nx.is_isomorphic(lr1._sql_holder.graph, lr2._sql_holder.graph), (
-        f"\n\tGraph with {name1}: {lr1._sql_holder.graph}\n\t"
-        f"Graph with {name2}: {lr2._sql_holder.graph}"
+        f"\n\tGraph with {name1}: {lr1._sql_holder.graph}\n\tGraph with {name2}: {lr2._sql_holder.graph}"
     )

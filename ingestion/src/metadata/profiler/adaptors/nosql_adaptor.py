@@ -11,6 +11,7 @@
 """
 NoSQL adaptor for the NoSQL profiler.
 """
+
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union
 
@@ -29,14 +30,10 @@ class NoSQLAdaptor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def scan(
-        self, table: Table, columns: List[Column], limit: int
-    ) -> List[Dict[str, any]]:
+    def scan(self, table: Table, columns: List[Column], limit: int) -> List[Dict[str, any]]:
         pass
 
-    def query(
-        self, table: Table, columns: List[Column], query: any, limit: int
-    ) -> List[Dict[str, any]]:
+    def query(self, table: Table, columns: List[Column], query: any, limit: int) -> List[Dict[str, any]]:
         raise NotImplementedError
 
     def get_aggregates(
@@ -45,21 +42,29 @@ class NoSQLAdaptor(ABC):
         raise NotImplementedError
 
     def sum(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,  # pylint: disable=unused-argument
     ) -> any:
         return None
 
     def mean(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,  # pylint: disable=unused-argument
     ) -> any:
         return None
 
     def max(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,  # pylint: disable=unused-argument
     ) -> any:
         return None
 
     def min(
-        self, table: Table, column: Column  # pylint: disable=unused-argument
+        self,
+        table: Table,
+        column: Column,  # pylint: disable=unused-argument
     ) -> any:
         return None

@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import Optional
 from urllib.parse import quote_plus
@@ -63,18 +64,12 @@ def get_connection(connection: PrestoConnection) -> Engine:
     """
     Create connection
     """
-    connection.connectionArguments = (
-        connection.connectionArguments or init_empty_connection_arguments()
-    )
+    connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
     if connection.protocol:
         connection.connectionArguments.root["protocol"] = connection.protocol
     if connection.verify:
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
-        )
-        connection.connectionArguments.root["requests_kwargs"] = {
-            "verify": connection.verify
-        }
+        connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
+        connection.connectionArguments.root["requests_kwargs"] = {"verify": connection.verify}
 
     return create_generic_db_connection(
         connection=connection,
@@ -106,9 +101,7 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetDatabases": partial(
-            test_query, engine=engine, statement=PRESTO_SHOW_CATALOGS
-        ),
+        "GetDatabases": partial(test_query, engine=engine, statement=PRESTO_SHOW_CATALOGS),
         "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": custom_executor_for_table,
     }

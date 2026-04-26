@@ -12,6 +12,7 @@
 """
 Lineage utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path
@@ -61,9 +62,7 @@ def run_lineage(config_path: Path) -> None:
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(
-            exc, config_dict, PipelineType.lineage
-        )
+        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.lineage)
         sys.exit(1)
 
     if workflow.filePath:
@@ -73,9 +72,7 @@ def run_lineage(config_path: Path) -> None:
         sql = workflow.query
 
     metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
-    service: DatabaseService = metadata.get_by_name(
-        entity=DatabaseService, fqn=workflow.serviceName
-    )
+    service: DatabaseService = metadata.get_by_name(entity=DatabaseService, fqn=workflow.serviceName)
     if service:
         metadata.add_lineage_by_query(
             database_service=service,

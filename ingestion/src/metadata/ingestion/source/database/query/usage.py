@@ -11,6 +11,7 @@
 """
 Common Query Log Connector
 """
+
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -24,14 +25,10 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 class QueryLogUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        self.analysis_date = (
-            datetime.now(timezone.utc).date().strftime("%Y-%m-%d %H:%M:%S")
-        )
+        self.analysis_date = datetime.now(timezone.utc).date().strftime("%Y-%m-%d %H:%M:%S")
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 

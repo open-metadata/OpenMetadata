@@ -11,6 +11,7 @@
 """
 Data Sampler for the PII Workflow
 """
+
 import traceback
 from copy import deepcopy
 from typing import Optional, Type, cast
@@ -82,14 +83,10 @@ class SamplerProcessor(Processor):
             self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
         # We still rely on the orm-processor. We should decouple this in the future
-        self.profiler_config = profiler_config_class.model_validate(
-            self.config.processor.model_dump().get("config")
-        )
+        self.profiler_config = profiler_config_class.model_validate(self.config.processor.model_dump().get("config"))
 
         self._interface_type: str = config.source.type.lower()
-        self.sampler_class = import_sampler_class(
-            ServiceType.Database, source_type=self._interface_type
-        )
+        self.sampler_class = import_sampler_class(ServiceType.Database, source_type=self._interface_type)
 
     @property
     def name(self) -> str:
@@ -106,9 +103,7 @@ class SamplerProcessor(Processor):
 
         try:
             entity = cast(Table, record.entity)
-            schema_entity, database_entity, _ = get_context_entities(
-                entity=entity, metadata=self.metadata
-            )
+            schema_entity, database_entity, _ = get_context_entities(entity=entity, metadata=self.metadata)
 
             if database_entity is None:
                 return Either(
@@ -124,9 +119,7 @@ class SamplerProcessor(Processor):
                     )
                 )
 
-            service_conn_config = self._copy_service_config(
-                self.config, database_entity
-            )
+            service_conn_config = self._copy_service_config(self.config, database_entity)
 
             sampler_interface: SamplerInterface = self.sampler_class.create(
                 service_connection_config=service_conn_config,
@@ -140,25 +133,15 @@ class SamplerProcessor(Processor):
             )
 
             settings = self.metadata.get_profiler_config_settings()
-            profiler_global_config = (
-                cast(ProfilerConfiguration, settings.config_value) if settings else None
-            )
+            profiler_global_config = cast(ProfilerConfiguration, settings.config_value) if settings else None
 
-            sample_data_config = (
-                profiler_global_config.sampleDataConfig
-                if profiler_global_config
-                else None
-            )
+            sample_data_config = profiler_global_config.sampleDataConfig if profiler_global_config else None
 
             sample_data = SampleData(
-                data=sampler_interface.generate_sample_data(
-                    sample_data_config if sample_data_config else None
-                ),
+                data=sampler_interface.generate_sample_data(sample_data_config if sample_data_config else None),
                 store=bool(
                     self.source_config.storeSampleData
-                    and (
-                        sample_data_config is None or sample_data_config.storeSampleData
-                    )
+                    and (sample_data_config is None or sample_data_config.storeSampleData)
                 ),
             )
             sampler_interface.close()
@@ -188,9 +171,7 @@ class SamplerProcessor(Processor):
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
-    def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: Database
-    ) -> DatabaseConnection:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: Database) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
         Args:

@@ -11,6 +11,7 @@
 
 # pylint: disable=protected-access
 """Oracle source module"""
+
 import traceback
 import types
 from typing import Iterable, Optional
@@ -124,29 +125,19 @@ class OracleSource(CommonDbSourceService):
         if getattr(self.service_connection, "preserveIdentifierCase", False):
             dialect.normalize_name = types.MethodType(normalize_name, dialect)
             dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
-            dialect.get_table_comment = types.MethodType(
-                get_table_comment_preserve_case, dialect
-            )
-            dialect.get_view_definition = types.MethodType(
-                get_view_definition_preserve_case, dialect
-            )
+            dialect.get_table_comment = types.MethodType(get_table_comment_preserve_case, dialect)
+            dialect.get_view_definition = types.MethodType(get_view_definition_preserve_case, dialect)
             dialect.get_indexes = types.MethodType(get_indexes_preserve_case, dialect)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):
-            raise InvalidSourceException(
-                f"Expected OracleConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected OracleConnection, but got {connection}")
         return cls(config, metadata)
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
         name and type. By default, use the inspector method
@@ -157,8 +148,7 @@ class OracleSource(CommonDbSourceService):
         """
 
         regular_tables = [
-            TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema_name) or []
+            TableNameAndType(name=table_name) for table_name in self.inspector.get_table_names(schema_name) or []
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)
@@ -172,7 +162,6 @@ class OracleSource(CommonDbSourceService):
         result_dict = {}
 
         for row in data:
-
             owner, name, line, text, procedure_type = row
             key = (owner, name)
             if key not in result_dict:
@@ -184,17 +173,13 @@ class OracleSource(CommonDbSourceService):
         # Return the concatenated text for each procedure name, ordered by line
         return result_dict
 
-    def _get_stored_procedures_internal(
-        self, query: str
-    ) -> Iterable[OracleStoredObject]:
+    def _get_stored_procedures_internal(self, query: str) -> Iterable[OracleStoredObject]:
         schema = self.context.get().database_schema
         if not getattr(self.service_connection, "preserveIdentifierCase", False):
             schema = schema.upper()
         prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
         with self.engine.connect() as conn:
-            results: FetchObjectList = conn.execute(
-                text(query.format(schema=schema, prefix=prefix))
-            ).all()
+            results: FetchObjectList = conn.execute(text(query.format(schema=schema, prefix=prefix))).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(
@@ -210,9 +195,7 @@ class OracleSource(CommonDbSourceService):
     def get_stored_procedures(self) -> Iterable[OracleStoredObject]:
         """List Oracle Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            yield from self._get_stored_procedures_internal(
-                ORACLE_GET_STORED_PROCEDURES
-            )
+            yield from self._get_stored_procedures_internal(ORACLE_GET_STORED_PROCEDURES)
             yield from self._get_stored_procedures_internal(ORACLE_GET_STORED_PACKAGES)
 
     def yield_stored_procedure(
@@ -231,9 +214,7 @@ class OracleSource(CommonDbSourceService):
                     if stored_procedure.procedure_type == "StoredPackage"
                     else StoredProcedureType.StoredProcedure
                 ),
-                owners=self.metadata.get_reference_by_name(
-                    name=stored_procedure.owner.lower(), is_owner=True
-                ),
+                owners=self.metadata.get_reference_by_name(name=stored_procedure.owner.lower(), is_owner=True),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,

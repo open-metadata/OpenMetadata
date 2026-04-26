@@ -74,9 +74,7 @@ def _handle_ssl_context_by_value(ssl_config: SslConfig):
     init_staging_dir(ssl_config.certificates.stagingDir)
     if ssl_config.certificates.caCertValue:
         ca_cert = Path(ssl_config.certificates.stagingDir, CA_CERT_FILE_NAME)
-        write_data_to_file(
-            ca_cert, ssl_config.certificates.caCertValue.get_secret_value()
-        )
+        write_data_to_file(ca_cert, ssl_config.certificates.caCertValue.get_secret_value())
     if ssl_config.certificates.clientCertValue:
         client_cert = Path(ssl_config.certificates.stagingDir, CLIENT_CERT_FILE_NAME)
         write_data_to_file(
@@ -120,26 +118,15 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
 
     if connection.sslConfig and connection.sslConfig.certificates:
         if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
-                ssl_config=connection.sslConfig
-            )
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
         elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
-                ssl_config=connection.sslConfig
-            )
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
 
     # Check for Basic Authentication
-    if (
-        isinstance(connection.authType, BasicAuthentication)
-        and connection.authType.username
-    ):
+    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
         basic_auth = (
             connection.authType.username,
-            (
-                connection.authType.password.get_secret_value()
-                if connection.authType.password
-                else None
-            ),
+            (connection.authType.password.get_secret_value() if connection.authType.password else None),
         )
 
     # Check for AWS IAM Authentication

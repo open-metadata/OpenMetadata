@@ -24,9 +24,7 @@ from metadata.data_quality.validations.table.base.tableRowCountToBeBetween impor
 from metadata.profiler.metrics.registry import Metrics
 
 
-class TableRowCountToBeBetweenValidator(
-    BaseTableRowCountToBeBetweenValidator, PandasValidatorMixin
-):
+class TableRowCountToBeBetweenValidator(BaseTableRowCountToBeBetweenValidator, PandasValidatorMixin):
     """Validator for table row count to be between test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:

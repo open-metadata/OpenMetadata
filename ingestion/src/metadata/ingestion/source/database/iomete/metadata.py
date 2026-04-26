@@ -44,15 +44,11 @@ class IometeSource(CommonDbSourceService):
     service_connection: IometeConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: IometeConnection = config.serviceConnection.root.config
         if not isinstance(connection, IometeConnection):
-            raise InvalidSourceException(
-                f"Expected IometeConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected IometeConnection, but got {connection}")
         return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
@@ -92,14 +88,8 @@ class IometeSource(CommonDbSourceService):
                 TableType.View,
                 TableType.MaterializedView,
             ):
-                schema_definition = inspector.get_view_definition(
-                    table_name, schema_name
-                )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
+                schema_definition = inspector.get_view_definition(table_name, schema_name)
+            schema_definition = str(schema_definition).strip() if schema_definition is not None else None
             return schema_definition
         except NotImplementedError:
             logger.warning("Schema definition not implemented")

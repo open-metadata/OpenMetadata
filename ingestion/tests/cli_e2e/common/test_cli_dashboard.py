@@ -12,6 +12,7 @@
 """
 Test dashboard connectors with CLI
 """
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -27,9 +28,7 @@ class CliCommonDashboard:
     CLI Dashboard Common class
     """
 
-    class TestSuite(
-        CliDashboardBase.TestSuite, ABC
-    ):  # pylint: disable=too-many-public-methods
+    class TestSuite(CliDashboardBase.TestSuite, ABC):  # pylint: disable=too-many-public-methods
         """
         TestSuite class to define test structure
         """
@@ -37,16 +36,10 @@ class CliCommonDashboard:
         @classmethod
         def setUpClass(cls) -> None:
             connector = cls.get_connector_name()
-            workflow: MetadataWorkflow = cls.get_workflow(
-                connector, cls.get_test_type()
-            )
+            workflow: MetadataWorkflow = cls.get_workflow(connector, cls.get_test_type())
             cls.openmetadata = workflow.source.metadata
-            cls.config_file_path = str(
-                Path(PATH_TO_RESOURCES + f"/dashboard/{connector}/{connector}.yaml")
-            )
-            cls.test_file_path = str(
-                Path(PATH_TO_RESOURCES + f"/dashboard/{connector}/test.yaml")
-            )
+            cls.config_file_path = str(Path(PATH_TO_RESOURCES + f"/dashboard/{connector}/{connector}.yaml"))
+            cls.test_file_path = str(Path(PATH_TO_RESOURCES + f"/dashboard/{connector}/test.yaml"))
 
         def assert_not_including(self, source_status: Status, sink_status: Status):
             """
@@ -71,9 +64,7 @@ class CliCommonDashboard:
                 self.expected_dashboards_and_charts(),
             )
 
-        def assert_for_vanilla_ingestion(
-            self, source_status: Status, sink_status: Status
-        ) -> None:
+        def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
@@ -89,17 +80,13 @@ class CliCommonDashboard:
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertGreaterEqual(
                 (len(sink_status.records) + len(sink_status.updated_records)),
-                self.expected_dashboards_and_charts_after_patch()
-                + self.expected_tags()
-                + self.expected_datamodels(),
+                self.expected_dashboards_and_charts_after_patch() + self.expected_tags() + self.expected_datamodels(),
             )
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
-            self.assertGreaterEqual(
-                len(source_status.filtered), self.expected_filtered_mix()
-            )
+            self.assertGreaterEqual(len(source_status.filtered), self.expected_filtered_mix())
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertGreaterEqual(

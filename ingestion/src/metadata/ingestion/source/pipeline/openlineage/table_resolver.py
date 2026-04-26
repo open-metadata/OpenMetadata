@@ -137,16 +137,8 @@ def find_services_by_scheme(
     target_type = NAMESPACE_SCHEME_TO_SERVICE_TYPE.get(scheme)
 
     if target_type:
-        return [
-            name
-            for name, svc_type in db_service_type_map.items()
-            if svc_type == target_type
-        ]
+        return [name for name, svc_type in db_service_type_map.items() if svc_type == target_type]
 
     known_types = set(NAMESPACE_SCHEME_TO_SERVICE_TYPE.values())
 
-    return [
-        name
-        for name, svc_type in db_service_type_map.items()
-        if svc_type not in known_types
-    ]
+    return [name for name, svc_type in db_service_type_map.items() if svc_type not in known_types]

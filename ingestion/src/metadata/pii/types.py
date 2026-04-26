@@ -24,6 +24,7 @@ Future expansion example:
 
     ClassifiableEntityType = Union[Table, Container, DashboardDataModel]
 """
+
 from metadata.generated.schema.entity.data.table import Table
 
 ClassifiableEntityType = Table

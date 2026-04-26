@@ -10,7 +10,8 @@
 #  limitations under the License.
 
 """DataFrame validation result models."""
-import logging
+
+import logging  # noqa: I001
 from enum import Enum
 from typing import List, Optional, Tuple, cast
 
@@ -74,11 +75,7 @@ class ValidationResult(BaseModel):
         Returns:
             List of test results where status is Success
         """
-        return [
-            result
-            for result in self.test_results
-            if result.testCaseStatus == TestCaseStatus.Success
-        ]
+        return [result for result in self.test_results if result.testCaseStatus == TestCaseStatus.Success]
 
     @property
     def test_results(self) -> List[TestCaseResult]:
@@ -139,18 +136,14 @@ class ValidationResult(BaseModel):
 
         from collections import defaultdict
 
-        aggregated_results: dict[
-            str, List[Tuple[TestCase, TestCaseResult]]
-        ] = defaultdict(list)
+        aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = defaultdict(list)
         total_execution_time = 0.0
 
         for result in results:
             for test_case, test_result in result.test_cases_and_results:
                 fqn = test_case.fullyQualifiedName
                 if fqn is None:
-                    raise ValueError(
-                        "Cannot merge results with test cases that have no fullyQualifiedName"
-                    )
+                    raise ValueError("Cannot merge results with test cases that have no fullyQualifiedName")
                 aggregated_results[str(fqn)].append((test_case, test_result))
             total_execution_time += result.execution_time_ms
 
@@ -204,12 +197,8 @@ class ValidationResult(BaseModel):
         total_failed_rows = sum(r.failedRows or 0 for r in results)
         total_rows = total_passed_rows + total_failed_rows
 
-        passed_rows_percentage = (
-            (total_passed_rows / total_rows * 100) if total_rows > 0 else None
-        )
-        failed_rows_percentage = (
-            (total_failed_rows / total_rows * 100) if total_rows > 0 else None
-        )
+        passed_rows_percentage = (total_passed_rows / total_rows * 100) if total_rows > 0 else None
+        failed_rows_percentage = (total_failed_rows / total_rows * 100) if total_rows > 0 else None
 
         overall_status = TestCaseStatus.Success
         if any(r.testCaseStatus == TestCaseStatus.Aborted for r in results):
@@ -225,9 +214,7 @@ class ValidationResult(BaseModel):
             testCaseFQN=first_result.testCaseFQN,
             timestamp=first_result.timestamp,
             testCaseStatus=overall_status,
-            result=(
-                "; ".join(merged_result_messages) if merged_result_messages else None
-            ),
+            result=("; ".join(merged_result_messages) if merged_result_messages else None),
             sampleData=None,
             testResultValue=None,
             passedRows=total_passed_rows if total_rows > 0 else None,

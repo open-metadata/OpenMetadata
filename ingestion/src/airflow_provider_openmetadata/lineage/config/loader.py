@@ -12,6 +12,7 @@
 """
 OpenMetadata Airflow Lineage Backend
 """
+
 import json
 import os
 from typing import List, Optional
@@ -40,9 +41,7 @@ class AirflowLineageConfig(BaseModel):
     retry_codes: Optional[List[int]] = None
 
 
-def parse_airflow_config(
-    airflow_service_name: str, conf: AirflowConfigParser
-) -> AirflowLineageConfig:
+def parse_airflow_config(airflow_service_name: str, conf: AirflowConfigParser) -> AirflowLineageConfig:
     """
     Get airflow config from airflow.cfg and parse it
     to the config model
@@ -51,18 +50,13 @@ def parse_airflow_config(
     return AirflowLineageConfig(
         airflow_service_name=airflow_service_name,
         # Check if value is a literal string `true`
-        only_keep_dag_lineage=conf.get(
-            LINEAGE, "only_keep_dag_lineage", fallback="false"
-        )
-        == "true",
+        only_keep_dag_lineage=conf.get(LINEAGE, "only_keep_dag_lineage", fallback="false") == "true",
         max_status=int(conf.get(LINEAGE, "max_status", fallback=10)),
         timeout=int(conf.get(LINEAGE, "timeout", fallback=0)) or None,
         retry=int(conf.get(LINEAGE, "retry", fallback=0)) or None,
         retry_wait=int(conf.get(LINEAGE, "retry_wait", fallback=0)) or None,
         retry_codes=[
-            int(code)
-            for code in (conf.get(LINEAGE, "retry_codes", fallback="") or "").split(",")
-            if code.strip()
+            int(code) for code in (conf.get(LINEAGE, "retry_codes", fallback="") or "").split(",") if code.strip()
         ]
         or None,  # input e.g. 503,504
         metadata_config=OpenMetadataConnection(

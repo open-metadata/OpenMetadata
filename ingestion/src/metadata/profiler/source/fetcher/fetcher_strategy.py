@@ -72,13 +72,9 @@ def _build_regex_from_filter(
     validate_regex(filter_pattern.includes)
     validate_regex(filter_pattern.excludes)
     if filter_pattern.includes:
-        return RegexFilter(
-            regex=_combine_patterns(filter_pattern.includes), mode="include"
-        )
+        return RegexFilter(regex=_combine_patterns(filter_pattern.includes), mode="include")
     if filter_pattern.excludes:
-        return RegexFilter(
-            regex=_combine_patterns(filter_pattern.excludes), mode="exclude"
-        )
+        return RegexFilter(regex=_combine_patterns(filter_pattern.excludes), mode="exclude")
     return None
 
 
@@ -107,9 +103,7 @@ class FetcherStrategy(ABC):
         Raises:
             NotImplementedError: Must be implemented by subclass
         """
-        classification_filter_pattern = getattr(
-            self.source_config, "classificationFilterPattern", None
-        )
+        classification_filter_pattern = getattr(self.source_config, "classificationFilterPattern", None)
         if not classification_filter_pattern:
             return False
 
@@ -151,18 +145,10 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         status: Status,
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
-        self.database_filter_pattern = _build_regex_from_filter(
-            self.source_config.databaseFilterPattern
-        )
-        self.schema_filter_pattern = _build_regex_from_filter(
-            self.source_config.schemaFilterPattern
-        )
-        self.table_filter_pattern = _build_regex_from_filter(
-            self.source_config.tableFilterPattern
-        )
-        self.source_config = cast(
-            EntityFilterConfigInterface, self.source_config
-        )  # Satisfy typechecker
+        self.database_filter_pattern = _build_regex_from_filter(self.source_config.databaseFilterPattern)
+        self.schema_filter_pattern = _build_regex_from_filter(self.source_config.schemaFilterPattern)
+        self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
+        self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker
 
     def _build_database_params(self) -> Dict[str, str]:
         params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore
@@ -182,9 +168,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         # Otherwise, filter out views
         if table.tableType == TableType.View:
-            self.status.filter(
-                table.name.root, f"We are not including views {table.name.root}"
-            )
+            self.status.filter(table.name.root, f"We are not including views {table.name.root}")
             return True
 
         return False
@@ -222,9 +206,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         table_filter = self.table_filter_pattern
 
         conflicting_modes = (
-            schema_filter is not None
-            and table_filter is not None
-            and schema_filter.mode != table_filter.mode
+            schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
         )
 
         regex_mode: Optional[str] = None
@@ -246,11 +228,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
     def _has_conflicting_filter_modes(self) -> bool:
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
-        return (
-            schema_filter is not None
-            and table_filter is not None
-            and schema_filter.mode != table_filter.mode
-        )
+        return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
     def _filter_deferred_excludes(self, table: Table) -> bool:
         """Apply exclude filters that were deferred to client-side
@@ -259,9 +237,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         table_filter = self.table_filter_pattern
 
         if schema_filter and schema_filter.mode == "exclude" and table.databaseSchema:
-            exclude_only = FilterPattern(
-                excludes=self.source_config.schemaFilterPattern.excludes
-            )
+            exclude_only = FilterPattern(excludes=self.source_config.schemaFilterPattern.excludes)
             schema_name = (
                 table.databaseSchema.fullyQualifiedName
                 if self.source_config.useFqnForFiltering
@@ -275,9 +251,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 return True
 
         if table_filter and table_filter.mode == "exclude":
-            exclude_only = FilterPattern(
-                excludes=self.source_config.tableFilterPattern.excludes
-            )
+            exclude_only = FilterPattern(excludes=self.source_config.tableFilterPattern.excludes)
             table_name = table.name.root
             if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
                 table_name = table.fullyQualifiedName.root
@@ -304,10 +278,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         for table in tables:
             if has_deferred and self._filter_deferred_excludes(table):
                 continue
-            if (
-                self.source_config.classificationFilterPattern
-                and self.filter_classifications(table)
-            ):
+            if self.source_config.classificationFilterPattern and self.filter_classifications(table):
                 continue
             if self._filter_views(table):
                 continue

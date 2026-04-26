@@ -11,6 +11,7 @@
 """
 Fivetran integration tests using a mock HTTP server
 """
+
 import pytest
 
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
@@ -61,9 +62,7 @@ class TestFivetranClient:
         assert tables["audit_log"]["enabled"] is False
 
     def test_get_connector_column_lineage(self, fivetran_client):
-        columns = fivetran_client.get_connector_column_lineage(
-            "conn_pg_rds", "public", "users"
-        )
+        columns = fivetran_client.get_connector_column_lineage("conn_pg_rds", "public", "users")
         assert "id" in columns
         assert columns["id"]["name_in_destination"] == "user_id"
         assert columns["id"]["enabled"] is True
@@ -111,9 +110,7 @@ class TestFivetranClient:
         assert tables["customers"]["name_in_destination"] == "CUSTOMERS_DEST"
 
     def test_hva_column_lineage(self, fivetran_client):
-        columns = fivetran_client.get_connector_column_lineage(
-            "conn_hva_sqlserver", "dbo", "orders"
-        )
+        columns = fivetran_client.get_connector_column_lineage("conn_hva_sqlserver", "dbo", "orders")
         assert columns["order_id"]["name_in_destination"] == "ORDER_ID"
         assert columns["customer_id"]["name_in_destination"] == "CUSTOMER_ID"
         assert columns["order_date"]["name_in_destination"] == "ORDER_DATE"

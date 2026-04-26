@@ -11,9 +11,7 @@ class FakeClassificationManager:
         self.classifications = [c for c, _ in backend]
         self.tags = {c.name.root: tags for c, tags in backend}
 
-    def get_enabled_classifications(
-        self, filter_names: Optional[List[str]] = None
-    ) -> List[Classification]:
+    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]:
         return self.classifications
 
     def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]:

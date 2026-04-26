@@ -11,6 +11,7 @@
 """
 SFTP Source Unit Tests
 """
+
 import stat
 from collections import namedtuple
 from unittest import TestCase
@@ -28,9 +29,7 @@ from metadata.ingestion.source.drive.sftp.metadata import SftpSource
 from metadata.ingestion.source.drive.sftp.models import SftpDirectoryInfo, SftpFileInfo
 
 # Mock SFTP file attributes
-MockSFTPAttributes = namedtuple(
-    "MockSFTPAttributes", ["filename", "st_mode", "st_size", "st_mtime"]
-)
+MockSFTPAttributes = namedtuple("MockSFTPAttributes", ["filename", "st_mode", "st_size", "st_mtime"])
 
 # Mock configurations
 MOCK_SFTP_CONFIG = {
@@ -240,9 +239,7 @@ class TestSftpConnection(TestCase):
 class TestSftpSource(TestCase):
     """Test SFTP Source class"""
 
-    @patch(
-        "metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection")
     @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
     def setUp(self, mock_get_connection, mock_test_connection):
         """Set up test fixtures"""
@@ -387,18 +384,14 @@ class TestSftpConnectionModule(TestCase):
         client = get_connection(connection)
 
         mock_transport.assert_called_once_with(("localhost", 22))
-        mock_transport_instance.connect.assert_called_once_with(
-            username="user", password="pass"
-        )
+        mock_transport_instance.connect.assert_called_once_with(username="user", password="pass")
         self.assertEqual(client.sftp, mock_sftp_instance)
         self.assertEqual(client.transport, mock_transport_instance)
 
     @patch("metadata.ingestion.source.drive.sftp.connection._parse_private_key")
     @patch("metadata.ingestion.source.drive.sftp.connection.Transport")
     @patch("metadata.ingestion.source.drive.sftp.connection.SFTPClient")
-    def test_get_connection_key_auth(
-        self, mock_sftp_client, mock_transport, mock_parse_key
-    ):
+    def test_get_connection_key_auth(self, mock_sftp_client, mock_transport, mock_parse_key):
         """Test get_connection with key auth"""
         from metadata.ingestion.source.drive.sftp.connection import get_connection
 
@@ -418,12 +411,10 @@ class TestSftpConnectionModule(TestCase):
             ),
         )
 
-        client = get_connection(connection)
+        client = get_connection(connection)  # noqa: F841
 
         mock_transport.assert_called_once_with(("localhost", 2222))
-        mock_transport_instance.connect.assert_called_once_with(
-            username="user", pkey=mock_pkey
-        )
+        mock_transport_instance.connect.assert_called_once_with(username="user", pkey=mock_pkey)
 
     @patch("metadata.ingestion.source.drive.sftp.connection.paramiko")
     def test_parse_private_key_rsa(self, mock_paramiko):
@@ -433,9 +424,7 @@ class TestSftpConnectionModule(TestCase):
         mock_rsa_key = MagicMock()
         mock_paramiko.RSAKey.from_private_key.return_value = mock_rsa_key
 
-        key_content = (
-            "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
-        )
+        key_content = "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
         result = _parse_private_key(key_content)
 
         self.assertEqual(result, mock_rsa_key)
@@ -458,9 +447,7 @@ class TestSftpConnectionModule(TestCase):
 class TestCsvExtraction(TestCase):
     """Test CSV schema extraction functionality"""
 
-    @patch(
-        "metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection")
     @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
     def setUp(self, mock_get_connection, mock_test_connection):
         """Set up test fixtures"""
@@ -560,9 +547,7 @@ class TestCsvExtraction(TestCase):
 
         self.mock_sftp.open.return_value = mock_file
 
-        columns, sample_data = self.sftp_source._extract_csv_schema(
-            "/data/empty.csv", "empty.csv"
-        )
+        columns, sample_data = self.sftp_source._extract_csv_schema("/data/empty.csv", "empty.csv")
 
         self.assertIsNone(columns)
         self.assertIsNone(sample_data)
@@ -571,9 +556,7 @@ class TestCsvExtraction(TestCase):
         """Test CSV extraction handles errors gracefully"""
         self.mock_sftp.open.side_effect = IOError("File not found")
 
-        columns, sample_data = self.sftp_source._extract_csv_schema(
-            "/data/missing.csv", "missing.csv"
-        )
+        columns, sample_data = self.sftp_source._extract_csv_schema("/data/missing.csv", "missing.csv")
 
         self.assertIsNone(columns)
         self.assertIsNone(sample_data)
@@ -644,9 +627,7 @@ class TestConfigOptions(TestCase):
 class TestSampleDataIngestion(TestCase):
     """Test sample data ingestion functionality"""
 
-    @patch(
-        "metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection")
     @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
     def setUp(self, mock_get_connection, mock_test_connection):
         """Set up test fixtures"""
@@ -680,9 +661,7 @@ class TestSampleDataIngestion(TestCase):
         from metadata.ingestion.source.drive.sftp.models import SftpFileInfo
 
         self.sftp_source.service_connection.extractSampleData = False
-        self.sftp_source._directories_cache = {
-            "/data/subdir1": MagicMock(path=["subdir1"], name="subdir1")
-        }
+        self.sftp_source._directories_cache = {"/data/subdir1": MagicMock(path=["subdir1"], name="subdir1")}
         self.sftp_source._directory_fqn_cache = {"/data/subdir1": "sftp_test.subdir1"}
         self.sftp_source._files_by_parent_cache = {
             "/data/subdir1": [
@@ -717,9 +696,7 @@ class TestSampleDataIngestion(TestCase):
         mock_drive_fqn.build.return_value = "sftp_test.subdir1.test.csv"
 
         self.sftp_source.service_connection.extractSampleData = True
-        self.sftp_source._directories_cache = {
-            "/data/subdir1": MagicMock(path=["subdir1"], name="subdir1")
-        }
+        self.sftp_source._directories_cache = {"/data/subdir1": MagicMock(path=["subdir1"], name="subdir1")}
         self.sftp_source._directory_fqn_cache = {"/data/subdir1": "sftp_test.subdir1"}
         self.sftp_source._files_by_parent_cache = {
             "/data/subdir1": [
@@ -741,9 +718,7 @@ class TestSampleDataIngestion(TestCase):
 
         mock_file_entity = MagicMock()
         mock_file_entity.id = MagicMock(root="test-id")
-        mock_file_entity.fullyQualifiedName = MagicMock(
-            root="sftp_test.subdir1.test.csv"
-        )
+        mock_file_entity.fullyQualifiedName = MagicMock(root="sftp_test.subdir1.test.csv")
         self.sftp_source.metadata.get_by_name.return_value = mock_file_entity
 
         results = list(self.sftp_source.yield_file("/data/subdir1"))
@@ -758,9 +733,7 @@ class TestSampleDataIngestion(TestCase):
 
         mock_file_entity = MagicMock()
         mock_file_entity.id = MagicMock(root="test-id")
-        mock_file_entity.fullyQualifiedName = MagicMock(
-            root="sftp_test.subdir1.test.csv"
-        )
+        mock_file_entity.fullyQualifiedName = MagicMock(root="sftp_test.subdir1.test.csv")
         self.sftp_source.metadata.get_by_name.return_value = mock_file_entity
 
         sample_data = TableData(columns=["id", "name"], rows=[["1", "test"]])
@@ -772,9 +745,7 @@ class TestSampleDataIngestion(TestCase):
         )
 
         self.sftp_source.metadata.get_by_name.assert_called_once()
-        self.sftp_source.metadata.ingest_file_sample_data.assert_called_once_with(
-            mock_file_entity, sample_data
-        )
+        self.sftp_source.metadata.ingest_file_sample_data.assert_called_once_with(mock_file_entity, sample_data)
 
     def test_ingest_sample_data_for_file_not_found(self):
         """Test _ingest_sample_data_for_file handles missing file gracefully"""

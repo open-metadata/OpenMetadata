@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """GCS storage connection"""
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -92,14 +93,10 @@ class Tester:
                     except NotFound:
                         continue
                     else:
-                        self.bucket_tests.append(
-                            BucketTestState(project_id, bucket_name)
-                        )
+                        self.bucket_tests.append(BucketTestState(project_id, bucket_name))
                         break
                 else:
-                    raise SourceConnectionException(
-                        f"Bucket {bucket_name} not found in provided projects."
-                    )
+                    raise SourceConnectionException(f"Bucket {bucket_name} not found in provided projects.")
             return
         else:
             for project_id, client in self.client.storage_client.clients.items():
@@ -109,9 +106,7 @@ class Tester:
                         self.connection.containerFilterPattern,
                         container_name=bucket.name,
                     ):
-                        self.bucket_tests.append(
-                            BucketTestState(project_id, bucket.name)
-                        )
+                        self.bucket_tests.append(BucketTestState(project_id, bucket.name))
                         matched = True
                         break
                 if not matched and self.connection.containerFilterPattern:
@@ -125,9 +120,7 @@ class Tester:
                         "Buckets were found but none matched the containerFilterPattern. "
                         "Review your include/exclude filter settings."
                     )
-                raise SourceConnectionException(
-                    "No buckets found in provided projects."
-                )
+                raise SourceConnectionException("No buckets found in provided projects.")
 
     def get_bucket(self):
         if not self.bucket_tests:
@@ -147,10 +140,7 @@ class Tester:
             except StopIteration:
                 # Empty bucket - this is valid, we can list blobs
                 # even if there are none
-                logger.debug(
-                    f"Bucket {bucket_test.bucket_name} is empty, but list "
-                    "permission is working correctly"
-                )
+                logger.debug(f"Bucket {bucket_test.bucket_name} is empty, but list permission is working correctly")
 
     def get_blob(self):
         if not self.bucket_tests:
@@ -164,9 +154,7 @@ class Tester:
 
     def get_metrics(self):
         for project_id in self.client.storage_client.clients.keys():
-            self.client.metrics_client.list_metric_descriptors(
-                name=f"projects/{project_id}"
-            )
+            self.client.metrics_client.list_metric_descriptors(name=f"projects/{project_id}")
 
 
 def test_connection(

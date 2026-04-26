@@ -11,6 +11,7 @@
 """
 Interface for sampler
 """
+
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Set, Union
@@ -132,9 +133,7 @@ class SamplerInterface(ABC):
             default_sample_config=default_sample_config,
         )
         sample_query = get_sample_query(entity=entity, entity_config=table_config)
-        partition_details = get_partition_details(
-            entity=entity, entity_config=table_config
-        )
+        partition_details = get_partition_details(entity=entity, entity_config=table_config)
         include_columns = get_include_columns(entity, entity_config=table_config)
         exclude_columns = get_exclude_columns(entity, entity_config=table_config)
 
@@ -164,11 +163,7 @@ class SamplerInterface(ABC):
             return self._columns
 
         if self._get_included_columns():
-            self._columns = [
-                column
-                for column in self.get_columns()
-                if column.name in self._get_included_columns()
-            ]
+            self._columns = [column for column in self.get_columns() if column.name in self._get_included_columns()]
 
         if not self._get_included_columns():
             self._columns = [
@@ -188,11 +183,7 @@ class SamplerInterface(ABC):
     def _get_included_columns(self) -> Set[str]:
         """Get include columns for table being profiled"""
         if self.include_columns:
-            return {
-                include_col.columnName
-                for include_col in self.include_columns
-                if include_col.columnName
-            }
+            return {include_col.columnName for include_col in self.include_columns if include_col.columnName}
         return set()
 
     @property
@@ -243,9 +234,7 @@ class SamplerInterface(ABC):
         return value
 
     @calculate_execution_time(store=False)
-    def generate_sample_data(
-        self, sample_data_config: Optional[SampleDataIngestionConfig] = None
-    ) -> TableData:
+    def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:
         """Fetch and ingest sample data
 
         Returns:
@@ -254,35 +243,23 @@ class SamplerInterface(ABC):
         if sample_data_config is None:
             # if there is no global config, default to storing and reading sample data to ensure backward compatibility
             # and availability of sample data for downstream steps
-            sample_data_config = SampleDataIngestionConfig(
-                storeSampleData=True, readSampleData=True
-            )
+            sample_data_config = SampleDataIngestionConfig(storeSampleData=True, readSampleData=True)
 
-        if (
-            not sample_data_config.storeSampleData
-            and not sample_data_config.readSampleData
-        ):
-            logger.info(
-                "Both storing and reading of sample data are disabled. Skipping sample data generation."
-            )
+        if not sample_data_config.storeSampleData and not sample_data_config.readSampleData:
+            logger.info("Both storing and reading of sample data are disabled. Skipping sample data generation.")
             return TableData(rows=[], columns=[])
         try:
-
             # Stores overwrites reading since if we are storing the data, we want to fetch it
             # as well to pass down the pipeline. If we are not storing, but reading is enabled,
             # we still want to fetch the data to pass down the pipeline, but we won't store it.
             if sample_data_config.readSampleData or sample_data_config.storeSampleData:
-                logger.debug(
-                    f"Fetching sample data for {self.entity.fullyQualifiedName.root}..."
-                )
+                logger.debug(f"Fetching sample data for {self.entity.fullyQualifiedName.root}...")
                 table_data = self.fetch_sample_data(self.columns)
                 # Truncate large cell values to prevent OOM in downstream
                 # processing (NLP, serialization, etc.)
                 table_data.rows = [
                     [self._truncate_cell(cell) for cell in row]
-                    for row in table_data.rows[
-                        : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
-                    ]
+                    for row in table_data.rows[: min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)]
                 ]
                 # Only store the data if configured to do so
                 if self.storage_config and sample_data_config.storeSampleData:

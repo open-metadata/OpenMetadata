@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Domain and Data Product specific operations"""
+
 import traceback
 from typing import Dict, List
 
@@ -32,9 +33,7 @@ class OMetaDomainMixin:
 
     client: REST
 
-    def add_assets_to_data_product(
-        self, name: str, assets: List[EntityReference]
-    ) -> Dict:
+    def add_assets_to_data_product(self, name: str, assets: List[EntityReference]) -> Dict:
         """
         Add assets to a data product
 
@@ -47,9 +46,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_assets(name, assets, "add")
 
-    def remove_assets_from_data_product(
-        self, name: str, assets: List[EntityReference]
-    ) -> Dict:
+    def remove_assets_from_data_product(self, name: str, assets: List[EntityReference]) -> Dict:
         """
         Remove assets from a data product
 
@@ -62,9 +59,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_assets(name, assets, "remove")
 
-    def get_data_product_assets(
-        self, name: str, limit: int = 10, offset: int = 0
-    ) -> Dict:
+    def get_data_product_assets(self, name: str, limit: int = 10, offset: int = 0) -> Dict:
         """
         Get paginated list of assets for a data product
 
@@ -130,9 +125,7 @@ class OMetaDomainMixin:
 
     # Input Ports methods
 
-    def add_input_ports_to_data_product(
-        self, name: str, ports: List[EntityReference]
-    ) -> Dict:
+    def add_input_ports_to_data_product(self, name: str, ports: List[EntityReference]) -> Dict:
         """
         Add input ports to a data product
 
@@ -145,9 +138,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_ports(name, ports, "inputPorts", "add")
 
-    def remove_input_ports_from_data_product(
-        self, name: str, ports: List[EntityReference]
-    ) -> Dict:
+    def remove_input_ports_from_data_product(self, name: str, ports: List[EntityReference]) -> Dict:
         """
         Remove input ports from a data product
 
@@ -162,9 +153,7 @@ class OMetaDomainMixin:
 
     # Output Ports methods
 
-    def add_output_ports_to_data_product(
-        self, name: str, ports: List[EntityReference]
-    ) -> Dict:
+    def add_output_ports_to_data_product(self, name: str, ports: List[EntityReference]) -> Dict:
         """
         Add output ports to a data product
 
@@ -177,9 +166,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_ports(name, ports, "outputPorts", "add")
 
-    def remove_output_ports_from_data_product(
-        self, name: str, ports: List[EntityReference]
-    ) -> Dict:
+    def remove_output_ports_from_data_product(self, name: str, ports: List[EntityReference]) -> Dict:
         """
         Remove output ports from a data product
 

@@ -49,13 +49,9 @@ class EntityFetcher:
     def _get_strategy(self) -> FetcherStrategy:
         """Get strategy for entity fetcher"""
         if service_class(self.config.source.type) is DatabaseService:
-            return DatabaseFetcherStrategy(
-                self.config, self.metadata, self.global_profiler_config, self.status
-            )
+            return DatabaseFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
 
-        raise NotImplementedError(
-            "Fetcher strategy not implemented for this connection type"
-        )
+        raise NotImplementedError("Fetcher strategy not implemented for this connection type")
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch entities"""
