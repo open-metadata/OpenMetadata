@@ -1,0 +1,23 @@
+-- Restore a composite index on profiler_data_time_series(entityFQNHash, extension, timestamp).
+--
+-- Root cause: the 1.9.9 schemaChanges.sql explicitly dropped the unique constraint
+-- profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation, timestamp)
+-- to allow changing the `operation` generated-column expression, but never recreated it.
+-- After the 1.9.9 migration the table retains only
+--   profiler_data_time_series_combined_id_ts (extension, timestamp)
+-- which is useless for queries that filter by entityFQNHash.
+--
+-- The 1.9.9 postDataMigrationSQLScript.sql also created temporary indexes
+-- (idx_pdts_entityFQNHash, idx_pdts_composite, etc.) during its bulk UPDATE pass and then
+-- dropped them all, leaving no index on entityFQNHash.
+--
+-- Queries of the form
+--
+--   SELECT entityFQNHash, MAX(timestamp) FROM profiler_data_time_series
+--   WHERE entityFQNHash IN (...) AND extension = 'table.columnProfile'
+--   GROUP BY entityFQNHash
+--
+-- issued by getLatestExtensionsBatch() perform a full table scan without this index,
+-- causing 100+ second response times on the columns API when `fields=profile` is requested.
+CREATE INDEX IF NOT EXISTS idx_pdts_fqnhash_ext_ts
+    ON profiler_data_time_series (entityFQNHash, extension, timestamp);

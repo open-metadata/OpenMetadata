@@ -2891,8 +2891,21 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
+      List<ExtensionRecord> allColumnMetricRecords =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensions(table.getId(), CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION);
+      Map<String, List<CustomMetric>> metricsByColumn = new HashMap<>();
+      for (ExtensionRecord record : allColumnMetricRecords) {
+        CustomMetric metric = JsonUtils.readValue(record.extensionJson(), CustomMetric.class);
+        if (metric != null && metric.getColumnName() != null) {
+          metricsByColumn
+              .computeIfAbsent(metric.getColumnName(), k -> new ArrayList<>())
+              .add(metric);
+        }
+      }
       for (Column column : paginatedColumns) {
-        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), new ArrayList<>()));
       }
     }
 
@@ -2904,7 +2917,9 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
-      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      if (!fieldsParam.contains("tags")) {
+        populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      }
       paginatedColumns =
           piiOwners != null
               ? PIIMasker.getTableProfile(piiOwners, paginatedColumns, authorizer, securityContext)

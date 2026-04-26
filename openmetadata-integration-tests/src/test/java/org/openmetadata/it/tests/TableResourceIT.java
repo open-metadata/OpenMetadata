@@ -5900,4 +5900,138 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       assertFalse(table.getTags().isEmpty(), "Table tags should not be empty");
     }
   }
+
+  // ===================================================================
+  // REGRESSION TEST - columns API with fields=profile (collate#3488)
+  // ===================================================================
+
+  @Test
+  @Execution(ExecutionMode.SAME_THREAD)
+  void test_getColumnsWithProfileField_correctnessAndNoBatchRegression(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("profile_test_cls"))
+            .withDescription("Classification for profile regression test");
+    Classification cls = client.classifications().create(createClassification);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName(ns.prefix("profile_test_tag"))
+            .withDescription("Tag for profile regression test")
+            .withClassification(cls.getName());
+    Tag tag = client.tags().create(createTag);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    Column idCol = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+    idCol.setTags(List.of(tagLabel));
+    Column emailCol = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+    emailCol.setTags(List.of(tagLabel));
+    Column nameCol = ColumnBuilder.of("name", "VARCHAR").dataLength(255).build();
+
+    CreateTable createRequest = createRequest(ns.prefix("profile_regression_table"), ns);
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(idCol, emailCol, nameCol));
+    Table table = client.tables().create(createRequest);
+
+    Long timestamp = System.currentTimeMillis();
+    ColumnProfile idProfile =
+        new ColumnProfile()
+            .withName("id")
+            .withMin(1.0)
+            .withMax(999.0)
+            .withUniqueCount(100.0)
+            .withTimestamp(timestamp);
+    ColumnProfile emailProfile =
+        new ColumnProfile()
+            .withName("email")
+            .withNullCount(5.0)
+            .withNullProportion(0.05)
+            .withTimestamp(timestamp);
+
+    TableProfile tableProfile =
+        new TableProfile().withRowCount(100.0).withColumnCount(3.0).withTimestamp(timestamp);
+
+    CreateTableProfile createProfile =
+        new CreateTableProfile()
+            .withTableProfile(tableProfile)
+            .withColumnProfile(List.of(idProfile, emailProfile));
+    client.tables().updateTableProfile(table.getId(), createProfile);
+
+    // Verify all four field combinations don't regress:
+    // (a) fields=profile — profile data returned, no full-table-scan on profiler_data_time_series
+    TableColumnList withProfile =
+        assertTimeout(
+            Duration.ofSeconds(30),
+            () -> client.tables().getColumns(table.getId(), "profile"),
+            "columns?fields=profile should complete within 30s");
+
+    assertEquals(3, withProfile.getData().size());
+    Column returnedId =
+        withProfile.getData().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    Column returnedName =
+        withProfile.getData().stream()
+            .filter(c -> "name".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(returnedId, "id column should be present");
+    assertNotNull(returnedId.getProfile(), "id column should have profile data");
+    assertEquals(1.0, returnedId.getProfile().getMin(), "id column min should match");
+    assertEquals(999.0, returnedId.getProfile().getMax(), "id column max should match");
+    assertNotNull(returnedName, "name column should be present");
+    assertNull(returnedName.getProfile(), "name column has no profile, should be null");
+
+    // (b) fields=tags,customMetrics,extension,profile — the exact production query
+    TableColumnList withAllFields =
+        assertTimeout(
+            Duration.ofSeconds(30),
+            () -> client.tables().getColumns(table.getId(), "tags,customMetrics,extension,profile"),
+            "columns?fields=tags,customMetrics,extension,profile should complete within 30s");
+
+    assertEquals(3, withAllFields.getData().size());
+
+    Column idResult =
+        withAllFields.getData().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(idResult, "id column must be present");
+    assertNotNull(idResult.getProfile(), "id column must have profile");
+    assertNotNull(idResult.getTags(), "id column must have tags");
+    assertFalse(idResult.getTags().isEmpty(), "id column tags must not be empty");
+    assertTrue(
+        idResult.getTags().stream()
+            .anyMatch(t -> tag.getFullyQualifiedName().equals(t.getTagFQN())),
+        "id column should carry the test tag");
+
+    // (c) fields=tags,profile — duplicate populateEntityFieldTags must not run twice
+    TableColumnList withTagsAndProfile =
+        assertTimeout(
+            Duration.ofSeconds(30),
+            () -> client.tables().getColumns(table.getId(), "tags,profile"),
+            "columns?fields=tags,profile should complete within 30s");
+
+    assertEquals(3, withTagsAndProfile.getData().size());
+    Column idTagsProfile =
+        withTagsAndProfile.getData().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(idTagsProfile);
+    assertNotNull(idTagsProfile.getTags());
+    assertFalse(
+        idTagsProfile.getTags().isEmpty(), "Tags must be present even when profile requested");
+    assertNotNull(idTagsProfile.getProfile(), "Profile must be present when profile requested");
+  }
 }
