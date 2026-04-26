@@ -19,11 +19,15 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
     init_empty_connection_arguments,
 )
+from metadata.ingestion.models.custom_pydantic import _HOSTPORT_URL_ALLOWED
 
 
 class ConnectionBuilderTest(TestCase):
@@ -79,3 +83,64 @@ class ConnectionBuilderTest(TestCase):
 
         self.assertEqual(new_args.root.get("hello"), "world")
         self.assertIsNone(new_args.root.get("not there"))
+
+    def test_model_post_init_strips_url_scheme_from_hostport(self):
+        """
+        Verify that model_post_init strips URL schemes from hostPort at
+        construction time so connectors that call hostPort.split(":") directly
+        receive a clean hostname[:port] value.
+        """
+        # http:// prefix should be stripped
+        conn = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password="pass"),
+            hostPort="http://localhost:3306",
+        )
+        self.assertEqual(conn.hostPort, "localhost:3306")
+
+        # https:// prefix should be stripped
+        conn2 = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password="pass"),
+            hostPort="https://myhost:5432",
+        )
+        self.assertEqual(conn2.hostPort, "myhost:5432")
+
+        # Already clean value should pass through unchanged
+        conn3 = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password="pass"),
+            hostPort="localhost:3306",
+        )
+        self.assertEqual(conn3.hostPort, "localhost:3306")
+
+    def test_model_post_init_raises_for_invalid_port_in_hostport(self):
+        """
+        Verify that a non-numeric port in a scheme-prefixed hostPort raises
+        at model construction time (fail-fast) rather than producing a
+        confusing error deep in connector code.
+        """
+        with self.assertRaises(Exception):
+            MysqlConnection(
+                username="user",
+                authType=BasicAuth(password="pass"),
+                hostPort="http://localhost:abc",
+            )
+
+    def test_url_allowed_connections_not_stripped(self):
+        """
+        Verify that connection classes in _HOSTPORT_URL_ALLOWED (AirflowConnection
+        and OpenMetadataConnection) are excluded from hostPort scheme stripping,
+        since their hostPort field legitimately stores a full URL.
+        """
+        # Confirm the exclusion set contains the expected class names
+        self.assertIn("AirflowConnection", _HOSTPORT_URL_ALLOWED)
+        self.assertIn("OpenMetadataConnection", _HOSTPORT_URL_ALLOWED)
+
+        # OpenMetadataConnection.hostPort is a plain str field that expects a
+        # full URL like "http://localhost:8585/api" — it must NOT be stripped.
+        ometa = OpenMetadataConnection(
+            hostPort="http://localhost:8585/api",
+        )
+        self.assertIn("http", ometa.hostPort)
+        self.assertIn("localhost", ometa.hostPort)

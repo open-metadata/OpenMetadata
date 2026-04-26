@@ -122,6 +122,13 @@ def strip_hostport_scheme(raw: str) -> str:
 # pinned to the original underscored symbol while the helper was private.
 _strip_hostport_scheme = strip_hostport_scheme
 
+# Connection classes whose hostPort field legitimately stores a full URL
+# (e.g. "http://airflow:8080" or "http://localhost:8585/api") and must NOT
+# have their scheme stripped by model_post_init.
+_HOSTPORT_URL_ALLOWED: frozenset = frozenset(
+    {"AirflowConnection", "OpenMetadataConnection"}
+)
+
 
 class BaseModel(PydanticBaseModel):
     """
@@ -134,14 +141,31 @@ class BaseModel(PydanticBaseModel):
         This function is used to parse the FilterPattern fields for the Connection classes.
         This is needed because dict is defined in the JSON schema for the FilterPattern field,
         but a FilterPattern object is required in the generated code.
+
+        Additionally, for Connection classes that store a plain ``hostname[:port]``
+        in ``hostPort``, any accidental URL scheme prefix (e.g. ``http://``) is
+        stripped here so that all downstream connector code — including connectors
+        that call ``connection.hostPort.split(":")`` directly — receives a clean value.
         """
         # pylint: disable=import-outside-toplevel
+        if not self.__class__.__name__.endswith("Connection"):
+            # Only process Connection classes
+            return
+        if not hasattr(self, "__pydantic_fields__"):
+            return
+
+        # Strip accidental URL schemes from hostPort at model construction time.
+        # This protects connectors that split hostPort manually (e.g. Cassandra,
+        # Databricks, Redshift, DB2, Microsoft Fabric) without going through
+        # get_connection_url_common. ValueError for genuinely invalid inputs
+        # (e.g. non-numeric port) propagates immediately with a clear message.
+        if (
+            hasattr(self, "hostPort")
+            and self.__class__.__name__ not in _HOSTPORT_URL_ALLOWED
+        ):
+            self.hostPort = strip_hostport_scheme(self.hostPort)
+
         try:
-            if not self.__class__.__name__.endswith("Connection"):
-                # Only parse FilterPattern for Connection classes
-                return
-            if not hasattr(self, "__pydantic_fields__"):
-                return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
                     from metadata.generated.schema.type.filterPattern import (
