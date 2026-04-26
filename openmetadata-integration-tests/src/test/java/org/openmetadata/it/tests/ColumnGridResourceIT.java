@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -1808,11 +1810,17 @@ public class ColumnGridResourceIT {
     assertEquals(2, page1.getColumns().size(), "Page 1 should have exactly 2 columns");
     assertNotNull(page1.getCursor(), "Page 1 should have a cursor for next page");
 
-    ColumnGridResponse page2 = getColumnGrid(client, baseQuery + "&cursor=" + page1.getCursor());
+    ColumnGridResponse page2 =
+        getColumnGrid(
+            client,
+            baseQuery + "&cursor=" + URLEncoder.encode(page1.getCursor(), StandardCharsets.UTF_8));
     assertEquals(2, page2.getColumns().size(), "Page 2 should have exactly 2 columns");
     assertNotNull(page2.getCursor(), "Page 2 should have a cursor for next page");
 
-    ColumnGridResponse page3 = getColumnGrid(client, baseQuery + "&cursor=" + page2.getCursor());
+    ColumnGridResponse page3 =
+        getColumnGrid(
+            client,
+            baseQuery + "&cursor=" + URLEncoder.encode(page2.getCursor(), StandardCharsets.UTF_8));
     assertEquals(1, page3.getColumns().size(), "Page 3 (last) should have exactly 1 column");
 
     // Verify no duplicates across pages
