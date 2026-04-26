@@ -13,6 +13,7 @@ Validate the logic and status handling of the base workflow
 """
 from typing import Iterable, Tuple
 from unittest import TestCase
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -200,3 +201,45 @@ class TestBaseWorkflow(TestCase):
         )
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
+
+
+class TestWorkflowExecuteTeardown:
+    """
+    Validates the execute() teardown contract: status must be printed before
+    stop() tears down resources (so final records are flushed while the
+    metadata client and steps are alive), and stop() must still run when
+    print_status() raises so we never leak the timer thread or OM client.
+    """
+
+    def test_print_status_runs_before_stop(self):
+        workflow = SimpleWorkflow(config=config)
+        manager = MagicMock()
+
+        with patch.object(
+            workflow, "print_status", wraps=workflow.print_status
+        ) as mock_print_status, patch.object(
+            workflow, "stop", wraps=workflow.stop
+        ) as mock_stop:
+            manager.attach_mock(mock_print_status, "print_status")
+            manager.attach_mock(mock_stop, "stop")
+
+            workflow.execute()
+
+        ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
+        assert ordered_names == ["print_status", "stop"]
+
+    def test_stop_still_runs_when_print_status_raises(self):
+        workflow = SimpleWorkflow(config=config)
+
+        with patch.object(
+            workflow,
+            "print_status",
+            side_effect=RuntimeError("boom"),
+        ) as mock_print_status, patch.object(
+            workflow, "stop", wraps=workflow.stop
+        ) as mock_stop:
+            with pytest.raises(RuntimeError, match="boom"):
+                workflow.execute()
+
+            mock_print_status.assert_called_once()
+            mock_stop.assert_called_once()

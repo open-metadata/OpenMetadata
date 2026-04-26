@@ -721,6 +721,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE_SCHEMA;
       String entityFQN =
           csvRecord.size() > 13 ? StringEscapeUtils.unescapeCsv(csvRecord.get(13)) : null;
+      rowEntityType = entityType;
 
       if (DATABASE_SCHEMA.equals(entityType)) {
         createSchemaEntity(printer, csvRecord, entityFQN);

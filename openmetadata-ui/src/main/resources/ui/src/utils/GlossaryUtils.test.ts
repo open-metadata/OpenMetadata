@@ -236,11 +236,8 @@ describe('Glossary Utils', () => {
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [
           {
-            about: '<#E::glossaryTerm::"Glossary"."Term">',
-            task: {
-              id: 17,
-              assignees: [{ id: 'user-1' }],
-            },
+            id: 'task-uuid-1',
+            assignees: [{ id: 'user-1' }],
           },
         ],
       } as never
@@ -248,7 +245,30 @@ describe('Glossary Utils', () => {
 
     expect(result).toEqual({
       permission: true,
-      taskId: 17,
+      taskId: 'task-uuid-1',
+    });
+  });
+
+  it('should deny glossary review actions when the current user is only a reviewer and not a remaining task assignee', () => {
+    const result = permissionForApproveOrReject(
+      {
+        fullyQualifiedName: '"Glossary"."Term"',
+        reviewers: [{ id: 'user-1' }],
+      } as ModifiedGlossaryTerm,
+      { id: 'user-1' } as never,
+      {
+        '<#E::glossaryTerm::"Glossary"."Term">': [
+          {
+            id: 'task-uuid-1',
+            assignees: [{ id: 'user-2' }],
+          },
+        ],
+      } as never
+    );
+
+    expect(result).toEqual({
+      permission: false,
+      taskId: 'task-uuid-1',
     });
   });
 });
