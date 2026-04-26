@@ -25,7 +25,7 @@ from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import and_, column, func, inspect, join
+from sqlalchemy import and_, column, func, inspect
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -535,26 +535,37 @@ class AirflowSource(PipelineServiceSource):
         # In Airflow 3.x, fileloc is not available on SerializedDagModel
         # We need to get it from DagModel instead
         if hasattr(SerializedDagModel, "fileloc"):
-            # Airflow 2.x: fileloc is on SerializedDagModel
-            # Use tuple IN clause to get only the latest version of each DAG
-            session_query = self.session.query(
-                SerializedDagModel.dag_id,
-                json_data_column,
-                SerializedDagModel.fileloc,
-            ).join(
-                latest_dag_subquery,
-                and_(
-                    SerializedDagModel.dag_id == latest_dag_subquery.c.dag_id,
-                    timestamp_column == latest_dag_subquery.c.max_timestamp,
-                ),
+            # Airflow 2.x: fileloc is on SerializedDagModel.
+            # Always LEFT OUTER JOIN DagModel so we can select is_paused in the
+            # main query and avoid an extra DB round-trip per DAG (N+1).
+            session_query = (
+                self.session.query(
+                    SerializedDagModel.dag_id,
+                    json_data_column,
+                    SerializedDagModel.fileloc,
+                    DagModel.is_paused,
+                )
+                .join(
+                    latest_dag_subquery,
+                    and_(
+                        SerializedDagModel.dag_id == latest_dag_subquery.c.dag_id,
+                        timestamp_column == latest_dag_subquery.c.max_timestamp,
+                    ),
+                )
+                .outerjoin(
+                    DagModel,
+                    SerializedDagModel.dag_id == DagModel.dag_id,
+                )
             )
         else:
-            # Airflow 3.x: fileloc is only on DagModel, we need to join
+            # Airflow 3.x: fileloc is only on DagModel, already joined.
+            # Add is_paused to the column list — no extra join needed.
             session_query = (
                 self.session.query(
                     SerializedDagModel.dag_id,
                     json_data_column,
                     DagModel.fileloc,
+                    DagModel.is_paused,
                 )
                 .join(
                     latest_dag_subquery,
@@ -570,19 +581,9 @@ class AirflowSource(PipelineServiceSource):
             )
 
         if not self.source_config.includeUnDeployedPipelines:
-            # If we haven't already joined with DagModel (Airflow 2.x case)
-            if hasattr(SerializedDagModel, "fileloc"):
-                session_query = session_query.select_from(
-                    join(
-                        SerializedDagModel,
-                        DagModel,
-                        SerializedDagModel.dag_id == DagModel.dag_id,
-                    )
-                )
-            # Add the is_paused filter
-            session_query = session_query.filter(
-                DagModel.is_paused == False  # pylint: disable=singleton-comparison
-            )
+            # DagModel is already joined in both paths above, so we can filter
+            # directly without an extra select_from().
+            session_query = session_query.filter(DagModel.is_paused.is_(False))
         limit = 100  # Number of records per batch
         offset = 0  # Start
 
@@ -597,32 +598,19 @@ class AirflowSource(PipelineServiceSource):
                 break
             for serialized_dag in results:
                 try:
-                    # Query only the is_paused column from DagModel
-                    try:
-                        is_paused_result = (
-                            self.session.query(DagModel.is_paused)
-                            .filter(DagModel.dag_id == serialized_dag[0])
-                            .scalar()
-                        )
-                        pipeline_state = (
-                            PipelineState.Active.value
-                            if not is_paused_result
-                            else PipelineState.Inactive.value
-                        )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Could not query DagModel.is_paused for {serialized_dag[0]}. "
-                            f"Using default pipeline state - {exc}"
-                        )
-                        # If we can't query is_paused, assume the pipeline is active
-                        pipeline_state = PipelineState.Active.value
+                    # Unpack by name so future column list changes are explicit.
+                    dag_id, payload, fileloc, is_paused = serialized_dag
+                    pipeline_state = (
+                        PipelineState.Inactive.value
+                        if is_paused
+                        else PipelineState.Active.value
+                    )
 
-                    data = serialized_dag[1]["dag"]
+                    data = payload["dag"]
                     dag = AirflowDagDetails(
-                        dag_id=serialized_dag[0],
-                        fileloc=serialized_dag[2],
-                        data=AirflowDag.model_validate(serialized_dag[1]),
+                        dag_id=dag_id,
+                        fileloc=fileloc,
+                        data=AirflowDag.model_validate(payload),
                         max_active_runs=data.get("max_active_runs", None),
                         description=data.get("_description", None),
                         start_date=data.get("start_date", None),

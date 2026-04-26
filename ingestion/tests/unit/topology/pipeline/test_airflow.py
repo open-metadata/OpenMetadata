@@ -402,6 +402,64 @@ class TestAirflow(TestCase):
         self.assertIn("Custom Timetable", result)
         self.assertIn("CustomTimetable", result)
 
+    def test_get_pipelines_list_derives_state_from_row(self):
+        """
+        Verify that get_pipelines_list derives pipeline_state from the is_paused
+        column selected in the main query, without issuing a separate per-DAG lookup.
+
+        Rows: (dag_id, payload, fileloc, is_paused)
+          - False  -> Active
+          - True   -> Inactive
+          - None   -> Active  (LEFT OUTER JOIN miss for undeployed DAGs)
+        """
+        from unittest.mock import MagicMock
+
+        from metadata.generated.schema.entity.data.pipeline import PipelineState
+
+        active_row = ("dag_active", SERIALIZED_DAG, "/dags/active.py", False)
+        inactive_row = ("dag_inactive", SERIALIZED_DAG, "/dags/inactive.py", True)
+        null_row = ("dag_null", SERIALIZED_DAG, "/dags/null.py", None)
+
+        # Build a mock that chains through any SQLAlchemy query method and returns
+        # our fake rows on the first .all() call, then [] to stop pagination.
+        mock_q = MagicMock()
+        for method in (
+            "join",
+            "outerjoin",
+            "filter",
+            "order_by",
+            "limit",
+            "offset",
+            "group_by",
+        ):
+            getattr(mock_q, method).return_value = mock_q
+        mock_q.subquery.return_value = MagicMock()
+        mock_q.all.side_effect = [
+            [active_row, inactive_row, null_row],
+            [],
+        ]
+
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_q
+
+        original_session = getattr(self.airflow, "_session", None)
+        self.airflow._session = mock_session
+        try:
+            dags = list(self.airflow.get_pipelines_list())
+        finally:
+            self.airflow._session = original_session
+
+        self.assertEqual(3, len(dags))
+        by_id = {d.dag_id: d for d in dags}
+        self.assertEqual(PipelineState.Active.value, by_id["dag_active"].state)
+        self.assertEqual(PipelineState.Inactive.value, by_id["dag_inactive"].state)
+        self.assertEqual(PipelineState.Active.value, by_id["dag_null"].state)
+
+        # Regression guard for #27148: is_paused must come from the main query,
+        # never via a per-row scalar() lookup.
+        mock_q.scalar.assert_not_called()
+        self.assertEqual(2, mock_session.query.call_count)
+
     def test_get_schedule_interval_with_import_error(self):
         """
         Test handling of timetable classes that can't be imported
