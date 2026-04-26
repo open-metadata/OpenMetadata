@@ -16,6 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -1983,20 +1986,22 @@ public class ColumnGridResourceIT {
   }
 
   @Test
+  @ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)
   void test_getColumnGrid_patternSearchFindsAlphabeticallyLateColumn(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
-    int columnCount = 200;
-    String matchPattern = ns.prefix("zzz_target");
-    String matchedColumn = matchPattern;
+    // Match (zzz_target) at position 50 with size=25 — old code returns 0 on page 1, new code finds
+    // it.
+    int columnCount = 50;
+    String matchedColumn = ns.prefix("zzz_target");
 
     java.util.List<Column> columns = new java.util.ArrayList<>();
     for (int i = 0; i < columnCount - 1; i++) {
       columns.add(
-          Columns.build(ns.prefix(String.format("aaa_filler_%04d", i)))
+          Columns.build(ns.prefix(String.format("aaa_filler_%02d", i)))
               .withType(ColumnDataType.VARCHAR)
               .withLength(255)
               .create());
@@ -2004,36 +2009,46 @@ public class ColumnGridResourceIT {
     columns.add(
         Columns.build(matchedColumn).withType(ColumnDataType.VARCHAR).withLength(255).create());
 
-    Tables.create()
-        .name(ns.prefix("scale_search_table"))
-        .inSchema(schema.getFullyQualifiedName())
-        .withColumns(columns)
-        .execute();
+    Table table =
+        Tables.create()
+            .name(ns.prefix("scale_search_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(columns)
+            .execute();
 
-    waitForSearchIndexRefresh();
+    try {
+      waitForSearchIndexRefresh();
 
-    await("Wait for first-page search to surface alphabetically-late match (size=25)")
-        .atMost(Duration.ofSeconds(45))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              ColumnGridResponse response =
-                  getColumnGrid(
-                      client,
-                      "entityTypes=table&columnNamePattern=zzz_target&size=25&serviceName="
-                          + service.getName());
+      await("Wait for first-page search to surface alphabetically-late match (size=25)")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                ColumnGridResponse response =
+                    getColumnGrid(
+                        client,
+                        "entityTypes=table&columnNamePattern=zzz_target&size=25&serviceName="
+                            + service.getName());
 
-              assertNotNull(response);
-              assertTrue(
-                  response.getColumns().stream()
-                      .anyMatch(c -> c.getColumnName().equals(matchedColumn)),
-                  "First page must contain the alphabetically-late matching column "
-                      + "(this exercises the original bug fix — composite agg would have hidden it)");
-              assertEquals(
-                  1,
-                  response.getTotalUniqueColumns(),
-                  "Only one unique column matches the pattern");
-            });
+                assertNotNull(response);
+                assertTrue(
+                    response.getColumns().stream()
+                        .anyMatch(c -> c.getColumnName().equals(matchedColumn)),
+                    "First page must contain the alphabetically-late matching column "
+                        + "(this exercises the original bug fix — composite agg would have hidden it)");
+                assertEquals(
+                    1,
+                    response.getTotalUniqueColumns(),
+                    "Only one unique column matches the pattern");
+              });
+    } finally {
+      java.util.Map<String, String> params = new java.util.HashMap<>();
+      params.put("hardDelete", "true");
+      try {
+        SdkClients.adminClient().tables().delete(table.getId().toString(), params);
+      } catch (Exception ignored) {
+      }
+    }
   }
 
   private void waitForColumnToBeIndexed(

@@ -266,9 +266,6 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   /**
    * Tag/glossary filter path: the tag-check pass already extracted full column metadata from
    * _source (only tagged columns are in the map). Just paginate over the in-memory result.
-   *
-   * <p>{@code taggedColumns} is a case-insensitive map: when two entities have columns differing
-   * only in case (e.g. "User" / "user"), occurrences are merged under a single key.
    */
   private ColumnGridResponse aggregateColumnsWithKnownNames(
       ColumnAggregationRequest request, Map<String, List<ColumnWithContext>> taggedColumns) {
@@ -307,9 +304,6 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
    * Fetch columns with matching tags from _source. ES flat object mapping means we can't filter
    * "column X has tag Y" at query level, so we read _source and check in Java. Since we already
    * have the full document, we extract column metadata here — avoiding a separate data-fetch query.
-   *
-   * <p>Returns a case-insensitive map so that columns differing only in case (e.g. "User" / "user")
-   * group together, matching how the search/browse paths display them.
    */
   private Map<String, List<ColumnWithContext>> getColumnsWithTagsFromSource(
       ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
@@ -358,18 +352,13 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Map<String, List<ColumnWithContext>> columnsByName)
       throws IOException {
 
-    // Capped at index.max_result_window (default 10k). For tag/glossary filtering this is the
-    // max number of *tagged entities* we can scan per group; columns from later entities are
-    // not considered. Tracked separately — would need search_after / scroll to remove this cap.
     SearchRequest searchRequest = SearchRequest.of(s -> s.index(indexes).query(query).size(10000));
 
     SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
     long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;
     if (totalHits > 10000) {
       LOG.warn(
-          "Tag/glossary source-fetch matched {} entities; only first 10000 scanned for tagged "
-              + "columns (index.max_result_window). Later entities will not be included.",
-          totalHits);
+          "Tag/glossary source-fetch matched {} entities; only first 10000 scanned.", totalHits);
     }
 
     for (Hit<JsonData> hit : response.hits().hits()) {

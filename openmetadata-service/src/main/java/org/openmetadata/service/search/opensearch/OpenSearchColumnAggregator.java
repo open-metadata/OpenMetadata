@@ -106,9 +106,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       return aggregateColumnsWithPattern(request);
     }
 
-    // Browse path with no pattern or tag/glossary filter: still applies request scope filters
-    // (service/database/schema/domain/entityType/metadataStatus, etc.) and uses composite
-    // aggregation for engine-side pagination via after_key.
+    // Browse path: scope filters + composite agg with after_key cursor.
     Query query = buildFilters(request, null);
 
     try {
@@ -192,9 +190,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
   /**
    * Tag/glossary filter path: the tag-check pass already extracted full column metadata from
    * _source (only tagged columns are in the map). Just paginate over the in-memory result.
-   *
-   * <p>{@code taggedColumns} is a case-insensitive map: when two entities have columns differing
-   * only in case (e.g. "User" / "user"), occurrences are merged under a single key.
    */
   private ColumnGridResponse aggregateColumnsWithKnownNames(
       ColumnAggregationRequest request, Map<String, List<ColumnWithContext>> taggedColumns) {
@@ -233,9 +228,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
    * Fetch columns with matching tags from _source. ES flat object mapping means we can't filter
    * "column X has tag Y" at query level, so we read _source and check in Java. Since we already
    * have the full document, we extract column metadata here — avoiding a separate data-fetch query.
-   *
-   * <p>Returns a case-insensitive map so that columns differing only in case (e.g. "User" / "user")
-   * group together, matching how the search/browse paths display them.
    */
   private Map<String, List<ColumnWithContext>> getColumnsWithTagsFromSource(
       ColumnAggregationRequest request) throws IOException {
@@ -279,9 +271,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       throws IOException {
     List<String> resolvedIndexes = resolveIndexNames();
 
-    // Capped at index.max_result_window (default 10k). For tag/glossary filtering this is the
-    // max number of *tagged entities* we can scan; columns from later entities are not
-    // considered. Tracked separately — would need search_after / scroll to remove this cap.
     SearchRequest searchRequest =
         SearchRequest.of(s -> s.index(resolvedIndexes).query(query).size(10000));
 
@@ -289,9 +278,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;
     if (totalHits > 10000) {
       LOG.warn(
-          "Tag/glossary source-fetch matched {} entities; only first 10000 scanned for tagged "
-              + "columns (index.max_result_window). Later entities will not be included.",
-          totalHits);
+          "Tag/glossary source-fetch matched {} entities; only first 10000 scanned.", totalHits);
     }
 
     for (os.org.opensearch.client.opensearch.core.search.Hit<JsonData> hit :
