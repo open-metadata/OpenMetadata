@@ -9,10 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utils module to define overrided sqlalchamy methods 
+Utils module to define overrided sqlalchamy methods
 """
 # pylint: disable=protected-access,unused-argument
 
+
+import re
+from typing import Optional, Tuple
 
 from clickhouse_sqlalchemy.drivers.base import ischema_names
 from clickhouse_sqlalchemy.types import Date
@@ -30,6 +33,45 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+
+_IDENT = r"(?:`[^`]+`|\"[^\"]+\"|[A-Za-z_][\w$]*)"
+_QUALIFIED_IDENT = rf"{_IDENT}(?:\.{_IDENT})?"
+
+MATERIALIZED_VIEW_TO_PATTERN = re.compile(
+    rf"""
+    ^\s*
+    CREATE\s+(?:OR\s+REPLACE\s+)?
+    MATERIALIZED\s+VIEW\s+
+    (?:IF\s+NOT\s+EXISTS\s+)?
+    (?P<mv>{_QUALIFIED_IDENT})
+    (?:\s+ON\s+CLUSTER\s+\S+)?
+    (?:\s+REFRESH\s+.+?)?
+    \s+TO\s+
+    (?P<target>{_QUALIFIED_IDENT})
+    \s+(?:\(|AS\b)
+    """,
+    re.IGNORECASE | re.VERBOSE | re.DOTALL,
+)
+
+
+def _strip_quotes(identifier: str) -> str:
+    return ".".join(part.strip('`"') for part in identifier.split("."))
+
+
+def get_mv_to_target_table(query: str) -> Optional[Tuple[str, str]]:
+    """Return (mv_name, target_table) for CREATE MATERIALIZED VIEW ... TO <target>.
+
+    Covers both the simple `TO <target>` form and the `REFRESH EVERY ... TO <target>`
+    form. Returns None when the query is not a CREATE MATERIALIZED VIEW with a TO
+    clause (e.g. inline-engine MVs, plain CREATE VIEW, INSERTs, etc.).
+    """
+    if not query:
+        return None
+    match = MATERIALIZED_VIEW_TO_PATTERN.search(query)
+    if not match:
+        return None
+    return _strip_quotes(match.group("mv")), _strip_quotes(match.group("target"))
+
 
 Map = create_sqlalchemy_type("Map")
 Array = create_sqlalchemy_type("Array")

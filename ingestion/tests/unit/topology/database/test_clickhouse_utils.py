@@ -13,7 +13,10 @@
 from clickhouse_sqlalchemy.drivers.base import ischema_names as ch_ischema_names
 from sqlalchemy import types as sqltypes
 
-from metadata.ingestion.source.database.clickhouse.utils import _get_column_type
+from metadata.ingestion.source.database.clickhouse.utils import (
+    _get_column_type,
+    get_mv_to_target_table,
+)
 
 
 class MockDialect:
@@ -134,3 +137,88 @@ class TestClickhouseGeoTypes:
         # All values should be distinct from NullType
         for name, t in types.items():
             assert t is not sqltypes.NullType, f"{name} resolved to NullType"
+
+
+class TestGetMvToTargetTable:
+    """Regression tests for GitHub issue #26265 — missing downstream for
+    ClickHouse MATERIALIZED VIEW ... TO <target> lineage."""
+
+    def test_simple_to_syntax(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv TO target_table AS SELECT * FROM source_table"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target_table")
+
+    def test_if_not_exists(self):
+        query = (
+            "CREATE MATERIALIZED VIEW IF NOT EXISTS mv TO target "
+            "AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_or_replace(self):
+        query = (
+            "CREATE OR REPLACE MATERIALIZED VIEW mv TO target "
+            "AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_schema_qualified_names(self):
+        query = (
+            "CREATE MATERIALIZED VIEW db1.mv TO db2.target "
+            "AS SELECT * FROM db1.source"
+        )
+        assert get_mv_to_target_table(query) == ("db1.mv", "db2.target")
+
+    def test_backtick_quoted_identifiers(self):
+        query = (
+            "CREATE MATERIALIZED VIEW `my db`.`mv 1` TO `my db`.`target 1` "
+            "AS SELECT * FROM `my db`.`source 1`"
+        )
+        assert get_mv_to_target_table(query) == ("my db.mv 1", "my db.target 1")
+
+    def test_refresh_every_to_syntax(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv REFRESH EVERY 1 HOUR TO target "
+            "AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_refresh_every_with_offset_to_syntax(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "REFRESH EVERY 1 DAY OFFSET 1 HOUR RANDOMIZE FOR 10 MINUTE "
+            "TO target AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_on_cluster_to_syntax(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv ON CLUSTER my_cluster TO target "
+            "AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_case_insensitive(self):
+        query = "create materialized view mv to target as select * from source"
+        assert get_mv_to_target_table(query) == ("mv", "target")
+
+    def test_inline_engine_mv_returns_none(self):
+        """MV defined with inline ENGINE=... (no TO clause) should not match."""
+        query = (
+            "CREATE MATERIALIZED VIEW mv ENGINE = MergeTree() ORDER BY id "
+            "AS SELECT * FROM source"
+        )
+        assert get_mv_to_target_table(query) is None
+
+    def test_plain_view_returns_none(self):
+        query = "CREATE VIEW v AS SELECT * FROM source"
+        assert get_mv_to_target_table(query) is None
+
+    def test_insert_query_returns_none(self):
+        query = "INSERT INTO target SELECT * FROM source"
+        assert get_mv_to_target_table(query) is None
+
+    def test_empty_query_returns_none(self):
+        assert get_mv_to_target_table("") is None
+        assert get_mv_to_target_table(None) is None
