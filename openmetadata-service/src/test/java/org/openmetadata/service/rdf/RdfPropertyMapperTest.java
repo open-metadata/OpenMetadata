@@ -711,8 +711,8 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("container, votes, and extension helpers should cover remaining value branches")
-    void testContainerVotesAndExtensionHelpersCoverRemainingBranches() throws Exception {
+    @DisplayName("container and extension helpers should cover remaining value branches")
+    void testContainerAndExtensionHelpersCoverRemainingBranches() throws Exception {
       ArrayNode listOfReferences = objectMapper.createArrayNode();
       UUID upstreamId = UUID.randomUUID();
       listOfReferences.add(entityReferenceNode("table", upstreamId.toString(), "orders", null));
@@ -734,30 +734,6 @@ class RdfPropertyMapperTest {
           linkedEntities.iterator().toList().stream()
               .map(node -> node.asResource().getURI())
               .toList());
-
-      ObjectNode votes = objectMapper.createObjectNode();
-      votes.put("upVotes", 2);
-      ArrayNode downVoters = objectMapper.createArrayNode();
-      UUID reviewerId = UUID.randomUUID();
-      downVoters.add(entityReferenceNode("user", reviewerId.toString(), "reviewer", null));
-      votes.set("downVoters", downVoters);
-      invokePrivate(
-          "addVotes",
-          new Class[] {JsonNode.class, Resource.class, Model.class},
-          votes,
-          entityResource,
-          model);
-      Resource votesResource =
-          model
-              .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "hasVotes"))
-              .next()
-              .asResource();
-      assertFalse(
-          model.contains(
-              votesResource,
-              model.createProperty(OM_NS, "downVoters"),
-              model.createResource(BASE_URI + "entity/user/" + reviewerId)),
-          "Vote helpers should not emit voter references");
 
       ObjectNode extension = objectMapper.createObjectNode();
       extension.put("threshold", 2.5);
@@ -810,7 +786,9 @@ class RdfPropertyMapperTest {
           votes,
           entityResource,
           model);
-      assertTrue(model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")));
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasVotes")),
+          "votes is ignored by the structured-property dispatch");
 
       ObjectNode lifeCycle = objectMapper.createObjectNode();
       lifeCycle.set(

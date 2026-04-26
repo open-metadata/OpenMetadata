@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
@@ -41,10 +42,12 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>Test isolation: Uses TestNamespace for unique entity naming.
  *
- * <p>Parallelization: Runs with @Execution(ExecutionMode.SAME_THREAD) because each test
- * blocks a server thread on synchronous Fuseki writes; concurrent execution can exhaust the
- * server thread pool and cause request timeouts.
+ * <p>Parallelization: Runs with @Isolated and @Execution(ExecutionMode.SAME_THREAD).
+ * The class flips a global RDF singleton in @BeforeAll and each test blocks a server thread on
+ * synchronous Fuseki writes; concurrent execution with other classes exhausts the server thread
+ * pool and causes request timeouts (see PR #27562 CI failure).
  */
+@Isolated
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyExportIT {
