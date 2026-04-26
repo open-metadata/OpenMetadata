@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -970,24 +971,28 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return expertsMap;
     }
 
-    // Initialize empty lists for all data products
     for (DataProduct dataProduct : dataProducts) {
       expertsMap.put(dataProduct.getId(), new ArrayList<>());
     }
 
-    // Single batch query to get all expert relationships
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(dataProducts), Relationship.EXPERT.ordinal(), Entity.USER);
 
-    // Group experts by data product ID
+    List<UUID> expertIds =
+        records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
+    Map<UUID, EntityReference> expertRefsById =
+        Entity.getEntityReferencesByIds(Entity.USER, expertIds, Include.NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
+
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID dataProductId = UUID.fromString(record.getFromId());
-      EntityReference expertRef =
-          Entity.getEntityReferenceById(
-              Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
+      EntityReference expertRef = expertRefsById.get(UUID.fromString(record.getToId()));
+      if (expertRef == null) {
+        continue;
+      }
       expertsMap.get(dataProductId).add(expertRef);
     }
 

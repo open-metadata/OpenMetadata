@@ -1644,34 +1644,43 @@ export const selectDomainFromNavbar = async (
   page: Page,
   domain: Domain['responseData']
 ) => {
-  await page.getByTestId('domain-dropdown').click();
+  const domainDropdown = page.getByTestId('domain-dropdown');
   const domainTree = page.getByTestId('domain-selectable-tree');
-  await domainTree.waitFor({
-    state: 'visible',
-  });
-  const searchBar = domainTree.getByTestId('searchbar');
   const searchTerm = domain.displayName ?? domain.name;
   const domainOption = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+
+  const openDropdown = async () => {
+    await domainDropdown.click();
+    await domainTree.waitFor({ state: 'visible' });
+  };
+
+  await openDropdown();
+
+  const searchBar = domainTree.locator('input[placeholder]').first();
 
   await expect
     .poll(
       async () => {
         if (!(await domainTree.isVisible().catch(() => false))) {
-          await page.getByTestId('domain-dropdown').click();
-          await domainTree.waitFor({ state: 'visible' });
+          await openDropdown();
         }
 
-        await searchBar.fill('');
-        await searchBar.fill(searchTerm);
+        const isSearchBarVisible = await searchBar
+          .isVisible()
+          .catch(() => false);
+
+        if (isSearchBarVisible) {
+          await searchBar.focus();
+          await searchBar.press('Control+a');
+          await searchBar.pressSequentially(searchTerm);
+        }
 
         return await domainOption.isVisible().catch(() => false);
       },
       {
         timeout: 60000,
         intervals: [1000, 2000, 5000],
-        message: `Timed out waiting for domain ${
-          domain.displayName ?? domain.name
-        } to appear in navbar selector`,
+        message: `Timed out waiting for domain ${searchTerm} to appear in navbar selector`,
       }
     )
     .toBe(true);
@@ -1838,4 +1847,88 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   const domainOption = page.getByText(domain.data.displayName);
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+};
+
+const parseRequestBody = (postData: string | null | undefined) => {
+  if (!postData) {
+    return {};
+  }
+  try {
+    return JSON.parse(postData) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
+const matchesDomainBulkCall = (
+  url: string,
+  method: string,
+  action: 'add' | 'remove'
+) =>
+  method === 'PUT' &&
+  /\/api\/v1\/domains\/[^/]+\/assets\/(add|remove)$/.test(url) &&
+  url.endsWith(`/assets/${action}`);
+
+export const waitForDomainAssetsAddDryRun = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'add')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun === true;
+  });
+
+export const waitForDomainAssetsAddCommit = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'add')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun !== true;
+  });
+
+export const waitForDomainAssetsRemoveDryRun = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'remove')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun === true;
+  });
+
+export const waitForDomainAssetsRemoveCommit = (page: Page) =>
+  page.waitForResponse((response) => {
+    const request = response.request();
+    if (!matchesDomainBulkCall(response.url(), request.method(), 'remove')) {
+      return false;
+    }
+
+    return parseRequestBody(request.postData()).dryRun !== true;
+  });
+
+export const addAssetToDomainViaApi = async (
+  apiContext: APIRequestContext,
+  domain: Domain,
+  asset: { id: string; type: string }
+) => {
+  const fqn =
+    domain.responseData?.fullyQualifiedName ?? domain.data.fullyQualifiedName;
+  const response = await apiContext.put(
+    `/api/v1/domains/${encodeURIComponent(fqn ?? '')}/assets/add`,
+    {
+      data: { assets: [asset] },
+    }
+  );
+
+  if (!response.ok()) {
+    const text = await response.text();
+    throw new Error(
+      `addAssetToDomainViaApi failed (${response.status()}): ${text}`
+    );
+  }
+
+  return response.json();
 };
