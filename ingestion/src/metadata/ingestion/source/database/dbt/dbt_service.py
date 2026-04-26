@@ -193,7 +193,13 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
         required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
-        manifest_dict.update({key: {} for key in manifest_dict if key.lower() not in required_manifest_keys})
+        manifest_dict.update(
+            {
+                key: [] if isinstance(manifest_dict[key], list) else {}
+                for key in manifest_dict
+                if key.lower() not in required_manifest_keys
+            }
+        )
 
         # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:

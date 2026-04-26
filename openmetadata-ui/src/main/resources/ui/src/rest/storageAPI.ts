@@ -167,3 +167,15 @@ export const updateContainerVotes = async (id: string, data: QueryVote) => {
 
   return response.data;
 };
+
+export const getSampleDataByContainerId = async (id: string) => {
+  const response = await APIClient.get<Container>(
+    `${BASE_URL}/${id}/sampleData`
+  );
+
+  return response.data;
+};
+
+export const deleteSampleDataByContainerId = async (id: string) => {
+  return await APIClient.delete<Container>(`${BASE_URL}/${id}/sampleData`);
+};

@@ -12,11 +12,16 @@
 OpenMetadata source for the profiler
 """
 
-from typing import Iterable, List, Optional, cast
+from typing import Iterable, List, Optional
 
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
+    StorageServiceAutoClassificationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -28,6 +33,10 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.source.fetcher.entity_fetcher import EntityFetcher
 from metadata.profiler.source.model import ProfilerSourceAndEntity
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -61,10 +70,12 @@ class OpenMetadataSource(Source):
         self.metadata = metadata
         self.test_connection()
 
-        # Init and type the source config
-        self.source_config: DatabaseServiceProfilerPipeline = cast(
-            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
-        )  # Used to satisfy type checked
+        # Init and type the source config - supports both Database and Storage service pipelines
+        self.source_config: (
+            DatabaseServiceProfilerPipeline
+            | DatabaseServiceAutoClassificationPipeline
+            | StorageServiceAutoClassificationPipeline
+        ) = self.config.source.sourceConfig.config
 
         if not self._validate_service_name():
             raise ValueError(
@@ -82,8 +93,10 @@ class OpenMetadataSource(Source):
 
     def _validate_service_name(self):
         """Validate service name exists in OpenMetadata"""
+        service_type = get_service_type_from_source_type(self.config.source.type)
+        service_class = get_service_class_from_service_type(service_type)
         return self.metadata.get_by_name(
-            entity=DatabaseService,
+            entity=service_class,
             fqn=self.config.source.serviceName,  # type: ignore
         )
 
