@@ -124,10 +124,13 @@ export const removeContainerFollower = async (id: string, userId: string) => {
   return response.data;
 };
 
-export const getContainerVersions = async (id: string) => {
+export const getContainerVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };
@@ -163,4 +166,16 @@ export const updateContainerVotes = async (id: string, data: QueryVote) => {
   );
 
   return response.data;
+};
+
+export const getSampleDataByContainerId = async (id: string) => {
+  const response = await APIClient.get<Container>(
+    `${BASE_URL}/${id}/sampleData`
+  );
+
+  return response.data;
+};
+
+export const deleteSampleDataByContainerId = async (id: string) => {
+  return await APIClient.delete<Container>(`${BASE_URL}/${id}/sampleData`);
 };

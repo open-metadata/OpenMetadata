@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/tierUpdatePayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TierUpdatePayload",
+  "description": "Payload for Tier Update tasks.",
+  "javaType": "org.openmetadata.schema.type.TierUpdatePayload",
+  "type": "object",
+  "properties": {
+    "currentTier": {
+      "description": "Current tier of the entity.",
+      "$ref": "tagLabel.json"
+    },
+    "newTier": {
+      "description": "Proposed new tier for the entity.",
+      "$ref": "tagLabel.json"
+    },
+    "reason": {
+      "description": "Reason for the tier change.",
+      "type": "string"
+    }
+  },
+  "required": ["newTier"],
+  "additionalProperties": false
+}
