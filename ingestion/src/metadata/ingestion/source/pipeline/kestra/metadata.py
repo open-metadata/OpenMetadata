@@ -236,7 +236,7 @@ class KestraSource(PipelineServiceSource):
                 up_id = cond.get("flowId")
                 if not (up_ns and up_id):
                     continue
-                up_fqn = f"{service_name}.{up_ns}.{up_id}"
+                up_fqn = f'{service_name}."{up_ns}.{up_id}"'
                 up_pipe = self.metadata.get_by_name(entity=Pipeline, fqn=up_fqn)
                 if not up_pipe:
                     continue
@@ -350,7 +350,10 @@ class KestraSource(PipelineServiceSource):
 
     def _pipeline_fqn(self, flow: KestraFlow) -> str:
         service_name = self.context.get().pipeline_service
-        return f"{service_name}.{flow.namespace}.{flow.id}"
+        # The Pipeline name contains dots (Kestra namespace), so OM wraps it
+        # in quotes when forming the FQN. Mirror that here so get_by_name()
+        # resolves during lineage and status emission.
+        return f'{service_name}."{_flow_fqn(flow)}"'
 
     def _error(self, msg: str, exc: Exception) -> StackTraceError:
         logger.warning("%s: %s", msg, exc)
