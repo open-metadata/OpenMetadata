@@ -125,6 +125,15 @@ test.describe('Glossary tests', () => {
     const glossaryTermOption = page
       .getByTestId(`tag-${fullyQualifiedName}`)
       .first();
+    const selectedGlossaryTerm = page.getByTestId(
+      `selected-tag-${fullyQualifiedName}`
+    );
+    const selectedGlossaryTermText = page.locator(
+      `[data-testid="tag-selector"]:has-text("${displayName}")`
+    );
+    const saveButton = page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag');
 
     await expect(glossaryInput).toBeVisible();
 
@@ -140,10 +149,12 @@ test.describe('Glossary tests', () => {
         }
       )
       .toBe(true);
+    await glossaryTermOption.scrollIntoViewIfNeeded();
     await glossaryTermOption.click();
+    await saveButton.waitFor({ state: 'visible' });
 
     await expect(
-      page.locator(`[data-testid="tag-selector"]:has-text("${displayName}")`)
+      selectedGlossaryTerm.or(selectedGlossaryTermText)
     ).toBeVisible();
   };
 

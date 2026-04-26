@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   getAuthContext,
@@ -43,6 +43,37 @@ let topicFqn: string;
 let pipelineFqn: string;
 
 const LINEAGE_API = '/api/v1/lineage/getLineage?fqn=*';
+type LineageData = {
+  nodes?: Record<string, unknown>;
+  downstreamEdges?: Record<
+    string,
+    {
+      pipeline?: {
+        fullyQualifiedName?: string;
+      };
+    }
+  >;
+};
+
+const getLineageData = async (
+  apiContext: APIRequestContext,
+  fqn: string,
+  type: string,
+  upstreamDepth = 1,
+  downstreamDepth = 1
+): Promise<LineageData | null> => {
+  const response = await apiContext.get(
+    `/api/v1/lineage/getLineage?fqn=${encodeURIComponent(
+      fqn
+    )}&type=${type}&upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`
+  );
+
+  if (!response.ok()) {
+    return null;
+  }
+
+  return (await response.json()) as LineageData;
+};
 
 test.describe('Lineage Pipeline Annotator', () => {
   test.beforeAll(async ({ browser }) => {
@@ -109,7 +140,7 @@ test.describe('Lineage Pipeline Annotator', () => {
       .then((r) => r.json());
     pipelineFqn = pipelineResp.fullyQualifiedName;
 
-    await apiContext.put('/api/v1/lineage', {
+    const addLineageResponse = await apiContext.put('/api/v1/lineage', {
       data: {
         edge: {
           fromEntity: { id: table.entityResponseData.id, type: 'table' },
@@ -121,6 +152,70 @@ test.describe('Lineage Pipeline Annotator', () => {
         },
       },
     });
+    expect(addLineageResponse.ok()).toBe(true);
+
+    const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+
+    await expect
+      .poll(
+        async () => {
+          const data = await getLineageData(apiContext, tableFqn, 'table');
+
+          return Object.keys(data?.nodes ?? {}).includes(topicFqn);
+        },
+        { timeout: 30000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe(true);
+
+    await expect
+      .poll(
+        async () => {
+          const data = await getLineageData(apiContext, tableFqn, 'table');
+          const downstreamEdges = Object.values(data?.downstreamEdges ?? {});
+
+          return downstreamEdges.some(
+            (edge) => edge?.pipeline?.fullyQualifiedName === pipelineFqn
+          );
+        },
+        { timeout: 30000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe(true);
+
+    await expect
+      .poll(
+        async () => {
+          const data = await getLineageData(
+            apiContext,
+            pipelineServiceFqn,
+            'pipelineService'
+          );
+          const nodeFqns = Object.keys(data?.nodes ?? {});
+
+          return (
+            nodeFqns.includes(dbServiceFqn) &&
+            nodeFqns.includes(messagingServiceFqn)
+          );
+        },
+        { timeout: 30000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe(true);
+
+    await expect
+      .poll(
+        async () => {
+          const data = await getLineageData(
+            apiContext,
+            dbServiceFqn,
+            'databaseService',
+            0,
+            1
+          );
+
+          return Object.keys(data?.nodes ?? {}).includes(pipelineServiceFqn);
+        },
+        { timeout: 30000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe(true);
 
     await apiContext.dispose();
     await page.close();

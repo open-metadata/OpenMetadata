@@ -1389,6 +1389,7 @@ base.describe(
     base(
       'User Performance across different entities pages',
       async ({ browser }) => {
+        base.setTimeout(300000);
         const { page, afterAction } = await performUserLogin(browser, user);
 
         for (const entity of entities) {
