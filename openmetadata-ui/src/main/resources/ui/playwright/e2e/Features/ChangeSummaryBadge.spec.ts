@@ -105,7 +105,10 @@ test.describe(
         const changeSummaryResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/changeSummary/table/')
         );
-        await navigateToExploreAndSelectEntity(page, table.entity.name);
+        await navigateToExploreAndSelectEntity({
+          page,
+          entityName: table.entity.name,
+        });
 
         await changeSummaryResponse;
         await waitForAllLoadersToDisappear(page);
