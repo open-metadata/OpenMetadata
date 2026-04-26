@@ -123,9 +123,7 @@ test.describe('Glossary tests', () => {
       .poll(
         async () => {
           const response = await apiContext.get(
-            `/api/v1/glossaryTerms/name/${encodeURIComponent(
-              glossaryTerm.responseData.fullyQualifiedName
-            )}?fields=assets`
+            `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}/assets?limit=1`
           );
 
           if (!response.ok()) {
@@ -133,10 +131,12 @@ test.describe('Glossary tests', () => {
           }
 
           const glossaryTermData = (await response.json()) as {
-            assets?: unknown[];
+            paging?: {
+              total?: number;
+            };
           };
 
-          return glossaryTermData.assets?.length ?? 0;
+          return glossaryTermData.paging?.total ?? 0;
         },
         {
           timeout: 180000,
