@@ -236,7 +236,7 @@ export class TableClass extends EntityClass {
       }
     );
 
-    let service;
+    let service: ResponseDataType;
     if (serviceResponse.status() === 409) {
       // Service already exists, fetch it by name
       const serviceName = this.service.name;
@@ -260,22 +260,50 @@ export class TableClass extends EntityClass {
     const databaseResponse = await apiContext.post('/api/v1/databases', {
       data: { ...this.database, service: service.fullyQualifiedName },
     });
-    if (!databaseResponse.ok()) {
+    let database: ResponseDataWithServiceType;
+    if (databaseResponse.status() === 409) {
+      const databaseResponseByName = await apiContext.get(
+        `/api/v1/databases/name/${encodeURIComponent(
+          `${service.fullyQualifiedName}.${this.database.name}`
+        )}`
+      );
+      if (!databaseResponseByName.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing database "${this.database.name}" (${databaseResponseByName.status()}): ${await databaseResponseByName.text()}`
+        );
+      }
+      database = await databaseResponseByName.json();
+    } else if (!databaseResponse.ok()) {
       throw new Error(
         `TableClass: database create failed (${databaseResponse.status()}): ${await databaseResponse.text()}`
       );
+    } else {
+      database = await databaseResponse.json();
     }
-    const database = await databaseResponse.json();
 
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
       data: { ...this.schema, database: database.fullyQualifiedName },
     });
-    if (!schemaResponse.ok()) {
+    let schema: ResponseDataWithServiceType;
+    if (schemaResponse.status() === 409) {
+      const schemaResponseByName = await apiContext.get(
+        `/api/v1/databaseSchemas/name/${encodeURIComponent(
+          `${database.fullyQualifiedName}.${this.schema.name}`
+        )}`
+      );
+      if (!schemaResponseByName.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing schema "${this.schema.name}" (${schemaResponseByName.status()}): ${await schemaResponseByName.text()}`
+        );
+      }
+      schema = await schemaResponseByName.json();
+    } else if (!schemaResponse.ok()) {
       throw new Error(
         `TableClass: schema create failed (${schemaResponse.status()}): ${await schemaResponse.text()}`
       );
+    } else {
+      schema = await schemaResponse.json();
     }
-    const schema = await schemaResponse.json();
 
     const entityResponse = await apiContext.post('/api/v1/tables', {
       data: {
@@ -283,13 +311,26 @@ export class TableClass extends EntityClass {
         databaseSchema: schema.fullyQualifiedName,
       },
     });
-    if (!entityResponse.ok()) {
+    let entity: Table;
+    if (entityResponse.status() === 409) {
+      const entityResponseByName = await apiContext.get(
+        `/api/v1/tables/name/${encodeURIComponent(
+          `${schema.fullyQualifiedName}.${this.entity.name}`
+        )}`
+      );
+      if (!entityResponseByName.ok()) {
+        throw new Error(
+          `TableClass: failed to fetch existing table "${this.entity.name}" (${entityResponseByName.status()}): ${await entityResponseByName.text()}`
+        );
+      }
+      entity = await entityResponseByName.json();
+    } else if (!entityResponse.ok()) {
       throw new Error(
         `TableClass: table create failed (${entityResponse.status()}): ${await entityResponse.text()}`
       );
+    } else {
+      entity = await entityResponse.json();
     }
-
-    const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;

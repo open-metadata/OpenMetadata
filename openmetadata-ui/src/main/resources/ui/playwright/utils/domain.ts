@@ -1670,9 +1670,7 @@ export const selectDomainFromNavbar = async (
           .catch(() => false);
 
         if (isSearchBarVisible) {
-          await searchBar.focus();
-          await searchBar.press('Control+a');
-          await searchBar.pressSequentially(searchTerm);
+          await searchBar.fill(searchTerm);
         }
 
         return await domainOption.isVisible().catch(() => false);

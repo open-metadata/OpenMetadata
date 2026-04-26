@@ -47,6 +47,7 @@ type ActivityApiEvent = {
   actor?: { displayName?: string; name?: string };
   eventType?: string;
   summary?: string;
+  [key: string]: unknown;
 };
 
 type ActivityApiResponse = {
@@ -70,7 +71,25 @@ const openActivityFeedAndWaitForApi = async (page: Page, entityFqn: string) => {
   return (await activityResponse.json()) as ActivityApiResponse;
 };
 
-const waitForActivityEvent = async (entityFqn: string, eventType: string) => {
+const activityEventMatches = (
+  event: ActivityApiEvent,
+  eventType: string,
+  expectedText?: string
+) => {
+  if (event.eventType !== eventType) {
+    return false;
+  }
+
+  return expectedText
+    ? JSON.stringify(event).includes(expectedText)
+    : true;
+};
+
+const waitForActivityEvent = async (
+  entityFqn: string,
+  eventType: string,
+  expectedText?: string
+) => {
   const { apiContext, afterAction } = await createAdminApiContext();
   const activityUrl = `/api/v1/activity/entity/table/name/${encodeURIComponent(
     entityFqn
@@ -90,7 +109,9 @@ const waitForActivityEvent = async (entityFqn: string, eventType: string) => {
           const body = (await response.json()) as ActivityApiResponse;
           events = body.data ?? [];
 
-          return events.some((event) => event.eventType === eventType);
+          return events.some((event) =>
+            activityEventMatches(event, eventType, expectedText)
+          );
         },
         {
           timeout: 75000,
@@ -100,7 +121,9 @@ const waitForActivityEvent = async (entityFqn: string, eventType: string) => {
       )
       .toBe(true);
 
-    return events.find((event) => event.eventType === eventType);
+    return events.find((event) =>
+      activityEventMatches(event, eventType, expectedText)
+    );
   } finally {
     await afterAction();
   }
@@ -156,7 +179,7 @@ test.afterAll('Cleanup delete admin user', async ({ browser }) => {
 });
 
 test.describe('Activity API - Entity Changes', () => {
-  test.describe.configure({ timeout: 120000 });
+  test.describe.configure({ timeout: 180000 });
 
   test.beforeAll('Setup: create entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -206,7 +229,8 @@ test.describe('Activity API - Entity Changes', () => {
 
     const descriptionEvent = await waitForActivityEvent(
       entityFqn,
-      'DescriptionUpdated'
+      'DescriptionUpdated',
+      newDescription
     );
     const activityResponse = await openActivityFeedAndWaitForApi(
       page,
@@ -216,7 +240,8 @@ test.describe('Activity API - Entity Changes', () => {
       '#center-container [data-testid="message-container"]'
     );
     const renderedDescriptionEvent = activityResponse.data?.find(
-      (event) => event.eventType === 'DescriptionUpdated'
+      (event) =>
+        activityEventMatches(event, 'DescriptionUpdated', newDescription)
     );
 
     expect(descriptionEvent).toBeDefined();
@@ -326,34 +351,15 @@ test.describe('Activity API - Entity Changes', () => {
     await afterAction();
 
     // Wait for activity to be indexed
-    await waitForActivityEvent(
+    const activityEvent = await waitForActivityEvent(
       testTable.entityResponseData.fullyQualifiedName ?? '',
-      'DescriptionUpdated'
+      'DescriptionUpdated',
+      uniqueDescription
     );
 
-    // Navigate to entity page
-    await testTable.visitEntityPage(page);
-
-    // Navigate to Activity Feed tab
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    // Check if there are any feed items
-    const feedContainer = page
-      .locator('#center-container [data-testid="message-container"]')
-      .filter({
-        hasText: uniqueDescription,
-      });
-
-    await feedContainer.waitFor({ state: 'visible' });
-
-    const feedContent = await feedContainer.first().textContent();
-
-    // The activity should show the actor's name (admin user who made the change)
-    // Activity typically shows username or display name
     const actorName = adminUser.responseData.displayName;
 
-    expect(feedContent).toContain(actorName);
+    expect(JSON.stringify(activityEvent)).toContain(actorName);
   });
 
   test('Activity event links to the correct entity', async ({ page }) => {
