@@ -726,10 +726,23 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
   test('Glossary CSV import preserves typed relations', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const relGlossary = new Glossary('TypedRelations');
-    const target1 = new GlossaryTerm(relGlossary, undefined, 'TR_target1');
-    const target2 = new GlossaryTerm(relGlossary, undefined, 'TR_target2');
-    const target3 = new GlossaryTerm(relGlossary, undefined, 'TR_target3');
+    const suffix = uuid();
+    const relGlossary = new Glossary(`TypedRelations_${suffix}`);
+    const target1 = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_target1_${suffix}`
+    );
+    const target2 = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_target2_${suffix}`
+    );
+    const target3 = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_target3_${suffix}`
+    );
 
     try {
       await test.step('Create glossary and three target terms', async () => {
@@ -826,10 +839,13 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         const download = await downloadPromise;
 
         const stream = await download.createReadStream();
+        expect(stream, 'Download stream should be available').not.toBeNull();
         const chunks: Buffer[] = [];
 
-        for await (const chunk of stream) {
-          chunks.push(Buffer.from(chunk));
+        if (stream) {
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk));
+          }
         }
 
         const csvContent = Buffer.concat(chunks).toString('utf-8');
@@ -858,8 +874,13 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const relGlossary = new Glossary('TypedRelationsInvalid');
-    const target = new GlossaryTerm(relGlossary, undefined, 'TR_targetX');
+    const suffix = uuid();
+    const relGlossary = new Glossary(`TypedRelationsInvalid_${suffix}`);
+    const target = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_targetX_${suffix}`
+    );
 
     try {
       await test.step('Create glossary and target term', async () => {
@@ -906,12 +927,12 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           failed: '1',
         });
 
-        const firstRow = page.locator('.rdg-row').first();
-        const errorText = await firstRow
-          .locator('.rdg-cell-details')
-          .textContent();
-
-        expect(errorText).toContain('Invalid relation type');
+        const errorCell = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell-details');
+        await errorCell.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(errorCell).toContainText('Invalid relation type');
       });
     } finally {
       await relGlossary.delete(apiContext);

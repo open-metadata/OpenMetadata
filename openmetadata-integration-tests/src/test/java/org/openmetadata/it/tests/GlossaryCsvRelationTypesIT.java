@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -30,10 +31,15 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -421,7 +427,12 @@ public class GlossaryCsvRelationTypesIT {
     LOG.debug("FQN with colon handling verified for glossary: {}", glossary.getName());
   }
 
-  private static final Object SETTINGS_LOCK = new Object();
+  /**
+   * Shared resource key for the global {@code glossaryTermRelationSettings} endpoint. Any IT class
+   * that mutates these settings must use the same key on a {@link ResourceLock} so JUnit serialises
+   * across classes; a class-local synchronized block would only guard intra-class concurrency.
+   */
+  private static final String SETTINGS_RESOURCE_KEY = "glossaryTermRelationSettings";
 
   @Test
   void testImportPreservesMixedRelationsViaApi(TestNamespace ns) throws Exception {
@@ -475,9 +486,8 @@ public class GlossaryCsvRelationTypesIT {
     String csv = exportGlossaryCsv(glossary.getName());
     LOG.debug("Exported CSV for asymmetric test:\n{}", csv);
 
-    String[] lines = csv.split("\\R");
-    String childRow = findRowByTerm(lines, childTerm.getName());
-    String parentRow = findRowByTerm(lines, parentTerm.getName());
+    String childRow = findRowByTerm(csv, childTerm.getName());
+    String parentRow = findRowByTerm(csv, parentTerm.getName());
     assertNotNull(childRow, "Child term row should be in CSV");
     assertNotNull(parentRow, "Parent term row should be in CSV");
 
@@ -505,7 +515,7 @@ public class GlossaryCsvRelationTypesIT {
     String exportedCsv = exportGlossaryCsv(glossary.getName());
     String[] lines = exportedCsv.split("\\R");
     String header = lines[0];
-    String originRow = findRowByTerm(lines, origin.getName());
+    String originRow = findRowByTerm(exportedCsv, origin.getName());
     assertNotNull(originRow, "Origin row should be present in exported CSV");
 
     String cloneName = ns.prefix("") + "_clone";
@@ -546,58 +556,65 @@ public class GlossaryCsvRelationTypesIT {
   }
 
   @Test
+  @ResourceLock(value = SETTINGS_RESOURCE_KEY, mode = ResourceAccessMode.READ_WRITE)
   void testRoundTripWithCustomRelationType(TestNamespace ns) throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      String customType = "causes" + System.currentTimeMillis();
-      String inverseType = "causedBy" + System.currentTimeMillis();
-      addCustomRelationTypePair(customType, inverseType);
-      try {
-        Glossary glossary = GlossaryTestFactory.createSimple(ns);
-        GlossaryTerm cause = GlossaryTermTestFactory.createWithName(ns, glossary, "cause");
-        GlossaryTerm effect = GlossaryTermTestFactory.createWithName(ns, glossary, "effect");
+    String customType = "causes" + System.currentTimeMillis();
+    String inverseType = "causedBy" + System.currentTimeMillis();
+    addCustomRelationTypePair(customType, inverseType);
+    try {
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm cause = GlossaryTermTestFactory.createWithName(ns, glossary, "cause");
+      GlossaryTerm effect = GlossaryTermTestFactory.createWithName(ns, glossary, "effect");
 
-        addTermRelation(cause.getId().toString(), effect.getId().toString(), customType);
+      addTermRelation(cause.getId().toString(), effect.getId().toString(), customType);
 
-        String csv = exportGlossaryCsv(glossary.getName());
-        String[] lines = csv.split("\\R");
-        String causeRow = findRowByTerm(lines, cause.getName());
-        assertNotNull(causeRow, "Cause row should be present in exported CSV");
-        assertTrue(
-            causeRow.contains(customType + ":" + effect.getFullyQualifiedName()),
-            "Cause row should contain '" + customType + ":<effect-fqn>'. Row: " + causeRow);
+      String csv = exportGlossaryCsv(glossary.getName());
+      String causeRow = findRowByTerm(csv, cause.getName());
+      assertNotNull(causeRow, "Cause row should be present in exported CSV");
+      assertTrue(
+          causeRow.contains(customType + ":" + effect.getFullyQualifiedName()),
+          "Cause row should contain '" + customType + ":<effect-fqn>'. Row: " + causeRow);
 
-        String newName = ns.prefix("") + "_imported";
-        String csvImport =
-            String.format(
-                "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                    + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,",
-                newName, customType, effect.getFullyQualifiedName());
-        String result = importGlossaryCsv(glossary.getName(), csvImport, false);
-        assertNotNull(result);
-        assertTrue(
-            result.contains("\"numberOfRowsPassed\":1"),
-            "Import with custom relation type should pass. Result: " + result);
+      String newName = ns.prefix("") + "_imported";
+      String csvImport =
+          String.format(
+              "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
+                  + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,",
+              newName, customType, effect.getFullyQualifiedName());
+      String result = importGlossaryCsv(glossary.getName(), csvImport, false);
+      assertNotNull(result);
+      assertTrue(
+          result.contains("\"numberOfRowsPassed\":1"),
+          "Import with custom relation type should pass. Result: " + result);
 
-        GlossaryTerm imported =
-            getGlossaryTerm(glossary.getFullyQualifiedName() + "." + newName, "relatedTerms");
-        assertNotNull(imported, "Imported term should be retrievable");
-        assertNotNull(imported.getRelatedTerms(), "Imported term should have related terms");
-        assertEquals(1, imported.getRelatedTerms().size(), "Expected one custom relation");
-        assertEquals(
-            customType,
-            imported.getRelatedTerms().get(0).getRelationType(),
-            "Custom relation type should be preserved through CSV import");
-      } finally {
-        cleanupCustomTypes(customType, inverseType);
-      }
+      GlossaryTerm imported =
+          getGlossaryTerm(glossary.getFullyQualifiedName() + "." + newName, "relatedTerms");
+      assertNotNull(imported, "Imported term should be retrievable");
+      assertNotNull(imported.getRelatedTerms(), "Imported term should have related terms");
+      assertEquals(1, imported.getRelatedTerms().size(), "Expected one custom relation");
+      assertEquals(
+          customType,
+          imported.getRelatedTerms().get(0).getRelationType(),
+          "Custom relation type should be preserved through CSV import");
+    } finally {
+      cleanupCustomTypes(customType, inverseType);
     }
   }
 
-  private String findRowByTerm(String[] lines, String termName) {
-    for (int i = 1; i < lines.length; i++) {
-      String[] fields = lines[i].split(",", -1);
-      if (fields.length > 1 && termName.equals(fields[1])) {
-        return lines[i];
+  /**
+   * Locate a CSV row by its glossary-term name. Uses Apache Commons CSV so quoted/escaped fields
+   * (e.g. a deeply nested parent FQN containing a comma) don't shift column indices and break the
+   * lookup. Returns the original line text so callers can run substring assertions against it.
+   */
+  private String findRowByTerm(String csvContent, String termName) throws Exception {
+    String[] lines = csvContent.split("\\R");
+    try (CSVParser parser =
+        CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csvContent))) {
+      for (CSVRecord record : parser) {
+        if (termName.equals(record.get("name*"))) {
+          int lineIndex = Math.toIntExact(record.getRecordNumber());
+          return lineIndex < lines.length ? lines[lineIndex] : null;
+        }
       }
     }
     return null;
