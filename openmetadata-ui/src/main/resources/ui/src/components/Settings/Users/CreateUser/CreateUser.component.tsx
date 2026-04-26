@@ -24,7 +24,15 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { compact, debounce, isEmpty, isUndefined, map, trim, uniqBy } from 'lodash';
+import {
+  compact,
+  debounce,
+  isEmpty,
+  isUndefined,
+  map,
+  trim,
+  uniqBy,
+} from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
@@ -138,33 +146,35 @@ const CreateUser = ({
   const selectedRoles = Form.useWatch('roles', form);
   const selectedPersonas = Form.useWatch('personas', form);
 
-  const fetchRoleOptions = useCallback(async (searchText = '') => {
-    setIsRolesLoading(true);
+  const fetchRoleOptions = useCallback(
+    async (searchText = '') => {
+      setIsRolesLoading(true);
 
-    try {
-      const roles = await searchRoles(searchText);
-      const nextOptions = map(roles, (role) => ({
-        label: getEntityName(role),
-        value: role.id,
-      }));
+      try {
+        const roles = await searchRoles(searchText);
+        const nextOptions = map(roles, (role) => ({
+          label: getEntityName(role),
+          value: role.id,
+        }));
 
-      setRoleOptions((prevOptions) => {
-        const selectedRoleOptions = prevOptions.filter((option) =>
-          (selectedRoles ?? []).includes(String(option.value))
+        setRoleOptions((prevOptions) => {
+          const selectedRoleOptions = prevOptions.filter((option) =>
+            (selectedRoles ?? []).includes(String(option.value))
+          );
+
+          return uniqBy([...selectedRoleOptions, ...nextOptions], 'value');
+        });
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.role-plural') })
         );
-
-        return uniqBy([...selectedRoleOptions, ...nextOptions], 'value');
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.role-plural') })
-      );
-      setRoleOptions([]);
-    } finally {
-      setIsRolesLoading(false);
-    }
-  }, [selectedRoles, t]);
+      } finally {
+        setIsRolesLoading(false);
+      }
+    },
+    [selectedRoles, t]
+  );
 
   const fetchPersonaOptions = async (_searchText: string, page?: number) => {
     try {
@@ -482,6 +492,7 @@ const CreateUser = ({
               </Form.Item>
               <Form.Item label={t('label.role-plural')} name="roles">
                 <Select
+                  showSearch
                   data-testid="roles-dropdown"
                   disabled={isRolesLoading && isEmpty(roleOptions)}
                   filterOption={false}
@@ -492,7 +503,6 @@ const CreateUser = ({
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.role-plural'),
                   })}
-                  showSearch
                   onSearch={debouncedFetchRoleOptions}
                 />
               </Form.Item>

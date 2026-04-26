@@ -15,7 +15,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
 import { TERM_ADMIN } from '../../../../constants/constants';
@@ -49,6 +49,7 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
+  const selectedRolesRef = useRef<string[]>([]);
   const { getResourceLimit, config } = useLimitStore();
 
   const [disableFields, setDisableFields] = useState<string[]>(['token']);
@@ -82,7 +83,7 @@ const BotDetails: FC<BotsDetailProps> = ({
       const data = await searchRoles(query);
       setRoles((prevRoles) => {
         const selectedRoleOptions = prevRoles.filter((role) =>
-          selectedRoles.includes(role.id)
+          selectedRolesRef.current.includes(role.id)
         );
 
         return uniqBy([...selectedRoleOptions, ...data], 'id');
@@ -92,7 +93,7 @@ const BotDetails: FC<BotsDetailProps> = ({
     } finally {
       setIsRolesLoading(false);
     }
-  }, [selectedRoles]);
+  }, []);
 
   const debouncedFetchRoles = useMemo(
     () => debounce(fetchRoles, 300),
@@ -222,6 +223,10 @@ const BotDetails: FC<BotsDetailProps> = ({
       </Row>
     );
   };
+
+  useEffect(() => {
+    selectedRolesRef.current = selectedRoles;
+  }, [selectedRoles]);
 
   useEffect(() => {
     fetchRoles();

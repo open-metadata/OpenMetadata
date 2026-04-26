@@ -77,6 +77,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   );
 
   const isInitialMount = useRef(true);
+  const searchStateRef = useRef({
+    availableRoles: [] as RoleOption[],
+    mappings: [] as RoleMappingEntry[],
+  });
+
+  searchStateRef.current = { availableRoles, mappings };
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -223,6 +229,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
           const results = await searchRoles(searchText);
           setSearchResults((prev) => {
             const next = new Map(prev);
+            const { availableRoles, mappings } = searchStateRef.current;
             const currentMapping = mappings.find(
               (mapping) => mapping.id === mappingId
             );
@@ -250,7 +257,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
           showErrorToast(err as AxiosError);
         }
       }, 300),
-    [availableRoles, mappings]
+    []
   );
 
   useEffect(() => {

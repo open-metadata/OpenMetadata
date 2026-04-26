@@ -104,6 +104,7 @@ const RolesCard = ({
           {isRolesEdit ? (
             <Space className="w-full" direction="vertical">
               <Select
+                showSearch
                 aria-label="Select roles"
                 className="w-full"
                 defaultValue={selectedRoles}
@@ -113,7 +114,6 @@ const RolesCard = ({
                 mode="multiple"
                 options={userRolesOption}
                 placeholder={`${t('label.role-plural')}...`}
-                showSearch
                 onChange={handleOnRolesChange}
                 onSearch={searchRolesOptions}
               />

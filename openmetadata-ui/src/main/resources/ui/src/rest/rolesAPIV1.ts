@@ -197,7 +197,7 @@ export const searchRoles = async (
         limit,
         offset: 0,
       },
-    },
+    }
   );
 
   return response.data.data;

@@ -16,7 +16,7 @@ import { Col, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -28,6 +28,18 @@ const SsoRolesSelectField = (props: FieldProps) => {
   const [roleOptions, setRoleOptions] = useState<
     { label: string; value: string }[]
   >([]);
+  const id = props.idSchema.$id;
+  const value: string[] = props.formData ?? [];
+  const hasError = props.rawErrors && props.rawErrors.length > 0;
+
+  const placeholder =
+    props.uiSchema?.['ui:placeholder'] ?? t('label.select-field');
+  const searchStateRef = useRef({
+    roleOptions: [] as { label: string; value: string }[],
+    value: [] as string[],
+  });
+
+  searchStateRef.current = { roleOptions, value };
 
   useEffect(() => {
     searchRoles('')
@@ -51,7 +63,8 @@ const SsoRolesSelectField = (props: FieldProps) => {
             label: role.displayName || role.name,
             value: role.name,
           }));
-          const selectedSet = new Set(value || []);
+          const { roleOptions, value } = searchStateRef.current;
+          const selectedSet = new Set(value);
           const kept = roleOptions.filter((option) =>
             selectedSet.has(option.value)
           );
@@ -64,7 +77,7 @@ const SsoRolesSelectField = (props: FieldProps) => {
           showErrorToast(err as AxiosError);
         }
       }, 300),
-    [roleOptions, value]
+    []
   );
 
   useEffect(() => {
@@ -72,13 +85,6 @@ const SsoRolesSelectField = (props: FieldProps) => {
       debouncedSearchRoles.cancel();
     };
   }, [debouncedSearchRoles]);
-
-  const id = props.idSchema.$id;
-  const value: string[] = props.formData ?? [];
-  const hasError = props.rawErrors && props.rawErrors.length > 0;
-
-  const placeholder =
-    props.uiSchema?.['ui:placeholder'] ?? t('label.select-field');
 
   const handleChange = useCallback(
     (newValue: string[]) => {

@@ -49,6 +49,7 @@ const UserProfileRoles = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const selectedRolesRef = useRef<string[]>([]);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -66,29 +67,32 @@ const UserProfileRoles = ({
     return options;
   }, [roles, isUserAdmin, getEntityName]);
 
-  const fetchRoles = useCallback(async (query = '') => {
-    setIsRolesLoading(true);
+  const fetchRoles = useCallback(
+    async (query = '') => {
+      setIsRolesLoading(true);
 
-    try {
-      const response = await searchRoles(query);
-      setRoles((prevRoles) => {
-        const selectedRoleOptions = prevRoles.filter((role) =>
-          selectedRoles.includes(role.id)
+      try {
+        const response = await searchRoles(query);
+        setRoles((prevRoles) => {
+          const selectedRoleOptions = prevRoles.filter((role) =>
+            selectedRolesRef.current.includes(role.id)
+          );
+
+          return uniqBy([...selectedRoleOptions, ...response], 'id');
+        });
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.role-plural'),
+          })
         );
-
-        return uniqBy([...selectedRoleOptions, ...response], 'id');
-      });
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.role-plural'),
-        })
-      );
-    } finally {
-      setIsRolesLoading(false);
-    }
-  }, [selectedRoles, t]);
+      } finally {
+        setIsRolesLoading(false);
+      }
+    },
+    [t]
+  );
 
   const debouncedFetchRoles = useMemo(
     () => debounce(fetchRoles, 300),
@@ -154,6 +158,10 @@ const UserProfileRoles = ({
     setIsRolesEdit(false);
     setUserRoles();
   }, [setUserRoles]);
+
+  useEffect(() => {
+    selectedRolesRef.current = selectedRoles;
+  }, [selectedRoles]);
 
   useEffect(() => {
     setUserRoles();
