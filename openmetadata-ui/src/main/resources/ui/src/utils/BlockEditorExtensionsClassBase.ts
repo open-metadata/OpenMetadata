@@ -38,6 +38,7 @@ import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import MathEquation from '../components/BlockEditor/Extensions/MathEquation/MathEquation';
 import { Mention } from '../components/BlockEditor/Extensions/mention';
 import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/mentionSuggestions';
+import SectionNode from '../components/BlockEditor/Extensions/SectionNode';
 import slashCommand from '../components/BlockEditor/Extensions/slash-command';
 import { getSuggestionItems } from '../components/BlockEditor/Extensions/slash-command/items';
 import renderItems from '../components/BlockEditor/Extensions/slash-command/renderItems';
@@ -222,6 +223,7 @@ export class BlockEditorExtensionsClassBase {
       utilityExtensions = true,
       tableExtensions = true,
       advancedContextExtensions = true,
+      enableSectionNode = false,
     } = options ?? {};
 
     return [
@@ -233,6 +235,7 @@ export class BlockEditorExtensionsClassBase {
       ...(utilityExtensions ? this.getUtilityExtensions() : []),
       ...(tableExtensions ? this.getTableExtensions() : []),
       ...(advancedContextExtensions ? this.getAdvancedContentExtensions() : []),
+      ...(enableSectionNode ? [SectionNode] : []),
     ];
   }
 

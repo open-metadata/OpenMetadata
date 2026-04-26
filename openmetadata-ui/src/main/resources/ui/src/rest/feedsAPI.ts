@@ -19,6 +19,7 @@ import { FeedFilter } from '../enums/mydata.enum';
 import { CloseTask } from '../generated/api/feed/closeTask';
 import { CreateThread } from '../generated/api/feed/createThread';
 import { ResolveTask } from '../generated/api/feed/resolveTask';
+import { ActivityEvent } from '../generated/entity/activity/activityEvent';
 import {
   Post,
   TaskDetails,
@@ -27,6 +28,7 @@ import {
   ThreadType,
 } from '../generated/entity/feed/thread';
 import { Paging } from '../generated/type/paging';
+import { ReactionType } from '../generated/type/reaction';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
 import APIClient from './index';
 
@@ -166,32 +168,127 @@ export const updateTask = (
   return APIClient.put(`/feed/tasks/${taskId}/${operation}`, taskDetail);
 };
 
-export const getActiveAnnouncement = async (entityLink?: string) => {
-  const params: {
-    type: ThreadType;
-    activeAnnouncement: boolean;
-    entityLink?: string;
-  } = {
-    type: ThreadType.Announcement,
-    activeAnnouncement: true,
-  };
+export const deleteThread = async (threadId: string) => {
+  const response = await APIClient.delete<Thread>(`/feed/${threadId}`);
 
-  if (entityLink) {
-    params.entityLink = entityLink;
-  }
+  return response.data;
+};
 
-  const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
-    '/feed',
-    {
-      params,
-    }
+// ==================== Activity Stream API ====================
+
+const ACTIVITY_BASE_URL = '/activity';
+
+export interface ListActivityParams {
+  entityType?: string;
+  entityId?: string;
+  actorId?: string;
+  domains?: string;
+  days?: number;
+  limit?: number;
+}
+
+export const getActivityEvents = async (params?: ListActivityParams) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(ACTIVITY_BASE_URL, { params });
+
+  return response.data;
+};
+
+export const getEntityActivityById = async (
+  entityType: string,
+  entityId: string,
+  params?: { days?: number; limit?: number; domain?: string }
+) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(`${ACTIVITY_BASE_URL}/entity/${entityType}/${entityId}`, { params });
+
+  return response.data;
+};
+
+export const getEntityActivityByFqn = async (
+  entityType: string,
+  fqn: string,
+  params?: { days?: number; limit?: number; domain?: string }
+) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(
+    `${ACTIVITY_BASE_URL}/entity/${entityType}/name/${encodeURIComponent(fqn)}`,
+    { params }
   );
 
   return response.data;
 };
 
-export const deleteThread = async (threadId: string) => {
-  const response = await APIClient.delete<Thread>(`/feed/${threadId}`);
+export const getUserActivity = async (
+  userId: string,
+  params?: { days?: number; limit?: number; domain?: string }
+) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(`${ACTIVITY_BASE_URL}/user/${userId}`, { params });
 
   return response.data;
+};
+
+export const getMyActivityFeed = async (params?: {
+  days?: number;
+  limit?: number;
+  domain?: string;
+}) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(`${ACTIVITY_BASE_URL}/my-feed`, { params });
+
+  return response.data;
+};
+
+export const getActivityByEntityLink = async (
+  entityLink: string,
+  params?: { days?: number; limit?: number; domain?: string }
+) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(`${ACTIVITY_BASE_URL}/about`, { params: { entityLink, ...params } });
+
+  return response.data;
+};
+
+export const getActivityCount = async (params?: {
+  days?: number;
+  domain?: string;
+}) => {
+  const response = await APIClient.get<number>(`${ACTIVITY_BASE_URL}/count`, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const addActivityReaction = async (
+  activityId: string,
+  reactionType: ReactionType
+) => {
+  const response = await APIClient.put<unknown, AxiosResponse<ActivityEvent>>(
+    `${ACTIVITY_BASE_URL}/${activityId}/reaction/${reactionType}`
+  );
+
+  return response.data;
+};
+
+export const removeActivityReaction = async (
+  activityId: string,
+  reactionType: ReactionType
+) => {
+  await APIClient.delete(
+    `${ACTIVITY_BASE_URL}/${activityId}/reaction/${reactionType}`
+  );
 };

@@ -33,7 +33,9 @@ class MultiDBSource(ABC):
         """
 
     def _execute_database_query(self, query: str) -> Iterable[str]:
-        results = self.connection.execute(text(query))  # pylint: disable=no-member
+        results = self.connection.execute(
+            text(query)
+        ).fetchall()  # pylint: disable=no-member
         for res in results:
             row = list(res)
             yield row[0]
