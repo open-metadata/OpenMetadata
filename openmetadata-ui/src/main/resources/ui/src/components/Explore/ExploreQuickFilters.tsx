@@ -39,6 +39,7 @@ import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   index,
+  aggregations,
   independent = false,
   onFieldValueSelect,
   fieldsWithNullValues = [],
@@ -56,6 +57,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const { isNLPEnabled } = useSearchStore();
 
   const currentSizeRef = useRef<number>(EXPLORE_QUICK_FILTER_PAGE_SIZE);
+  const isLoadingMoreRef = useRef<boolean>(false);
   const activeFieldRef = useRef<{
     key: string;
     searchIndex?: SearchIndex;
@@ -154,15 +156,27 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
     currentSizeRef.current = pageSize;
     searchTextRef.current = '';
+    isLoadingMoreRef.current = false;
     activeFieldRef.current = {
       key,
       searchIndex: fieldSearchIndex,
       searchKey: fieldSearchKey,
     };
 
+    setIsLoadingMore(false);
     setIsOptionsLoading(true);
     setOptions([]);
     setHasMore(false);
+
+    const buckets = aggregations?.[key]?.buckets;
+    if (buckets) {
+      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+      setHasMore(buckets.length >= pageSize);
+      setIsOptionsLoading(false);
+
+      return;
+    }
+
     try {
       await fetchAggregationBuckets(
         key,
@@ -230,14 +244,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   const handleScrollEnd = useCallback(async () => {
-    if (isLoadingMore || !hasMore || !activeFieldRef.current) {
+    if (isLoadingMoreRef.current || !hasMore || !activeFieldRef.current) {
       return;
     }
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
 
     const nextSize = currentSizeRef.current + pageSize;
     currentSizeRef.current = nextSize;
 
-    setIsLoadingMore(true);
     try {
       await fetchAggregationBuckets(
         activeFieldRef.current.key,
@@ -249,9 +265,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, pageSize, fetchAggregationBuckets]);
+  }, [hasMore, pageSize, fetchAggregationBuckets]);
 
   return (
     <Space wrap className="explore-quick-filters-container" size={[8, 0]}>

@@ -481,15 +481,15 @@ test.describe(
 
       await clickOutside(page);
     });
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.delete(apiContext);
+      await domain.delete(apiContext);
+      await tier.delete(apiContext);
+      await tierWithoutAsset.delete(apiContext);
+      await afterAction();
+    });
   }
 );
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table.delete(apiContext);
-  await domain.delete(apiContext);
-  await tier.delete(apiContext);
-  await tierWithoutAsset.delete(apiContext);
-  await afterAction();
-});
 
