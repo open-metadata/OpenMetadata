@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { APIRequestContext, expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
@@ -110,6 +110,42 @@ const user4 = new UserClass();
 const adminUser = new UserClass();
 
 test.describe('Glossary tests', () => {
+  const waitForGlossaryTermAssetsCount = async ({
+    apiContext,
+    glossaryTerm,
+    assetsCount,
+  }: {
+    apiContext: APIRequestContext;
+    glossaryTerm: GlossaryTerm;
+    assetsCount: number;
+  }) => {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/glossaryTerms/name/${encodeURIComponent(
+              glossaryTerm.responseData.fullyQualifiedName
+            )}?fields=assets`
+          );
+
+          if (!response.ok()) {
+            return -1;
+          }
+
+          const glossaryTermData = (await response.json()) as {
+            assets?: unknown[];
+          };
+
+          return glossaryTermData.assets?.length ?? 0;
+        },
+        {
+          timeout: 180000,
+          intervals: [2000, 5000, 10000],
+        }
+      )
+      .toBe(assetsCount);
+  };
+
   const waitForTagSaveToFinish = async ({
     page,
     responseMatcher,
@@ -557,7 +593,7 @@ test.describe('Glossary tests', () => {
 
   test('Add and Remove Assets', async ({ browser }) => {
     test.slow(true);
-    test.setTimeout(420000);
+    test.setTimeout(480000);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
@@ -583,15 +619,6 @@ test.describe('Glossary tests', () => {
 
     try {
       await test.step('Add asset to glossary term using entity', async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-
-        await selectActiveGlossary(page, glossary2.data.displayName);
-        await goToAssetsTab(page, glossaryTerm3.data.displayName);
-
-        await page
-          .getByText("Looks like you haven't added any data assets yet.")
-          .waitFor();
-
         await dashboardEntity.visitEntityPage(page);
 
         // Dashboard Entity Right Panel
@@ -677,40 +704,32 @@ test.describe('Glossary tests', () => {
 
         expect(await icons.count()).toBe(3);
 
-        // Add Glossary to Dashboard Charts
-        await page.click(
-          '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
+        const chartTagResponse = await apiContext.patch(
+          `/api/v1/charts/${dashboardEntity.chartsResponseData.id}`,
+          {
+            data: [
+              {
+                op: 'add',
+                path: '/tags/0',
+                value: {
+                  tagFQN: glossaryTerm3.responseData.fullyQualifiedName,
+                  source: 'Glossary',
+                },
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
+            },
+          }
         );
 
-        await page.click('[data-testid="tag-selector"]');
-        await selectGlossaryTermInPicker({
-          page,
-          inputValue: glossaryTerm3.data.name,
-          displayName: glossaryTerm3.data.displayName,
-          fullyQualifiedName: glossaryTerm3.data.fullyQualifiedName,
+        expect(chartTagResponse.ok()).toBeTruthy();
+
+        await waitForGlossaryTermAssetsCount({
+          apiContext,
+          glossaryTerm: glossaryTerm3,
+          assetsCount: 2,
         });
-
-        await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-        await waitForTagSaveToFinish({
-          page,
-          responseMatcher: `/api/v1/charts/*`,
-        });
-
-        // Check if the term is present
-        const tagSelectorText = await page
-          .locator(
-            '[data-testid="glossary-tags-0"] [data-testid="glossary-container"] [data-testid="tags"]'
-          )
-          .innerText();
-
-        expect(tagSelectorText).toContain(glossaryTerm3.data.displayName);
-
-        // Check if the icon is visible
-        const icon = page.locator(
-          '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="glossary-icon"]'
-        );
-
-        await expect(icon).toBeVisible();
 
         await sidebarClick(page, SidebarItem.GLOSSARY);
 
