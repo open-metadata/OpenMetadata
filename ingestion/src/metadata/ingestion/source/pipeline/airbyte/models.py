@@ -52,6 +52,7 @@ class AirbyteConnectionModel(BaseModel):
     sourceId: Optional[str] = None
     destinationId: Optional[str] = None
     syncCatalog: Optional[AirbyteSyncCatalog] = None
+    configurations: Optional[dict] = None
 
 
 class AirbyteJobAttempt(BaseModel):
@@ -76,18 +77,36 @@ class AirbyteCloudJob(BaseModel):
     lastUpdatedAt: Optional[str] = None
 
 
+class AirbytePublicJob(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    jobId: int
+    status: str
+    jobType: str
+    startTime: str
+    duration: Optional[str] = None
+    bytesSynced: Optional[int] = None
+    rowsSynced: Optional[int] = None
+
+
 class AirbyteSourceResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     sourceName: Optional[str] = None
+    sourceType: Optional[str] = None
+    name: Optional[str] = None
     connectionConfiguration: Optional[dict] = None
+    configuration: Optional[dict] = None
 
 
 class AirbyteDestinationResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     destinationName: Optional[str] = None
+    destinationType: Optional[str] = None
+    name: Optional[str] = None
     connectionConfiguration: Optional[dict] = None
+    configuration: Optional[dict] = None
 
 
 # --- Internal API list wrappers ---
@@ -132,4 +151,11 @@ class AirbytePublicCloudJobList(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     data: List[AirbyteCloudJob] = []
+    next: Optional[str] = None
+
+
+class AirbytePublicJobList(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    data: List[AirbytePublicJob] = []
     next: Optional[str] = None

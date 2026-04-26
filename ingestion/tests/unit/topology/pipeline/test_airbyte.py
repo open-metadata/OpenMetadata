@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     StatusType,
     Task,
     TaskStatus,
+    TaskMetrics,
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
@@ -48,6 +49,7 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteCloudJob,
     AirbyteConnectionModel,
     AirbyteDestinationResponse,
+    AirbytePublicJob,
     AirbyteSelfHostedJob,
     AirbyteSourceResponse,
     AirbyteWorkspace,
@@ -196,6 +198,100 @@ MOCK_POSTGRES_DESTINATION_TABLE = Table(
         ".mock_destination_schema.mock_table_name"
     ),
     columns=[{"name": "id", "dataType": "INT"}, {"name": "name", "dataType": "STRING"}],
+)
+
+
+# ================= Public API Test Setup =================
+
+mock_airbyte_public_config = {
+    "source": {
+        "type": "airbyte",
+        "serviceName": "airbyte_public_source",
+        "serviceConnection": {
+            "config": {
+                "type": "Airbyte",
+                "hostPort": "http://localhost:8001",
+                "apiVersion": "api/public/v1",
+                "auth": {"username": "airbyte", "password": "airbyte"},
+            }
+        },
+        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        }
+    },
+}
+
+MOCK_PUBLIC_CONNECTION_URI_PATH = (
+    "http://localhost:8001/workspaces/af5680ec-2687-4fe0-bd55-5ad5f020a603/"
+    "connections/a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f"
+)
+
+EXPECTED_PUBLIC_PIPELINE_STATUS = [
+    OMetaPipelineStatus(
+        pipeline_fqn="airbyte_public_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+        pipeline_status=PipelineStatus(
+            executionStatus=StatusType.Successful.value,
+            taskStatus=[
+                TaskStatus(
+                    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                    executionStatus=StatusType.Successful.value,
+                    startTime=1711977671000,  # 2026-04-01T14:41:11Z
+                    endTime=1711977705000,    # start + 54 seconds
+                    logLink=f"{MOCK_PUBLIC_CONNECTION_URI_PATH}/status",
+                    metrics=TaskMetrics(rowsWritten=1230, executionTimeMs=54000),
+                )
+            ],
+            timestamp=1711977671000,
+        ),
+    ),
+]
+
+EXPECTED_PUBLIC_CREATED_PIPELINES = CreatePipelineRequest(
+    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    displayName="MSSQL <> Postgres",
+    sourceUrl=MOCK_PUBLIC_CONNECTION_URI_PATH,
+    tasks=[
+        Task(
+            name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            displayName="MSSQL <> Postgres",
+            sourceUrl=f"{MOCK_PUBLIC_CONNECTION_URI_PATH}/status",
+        )
+    ],
+    service=FullyQualifiedEntityName("airbyte_public_source"),
+)
+
+MOCK_PUBLIC_PIPELINE_SERVICE = PipelineService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="airbyte_public_source",
+    fullyQualifiedName=FullyQualifiedEntityName("airbyte_public_source"),
+    connection=PipelineConnection(),
+    serviceType=PipelineServiceType.Airbyte,
+)
+
+MOCK_PUBLIC_PIPELINE = Pipeline(
+    id="2aaa012e-099a-11ed-861d-0242ac120002",
+    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    fullyQualifiedName="airbyte_public_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    displayName="MSSQL <> Postgres",
+    sourceUrl=MOCK_PUBLIC_CONNECTION_URI_PATH,
+    tasks=[
+        Task(
+            name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            displayName="MSSQL <> Postgres",
+            sourceUrl=f"{MOCK_PUBLIC_CONNECTION_URI_PATH}/status",
+        )
+    ],
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    ),
 )
 
 EXPECTED_LINEAGE = AddLineageRequest(
@@ -556,3 +652,69 @@ class AirbyteCloudUnitTest(TestCase):
             )
         ]
         assert status == EXPECTED_CLOUD_PIPELINE_STATUS
+
+
+class AirbytePublicUnitTest(TestCase):
+    """Test class for Airbyte Public API source module."""
+
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
+    def __init__(self, methodName, airbyte_public_client, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_public_config)
+        self.airbyte = AirbyteSource.create(
+            mock_airbyte_public_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_PUBLIC_PIPELINE.name.root
+        self.airbyte.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PUBLIC_PIPELINE_SERVICE.name.root
+        self.client = airbyte_public_client.return_value
+        self.client.list_jobs.return_value = [
+            AirbytePublicJob.model_validate({
+                "jobId": 51,
+                "status": "succeeded",
+                "jobType": "sync",
+                "startTime": "2026-04-01T14:41:11Z",
+                "duration": "PT54S",
+                "bytesSynced": 775113,
+                "rowsSynced": 1230
+            })
+        ]
+        self.client.list_workspaces.return_value = [
+            AirbyteWorkspace.model_validate(w) for w in mock_data.get("workspace")
+        ]
+        self.client.list_connections.return_value = [
+            AirbyteConnectionModel.model_validate(c)
+            for c in mock_data.get("connection")
+        ]
+        self.airbyte.airbyte_cloud = False
+
+    def setUp(self):
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_PUBLIC_PIPELINE.name.root
+        self.airbyte.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PUBLIC_PIPELINE_SERVICE.name.root
+
+    def test_pipeline_list(self):
+        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS
+
+    def test_pipeline_name(self):
+        assert self.airbyte.get_pipeline_name(
+            EXPECTED_AIRBYTE_DETAILS
+        ) == mock_data.get("connection")[0].get("name")
+
+    def test_pipelines(self):
+        pipeline = list(self.airbyte.yield_pipeline(EXPECTED_AIRBYTE_DETAILS))[0].right
+        assert pipeline == EXPECTED_PUBLIC_CREATED_PIPELINES
+
+    def test_pipeline_status(self):
+        status = [
+            either.right
+            for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)
+        ]
+        assert status == EXPECTED_PUBLIC_PIPELINE_STATUS
