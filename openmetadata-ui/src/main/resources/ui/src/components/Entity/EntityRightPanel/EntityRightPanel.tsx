@@ -92,7 +92,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
     <>
       {beforeSlot}
       <Space className="w-full" direction="vertical" size="large">
-        {showDataProductContainer && (
+        {shouldShowDataProducts && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
               newLook
@@ -104,7 +104,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             />
           </div>
         )}
-
+        {shouldShowTags && (
         <div data-testid="KnowledgePanel.Tags">
           <TagsContainerV2
             newLook
@@ -118,7 +118,8 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             onSelectionChange={onTagSelectionChange}
           />
         </div>
-
+               )}
+     {shouldShowGlossaryTerms && (
         <div data-testid="KnowledgePanel.GlossaryTerms">
           <TagsContainerV2
             newLook
@@ -132,6 +133,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             onSelectionChange={onTagSelectionChange}
           />
         </div>
+               )}
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
         )}
