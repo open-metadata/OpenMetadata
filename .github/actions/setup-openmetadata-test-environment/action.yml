@@ -99,6 +99,8 @@ runs:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
       with:
         timeout_minutes: 60
-        max_attempts: 2
+        max_attempts: 3
+        retry_wait_seconds: 30
         retry_on: error
+        on_retry_command: cd ./docker/development && docker compose down --remove-orphans && sudo rm -rf ${PWD}/docker-volume
         command: ${{ inputs.startup-script }} ${{ inputs.args }}
