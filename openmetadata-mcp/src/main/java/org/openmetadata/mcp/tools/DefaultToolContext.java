@@ -83,6 +83,15 @@ public class DefaultToolContext {
         case "create_metric":
           result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "list_ingestion_pipelines":
+          result = new ListIngestionPipelinesTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_pipeline_status":
+          result = new GetPipelineStatusTool().execute(authorizer, securityContext, params);
+          break;
+        case "trigger_ingestion_pipeline":
+          result = new TriggerIngestionPipelineTool().execute(authorizer, securityContext, params);
+          break;
         default:
           return McpSchema.CallToolResult.builder()
               .content(

@@ -61,6 +61,7 @@ public class McpServer implements McpServerProvider {
             SecurityConfigurationManager.getCurrentAuthzConfig());
     this.authorizer = authorizer;
     this.limits = limits;
+    McpApplicationContext.setConfig(config);
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     List<McpSchema.Tool> tools = getTools();
