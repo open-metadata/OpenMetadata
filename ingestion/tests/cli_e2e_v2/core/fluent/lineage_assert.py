@@ -24,7 +24,7 @@ class LineageAssert:
 
     def __init__(self, om: OpenMetadata, table_fqn: str) -> None:
         self._om = om
-        self._table_fqn = table_fqn
+        self._fqn = table_fqn
         self._eventually = EventuallyRunner()
 
     def eventually(self, timeout: int = 60) -> "LineageAssert":
@@ -32,7 +32,7 @@ class LineageAssert:
         return self
 
     def _lineage(self) -> dict:
-        return self._om.get_lineage_by_name(entity=Table, fqn=self._table_fqn) or {}
+        return self._om.get_lineage_by_name(entity=Table, fqn=self._fqn) or {}
 
     def _check_edge(self, direction: _Direction, fqn: str) -> None:
         data = self._lineage()
@@ -47,7 +47,7 @@ class LineageAssert:
         nodes = {n.get("fullyQualifiedName") for n in (data.get("nodes") or [])}
         if fqn not in nodes:
             raise AssertionError(
-                f"Table {self._table_fqn} has no {direction} {fqn!r}. "
+                f"Table {self._fqn} has no {direction} {fqn!r}. "
                 f"{direction}s={sorted(edges)} nodes={sorted(nodes)}"
             )
 
@@ -77,7 +77,7 @@ class LineageAssert:
                     if any(source in f for f in froms) and target in to:
                         return
             raise AssertionError(
-                f"No column lineage {source!r} -> {target!r} on table {self._table_fqn}"
+                f"No column lineage {source!r} -> {target!r} on table {self._fqn}"
             )
         self._eventually.run(_check, name=f"has_column_lineage({source}->{target})")
         return self

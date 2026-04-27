@@ -11,6 +11,8 @@ stderr, stdout, config_path, and argv for post-mortem.
 
 from __future__ import annotations
 
+import json
+import logging
 import subprocess
 from pathlib import Path
 
@@ -18,7 +20,40 @@ from ..config.builder import WorkflowConfig
 from .errors import CliExecutionError
 from .status import Status
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_TIMEOUT_SECONDS = 600
+
+# Cap how many step failures we surface inline in the exception message.
+# First N tends to be root cause; the rest are usually follow-on noise.
+# Full failures list is still in the status JSON for deep dives.
+_INLINE_FAILURES_LIMIT = 3
+_INLINE_FAILURE_CHARS = 500
+
+
+def _summarize_step_failures(status_path: Path) -> str | None:
+    """Best-effort: read the status JSON and pull out the first few step
+    failures as a short, scannable block. Returns None on any read / parse
+    failure — caller falls back to the raw stdout/stderr dump.
+
+    Output shape (one line per failure, truncated):
+        [StepName::FailureName] first-line-of-error…
+    """
+    if not status_path.exists():
+        return None
+    try:
+        data = json.loads(status_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    lines: list[str] = []
+    for step in data.get("steps") or []:
+        step_name = step.get("name", "?")
+        for failure in (step.get("failures") or [])[:_INLINE_FAILURES_LIMIT]:
+            name = failure.get("name", "?")
+            err = (failure.get("error") or "").splitlines()[0][:_INLINE_FAILURE_CHARS]
+            lines.append(f"    [{step_name}::{name}] {err}")
+    return "\n".join(lines) if lines else None
 
 
 class CliRunner:
@@ -78,6 +113,7 @@ class CliRunner:
                 ),
                 stdout=out,
                 config_path=cfg_path,
+                status_path=status_path,
                 command=command,
             ) from exc
 
@@ -85,13 +121,22 @@ class CliRunner:
         # successful runs (checking warnings) and failed ones.
         stdout_path.write_text(result.stdout or "")
 
+        # One line with the three artifact paths. Invaluable for post-mortem
+        # because pytest's tmp_path lives under a deep auto-generated dir.
+        logger.info(
+            "[cli] %s invocation=%d exit=%d cfg=%s status=%s stdout=%s",
+            identifier, n, result.returncode, cfg_path, status_path, stdout_path,
+        )
+
         if result.returncode != 0:
             raise CliExecutionError(
                 exit_code=result.returncode,
                 stderr=result.stderr,
                 stdout=result.stdout,
                 config_path=cfg_path,
+                status_path=status_path,
                 command=command,
+                step_failures_summary=_summarize_step_failures(status_path),
             )
 
         # Defensive: CLI reported success but wrote no status file — something
@@ -105,6 +150,7 @@ class CliRunner:
                 ),
                 stdout=result.stdout,
                 config_path=cfg_path,
+                status_path=status_path,
                 command=command,
             )
 

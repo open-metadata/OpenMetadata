@@ -7,12 +7,18 @@
 a one-shot arming wrapper held by each fluent assert class to dispatch
 terminal checks either synchronously or via `retry_until`.
 
-Logging: first-attempt failure at DEBUG, final timeout at ERROR.
+Logging levels:
+  - DEBUG   first-attempt failure (the single "starting to retry" signal)
+  - INFO    every attempt when E2E_POLL_VERBOSE=1 — surfaces intermittent
+            flakes that otherwise disappear into DEBUG. Use it in CI when
+            a poll is blinking without obvious cause.
+  - ERROR   final timeout
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Callable, TypeVar
@@ -23,6 +29,12 @@ DEFAULT_TIMEOUT_SECONDS = 60
 DEFAULT_POLL_INTERVAL_SECONDS = 2.0
 
 T = TypeVar("T")
+
+
+def _verbose_polling() -> bool:
+    """Reads E2E_POLL_VERBOSE at call time so the env var can be toggled
+    within a single pytest session via monkeypatch if needed."""
+    return os.environ.get("E2E_POLL_VERBOSE", "").lower() in ("1", "true", "yes")
 
 
 def retry_until(
@@ -40,6 +52,7 @@ def retry_until(
     start = time.monotonic()
     deadline = start + timeout
     attempts = 0
+    verbose = _verbose_polling()
 
     while True:
         attempts += 1
@@ -50,6 +63,12 @@ def retry_until(
                 logger.debug(
                     "[eventually:%s] attempt %d failed: %s (retrying for up to %ds)",
                     name, attempts, exc, timeout,
+                )
+            if verbose:
+                elapsed = time.monotonic() - start
+                logger.info(
+                    "[eventually:%s] attempt %d failed at %.1fs: %s",
+                    name, attempts, elapsed, exc,
                 )
             if time.monotonic() >= deadline:
                 elapsed = time.monotonic() - start

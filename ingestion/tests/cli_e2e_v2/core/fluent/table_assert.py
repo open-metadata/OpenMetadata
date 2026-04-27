@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     DataType,
     Table,
+    TableConstraint,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -26,6 +27,33 @@ from metadata.ingestion.ometa.utils import model_str
 from .entity_assert import EntityAssert
 from .lineage_assert import LineageAssert
 from .profile_assert import ProfileAssert
+
+
+def _fk_matches(
+    constraint: TableConstraint,
+    column: str,
+    referenced_table: str,
+    referenced_column: str,
+) -> bool:
+    """True if `constraint` is a FOREIGN_KEY on `column` pointing at the
+    named referred column.
+
+    The referredColumns FQNs may be rendered as either the full
+    `service.database.schema.table.column` form or the shorter
+    `table.column` form depending on how OM resolved them at ingest time;
+    both are accepted via tail-match.
+    """
+    if constraint.constraintType != ConstraintType.FOREIGN_KEY:
+        return False
+    own_cols = {model_str(x) for x in (constraint.columns or [])}
+    if column not in own_cols:
+        return False
+    wanted_tail = f".{referenced_table}.{referenced_column}"
+    wanted_short = f"{referenced_table}.{referenced_column}"
+    return any(
+        model_str(ref).endswith(wanted_tail) or model_str(ref) == wanted_short
+        for ref in (constraint.referredColumns or [])
+    )
 
 
 class TableAssert(EntityAssert[Table]):
@@ -68,25 +96,16 @@ class TableAssert(EntityAssert[Table]):
         """Assert the table carries a FOREIGN_KEY TableConstraint on `column`
         pointing at `referenced_table.referenced_column`.
 
-        MySQL lands FK data here — not as a lineage edge. Reads
-        `tableConstraints`; matches by `ConstraintType.FOREIGN_KEY` + the
-        owning column + suffix match on the referredColumn FQN.
+        MySQL lands FK data here — not as a lineage edge. Matching delegates
+        to `_fk_matches`.
         """
         def _check() -> None:
-            table = self._fetch(fields=["tableConstraints"])
-            constraints = list(table.tableConstraints or [])
-            for c in constraints:
-                if c.constraintType != ConstraintType.FOREIGN_KEY:
-                    continue
-                own_cols = {model_str(x) for x in (c.columns or [])}
-                if column not in own_cols:
-                    continue
-                for ref in c.referredColumns or []:
-                    ref_str = model_str(ref)
-                    if ref_str.endswith(f".{referenced_table}.{referenced_column}"):
-                        return
-                    if ref_str == f"{referenced_table}.{referenced_column}":
-                        return
+            constraints = list(self._fetch(fields=["tableConstraints"]).tableConstraints or [])
+            if any(
+                _fk_matches(c, column, referenced_table, referenced_column)
+                for c in constraints
+            ):
+                return
             raise AssertionError(
                 f"Table {self._fqn} missing FOREIGN_KEY({column}) -> "
                 f"{referenced_table}({referenced_column}). "
@@ -97,6 +116,83 @@ class TableAssert(EntityAssert[Table]):
             name=f"has_foreign_key_constraint({column}->{referenced_table}.{referenced_column})",
         )
         return self
+
+    def has_schema_definition_containing(self, text: str) -> "TableAssert":
+        """Assert `schemaDefinition` (raw DDL stored on the entity) contains
+        `text` — case-insensitive substring match.
+
+        Populated for views when metadata ingest runs with `includeDDL=True`,
+        and for tables when the connector emits CREATE TABLE bodies. Used as
+        the prerequisite check that ingest actually plumbed DDL through —
+        a failed lineage parse with empty `schemaDefinition` is a different
+        bug than a failed parse on present DDL.
+
+        Case insensitivity matters: MySQL normalizes view DDL to lowercase
+        (`left join`, not `LEFT JOIN`); other dialects preserve case. The
+        assertion keeps tests portable across dialects without each one
+        having to know the specific casing.
+        """
+        wanted_lower = text.lower()
+
+        def _check() -> None:
+            entity = self._fetch(fields=["schemaDefinition"])
+            actual = (
+                model_str(entity.schemaDefinition)
+                if entity.schemaDefinition
+                else ""
+            )
+            if wanted_lower not in actual.lower():
+                raise AssertionError(
+                    f"Table {self._fqn} schemaDefinition does not contain "
+                    f"{text!r} (case-insensitive). Actual: {actual!r}"
+                )
+        self._eventually.run(
+            _check, name=f"has_schema_definition_containing({text!r})"
+        )
+        return self
+
+    def is_soft_deleted(self) -> "TableAssert":
+        """Assert the table exists in OM but is marked `deleted=True`.
+
+        Soft-deleted entities are filtered out of `get_by_name` by default.
+        We use `list_entities` with `include=all` to find the entity even
+        when soft-deleted, then check the `deleted` field. Used by
+        mark-deleted tests after re-ingest with `markDeletedTables=True`.
+        """
+        def _check() -> None:
+            if not self._fetch_any_state().deleted:
+                raise AssertionError(
+                    f"Table {self._fqn} is not soft-deleted (deleted=False)"
+                )
+        self._eventually.run(_check, name="is_soft_deleted")
+        return self
+
+    def is_not_deleted(self) -> "TableAssert":
+        """Assert the table exists in OM with `deleted=False`."""
+        def _check() -> None:
+            entity = self._fetch_any_state()
+            if entity.deleted:
+                raise AssertionError(
+                    f"Table {self._fqn} is unexpectedly soft-deleted "
+                    f"(deleted=True)"
+                )
+        self._eventually.run(_check, name="is_not_deleted")
+        return self
+
+    def _fetch_any_state(self) -> Table:
+        """Fetch the table including soft-deleted state (default get_by_name
+        filters those out)."""
+        entity = self._om.get_by_name(
+            entity=Table,
+            fqn=self._fqn,
+            fields=["deleted"],
+            include="all",
+        )
+        if entity is None:
+            raise AssertionError(
+                f"Table not found (in any state): {self._fqn}"
+            )
+        return entity
 
     # --- descent into column / namespaces -----------------------------
 
@@ -142,6 +238,23 @@ class ColumnAssert:
             raise AssertionError(
                 f"Column {self._table_fqn}.{self._column_name} missing tag {fqn!r}. "
                 f"Actual tags: {sorted(actual)}"
+            )
+        return self
+
+    def has_no_tag(self, fqn: str) -> "ColumnAssert":
+        """Assert the column does NOT carry the given tag.
+
+        Used as the negative complement to `has_tag` — guards against
+        regressions where a classifier becomes overconfident and tags
+        non-PII columns. Without this, a positive-only suite passes
+        cleanly even when every column gets PII-flagged.
+        """
+        column = self._fetch_column()
+        actual = {model_str(t.tagFQN) for t in (column.tags or [])}
+        if fqn in actual:
+            raise AssertionError(
+                f"Column {self._table_fqn}.{self._column_name} unexpectedly "
+                f"carries tag {fqn!r}. Actual tags: {sorted(actual)}"
             )
         return self
 
