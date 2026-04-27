@@ -7,11 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -46,6 +50,8 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -56,6 +62,14 @@ import org.openmetadata.service.resources.dqtests.TestCaseResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
+  private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
+  private static final RetryConfig DEADLOCK_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .intervalFunction(IntervalFunction.ofExponentialBackoff(250, 2.0))
+          .retryOnException(TestCaseResourceIT::isTransientDeadlock)
+          .failAfterMaxAttempts(true)
+          .build();
 
   // Disable tests that don't apply to TestCase
   {
@@ -201,12 +215,37 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Override
   protected TestCase patchEntity(String id, TestCase entity) {
-    return SdkClients.adminClient().testCases().update(id, entity);
+    return executeWithDeadlockRetry(
+        () -> SdkClients.adminClient().testCases().update(id, entity), "testCaseUpdate-" + id);
   }
 
   @Override
   protected void deleteEntity(String id) {
     SdkClients.adminClient().testCases().delete(id);
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private <T> T executeWithDeadlockRetry(Supplier<T> operation, String operationName) {
+    Retry retry = Retry.of(operationName, DEADLOCK_RETRY_CONFIG);
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Retrying {} after transient deadlock (attempt {}/{})",
+                    operationName,
+                    event.getNumberOfRetryAttempts() + 1,
+                    DEADLOCK_RETRY_CONFIG.getMaxAttempts()));
+    return Retry.decorateSupplier(retry, operation).get();
   }
 
   @Override

@@ -150,7 +150,31 @@
           "candidates": []
         },
         "approvalThreshold": 1,
-        "rejectionThreshold": 1
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
       },
       "inputNamespaceMap": {
         "entityList": "global"
@@ -194,7 +218,31 @@
           "candidates": []
         },
         "approvalThreshold": 1,
-        "rejectionThreshold": 1
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
       },
       "inputNamespaceMap": {
         "entityList": "global"
@@ -346,12 +394,12 @@
     {
       "from": "ApprovalForUpdates",
       "to": "SetGlossaryTermStatusToApprovedAfterReview",
-      "condition": "true"
+      "condition": "approve"
     },
     {
       "from": "ApprovalForUpdates",
       "to": "RollbackGlossaryTermChanges",
-      "condition": "false"
+      "condition": "reject"
     },
     {
       "from": "RollbackGlossaryTermChanges",
@@ -364,12 +412,12 @@
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToApprovedAfterApproval",
-      "condition": "true"
+      "condition": "approve"
     },
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToRejected",
-      "condition": "false"
+      "condition": "reject"
     },
     {
       "from": "SetGlossaryTermStatusToApprovedAfterApproval",

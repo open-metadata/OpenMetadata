@@ -21,8 +21,10 @@ import {
 } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { BulkAssets } from '../generated/api/bulkAssets';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -97,15 +99,17 @@ export const getDomainVersionData = async (id: string, version: string) => {
 
 export const addAssetsToDomain = async (
   domainFqn: string,
-  assets: EntityReference[]
+  assets: EntityReference[],
+  options?: { dryRun?: boolean }
 ) => {
-  const data: { assets: EntityReference[] } = {
-    assets: assets,
+  const data: BulkAssets = {
+    assets,
+    ...(options?.dryRun ? { dryRun: true } : {}),
   };
 
   const response = await APIClient.put<
-    { assets: EntityReference[] },
-    AxiosResponse<Domain>
+    BulkAssets,
+    AxiosResponse<BulkOperationResult>
   >(`/domains/${getEncodedFqn(domainFqn)}/assets/add`, data);
 
   return response.data;
@@ -113,15 +117,17 @@ export const addAssetsToDomain = async (
 
 export const removeAssetsFromDomain = async (
   domainFqn: string,
-  assets: EntityReference[]
+  assets: EntityReference[],
+  options?: { dryRun?: boolean }
 ) => {
-  const data = {
-    assets: assets,
+  const data: BulkAssets = {
+    assets,
+    ...(options?.dryRun ? { dryRun: true } : {}),
   };
 
   const response = await APIClient.put<
-    { assets: EntityReference[] },
-    AxiosResponse<Domain>
+    BulkAssets,
+    AxiosResponse<BulkOperationResult>
   >(`/domains/${getEncodedFqn(domainFqn)}/assets/remove`, data);
 
   return response.data;

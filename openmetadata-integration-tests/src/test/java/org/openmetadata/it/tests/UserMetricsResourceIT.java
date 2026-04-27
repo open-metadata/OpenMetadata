@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -47,10 +46,12 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
+  private static final Logger LOG = LoggerFactory.getLogger(UserMetricsResourceIT.class);
 
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
@@ -183,7 +184,7 @@ public class UserMetricsResourceIT {
         int botUsers = (Integer) metrics.get("bot_users");
         assertTrue(botUsers >= 1, "Should have at least one bot user (ingestion-bot)");
 
-        log.info("User metrics: {}", metrics);
+        LOG.info("User metrics: {}", metrics);
       }
     } finally {
       connection.disconnect();
@@ -207,7 +208,7 @@ public class UserMetricsResourceIT {
     TestNamespace ns = new TestNamespace("UserMetricsResourceIT");
 
     Map<String, Object> initialMetrics = getUserMetrics();
-    log.info("Initial metrics: {}", initialMetrics);
+    LOG.info("Initial metrics: {}", initialMetrics);
 
     int initialTotalUsers = (Integer) initialMetrics.get("total_users");
     int initialBotUsers = (Integer) initialMetrics.get("bot_users");
@@ -218,7 +219,7 @@ public class UserMetricsResourceIT {
 
     UserService usersApi = adminClient.users();
     User newUser = usersApi.create(createUser);
-    log.info("Created new user: {}", newUser.getName());
+    LOG.info("Created new user: {}", newUser.getName());
 
     try {
       usersApi.getByName(newUser.getName());
@@ -236,7 +237,7 @@ public class UserMetricsResourceIT {
               });
 
       Map<String, Object> updatedMetrics = getUserMetrics();
-      log.info("Updated metrics after activity: {}", updatedMetrics);
+      LOG.info("Updated metrics after activity: {}", updatedMetrics);
 
       int updatedTotalUsers = (Integer) updatedMetrics.get("total_users");
       // In parallel test execution, other tests may create/delete users, so verify the user exists
@@ -281,7 +282,7 @@ public class UserMetricsResourceIT {
     assertTrue(initialBotUsers >= 0, "Bot users count should be non-negative");
     assertTrue(initialBotUsers <= initialTotalUsers, "Bot users should not exceed total users");
 
-    log.info(
+    LOG.info(
         "Bot user filtering is implemented in UserMetricsServlet.createNonBotFilter() which adds isBot=false filter");
   }
 
@@ -318,7 +319,7 @@ public class UserMetricsResourceIT {
             });
 
     Map<String, Object> metrics = getUserMetrics();
-    log.info("Metrics after multiple users: {}", metrics);
+    LOG.info("Metrics after multiple users: {}", metrics);
 
     String lastActivity = (String) metrics.get("last_activity");
     assertNotNull(lastActivity, "Last activity should not be null");
@@ -345,7 +346,7 @@ public class UserMetricsResourceIT {
     assertInstanceOf(Integer.class, dauValue, "Daily active users should be an integer");
     assertTrue((Integer) dauValue >= 0, "Daily active users should be non-negative");
 
-    log.info("Daily active users implementation handles missing data by returning 0");
+    LOG.info("Daily active users implementation handles missing data by returning 0");
   }
 
   private Map<String, Object> getUserMetrics() throws Exception {

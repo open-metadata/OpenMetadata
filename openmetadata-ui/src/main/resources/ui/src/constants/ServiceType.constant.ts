@@ -192,6 +192,7 @@ export const BETA_SERVICES = [
   DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
+  DashboardServiceType.SapS4Hana,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
