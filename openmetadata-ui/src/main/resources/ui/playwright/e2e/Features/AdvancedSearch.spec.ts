@@ -14,6 +14,7 @@
 import { expect } from '@playwright/test';
 import { EntityStatus } from '../../../src/generated/entity/data/searchIndex';
 import { COMMON_TIER_TAG } from '../../constant/common';
+import { DOMAIN_TAGS } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -358,14 +359,8 @@ const ENTITY_STATUSES = Object.values(EntityStatus);
 
 test.describe(
   'Advanced Search - Entity Status Filter',
-  { tag: ['@advanced-search', '@Discovery'] },
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    // One distinct entity type per status to prove the filter works across entity types
-    const glossaryForStatus = new Glossary();
-    const glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
-    const mlModelDraft = new MlModelClass();
-    const dataProductInReview = new DataProduct();
-
     type StatusEntry = {
       status: EntityStatus;
       endpoint: string;
@@ -374,12 +369,21 @@ test.describe(
       fqn: () => string;
     };
 
+    let glossaryForStatus: Glossary;
+    let glossaryTermApproved: GlossaryTerm;
+    let mlModelDraft: MlModelClass;
+    let dataProductInReview: DataProduct;
     let statusEntries: StatusEntry[];
 
     test.beforeAll(
       'Create mixed entity types with distinct entity statuses',
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        glossaryForStatus = new Glossary();
+        glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
+        mlModelDraft = new MlModelClass();
+        dataProductInReview = new DataProduct();
 
         await glossaryForStatus.create(apiContext);
         await Promise.all([
@@ -435,8 +439,6 @@ test.describe(
     test('All entity status options are visible in the Status dropdown', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -543,8 +545,6 @@ test.describe(
     test('Filtering by status "!=" excludes matched entity but shows all other entity types', async ({
       page,
     }) => {
-      test.slow();
-
       const targetEntry = statusEntries.find(
         (e) => e.status === EntityStatus.Approved
       )!;
