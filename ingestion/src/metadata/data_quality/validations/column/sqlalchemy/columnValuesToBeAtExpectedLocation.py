@@ -29,9 +29,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class ColumnValuesToBeAtExpectedLocationValidator(
-    BaseColumnValuesToBeAtExpectedLocationValidator, SQAValidatorMixin
-):
+class ColumnValuesToBeAtExpectedLocationValidator(BaseColumnValuesToBeAtExpectedLocationValidator, SQAValidatorMixin):
     """Validator for column value to be at expected location test case"""
 
     def _fetch_data(self, columns: List[str]) -> Iterator:

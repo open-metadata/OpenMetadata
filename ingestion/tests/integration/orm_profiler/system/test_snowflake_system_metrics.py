@@ -84,9 +84,7 @@ TABLE_FILTER = {
 }
 
 
-@pytest.mark.skip(
-    reason="Disabled by default. Should be ran manually on system metric updates"
-)
+@pytest.mark.skip(reason="Disabled by default. Should be ran manually on system metric updates")
 class TestSnowflakeystem(TestCase):
     """Test class for snowflake system metrics"""
 
@@ -121,12 +119,8 @@ class TestSnowflakeystem(TestCase):
         cls.config["source"]["serviceConnection"]["config"]["database"] = cls.database
 
         # set metadata config
-        cls.metadata_config_dict = cls.config["workflowConfig"][
-            "openMetadataServerConfig"
-        ]
-        cls.metadata_config = OpenMetadataConnection.model_validate(
-            cls.metadata_config_dict
-        )
+        cls.metadata_config_dict = cls.config["workflowConfig"]["openMetadataServerConfig"]
+        cls.metadata_config = OpenMetadataConnection.model_validate(cls.metadata_config_dict)
         cls.metadata = OpenMetadata(cls.metadata_config)
 
         # run the ingestion workflow

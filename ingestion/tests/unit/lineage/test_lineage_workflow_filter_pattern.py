@@ -15,6 +15,7 @@ Test lineage workflow filter pattern functionality
 This module tests the filtering logic for both views and stored procedures
 in lineage ingestion workflows to ensure proper filtering behavior.
 """
+
 import uuid
 from unittest import TestCase
 
@@ -92,9 +93,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the internal_view was filtered out
         self.assertEqual(len(self.status.filtered), 1)
-        self.assertIn(
-            "internal_view", [list(f.keys())[0] for f in self.status.filtered]
-        )
+        self.assertIn("internal_view", [list(f.keys())[0] for f in self.status.filtered])
 
     def test_view_filtering_by_table_pattern_exclude_only(self):
         """Test view filtering with exclude patterns only"""
@@ -155,9 +154,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
         self.status = Status()
 
         # Setup filter pattern to include views starting with "public_" but exclude those containing "temp"
-        self.source_config.tableFilterPattern = FilterPattern(
-            includes=["^public_.*"], excludes=[".*temp.*"]
-        )
+        self.source_config.tableFilterPattern = FilterPattern(includes=["^public_.*"], excludes=[".*temp.*"])
 
         # Create test views
         views = [
@@ -328,9 +325,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
         self.status = Status()
 
         # Setup filter pattern to include only procedures starting with "sp_"
-        self.source_config.storedProcedureFilterPattern = FilterPattern(
-            includes=["^sp_.*"]
-        )
+        self.source_config.storedProcedureFilterPattern = FilterPattern(includes=["^sp_.*"])
 
         # Create test stored procedures
         procedures = [
@@ -338,25 +333,19 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("sp_get_users"),
                 fullyQualifiedName="test_service.test_db.public.sp_get_users",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM users"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM users"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("get_orders"),
                 fullyQualifiedName="test_service.test_db.public.get_orders",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM orders"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM orders"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp_update_inventory"),
                 fullyQualifiedName="test_service.test_db.public.sp_update_inventory",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="UPDATE inventory SET quantity = 0"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="UPDATE inventory SET quantity = 0"),
             ),
         ]
 
@@ -389,9 +378,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
         self.status = Status()
 
         # Setup filter pattern to exclude procedures containing "temp"
-        self.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=[".*temp.*"]
-        )
+        self.source_config.storedProcedureFilterPattern = FilterPattern(excludes=[".*temp.*"])
 
         # Create test stored procedures
         procedures = [
@@ -399,25 +386,19 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("sp_get_users"),
                 fullyQualifiedName="test_service.test_db.public.sp_get_users",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM users"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM users"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("temp_procedure"),
                 fullyQualifiedName="test_service.test_db.public.temp_procedure",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="CREATE TEMP TABLE temp_data AS SELECT 1"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="CREATE TEMP TABLE temp_data AS SELECT 1"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp_update_inventory"),
                 fullyQualifiedName="test_service.test_db.public.sp_update_inventory",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="UPDATE inventory SET quantity = 0"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="UPDATE inventory SET quantity = 0"),
             ),
         ]
 
@@ -442,9 +423,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the temp_procedure was filtered out
         self.assertEqual(len(self.status.filtered), 1)
-        self.assertIn(
-            "temp_procedure", [list(f.keys())[0] for f in self.status.filtered]
-        )
+        self.assertIn("temp_procedure", [list(f.keys())[0] for f in self.status.filtered])
 
     def test_stored_procedure_filtering_by_procedure_pattern_include_exclude(self):
         """Test stored procedure filtering with both include and exclude patterns"""
@@ -452,9 +431,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
         self.status = Status()
 
         # Setup filter pattern to include procedures starting with "sp_" but exclude those containing "temp"
-        self.source_config.storedProcedureFilterPattern = FilterPattern(
-            includes=["^sp_.*"], excludes=[".*temp.*"]
-        )
+        self.source_config.storedProcedureFilterPattern = FilterPattern(includes=["^sp_.*"], excludes=[".*temp.*"])
 
         # Create test stored procedures
         procedures = [
@@ -462,25 +439,19 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("sp_get_users"),
                 fullyQualifiedName="test_service.test_db.public.sp_get_users",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM users"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM users"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("get_orders"),
                 fullyQualifiedName="test_service.test_db.public.get_orders",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM orders"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM orders"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp_temp_procedure"),
                 fullyQualifiedName="test_service.test_db.public.sp_temp_procedure",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="CREATE TEMP TABLE temp_sp AS SELECT 1"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="CREATE TEMP TABLE temp_sp AS SELECT 1"),
             ),
         ]
 
@@ -522,17 +493,13 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("procedure1"),
                 fullyQualifiedName="test_service.test_db.public.procedure1",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 1"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 1"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("procedure2"),
                 fullyQualifiedName="test_service.test_db.public.procedure2",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 2"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 2"),
             ),
         ]
 
@@ -570,41 +537,31 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("sp_get_users"),
                 fullyQualifiedName="test_service.test_db.public.sp_get_users",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM users"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM users"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("usp_update_orders"),
                 fullyQualifiedName="test_service.test_db.public.usp_update_orders",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="UPDATE orders SET status = 'completed'"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="UPDATE orders SET status = 'completed'"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp_procedure_temp"),
                 fullyQualifiedName="test_service.test_db.public.sp_procedure_temp",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="CREATE TEMP TABLE temp_data AS SELECT 1"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="CREATE TEMP TABLE temp_data AS SELECT 1"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("get_inventory"),
                 fullyQualifiedName="test_service.test_db.public.get_inventory",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM inventory"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM inventory"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("usp_data_test"),
                 fullyQualifiedName="test_service.test_db.public.usp_data_test",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM test_data"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM test_data"),
             ),
         ]
 
@@ -646,9 +603,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Case insensitive patterns (default behavior)
         self.source_config.tableFilterPattern = FilterPattern(includes=["^PUBLIC_.*"])
-        self.source_config.storedProcedureFilterPattern = FilterPattern(
-            includes=["^SP_.*"]
-        )
+        self.source_config.storedProcedureFilterPattern = FilterPattern(includes=["^SP_.*"])
 
         # Create test data
         views = [
@@ -671,26 +626,18 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("SP_GET_USERS"),
                 fullyQualifiedName="test.SP_GET_USERS",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT * FROM users"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT * FROM users"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp_update_orders"),
                 fullyQualifiedName="test.sp_update_orders",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="UPDATE orders SET status = 'completed'"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="UPDATE orders SET status = 'completed'"),
             ),
         ]
 
         # Test view filtering - both should match due to case insensitive matching
-        filtered_views = [
-            v
-            for v in views
-            if not filter_by_table(self.source_config.tableFilterPattern, v.table_name)
-        ]
+        filtered_views = [v for v in views if not filter_by_table(self.source_config.tableFilterPattern, v.table_name)]
         self.assertEqual(len(filtered_views), 2)
         view_names = [v.table_name for v in filtered_views]
         self.assertIn("PUBLIC_VIEW1", view_names)
@@ -700,9 +647,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
         filtered_procedures = [
             p
             for p in procedures
-            if not filter_by_stored_procedure(
-                self.source_config.storedProcedureFilterPattern, p.name.root
-            )
+            if not filter_by_stored_procedure(self.source_config.storedProcedureFilterPattern, p.name.root)
         ]
         self.assertEqual(len(filtered_procedures), 2)
         procedure_names = [p.name.root for p in filtered_procedures]
@@ -739,34 +684,24 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("procedure1"),
                 fullyQualifiedName="test.procedure1",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 1"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 1"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("procedure2"),
                 fullyQualifiedName="test.procedure2",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 2"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 2"),
             ),
         ]
 
         # Test that nothing is filtered when patterns are empty
-        filtered_views = [
-            v
-            for v in views
-            if not filter_by_table(self.source_config.tableFilterPattern, v.table_name)
-        ]
+        filtered_views = [v for v in views if not filter_by_table(self.source_config.tableFilterPattern, v.table_name)]
         self.assertEqual(len(filtered_views), 2)
 
         filtered_procedures = [
             p
             for p in procedures
-            if not filter_by_stored_procedure(
-                self.source_config.storedProcedureFilterPattern, p.name.root
-            )
+            if not filter_by_stored_procedure(self.source_config.storedProcedureFilterPattern, p.name.root)
         ]
         self.assertEqual(len(filtered_procedures), 2)
 
@@ -810,34 +745,24 @@ class LineageWorkflowFilterPatternTest(TestCase):
                 id=uuid.uuid4(),
                 name=EntityName("sp_normal"),
                 fullyQualifiedName="test.sp_normal",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 1"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 1"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp@special"),
                 fullyQualifiedName="test.sp@special",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 2"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 2"),
             ),
             StoredProcedure(
                 id=uuid.uuid4(),
                 name=EntityName("sp_another"),
                 fullyQualifiedName="test.sp_another",
-                storedProcedureCode=StoredProcedureCode(
-                    language="SQL", code="SELECT 3"
-                ),
+                storedProcedureCode=StoredProcedureCode(language="SQL", code="SELECT 3"),
             ),
         ]
 
         # Test view filtering - should include only views with $
-        filtered_views = [
-            v
-            for v in views
-            if not filter_by_table(self.source_config.tableFilterPattern, v.table_name)
-        ]
+        filtered_views = [v for v in views if not filter_by_table(self.source_config.tableFilterPattern, v.table_name)]
         self.assertEqual(len(filtered_views), 2)
         view_names = [v.table_name for v in filtered_views]
         self.assertIn("view$special", view_names)
@@ -847,9 +772,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
         filtered_procedures = [
             p
             for p in procedures
-            if not filter_by_stored_procedure(
-                self.source_config.storedProcedureFilterPattern, p.name.root
-            )
+            if not filter_by_stored_procedure(self.source_config.storedProcedureFilterPattern, p.name.root)
         ]
         self.assertEqual(len(filtered_procedures), 2)
         procedure_names = [p.name.root for p in filtered_procedures]

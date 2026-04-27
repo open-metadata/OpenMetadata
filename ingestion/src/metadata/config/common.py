@@ -11,6 +11,7 @@
 """
 Common configuration models and exceptions
 """
+
 import io
 import json
 import os
@@ -101,9 +102,7 @@ def load_config_file(config_file: pathlib.Path) -> dict:
     elif config_file.suffix == ".json":
         config_mech = JsonConfigurationMechanism()
     else:
-        raise ConfigurationError(
-            f"Only .json and .yml are supported. Cannot process file type {config_file.suffix}"
-        )
+        raise ConfigurationError(f"Only .json and .yml are supported. Cannot process file type {config_file.suffix}")
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()
     expanded_config_file = os.path.expandvars(raw_config)

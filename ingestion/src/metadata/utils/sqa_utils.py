@@ -36,9 +36,7 @@ logger = query_runner_logger()
 
 
 # pylint: disable=cell-var-from-loop
-def build_query_filter(
-    filters: List[Tuple[Column, str, Any]], or_filter: bool = False
-) -> Optional[BinaryExpression]:
+def build_query_filter(filters: List[Tuple[Column, str, Any]], or_filter: bool = False) -> Optional[BinaryExpression]:
     """Dynamically build query filter
 
     Args:
@@ -56,9 +54,7 @@ def build_query_filter(
         try:
             filter_attr = (
                 next(
-                    filter(
-                        lambda x: hasattr(column, x % operator), ["%s", "%s_", "__%s__"]
-                    ),
+                    filter(lambda x: hasattr(column, x % operator), ["%s", "%s_", "__%s__"]),
                     None,
                 )
                 % operator
@@ -78,9 +74,7 @@ def build_query_filter(
     return and_(*list_of_filters)
 
 
-def get_integer_range_filter(
-    partition_field, integer_range_start, integer_range_end
-) -> Optional[BinaryExpression]:
+def get_integer_range_filter(partition_field, integer_range_start, integer_range_end) -> Optional[BinaryExpression]:
     """Get the query filter for integer range
 
     Args:
@@ -159,14 +153,10 @@ def get_partition_col_type(partition_column_name: str, columns: List[Column]):
     Returns:
         _type_: type
     """
-    partition_field = (
-        partition_column_name.lower()
-    )  # normalize field name as we'll be looking by key
+    partition_field = partition_column_name.lower()  # normalize field name as we'll be looking by key
 
     col = columns.get(partition_field)
-    if (
-        col is not None
-    ):  # if col is None, this means we have BQ pseudo columns _PARTITIONDATE or _PARTITIONTIME
+    if col is not None:  # if col is None, this means we have BQ pseudo columns _PARTITIONDATE or _PARTITIONTIME
         return col.type
     if partition_field == "_partitiondate":
         return sqlalchemy.DATE()
@@ -206,9 +196,7 @@ def get_query_group_by_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
     return group_by_
 
 
-def handle_array(
-    query: Query, column: Column, table: Union[type, AliasedClass]
-) -> Query:
+def handle_array(query: Query, column: Column, table: Union[type, AliasedClass]) -> Query:
     """Handle query for array. The curent implementation is
     specific to BigQuery. This should be refactored in the future
     to add a more generic support

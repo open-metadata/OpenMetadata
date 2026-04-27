@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 from urllib.parse import quote_plus
 
@@ -45,11 +46,7 @@ def get_connection_url(connection: ImpalaConnection) -> str:
     Build the URL handling auth requirements
     """
     url = f"{connection.scheme.value}://"
-    if (
-        connection.username
-        and connection.authMechanism
-        and connection.authMechanism.value in ("LDAP", "CUSTOM")
-    ):
+    if connection.username and connection.authMechanism and connection.authMechanism.value in ("LDAP", "CUSTOM"):
         url += quote_plus(connection.username)
         if not connection.password:
             connection.password = SecretStr("")
@@ -67,9 +64,7 @@ def get_connection_url(connection: ImpalaConnection) -> str:
 
     options = get_connection_options_dict(connection)
     if options:
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
         url = f"{url}?{params}"
     if connection.authOptions:
         url = f"{url};{connection.authOptions}"
@@ -84,16 +79,12 @@ def get_connection(connection: ImpalaConnection) -> Engine:
     if connection.authMechanism:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root[
-            "auth_mechanism"
-        ] = connection.authMechanism.value
+        connection.connectionArguments.root["auth_mechanism"] = connection.authMechanism.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root[
-            "kerberos_service_name"
-        ] = connection.kerberosServiceName
+        connection.connectionArguments.root["kerberos_service_name"] = connection.kerberosServiceName
 
     if connection.useSSL:
         if not connection.connectionArguments:

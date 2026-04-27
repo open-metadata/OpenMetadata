@@ -160,6 +160,7 @@ export const SEARCH_INDEX_DEFAULT_TABS = [
 export const CONTAINER_DEFAULT_TABS = [
   EntityTabs.SCHEMA,
   EntityTabs.CHILDREN,
+  EntityTabs.SAMPLE_DATA,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.LINEAGE,
   EntityTabs.CONTRACT,

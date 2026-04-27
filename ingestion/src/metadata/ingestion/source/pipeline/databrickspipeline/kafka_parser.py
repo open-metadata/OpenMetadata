@@ -163,22 +163,14 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
                 found_explicit_kafka = True
                 config_block = match.group(1)
 
-                bootstrap_servers = _extract_option(
-                    config_block, r"kafka\.bootstrap\.servers", variables
-                )
-                subscribe_topics = _extract_option(
-                    config_block, r"subscribe", variables
-                )
+                bootstrap_servers = _extract_option(config_block, r"kafka\.bootstrap\.servers", variables)
+                subscribe_topics = _extract_option(config_block, r"subscribe", variables)
                 topics = _extract_option(config_block, r"topics", variables)
-                group_id_prefix = _extract_option(
-                    config_block, r"groupIdPrefix", variables
-                )
+                group_id_prefix = _extract_option(config_block, r"groupIdPrefix", variables)
 
                 topic_list = []
                 if subscribe_topics:
-                    topic_list = [
-                        t.strip() for t in subscribe_topics.split(",") if t.strip()
-                    ]
+                    topic_list = [t.strip() for t in subscribe_topics.split(",") if t.strip()]
                 elif topics:
                     topic_list = [t.strip() for t in topics.split(",") if t.strip()]
 
@@ -203,14 +195,9 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
             topic_candidates = []
             for var_name, var_value in variables.items():
                 # Look for variables that likely contain topic names
-                if any(
-                    keyword in var_name.lower()
-                    for keyword in ["topic", "subject", "stream"]
-                ):
+                if any(keyword in var_name.lower() for keyword in ["topic", "subject", "stream"]):
                     topic_candidates.append(var_value)
-                    logger.debug(
-                        f"Found potential topic from variable {var_name}: {var_value}"
-                    )
+                    logger.debug(f"Found potential topic from variable {var_name}: {var_value}")
 
             if topic_candidates:
                 kafka_config = KafkaSourceConfig(
@@ -219,9 +206,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
                     group_id_prefix=None,
                 )
                 kafka_configs.append(kafka_config)
-                logger.debug(
-                    f"Extracted Kafka config from variables: topics={topic_candidates}"
-                )
+                logger.debug(f"Extracted Kafka config from variables: topics={topic_candidates}")
 
     except Exception as exc:
         logger.warning(f"Error parsing Kafka sources from code: {exc}")
@@ -229,9 +214,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
     return kafka_configs
 
 
-def _extract_option(
-    config_block: str, option_name: str, variables: dict = None
-) -> Optional[str]:
+def _extract_option(config_block: str, option_name: str, variables: dict = None) -> Optional[str]:
     """
     Extract a single option value from Kafka configuration block
     Supports both string literals and variable references
@@ -242,30 +225,22 @@ def _extract_option(
 
     try:
         # Try matching quoted string literal: .option("subscribe", "topic")
-        pattern_literal = (
-            rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*["\']([^"\']+)["\']\s*\)'
-        )
+        pattern_literal = rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*["\']([^"\']+)["\']\s*\)'
         match = re.search(pattern_literal, config_block, re.IGNORECASE)
         if match:
             return match.group(2)
 
         # Try matching variable reference: .option("subscribe", TOPIC)
-        pattern_variable = (
-            rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*([A-Z_][A-Z0-9_]*)\s*\)'
-        )
+        pattern_variable = rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*([A-Z_][A-Z0-9_]*)\s*\)'
         match = re.search(pattern_variable, config_block, re.IGNORECASE)
         if match:
             var_name = match.group(2)
             # Resolve variable
             if var_name in variables:
-                logger.debug(
-                    f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}"
-                )
+                logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")
                 return variables[var_name]
             else:
-                logger.debug(
-                    f"Variable {var_name} referenced but not found in source code"
-                )
+                logger.debug(f"Variable {var_name} referenced but not found in source code")
 
     except Exception as exc:
         logger.debug(f"Failed to extract option {option_name}: {exc}")
@@ -304,14 +279,10 @@ def extract_dlt_table_names(source_code: str) -> List[str]:
                 if function_call:
                     # Extract table name hint from function name
                     # e.g., generate_event_log_table_name() -> event_log
-                    inferred_name = _infer_table_name_from_function(
-                        function_call, source_code
-                    )
+                    inferred_name = _infer_table_name_from_function(function_call, source_code)
                     if inferred_name:
                         table_names.append(inferred_name)
-                        logger.debug(
-                            f"Found DLT table (inferred from {function_call}): {inferred_name}"
-                        )
+                        logger.debug(f"Found DLT table (inferred from {function_call}): {inferred_name}")
 
     except Exception as exc:
         logger.warning(f"Error parsing DLT table names from code: {exc}")
@@ -319,9 +290,7 @@ def extract_dlt_table_names(source_code: str) -> List[str]:
     return table_names
 
 
-def _infer_table_name_from_function(
-    function_call: str, source_code: str
-) -> Optional[str]:
+def _infer_table_name_from_function(function_call: str, source_code: str) -> Optional[str]:
     """
     Infer table name from function call pattern
 
@@ -337,31 +306,21 @@ def _infer_table_name_from_function(
         # Strategy 1: Materializer pattern - entity_name + suffix from function
         # Handles: @dlt.table(name=materializer.generate_event_log_table_name())
         # where entity_name = "customerEvent" should produce "customerevent_event_log"
-        entity_name = (
-            variables.get("entity_name")
-            or variables.get("entity")
-            or variables.get("table_name")
-        )
+        entity_name = variables.get("entity_name") or variables.get("entity") or variables.get("table_name")
 
         if entity_name and "generate_event_log_table_name" in function_call.lower():
             table_name = f"{entity_name.lower()}_event_log"
-            logger.debug(
-                f"Inferred event_log table from Materializer pattern: {table_name}"
-            )
+            logger.debug(f"Inferred event_log table from Materializer pattern: {table_name}")
             return table_name
 
         if entity_name and "generate_snapshot_table_name" in function_call.lower():
             table_name = f"{entity_name.lower()}_snapshot"
-            logger.debug(
-                f"Inferred snapshot table from Materializer pattern: {table_name}"
-            )
+            logger.debug(f"Inferred snapshot table from Materializer pattern: {table_name}")
             return table_name
 
         # Strategy 2: Use entity_name variable if present (fallback)
         if entity_name:
-            logger.debug(
-                f"Inferred table name from entity_name variable: {entity_name}"
-            )
+            logger.debug(f"Inferred table name from entity_name variable: {entity_name}")
             return entity_name
 
         # Strategy 3: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
@@ -436,22 +395,16 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                     # Try function name pattern
                     func_name_match = DLT_TABLE_NAME_FUNCTION.search(function_block)
                     if func_name_match and func_name_match.group(1):
-                        table_name = _infer_table_name_from_function(
-                            func_name_match.group(1), source_code
-                        )
+                        table_name = _infer_table_name_from_function(func_name_match.group(1), source_code)
 
                 if not table_name:
                     # Try to extract from function definition itself
-                    def_match = re.search(
-                        r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block
-                    )
+                    def_match = re.search(r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block)
                     if def_match:
                         table_name = def_match.group(1)
 
                 if not table_name:
-                    logger.debug(
-                        f"Could not extract table name from block: {function_block[:100]}..."
-                    )
+                    logger.debug(f"Could not extract table name from block: {function_block[:100]}...")
                     continue
 
                 # Check if it reads from Kafka
@@ -461,15 +414,10 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                 # Materializer pattern: materializer.build_event_log_dataframe()
                 # This method internally reads from Kafka, so if we find this pattern
                 # and the table name matches event_log pattern, mark as Kafka reader
-                if (
-                    not reads_from_kafka
-                    and "materializer.build_event_log_dataframe" in function_block
-                ):
+                if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:
                     if "event_log" in table_name:
                         reads_from_kafka = True
-                        logger.debug(
-                            f"Table {table_name} reads from Kafka via Materializer"
-                        )
+                        logger.debug(f"Table {table_name} reads from Kafka via Materializer")
 
                 # Check if it reads from S3
                 s3_locations = []
@@ -519,23 +467,13 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
         try:
             variables = _extract_variables(source_code)
             snapshot_required = variables.get("snapshot_required")
-            entity_name = (
-                variables.get("entity_name")
-                or variables.get("entity")
-                or variables.get("table_name")
-            )
+            entity_name = variables.get("entity_name") or variables.get("entity") or variables.get("table_name")
 
             # Check if snapshot table is built
             # snapshot_required can be "True" (string) or True (boolean)
-            is_snapshot_enabled = (
-                snapshot_required and str(snapshot_required).lower() == "true"
-            )
+            is_snapshot_enabled = snapshot_required and str(snapshot_required).lower() == "true"
 
-            if (
-                is_snapshot_enabled
-                and entity_name
-                and "build_snapshot_dataframe" in source_code
-            ):
+            if is_snapshot_enabled and entity_name and "build_snapshot_dataframe" in source_code:
                 snapshot_table_name = f"{entity_name.lower()}_snapshot"
                 event_log_table_name = f"{entity_name.lower()}_event_log"
 

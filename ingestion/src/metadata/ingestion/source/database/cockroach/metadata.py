@@ -11,6 +11,7 @@
 """
 Cockroach source module
 """
+
 import re
 import traceback
 from collections import namedtuple
@@ -99,9 +100,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CockroachConnection = config.serviceConnection.root.config
         if not isinstance(connection, CockroachConnection):
-            raise InvalidSourceException(
-                f"Expected CockroachConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected CockroachConnection, but got {connection}")
         return cls(config, metadata)
 
     def set_schema_description_map(self) -> None:
@@ -151,16 +150,12 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
 
         # Filter out hidden shard columns from primary key constraints
         if pk_columns:
-            filtered_pk_columns = [
-                col for col in pk_columns if not self._is_hidden_shard_column(col)
-            ]
+            filtered_pk_columns = [col for col in pk_columns if not self._is_hidden_shard_column(col)]
             pk_columns = filtered_pk_columns
 
         return pk_columns, unique_columns, foreign_columns
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Overwrite the inspector implementation to handle partitioned
         and foreign types
@@ -170,24 +165,16 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
             {"schema": schema_name},
         )
         return [
-            TableNameAndType(
-                name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)
-            )
-            for name, relkind in result
+            TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         result = self.connection.execute(
             sql.text(COCKROACH_GET_VIEW_NAMES),
             {"schema": schema_name},
         )
         return [
-            TableNameAndType(
-                name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)
-            )
-            for name, relkind in result
+            TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
     def get_configured_database(self) -> Optional[str]:
@@ -215,11 +202,7 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_database
-                    ),
+                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -230,25 +213,17 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector
-    ) -> Tuple[bool, TablePartition]:
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:
         with self.engine.connect() as conn:
-            result = conn.execute(
-                text(COCKROACH_GET_PARTITION_DETAILS), {"table_name": table_name}
-            ).all()
+            result = conn.execute(text(COCKROACH_GET_PARTITION_DETAILS), {"table_name": table_name}).all()
         if result:
             partition_details = TablePartition(
                 columns=[
                     PartitionColumnDetails(
                         columnName=row[1],
-                        intervalType=INTERVAL_TYPE_MAP.get(
-                            row[2], PartitionIntervalTypes.COLUMN_VALUE
-                        ),
+                        intervalType=INTERVAL_TYPE_MAP.get(row[2], PartitionIntervalTypes.COLUMN_VALUE),
                         interval=None,
                     )
                     for row in result

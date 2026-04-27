@@ -13,6 +13,7 @@ Definition of custom patterns for the PII detection.
 Only patterns for column names are implemented here; for content,
 we rely on the Presidio library.
 """
+
 import re
 from collections import defaultdict
 from functools import lru_cache

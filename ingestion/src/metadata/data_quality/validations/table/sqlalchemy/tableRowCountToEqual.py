@@ -24,9 +24,7 @@ from metadata.data_quality.validations.table.base.tableRowCountToEqual import (
 from metadata.profiler.metrics.registry import Metrics
 
 
-class TableRowCountToEqualValidator(
-    BaseTableRowCountToEqualValidator, SQAValidatorMixin
-):
+class TableRowCountToEqualValidator(BaseTableRowCountToEqualValidator, SQAValidatorMixin):
     """Validator for table row inserted count to be between test case"""
 
     def _run_results(self, metric: Metrics) -> Optional[int]:

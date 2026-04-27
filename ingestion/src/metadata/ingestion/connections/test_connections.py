@@ -12,6 +12,7 @@
 Classes and methods to handle connection testing when
 creating a service
 """
+
 import traceback
 from datetime import datetime
 from functools import partial
@@ -149,16 +150,12 @@ def _test_connection_steps_automation_workflow(
                     # break the workflow if the step is a short circuit step
                     break
 
-            test_connection_result.lastUpdatedAt = Timestamp(
-                int(datetime.now().timestamp() * 1000)
-            )
+            test_connection_result.lastUpdatedAt = Timestamp(int(datetime.now().timestamp() * 1000))
             metadata.patch_automation_workflow_response(
                 automation_workflow, test_connection_result, WorkflowStatus.Running
             )
 
-        test_connection_result.lastUpdatedAt = Timestamp(
-            int(datetime.now().timestamp() * 1000)
-        )
+        test_connection_result.lastUpdatedAt = Timestamp(int(datetime.now().timestamp() * 1000))
 
         test_connection_result.status = (
             StatusType.Failed
@@ -172,9 +169,7 @@ def _test_connection_steps_automation_workflow(
         )
 
     except Exception as err:
-        logger.error(
-            f"Wild error happened while testing the connection in the workflow - {err}"
-        )
+        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")
         logger.debug(traceback.format_exc())
         test_connection_result.lastUpdatedAt = datetime.now().timestamp()
         metadata.create_or_update(
@@ -236,13 +231,9 @@ def raise_test_connection_exception(result: TestConnectionResult) -> None:
     """Raise if needed an exception for the test connection"""
     for step in result.steps:
         if not step.passed and step.mandatory:
-            raise SourceConnectionException(
-                f"Failed to run the test connection step: {step.name}"
-            )
+            raise SourceConnectionException(f"Failed to run the test connection step: {step.name}")
         if not step.passed:
-            logger.warning(
-                f"You might be missing metadata in: {step.name} due to {step.message}"
-            )
+            logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")
 
 
 def test_connection_steps(
@@ -287,9 +278,7 @@ def test_connection_steps(
     ]
 
     if timeout_seconds:
-        return timeout(timeout_seconds)(_test_connection_steps)(
-            metadata, steps, automation_workflow
-        )
+        return timeout(timeout_seconds)(_test_connection_steps)(metadata, steps, automation_workflow)
 
     return _test_connection_steps(metadata, steps, automation_workflow)
 

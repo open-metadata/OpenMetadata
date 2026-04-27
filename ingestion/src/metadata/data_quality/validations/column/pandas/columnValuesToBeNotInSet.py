@@ -56,9 +56,7 @@ class ColumnValuesToBeNotInSetValidator(
 ):
     """Validator for column value to be not in set test case"""
 
-    def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:
         """compute result of the test case
 
         Args:
@@ -99,14 +97,12 @@ class ColumnValuesToBeNotInSetValidator(
         dimension_results = []
 
         try:
-            forbidden_values = test_params[
-                BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES
-            ]
+            forbidden_values = test_params[BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES]
 
             dfs = self.runner
-            count_in_set_impl = add_props(values=forbidden_values)(
-                Metrics.countInSet.value
-            )(column).get_pandas_computation()
+            count_in_set_impl = add_props(values=forbidden_values)(Metrics.countInSet.value)(
+                column
+            ).get_pandas_computation()
             row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
@@ -123,27 +119,21 @@ class ColumnValuesToBeNotInSetValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.countInSet.name
-                    ] = count_in_set_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.countInSet.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.countInSet.name] = (
+                        count_in_set_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.countInSet.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                count_in_set = count_in_set_impl.aggregate_accumulator(
-                    agg[Metrics.countInSet.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                count_in_set = count_in_set_impl.aggregate_accumulator(agg[Metrics.countInSet.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 results_data.append(
                     {

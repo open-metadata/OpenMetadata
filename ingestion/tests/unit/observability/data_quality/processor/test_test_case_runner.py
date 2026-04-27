@@ -12,6 +12,7 @@
 """
 Unit tests for TestCaseRunner processor
 """
+
 from unittest.mock import Mock, patch
 from uuid import UUID
 
@@ -94,29 +95,21 @@ class TestFilterForOMTestCases:
 
         om_test_case = create_test_case("om_case", om_definition._test_id)
         dbt_test_case = create_test_case("dbt_case", dbt_definition._test_id)
-        ge_test_case = create_test_case(
-            "ge_case", great_expectations_definition._test_id
-        )
+        ge_test_case = create_test_case("ge_case", great_expectations_definition._test_id)
 
         def get_by_id_side_effect(entity_type, entity_id):
             # entity_id is a pydantic Uuid wrapper, access .root to get the UUID
-            id_str = (
-                str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
-            )
+            id_str = str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
             mapping = {
                 str(om_definition._test_id): om_definition,
                 str(dbt_definition._test_id): dbt_definition,
-                str(
-                    great_expectations_definition._test_id
-                ): great_expectations_definition,
+                str(great_expectations_definition._test_id): great_expectations_definition,
             }
             return mapping.get(id_str)
 
         mock_runner.metadata.get_by_id.side_effect = get_by_id_side_effect
 
-        result = mock_runner.filter_for_om_test_cases(
-            [om_test_case, dbt_test_case, ge_test_case]
-        )
+        result = mock_runner.filter_for_om_test_cases([om_test_case, dbt_test_case, ge_test_case])
 
         assert len(result) == 1
         assert result[0].name.root == "om_case"
@@ -134,17 +127,11 @@ class TestFilterForOMTestCases:
             enabled=False,
         )
 
-        enabled_test_case = create_test_case(
-            "enabled_case", enabled_definition._test_id
-        )
-        disabled_test_case = create_test_case(
-            "disabled_case", disabled_definition._test_id
-        )
+        enabled_test_case = create_test_case("enabled_case", enabled_definition._test_id)
+        disabled_test_case = create_test_case("disabled_case", disabled_definition._test_id)
 
         def get_by_id_side_effect(entity_type, entity_id):
-            id_str = (
-                str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
-            )
+            id_str = str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
             mapping = {
                 str(enabled_definition._test_id): enabled_definition,
                 str(disabled_definition._test_id): disabled_definition,
@@ -153,9 +140,7 @@ class TestFilterForOMTestCases:
 
         mock_runner.metadata.get_by_id.side_effect = get_by_id_side_effect
 
-        result = mock_runner.filter_for_om_test_cases(
-            [enabled_test_case, disabled_test_case]
-        )
+        result = mock_runner.filter_for_om_test_cases([enabled_test_case, disabled_test_case])
 
         assert len(result) == 1
         assert result[0].name.root == "enabled_case"
@@ -185,9 +170,7 @@ class TestFilterForOMTestCases:
             enabled=True,
         )
 
-        test_case = create_test_case(
-            "multi_platform_case", multi_platform_definition._test_id
-        )
+        test_case = create_test_case("multi_platform_case", multi_platform_definition._test_id)
 
         mock_runner.metadata.get_by_id.return_value = multi_platform_definition
 
@@ -227,9 +210,7 @@ class TestFilterForOMTestCases:
         ]
 
         def get_by_id_side_effect(entity_type, entity_id):
-            id_str = (
-                str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
-            )
+            id_str = str(entity_id.root) if hasattr(entity_id, "root") else str(entity_id)
             mapping = {
                 str(om_enabled._test_id): om_enabled,
                 str(om_disabled._test_id): om_disabled,

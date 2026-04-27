@@ -11,6 +11,7 @@
 """
 Postgres lineage module
 """
+
 import traceback
 from datetime import datetime
 from typing import Iterable

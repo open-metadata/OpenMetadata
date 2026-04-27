@@ -9,25 +9,15 @@ SERVICE_TYPE_MAPPER = {
     },
     "delta": {
         "service_name": "DeltaLake",
-        "connection": {
-            "config": {
-                "configSource": {
-                    "connection": {"metastoreHostPort": "http://localhost:9083"}
-                }
-            }
-        },
+        "connection": {"config": {"configSource": {"connection": {"metastoreHostPort": "http://localhost:9083"}}}},
     },
     "dynamo": {
         "service_name": "DynamoDB",
-        "connection": {
-            "config": {"awsConfig": {"awsRegion": "us-east-1"}, "type": "DynamoDB"}
-        },
+        "connection": {"config": {"awsConfig": {"awsRegion": "us-east-1"}, "type": "DynamoDB"}},
     },
     "mysql": {
         "service_name": "Mysql",
-        "connection": {
-            "config": {"hostPort": "http://nohost:6000", "username": "randomName"}
-        },
+        "connection": {"config": {"hostPort": "http://nohost:6000", "username": "randomName"}},
     },
     "athena": {
         "service_name": "Athena",
@@ -54,9 +44,7 @@ SERVICE_TYPE_MAPPER = {
     },
     "db2": {
         "service_name": "Db2",
-        "connection": {
-            "config": {"hostPort": "http://nohost:6000", "username": "username"}
-        },
+        "connection": {"config": {"hostPort": "http://nohost:6000", "username": "username"}},
     },
     "druid": {
         "service_name": "Druid",
@@ -72,9 +60,7 @@ SERVICE_TYPE_MAPPER = {
             "config": {
                 "hostPort": "http://nohost:6000",
                 "username": "randomName",
-                "oracleConnectionType": {
-                    "oracleServiceName": {"title": "orcale_ser_name"}
-                },
+                "oracleConnectionType": {"oracleServiceName": {"title": "orcale_ser_name"}},
             }
         },
     },

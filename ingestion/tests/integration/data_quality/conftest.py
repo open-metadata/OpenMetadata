@@ -68,12 +68,8 @@ def ingest_mysql_service(mysql_container: MySqlContainer, metadata: OpenMetadata
     metadata_ingestion.execute()
     metadata_ingestion.raise_from_status()
     metadata_ingestion.stop()
-    db_service: DatabaseService = metadata.get_by_name(
-        DatabaseService, workflow_config["source"]["serviceName"]
-    )
-    db_service.connection.config.authType.password = CustomSecretStr(
-        mysql_container.password
-    )
+    db_service: DatabaseService = metadata.get_by_name(DatabaseService, workflow_config["source"]["serviceName"])
+    db_service.connection.config.authType.password = CustomSecretStr(mysql_container.password)
     yield db_service
     metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
 
@@ -87,8 +83,7 @@ def create_service_request(postgres_container):
             config=PostgresConnection(
                 username=postgres_container.username,
                 authType=BasicAuth(password=postgres_container.password),
-                hostPort="localhost:"
-                + postgres_container.get_exposed_port(postgres_container.port),
+                hostPort="localhost:" + postgres_container.get_exposed_port(postgres_container.port),
                 database="dvdrental",
             )
         ),
@@ -101,9 +96,7 @@ def postgres_service(db_service):
 
 
 @pytest.fixture()
-def ingest_postgres_metadata(
-    postgres_service, metadata: OpenMetadata, sink_config, workflow_config, run_workflow
-):
+def ingest_postgres_metadata(postgres_service, metadata: OpenMetadata, sink_config, workflow_config, run_workflow):
     workflow_config = {
         "source": {
             "type": postgres_service.connection.config.type.value.lower(),
@@ -133,9 +126,9 @@ def ingest_postgres_metadata(
 def patch_password(postgres_container):
     def inner(service: DatabaseService):
         service.connection.config = cast(PostgresConnection, service.connection.config)
-        service.connection.config.authType.password = type(
-            service.connection.config.authType.password
-        )(postgres_container.password)
+        service.connection.config.authType.password = type(service.connection.config.authType.password)(
+            postgres_container.password
+        )
         return service
 
     return inner

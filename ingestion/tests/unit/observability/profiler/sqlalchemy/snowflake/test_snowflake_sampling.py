@@ -56,9 +56,7 @@ class SampleTest(TestCase):
             ],
         )
 
-        cls.snowflake_conn = SnowflakeConnection(
-            username="myuser", account="myaccount", warehouse="mywarehouse"
-        )
+        cls.snowflake_conn = SnowflakeConnection(username="myuser", account="myaccount", warehouse="mywarehouse")
 
         sampler = SQASampler(
             service_connection_config=cls.snowflake_conn,
@@ -101,10 +99,7 @@ class SampleTest(TestCase):
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0))\n "
             'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_specify_sampling_method_type(self, sampler_mock):
         """
@@ -135,10 +130,7 @@ class SampleTest(TestCase):
                 f"FROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0))\n "
                 'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
             )
-            assert (
-                expected_query.casefold()
-                == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-            )
+            assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_row_sampling(self, sampler_mock):
         """
@@ -164,10 +156,7 @@ class SampleTest(TestCase):
             "\nFROM users AS users_1 TABLESAMPLE ROW(50 ROWS))\n "
             'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_sampling_with_partition(self, sampler_mock):
         """
@@ -200,7 +189,4 @@ class SampleTest(TestCase):
             "\nWHERE id IN ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id "
             '\nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()

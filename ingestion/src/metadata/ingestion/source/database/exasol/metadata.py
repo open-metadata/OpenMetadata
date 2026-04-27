@@ -27,15 +27,11 @@ EXADialect.get_all_table_comments = get_all_table_comments
 
 class ExasolSource(CommonDbSourceService):
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
         connection = cast(ExasolConnection, config.serviceConnection.root.config)
         if not isinstance(connection, ExasolConnection):
-            raise InvalidSourceException(
-                f"Expected ExasolConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected ExasolConnection, but got {connection}")
         return cls(config, metadata)

@@ -11,6 +11,7 @@
 """
 Generic models
 """
+
 from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
@@ -32,6 +33,4 @@ class Either(BaseModel, Generic[T]):
         Optional[StackTraceError],
         Field(description="Error encountered during execution", default=None),
     ]
-    right: Annotated[
-        Optional[T], Field(description="Correct instance of an Entity", default=None)
-    ]
+    right: Annotated[Optional[T], Field(description="Correct instance of an Entity", default=None)]

@@ -12,6 +12,7 @@
 """
 Test Exasol connector with CLI
 """
+
 import subprocess
 from typing import List
 
@@ -136,9 +137,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             connection.execute(text("CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA"))
             connection.execute(text(cls.create_table_query))
             connection.execute(
-                text(
-                    f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}"
-                )
+                text(f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}")
             )
             connection.commit()
 
@@ -155,9 +154,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             1. build config file for ingest with filters
             2. run ingest `self.run_command()` defaults to `ingestion`
         """
-        self.build_config_file(
-            E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_excludes_tables()}
-        )
+        self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_excludes_tables()})
         result = self.run_command()
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_excludes(source_status, sink_status)

@@ -11,6 +11,7 @@
 """
 Redshift usage module
 """
+
 import re
 from abc import ABC
 from datetime import datetime
@@ -38,15 +39,11 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
-            raise InvalidSourceException(
-                f"Expected RedshiftConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected RedshiftConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
@@ -60,9 +57,7 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
             result_limit=self.source_config.resultLimit,
         )
 
-    def check_life_cycle_query(
-        self, query_type: Optional[str], query_text: Optional[str]
-    ) -> bool:
+    def check_life_cycle_query(self, query_type: Optional[str], query_text: Optional[str]) -> bool:
         """
         returns true if query is to be used for life cycle processing.
 

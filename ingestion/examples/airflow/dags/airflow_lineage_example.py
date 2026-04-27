@@ -29,7 +29,6 @@ with Airflow Scheduler
 This is an example to demonstrate on how to configure a Airflow DAG's inlets and outlets.
 """
 
-
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
@@ -76,9 +75,7 @@ def openmetadata_airflow_lineage_example():
 
     # Example 2: Using OMEntity objects
     @task(
-        inlets=[
-            OMEntity(entity=Container, fqn="s3_storage_sample.transactions", key="test")
-        ],
+        inlets=[OMEntity(entity=Container, fqn="s3_storage_sample.transactions", key="test")],
         outlets=[
             OMEntity(
                 entity=Table,

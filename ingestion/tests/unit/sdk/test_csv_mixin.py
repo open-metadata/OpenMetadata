@@ -1,6 +1,7 @@
 """
 Unit tests for CSV mixin functionality.
 """
+
 from unittest.mock import Mock, patch
 
 import pytest
@@ -58,9 +59,7 @@ class TestCsvMixin:
 
         # Verify
         assert result == "job-123"
-        mock_client.get.assert_called_once_with(
-            "/glossaries/name/test_glossary/exportAsync"
-        )
+        mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/exportAsync")
 
     @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_import_csv(self, mock_get_endpoint):
@@ -130,9 +129,7 @@ class TestCsvMixin:
 
         # Test async import
         csv_data = "parent,name,description\n,term1,Test term"
-        result = mixin.import_csv_async(
-            Glossary, "test_glossary", csv_data, dry_run=False
-        )
+        result = mixin.import_csv_async(Glossary, "test_glossary", csv_data, dry_run=False)
 
         # Verify
         assert result == "import-job-456"
@@ -205,9 +202,7 @@ class TestBaseEntityCsvIntegration:
 
         # Verify
         assert result == "exported,csv,data"
-        mock_ometa.export_csv.assert_called_once_with(
-            entity=Glossary, name="test_glossary"
-        )
+        mock_ometa.export_csv.assert_called_once_with(entity=Glossary, name="test_glossary")
 
     @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_import_csv_integration(self, mock_get_client):
@@ -260,9 +255,7 @@ class TestBaseEntityCsvIntegration:
 
         # Verify
         assert result == "export-job-789"
-        mock_ometa.export_csv_async.assert_called_once_with(
-            entity=Glossary, name="test_glossary"
-        )
+        mock_ometa.export_csv_async.assert_called_once_with(entity=Glossary, name="test_glossary")
 
     @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_async_import_integration(self, mock_get_client):

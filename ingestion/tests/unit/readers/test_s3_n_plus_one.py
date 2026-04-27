@@ -18,6 +18,7 @@ head_object / s3_fs.info() calls per file to determine the size.
 Fix: Thread file_size through DatalakeTableSchemaWrapper so readers
 skip the extra API call when size is already known.
 """
+
 from collections import namedtuple
 from unittest.mock import MagicMock, Mock, patch
 
@@ -32,17 +33,15 @@ from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 
 def _s3_config():
     return S3Config(
-        securityConfig=AWSCredentials(
-            awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
-        )
+        securityConfig=AWSCredentials(awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1")
     )
 
 
 def _mock_session():
     mock_session = Mock()
     FrozenCreds = namedtuple("FrozenCreds", ["access_key", "secret_key", "token"])
-    mock_session.get_credentials.return_value.get_frozen_credentials.return_value = (
-        FrozenCreds(access_key="test", secret_key="test", token=None)
+    mock_session.get_credentials.return_value.get_frozen_credentials.return_value = FrozenCreds(
+        access_key="test", secret_key="test", token=None
     )
     return mock_session
 
@@ -105,7 +104,7 @@ class TestFileSizePassthrough:
         mock_fs = MagicMock()
         mock_s3fs_cls.return_value = mock_fs
 
-        mock_pf = Mock()
+        mock_pf = Mock()  # noqa: F841
         mock_table = Mock()
         mock_table.to_pandas.return_value = Mock()
 
@@ -259,16 +258,10 @@ class TestFileSizePassthrough:
         mock_blob_client.get_blob_properties.return_value = mock_props
         mock_client.get_blob_client.return_value = mock_blob_client
 
-        config = AzureConfig(
-            securityConfig=AzureCredentials(
-                accountName="test", clientId="test", tenantId="test"
-            )
-        )
+        config = AzureConfig(securityConfig=AzureCredentials(accountName="test", clientId="test", tenantId="test"))
         reader = JSONDataFrameReader(config, mock_client)
 
         result = reader._get_file_size_mb("data/test.json", "test-container")
 
         assert result == 10.0
-        mock_client.get_blob_client.assert_called_once_with(
-            container="test-container", blob="data/test.json"
-        )
+        mock_client.get_blob_client.assert_called_once_with(container="test-container", blob="data/test.json")

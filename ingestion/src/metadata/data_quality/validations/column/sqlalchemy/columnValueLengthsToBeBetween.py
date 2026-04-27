@@ -12,6 +12,7 @@
 """
 Validator for column value length to be between test case
 """
+
 import math
 from typing import List, Optional
 
@@ -132,14 +133,10 @@ class ColumnValueLengthsToBeBetweenValidator(
                 DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
                 Metrics.minLength.name: Metrics.minLength(column).fn(),
                 Metrics.maxLength.name: Metrics.maxLength(column).fn(),
-                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
-                    LenFn(column)
-                ),
+                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
             }
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -148,9 +145,7 @@ class ColumnValueLengthsToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
