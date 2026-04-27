@@ -317,6 +317,11 @@ test.describe(
             .first()
             .click();
 
+          // Wait for entity type dropdown to close before submitting
+          await expect(
+            page.locator('.ant-select-dropdown:visible')
+          ).not.toBeVisible();
+
           // Submit the form
           await page.getByTestId('save-test-definition').click();
 
@@ -378,7 +383,7 @@ test.describe(
         });
       } finally {
         if (createdTestDefinitionId) {
-          const apiContext = await getApiContext(page);
+          const { apiContext } = await getApiContext(page);
           const deleteResponse = await apiContext.delete(
             `/api/v1/dataQuality/testDefinitions/${createdTestDefinitionId}`
           );
